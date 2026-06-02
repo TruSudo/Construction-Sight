@@ -18,6 +18,8 @@ from constructionsight.storage.database import (
     session_factory,
 )
 from constructionsight.storage.source_registry import SourceRegistryStore
+from constructionsight.storage.verification_store import VerificationStore
+from constructionsight.verification.source_verifier import SourceVerifier
 
 app = typer.Typer(help="ConstructionSight lawful public-record intelligence tools.")
 console = Console()
@@ -133,3 +135,47 @@ def list_sources(
 
     _render_source_table(sources, "Persisted ConstructionSight Sources")
     console.print(f"Found {len(sources)} source records.")
+
+
+@app.command("verify-sources")
+def verify_sources(
+    database_url: Annotated[
+        str | None,
+        typer.Option(help="SQLAlchemy database URL. Defaults to local SQLite data/constructionsight.sqlite3."),
+    ] = None,
+    limit: Annotated[int | None, typer.Option(help="Maximum number of sources to verify.")] = None,
+) -> None:
+    """Verify persisted public sources and store auditable verification results."""
+
+    engine = create_database_engine(database_url)
+    initialize_database(engine)
+    factory = session_factory(engine)
+    verifier = SourceVerifier()
+
+    table = Table(title="Source Verification Results")
+    table.add_column("Source")
+    table.add_column("Reachable")
+    table.add_column("Detected Platform")
+    table.add_column("Search")
+    table.add_column("Login")
+    table.add_column("Confidence")
+
+    with managed_session(factory) as session:
+        sources = SourceRegistryStore(session).list_sources()
+        if limit is not None:
+            sources = sources[:limit]
+        store = VerificationStore(session)
+        for source in sources:
+            result = verifier.verify(source)
+            store.add_result(result)
+            table.add_row(
+                result.source_name,
+                str(result.url_reachable),
+                result.portal_type_detected.value,
+                str(result.public_search_available),
+                str(result.login_required),
+                str(result.confidence_score),
+            )
+
+    console.print(table)
+    console.print(f"Verified {len(sources)} source records.")
