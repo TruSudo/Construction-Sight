@@ -28,7 +28,14 @@ def create_database_engine(database_url: str | None = None) -> Engine:
 
 
 def initialize_database(engine: Engine) -> None:
-    """Create all known tables."""
+    """Create all known tables.
+
+    SQLAlchemy only creates tables whose ORM classes have been imported into
+    metadata. Import domain ORM modules here so `create_all()` sees both core
+    source-registry tables and normalized domain tables.
+    """
+
+    import constructionsight.storage.domain_orm  # noqa: F401
 
     Base.metadata.create_all(engine)
 
