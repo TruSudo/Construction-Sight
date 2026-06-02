@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from datetime import date, datetime, timezone
 
-from sqlalchemy import Date, DateTime, Integer, String, Text, UniqueConstraint, func
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
 class Base(DeclarativeBase):
@@ -40,6 +40,11 @@ class SourceRecord(Base):
     provenance_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     last_checked_date: Mapped[date | None] = mapped_column(Date, nullable=True)
 
+    verification_results: Mapped[list["VerificationRecord"]] = relationship(
+        back_populates="source",
+        cascade="all, delete-orphan",
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -53,3 +58,30 @@ class SourceRecord(Base):
         onupdate=lambda: datetime.now(timezone.utc),
         server_default=func.now(),
     )
+
+
+class VerificationRecord(Base):
+    """Persisted source-verification result."""
+
+    __tablename__ = "source_verifications"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    source_id: Mapped[int | None] = mapped_column(ForeignKey("sources.id"), nullable=True, index=True)
+
+    source_name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    public_url: Mapped[str] = mapped_column(Text, nullable=False)
+    checked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    url_reachable: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    portal_type_detected: Mapped[str] = mapped_column(String(128), nullable=False, default="unknown")
+    public_search_available: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    login_required: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    permit_details_visible: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    agenda_packets_visible: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    pdfs_downloadable: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    contractor_owner_applicant_fields_visible: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    evidence_snapshot_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    confidence_score: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    raw_observations_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+
+    source: Mapped[SourceRecord | None] = relationship(back_populates="verification_results")
