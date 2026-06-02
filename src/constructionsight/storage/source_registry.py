@@ -19,7 +19,12 @@ class SourceRegistryStore:
         self.session = session
 
     def upsert_source(self, source: PublicSource) -> SourceRecord:
-        """Insert or update a public-source registry record."""
+        """Insert or update a public-source registry record.
+
+        The store flushes after each upsert so later reads inside the same
+        transaction can see pending inserts and so repeated upserts update the
+        existing row instead of creating a duplicate pending insert.
+        """
 
         statement = select(SourceRecord).where(
             SourceRecord.source_name == source.source_name,
@@ -51,6 +56,7 @@ class SourceRegistryStore:
         existing.provenance_notes = source.provenance_notes
         existing.last_checked_date = source.last_checked_date
 
+        self.session.flush()
         return existing
 
     def upsert_many(self, sources: Iterable[PublicSource]) -> int:
@@ -65,6 +71,7 @@ class SourceRegistryStore:
     def list_sources(self) -> list[PublicSource]:
         """Return all persisted source records as Pydantic models."""
 
+        self.session.flush()
         records = self.session.scalars(
             select(SourceRecord).order_by(SourceRecord.county, SourceRecord.jurisdiction_name)
         ).all()
@@ -73,6 +80,7 @@ class SourceRegistryStore:
     def get_by_name(self, source_name: str) -> PublicSource | None:
         """Return one source by name, if present."""
 
+        self.session.flush()
         record = self.session.scalar(
             select(SourceRecord).where(SourceRecord.source_name == source_name)
         )
