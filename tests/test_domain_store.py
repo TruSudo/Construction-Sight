@@ -1,8 +1,12 @@
-from constructionsight.domain_types import PartyRole
+from constructionsight.agenda_models import AgendaItemRecord
+from constructionsight.ceqa_models import CeqaRecord
+from constructionsight.document_models import DocumentRecord
+from constructionsight.domain_types import PartyRole, RelationshipType
 from constructionsight.entity_models import Entity
 from constructionsight.permit_models import PermitRecord
 from constructionsight.planning_models import PlanningCaseRecord
 from constructionsight.provenance import Provenance
+from constructionsight.relationship_models import RelationshipRecord
 from constructionsight.site_models import Site
 from constructionsight.storage.database import (
     create_database_engine,
@@ -11,9 +15,13 @@ from constructionsight.storage.database import (
     session_factory,
 )
 from constructionsight.storage.domain_store import (
+    AgendaItemStore,
+    CeqaStore,
+    DocumentStore,
     EntityStore,
     PermitStore,
     PlanningCaseStore,
+    RelationshipStore,
     SiteStore,
 )
 
@@ -143,3 +151,100 @@ def test_planning_case_store_round_trip_and_update() -> None:
     assert persisted.entities[0].role is PartyRole.APPLICANT
     assert persisted.provenance[0].band.value == "high"
     assert len(all_cases) == 1
+
+
+def test_ceqa_store_round_trip() -> None:
+    engine = create_database_engine("sqlite+pysqlite:///:memory:")
+    initialize_database(engine)
+    factory = session_factory(engine)
+    provenance = Provenance(source_name="Synthetic Public Source", confidence_score=90, verified=True)
+    record = CeqaRecord(
+        ceqa_key="ceqa:test:001",
+        title="Synthetic Environmental Review",
+        document_type="EIR",
+        state_clearinghouse_number="2026000000",
+        provenance=[provenance],
+    )
+
+    with managed_session(factory) as session:
+        store = CeqaStore(session)
+        store.upsert(record)
+        persisted = store.get("ceqa:test:001")
+
+    assert persisted is not None
+    assert persisted.is_high_signal_document is True
+    assert persisted.has_state_clearinghouse_number is True
+    assert persisted.provenance[0].band.value == "verified"
+
+
+def test_agenda_item_store_round_trip() -> None:
+    engine = create_database_engine("sqlite+pysqlite:///:memory:")
+    initialize_database(engine)
+    factory = session_factory(engine)
+    item = AgendaItemRecord(
+        agenda_key="agenda:test:001",
+        meeting_body="Test Planning Body",
+        jurisdiction="Test Jurisdiction",
+        county="Test County",
+        title="Synthetic Site Plan Review",
+        document_urls=["https://example.gov/staff-report.pdf"],
+    )
+
+    with managed_session(factory) as session:
+        store = AgendaItemStore(session)
+        store.upsert(item)
+        persisted = store.get("agenda:test:001")
+
+    assert persisted is not None
+    assert persisted.has_documents is True
+    assert persisted.appears_development_related is True
+    assert str(persisted.document_urls[0]) == "https://example.gov/staff-report.pdf"
+
+
+def test_document_store_round_trip() -> None:
+    engine = create_database_engine("sqlite+pysqlite:///:memory:")
+    initialize_database(engine)
+    factory = session_factory(engine)
+    provenance = Provenance(source_name="Synthetic Public Source", confidence_score=80)
+    document = DocumentRecord(
+        document_key="document:test:001",
+        source_name="Synthetic Public Source",
+        url="https://example.gov/document.pdf",
+        text_extract="Synthetic document text.",
+        provenance=[provenance],
+    )
+
+    with managed_session(factory) as session:
+        store = DocumentStore(session)
+        store.upsert(document)
+        persisted = store.get("document:test:001")
+
+    assert persisted is not None
+    assert persisted.has_url is True
+    assert persisted.has_text is True
+    assert persisted.provenance[0].band.value == "high"
+
+
+def test_relationship_store_round_trip() -> None:
+    engine = create_database_engine("sqlite+pysqlite:///:memory:")
+    initialize_database(engine)
+    factory = session_factory(engine)
+    provenance = Provenance(source_name="Synthetic Public Source", confidence_score=90, verified=True)
+    relationship = RelationshipRecord(
+        relationship_key="relationship:test:001",
+        subject_key="entity:test:a",
+        relationship_type=RelationshipType.ASSOCIATED_WITH,
+        object_key="project:test:b",
+        confidence_score=90,
+        provenance=[provenance],
+    )
+
+    with managed_session(factory) as session:
+        store = RelationshipStore(session)
+        store.upsert(relationship)
+        persisted = store.get("relationship:test:001")
+
+    assert persisted is not None
+    assert persisted.is_high_confidence is True
+    assert persisted.relationship_type is RelationshipType.ASSOCIATED_WITH
+    assert persisted.provenance[0].band.value == "verified"
