@@ -68,15 +68,15 @@
     },
     "source_name": "Riverside County PLUS Online",
     "source_type": "county_portal",
-    "platform_family": "accela_aca",
-    "public_url": "https://www.rivcoplus.org/",
+    "platform_family": "tyler_energov",
+    "public_url": "https://rivcoplus.org/",
     "record_categories": ["permit", "planning_case", "grading", "building", "inspection", "document"],
-    "search_method": "Public record search by module, record type, date, status, APN, or address where available.",
-    "extraction_difficulty": "high",
+    "search_method": "Public SelfService portal search for permit, planning, inspection, and land-use records where available.",
+    "extraction_difficulty": "moderate",
     "update_frequency": "daily",
     "confidence_score": 75,
     "verification_status": "unverified",
-    "provenance_notes": "Seed record from architectural planning. Must be verified before ingestion.",
+    "provenance_notes": "Corrected after Phase 3 source hardening: non-www URL redirects to EnerGov SelfService public portal.",
     "last_checked_date": null
   }
 ]
