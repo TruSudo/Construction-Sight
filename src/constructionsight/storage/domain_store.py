@@ -26,8 +26,10 @@ from constructionsight.storage.domain_orm import (
 from constructionsight.storage.domain_serialization import (
     json_to_dict,
     json_to_list,
+    json_to_string_list,
     model_to_json,
     models_to_json,
+    strings_to_json,
 )
 
 
@@ -354,7 +356,9 @@ class CeqaStore:
         """Return one CEQA record by key."""
 
         self.session.flush()
-        record = self.session.scalar(select(CeqaDomainRecord).where(CeqaDomainRecord.ceqa_key == ceqa_key))
+        record = self.session.scalar(
+            select(CeqaDomainRecord).where(CeqaDomainRecord.ceqa_key == ceqa_key)
+        )
         if record is None:
             return None
         return self._to_model(record)
@@ -406,7 +410,7 @@ class AgendaItemStore:
         record.item_number = item.item_number
         record.title = item.title
         record.description = item.description
-        record.document_urls_json = models_to_json([]) if not item.document_urls else str([str(url) for url in item.document_urls])
+        record.document_urls_json = strings_to_json([str(url) for url in item.document_urls])
         record.site_json = model_to_json(item.site)
         record.entities_json = models_to_json(item.entities)
         record.provenance_json = models_to_json(item.provenance)
@@ -429,9 +433,6 @@ class AgendaItemStore:
     def _to_model(record: AgendaDomainRecord) -> AgendaItemRecord:
         """Convert an ORM agenda item record to a Pydantic model."""
 
-        import ast
-
-        document_urls = ast.literal_eval(record.document_urls_json)
         return AgendaItemRecord.model_validate(
             {
                 "agenda_key": record.agenda_key,
@@ -442,7 +443,7 @@ class AgendaItemStore:
                 "item_number": record.item_number,
                 "title": record.title,
                 "description": record.description,
-                "document_urls": document_urls,
+                "document_urls": json_to_string_list(record.document_urls_json),
                 "site": json_to_dict(record.site_json),
                 "entities": json_to_list(record.entities_json),
                 "provenance": json_to_list(record.provenance_json),
