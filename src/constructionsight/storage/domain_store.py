@@ -5,14 +5,22 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from constructionsight.agenda_models import AgendaItemRecord
+from constructionsight.ceqa_models import CeqaRecord
+from constructionsight.document_models import DocumentRecord
 from constructionsight.entity_models import Entity
 from constructionsight.permit_models import PermitRecord
 from constructionsight.planning_models import PlanningCaseRecord
+from constructionsight.relationship_models import RelationshipRecord
 from constructionsight.site_models import Site
 from constructionsight.storage.domain_orm import (
+    AgendaDomainRecord,
+    CeqaDomainRecord,
+    DocumentDomainRecord,
     EntityRecord,
     PermitDomainRecord,
     PlanningDomainRecord,
+    RelationshipDomainRecord,
     SiteRecord,
 )
 from constructionsight.storage.domain_serialization import (
@@ -305,5 +313,254 @@ class PlanningCaseStore:
                 "site": json_to_dict(record.site_json),
                 "entities": json_to_list(record.entities_json),
                 "provenance": json_to_list(record.provenance_json),
+            }
+        )
+
+
+class CeqaStore:
+    """Repository object for normalized CEQA records."""
+
+    def __init__(self, session: Session) -> None:
+        self.session = session
+
+    def upsert(self, record_model: CeqaRecord) -> CeqaDomainRecord:
+        """Insert or update a CEQA record."""
+
+        record = self.session.scalar(
+            select(CeqaDomainRecord).where(CeqaDomainRecord.ceqa_key == record_model.ceqa_key)
+        )
+        if record is None:
+            record = CeqaDomainRecord()
+            self.session.add(record)
+
+        record.ceqa_key = record_model.ceqa_key
+        record.title = record_model.title
+        record.county = record_model.county
+        record.lead_agency = record_model.lead_agency
+        record.document_type = record_model.document_type
+        record.state_clearinghouse_number = record_model.state_clearinghouse_number
+        record.received_date = record_model.received_date
+        record.posted_date = record_model.posted_date
+        record.project_location = record_model.project_location
+        record.description = record_model.description
+        record.site_json = model_to_json(record_model.site)
+        record.entities_json = models_to_json(record_model.entities)
+        record.provenance_json = models_to_json(record_model.provenance)
+
+        self.session.flush()
+        return record
+
+    def get(self, ceqa_key: str) -> CeqaRecord | None:
+        """Return one CEQA record by key."""
+
+        self.session.flush()
+        record = self.session.scalar(select(CeqaDomainRecord).where(CeqaDomainRecord.ceqa_key == ceqa_key))
+        if record is None:
+            return None
+        return self._to_model(record)
+
+    @staticmethod
+    def _to_model(record: CeqaDomainRecord) -> CeqaRecord:
+        """Convert an ORM CEQA record to a Pydantic model."""
+
+        return CeqaRecord.model_validate(
+            {
+                "ceqa_key": record.ceqa_key,
+                "title": record.title,
+                "county": record.county,
+                "lead_agency": record.lead_agency,
+                "document_type": record.document_type,
+                "state_clearinghouse_number": record.state_clearinghouse_number,
+                "received_date": record.received_date,
+                "posted_date": record.posted_date,
+                "project_location": record.project_location,
+                "description": record.description,
+                "site": json_to_dict(record.site_json),
+                "entities": json_to_list(record.entities_json),
+                "provenance": json_to_list(record.provenance_json),
+            }
+        )
+
+
+class AgendaItemStore:
+    """Repository object for normalized agenda item records."""
+
+    def __init__(self, session: Session) -> None:
+        self.session = session
+
+    def upsert(self, item: AgendaItemRecord) -> AgendaDomainRecord:
+        """Insert or update an agenda item record."""
+
+        record = self.session.scalar(
+            select(AgendaDomainRecord).where(AgendaDomainRecord.agenda_key == item.agenda_key)
+        )
+        if record is None:
+            record = AgendaDomainRecord()
+            self.session.add(record)
+
+        record.agenda_key = item.agenda_key
+        record.meeting_body = item.meeting_body
+        record.jurisdiction = item.jurisdiction
+        record.county = item.county
+        record.meeting_date = item.meeting_date
+        record.item_number = item.item_number
+        record.title = item.title
+        record.description = item.description
+        record.document_urls_json = models_to_json([]) if not item.document_urls else str([str(url) for url in item.document_urls])
+        record.site_json = model_to_json(item.site)
+        record.entities_json = models_to_json(item.entities)
+        record.provenance_json = models_to_json(item.provenance)
+
+        self.session.flush()
+        return record
+
+    def get(self, agenda_key: str) -> AgendaItemRecord | None:
+        """Return one agenda item by key."""
+
+        self.session.flush()
+        record = self.session.scalar(
+            select(AgendaDomainRecord).where(AgendaDomainRecord.agenda_key == agenda_key)
+        )
+        if record is None:
+            return None
+        return self._to_model(record)
+
+    @staticmethod
+    def _to_model(record: AgendaDomainRecord) -> AgendaItemRecord:
+        """Convert an ORM agenda item record to a Pydantic model."""
+
+        import ast
+
+        document_urls = ast.literal_eval(record.document_urls_json)
+        return AgendaItemRecord.model_validate(
+            {
+                "agenda_key": record.agenda_key,
+                "meeting_body": record.meeting_body,
+                "jurisdiction": record.jurisdiction,
+                "county": record.county,
+                "meeting_date": record.meeting_date,
+                "item_number": record.item_number,
+                "title": record.title,
+                "description": record.description,
+                "document_urls": document_urls,
+                "site": json_to_dict(record.site_json),
+                "entities": json_to_list(record.entities_json),
+                "provenance": json_to_list(record.provenance_json),
+            }
+        )
+
+
+class DocumentStore:
+    """Repository object for normalized document records."""
+
+    def __init__(self, session: Session) -> None:
+        self.session = session
+
+    def upsert(self, document: DocumentRecord) -> DocumentDomainRecord:
+        """Insert or update a document record."""
+
+        record = self.session.scalar(
+            select(DocumentDomainRecord).where(DocumentDomainRecord.document_key == document.document_key)
+        )
+        if record is None:
+            record = DocumentDomainRecord()
+            self.session.add(record)
+
+        record.document_key = document.document_key
+        record.source_name = document.source_name
+        record.title = document.title
+        record.url = str(document.url) if document.url is not None else None
+        record.document_type = document.document_type
+        record.captured_at = document.captured_at
+        record.text_extract = document.text_extract
+        record.provenance_json = models_to_json(document.provenance)
+
+        self.session.flush()
+        return record
+
+    def get(self, document_key: str) -> DocumentRecord | None:
+        """Return one document by key."""
+
+        self.session.flush()
+        record = self.session.scalar(
+            select(DocumentDomainRecord).where(DocumentDomainRecord.document_key == document_key)
+        )
+        if record is None:
+            return None
+        return self._to_model(record)
+
+    @staticmethod
+    def _to_model(record: DocumentDomainRecord) -> DocumentRecord:
+        """Convert an ORM document record to a Pydantic model."""
+
+        return DocumentRecord.model_validate(
+            {
+                "document_key": record.document_key,
+                "source_name": record.source_name,
+                "title": record.title,
+                "url": record.url,
+                "document_type": record.document_type,
+                "captured_at": record.captured_at,
+                "text_extract": record.text_extract,
+                "provenance": json_to_list(record.provenance_json),
+            }
+        )
+
+
+class RelationshipStore:
+    """Repository object for normalized relationship records."""
+
+    def __init__(self, session: Session) -> None:
+        self.session = session
+
+    def upsert(self, relationship: RelationshipRecord) -> RelationshipDomainRecord:
+        """Insert or update a relationship record."""
+
+        record = self.session.scalar(
+            select(RelationshipDomainRecord).where(
+                RelationshipDomainRecord.relationship_key == relationship.relationship_key
+            )
+        )
+        if record is None:
+            record = RelationshipDomainRecord()
+            self.session.add(record)
+
+        record.relationship_key = relationship.relationship_key
+        record.subject_key = relationship.subject_key
+        record.relationship_type = relationship.relationship_type.value
+        record.object_key = relationship.object_key
+        record.confidence_score = relationship.confidence_score
+        record.provenance_json = models_to_json(relationship.provenance)
+        record.notes = relationship.notes
+
+        self.session.flush()
+        return record
+
+    def get(self, relationship_key: str) -> RelationshipRecord | None:
+        """Return one relationship by key."""
+
+        self.session.flush()
+        record = self.session.scalar(
+            select(RelationshipDomainRecord).where(
+                RelationshipDomainRecord.relationship_key == relationship_key
+            )
+        )
+        if record is None:
+            return None
+        return self._to_model(record)
+
+    @staticmethod
+    def _to_model(record: RelationshipDomainRecord) -> RelationshipRecord:
+        """Convert an ORM relationship record to a Pydantic model."""
+
+        return RelationshipRecord.model_validate(
+            {
+                "relationship_key": record.relationship_key,
+                "subject_key": record.subject_key,
+                "relationship_type": record.relationship_type,
+                "object_key": record.object_key,
+                "confidence_score": record.confidence_score,
+                "provenance": json_to_list(record.provenance_json),
+                "notes": record.notes,
             }
         )
