@@ -1,0 +1,82 @@
+[
+  {
+    "jurisdiction": {
+      "name": "California State Clearinghouse",
+      "county": "Statewide",
+      "state": "CA",
+      "jurisdiction_type": "state"
+    },
+    "source_name": "CEQAnet State Clearinghouse",
+    "source_type": "state_registry",
+    "platform_family": "ceqanet",
+    "public_url": "https://ceqanet.opr.ca.gov/",
+    "record_categories": ["ceqa", "document", "planning_case"],
+    "search_method": "County/date/document-type search for public CEQA filings and attached documents.",
+    "extraction_difficulty": "low",
+    "update_frequency": "daily",
+    "confidence_score": 85,
+    "verification_status": "unverified",
+    "provenance_notes": "Seed record from architectural planning. Must be verified before ingestion.",
+    "last_checked_date": null
+  },
+  {
+    "jurisdiction": {
+      "name": "California Contractors State License Board",
+      "county": "Statewide",
+      "state": "CA",
+      "jurisdiction_type": "state"
+    },
+    "source_name": "CSLB Public License Search",
+    "source_type": "contractor_license",
+    "platform_family": "cslb",
+    "public_url": "https://www.cslb.ca.gov/",
+    "record_categories": ["contractor_license"],
+    "search_method": "License-number or business-name lookup for public contractor license facts.",
+    "extraction_difficulty": "moderate",
+    "update_frequency": "daily",
+    "confidence_score": 80,
+    "verification_status": "unverified",
+    "provenance_notes": "Seed record from architectural planning. Must be verified before ingestion.",
+    "last_checked_date": null
+  },
+  {
+    "jurisdiction": {
+      "name": "San Bernardino County",
+      "county": "San Bernardino",
+      "state": "CA",
+      "jurisdiction_type": "county"
+    },
+    "source_name": "San Bernardino County EZOP",
+    "source_type": "county_portal",
+    "platform_family": "accela_aca",
+    "public_url": "https://ezop.sbcounty.gov/citizenaccess/",
+    "record_categories": ["permit", "planning_case", "grading", "building", "inspection", "document"],
+    "search_method": "Public record search by module, record type, date, status, APN, or address where available.",
+    "extraction_difficulty": "high",
+    "update_frequency": "near_real_time",
+    "confidence_score": 75,
+    "verification_status": "unverified",
+    "provenance_notes": "Seed record from architectural planning. Must be verified before ingestion.",
+    "last_checked_date": null
+  },
+  {
+    "jurisdiction": {
+      "name": "Riverside County",
+      "county": "Riverside",
+      "state": "CA",
+      "jurisdiction_type": "county"
+    },
+    "source_name": "Riverside County PLUS Online",
+    "source_type": "county_portal",
+    "platform_family": "accela_aca",
+    "public_url": "https://www.rivcoplus.org/",
+    "record_categories": ["permit", "planning_case", "grading", "building", "inspection", "document"],
+    "search_method": "Public record search by module, record type, date, status, APN, or address where available.",
+    "extraction_difficulty": "high",
+    "update_frequency": "daily",
+    "confidence_score": 75,
+    "verification_status": "unverified",
+    "provenance_notes": "Seed record from architectural planning. Must be verified before ingestion.",
+    "last_checked_date": null
+  }
+]
