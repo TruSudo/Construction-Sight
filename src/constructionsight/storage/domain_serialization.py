@@ -22,6 +22,12 @@ def models_to_json(models: list[BaseModel]) -> str:
     return json.dumps([json.loads(model.model_dump_json()) for model in models], sort_keys=True)
 
 
+def strings_to_json(values: list[str]) -> str:
+    """Serialize a list of strings to JSON."""
+
+    return json.dumps(values, sort_keys=True)
+
+
 def json_to_dict(value: str | None) -> dict[str, Any] | None:
     """Deserialize a JSON object string into a dictionary."""
 
@@ -43,4 +49,17 @@ def json_to_list(value: str | None) -> list[dict[str, Any]]:
         raise ValueError("expected JSON list")
     if not all(isinstance(item, dict) for item in loaded):
         raise ValueError("expected JSON list of objects")
+    return loaded
+
+
+def json_to_string_list(value: str | None) -> list[str]:
+    """Deserialize a JSON list string into a list of strings."""
+
+    if value is None:
+        return []
+    loaded = json.loads(value)
+    if not isinstance(loaded, list):
+        raise ValueError("expected JSON list")
+    if not all(isinstance(item, str) for item in loaded):
+        raise ValueError("expected JSON list of strings")
     return loaded
