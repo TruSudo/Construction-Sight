@@ -105,3 +105,87 @@ class PlanningDomainRecord(Base):
     provenance_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), server_default=func.now())
+
+
+class CeqaDomainRecord(Base):
+    """Persisted normalized CEQA record."""
+
+    __tablename__ = "domain_ceqa_records"
+    __table_args__ = (UniqueConstraint("ceqa_key", name="uq_domain_ceqa_records_ceqa_key"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    ceqa_key: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String(500), nullable=False, index=True)
+    county: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    lead_agency: Mapped[str | None] = mapped_column(String(500), nullable=True, index=True)
+    document_type: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    state_clearinghouse_number: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    received_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
+    posted_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
+    project_location: Mapped[str | None] = mapped_column(Text, nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    site_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    entities_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    provenance_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), server_default=func.now())
+
+
+class AgendaDomainRecord(Base):
+    """Persisted normalized agenda item record."""
+
+    __tablename__ = "domain_agenda_items"
+    __table_args__ = (UniqueConstraint("agenda_key", name="uq_domain_agenda_items_agenda_key"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    agenda_key: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    meeting_body: Mapped[str] = mapped_column(String(500), nullable=False, index=True)
+    jurisdiction: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    county: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    meeting_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
+    item_number: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    title: Mapped[str | None] = mapped_column(String(500), nullable=True, index=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    document_urls_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    site_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    entities_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    provenance_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), server_default=func.now())
+
+
+class DocumentDomainRecord(Base):
+    """Persisted normalized document record."""
+
+    __tablename__ = "domain_documents"
+    __table_args__ = (UniqueConstraint("document_key", name="uq_domain_documents_document_key"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    document_key: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    source_name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    title: Mapped[str | None] = mapped_column(String(500), nullable=True, index=True)
+    url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    document_type: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    captured_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    text_extract: Mapped[str | None] = mapped_column(Text, nullable=True)
+    provenance_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), server_default=func.now())
+
+
+class RelationshipDomainRecord(Base):
+    """Persisted normalized relationship record."""
+
+    __tablename__ = "domain_relationships"
+    __table_args__ = (UniqueConstraint("relationship_key", name="uq_domain_relationships_relationship_key"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    relationship_key: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    subject_key: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    relationship_type: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    object_key: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    confidence_score: Mapped[int] = mapped_column(Integer, nullable=False, default=0, index=True)
+    provenance_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), server_default=func.now())
