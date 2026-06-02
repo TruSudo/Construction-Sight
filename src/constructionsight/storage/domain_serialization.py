@@ -1,0 +1,46 @@
+"""Serialization helpers for normalized domain models."""
+
+from __future__ import annotations
+
+import json
+from typing import Any
+
+from pydantic import BaseModel
+
+
+def model_to_json(model: BaseModel | None) -> str | None:
+    """Serialize one Pydantic model to JSON, preserving date/datetime values."""
+
+    if model is None:
+        return None
+    return model.model_dump_json()
+
+
+def models_to_json(models: list[BaseModel]) -> str:
+    """Serialize a list of Pydantic models to JSON."""
+
+    return json.dumps([json.loads(model.model_dump_json()) for model in models], sort_keys=True)
+
+
+def json_to_dict(value: str | None) -> dict[str, Any] | None:
+    """Deserialize a JSON object string into a dictionary."""
+
+    if value is None:
+        return None
+    loaded = json.loads(value)
+    if not isinstance(loaded, dict):
+        raise ValueError("expected JSON object")
+    return loaded
+
+
+def json_to_list(value: str | None) -> list[dict[str, Any]]:
+    """Deserialize a JSON list string into a list of dictionaries."""
+
+    if value is None:
+        return []
+    loaded = json.loads(value)
+    if not isinstance(loaded, list):
+        raise ValueError("expected JSON list")
+    if not all(isinstance(item, dict) for item in loaded):
+        raise ValueError("expected JSON list of objects")
+    return loaded
