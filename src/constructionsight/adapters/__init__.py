@@ -1,5 +1,9 @@
 """Adapter package for ConstructionSight source integrations."""
 
+from constructionsight.adapters.audit import (
+    AdapterContractAuditResult,
+    audit_adapter_contracts,
+)
 from constructionsight.adapters.registry import (
     AdapterLookupError,
     AdapterRegistry,
@@ -12,10 +16,12 @@ from constructionsight.adapters.specs import (
 )
 
 __all__ = [
+    "AdapterContractAuditResult",
     "AdapterFamilySpec",
     "AdapterImplementationStatus",
     "AdapterLookupError",
     "AdapterRegistry",
+    "audit_adapter_contracts",
     "default_adapter_family_specs",
     "default_adapter_registry",
 ]
