@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import hashlib
 import json
 from pathlib import Path
 from typing import Annotated, Any
@@ -88,11 +89,34 @@ def _verification_record_to_dict(record: Any) -> dict[str, Any]:
     }
 
 
+def _canonical_json_bytes(payload: dict[str, Any]) -> bytes:
+    """Serialize JSON deterministically for checksum generation."""
+
+    return json.dumps(
+        payload,
+        sort_keys=True,
+        separators=(",", ":"),
+        default=str,
+    ).encode("utf-8")
+
+
+def _verification_export_integrity(payload_without_integrity: dict[str, Any]) -> dict[str, str]:
+    """Build a checksum block for the verification export payload."""
+
+    digest = hashlib.sha256(_canonical_json_bytes(payload_without_integrity)).hexdigest()
+    return {
+        "algorithm": "sha256",
+        "canonicalization": "json.dumps(sort_keys=True,separators=(',',':'),default=str)",
+        "payload_scope": "metadata,record_count,records",
+        "payload_sha256": digest,
+    }
+
+
 def _verification_export_payload(records: list[Any], *, limit: int) -> dict[str, Any]:
     """Build a self-describing verification export payload."""
 
     record_payloads = [_verification_record_to_dict(record) for record in records]
-    return {
+    payload: dict[str, Any] = {
         "metadata": {
             "schema_version": "verification_export.v1",
             "export_type": "source_verification_records",
@@ -103,6 +127,8 @@ def _verification_export_payload(records: list[Any], *, limit: int) -> dict[str,
         "record_count": len(record_payloads),
         "records": record_payloads,
     }
+    payload["integrity"] = _verification_export_integrity(payload)
+    return payload
 
 
 def _write_json_file(output_path: Path, payload: dict[str, Any]) -> None:
