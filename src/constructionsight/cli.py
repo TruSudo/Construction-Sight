@@ -17,6 +17,7 @@ from constructionsight.adapters import (
     default_adapter_registry,
 )
 from constructionsight.adapters.base import AdapterRunContext
+from constructionsight.adapters.ceqanet import CeqanetLiveDiscovery
 from constructionsight.adapters.runner import AdapterRunner
 from constructionsight.models import PublicSource
 from constructionsight.storage.database import (
@@ -114,6 +115,30 @@ def audit_adapters() -> None:
 
     console.print(table)
     if not result.passed:
+        raise typer.Exit(code=1)
+
+
+@app.command("discover-ceqanet")
+def discover_ceqanet() -> None:
+    """Discover the public CEQAnet advanced-search surface without collecting records."""
+
+    result = CeqanetLiveDiscovery().discover()
+
+    table = Table(title="CEQAnet Public Search Discovery")
+    table.add_column("Check")
+    table.add_column("Result")
+    table.add_row("URL", result.url)
+    table.add_row("Reachable", str(result.reachable))
+    table.add_row("Status code", str(result.status_code))
+    table.add_row("Advanced search", str(result.advanced_search_available))
+    table.add_row("SCH number field", str(result.sch_number_field_detected))
+    table.add_row("Document type field", str(result.document_type_field_detected))
+    table.add_row("Date field", str(result.date_field_detected))
+    table.add_row("Lead/public agency field", str(result.lead_agency_field_detected))
+    table.add_row("Confidence", str(result.confidence_score))
+    console.print(table)
+
+    if not result.reachable:
         raise typer.Exit(code=1)
 
 
