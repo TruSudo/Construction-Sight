@@ -49,6 +49,12 @@ class IntelligenceStore:
     def __init__(self, session: Session) -> None:
         self.session = session
 
+    def _add_new_record(self, record: Any) -> None:
+        """Add and flush a new ORM record so same-session upserts are idempotent."""
+
+        self.session.add(record)
+        self.session.flush()
+
     def upsert_evidence(self, evidence: EvidenceRecord) -> IntelligenceEvidenceRecord:
         """Insert or update an intelligence evidence record."""
 
@@ -59,7 +65,7 @@ class IntelligenceStore:
         )
         if record is None:
             record = IntelligenceEvidenceRecord(evidence_id=evidence.evidence_id)
-            self.session.add(record)
+            self._add_new_record(record)
         record.source_name = evidence.source_name
         record.record_type = evidence.record_type
         record.confidence_contribution = evidence.confidence_contribution
@@ -84,7 +90,7 @@ class IntelligenceStore:
         )
         if record is None:
             record = IntelligenceEntityRecord(entity_id=entity.entity_id)
-            self.session.add(record)
+            self._add_new_record(record)
         record.entity_type = entity.entity_type.value
         record.canonical_name = entity.canonical_name
         record.identity_status = entity.identity_status.value
@@ -113,7 +119,7 @@ class IntelligenceStore:
         )
         if record is None:
             record = IntelligenceRelationshipRecord(relationship_id=relationship.relationship_id)
-            self.session.add(record)
+            self._add_new_record(record)
         record.subject_entity_id = relationship.subject_entity_id
         record.predicate = relationship.predicate
         record.object_entity_id = relationship.object_entity_id
@@ -142,7 +148,7 @@ class IntelligenceStore:
         )
         if record is None:
             record = IntelligenceProjectClusterRecord(project_cluster_id=cluster.project_cluster_id)
-            self.session.add(record)
+            self._add_new_record(record)
         record.project_name = cluster.project_name
         record.jurisdiction = cluster.jurisdiction
         record.cluster_status = cluster.cluster_status.value
@@ -171,7 +177,7 @@ class IntelligenceStore:
         )
         if record is None:
             record = IntelligenceOpportunityRecord(opportunity_id=opportunity.opportunity_id)
-            self.session.add(record)
+            self._add_new_record(record)
         record.category = opportunity.category.value
         record.opportunity_status = opportunity.opportunity_status.value
         record.project_cluster_id = opportunity.project_cluster_id
@@ -203,7 +209,7 @@ class IntelligenceStore:
         )
         if record is None:
             record = IntelligenceRuntimeEventRecord(event_id=event.event_id)
-            self.session.add(record)
+            self._add_new_record(record)
         record.event_type = event.event_type.value
         record.severity = event.severity.value
         record.source_service = event.source_service
@@ -231,7 +237,7 @@ class IntelligenceStore:
         )
         if record is None:
             record = IntelligenceWatchlistRecord(watchlist_item_id=item.watchlist_item_id)
-            self.session.add(record)
+            self._add_new_record(record)
         record.workspace_id = item.workspace_id
         record.target_type = item.target_type.value if hasattr(item.target_type, "value") else str(item.target_type)
         record.target_id = item.target_id
