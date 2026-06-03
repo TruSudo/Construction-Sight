@@ -15,6 +15,8 @@ from constructionsight.adapters import (
     default_adapter_family_specs,
     default_adapter_registry,
 )
+from constructionsight.adapters.base import AdapterRunContext
+from constructionsight.adapters.runner import AdapterRunner
 from constructionsight.models import PublicSource
 from constructionsight.storage.database import (
     create_database_engine,
@@ -112,6 +114,45 @@ def audit_adapters() -> None:
     console.print(table)
     if not result.passed:
         raise typer.Exit(code=1)
+
+
+@app.command("dry-run-adapters")
+def dry_run_adapters(
+    registry_path: Annotated[
+        Path,
+        typer.Argument(help="Path to a JSON source registry file."),
+    ],
+    limit: Annotated[int | None, typer.Option(help="Maximum number of sources to dry-run.")] = None,
+    max_records: Annotated[int | None, typer.Option(help="Maximum records per adapter.")] = 0,
+) -> None:
+    """Run registered adapters in dry-run mode against a source registry."""
+
+    sources = _load_sources_from_json(registry_path)
+    if limit is not None:
+        sources = sources[:limit]
+
+    runner = AdapterRunner(default_adapter_registry())
+    context = AdapterRunContext(dry_run=True, max_records=max_records)
+
+    table = Table(title="Adapter Dry Run")
+    table.add_column("Source")
+    table.add_column("Platform")
+    table.add_column("Outcome")
+    table.add_column("Records")
+    table.add_column("Errors")
+
+    for source in sources:
+        result = runner.run_source(source, context)
+        table.add_row(
+            source.source_name,
+            source.platform_family.value,
+            result.outcome.value,
+            str(len(result.records)),
+            str(len(result.errors)),
+        )
+
+    console.print(table)
+    console.print(f"Dry-ran {len(sources)} adapter sources.")
 
 
 @app.command("init-db")
