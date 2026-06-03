@@ -4,6 +4,11 @@ from constructionsight.adapters.audit import (
     AdapterContractAuditResult,
     audit_adapter_contracts,
 )
+from constructionsight.adapters.coverage import (
+    SourceAdapterCoverageIssue,
+    SourceAdapterCoverageResult,
+    audit_source_adapter_coverage,
+)
 from constructionsight.adapters.registry import (
     AdapterLookupError,
     AdapterRegistry,
@@ -21,7 +26,10 @@ __all__ = [
     "AdapterImplementationStatus",
     "AdapterLookupError",
     "AdapterRegistry",
+    "SourceAdapterCoverageIssue",
+    "SourceAdapterCoverageResult",
     "audit_adapter_contracts",
+    "audit_source_adapter_coverage",
     "default_adapter_family_specs",
     "default_adapter_registry",
 ]
