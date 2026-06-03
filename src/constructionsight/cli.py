@@ -52,6 +52,51 @@ def _find_source_by_name(sources: list[PublicSource], source_name: str) -> Publi
     raise typer.BadParameter(f"Source registry does not contain source_name={source_name!r}.")
 
 
+def _safe_json_object(raw_json: str) -> Any:
+    """Decode a JSON string while preserving malformed payloads for auditability."""
+
+    try:
+        return json.loads(raw_json)
+    except json.JSONDecodeError:
+        return {"unparsed_raw_json": raw_json}
+
+
+def _verification_record_to_dict(record: Any) -> dict[str, Any]:
+    """Convert a persisted verification ORM record into a JSON-safe dictionary."""
+
+    return {
+        "id": record.id,
+        "source_id": record.source_id,
+        "source_name": record.source_name,
+        "public_url": record.public_url,
+        "checked_at": record.checked_at.isoformat(),
+        "url_reachable": record.url_reachable,
+        "portal_type_detected": record.portal_type_detected,
+        "public_search_available": record.public_search_available,
+        "login_required": record.login_required,
+        "permit_details_visible": record.permit_details_visible,
+        "agenda_packets_visible": record.agenda_packets_visible,
+        "pdfs_downloadable": record.pdfs_downloadable,
+        "contractor_owner_applicant_fields_visible": (
+            record.contractor_owner_applicant_fields_visible
+        ),
+        "evidence_snapshot_text": record.evidence_snapshot_text,
+        "confidence_score": record.confidence_score,
+        "notes": record.notes,
+        "raw_observations": _safe_json_object(record.raw_observations_json),
+    }
+
+
+def _write_json_file(output_path: Path, payload: dict[str, Any]) -> None:
+    """Write deterministic UTF-8 JSON to disk."""
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(
+        json.dumps(payload, indent=2, sort_keys=True, default=str) + "\n",
+        encoding="utf-8",
+    )
+
+
 def _render_source_table(sources: list[PublicSource], title: str) -> None:
     """Render a concise source-registry table."""
 
@@ -389,6 +434,38 @@ def list_verifications(
     _render_verification_table(records, "Persisted Source Verification Records")
     _render_verification_detail_lines(records)
     console.print(f"Found {len(records)} verification records.")
+
+
+@app.command("export-verifications")
+def export_verifications(
+    output_path: Annotated[
+        Path,
+        typer.Argument(help="Path to write exported verification JSON."),
+    ],
+    database_url: Annotated[
+        str | None,
+        typer.Option(help="SQLAlchemy database URL. Defaults to local SQLite data/constructionsight.sqlite3."),
+    ] = None,
+    limit: Annotated[
+        int,
+        typer.Option(help="Maximum number of latest verification records to export."),
+    ] = 20,
+) -> None:
+    """Export latest persisted source-verification records to machine-readable JSON."""
+
+    engine = create_database_engine(database_url)
+    initialize_database(engine)
+    factory = session_factory(engine)
+
+    with managed_session(factory) as session:
+        records = VerificationStore(session).list_latest(limit=limit)
+
+    payload = {
+        "record_count": len(records),
+        "records": [_verification_record_to_dict(record) for record in records],
+    }
+    _write_json_file(output_path, payload)
+    console.print(f"Exported {len(records)} verification records to {output_path}.")
 
 
 @app.command("verify-sources")
