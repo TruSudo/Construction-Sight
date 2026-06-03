@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 import json
 from pathlib import Path
 from typing import Annotated, Any
@@ -84,6 +85,23 @@ def _verification_record_to_dict(record: Any) -> dict[str, Any]:
         "confidence_score": record.confidence_score,
         "notes": record.notes,
         "raw_observations": _safe_json_object(record.raw_observations_json),
+    }
+
+
+def _verification_export_payload(records: list[Any], *, limit: int) -> dict[str, Any]:
+    """Build a self-describing verification export payload."""
+
+    record_payloads = [_verification_record_to_dict(record) for record in records]
+    return {
+        "metadata": {
+            "schema_version": "verification_export.v1",
+            "export_type": "source_verification_records",
+            "application": "ConstructionSight",
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "limit": limit,
+        },
+        "record_count": len(record_payloads),
+        "records": record_payloads,
     }
 
 
@@ -460,10 +478,7 @@ def export_verifications(
     with managed_session(factory) as session:
         records = VerificationStore(session).list_latest(limit=limit)
 
-    payload = {
-        "record_count": len(records),
-        "records": [_verification_record_to_dict(record) for record in records],
-    }
+    payload = _verification_export_payload(records, limit=limit)
     _write_json_file(output_path, payload)
     console.print(f"Exported {len(records)} verification records to {output_path}.")
 
