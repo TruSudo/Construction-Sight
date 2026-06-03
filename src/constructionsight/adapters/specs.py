@@ -45,8 +45,9 @@ def default_adapter_family_specs() -> dict[PlatformFamily, AdapterFamilySpec]:
     return {
         PlatformFamily.CEQANET: AdapterFamilySpec(
             platform_family=PlatformFamily.CEQANET,
+            status=AdapterImplementationStatus.CONTRACT_READY,
             expected_categories=[RecordCategory.CEQA, RecordCategory.DOCUMENT],
-            notes="Placeholder contract for CEQAnet public environmental review records.",
+            notes="Fixture-backed CEQAnet adapter contract with normalized CEQA record output. Live HTTP querying is not enabled yet.",
         ),
         PlatformFamily.CSLB: AdapterFamilySpec(
             platform_family=PlatformFamily.CSLB,
