@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from constructionsight.adapters.base import AdapterRunContext, SourceAdapter
+from constructionsight.adapters.ceqanet import CeqanetAdapter
 from constructionsight.adapters.stub import (
     AccelaAcaAdapter,
-    CeqanetAdapter,
     CivicplusPrimegovAdapter,
     CslbAdapter,
     CustomReportAdapter,
