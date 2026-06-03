@@ -1,3 +1,4 @@
+import hashlib
 import json
 from datetime import datetime
 from pathlib import Path
@@ -14,6 +15,29 @@ from constructionsight.storage.database import (
 )
 from constructionsight.storage.source_registry import SourceRegistryStore
 from constructionsight.storage.verification_store import VerificationStore
+
+
+def _expected_integrity_hash(payload: dict) -> str:
+    scoped_payload = {
+        "metadata": payload["metadata"],
+        "record_count": payload["record_count"],
+        "records": payload["records"],
+    }
+    canonical = json.dumps(
+        scoped_payload,
+        sort_keys=True,
+        separators=(",", ":"),
+        default=str,
+    ).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()
+
+
+def _assert_integrity_block(payload: dict) -> None:
+    integrity = payload["integrity"]
+    assert integrity["algorithm"] == "sha256"
+    assert integrity["canonicalization"] == "json.dumps(sort_keys=True,separators=(',',':'),default=str)"
+    assert integrity["payload_scope"] == "metadata,record_count,records"
+    assert integrity["payload_sha256"] == _expected_integrity_hash(payload)
 
 
 def test_export_verifications_cli_writes_machine_readable_json(tmp_path) -> None:
@@ -63,6 +87,7 @@ def test_export_verifications_cli_writes_machine_readable_json(tmp_path) -> None
     payload = json.loads(output_path.read_text(encoding="utf-8"))
     assert payload["record_count"] == 1
     assert len(payload["records"]) == 1
+    _assert_integrity_block(payload)
 
     metadata = payload["metadata"]
     assert metadata["schema_version"] == "verification_export.v1"
@@ -105,6 +130,7 @@ def test_export_verifications_cli_handles_empty_database(tmp_path) -> None:
     assert output_path.exists()
 
     payload = json.loads(output_path.read_text(encoding="utf-8"))
+    _assert_integrity_block(payload)
     assert payload["metadata"]["schema_version"] == "verification_export.v1"
     assert payload["metadata"]["export_type"] == "source_verification_records"
     assert payload["metadata"]["application"] == "ConstructionSight"
