@@ -63,6 +63,50 @@ class CeqanetDiscoveryResult:
                 score += 10
         return min(score, 100)
 
+    def to_source_verification_result(
+        self,
+        *,
+        source_name: str,
+        source_url: str,
+    ) -> SourceVerificationResult:
+        """Convert CEQAnet search-surface discovery into persisted verification evidence."""
+
+        return SourceVerificationResult(
+            source_name=source_name,
+            public_url=source_url,
+            url_reachable=self.reachable,
+            portal_type_detected=PlatformFamily.CEQANET,
+            public_search_available=self.advanced_search_available,
+            login_required=False if self.reachable else None,
+            permit_details_visible=None,
+            agenda_packets_visible=None,
+            pdfs_downloadable=None,
+            contractor_owner_applicant_fields_visible=None,
+            evidence_snapshot_text=(
+                "CEQAnet advanced-search discovery: "
+                f"url={self.url}; "
+                f"status_code={self.status_code}; "
+                f"advanced_search_available={self.advanced_search_available}; "
+                f"sch_number_field_detected={self.sch_number_field_detected}; "
+                f"document_type_field_detected={self.document_type_field_detected}; "
+                f"date_field_detected={self.date_field_detected}; "
+                f"lead_agency_field_detected={self.lead_agency_field_detected}"
+            ),
+            confidence_score=self.confidence_score,
+            notes=self.notes or "Public CEQAnet advanced-search discovery completed.",
+            raw_observations={
+                "discovery_url": self.url,
+                "status_code": self.status_code,
+                "reachable": self.reachable,
+                "advanced_search_available": self.advanced_search_available,
+                "sch_number_field_detected": self.sch_number_field_detected,
+                "document_type_field_detected": self.document_type_field_detected,
+                "date_field_detected": self.date_field_detected,
+                "lead_agency_field_detected": self.lead_agency_field_detected,
+                "confidence_score": self.confidence_score,
+            },
+        )
+
 
 class CeqanetFixtureParser:
     """Parse CEQAnet-like fixture dictionaries into normalized records."""

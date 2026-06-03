@@ -43,6 +43,15 @@ def _load_sources_from_json(registry_path: Path) -> list[PublicSource]:
     return [PublicSource.model_validate(item) for item in data]
 
 
+def _find_source_by_name(sources: list[PublicSource], source_name: str) -> PublicSource:
+    """Return one loaded source by source name."""
+
+    for source in sources:
+        if source.source_name == source_name:
+            return source
+    raise typer.BadParameter(f"Source registry does not contain source_name={source_name!r}.")
+
+
 def _render_source_table(sources: list[PublicSource], title: str) -> None:
     """Render a concise source-registry table."""
 
@@ -119,7 +128,24 @@ def audit_adapters() -> None:
 
 
 @app.command("discover-ceqanet")
-def discover_ceqanet() -> None:
+def discover_ceqanet(
+    persist: Annotated[
+        bool,
+        typer.Option(help="Persist CEQAnet discovery through the verification store."),
+    ] = False,
+    registry_path: Annotated[
+        Path,
+        typer.Option(help="Source registry JSON used when --persist is enabled."),
+    ] = Path("data/source_registry.seed.json"),
+    database_url: Annotated[
+        str | None,
+        typer.Option(help="SQLAlchemy database URL used when --persist is enabled."),
+    ] = None,
+    source_name: Annotated[
+        str,
+        typer.Option(help="Source registry source_name to link CEQAnet discovery evidence to."),
+    ] = "CEQAnet State Clearinghouse",
+) -> None:
     """Discover the public CEQAnet advanced-search surface without collecting records."""
 
     result = CeqanetLiveDiscovery().discover()
@@ -137,6 +163,25 @@ def discover_ceqanet() -> None:
     table.add_row("Lead/public agency field", str(result.lead_agency_field_detected))
     table.add_row("Confidence", str(result.confidence_score))
     console.print(table)
+
+    if persist:
+        sources = _load_sources_from_json(registry_path)
+        source = _find_source_by_name(sources, source_name)
+        verification_result = result.to_source_verification_result(
+            source_name=source.source_name,
+            source_url=str(source.public_url),
+        )
+
+        engine = create_database_engine(database_url)
+        initialize_database(engine)
+        factory = session_factory(engine)
+
+        with managed_session(factory) as session:
+            source_store = SourceRegistryStore(session)
+            source_store.upsert_many(sources)
+            VerificationStore(session).add_result(verification_result)
+
+        console.print(f"Persisted CEQAnet discovery verification for {source.source_name}.")
 
     if not result.reachable:
         raise typer.Exit(code=1)
