@@ -8,13 +8,60 @@ normalization contract is tested and stable.
 from __future__ import annotations
 
 from collections.abc import Iterable
+from dataclasses import dataclass
 from datetime import date
-from typing import Any
+from typing import Any, Protocol
+
+import httpx
 
 from constructionsight.adapters.base import AdapterSearchDescriptor, SourceAdapter
 from constructionsight.ceqa_models import CeqaRecord
+from constructionsight.legal import AccessDecision
 from constructionsight.models import PlatformFamily, SourceVerificationResult
 from constructionsight.provenance import Provenance
+
+CEQANET_ADVANCED_SEARCH_URL = "https://ceqanet.lci.ca.gov/Search/Advanced"
+
+
+class CeqanetHttpClient(Protocol):
+    """Minimal HTTP client protocol for CEQAnet live discovery."""
+
+    def get(self, url: str, *, follow_redirects: bool, timeout: float) -> httpx.Response:
+        """Fetch a public URL."""
+
+
+@dataclass(frozen=True)
+class CeqanetDiscoveryResult:
+    """Live CEQAnet public search discovery result."""
+
+    url: str
+    reachable: bool
+    status_code: int | None
+    advanced_search_available: bool
+    sch_number_field_detected: bool
+    document_type_field_detected: bool
+    date_field_detected: bool
+    lead_agency_field_detected: bool
+    notes: str | None = None
+
+    @property
+    def confidence_score(self) -> int:
+        """Compute conservative confidence from public discovery signals."""
+
+        score = 0
+        if self.reachable:
+            score += 30
+        if self.advanced_search_available:
+            score += 25
+        for flag in (
+            self.sch_number_field_detected,
+            self.document_type_field_detected,
+            self.date_field_detected,
+            self.lead_agency_field_detected,
+        ):
+            if flag:
+                score += 10
+        return min(score, 100)
 
 
 class CeqanetFixtureParser:
@@ -87,6 +134,50 @@ class CeqanetFixtureParser:
         return f"ceqanet:title:{slug}"
 
 
+class CeqanetLiveDiscovery:
+    """Conservative live discovery for public CEQAnet search metadata."""
+
+    def __init__(self, client: CeqanetHttpClient | None = None, timeout_seconds: float = 20.0) -> None:
+        self.client = client or httpx.Client(headers={"User-Agent": "ConstructionSight/0.1"})
+        self.timeout_seconds = timeout_seconds
+
+    def discover(self) -> CeqanetDiscoveryResult:
+        """Fetch the public advanced-search page and detect stable search fields."""
+
+        try:
+            response = self.client.get(
+                CEQANET_ADVANCED_SEARCH_URL,
+                follow_redirects=True,
+                timeout=self.timeout_seconds,
+            )
+        except httpx.HTTPError as exc:
+            return CeqanetDiscoveryResult(
+                url=CEQANET_ADVANCED_SEARCH_URL,
+                reachable=False,
+                status_code=None,
+                advanced_search_available=False,
+                sch_number_field_detected=False,
+                document_type_field_detected=False,
+                date_field_detected=False,
+                lead_agency_field_detected=False,
+                notes=f"HTTP request failed: {exc.__class__.__name__}",
+            )
+
+        body = response.text[:50_000].lower()
+        reachable = 200 <= response.status_code < 400
+        return CeqanetDiscoveryResult(
+            url=str(response.url),
+            reachable=reachable,
+            status_code=response.status_code,
+            advanced_search_available=reachable and "advanced" in body and "search" in body,
+            sch_number_field_detected="sch" in body and "number" in body,
+            document_type_field_detected="document" in body and "type" in body,
+            date_field_detected="date" in body,
+            lead_agency_field_detected=("lead" in body or "public" in body) and "agency" in body,
+            notes="Public CEQAnet advanced-search discovery completed.",
+        )
+
+
 class CeqanetAdapter(SourceAdapter[dict[str, Any], CeqaRecord]):
     """CEQAnet adapter with fixture-backed Phase 6 normalization."""
 
@@ -112,6 +203,24 @@ class CeqanetAdapter(SourceAdapter[dict[str, Any], CeqaRecord]):
             notes="CEQAnet Phase 6 adapter is fixture-backed; live HTTP verification remains delegated to SourceVerifier.",
         )
 
+    def discover_live_public_search(self) -> CeqanetDiscoveryResult:
+        """Run live public CEQAnet advanced-search discovery without collecting records."""
+
+        access_result = self.preflight()
+        if access_result.decision is not AccessDecision.ALLOWED:
+            return CeqanetDiscoveryResult(
+                url=CEQANET_ADVANCED_SEARCH_URL,
+                reachable=False,
+                status_code=None,
+                advanced_search_available=False,
+                sch_number_field_detected=False,
+                document_type_field_detected=False,
+                date_field_detected=False,
+                lead_agency_field_detected=False,
+                notes=access_result.reason,
+            )
+        return CeqanetLiveDiscovery(timeout_seconds=self.context.request_timeout_seconds).discover()
+
     def discover_search(self) -> list[AdapterSearchDescriptor]:
         """Describe known public CEQAnet search surface."""
 
@@ -119,7 +228,7 @@ class CeqanetAdapter(SourceAdapter[dict[str, Any], CeqaRecord]):
             AdapterSearchDescriptor(
                 source_name=self.source_name,
                 search_name="CEQAnet Advanced Search",
-                public_url="https://ceqanet.lci.ca.gov/Search/Advanced",
+                public_url=CEQANET_ADVANCED_SEARCH_URL,
                 method="GET",
                 record_types=["ceqa", "document"],
                 notes="Public advanced search surface; live query implementation follows fixture-backed parser validation.",
