@@ -10,6 +10,11 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
+from constructionsight.adapters import (
+    audit_adapter_contracts,
+    default_adapter_family_specs,
+    default_adapter_registry,
+)
 from constructionsight.models import PublicSource
 from constructionsight.storage.database import (
     create_database_engine,
@@ -77,6 +82,36 @@ def validate_sources(
     sources = _load_sources_from_json(registry_path)
     _render_source_table(sources, "ConstructionSight Source Registry")
     console.print(f"Validated {len(sources)} source records.")
+
+
+@app.command("audit-adapters")
+def audit_adapters() -> None:
+    """Audit adapter registry/spec alignment."""
+
+    result = audit_adapter_contracts(
+        default_adapter_registry(),
+        default_adapter_family_specs(),
+    )
+
+    table = Table(title="Adapter Contract Audit")
+    table.add_column("Check")
+    table.add_column("Result")
+
+    table.add_row("Registry platforms", str(len(result.registry_platforms)))
+    table.add_row("Spec platforms", str(len(result.spec_platforms)))
+    table.add_row(
+        "Missing specs",
+        ", ".join(platform.value for platform in result.missing_specs) or "none",
+    )
+    table.add_row(
+        "Missing registrations",
+        ", ".join(platform.value for platform in result.missing_registrations) or "none",
+    )
+    table.add_row("Passed", str(result.passed))
+
+    console.print(table)
+    if not result.passed:
+        raise typer.Exit(code=1)
 
 
 @app.command("init-db")
