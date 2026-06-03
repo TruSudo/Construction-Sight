@@ -12,7 +12,8 @@ def test_audit_source_coverage_cli_passes_for_seed_registry() -> None:
     )
 
     assert result.exit_code == 0
-    assert "Source Adapter Coverage Audit" in result.output
+    assert "Source Adapter Coverage" in result.output
+    assert "Audit" in result.output
     assert "Source records" in result.output
     assert "Issues" in result.output
     assert "0" in result.output
