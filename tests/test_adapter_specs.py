@@ -18,11 +18,29 @@ def test_default_adapter_family_specs_cover_registered_platforms() -> None:
     assert PlatformFamily.CUSTOM_REPORT in specs
 
 
-def test_default_adapter_family_specs_are_placeholder_not_live() -> None:
+def test_default_adapter_family_specs_are_not_live_yet() -> None:
     specs = default_adapter_family_specs()
 
-    assert all(spec.status is AdapterImplementationStatus.PLACEHOLDER for spec in specs.values())
     assert all(spec.is_live is False for spec in specs.values())
+
+
+def test_ceqanet_spec_is_contract_ready_but_not_live() -> None:
+    specs = default_adapter_family_specs()
+    ceqanet = specs[PlatformFamily.CEQANET]
+
+    assert ceqanet.status is AdapterImplementationStatus.CONTRACT_READY
+    assert ceqanet.is_live is False
+    assert RecordCategory.CEQA in ceqanet.expected_categories
+    assert RecordCategory.DOCUMENT in ceqanet.expected_categories
+
+
+def test_remaining_non_ceqanet_specs_are_placeholders() -> None:
+    specs = default_adapter_family_specs()
+
+    for platform_family, spec in specs.items():
+        if platform_family is PlatformFamily.CEQANET:
+            continue
+        assert spec.status is AdapterImplementationStatus.PLACEHOLDER
 
 
 def test_accela_and_energov_specs_declare_javascript_public_portals() -> None:
