@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 from pathlib import Path
 
 from typer.testing import CliRunner
@@ -63,6 +64,14 @@ def test_export_verifications_cli_writes_machine_readable_json(tmp_path) -> None
     assert payload["record_count"] == 1
     assert len(payload["records"]) == 1
 
+    metadata = payload["metadata"]
+    assert metadata["schema_version"] == "verification_export.v1"
+    assert metadata["export_type"] == "source_verification_records"
+    assert metadata["application"] == "ConstructionSight"
+    assert metadata["limit"] == 5
+    generated_at = datetime.fromisoformat(metadata["generated_at"])
+    assert generated_at.tzinfo is not None
+
     record = payload["records"][0]
     assert record["source_name"] == "CEQAnet State Clearinghouse"
     assert record["public_url"] == "https://ceqanet.opr.ca.gov/"
@@ -96,4 +105,10 @@ def test_export_verifications_cli_handles_empty_database(tmp_path) -> None:
     assert output_path.exists()
 
     payload = json.loads(output_path.read_text(encoding="utf-8"))
-    assert payload == {"record_count": 0, "records": []}
+    assert payload["metadata"]["schema_version"] == "verification_export.v1"
+    assert payload["metadata"]["export_type"] == "source_verification_records"
+    assert payload["metadata"]["application"] == "ConstructionSight"
+    assert payload["metadata"]["limit"] == 20
+    assert datetime.fromisoformat(payload["metadata"]["generated_at"]).tzinfo is not None
+    assert payload["record_count"] == 0
+    assert payload["records"] == []
