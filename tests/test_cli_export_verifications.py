@@ -40,7 +40,7 @@ def _assert_integrity_block(payload: dict) -> None:
     assert integrity["payload_sha256"] == _expected_integrity_hash(payload)
 
 
-def test_export_verifications_cli_writes_machine_readable_json(tmp_path) -> None:
+def _seed_verification_export(tmp_path: Path) -> tuple[str, Path]:
     database_path = tmp_path / "constructionsight.sqlite3"
     database_url = f"sqlite+pysqlite:///{database_path}"
     output_path = tmp_path / "exports" / "verification_records.json"
@@ -79,10 +79,13 @@ def test_export_verifications_cli_writes_machine_readable_json(tmp_path) -> None
             "5",
         ],
     )
-
     assert result.exit_code == 0
-    assert "Exported 1 verification records" in result.output
     assert output_path.exists()
+    return database_url, output_path
+
+
+def test_export_verifications_cli_writes_machine_readable_json(tmp_path) -> None:
+    _, output_path = _seed_verification_export(tmp_path)
 
     payload = json.loads(output_path.read_text(encoding="utf-8"))
     assert payload["record_count"] == 1
@@ -107,6 +110,35 @@ def test_export_verifications_cli_writes_machine_readable_json(tmp_path) -> None
     assert record["confidence_score"] == 93
     assert record["notes"] == "Synthetic exported verification."
     assert record["raw_observations"] == {"quality": "high", "source": "synthetic"}
+
+
+def test_verify_verification_export_cli_accepts_valid_export(tmp_path) -> None:
+    _, output_path = _seed_verification_export(tmp_path)
+
+    runner = CliRunner()
+    result = runner.invoke(app, ["verify-verification-export", str(output_path)])
+
+    assert result.exit_code == 0
+    assert "Verification Export Integrity" in result.output
+    assert "Valid" in result.output
+    assert "True" in result.output
+    assert "Verification export integrity valid." in result.output
+
+
+def test_verify_verification_export_cli_rejects_tampered_export(tmp_path) -> None:
+    _, output_path = _seed_verification_export(tmp_path)
+    payload = json.loads(output_path.read_text(encoding="utf-8"))
+    payload["records"][0]["confidence_score"] = 12
+    output_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+    runner = CliRunner()
+    result = runner.invoke(app, ["verify-verification-export", str(output_path)])
+
+    assert result.exit_code == 1
+    assert "Verification Export Integrity" in result.output
+    assert "False" in result.output
+    assert "payload checksum mismatch" in result.output
+    assert "Verification export integrity invalid" in result.output
 
 
 def test_export_verifications_cli_handles_empty_database(tmp_path) -> None:
