@@ -63,6 +63,18 @@ def _safe_json_object(raw_json: str) -> Any:
         return {"unparsed_raw_json": raw_json}
 
 
+def _read_json_object_file(input_path: Path) -> dict[str, Any]:
+    """Read a JSON object from disk for export verification."""
+
+    try:
+        payload = json.loads(input_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise typer.BadParameter(f"Invalid JSON export: {exc}") from exc
+    if not isinstance(payload, dict):
+        raise typer.BadParameter("Verification export JSON must be an object.")
+    return payload
+
+
 def _verification_record_to_dict(record: Any) -> dict[str, Any]:
     """Convert a persisted verification ORM record into a JSON-safe dictionary."""
 
@@ -100,15 +112,82 @@ def _canonical_json_bytes(payload: dict[str, Any]) -> bytes:
     ).encode("utf-8")
 
 
+def _verification_export_payload_scope(payload: dict[str, Any]) -> dict[str, Any]:
+    """Return the integrity-protected verification export payload scope."""
+
+    return {
+        "metadata": payload["metadata"],
+        "record_count": payload["record_count"],
+        "records": payload["records"],
+    }
+
+
 def _verification_export_integrity(payload_without_integrity: dict[str, Any]) -> dict[str, str]:
     """Build a checksum block for the verification export payload."""
 
-    digest = hashlib.sha256(_canonical_json_bytes(payload_without_integrity)).hexdigest()
+    digest = hashlib.sha256(
+        _canonical_json_bytes(_verification_export_payload_scope(payload_without_integrity))
+    ).hexdigest()
     return {
         "algorithm": "sha256",
         "canonicalization": "json.dumps(sort_keys=True,separators=(',',':'),default=str)",
         "payload_scope": "metadata,record_count,records",
         "payload_sha256": digest,
+    }
+
+
+def _verification_export_validation(payload: dict[str, Any]) -> dict[str, Any]:
+    """Validate the integrity block of a verification export payload."""
+
+    integrity = payload.get("integrity")
+    if not isinstance(integrity, dict):
+        return {
+            "valid": False,
+            "reason": "missing integrity object",
+            "expected_sha256": None,
+            "actual_sha256": None,
+        }
+
+    if integrity.get("algorithm") != "sha256":
+        return {
+            "valid": False,
+            "reason": "unsupported or missing integrity algorithm",
+            "expected_sha256": None,
+            "actual_sha256": integrity.get("payload_sha256"),
+        }
+    if integrity.get("payload_scope") != "metadata,record_count,records":
+        return {
+            "valid": False,
+            "reason": "unsupported or missing integrity payload scope",
+            "expected_sha256": None,
+            "actual_sha256": integrity.get("payload_sha256"),
+        }
+
+    try:
+        expected = hashlib.sha256(
+            _canonical_json_bytes(_verification_export_payload_scope(payload))
+        ).hexdigest()
+    except KeyError as exc:
+        return {
+            "valid": False,
+            "reason": f"missing protected payload field: {exc.args[0]}",
+            "expected_sha256": None,
+            "actual_sha256": integrity.get("payload_sha256"),
+        }
+
+    actual = integrity.get("payload_sha256")
+    if actual != expected:
+        return {
+            "valid": False,
+            "reason": "payload checksum mismatch",
+            "expected_sha256": expected,
+            "actual_sha256": actual,
+        }
+    return {
+        "valid": True,
+        "reason": "ok",
+        "expected_sha256": expected,
+        "actual_sha256": actual,
     }
 
 
@@ -507,6 +586,34 @@ def export_verifications(
     payload = _verification_export_payload(records, limit=limit)
     _write_json_file(output_path, payload)
     console.print(f"Exported {len(records)} verification records to {output_path}.")
+
+
+@app.command("verify-verification-export")
+def verify_verification_export(
+    export_path: Annotated[
+        Path,
+        typer.Argument(help="Path to a verification export JSON file."),
+    ],
+) -> None:
+    """Verify the SHA-256 integrity block in a verification export JSON file."""
+
+    payload = _read_json_object_file(export_path)
+    result = _verification_export_validation(payload)
+
+    table = Table(title="Verification Export Integrity")
+    table.add_column("Check")
+    table.add_column("Result")
+    table.add_row("Export path", str(export_path))
+    table.add_row("Valid", str(result["valid"]))
+    table.add_row("Reason", str(result["reason"]))
+    table.add_row("Expected SHA-256", str(result["expected_sha256"]))
+    table.add_row("Actual SHA-256", str(result["actual_sha256"]))
+    console.print(table)
+
+    if not result["valid"]:
+        console.print(f"Verification export integrity invalid: {result['reason']}.")
+        raise typer.Exit(code=1)
+    console.print("Verification export integrity valid.")
 
 
 @app.command("verify-sources")
