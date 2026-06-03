@@ -12,6 +12,7 @@ from rich.table import Table
 
 from constructionsight.adapters import (
     audit_adapter_contracts,
+    audit_source_adapter_coverage,
     default_adapter_family_specs,
     default_adapter_registry,
 )
@@ -113,6 +114,41 @@ def audit_adapters() -> None:
 
     console.print(table)
     if not result.passed:
+        raise typer.Exit(code=1)
+
+
+@app.command("audit-source-coverage")
+def audit_source_coverage(
+    registry_path: Annotated[
+        Path,
+        typer.Argument(help="Path to a JSON source registry file."),
+    ],
+) -> None:
+    """Audit whether source registry records have adapter/spec coverage."""
+
+    sources = _load_sources_from_json(registry_path)
+    result = audit_source_adapter_coverage(
+        sources,
+        default_adapter_registry(),
+        default_adapter_family_specs(),
+    )
+
+    table = Table(title="Source Adapter Coverage Audit")
+    table.add_column("Check")
+    table.add_column("Result")
+    table.add_row("Source records", str(result.source_count))
+    table.add_row("Issues", str(len(result.issues)))
+    table.add_row("Passed", str(result.passed))
+    console.print(table)
+
+    if result.issues:
+        issue_table = Table(title="Coverage Issues")
+        issue_table.add_column("Source")
+        issue_table.add_column("Platform")
+        issue_table.add_column("Issue")
+        for issue in result.issues:
+            issue_table.add_row(issue.source_name, issue.platform_family.value, issue.issue)
+        console.print(issue_table)
         raise typer.Exit(code=1)
 
 
