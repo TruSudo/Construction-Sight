@@ -1,6 +1,28 @@
-from constructionsight.adapters.ceqanet import CeqanetAdapter, CeqanetFixtureParser
+import httpx
+
+from constructionsight.adapters.ceqanet import (
+    CEQANET_ADVANCED_SEARCH_URL,
+    CeqanetAdapter,
+    CeqanetFixtureParser,
+    CeqanetLiveDiscovery,
+)
 from constructionsight.adapters.runner import AdapterRunner
 from constructionsight.models import PublicSource
+
+
+class MockCeqanetHttpClient:
+    def __init__(self, response: httpx.Response | None = None, error: httpx.HTTPError | None = None) -> None:
+        self.response = response
+        self.error = error
+
+    def get(self, url: str, *, follow_redirects: bool, timeout: float) -> httpx.Response:
+        assert url == CEQANET_ADVANCED_SEARCH_URL
+        assert follow_redirects is True
+        assert timeout > 0
+        if self.error is not None:
+            raise self.error
+        assert self.response is not None
+        return self.response
 
 
 def _source() -> PublicSource:
@@ -86,3 +108,36 @@ def test_ceqanet_adapter_runs_fixture_rows_through_runner() -> None:
     record = result.records[0]
     assert record.ceqa_key == "ceqanet:sch:2026000001"
     assert record.is_high_signal_document is True
+
+
+def test_ceqanet_live_discovery_detects_public_search_fields() -> None:
+    response = httpx.Response(
+        status_code=200,
+        request=httpx.Request("GET", CEQANET_ADVANCED_SEARCH_URL),
+        text="Advanced Search SCH Number Document Type Received Date Lead Agency Public Agency",
+    )
+    discovery = CeqanetLiveDiscovery(client=MockCeqanetHttpClient(response=response))
+
+    result = discovery.discover()
+
+    assert result.reachable is True
+    assert result.advanced_search_available is True
+    assert result.sch_number_field_detected is True
+    assert result.document_type_field_detected is True
+    assert result.date_field_detected is True
+    assert result.lead_agency_field_detected is True
+    assert result.confidence_score == 95
+
+
+def test_ceqanet_live_discovery_handles_http_error() -> None:
+    discovery = CeqanetLiveDiscovery(
+        client=MockCeqanetHttpClient(error=httpx.ConnectError("synthetic failure"))
+    )
+
+    result = discovery.discover()
+
+    assert result.reachable is False
+    assert result.advanced_search_available is False
+    assert result.status_code is None
+    assert result.confidence_score == 0
+    assert result.notes == "HTTP request failed: ConnectError"
