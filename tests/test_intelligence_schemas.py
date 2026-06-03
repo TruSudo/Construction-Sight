@@ -16,6 +16,7 @@ from constructionsight.intelligence import (
     MonitoringStatus,
     OpportunityCategory,
     OpportunitySignal,
+    OpportunityStatus,
     ProjectCluster,
     ProjectClusterStatus,
     RelationshipAssertion,
