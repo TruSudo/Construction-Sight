@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 
 import typer
 from rich.console import Console
@@ -72,6 +72,53 @@ def _render_source_table(sources: list[PublicSource], title: str) -> None:
         )
 
     console.print(table)
+
+
+def _render_verification_table(records: list[Any], title: str) -> None:
+    """Render persisted verification records in compact table form."""
+
+    table = Table(title=title)
+    table.add_column("Checked")
+    table.add_column("Source")
+    table.add_column("Reachable")
+    table.add_column("Platform")
+    table.add_column("Search")
+    table.add_column("Login")
+    table.add_column("Confidence")
+    table.add_column("Notes")
+
+    for record in records:
+        table.add_row(
+            record.checked_at.isoformat(),
+            record.source_name,
+            str(record.url_reachable),
+            record.portal_type_detected,
+            str(record.public_search_available),
+            str(record.login_required),
+            str(record.confidence_score),
+            record.notes or "",
+        )
+
+    console.print(table)
+
+
+def _render_verification_detail_lines(records: list[Any]) -> None:
+    """Render full verification evidence details without Rich table truncation."""
+
+    if not records:
+        return
+
+    console.print("Verification Evidence Details")
+    for index, record in enumerate(records, start=1):
+        console.print(f"verification_record={index}")
+        console.print(f"checked={record.checked_at.isoformat()}")
+        console.print(f"source={record.source_name}")
+        console.print(f"reachable={record.url_reachable}")
+        console.print(f"platform={record.portal_type_detected}")
+        console.print(f"public_search={record.public_search_available}")
+        console.print(f"login_required={record.login_required}")
+        console.print(f"confidence={record.confidence_score}")
+        console.print(f"notes={record.notes or ''}")
 
 
 @app.command()
@@ -317,6 +364,31 @@ def list_sources(
 
     _render_source_table(sources, "Persisted ConstructionSight Sources")
     console.print(f"Found {len(sources)} source records.")
+
+
+@app.command("list-verifications")
+def list_verifications(
+    database_url: Annotated[
+        str | None,
+        typer.Option(help="SQLAlchemy database URL. Defaults to local SQLite data/constructionsight.sqlite3."),
+    ] = None,
+    limit: Annotated[
+        int,
+        typer.Option(help="Maximum number of latest verification records to display."),
+    ] = 20,
+) -> None:
+    """List latest persisted source-verification records from the database."""
+
+    engine = create_database_engine(database_url)
+    initialize_database(engine)
+    factory = session_factory(engine)
+
+    with managed_session(factory) as session:
+        records = VerificationStore(session).list_latest(limit=limit)
+
+    _render_verification_table(records, "Persisted Source Verification Records")
+    _render_verification_detail_lines(records)
+    console.print(f"Found {len(records)} verification records.")
 
 
 @app.command("verify-sources")
