@@ -116,19 +116,39 @@ class SourceVerifier:
         candidates: list[PortalHint] = []
 
         if "citizenaccess" in lower_url or "accela" in lower_url or "cap/caphome" in lower_body:
-            candidates.append(PortalHint(PlatformFamily.ACCELA_ACA, 80, "Accela ACA URL/body hints detected."))
+            candidates.append(
+                PortalHint(PlatformFamily.ACCELA_ACA, 80, "Accela ACA URL/body hints detected.")
+            )
         if "energov" in lower_url or "tylerhost" in lower_url or "energov" in lower_body:
-            candidates.append(PortalHint(PlatformFamily.TYLER_ENERGOV, 80, "Tyler EnerGov URL/body hints detected."))
+            candidates.append(
+                PortalHint(
+                    PlatformFamily.TYLER_ENERGOV, 80, "Tyler EnerGov URL/body hints detected."
+                )
+            )
         if "ceqanet" in lower_url or "state clearinghouse" in lower_body:
-            candidates.append(PortalHint(PlatformFamily.CEQANET, 85, "CEQAnet/State Clearinghouse hints detected."))
+            candidates.append(
+                PortalHint(
+                    PlatformFamily.CEQANET, 85, "CEQAnet/State Clearinghouse hints detected."
+                )
+            )
         if "cslb" in lower_url or "contractors state license board" in lower_body:
             candidates.append(PortalHint(PlatformFamily.CSLB, 85, "CSLB hints detected."))
         if "legistar" in lower_url or "granicus" in lower_url or "legistar" in lower_body:
-            candidates.append(PortalHint(PlatformFamily.GRANICUS_LEGISTAR, 75, "Granicus/Legistar hints detected."))
+            candidates.append(
+                PortalHint(
+                    PlatformFamily.GRANICUS_LEGISTAR, 75, "Granicus/Legistar hints detected."
+                )
+            )
         if "primegov" in lower_url or "civicplus" in lower_url or "civicclerk" in lower_body:
-            candidates.append(PortalHint(PlatformFamily.CIVICPLUS_PRIMEGOV, 70, "PrimeGov/CivicPlus hints detected."))
+            candidates.append(
+                PortalHint(
+                    PlatformFamily.CIVICPLUS_PRIMEGOV, 70, "PrimeGov/CivicPlus hints detected."
+                )
+            )
         if "laserfiche" in lower_url or "weblink" in lower_url or "laserfiche" in lower_body:
-            candidates.append(PortalHint(PlatformFamily.LASERFICHE, 70, "Laserfiche/WebLink hints detected."))
+            candidates.append(
+                PortalHint(PlatformFamily.LASERFICHE, 70, "Laserfiche/WebLink hints detected.")
+            )
 
         if not candidates:
             return PortalHint(PlatformFamily.UNKNOWN, 20, "No strong platform hints detected.")

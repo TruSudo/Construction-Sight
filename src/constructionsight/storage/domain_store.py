@@ -132,7 +132,9 @@ class EntityStore:
         """Return one entity by key."""
 
         self.session.flush()
-        record = self.session.scalar(select(EntityRecord).where(EntityRecord.entity_key == entity_key))
+        record = self.session.scalar(
+            select(EntityRecord).where(EntityRecord.entity_key == entity_key)
+        )
         if record is None:
             return None
         return self._to_model(record)
@@ -461,7 +463,9 @@ class DocumentStore:
         """Insert or update a document record."""
 
         record = self.session.scalar(
-            select(DocumentDomainRecord).where(DocumentDomainRecord.document_key == document.document_key)
+            select(DocumentDomainRecord).where(
+                DocumentDomainRecord.document_key == document.document_key
+            )
         )
         if record is None:
             record = DocumentDomainRecord()

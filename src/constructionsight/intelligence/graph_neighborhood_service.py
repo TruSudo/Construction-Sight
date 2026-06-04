@@ -33,7 +33,12 @@ class GraphNeighborhood(BaseModel):
     def node_count(self) -> int:
         """Return total visible node count including the center node."""
 
-        return 1 + len(self.connected_entities) + len(self.connected_projects) + len(self.opportunities)
+        return (
+            1
+            + len(self.connected_entities)
+            + len(self.connected_projects)
+            + len(self.opportunities)
+        )
 
     @property
     def edge_count(self) -> int:
@@ -80,7 +85,9 @@ class GraphNeighborhoodService:
             if relationship.object_entity_id != project_cluster_id
         )
         connected_entities = [
-            entity for entity in self.store.list_entities() if entity.entity_id in connected_entity_ids
+            entity
+            for entity in self.store.list_entities()
+            if entity.entity_id in connected_entity_ids
         ]
         opportunities = self.relationship_queries.get_opportunities_for_project(project_cluster_id)
         return GraphNeighborhood(

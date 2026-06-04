@@ -13,6 +13,7 @@ from datetime import date
 from typing import Any, Protocol
 
 import httpx
+from pydantic import HttpUrl, TypeAdapter
 
 from constructionsight.adapters.base import AdapterSearchDescriptor, SourceAdapter
 from constructionsight.ceqa_models import CeqaRecord
@@ -21,6 +22,12 @@ from constructionsight.models import PlatformFamily, SourceVerificationResult
 from constructionsight.provenance import Provenance
 
 CEQANET_ADVANCED_SEARCH_URL = "https://ceqanet.lci.ca.gov/Search/Advanced"
+
+
+def _validate_http_url(value: str) -> HttpUrl:
+    """Validate a string as a Pydantic HttpUrl."""
+
+    return TypeAdapter(HttpUrl).validate_python(value)
 
 
 class CeqanetHttpClient(Protocol):
@@ -73,7 +80,7 @@ class CeqanetDiscoveryResult:
 
         return SourceVerificationResult(
             source_name=source_name,
-            public_url=source_url,
+            public_url=_validate_http_url(source_url),
             url_reachable=self.reachable,
             portal_type_detected=PlatformFamily.CEQANET,
             public_search_available=self.advanced_search_available,
@@ -137,13 +144,16 @@ class CeqanetFixtureParser:
             provenance=[
                 Provenance(
                     source_name=source_name,
-                    source_url=record_url,
+                    source_url=_validate_http_url(record_url),
                     adapter_family=PlatformFamily.CEQANET.value,
                     raw_reference=sch_number,
                     evidence_text=title,
                     confidence_score=85,
                     verified=False,
-                    notes="Fixture-backed CEQAnet normalization; live verification not yet performed.",
+                    notes=(
+                        "Fixture-backed CEQAnet normalization; live verification not yet "
+                        "performed."
+                    ),
                 )
             ],
         )
@@ -181,7 +191,9 @@ class CeqanetFixtureParser:
 class CeqanetLiveDiscovery:
     """Conservative live discovery for public CEQAnet search metadata."""
 
-    def __init__(self, client: CeqanetHttpClient | None = None, timeout_seconds: float = 20.0) -> None:
+    def __init__(
+        self, client: CeqanetHttpClient | None = None, timeout_seconds: float = 20.0
+    ) -> None:
         self.client = client or httpx.Client(headers={"User-Agent": "ConstructionSight/0.1"})
         self.timeout_seconds = timeout_seconds
 
@@ -227,7 +239,9 @@ class CeqanetAdapter(SourceAdapter[dict[str, Any], CeqaRecord]):
 
     platform_family = PlatformFamily.CEQANET
 
-    def __init__(self, *args: Any, fixture_rows: list[dict[str, Any]] | None = None, **kwargs: Any) -> None:
+    def __init__(
+        self, *args: Any, fixture_rows: list[dict[str, Any]] | None = None, **kwargs: Any
+    ) -> None:
         super().__init__(*args, **kwargs)
         self.fixture_rows = fixture_rows or []
         self.parser = CeqanetFixtureParser()
@@ -244,7 +258,10 @@ class CeqanetAdapter(SourceAdapter[dict[str, Any], CeqaRecord]):
             login_required=False,
             pdfs_downloadable=None,
             confidence_score=40,
-            notes="CEQAnet Phase 6 adapter is fixture-backed; live HTTP verification remains delegated to SourceVerifier.",
+            notes=(
+                "CEQAnet Phase 6 adapter is fixture-backed; live HTTP verification "
+                "remains delegated to SourceVerifier."
+            ),
         )
 
     def discover_live_public_search(self) -> CeqanetDiscoveryResult:
@@ -275,7 +292,10 @@ class CeqanetAdapter(SourceAdapter[dict[str, Any], CeqaRecord]):
                 public_url=CEQANET_ADVANCED_SEARCH_URL,
                 method="GET",
                 record_types=["ceqa", "document"],
-                notes="Public advanced search surface; live query implementation follows fixture-backed parser validation.",
+                notes=(
+                    "Public advanced search surface; live query implementation follows "
+                    "fixture-backed parser validation."
+                ),
             )
         ]
 

@@ -10,7 +10,12 @@ from typing import Any, Generic, TypeVar
 
 from pydantic import BaseModel, Field
 
-from constructionsight.legal import AccessDecision, AccessPolicyResult, SourceAccessProfile, evaluate_access
+from constructionsight.legal import (
+    AccessDecision,
+    AccessPolicyResult,
+    SourceAccessProfile,
+    evaluate_access,
+)
 from constructionsight.models import PublicSource, SourceVerificationResult
 
 RawRecord = TypeVar("RawRecord")
@@ -123,9 +128,13 @@ class SourceAdapter(ABC, Generic[RawRecord, NormalizedRecord]):
     def preflight(self, profile: SourceAccessProfile | None = None) -> AccessPolicyResult:
         """Run the required lawful-access preflight for this source."""
 
-        return self.evaluate_access(profile or SourceAccessProfile(public_url=str(self.source.public_url)))
+        return self.evaluate_access(
+            profile or SourceAccessProfile(public_url=str(self.source.public_url))
+        )
 
-    def blocked_result(self, operation: str, access_result: AccessPolicyResult) -> AdapterOperationResult[NormalizedRecord]:
+    def blocked_result(
+        self, operation: str, access_result: AccessPolicyResult
+    ) -> AdapterOperationResult[NormalizedRecord]:
         """Build a standard blocked result from a failed preflight."""
 
         outcome = (

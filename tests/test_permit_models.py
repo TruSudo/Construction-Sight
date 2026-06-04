@@ -51,7 +51,9 @@ def test_permit_model_links_site_entity_and_provenance() -> None:
         name="Synthetic Builder LLC",
         role=PartyRole.GENERAL_CONTRACTOR,
     )
-    provenance = Provenance(source_name="Synthetic Public Source", confidence_score=90, verified=True)
+    provenance = Provenance(
+        source_name="Synthetic Public Source", confidence_score=90, verified=True
+    )
 
     permit = PermitRecord(
         permit_key="permit:test:linked",

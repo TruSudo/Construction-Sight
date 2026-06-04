@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from pydantic import ValidationError
@@ -190,7 +190,7 @@ def test_opportunity_signal_requires_target() -> None:
 
 
 def test_runtime_event_schema_supports_graph_update_payloads() -> None:
-    created_at = datetime.now(timezone.utc)
+    created_at = datetime.now(UTC)
     event = RuntimeEvent(
         event_id="evt-1",
         event_type=RuntimeEventType.PROJECT_CLUSTER_CREATED,

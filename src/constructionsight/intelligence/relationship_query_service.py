@@ -27,7 +27,8 @@ class RelationshipQueryService:
         return [
             relationship
             for relationship in self.store.list_relationships()
-            if relationship.subject_entity_id == entity_id or relationship.object_entity_id == entity_id
+            if relationship.subject_entity_id == entity_id
+            or relationship.object_entity_id == entity_id
         ]
 
     def get_relationships_for_project(self, project_cluster_id: str) -> list[RelationshipAssertion]:
@@ -53,7 +54,9 @@ class RelationshipQueryService:
             for relationship in self.get_relationships_for_entity(entity_id)
             if relationship.object_entity_id == entity_id
         )
-        return [entity for entity in self.store.list_entities() if entity.entity_id in connected_ids]
+        return [
+            entity for entity in self.store.list_entities() if entity.entity_id in connected_ids
+        ]
 
     def get_projects_for_entity(self, entity_id: str) -> list[ProjectCluster]:
         """Return project clusters directly connected to the given entity."""
@@ -86,10 +89,15 @@ class RelationshipQueryService:
     def get_opportunities_for_entity(self, entity_id: str) -> list[OpportunitySignal]:
         """Return opportunities tied directly or indirectly to an entity."""
 
-        project_ids = {project.project_cluster_id for project in self.get_projects_for_entity(entity_id)}
+        project_ids = {
+            project.project_cluster_id for project in self.get_projects_for_entity(entity_id)
+        }
         return [
             opportunity
             for opportunity in self.store.list_opportunities()
             if entity_id in opportunity.related_entity_ids
-            or (opportunity.project_cluster_id is not None and opportunity.project_cluster_id in project_ids)
+            or (
+                opportunity.project_cluster_id is not None
+                and opportunity.project_cluster_id in project_ids
+            )
         ]

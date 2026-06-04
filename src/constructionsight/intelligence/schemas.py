@@ -8,7 +8,7 @@ schema contract is validated.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
@@ -224,7 +224,7 @@ class WatchlistStatus(StrEnum):
 def utc_now() -> datetime:
     """Return a timezone-aware UTC timestamp."""
 
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class EvidenceRecord(BaseModel):
@@ -251,7 +251,7 @@ class EvidenceRecord(BaseModel):
     raw_observations: dict[str, Any] = Field(default_factory=dict)
 
     @model_validator(mode="after")
-    def require_evidence_payload(self) -> "EvidenceRecord":
+    def require_evidence_payload(self) -> EvidenceRecord:
         """Require at least one concrete evidence payload field."""
 
         if not any([self.evidence_value, self.evidence_text, self.raw_observations]):
@@ -280,7 +280,9 @@ class EntityIdentity(BaseModel):
     evidence_summary: str | None = None
     contradiction_summary: str | None = None
 
-    @field_validator("aliases", "source_names", "addresses", "jurisdictions", "related_source_record_ids")
+    @field_validator(
+        "aliases", "source_names", "addresses", "jurisdictions", "related_source_record_ids"
+    )
     @classmethod
     def require_unique_values(cls, value: list[str]) -> list[str]:
         """Reject duplicate list values to keep identity payloads deterministic."""
@@ -306,7 +308,7 @@ class IdentityCandidate(BaseModel):
     review_required: bool = False
 
     @model_validator(mode="after")
-    def reject_self_match(self) -> "IdentityCandidate":
+    def reject_self_match(self) -> IdentityCandidate:
         """Do not allow an entity to be matched to itself as a candidate."""
 
         if self.left_entity_id == self.right_entity_id:
@@ -334,7 +336,7 @@ class RelationshipAssertion(BaseModel):
     enrichment_run_id: str | None = None
 
     @model_validator(mode="after")
-    def reject_self_relationship(self) -> "RelationshipAssertion":
+    def reject_self_relationship(self) -> RelationshipAssertion:
         """Do not allow a relationship edge from an entity to itself."""
 
         if self.subject_entity_id == self.object_entity_id:
@@ -357,7 +359,7 @@ class AuthorityState(BaseModel):
     last_enrichment_at: datetime | None = None
 
     @model_validator(mode="after")
-    def require_reason_when_unresolved(self) -> "AuthorityState":
+    def require_reason_when_unresolved(self) -> AuthorityState:
         """Require a reason when authority is explicitly unresolved."""
 
         if (
@@ -395,10 +397,12 @@ class ProjectCluster(BaseModel):
     last_updated: datetime = Field(default_factory=utc_now)
 
     @model_validator(mode="after")
-    def require_cluster_anchor(self) -> "ProjectCluster":
+    def require_cluster_anchor(self) -> ProjectCluster:
         """Require at least one location, identifier, or evidence anchor."""
 
-        if not any([self.project_name, self.normalized_address, self.apns, self.evidence_record_ids]):
+        if not any(
+            [self.project_name, self.normalized_address, self.apns, self.evidence_record_ids]
+        ):
             raise ValueError("project cluster requires name, address, APN, or evidence")
         return self
 
@@ -427,7 +431,7 @@ class OpportunitySignal(BaseModel):
     stale_after: datetime | None = None
 
     @model_validator(mode="after")
-    def require_opportunity_target(self) -> "OpportunitySignal":
+    def require_opportunity_target(self) -> OpportunitySignal:
         """Require an opportunity to point at a project, site, or related entity."""
 
         if not any([self.project_cluster_id, self.site_entity_id, self.related_entity_ids]):

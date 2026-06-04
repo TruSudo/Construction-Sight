@@ -6,7 +6,7 @@ persistence models will be layered on top after the registry shape stabilizes.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from enum import StrEnum
 from typing import Any
 
@@ -119,7 +119,7 @@ class SourceVerificationResult(BaseModel):
 
     source_name: str
     public_url: HttpUrl
-    checked_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    checked_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     url_reachable: bool
     portal_type_detected: PlatformFamily = PlatformFamily.UNKNOWN
     public_search_available: bool | None = None

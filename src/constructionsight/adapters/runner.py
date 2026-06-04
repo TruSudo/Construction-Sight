@@ -34,7 +34,9 @@ class AdapterRunner:
         adapter = self.registry.create(source, context)
         return self.run_adapter(adapter)
 
-    def run_adapter(self, adapter: SourceAdapter[Any, BaseModel]) -> AdapterOperationResult[BaseModel]:
+    def run_adapter(
+        self, adapter: SourceAdapter[Any, BaseModel]
+    ) -> AdapterOperationResult[BaseModel]:
         """Run an adapter instance through the standard lifecycle."""
 
         preflight = adapter.preflight()

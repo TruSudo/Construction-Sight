@@ -30,7 +30,9 @@ def test_site_store_round_trip() -> None:
     engine = create_database_engine("sqlite+pysqlite:///:memory:")
     initialize_database(engine)
     factory = session_factory(engine)
-    provenance = Provenance(source_name="Synthetic Public Source", confidence_score=90, verified=True)
+    provenance = Provenance(
+        source_name="Synthetic Public Source", confidence_score=90, verified=True
+    )
     site = Site(
         site_key="site:test:001",
         county="Test County",
@@ -83,7 +85,9 @@ def test_permit_store_round_trip_and_update() -> None:
         name="Synthetic Applicant LLC",
         role=PartyRole.APPLICANT,
     )
-    provenance = Provenance(source_name="Synthetic Public Source", confidence_score=90, verified=True)
+    provenance = Provenance(
+        source_name="Synthetic Public Source", confidence_score=90, verified=True
+    )
     permit = PermitRecord(
         permit_key="permit:test:001",
         permit_number="P-001",
@@ -157,7 +161,9 @@ def test_ceqa_store_round_trip() -> None:
     engine = create_database_engine("sqlite+pysqlite:///:memory:")
     initialize_database(engine)
     factory = session_factory(engine)
-    provenance = Provenance(source_name="Synthetic Public Source", confidence_score=90, verified=True)
+    provenance = Provenance(
+        source_name="Synthetic Public Source", confidence_score=90, verified=True
+    )
     record = CeqaRecord(
         ceqa_key="ceqa:test:001",
         title="Synthetic Environmental Review",
@@ -229,7 +235,9 @@ def test_relationship_store_round_trip() -> None:
     engine = create_database_engine("sqlite+pysqlite:///:memory:")
     initialize_database(engine)
     factory = session_factory(engine)
-    provenance = Provenance(source_name="Synthetic Public Source", confidence_score=90, verified=True)
+    provenance = Provenance(
+        source_name="Synthetic Public Source", confidence_score=90, verified=True
+    )
     relationship = RelationshipRecord(
         relationship_key="relationship:test:001",
         subject_key="entity:test:a",

@@ -1,7 +1,7 @@
-from constructionsight import cli
-from constructionsight.adapters.ceqanet import CeqanetDiscoveryResult
 from typer.testing import CliRunner
 
+from constructionsight import cli
+from constructionsight.adapters.ceqanet import CeqanetDiscoveryResult
 
 runner = CliRunner()
 

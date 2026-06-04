@@ -6,7 +6,7 @@ while exposing stable IDs, statuses, and confidence fields for indexed lookup.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import DateTime, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
@@ -17,7 +17,7 @@ from constructionsight.storage.orm import Base
 def utc_now() -> datetime:
     """Return a timezone-aware UTC timestamp."""
 
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class IntelligenceEvidenceRecord(Base):
@@ -30,10 +30,20 @@ class IntelligenceEvidenceRecord(Base):
     evidence_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     source_name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     record_type: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
-    confidence_contribution: Mapped[int] = mapped_column(Integer, nullable=False, default=0, index=True)
+    confidence_contribution: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, index=True
+    )
     payload_json: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now, server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+        onupdate=utc_now,
+        server_default=func.now(),
+    )
 
 
 class IntelligenceEntityRecord(Base):
@@ -49,8 +59,16 @@ class IntelligenceEntityRecord(Base):
     identity_status: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     confidence_score: Mapped[int] = mapped_column(Integer, nullable=False, default=0, index=True)
     payload_json: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now, server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+        onupdate=utc_now,
+        server_default=func.now(),
+    )
 
 
 class IntelligenceRelationshipRecord(Base):
@@ -67,15 +85,25 @@ class IntelligenceRelationshipRecord(Base):
     relationship_status: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     confidence_score: Mapped[int] = mapped_column(Integer, nullable=False, default=0, index=True)
     payload_json: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now, server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+        onupdate=utc_now,
+        server_default=func.now(),
+    )
 
 
 class IntelligenceProjectClusterRecord(Base):
     """Persisted intelligence project cluster."""
 
     __tablename__ = "intelligence_project_clusters"
-    __table_args__ = (UniqueConstraint("project_cluster_id", name="uq_intelligence_project_cluster_id"),)
+    __table_args__ = (
+        UniqueConstraint("project_cluster_id", name="uq_intelligence_project_cluster_id"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     project_cluster_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
@@ -85,8 +113,16 @@ class IntelligenceProjectClusterRecord(Base):
     lifecycle_phase: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     cluster_confidence: Mapped[int] = mapped_column(Integer, nullable=False, default=0, index=True)
     payload_json: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now, server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+        onupdate=utc_now,
+        server_default=func.now(),
+    )
 
 
 class IntelligenceOpportunityRecord(Base):
@@ -102,8 +138,16 @@ class IntelligenceOpportunityRecord(Base):
     project_cluster_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     confidence_score: Mapped[int] = mapped_column(Integer, nullable=False, default=0, index=True)
     payload_json: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now, server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+        onupdate=utc_now,
+        server_default=func.now(),
+    )
 
 
 class IntelligenceRuntimeEventRecord(Base):
@@ -119,15 +163,25 @@ class IntelligenceRuntimeEventRecord(Base):
     source_service: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     message: Mapped[str] = mapped_column(Text, nullable=False)
     payload_json: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now, server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+        onupdate=utc_now,
+        server_default=func.now(),
+    )
 
 
 class IntelligenceWatchlistRecord(Base):
     """Persisted workspace watchlist item."""
 
     __tablename__ = "intelligence_watchlist_items"
-    __table_args__ = (UniqueConstraint("watchlist_item_id", name="uq_intelligence_watchlist_item_id"),)
+    __table_args__ = (
+        UniqueConstraint("watchlist_item_id", name="uq_intelligence_watchlist_item_id"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     watchlist_item_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
@@ -137,5 +191,13 @@ class IntelligenceWatchlistRecord(Base):
     status: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     priority: Mapped[int] = mapped_column(Integer, nullable=False, default=50, index=True)
     payload_json: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now, server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+        onupdate=utc_now,
+        server_default=func.now(),
+    )

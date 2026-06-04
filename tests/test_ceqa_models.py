@@ -41,7 +41,9 @@ def test_ceqa_record_links_site_entity_and_provenance() -> None:
         name="Synthetic Lead Agency",
         role=PartyRole.AGENCY,
     )
-    provenance = Provenance(source_name="Synthetic Public Source", confidence_score=90, verified=True)
+    provenance = Provenance(
+        source_name="Synthetic Public Source", confidence_score=90, verified=True
+    )
 
     record = CeqaRecord(
         ceqa_key="ceqa:test:linked",

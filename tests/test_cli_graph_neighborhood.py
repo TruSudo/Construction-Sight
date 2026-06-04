@@ -99,7 +99,9 @@ def _seed_cli_neighborhood_graph(database_url: str) -> None:
                 object_entity_id="developer-1",
                 relationship_status=RelationshipStatus.POSSIBLE,
                 confidence_score=61,
-                evidence_summary="Synthetic shared project supports candidate working relationship.",
+                evidence_summary=(
+                    "Synthetic shared project supports candidate working relationship."
+                ),
             )
         )
         store.upsert_opportunity(

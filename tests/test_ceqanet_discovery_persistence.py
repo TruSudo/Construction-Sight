@@ -4,7 +4,11 @@ from typer.testing import CliRunner
 
 from constructionsight import cli
 from constructionsight.adapters.ceqanet import CeqanetDiscoveryResult
-from constructionsight.storage.database import create_database_engine, managed_session, session_factory
+from constructionsight.storage.database import (
+    create_database_engine,
+    managed_session,
+    session_factory,
+)
 from constructionsight.storage.source_registry import SourceRegistryStore
 from constructionsight.storage.verification_store import VerificationStore
 

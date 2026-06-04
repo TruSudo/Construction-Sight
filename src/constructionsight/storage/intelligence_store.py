@@ -91,7 +91,9 @@ class IntelligenceStore:
         """Insert or update an intelligence entity identity."""
 
         record = self.session.scalar(
-            select(IntelligenceEntityRecord).where(IntelligenceEntityRecord.entity_id == entity.entity_id)
+            select(IntelligenceEntityRecord).where(
+                IntelligenceEntityRecord.entity_id == entity.entity_id
+            )
         )
         if record is None:
             record = IntelligenceEntityRecord(entity_id=entity.entity_id)
@@ -108,7 +110,9 @@ class IntelligenceStore:
         """Return latest persisted entity identities."""
 
         records = self.session.scalars(
-            select(IntelligenceEntityRecord).order_by(IntelligenceEntityRecord.id.desc()).limit(limit)
+            select(IntelligenceEntityRecord)
+            .order_by(IntelligenceEntityRecord.id.desc())
+            .limit(limit)
         ).all()
         return [_json_to_model(record.payload_json, EntityIdentity) for record in records]
 
@@ -249,7 +253,9 @@ class IntelligenceStore:
             record = IntelligenceWatchlistRecord(watchlist_item_id=item.watchlist_item_id)
             self._stage_new_record(record)
         record.workspace_id = item.workspace_id
-        record.target_type = item.target_type.value if hasattr(item.target_type, "value") else str(item.target_type)
+        record.target_type = (
+            item.target_type.value if hasattr(item.target_type, "value") else str(item.target_type)
+        )
         record.target_id = item.target_id
         record.status = item.status.value
         record.priority = item.priority
@@ -257,7 +263,9 @@ class IntelligenceStore:
         self._flush()
         return record
 
-    def list_watchlist_items(self, *, workspace_id: str | None = None, limit: int = 100) -> list[WatchlistItem]:
+    def list_watchlist_items(
+        self, *, workspace_id: str | None = None, limit: int = 100
+    ) -> list[WatchlistItem]:
         """Return latest watchlist items, optionally filtered by workspace."""
 
         statement: Any = select(IntelligenceWatchlistRecord).order_by(

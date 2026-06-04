@@ -126,7 +126,9 @@ def test_graph_service_event_payloads_preserve_references(tmp_path) -> None:
     )
 
     with managed_session(factory) as session:
-        service = IntelligenceGraphService(IntelligenceStore(session), source_service="test_graph_service")
+        service = IntelligenceGraphService(
+            IntelligenceStore(session), source_service="test_graph_service"
+        )
         service.upsert_relationship(relationship)
 
     with managed_session(factory) as session:

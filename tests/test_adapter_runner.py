@@ -1,6 +1,10 @@
 from collections.abc import Iterable
 
-from constructionsight.adapters.base import AdapterRunContext, AdapterSearchDescriptor, SourceAdapter
+from constructionsight.adapters.base import (
+    AdapterRunContext,
+    AdapterSearchDescriptor,
+    SourceAdapter,
+)
 from constructionsight.adapters.runner import AdapterRunner
 from constructionsight.legal import SourceAccessProfile
 from constructionsight.models import PlatformFamily, PublicSource, SourceVerificationResult
