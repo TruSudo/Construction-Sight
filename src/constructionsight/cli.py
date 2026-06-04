@@ -21,6 +21,7 @@ from constructionsight.adapters import (
 from constructionsight.adapters.base import AdapterRunContext
 from constructionsight.adapters.ceqanet import CeqanetLiveDiscovery
 from constructionsight.adapters.runner import AdapterRunner
+from constructionsight.intelligence.relationship_query_service import RelationshipQueryService
 from constructionsight.models import PublicSource
 from constructionsight.storage.database import (
     create_database_engine,
@@ -28,6 +29,7 @@ from constructionsight.storage.database import (
     managed_session,
     session_factory,
 )
+from constructionsight.storage.intelligence_store import IntelligenceStore
 from constructionsight.storage.source_registry import SourceRegistryStore
 from constructionsight.storage.verification_store import VerificationStore
 from constructionsight.verification.source_verifier import SourceVerifier
@@ -187,7 +189,7 @@ def _verification_export_validation(payload: dict[str, Any]) -> dict[str, Any]:
         "valid": True,
         "reason": "ok",
         "expected_sha256": expected,
-        "actual_sha256": actual,
+        "actual_sha256": expected,
     }
 
 
@@ -266,8 +268,84 @@ def _render_verification_table(records: list[Any], title: str) -> None:
             str(record.confidence_score),
             record.notes or "",
         )
-
     console.print(table)
+
+
+def _render_relationships_table(records: list[Any], title: str) -> None:
+    """Render relationship assertions."""
+
+    table = Table(title=title)
+    table.add_column("Relationship")
+    table.add_column("Subject")
+    table.add_column("Predicate")
+    table.add_column("Object")
+    table.add_column("Status")
+    table.add_column("Confidence")
+
+    for record in records:
+        table.add_row(
+            record.relationship_id,
+            record.subject_entity_id,
+            record.predicate,
+            record.object_entity_id,
+            record.relationship_status.value,
+            str(record.confidence_score),
+        )
+    console.print(table)
+
+
+def _render_project_clusters_table(records: list[Any], title: str) -> None:
+    """Render project clusters."""
+
+    table = Table(title=title)
+    table.add_column("Project")
+    table.add_column("Name")
+    table.add_column("Jurisdiction")
+    table.add_column("Phase")
+    table.add_column("Status")
+    table.add_column("Confidence")
+
+    for record in records:
+        table.add_row(
+            record.project_cluster_id,
+            record.project_name or "",
+            record.jurisdiction or "",
+            record.lifecycle_phase.value,
+            record.cluster_status.value,
+            str(record.cluster_confidence),
+        )
+    console.print(table)
+
+
+def _render_opportunities_table(records: list[Any], title: str) -> None:
+    """Render opportunity signals."""
+
+    table = Table(title=title)
+    table.add_column("Opportunity")
+    table.add_column("Category")
+    table.add_column("Project")
+    table.add_column("Status")
+    table.add_column("Confidence")
+    table.add_column("Summary")
+
+    for record in records:
+        table.add_row(
+            record.opportunity_id,
+            record.category.value,
+            record.project_cluster_id or "",
+            record.opportunity_status.value,
+            str(record.confidence_score),
+            record.evidence_summary,
+        )
+    console.print(table)
+
+
+def _relationship_query_service(database_url: str | None) -> tuple[Any, Any]:
+    """Create a database session factory and engine for relationship-query CLI commands."""
+
+    engine = create_database_engine(database_url)
+    initialize_database(engine)
+    return engine, session_factory(engine)
 
 
 def _render_verification_detail_lines(records: list[Any]) -> None:
@@ -324,7 +402,6 @@ def audit_adapters() -> None:
     table = Table(title="Adapter Contract Audit")
     table.add_column("Check")
     table.add_column("Result")
-
     table.add_row("Registry platforms", str(len(result.registry_platforms)))
     table.add_row("Spec platforms", str(len(result.spec_platforms)))
     table.add_row(
@@ -336,7 +413,6 @@ def audit_adapters() -> None:
         ", ".join(platform.value for platform in result.missing_registrations) or "none",
     )
     table.add_row("Passed", str(result.passed))
-
     console.print(table)
     if not result.passed:
         raise typer.Exit(code=1)
@@ -364,7 +440,6 @@ def discover_ceqanet(
     """Discover the public CEQAnet advanced-search surface without collecting records."""
 
     result = CeqanetLiveDiscovery().discover()
-
     table = Table(title="CEQAnet Public Search Discovery")
     table.add_column("Check")
     table.add_column("Result")
@@ -386,16 +461,13 @@ def discover_ceqanet(
             source_name=source.source_name,
             source_url=str(source.public_url),
         )
-
         engine = create_database_engine(database_url)
         initialize_database(engine)
         factory = session_factory(engine)
-
         with managed_session(factory) as session:
             source_store = SourceRegistryStore(session)
             source_store.upsert_many(sources)
             VerificationStore(session).add_result(verification_result)
-
         console.print(f"Persisted CEQAnet discovery verification for {source.source_name}.")
 
     if not result.reachable:
@@ -417,7 +489,6 @@ def audit_source_coverage(
         default_adapter_registry(),
         default_adapter_family_specs(),
     )
-
     table = Table(title="Source Adapter Coverage Audit")
     table.add_column("Check")
     table.add_column("Result")
@@ -425,7 +496,6 @@ def audit_source_coverage(
     table.add_row("Issues", str(len(result.issues)))
     table.add_row("Passed", str(result.passed))
     console.print(table)
-
     if result.issues:
         issue_table = Table(title="Coverage Issues")
         issue_table.add_column("Source")
@@ -451,17 +521,14 @@ def dry_run_adapters(
     sources = _load_sources_from_json(registry_path)
     if limit is not None:
         sources = sources[:limit]
-
     runner = AdapterRunner(default_adapter_registry())
     context = AdapterRunContext(dry_run=True, max_records=max_records)
-
     table = Table(title="Adapter Dry Run")
     table.add_column("Source")
     table.add_column("Platform")
     table.add_column("Outcome")
     table.add_column("Records")
     table.add_column("Errors")
-
     for source in sources:
         result = runner.run_source(source, context)
         table.add_row(
@@ -471,7 +538,6 @@ def dry_run_adapters(
             str(len(result.records)),
             str(len(result.errors)),
         )
-
     console.print(table)
     console.print(f"Dry-ran {len(sources)} adapter sources.")
 
@@ -507,10 +573,8 @@ def load_sources(
     engine = create_database_engine(database_url)
     initialize_database(engine)
     factory = session_factory(engine)
-
     with managed_session(factory) as session:
         count = SourceRegistryStore(session).upsert_many(sources)
-
     console.print(f"Loaded {count} source records.")
 
 
@@ -526,12 +590,90 @@ def list_sources(
     engine = create_database_engine(database_url)
     initialize_database(engine)
     factory = session_factory(engine)
-
     with managed_session(factory) as session:
         sources = SourceRegistryStore(session).list_sources()
-
     _render_source_table(sources, "Persisted ConstructionSight Sources")
     console.print(f"Found {len(sources)} source records.")
+
+
+@app.command("list-relationships")
+def list_relationships(
+    entity_id: Annotated[
+        str,
+        typer.Option(help="Entity ID whose direct relationships should be listed."),
+    ],
+    database_url: Annotated[
+        str | None,
+        typer.Option(help="SQLAlchemy database URL. Defaults to local SQLite data/constructionsight.sqlite3."),
+    ] = None,
+) -> None:
+    """List persisted relationships connected to an entity."""
+
+    _, factory = _relationship_query_service(database_url)
+    with managed_session(factory) as session:
+        records = RelationshipQueryService(IntelligenceStore(session)).get_relationships_for_entity(entity_id)
+    _render_relationships_table(records, f"Relationships for Entity {entity_id}")
+    console.print(f"Found {len(records)} relationships.")
+
+
+@app.command("list-projects-for-entity")
+def list_projects_for_entity(
+    entity_id: Annotated[
+        str,
+        typer.Option(help="Entity ID whose connected project clusters should be listed."),
+    ],
+    database_url: Annotated[
+        str | None,
+        typer.Option(help="SQLAlchemy database URL. Defaults to local SQLite data/constructionsight.sqlite3."),
+    ] = None,
+) -> None:
+    """List project clusters connected to an entity."""
+
+    _, factory = _relationship_query_service(database_url)
+    with managed_session(factory) as session:
+        records = RelationshipQueryService(IntelligenceStore(session)).get_projects_for_entity(entity_id)
+    _render_project_clusters_table(records, f"Projects for Entity {entity_id}")
+    console.print(f"Found {len(records)} project clusters.")
+
+
+@app.command("list-opportunities-for-project")
+def list_opportunities_for_project(
+    project_cluster_id: Annotated[
+        str,
+        typer.Option(help="Project cluster ID whose opportunities should be listed."),
+    ],
+    database_url: Annotated[
+        str | None,
+        typer.Option(help="SQLAlchemy database URL. Defaults to local SQLite data/constructionsight.sqlite3."),
+    ] = None,
+) -> None:
+    """List opportunities tied to a project cluster."""
+
+    _, factory = _relationship_query_service(database_url)
+    with managed_session(factory) as session:
+        records = RelationshipQueryService(IntelligenceStore(session)).get_opportunities_for_project(project_cluster_id)
+    _render_opportunities_table(records, f"Opportunities for Project {project_cluster_id}")
+    console.print(f"Found {len(records)} opportunities.")
+
+
+@app.command("list-opportunities-for-entity")
+def list_opportunities_for_entity(
+    entity_id: Annotated[
+        str,
+        typer.Option(help="Entity ID whose direct and project-derived opportunities should be listed."),
+    ],
+    database_url: Annotated[
+        str | None,
+        typer.Option(help="SQLAlchemy database URL. Defaults to local SQLite data/constructionsight.sqlite3."),
+    ] = None,
+) -> None:
+    """List opportunities tied directly or indirectly to an entity."""
+
+    _, factory = _relationship_query_service(database_url)
+    with managed_session(factory) as session:
+        records = RelationshipQueryService(IntelligenceStore(session)).get_opportunities_for_entity(entity_id)
+    _render_opportunities_table(records, f"Opportunities for Entity {entity_id}")
+    console.print(f"Found {len(records)} opportunities.")
 
 
 @app.command("list-verifications")
@@ -550,10 +692,8 @@ def list_verifications(
     engine = create_database_engine(database_url)
     initialize_database(engine)
     factory = session_factory(engine)
-
     with managed_session(factory) as session:
         records = VerificationStore(session).list_latest(limit=limit)
-
     _render_verification_table(records, "Persisted Source Verification Records")
     _render_verification_detail_lines(records)
     console.print(f"Found {len(records)} verification records.")
@@ -579,10 +719,8 @@ def export_verifications(
     engine = create_database_engine(database_url)
     initialize_database(engine)
     factory = session_factory(engine)
-
     with managed_session(factory) as session:
         records = VerificationStore(session).list_latest(limit=limit)
-
     payload = _verification_export_payload(records, limit=limit)
     _write_json_file(output_path, payload)
     console.print(f"Exported {len(records)} verification records to {output_path}.")
@@ -599,7 +737,6 @@ def verify_verification_export(
 
     payload = _read_json_object_file(export_path)
     result = _verification_export_validation(payload)
-
     table = Table(title="Verification Export Integrity")
     table.add_column("Check")
     table.add_column("Result")
@@ -609,7 +746,6 @@ def verify_verification_export(
     table.add_row("Expected SHA-256", str(result["expected_sha256"]))
     table.add_row("Actual SHA-256", str(result["actual_sha256"]))
     console.print(table)
-
     if not result["valid"]:
         console.print(f"Verification export integrity invalid: {result['reason']}.")
         raise typer.Exit(code=1)
@@ -630,7 +766,6 @@ def verify_sources(
     initialize_database(engine)
     factory = session_factory(engine)
     verifier = SourceVerifier()
-
     table = Table(title="Source Verification Results")
     table.add_column("Source")
     table.add_column("Reachable")
@@ -638,7 +773,6 @@ def verify_sources(
     table.add_column("Search")
     table.add_column("Login")
     table.add_column("Confidence")
-
     with managed_session(factory) as session:
         sources = SourceRegistryStore(session).list_sources()
         if limit is not None:
@@ -655,6 +789,5 @@ def verify_sources(
                 str(result.login_required),
                 str(result.confidence_score),
             )
-
     console.print(table)
     console.print(f"Verified {len(sources)} source records.")
