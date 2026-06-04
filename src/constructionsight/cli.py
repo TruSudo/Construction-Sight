@@ -760,6 +760,10 @@ def show_entity_neighborhood(
         bool,
         typer.Option("--json-output", help="Emit machine-readable JSON instead of Rich tables."),
     ] = False,
+    output_path: Annotated[
+        Path | None,
+        typer.Option("--output", help="Write JSON output to this file path. Requires --json-output."),
+    ] = None,
 ) -> None:
     """Show immediate graph neighborhood around an entity."""
 
@@ -769,8 +773,16 @@ def show_entity_neighborhood(
             entity_id
         )
 
+    if output_path is not None and not json_output:
+        raise typer.BadParameter("--output requires --json-output.")
+
     if json_output:
-        console.print_json(json.dumps(_graph_neighborhood_to_dict(neighborhood)))
+        payload = _graph_neighborhood_to_dict(neighborhood)
+        if output_path is not None:
+            _write_json_file(output_path, payload)
+            typer.echo(f"Wrote graph neighborhood JSON to {output_path}.")
+            return
+        console.print_json(json.dumps(payload))
         return
 
     _render_graph_neighborhood(neighborhood, f"Entity Neighborhood {entity_id}")
@@ -790,6 +802,10 @@ def show_project_neighborhood(
         bool,
         typer.Option("--json-output", help="Emit machine-readable JSON instead of Rich tables."),
     ] = False,
+    output_path: Annotated[
+        Path | None,
+        typer.Option("--output", help="Write JSON output to this file path. Requires --json-output."),
+    ] = None,
 ) -> None:
     """Show immediate graph neighborhood around a project cluster."""
 
@@ -799,8 +815,16 @@ def show_project_neighborhood(
             project_cluster_id
         )
 
+    if output_path is not None and not json_output:
+        raise typer.BadParameter("--output requires --json-output.")
+
     if json_output:
-        console.print_json(json.dumps(_graph_neighborhood_to_dict(neighborhood)))
+        payload = _graph_neighborhood_to_dict(neighborhood)
+        if output_path is not None:
+            _write_json_file(output_path, payload)
+            typer.echo(f"Wrote graph neighborhood JSON to {output_path}.")
+            return
+        console.print_json(json.dumps(payload))
         return
 
     _render_graph_neighborhood(neighborhood, f"Project Neighborhood {project_cluster_id}")

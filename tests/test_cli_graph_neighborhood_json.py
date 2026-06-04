@@ -189,3 +189,71 @@ def test_cli_emits_project_neighborhood_json(tmp_path) -> None:
     assert {opportunity["opportunity_id"] for opportunity in payload["opportunities"]} == {
         "opp-1"
     }
+
+
+def test_cli_writes_entity_neighborhood_json_file(tmp_path) -> None:
+    database_url = _database_url(tmp_path)
+    output_path = tmp_path / "entity_neighborhood.json"
+    _seed_cli_neighborhood_graph(database_url)
+
+    result = runner.invoke(
+        app,
+        [
+            "show-entity-neighborhood",
+            "--entity-id",
+            "gc-1",
+            "--database-url",
+            database_url,
+            "--json-output",
+            "--output",
+            str(output_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert f"Wrote graph neighborhood JSON to {output_path}." in result.output
+    assert output_path.exists()
+
+    payload = json.loads(output_path.read_text(encoding="utf-8"))
+    assert payload["center_node_id"] == "gc-1"
+    assert payload["center_node_kind"] == "entity"
+    assert payload["node_count"] == 4
+    assert payload["edge_count"] == 2
+    assert {relationship["relationship_id"] for relationship in payload["relationships"]} == {
+        "rel-gc-project",
+        "rel-gc-developer",
+    }
+
+
+def test_cli_writes_project_neighborhood_json_file(tmp_path) -> None:
+    database_url = _database_url(tmp_path)
+    output_path = tmp_path / "project_neighborhood.json"
+    _seed_cli_neighborhood_graph(database_url)
+
+    result = runner.invoke(
+        app,
+        [
+            "show-project-neighborhood",
+            "--project-cluster-id",
+            "pc-1",
+            "--database-url",
+            database_url,
+            "--json-output",
+            "--output",
+            str(output_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert f"Wrote graph neighborhood JSON to {output_path}." in result.output
+    assert output_path.exists()
+
+    payload = json.loads(output_path.read_text(encoding="utf-8"))
+    assert payload["center_node_id"] == "pc-1"
+    assert payload["center_node_kind"] == "project_cluster"
+    assert payload["node_count"] == 4
+    assert payload["edge_count"] == 2
+    assert {relationship["relationship_id"] for relationship in payload["relationships"]} == {
+        "rel-gc-project",
+        "rel-developer-project",
+    }
