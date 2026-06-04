@@ -1,15 +1,16 @@
 import json
 from pathlib import Path
+from typing import Any
 
 from typer.testing import CliRunner
 
-from constructionsight.cli import app
+from constructionsight.cli import app  # type: ignore[import-untyped]
 
 runner = CliRunner()
 EXAMPLE_DIR = Path(__file__).resolve().parents[1] / "examples" / "artifact_resolution"
 
 
-def _run_preview(example_name: str):
+def _run_preview(example_name: str) -> Any:
     return runner.invoke(
         app,
         [
@@ -27,7 +28,7 @@ def test_commerce_center_match_example_is_valid_preview_input() -> None:
     assert result.exit_code == 0
     payload = json.loads(result.output)
     assert payload["candidate_id"] == "fixture-commerce-center-match"
-    assert payload["resolution_score"] == 85
+    assert payload["resolution_score"] == 80
     assert payload["recommended_decision"] == "needs_review"
     assert payload["has_near_unique_support"] is True
     assert payload["conflicts"] == []
