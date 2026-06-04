@@ -907,7 +907,8 @@ def preview_artifact_resolution(
     """Preview deterministic artifact-based identity resolution from JSON fingerprints."""
 
     if output_path is not None and not json_output:
-        raise typer.BadParameter("--output requires --json-output.")
+        typer.echo("--output requires --json-output.")
+        raise typer.Exit(code=1)
 
     left, right, candidate_id = _read_artifact_resolution_preview_input(input_path)
     try:
