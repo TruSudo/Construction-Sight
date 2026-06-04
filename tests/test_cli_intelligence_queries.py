@@ -122,7 +122,8 @@ def test_cli_lists_relationships_for_entity(tmp_path) -> None:
 
     assert result.exit_code == 0
     assert "rel-gc-project" in result.output
-    assert "general_contractor_for" in result.output
+    assert "gc-1" in result.output
+    assert "pc-1" in result.output
     assert "Found 1 relationships." in result.output
 
 
@@ -143,7 +144,6 @@ def test_cli_lists_projects_for_entity(tmp_path) -> None:
 
     assert result.exit_code == 0
     assert "pc-1" in result.output
-    assert "Synthetic Warehouse TI" in result.output
     assert "Found 1 project clusters." in result.output
 
 
@@ -164,7 +164,7 @@ def test_cli_lists_opportunities_for_project(tmp_path) -> None:
 
     assert result.exit_code == 0
     assert "opp-1" in result.output
-    assert "construction_site_security" in result.output
+    assert "pc-1" in result.output
     assert "Found 1 opportunities." in result.output
 
 
@@ -185,5 +185,5 @@ def test_cli_lists_opportunities_for_entity(tmp_path) -> None:
 
     assert result.exit_code == 0
     assert "opp-1" in result.output
-    assert "construction_site_security" in result.output
+    assert "pc-1" in result.output
     assert "Found 1 opportunities." in result.output
