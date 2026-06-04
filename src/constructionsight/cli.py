@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import hashlib
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -21,6 +21,11 @@ from constructionsight.adapters import (
 from constructionsight.adapters.base import AdapterRunContext
 from constructionsight.adapters.ceqanet import CeqanetLiveDiscovery
 from constructionsight.adapters.runner import AdapterRunner
+from constructionsight.intelligence.artifact_identity import (
+    IdentityFingerprint,
+    IdentityResolutionCandidate,
+)
+from constructionsight.intelligence.artifact_resolution_service import ArtifactResolutionService
 from constructionsight.intelligence.graph_neighborhood_service import (
     GraphNeighborhood,
     GraphNeighborhoodService,
@@ -206,7 +211,7 @@ def _verification_export_payload(records: list[Any], *, limit: int) -> dict[str,
             "schema_version": "verification_export.v1",
             "export_type": "source_verification_records",
             "application": "ConstructionSight",
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
             "limit": limit,
         },
         "record_count": len(record_payloads),
@@ -366,6 +371,105 @@ def _graph_neighborhood_to_dict(neighborhood: GraphNeighborhood) -> dict[str, An
             opportunity.model_dump(mode="json") for opportunity in neighborhood.opportunities
         ],
     }
+
+
+def _read_artifact_resolution_preview_input(
+    input_path: Path,
+) -> tuple[IdentityFingerprint, IdentityFingerprint, str | None]:
+    """Read artifact-resolution preview input from a JSON object file."""
+
+    try:
+        payload = json.loads(input_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise typer.BadParameter(f"Invalid artifact resolution JSON: {exc}") from exc
+
+    if not isinstance(payload, dict):
+        raise typer.BadParameter("Artifact resolution input JSON must be an object.")
+    if "left" not in payload:
+        raise typer.BadParameter("Artifact resolution input JSON requires a left fingerprint.")
+    if "right" not in payload:
+        raise typer.BadParameter("Artifact resolution input JSON requires a right fingerprint.")
+
+    candidate_id = payload.get("candidate_id")
+    if candidate_id is not None and not isinstance(candidate_id, str):
+        raise typer.BadParameter("candidate_id must be a string when provided.")
+
+    try:
+        left = IdentityFingerprint.model_validate(payload["left"])
+        right = IdentityFingerprint.model_validate(payload["right"])
+    except ValueError as exc:
+        raise typer.BadParameter(f"Invalid artifact fingerprint payload: {exc}") from exc
+
+    return left, right, candidate_id
+
+
+def _artifact_resolution_candidate_to_dict(
+    candidate: IdentityResolutionCandidate,
+) -> dict[str, Any]:
+    """Convert an artifact resolution candidate into JSON-safe preview output."""
+
+    payload = candidate.model_dump(mode="json")
+    payload["resolution_score"] = candidate.resolution_score
+    payload["recommended_decision"] = candidate.recommended_decision.value
+    payload["has_near_unique_support"] = candidate.has_near_unique_support
+    payload["has_near_unique_conflict"] = candidate.has_near_unique_conflict
+    payload["has_only_weak_support"] = candidate.has_only_weak_support
+    return payload
+
+
+def _render_artifact_resolution_candidate(candidate: IdentityResolutionCandidate) -> None:
+    """Render an artifact-resolution preview as Rich tables."""
+
+    summary = Table(title="Artifact Resolution Preview")
+    summary.add_column("Field")
+    summary.add_column("Value")
+    summary.add_row("Candidate", candidate.candidate_id)
+    summary.add_row("Left identity", candidate.left_identity_id)
+    summary.add_row("Right identity", candidate.right_identity_id)
+    summary.add_row("Target kind", candidate.target_kind.value)
+    summary.add_row("Resolution score", str(candidate.resolution_score))
+    summary.add_row("Recommended decision", candidate.recommended_decision.value)
+    summary.add_row("Supporting matches", str(len(candidate.supporting_matches)))
+    summary.add_row("Conflicts", str(len(candidate.conflicts)))
+    summary.add_row("Review required", str(candidate.review_required))
+    summary.add_row("Evidence summary", candidate.evidence_summary)
+    console.print(summary)
+
+    if candidate.supporting_matches:
+        matches = Table(title="Supporting Artifact Matches")
+        matches.add_column("Artifact")
+        matches.add_column("Left observation")
+        matches.add_column("Right observation")
+        matches.add_column("Strength")
+        matches.add_column("Contribution")
+        matches.add_column("Sources")
+        for match in candidate.supporting_matches:
+            matches.add_row(
+                match.artifact_type.value,
+                match.left_observation_id,
+                match.right_observation_id,
+                str(match.match_strength),
+                str(match.contribution),
+                ", ".join(match.source_families),
+            )
+        console.print(matches)
+
+    if candidate.conflicts:
+        conflicts = Table(title="Artifact Conflicts")
+        conflicts.add_column("Artifact")
+        conflicts.add_column("Left value")
+        conflicts.add_column("Right value")
+        conflicts.add_column("Strength")
+        conflicts.add_column("Penalty")
+        for conflict in candidate.conflicts:
+            conflicts.add_row(
+                conflict.artifact_type.value,
+                conflict.left_value,
+                conflict.right_value,
+                str(conflict.conflict_strength),
+                str(conflict.penalty),
+            )
+        console.print(conflicts)
 
 
 def _render_graph_neighborhood(neighborhood: GraphNeighborhood, title: str) -> None:
@@ -616,7 +720,12 @@ def dry_run_adapters(
 def init_db(
     database_url: Annotated[
         str | None,
-        typer.Option(help="SQLAlchemy database URL. Defaults to local SQLite data/constructionsight.sqlite3."),
+        typer.Option(
+            help=(
+                "SQLAlchemy database URL. Defaults to local SQLite "
+                "data/constructionsight.sqlite3."
+            )
+        ),
     ] = None,
 ) -> None:
     """Initialize the ConstructionSight database tables."""
@@ -634,7 +743,12 @@ def load_sources(
     ],
     database_url: Annotated[
         str | None,
-        typer.Option(help="SQLAlchemy database URL. Defaults to local SQLite data/constructionsight.sqlite3."),
+        typer.Option(
+            help=(
+                "SQLAlchemy database URL. Defaults to local SQLite "
+                "data/constructionsight.sqlite3."
+            )
+        ),
     ] = None,
 ) -> None:
     """Load source registry records into the database."""
@@ -652,7 +766,12 @@ def load_sources(
 def list_sources(
     database_url: Annotated[
         str | None,
-        typer.Option(help="SQLAlchemy database URL. Defaults to local SQLite data/constructionsight.sqlite3."),
+        typer.Option(
+            help=(
+                "SQLAlchemy database URL. Defaults to local SQLite "
+                "data/constructionsight.sqlite3."
+            )
+        ),
     ] = None,
 ) -> None:
     """List source registry records from the database."""
@@ -674,14 +793,20 @@ def list_relationships(
     ],
     database_url: Annotated[
         str | None,
-        typer.Option(help="SQLAlchemy database URL. Defaults to local SQLite data/constructionsight.sqlite3."),
+        typer.Option(
+            help=(
+                "SQLAlchemy database URL. Defaults to local SQLite "
+                "data/constructionsight.sqlite3."
+            )
+        ),
     ] = None,
 ) -> None:
     """List persisted relationships connected to an entity."""
 
     _, factory = _relationship_query_service(database_url)
     with managed_session(factory) as session:
-        records = RelationshipQueryService(IntelligenceStore(session)).get_relationships_for_entity(entity_id)
+        query_service = RelationshipQueryService(IntelligenceStore(session))
+        records = query_service.get_relationships_for_entity(entity_id)
     _render_relationships_table(records, f"Relationships for Entity {entity_id}")
     console.print(f"Found {len(records)} relationships.")
 
@@ -694,14 +819,20 @@ def list_projects_for_entity(
     ],
     database_url: Annotated[
         str | None,
-        typer.Option(help="SQLAlchemy database URL. Defaults to local SQLite data/constructionsight.sqlite3."),
+        typer.Option(
+            help=(
+                "SQLAlchemy database URL. Defaults to local SQLite "
+                "data/constructionsight.sqlite3."
+            )
+        ),
     ] = None,
 ) -> None:
     """List project clusters connected to an entity."""
 
     _, factory = _relationship_query_service(database_url)
     with managed_session(factory) as session:
-        records = RelationshipQueryService(IntelligenceStore(session)).get_projects_for_entity(entity_id)
+        query_service = RelationshipQueryService(IntelligenceStore(session))
+        records = query_service.get_projects_for_entity(entity_id)
     _render_project_clusters_table(records, f"Projects for Entity {entity_id}")
     console.print(f"Found {len(records)} project clusters.")
 
@@ -714,14 +845,20 @@ def list_opportunities_for_project(
     ],
     database_url: Annotated[
         str | None,
-        typer.Option(help="SQLAlchemy database URL. Defaults to local SQLite data/constructionsight.sqlite3."),
+        typer.Option(
+            help=(
+                "SQLAlchemy database URL. Defaults to local SQLite "
+                "data/constructionsight.sqlite3."
+            )
+        ),
     ] = None,
 ) -> None:
     """List opportunities tied to a project cluster."""
 
     _, factory = _relationship_query_service(database_url)
     with managed_session(factory) as session:
-        records = RelationshipQueryService(IntelligenceStore(session)).get_opportunities_for_project(project_cluster_id)
+        query_service = RelationshipQueryService(IntelligenceStore(session))
+        records = query_service.get_opportunities_for_project(project_cluster_id)
     _render_opportunities_table(records, f"Opportunities for Project {project_cluster_id}")
     console.print(f"Found {len(records)} opportunities.")
 
@@ -730,20 +867,76 @@ def list_opportunities_for_project(
 def list_opportunities_for_entity(
     entity_id: Annotated[
         str,
-        typer.Option(help="Entity ID whose direct and project-derived opportunities should be listed."),
+        typer.Option(
+            help="Entity ID whose direct and project-derived opportunities should be listed."
+        ),
     ],
     database_url: Annotated[
         str | None,
-        typer.Option(help="SQLAlchemy database URL. Defaults to local SQLite data/constructionsight.sqlite3."),
+        typer.Option(
+            help=(
+                "SQLAlchemy database URL. Defaults to local SQLite "
+                "data/constructionsight.sqlite3."
+            )
+        ),
     ] = None,
 ) -> None:
     """List opportunities tied directly or indirectly to an entity."""
 
     _, factory = _relationship_query_service(database_url)
     with managed_session(factory) as session:
-        records = RelationshipQueryService(IntelligenceStore(session)).get_opportunities_for_entity(entity_id)
+        query_service = RelationshipQueryService(IntelligenceStore(session))
+        records = query_service.get_opportunities_for_entity(entity_id)
     _render_opportunities_table(records, f"Opportunities for Entity {entity_id}")
     console.print(f"Found {len(records)} opportunities.")
+
+
+@app.command("preview-artifact-resolution")
+def preview_artifact_resolution(
+    input_path: Annotated[
+        Path,
+        typer.Option(
+            "--input",
+            help="Path to artifact-resolution preview JSON containing left and right fingerprints.",
+        ),
+    ],
+    json_output: Annotated[
+        bool,
+        typer.Option("--json-output", help="Emit machine-readable JSON instead of Rich tables."),
+    ] = False,
+    output_path: Annotated[
+        Path | None,
+        typer.Option(
+            "--output",
+            help="Write JSON output to this file path. Requires --json-output.",
+        ),
+    ] = None,
+) -> None:
+    """Preview deterministic artifact-based identity resolution from JSON fingerprints."""
+
+    if output_path is not None and not json_output:
+        raise typer.BadParameter("--output requires --json-output.")
+
+    left, right, candidate_id = _read_artifact_resolution_preview_input(input_path)
+    try:
+        candidate = ArtifactResolutionService().resolve_fingerprints(
+            left,
+            right,
+            candidate_id=candidate_id,
+        )
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+    if json_output:
+        payload = _artifact_resolution_candidate_to_dict(candidate)
+        if output_path is not None:
+            _write_json_file(output_path, payload)
+            typer.echo(f"Wrote artifact resolution JSON to {output_path}.")
+            return
+        console.print_json(json.dumps(payload))
+        return
+
+    _render_artifact_resolution_candidate(candidate)
 
 
 @app.command("show-entity-neighborhood")
@@ -754,7 +947,12 @@ def show_entity_neighborhood(
     ],
     database_url: Annotated[
         str | None,
-        typer.Option(help="SQLAlchemy database URL. Defaults to local SQLite data/constructionsight.sqlite3."),
+        typer.Option(
+            help=(
+                "SQLAlchemy database URL. Defaults to local SQLite "
+                "data/constructionsight.sqlite3."
+            )
+        ),
     ] = None,
     json_output: Annotated[
         bool,
@@ -762,14 +960,18 @@ def show_entity_neighborhood(
     ] = False,
     output_path: Annotated[
         Path | None,
-        typer.Option("--output", help="Write JSON output to this file path. Requires --json-output."),
+        typer.Option(
+            "--output",
+            help="Write JSON output to this file path. Requires --json-output.",
+        ),
     ] = None,
 ) -> None:
     """Show immediate graph neighborhood around an entity."""
 
     _, factory = _relationship_query_service(database_url)
     with managed_session(factory) as session:
-        neighborhood = GraphNeighborhoodService(IntelligenceStore(session)).get_entity_neighborhood(
+        neighborhood_service = GraphNeighborhoodService(IntelligenceStore(session))
+        neighborhood = neighborhood_service.get_entity_neighborhood(
             entity_id
         )
 
@@ -792,11 +994,18 @@ def show_entity_neighborhood(
 def show_project_neighborhood(
     project_cluster_id: Annotated[
         str,
-        typer.Option(help="Project cluster ID whose immediate graph neighborhood should be displayed."),
+        typer.Option(
+            help="Project cluster ID whose immediate graph neighborhood should be displayed."
+        ),
     ],
     database_url: Annotated[
         str | None,
-        typer.Option(help="SQLAlchemy database URL. Defaults to local SQLite data/constructionsight.sqlite3."),
+        typer.Option(
+            help=(
+                "SQLAlchemy database URL. Defaults to local SQLite "
+                "data/constructionsight.sqlite3."
+            )
+        ),
     ] = None,
     json_output: Annotated[
         bool,
@@ -804,14 +1013,18 @@ def show_project_neighborhood(
     ] = False,
     output_path: Annotated[
         Path | None,
-        typer.Option("--output", help="Write JSON output to this file path. Requires --json-output."),
+        typer.Option(
+            "--output",
+            help="Write JSON output to this file path. Requires --json-output.",
+        ),
     ] = None,
 ) -> None:
     """Show immediate graph neighborhood around a project cluster."""
 
     _, factory = _relationship_query_service(database_url)
     with managed_session(factory) as session:
-        neighborhood = GraphNeighborhoodService(IntelligenceStore(session)).get_project_neighborhood(
+        neighborhood_service = GraphNeighborhoodService(IntelligenceStore(session))
+        neighborhood = neighborhood_service.get_project_neighborhood(
             project_cluster_id
         )
 
@@ -834,7 +1047,12 @@ def show_project_neighborhood(
 def list_verifications(
     database_url: Annotated[
         str | None,
-        typer.Option(help="SQLAlchemy database URL. Defaults to local SQLite data/constructionsight.sqlite3."),
+        typer.Option(
+            help=(
+                "SQLAlchemy database URL. Defaults to local SQLite "
+                "data/constructionsight.sqlite3."
+            )
+        ),
     ] = None,
     limit: Annotated[
         int,
@@ -861,7 +1079,12 @@ def export_verifications(
     ],
     database_url: Annotated[
         str | None,
-        typer.Option(help="SQLAlchemy database URL. Defaults to local SQLite data/constructionsight.sqlite3."),
+        typer.Option(
+            help=(
+                "SQLAlchemy database URL. Defaults to local SQLite "
+                "data/constructionsight.sqlite3."
+            )
+        ),
     ] = None,
     limit: Annotated[
         int,
@@ -910,7 +1133,12 @@ def verify_verification_export(
 def verify_sources(
     database_url: Annotated[
         str | None,
-        typer.Option(help="SQLAlchemy database URL. Defaults to local SQLite data/constructionsight.sqlite3."),
+        typer.Option(
+            help=(
+                "SQLAlchemy database URL. Defaults to local SQLite "
+                "data/constructionsight.sqlite3."
+            )
+        ),
     ] = None,
     limit: Annotated[int | None, typer.Option(help="Maximum number of sources to verify.")] = None,
 ) -> None:
