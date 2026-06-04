@@ -344,6 +344,30 @@ def _render_opportunities_table(records: list[Any], title: str) -> None:
     console.print(table)
 
 
+def _graph_neighborhood_to_dict(neighborhood: GraphNeighborhood) -> dict[str, Any]:
+    """Convert a graph neighborhood into a machine-readable dictionary."""
+
+    return {
+        "center_node_id": neighborhood.center_node_id,
+        "center_node_kind": neighborhood.center_node_kind,
+        "node_count": neighborhood.node_count,
+        "edge_count": neighborhood.edge_count,
+        "connected_entities": [
+            entity.model_dump(mode="json") for entity in neighborhood.connected_entities
+        ],
+        "connected_projects": [
+            project.model_dump(mode="json") for project in neighborhood.connected_projects
+        ],
+        "relationships": [
+            relationship.model_dump(mode="json")
+            for relationship in neighborhood.relationships
+        ],
+        "opportunities": [
+            opportunity.model_dump(mode="json") for opportunity in neighborhood.opportunities
+        ],
+    }
+
+
 def _render_graph_neighborhood(neighborhood: GraphNeighborhood, title: str) -> None:
     """Render a graph neighborhood summary and component tables."""
 
@@ -732,6 +756,10 @@ def show_entity_neighborhood(
         str | None,
         typer.Option(help="SQLAlchemy database URL. Defaults to local SQLite data/constructionsight.sqlite3."),
     ] = None,
+    json_output: Annotated[
+        bool,
+        typer.Option("--json-output", help="Emit machine-readable JSON instead of Rich tables."),
+    ] = False,
 ) -> None:
     """Show immediate graph neighborhood around an entity."""
 
@@ -740,6 +768,11 @@ def show_entity_neighborhood(
         neighborhood = GraphNeighborhoodService(IntelligenceStore(session)).get_entity_neighborhood(
             entity_id
         )
+
+    if json_output:
+        console.print_json(json.dumps(_graph_neighborhood_to_dict(neighborhood)))
+        return
+
     _render_graph_neighborhood(neighborhood, f"Entity Neighborhood {entity_id}")
 
 
@@ -753,6 +786,10 @@ def show_project_neighborhood(
         str | None,
         typer.Option(help="SQLAlchemy database URL. Defaults to local SQLite data/constructionsight.sqlite3."),
     ] = None,
+    json_output: Annotated[
+        bool,
+        typer.Option("--json-output", help="Emit machine-readable JSON instead of Rich tables."),
+    ] = False,
 ) -> None:
     """Show immediate graph neighborhood around a project cluster."""
 
@@ -761,6 +798,11 @@ def show_project_neighborhood(
         neighborhood = GraphNeighborhoodService(IntelligenceStore(session)).get_project_neighborhood(
             project_cluster_id
         )
+
+    if json_output:
+        console.print_json(json.dumps(_graph_neighborhood_to_dict(neighborhood)))
+        return
+
     _render_graph_neighborhood(neighborhood, f"Project Neighborhood {project_cluster_id}")
 
 
