@@ -364,8 +364,7 @@ def _graph_neighborhood_to_dict(neighborhood: GraphNeighborhood) -> dict[str, An
             project.model_dump(mode="json") for project in neighborhood.connected_projects
         ],
         "relationships": [
-            relationship.model_dump(mode="json")
-            for relationship in neighborhood.relationships
+            relationship.model_dump(mode="json") for relationship in neighborhood.relationships
         ],
         "opportunities": [
             opportunity.model_dump(mode="json") for opportunity in neighborhood.opportunities
@@ -722,8 +721,7 @@ def init_db(
         str | None,
         typer.Option(
             help=(
-                "SQLAlchemy database URL. Defaults to local SQLite "
-                "data/constructionsight.sqlite3."
+                "SQLAlchemy database URL. Defaults to local SQLite data/constructionsight.sqlite3."
             )
         ),
     ] = None,
@@ -745,8 +743,7 @@ def load_sources(
         str | None,
         typer.Option(
             help=(
-                "SQLAlchemy database URL. Defaults to local SQLite "
-                "data/constructionsight.sqlite3."
+                "SQLAlchemy database URL. Defaults to local SQLite data/constructionsight.sqlite3."
             )
         ),
     ] = None,
@@ -768,8 +765,7 @@ def list_sources(
         str | None,
         typer.Option(
             help=(
-                "SQLAlchemy database URL. Defaults to local SQLite "
-                "data/constructionsight.sqlite3."
+                "SQLAlchemy database URL. Defaults to local SQLite data/constructionsight.sqlite3."
             )
         ),
     ] = None,
@@ -795,8 +791,7 @@ def list_relationships(
         str | None,
         typer.Option(
             help=(
-                "SQLAlchemy database URL. Defaults to local SQLite "
-                "data/constructionsight.sqlite3."
+                "SQLAlchemy database URL. Defaults to local SQLite data/constructionsight.sqlite3."
             )
         ),
     ] = None,
@@ -821,8 +816,7 @@ def list_projects_for_entity(
         str | None,
         typer.Option(
             help=(
-                "SQLAlchemy database URL. Defaults to local SQLite "
-                "data/constructionsight.sqlite3."
+                "SQLAlchemy database URL. Defaults to local SQLite data/constructionsight.sqlite3."
             )
         ),
     ] = None,
@@ -847,8 +841,7 @@ def list_opportunities_for_project(
         str | None,
         typer.Option(
             help=(
-                "SQLAlchemy database URL. Defaults to local SQLite "
-                "data/constructionsight.sqlite3."
+                "SQLAlchemy database URL. Defaults to local SQLite data/constructionsight.sqlite3."
             )
         ),
     ] = None,
@@ -875,8 +868,7 @@ def list_opportunities_for_entity(
         str | None,
         typer.Option(
             help=(
-                "SQLAlchemy database URL. Defaults to local SQLite "
-                "data/constructionsight.sqlite3."
+                "SQLAlchemy database URL. Defaults to local SQLite data/constructionsight.sqlite3."
             )
         ),
     ] = None,
@@ -949,8 +941,7 @@ def show_entity_neighborhood(
         str | None,
         typer.Option(
             help=(
-                "SQLAlchemy database URL. Defaults to local SQLite "
-                "data/constructionsight.sqlite3."
+                "SQLAlchemy database URL. Defaults to local SQLite data/constructionsight.sqlite3."
             )
         ),
     ] = None,
@@ -971,9 +962,7 @@ def show_entity_neighborhood(
     _, factory = _relationship_query_service(database_url)
     with managed_session(factory) as session:
         neighborhood_service = GraphNeighborhoodService(IntelligenceStore(session))
-        neighborhood = neighborhood_service.get_entity_neighborhood(
-            entity_id
-        )
+        neighborhood = neighborhood_service.get_entity_neighborhood(entity_id)
 
     if output_path is not None and not json_output:
         raise typer.BadParameter("--output requires --json-output.")
@@ -1002,8 +991,7 @@ def show_project_neighborhood(
         str | None,
         typer.Option(
             help=(
-                "SQLAlchemy database URL. Defaults to local SQLite "
-                "data/constructionsight.sqlite3."
+                "SQLAlchemy database URL. Defaults to local SQLite data/constructionsight.sqlite3."
             )
         ),
     ] = None,
@@ -1024,9 +1012,7 @@ def show_project_neighborhood(
     _, factory = _relationship_query_service(database_url)
     with managed_session(factory) as session:
         neighborhood_service = GraphNeighborhoodService(IntelligenceStore(session))
-        neighborhood = neighborhood_service.get_project_neighborhood(
-            project_cluster_id
-        )
+        neighborhood = neighborhood_service.get_project_neighborhood(project_cluster_id)
 
     if output_path is not None and not json_output:
         raise typer.BadParameter("--output requires --json-output.")
@@ -1049,8 +1035,7 @@ def list_verifications(
         str | None,
         typer.Option(
             help=(
-                "SQLAlchemy database URL. Defaults to local SQLite "
-                "data/constructionsight.sqlite3."
+                "SQLAlchemy database URL. Defaults to local SQLite data/constructionsight.sqlite3."
             )
         ),
     ] = None,
@@ -1081,8 +1066,7 @@ def export_verifications(
         str | None,
         typer.Option(
             help=(
-                "SQLAlchemy database URL. Defaults to local SQLite "
-                "data/constructionsight.sqlite3."
+                "SQLAlchemy database URL. Defaults to local SQLite data/constructionsight.sqlite3."
             )
         ),
     ] = None,
@@ -1135,8 +1119,7 @@ def verify_sources(
         str | None,
         typer.Option(
             help=(
-                "SQLAlchemy database URL. Defaults to local SQLite "
-                "data/constructionsight.sqlite3."
+                "SQLAlchemy database URL. Defaults to local SQLite data/constructionsight.sqlite3."
             )
         ),
     ] = None,

@@ -35,7 +35,10 @@ def _expected_integrity_hash(payload: dict) -> str:
 def _assert_integrity_block(payload: dict) -> None:
     integrity = payload["integrity"]
     assert integrity["algorithm"] == "sha256"
-    assert integrity["canonicalization"] == "json.dumps(sort_keys=True,separators=(',',':'),default=str)"
+    assert (
+        integrity["canonicalization"]
+        == "json.dumps(sort_keys=True,separators=(',',':'),default=str)"
+    )
     assert integrity["payload_scope"] == "metadata,record_count,records"
     assert integrity["payload_sha256"] == _expected_integrity_hash(payload)
 

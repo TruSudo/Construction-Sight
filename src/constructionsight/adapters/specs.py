@@ -47,7 +47,10 @@ def default_adapter_family_specs() -> dict[PlatformFamily, AdapterFamilySpec]:
             platform_family=PlatformFamily.CEQANET,
             status=AdapterImplementationStatus.CONTRACT_READY,
             expected_categories=[RecordCategory.CEQA, RecordCategory.DOCUMENT],
-            notes="Fixture-backed CEQAnet adapter contract with normalized CEQA record output. Live HTTP querying is not enabled yet.",
+            notes=(
+                "Fixture-backed CEQAnet adapter contract with normalized CEQA record "
+                "output. Live HTTP querying is not enabled yet."
+            ),
         ),
         PlatformFamily.CSLB: AdapterFamilySpec(
             platform_family=PlatformFamily.CSLB,
@@ -56,13 +59,21 @@ def default_adapter_family_specs() -> dict[PlatformFamily, AdapterFamilySpec]:
         ),
         PlatformFamily.ACCELA_ACA: AdapterFamilySpec(
             platform_family=PlatformFamily.ACCELA_ACA,
-            expected_categories=[RecordCategory.PERMIT, RecordCategory.PLANNING_CASE, RecordCategory.INSPECTION],
+            expected_categories=[
+                RecordCategory.PERMIT,
+                RecordCategory.PLANNING_CASE,
+                RecordCategory.INSPECTION,
+            ],
             requires_javascript=True,
             notes="Placeholder contract for Accela Citizen Access public portals.",
         ),
         PlatformFamily.TYLER_ENERGOV: AdapterFamilySpec(
             platform_family=PlatformFamily.TYLER_ENERGOV,
-            expected_categories=[RecordCategory.PERMIT, RecordCategory.PLANNING_CASE, RecordCategory.INSPECTION],
+            expected_categories=[
+                RecordCategory.PERMIT,
+                RecordCategory.PLANNING_CASE,
+                RecordCategory.INSPECTION,
+            ],
             requires_javascript=True,
             notes="Placeholder contract for Tyler EnerGov public portals.",
         ),
@@ -86,7 +97,11 @@ def default_adapter_family_specs() -> dict[PlatformFamily, AdapterFamilySpec]:
         ),
         PlatformFamily.CUSTOM_REPORT: AdapterFamilySpec(
             platform_family=PlatformFamily.CUSTOM_REPORT,
-            expected_categories=[RecordCategory.PERMIT, RecordCategory.DOCUMENT, RecordCategory.AGENDA],
+            expected_categories=[
+                RecordCategory.PERMIT,
+                RecordCategory.DOCUMENT,
+                RecordCategory.AGENDA,
+            ],
             requires_pdf_processing=True,
             notes="Placeholder contract for custom public report and document sources.",
         ),

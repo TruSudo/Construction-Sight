@@ -40,5 +40,7 @@ def audit_adapter_contracts(
         registry_platforms=registry_platforms,
         spec_platforms=spec_platforms,
         missing_specs=tuple(sorted(registry_set - spec_set, key=lambda family: family.value)),
-        missing_registrations=tuple(sorted(spec_set - registry_set, key=lambda family: family.value)),
+        missing_registrations=tuple(
+            sorted(spec_set - registry_set, key=lambda family: family.value)
+        ),
     )

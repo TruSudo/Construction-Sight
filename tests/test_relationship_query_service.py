@@ -131,7 +131,9 @@ def _seed_relationship_graph(store: IntelligenceStore) -> None:
     )
 
 
-def test_relationship_query_service_returns_entity_relationships_and_connected_entities(tmp_path) -> None:
+def test_relationship_query_service_returns_entity_relationships_and_connected_entities(
+    tmp_path,
+) -> None:
     engine = create_database_engine(_database_url(tmp_path))
     initialize_database(engine)
     factory = session_factory(engine)
@@ -175,7 +177,9 @@ def test_relationship_query_service_returns_projects_and_project_opportunities(t
     assert [opportunity.opportunity_id for opportunity in project_opportunities] == ["opp-1"]
 
 
-def test_relationship_query_service_returns_direct_and_project_derived_entity_opportunities(tmp_path) -> None:
+def test_relationship_query_service_returns_direct_and_project_derived_entity_opportunities(
+    tmp_path,
+) -> None:
     engine = create_database_engine(_database_url(tmp_path))
     initialize_database(engine)
     factory = session_factory(engine)

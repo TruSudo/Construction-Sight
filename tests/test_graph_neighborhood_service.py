@@ -115,7 +115,9 @@ def test_graph_neighborhood_service_returns_entity_neighborhood(tmp_path) -> Non
         _seed_neighborhood_graph(IntelligenceStore(session))
 
     with managed_session(factory) as session:
-        neighborhood = GraphNeighborhoodService(IntelligenceStore(session)).get_entity_neighborhood("gc-1")
+        neighborhood = GraphNeighborhoodService(IntelligenceStore(session)).get_entity_neighborhood(
+            "gc-1"
+        )
 
     assert neighborhood.center_node_id == "gc-1"
     assert neighborhood.center_node_kind == "entity"
@@ -139,7 +141,9 @@ def test_graph_neighborhood_service_returns_project_neighborhood(tmp_path) -> No
         _seed_neighborhood_graph(IntelligenceStore(session))
 
     with managed_session(factory) as session:
-        neighborhood = GraphNeighborhoodService(IntelligenceStore(session)).get_project_neighborhood("pc-1")
+        neighborhood = GraphNeighborhoodService(
+            IntelligenceStore(session)
+        ).get_project_neighborhood("pc-1")
 
     assert neighborhood.center_node_id == "pc-1"
     assert neighborhood.center_node_kind == "project_cluster"

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any, TypeAlias
+
 from constructionsight.adapters.base import AdapterRunContext, SourceAdapter
 from constructionsight.adapters.ceqanet import CeqanetAdapter
 from constructionsight.adapters.stub import (
@@ -20,20 +22,24 @@ class AdapterLookupError(ValueError):
     """Raised when an adapter lookup cannot be completed."""
 
 
+AdapterClass: TypeAlias = type[SourceAdapter[Any, Any]]
+AdapterInstance: TypeAlias = SourceAdapter[Any, Any]
+
+
 class AdapterRegistry:
     """Map platform families to adapter classes."""
 
     def __init__(self) -> None:
-        self._adapters: dict[PlatformFamily, type[SourceAdapter]] = {}
+        self._adapters: dict[PlatformFamily, AdapterClass] = {}
 
-    def add(self, platform_family: PlatformFamily, adapter_class: type[SourceAdapter]) -> None:
+    def add(self, platform_family: PlatformFamily, adapter_class: AdapterClass) -> None:
         """Add an adapter class for a platform family."""
 
         if platform_family in self._adapters:
             raise AdapterLookupError(f"adapter already exists for {platform_family.value}")
         self._adapters[platform_family] = adapter_class
 
-    def get(self, platform_family: PlatformFamily) -> type[SourceAdapter]:
+    def get(self, platform_family: PlatformFamily) -> AdapterClass:
         """Return the adapter class for a platform family."""
 
         adapter_class = self._adapters.get(platform_family)
@@ -45,7 +51,7 @@ class AdapterRegistry:
         self,
         source: PublicSource,
         context: AdapterRunContext | None = None,
-    ) -> SourceAdapter:
+    ) -> AdapterInstance:
         """Create the adapter instance for a source."""
 
         return self.get(source.platform_family)(source, context)

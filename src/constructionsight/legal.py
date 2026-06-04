@@ -52,7 +52,10 @@ def evaluate_access(profile: SourceAccessProfile) -> AccessPolicyResult:
     if profile.requires_login:
         return AccessPolicyResult(
             decision=AccessDecision.REVIEW_REQUIRED,
-            reason="Source requires login; verify lawful credentials and source terms before access.",
+            reason=(
+                "Source requires login; verify lawful credentials and source terms "
+                "before access."
+            ),
         )
     if profile.has_captcha:
         return AccessPolicyResult(
@@ -72,7 +75,10 @@ def evaluate_access(profile: SourceAccessProfile) -> AccessPolicyResult:
     if profile.paywalled:
         return AccessPolicyResult(
             decision=AccessDecision.BLOCKED,
-            reason="Source is paywalled; ConstructionSight only collects lawfully accessible public data.",
+            reason=(
+                "Source is paywalled; ConstructionSight only collects lawfully "
+                "accessible public data."
+            ),
         )
 
     return AccessPolicyResult(

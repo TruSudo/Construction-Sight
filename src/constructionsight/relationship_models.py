@@ -26,7 +26,7 @@ class RelationshipRecord(BaseModel):
         return self.confidence_score >= 75
 
     @model_validator(mode="after")
-    def require_evidence_for_high_confidence(self) -> "RelationshipRecord":
+    def require_evidence_for_high_confidence(self) -> RelationshipRecord:
         """Require provenance before a high-confidence relationship can be asserted."""
 
         if self.confidence_score >= 75 and not self.provenance:

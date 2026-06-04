@@ -11,7 +11,9 @@ from constructionsight.models import PublicSource
 
 
 class MockCeqanetHttpClient:
-    def __init__(self, response: httpx.Response | None = None, error: httpx.HTTPError | None = None) -> None:
+    def __init__(
+        self, response: httpx.Response | None = None, error: httpx.HTTPError | None = None
+    ) -> None:
         self.response = response
         self.error = error
 

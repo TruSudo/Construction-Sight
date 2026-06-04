@@ -35,7 +35,10 @@ def _source(url: str = "https://example.gov/citizenaccess/") -> PublicSource:
 def test_verifier_detects_accela_public_search_hints() -> None:
     response = httpx.Response(
         200,
-        text="Citizen Access permit search record search contractor owner applicant Cap/CapHome.aspx",
+        text=(
+            "Citizen Access permit search record search contractor owner applicant "
+            "Cap/CapHome.aspx"
+        ),
         headers={"content-type": "text/html"},
     )
     verifier = SourceVerifier(client=FakeClient(response))

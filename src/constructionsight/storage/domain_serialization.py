@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from typing import Any
 
 from pydantic import BaseModel
@@ -16,7 +17,7 @@ def model_to_json(model: BaseModel | None) -> str | None:
     return model.model_dump_json()
 
 
-def models_to_json(models: list[BaseModel]) -> str:
+def models_to_json(models: Sequence[BaseModel]) -> str:
     """Serialize a list of Pydantic models to JSON."""
 
     return json.dumps([json.loads(model.model_dump_json()) for model in models], sort_keys=True)

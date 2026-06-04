@@ -101,7 +101,9 @@ def _seed_cli_neighborhood_graph(database_url: str) -> None:
                 object_entity_id="developer-1",
                 relationship_status=RelationshipStatus.POSSIBLE,
                 confidence_score=61,
-                evidence_summary="Synthetic shared project supports candidate working relationship.",
+                evidence_summary=(
+                    "Synthetic shared project supports candidate working relationship."
+                ),
             )
         )
         store.upsert_opportunity(
@@ -140,19 +142,13 @@ def test_cli_emits_entity_neighborhood_json(tmp_path) -> None:
     assert payload["center_node_kind"] == "entity"
     assert payload["node_count"] == 4
     assert payload["edge_count"] == 2
-    assert {entity["entity_id"] for entity in payload["connected_entities"]} == {
-        "developer-1"
-    }
-    assert {project["project_cluster_id"] for project in payload["connected_projects"]} == {
-        "pc-1"
-    }
+    assert {entity["entity_id"] for entity in payload["connected_entities"]} == {"developer-1"}
+    assert {project["project_cluster_id"] for project in payload["connected_projects"]} == {"pc-1"}
     assert {relationship["relationship_id"] for relationship in payload["relationships"]} == {
         "rel-gc-project",
         "rel-gc-developer",
     }
-    assert {opportunity["opportunity_id"] for opportunity in payload["opportunities"]} == {
-        "opp-1"
-    }
+    assert {opportunity["opportunity_id"] for opportunity in payload["opportunities"]} == {"opp-1"}
 
 
 def test_cli_emits_project_neighborhood_json(tmp_path) -> None:
@@ -186,9 +182,7 @@ def test_cli_emits_project_neighborhood_json(tmp_path) -> None:
         "rel-gc-project",
         "rel-developer-project",
     }
-    assert {opportunity["opportunity_id"] for opportunity in payload["opportunities"]} == {
-        "opp-1"
-    }
+    assert {opportunity["opportunity_id"] for opportunity in payload["opportunities"]} == {"opp-1"}
 
 
 def test_cli_writes_entity_neighborhood_json_file(tmp_path) -> None:
