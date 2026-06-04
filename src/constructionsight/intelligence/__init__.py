@@ -20,6 +20,11 @@ from constructionsight.intelligence.artifact_identity import (
     artifact_weight,
     calculate_resolution_score,
 )
+from constructionsight.intelligence.artifact_resolution_service import (
+    ArtifactResolutionService,
+    can_artifact_type_conflict,
+    resolve_identity_fingerprints,
+)
 from constructionsight.intelligence.schemas import (
     AuthorityState,
     AuthorityStatus,
@@ -49,6 +54,7 @@ __all__ = [
     "ArtifactConflict",
     "ArtifactMatch",
     "ArtifactObservation",
+    "ArtifactResolutionService",
     "ArtifactTier",
     "AuthorityState",
     "AuthorityStatus",
@@ -86,4 +92,6 @@ __all__ = [
     "artifact_tier",
     "artifact_weight",
     "calculate_resolution_score",
+    "can_artifact_type_conflict",
+    "resolve_identity_fingerprints",
 ]
