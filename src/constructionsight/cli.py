@@ -21,6 +21,10 @@ from constructionsight.adapters import (
 from constructionsight.adapters.base import AdapterRunContext
 from constructionsight.adapters.ceqanet import CeqanetLiveDiscovery
 from constructionsight.adapters.runner import AdapterRunner
+from constructionsight.intelligence.graph_neighborhood_service import (
+    GraphNeighborhood,
+    GraphNeighborhoodService,
+)
 from constructionsight.intelligence.relationship_query_service import RelationshipQueryService
 from constructionsight.models import PublicSource
 from constructionsight.storage.database import (
@@ -340,8 +344,50 @@ def _render_opportunities_table(records: list[Any], title: str) -> None:
     console.print(table)
 
 
+def _render_graph_neighborhood(neighborhood: GraphNeighborhood, title: str) -> None:
+    """Render a graph neighborhood summary and component tables."""
+
+    summary = Table(title=title)
+    summary.add_column("Field")
+    summary.add_column("Value")
+    summary.add_row("Center node", neighborhood.center_node_id)
+    summary.add_row("Center kind", neighborhood.center_node_kind)
+    summary.add_row("Node count", str(neighborhood.node_count))
+    summary.add_row("Edge count", str(neighborhood.edge_count))
+    summary.add_row("Connected entities", str(len(neighborhood.connected_entities)))
+    summary.add_row("Connected projects", str(len(neighborhood.connected_projects)))
+    summary.add_row("Opportunities", str(len(neighborhood.opportunities)))
+    console.print(summary)
+
+    if neighborhood.connected_entities:
+        entities_table = Table(title="Connected Entities")
+        entities_table.add_column("Entity")
+        entities_table.add_column("Type")
+        entities_table.add_column("Name")
+        entities_table.add_column("Status")
+        entities_table.add_column("Confidence")
+        for entity in neighborhood.connected_entities:
+            entities_table.add_row(
+                entity.entity_id,
+                entity.entity_type.value,
+                entity.canonical_name,
+                entity.identity_status.value,
+                str(entity.confidence_score),
+            )
+        console.print(entities_table)
+
+    if neighborhood.connected_projects:
+        _render_project_clusters_table(neighborhood.connected_projects, "Connected Projects")
+
+    if neighborhood.relationships:
+        _render_relationships_table(neighborhood.relationships, "Neighborhood Relationships")
+
+    if neighborhood.opportunities:
+        _render_opportunities_table(neighborhood.opportunities, "Neighborhood Opportunities")
+
+
 def _relationship_query_service(database_url: str | None) -> tuple[Any, Any]:
-    """Create a database session factory and engine for relationship-query CLI commands."""
+    """Create a database session factory and engine for intelligence-query CLI commands."""
 
     engine = create_database_engine(database_url)
     initialize_database(engine)
@@ -674,6 +720,48 @@ def list_opportunities_for_entity(
         records = RelationshipQueryService(IntelligenceStore(session)).get_opportunities_for_entity(entity_id)
     _render_opportunities_table(records, f"Opportunities for Entity {entity_id}")
     console.print(f"Found {len(records)} opportunities.")
+
+
+@app.command("show-entity-neighborhood")
+def show_entity_neighborhood(
+    entity_id: Annotated[
+        str,
+        typer.Option(help="Entity ID whose immediate graph neighborhood should be displayed."),
+    ],
+    database_url: Annotated[
+        str | None,
+        typer.Option(help="SQLAlchemy database URL. Defaults to local SQLite data/constructionsight.sqlite3."),
+    ] = None,
+) -> None:
+    """Show immediate graph neighborhood around an entity."""
+
+    _, factory = _relationship_query_service(database_url)
+    with managed_session(factory) as session:
+        neighborhood = GraphNeighborhoodService(IntelligenceStore(session)).get_entity_neighborhood(
+            entity_id
+        )
+    _render_graph_neighborhood(neighborhood, f"Entity Neighborhood {entity_id}")
+
+
+@app.command("show-project-neighborhood")
+def show_project_neighborhood(
+    project_cluster_id: Annotated[
+        str,
+        typer.Option(help="Project cluster ID whose immediate graph neighborhood should be displayed."),
+    ],
+    database_url: Annotated[
+        str | None,
+        typer.Option(help="SQLAlchemy database URL. Defaults to local SQLite data/constructionsight.sqlite3."),
+    ] = None,
+) -> None:
+    """Show immediate graph neighborhood around a project cluster."""
+
+    _, factory = _relationship_query_service(database_url)
+    with managed_session(factory) as session:
+        neighborhood = GraphNeighborhoodService(IntelligenceStore(session)).get_project_neighborhood(
+            project_cluster_id
+        )
+    _render_graph_neighborhood(neighborhood, f"Project Neighborhood {project_cluster_id}")
 
 
 @app.command("list-verifications")
