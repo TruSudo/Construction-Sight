@@ -1,0 +1,69 @@
+{
+  "candidate_id": "fixture-conflicting-ceqa-sch",
+  "left": {
+    "fingerprint_id": "fingerprint-commerce-center-one",
+    "target_identity_id": "project-commerce-center-one",
+    "target_kind": "project",
+    "artifact_observations": [
+      {
+        "observation_id": "left-sch-2025060123",
+        "artifact_type": "ceqa_sch_number",
+        "raw_value": "SCH No. 2025060123",
+        "normalized_value": "sch-2025060123",
+        "source_name": "Synthetic CEQA Notice One",
+        "source_family": "ceqanet",
+        "source_record_id": "sch-2025060123",
+        "jurisdiction": "Fontana, CA",
+        "observed_field": "sch_number",
+        "evidence_record_id": "ev-left-sch",
+        "confidence_score": 100
+      },
+      {
+        "observation_id": "left-title-commerce-center",
+        "artifact_type": "project_title",
+        "raw_value": "Commerce Center II",
+        "normalized_value": "commerce center ii",
+        "source_name": "Synthetic CEQA Notice One",
+        "source_family": "ceqanet",
+        "source_record_id": "sch-2025060123",
+        "jurisdiction": "Fontana, CA",
+        "observed_field": "project_title",
+        "evidence_record_id": "ev-left-title",
+        "confidence_score": 80
+      }
+    ]
+  },
+  "right": {
+    "fingerprint_id": "fingerprint-commerce-center-two",
+    "target_identity_id": "project-commerce-center-two",
+    "target_kind": "project",
+    "artifact_observations": [
+      {
+        "observation_id": "right-sch-2025999999",
+        "artifact_type": "ceqa_sch_number",
+        "raw_value": "SCH No. 2025999999",
+        "normalized_value": "sch-2025999999",
+        "source_name": "Synthetic CEQA Notice Two",
+        "source_family": "ceqanet",
+        "source_record_id": "sch-2025999999",
+        "jurisdiction": "Fontana, CA",
+        "observed_field": "sch_number",
+        "evidence_record_id": "ev-right-sch",
+        "confidence_score": 100
+      },
+      {
+        "observation_id": "right-title-commerce-center",
+        "artifact_type": "project_title",
+        "raw_value": "Commerce Center II",
+        "normalized_value": "commerce center ii",
+        "source_name": "Synthetic CEQA Notice Two",
+        "source_family": "ceqanet",
+        "source_record_id": "sch-2025999999",
+        "jurisdiction": "Fontana, CA",
+        "observed_field": "project_title",
+        "evidence_record_id": "ev-right-title",
+        "confidence_score": 80
+      }
+    ]
+  }
+}
