@@ -97,4 +97,6 @@ def test_ceqanet_listing_dry_run_handles_existing_query_separator() -> None:
 
     report = CeqanetListingDryRunExecutor().run(plan)
 
-    assert report.requests[0].url == "https://example.test/search?mode=advanced&County=Riverside"
+    assert report.requests[0].url == (
+        "https://example.test/search?mode=advanced&County=Riverside"
+    )
