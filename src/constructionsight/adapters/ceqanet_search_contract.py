@@ -128,13 +128,11 @@ def build_ceqanet_advanced_search_params(
     )
     params.extend((form_contract.county_field, county) for county in counties)
     if state_review_period_end:
-        params.append(
-            (form_contract.state_review_period_end_field, state_review_period_end.isoformat())
-        )
+        review_end = state_review_period_end.isoformat()
+        params.append((form_contract.state_review_period_end_field, review_end))
     if public_review_period_end:
-        params.append(
-            (form_contract.public_review_period_end_field, public_review_period_end.isoformat())
-        )
+        public_end = public_review_period_end.isoformat()
+        params.append((form_contract.public_review_period_end_field, public_end))
     return tuple(params)
 
 
