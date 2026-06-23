@@ -105,28 +105,36 @@ def build_ceqanet_advanced_search_params(
     state_review_period_end: date | None = None,
     public_review_period_end: date | None = None,
     high_signal_only: bool = False,
-    contract: CeqanetAdvancedSearchFormContract = CeqanetAdvancedSearchFormContract(),
+    contract: CeqanetAdvancedSearchFormContract | None = None,
 ) -> tuple[tuple[str, str], ...]:
     """Build deterministic CEQAnet advanced-search GET parameters."""
 
+    form_contract = contract or CeqanetAdvancedSearchFormContract()
     params: list[tuple[str, str]] = []
     if start_range:
-        params.append((contract.start_range_field, start_range.isoformat()))
+        params.append((form_contract.start_range_field, start_range.isoformat()))
     if end_range:
-        params.append((contract.end_range_field, end_range.isoformat()))
+        params.append((form_contract.end_range_field, end_range.isoformat()))
     selected_document_types = _document_type_values(
         document_types=document_types,
         high_signal_only=high_signal_only,
     )
     params.extend(
-        (contract.document_type_field, document_type) for document_type in selected_document_types
+        (form_contract.document_type_field, document_type)
+        for document_type in selected_document_types
     )
-    params.extend((contract.lead_agency_field, lead_agency) for lead_agency in lead_agencies)
-    params.extend((contract.county_field, county) for county in counties)
+    params.extend(
+        (form_contract.lead_agency_field, lead_agency) for lead_agency in lead_agencies
+    )
+    params.extend((form_contract.county_field, county) for county in counties)
     if state_review_period_end:
-        params.append((contract.state_review_period_end_field, state_review_period_end.isoformat()))
+        params.append(
+            (form_contract.state_review_period_end_field, state_review_period_end.isoformat())
+        )
     if public_review_period_end:
-        params.append((contract.public_review_period_end_field, public_review_period_end.isoformat()))
+        params.append(
+            (form_contract.public_review_period_end_field, public_review_period_end.isoformat())
+        )
     return tuple(params)
 
 
