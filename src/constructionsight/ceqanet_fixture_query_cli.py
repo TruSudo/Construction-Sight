@@ -25,7 +25,7 @@ from constructionsight.adapters.ceqanet_query import (
 from constructionsight.ceqa_models import CeqaRecord
 
 app = typer.Typer(help="Query deterministic CEQAnet fixture rows.")
-console = Console()
+console = Console(width=240, color_system=None)
 
 
 @app.callback()
@@ -220,7 +220,8 @@ def query_ceqanet_fixtures(
     """Query fixture-backed CEQAnet rows through normalized CEQA records."""
 
     if output_path is not None and not json_output:
-        raise typer.BadParameter("--output requires --json-output.")
+        typer.echo("--output requires --json-output.")
+        raise typer.Exit(code=1)
     query = CeqanetFixtureQuery(
         counties=_normalize_options(county),
         document_types=_normalize_options(document_type),
@@ -242,7 +243,7 @@ def query_ceqanet_fixtures(
             _write_json_file(output_path, payload)
             typer.echo(f"Wrote CEQAnet fixture query JSON to {output_path}.")
             return
-        console.print_json(json.dumps(payload))
+        typer.echo(json.dumps(payload, indent=2, sort_keys=True, default=str))
         return
 
     _render_result(result)
