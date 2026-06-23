@@ -28,8 +28,12 @@ def test_ceqanet_advanced_search_contract_matches_public_form_fields() -> None:
 
 def test_normalize_ceqanet_document_type_expands_known_codes() -> None:
     assert normalize_ceqanet_document_type("EIR") == "EIR - Draft EIR"
-    assert normalize_ceqanet_document_type("mnd") == "MND - Mitigated Negative Declaration"
-    assert normalize_ceqanet_document_type("NOP") == "NOP - Notice of Preparation of a Draft EIR"
+    assert normalize_ceqanet_document_type("mnd") == (
+        "MND - Mitigated Negative Declaration"
+    )
+    assert normalize_ceqanet_document_type("NOP") == (
+        "NOP - Notice of Preparation of a Draft EIR"
+    )
     assert normalize_ceqanet_document_type("Custom Label") == "Custom Label"
 
 
@@ -55,13 +59,14 @@ def test_build_ceqanet_advanced_search_params_uses_real_field_names() -> None:
     )
 
 
-def test_build_ceqanet_advanced_search_params_expands_high_signal_document_types() -> None:
+def test_build_ceqanet_advanced_search_params_expands_signal_types() -> None:
     params = build_ceqanet_advanced_search_params(
         counties=("San Bernardino",),
         high_signal_only=True,
     )
+    expected_document_types = [
+        ("DocumentType", document_type)
+        for document_type in CEQANET_HIGH_SIGNAL_DOCUMENT_TYPES
+    ]
 
-    assert params == tuple(
-        [("DocumentType", document_type) for document_type in CEQANET_HIGH_SIGNAL_DOCUMENT_TYPES]
-        + [("County", "San Bernardino")]
-    )
+    assert params == tuple(expected_document_types + [("County", "San Bernardino")])
