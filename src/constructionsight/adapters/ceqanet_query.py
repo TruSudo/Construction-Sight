@@ -151,6 +151,4 @@ class CeqanetFixtureQueryService:
         """Return true when no filter is set or the normalized value matches one option."""
 
         accepted = _normalize_terms(accepted_values)
-        if not accepted:
-            return True
-        return record_value in accepted
+        return not accepted or record_value in accepted
