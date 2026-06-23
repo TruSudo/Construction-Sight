@@ -1,12 +1,12 @@
 from datetime import date
 
 import pytest
-from constructionsight.ceqa_models import CeqaRecord
 
 from constructionsight.adapters.ceqanet_query import (
     CeqanetFixtureQuery,
     CeqanetFixtureQueryService,
 )
+from constructionsight.ceqa_models import CeqaRecord
 
 
 def _record(
