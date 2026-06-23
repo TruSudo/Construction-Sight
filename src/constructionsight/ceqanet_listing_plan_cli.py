@@ -104,7 +104,10 @@ def _plan_to_dict(plan: CeqanetListingPlan) -> dict[str, Any]:
     }
 
 
-def _dry_run_to_dict(report: CeqanetListingDryRunReport, plan: CeqanetListingPlan) -> dict[str, Any]:
+def _dry_run_to_dict(
+    report: CeqanetListingDryRunReport,
+    plan: CeqanetListingPlan,
+) -> dict[str, Any]:
     """Convert a dry-run report into deterministic JSON-safe output."""
 
     return {
