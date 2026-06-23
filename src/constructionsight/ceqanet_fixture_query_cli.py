@@ -28,6 +28,11 @@ app = typer.Typer(help="Query deterministic CEQAnet fixture rows.")
 console = Console()
 
 
+@app.callback()
+def main() -> None:
+    """Query deterministic CEQAnet fixture rows."""
+
+
 def _read_fixture_rows(input_path: Path) -> list[dict[str, Any]]:
     """Read CEQAnet-like fixture rows from a JSON array file."""
 
