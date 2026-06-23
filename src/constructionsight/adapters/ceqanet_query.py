@@ -94,9 +94,7 @@ def _date_in_range(
         return False
     if lower_bound is not None and value < lower_bound:
         return False
-    if upper_bound is not None and value > upper_bound:
-        return False
-    return True
+    return upper_bound is None or value <= upper_bound
 
 
 class CeqanetFixtureQueryService:
@@ -146,9 +144,7 @@ class CeqanetFixtureQueryService:
         ):
             return False
         terms = _normalize_terms(query.text_terms)
-        if terms and not all(term in _record_search_text(record) for term in terms):
-            return False
-        return True
+        return not terms or all(term in _record_search_text(record) for term in terms)
 
     @staticmethod
     def _matches_any(record_value: str, accepted_values: tuple[str, ...]) -> bool:
