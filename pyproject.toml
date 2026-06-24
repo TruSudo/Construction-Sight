@@ -47,6 +47,7 @@ constructionsight-ceqanet-operator-report = "constructionsight.ceqanet_operator_
 constructionsight-ceqanet-operator-bundle = "constructionsight.ceqanet_operator_bundle_cli:app"
 constructionsight-ceqanet-operator-bundle-verify = "constructionsight.ceqanet_operator_bundle_verify_cli:app"
 constructionsight-ceqanet-operator-export = "constructionsight.ceqanet_operator_export_cli:app"
+constructionsight-ceqanet-operator-archive = "constructionsight.ceqanet_operator_archive_cli:app"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/constructionsight"]
