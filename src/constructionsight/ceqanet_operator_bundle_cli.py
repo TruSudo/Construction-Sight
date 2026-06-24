@@ -96,7 +96,10 @@ def build_operator_bundle(
     ],
     output_dir: Annotated[
         Path,
-        typer.Option("--output-dir", help="Directory where bundle artifacts will be written."),
+        typer.Option(
+            "--output-dir",
+            help="Directory where bundle artifacts will be written.",
+        ),
     ],
     json_output: Annotated[
         bool,
@@ -104,7 +107,10 @@ def build_operator_bundle(
     ] = False,
     output_path: Annotated[
         Path | None,
-        typer.Option("--output", help="Write manifest JSON to a separate file. Requires --json-output."),
+        typer.Option(
+            "--output",
+            help="Write manifest JSON to a separate file. Requires --json-output.",
+        ),
     ] = None,
 ) -> None:
     """Build a deterministic CEQAnet operator review bundle."""
@@ -115,7 +121,10 @@ def build_operator_bundle(
 
     operator_package = _load_json_object(operator_package_path)
     try:
-        payload = build_ceqanet_operator_bundle(operator_package, output_dir=output_dir).to_dict()
+        payload = build_ceqanet_operator_bundle(
+            operator_package,
+            output_dir=output_dir,
+        ).to_dict()
     except ValueError as exc:
         raise typer.BadParameter(str(exc)) from exc
 
