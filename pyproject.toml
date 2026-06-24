@@ -40,6 +40,7 @@ constructionsight-ceqanet-detail-execute = "constructionsight.ceqanet_detail_exe
 constructionsight-ceqanet-enrichment = "constructionsight.ceqanet_detail_enrichment_cli:app"
 constructionsight-ceqanet-chain = "constructionsight.ceqanet_chain_cli:app"
 constructionsight-ceqanet-persistence-preview = "constructionsight.ceqanet_persistence_preview_cli:app"
+constructionsight-ceqanet-write-plan = "constructionsight.ceqanet_write_plan_cli:app"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/constructionsight"]
