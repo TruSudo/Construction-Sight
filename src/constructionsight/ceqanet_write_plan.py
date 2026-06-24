@@ -86,7 +86,9 @@ def build_ceqanet_write_plan(preview_payload: dict[str, Any]) -> CeqanetWritePla
         raise ValueError("Persistence preview must contain metadata.")
     schema_version = metadata.get("schema_version")
     if schema_version != "ceqanet_persistence_preview.v1":
-        raise ValueError("Persistence preview schema_version must be ceqanet_persistence_preview.v1.")
+        raise ValueError(
+            "Persistence preview schema_version must be ceqanet_persistence_preview.v1."
+        )
 
     operations: list[CeqanetWriteOperation] = []
     skipped_items: list[dict[str, object]] = []
