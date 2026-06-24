@@ -3,12 +3,12 @@ import zipfile
 from io import BytesIO
 from pathlib import Path
 
-from constructionsight.intake_models import DigitalFormatFamily, IntakeRouting, IntakeUnderstandingStatus
+from constructionsight.intake_models import DigitalFormatFamily, MaterialFactKind
 from constructionsight.intake_service import (
     IntakeInspectionInput,
     detect_format_family,
-    inspect_lawful_input,
     inspect_lawful_file,
+    inspect_lawful_input,
     normalize_fact_value,
 )
 
@@ -129,4 +129,5 @@ def test_inspect_lawful_file_preserves_snapshot_path(tmp_path: Path) -> None:
 
 
 def test_normalize_fact_value_is_deterministic() -> None:
-    assert normalize_fact_value(kind=DigitalFormatFamily.UNKNOWN, value="  A  B  ") == "A B"
+    assert normalize_fact_value(kind=MaterialFactKind.ADDRESS, value="  A  B  ") == "A B"
+    assert normalize_fact_value(kind=MaterialFactKind.APN, value="123-456-78") == "12345678"
