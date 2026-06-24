@@ -78,7 +78,8 @@ _PERMIT_RE = re.compile(
 )
 _AGENCY_RE = re.compile(
     r"\b(?:City|County|Town|Department|Agency)\s+of\s+"
-    r"[A-Z][A-Za-z .'-]{2,60}\b"
+    r"[A-Z][A-Za-z .'-]*?"
+    r"(?=\s+(?:reviewed|approved|issued|filed|received|published|noticed)\b|[.,;:]|$)"
 )
 _CONSTRUCTION_KEYWORDS = (
     "construction",
