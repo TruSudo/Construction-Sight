@@ -63,7 +63,9 @@ def build_ceqanet_operator_archive(
     verification_metadata = _metadata_object(verification, field_name="verification")
     verification_passed = verification_metadata.get("passed") is True
     if require_verified and not verification_passed:
-        raise ValueError("Refusing archive creation because operator bundle verification did not pass.")
+        raise ValueError(
+            "Refusing archive creation because operator bundle verification did not pass."
+        )
 
     archived_files = _manifest_filenames(verification)
     archive_path.parent.mkdir(parents=True, exist_ok=True)
