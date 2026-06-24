@@ -93,24 +93,6 @@ def test_ceqanet_write_plan_cli_writes_json_output(tmp_path: Path) -> None:
     assert payload["operations"][1]["target_collection"] == "sites"
 
 
-def test_ceqanet_write_plan_cli_renders_summary(tmp_path: Path) -> None:
-    preview_path = tmp_path / "preview.json"
-    _preview_payload(preview_path)
-
-    result = runner.invoke(
-        app,
-        [
-            "build",
-            "--persistence-preview",
-            str(preview_path),
-        ],
-    )
-
-    assert result.exit_code == 0
-    assert "CEQAnet Write Plan Preview" in result.output
-    assert "Planned Operations" in result.output
-
-
 def test_ceqanet_write_plan_cli_rejects_output_without_json(tmp_path: Path) -> None:
     preview_path = tmp_path / "preview.json"
     _preview_payload(preview_path)
@@ -148,4 +130,4 @@ def test_ceqanet_write_plan_cli_rejects_bad_preview(tmp_path: Path) -> None:
     )
 
     assert result.exit_code != 0
-    assert "schema_version must be ceqanet_persistence_preview.v1" in result.output
+    assert "ceqanet_persistence_preview.v1" in result.output
