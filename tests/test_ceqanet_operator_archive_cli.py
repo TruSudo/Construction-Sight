@@ -32,7 +32,10 @@ def _write_export_dir(export_dir: Path) -> None:
             }
         )
     manifest = {
-        "metadata": {"schema_version": "ceqanet_operator_bundle.v1", "artifact_count": 5},
+        "metadata": {
+            "schema_version": "ceqanet_operator_bundle.v1",
+            "artifact_count": 5,
+        },
         "artifacts": artifacts,
     }
     (export_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
