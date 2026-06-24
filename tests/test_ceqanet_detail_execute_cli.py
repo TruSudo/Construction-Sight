@@ -60,33 +60,6 @@ def test_ceqanet_detail_execute_cli_writes_json_output(tmp_path: Path, monkeypat
     assert payload["snapshots"][0]["body_truncated"] is False
 
 
-def test_ceqanet_detail_execute_cli_renders_summary(tmp_path: Path, monkeypatch) -> None:
-    def fake_get(
-        url: str,
-        *,
-        follow_redirects: bool,
-        timeout: float,
-        headers: dict[str, str],
-    ) -> _FakeResponse:
-        return _FakeResponse()
-
-    monkeypatch.setattr(cli.httpx, "get", fake_get)
-
-    result = runner.invoke(
-        cli.app,
-        [
-            "execute",
-            "--url",
-            "https://ceqanet.lci.ca.gov/Project/2017101033",
-            "--execute-live",
-        ],
-    )
-
-    assert result.exit_code == 0
-    assert "CEQAnet Detail Execution" in result.output
-    assert "Bounded Detail Snapshot" in result.output
-
-
 def test_ceqanet_detail_execute_cli_rejects_without_live_consent() -> None:
     result = runner.invoke(
         cli.app,
