@@ -66,11 +66,17 @@ def _snapshot_from_execution_json(
         )
     snapshot = snapshots[snapshot_index]
     if not isinstance(snapshot, dict):
-        raise typer.BadParameter(f"{input_path} snapshots[{snapshot_index}] must be a JSON object.")
+        raise typer.BadParameter(
+            f"{input_path} snapshots[{snapshot_index}] must be a JSON object."
+        )
     return cast(dict[str, Any], snapshot)
 
 
-def _html_and_source_from_snapshot(snapshot: dict[str, Any], *, input_path: Path) -> tuple[str, str | None]:
+def _html_and_source_from_snapshot(
+    snapshot: dict[str, Any],
+    *,
+    input_path: Path,
+) -> tuple[str, str | None]:
     """Extract stored HTML and source URL from one execution snapshot."""
 
     body_text = snapshot.get("body_text")
@@ -165,6 +171,12 @@ def _detail_parse_summary(detail_parse: dict[str, object]) -> dict[str, object]:
     }
 
 
+def _detail_parse_summaries(detail_parses: list[dict[str, object]]) -> list[dict[str, object]]:
+    """Return compact summaries for detail parse payloads."""
+
+    return [_detail_parse_summary(detail_parse) for detail_parse in detail_parses]
+
+
 def _build_chain_report(
     *,
     listing_execution_path: Path,
@@ -202,7 +214,7 @@ def _build_chain_report(
             "persistence_mutated": False,
         },
         "result_parse": result_parse,
-        "detail_parse_summaries": [_detail_parse_summary(detail_parse) for detail_parse in detail_parses],
+        "detail_parse_summaries": _detail_parse_summaries(detail_parses),
         "enrichment": enrichment_report,
     }
 
