@@ -148,7 +148,10 @@ def test_ceqanet_operator_bundle_cli_rejects_output_without_json(tmp_path: Path)
 
 def test_ceqanet_operator_bundle_cli_rejects_bad_package(tmp_path: Path) -> None:
     package_path = tmp_path / "bad-package.json"
-    package_path.write_text(json.dumps({"metadata": {"schema_version": "wrong.v1"}}), encoding="utf-8")
+    package_path.write_text(
+        json.dumps({"metadata": {"schema_version": "wrong.v1"}}),
+        encoding="utf-8",
+    )
 
     result = runner.invoke(
         app,
