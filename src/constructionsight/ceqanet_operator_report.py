@@ -82,7 +82,9 @@ def _validate_operator_package(operator_package: dict[str, Any]) -> None:
     metadata = _metadata_object(operator_package, field_name="operator_package")
     schema_version = metadata.get("schema_version")
     if schema_version != "ceqanet_operator_package.v1":
-        raise ValueError("Operator package schema_version must be ceqanet_operator_package.v1.")
+        raise ValueError(
+            "Operator package schema_version must be ceqanet_operator_package.v1."
+        )
     _object_field(operator_package, "persistence_preview")
     _object_field(operator_package, "write_plan")
 
@@ -160,13 +162,16 @@ def _boundary_section(metadata: dict[str, object]) -> str:
 def _markdown_table(headers: tuple[str, ...], rows: list[tuple[object, ...]]) -> str:
     """Return a GitHub-flavored Markdown table."""
 
-    header_row = "| " + " | ".join(_escape_markdown_cell(header) for header in headers) + " |"
-    divider_row = "| " + " | ".join("---" for _ in headers) + " |"
-    body_rows = [
-        "| " + " | ".join(_escape_markdown_cell(value) for value in row) + " |"
-        for row in rows
-    ]
+    header_row = _markdown_row(headers)
+    divider_row = _markdown_row(tuple("---" for _ in headers))
+    body_rows = [_markdown_row(row) for row in rows]
     return "\n".join([header_row, divider_row, *body_rows])
+
+
+def _markdown_row(values: tuple[object, ...]) -> str:
+    """Return one Markdown table row."""
+
+    return "| " + " | ".join(_escape_markdown_cell(value) for value in values) + " |"
 
 
 def _metadata_object(payload: dict[str, Any], *, field_name: str) -> dict[str, object]:
