@@ -1,0 +1,137 @@
+"""CEQAnet operator bundle service.
+
+This module writes a deterministic review bundle from an existing CEQAnet
+operator package. It performs no network requests, database access, or
+persistence mutation.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+from constructionsight.ceqanet_operator_report import build_ceqanet_operator_report
+
+
+@dataclass(frozen=True)
+class CeqanetBundleArtifact:
+    """One file in a CEQAnet operator bundle."""
+
+    filename: str
+    artifact_type: str
+    byte_count: int
+    sha256: str
+
+    def to_dict(self) -> dict[str, object]:
+        """Return deterministic JSON-safe artifact metadata."""
+
+        return {
+            "filename": self.filename,
+            "artifact_type": self.artifact_type,
+            "byte_count": self.byte_count,
+            "sha256": self.sha256,
+        }
+
+
+@dataclass(frozen=True)
+class CeqanetOperatorBundle:
+    """Result from writing a CEQAnet operator bundle."""
+
+    output_dir: Path
+    artifacts: tuple[CeqanetBundleArtifact, ...]
+
+    @property
+    def artifact_count(self) -> int:
+        """Return written artifact count."""
+
+        return len(self.artifacts)
+
+    def to_dict(self) -> dict[str, object]:
+        """Return deterministic JSON-safe bundle manifest."""
+
+        return {
+            "metadata": {
+                "schema_version": "ceqanet_operator_bundle.v1",
+                "artifact_count": self.artifact_count,
+                "output_dir": str(self.output_dir),
+                "network_executed": False,
+                "database_opened": False,
+                "persistence_mutated": False,
+            },
+            "artifacts": [artifact.to_dict() for artifact in self.artifacts],
+        }
+
+
+def build_ceqanet_operator_bundle(
+    operator_package: dict[str, Any],
+    *,
+    output_dir: Path,
+) -> CeqanetOperatorBundle:
+    """Write a deterministic CEQAnet operator bundle to disk."""
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    report = build_ceqanet_operator_report(operator_package).to_dict()
+
+    artifacts: list[CeqanetBundleArtifact] = []
+    artifacts.append(
+        _write_json_artifact(
+            output_dir / "operator-package.json",
+            operator_package,
+            artifact_type="operator_package_json",
+        )
+    )
+    artifacts.append(
+        _write_json_artifact(
+            output_dir / "operator-report.json",
+            report,
+            artifact_type="operator_report_json",
+        )
+    )
+    artifacts.append(
+        _write_text_artifact(
+            output_dir / "operator-report.md",
+            str(report["markdown"]),
+            artifact_type="operator_report_markdown",
+        )
+    )
+
+    bundle = CeqanetOperatorBundle(output_dir=output_dir, artifacts=tuple(artifacts))
+    manifest = bundle.to_dict()
+    manifest_artifact = _write_json_artifact(
+        output_dir / "manifest.json",
+        manifest,
+        artifact_type="bundle_manifest_json",
+    )
+
+    return CeqanetOperatorBundle(
+        output_dir=output_dir,
+        artifacts=(*bundle.artifacts, manifest_artifact),
+    )
+
+
+def _write_json_artifact(
+    path: Path,
+    payload: dict[str, object] | dict[str, Any],
+    *,
+    artifact_type: str,
+) -> CeqanetBundleArtifact:
+    """Write deterministic JSON and return artifact metadata."""
+
+    text = json.dumps(payload, indent=2, sort_keys=True, default=str) + "\n"
+    return _write_text_artifact(path, text, artifact_type=artifact_type)
+
+
+def _write_text_artifact(path: Path, text: str, *, artifact_type: str) -> CeqanetBundleArtifact:
+    """Write text and return artifact metadata."""
+
+    path.write_text(text, encoding="utf-8")
+    data = path.read_bytes()
+    return CeqanetBundleArtifact(
+        filename=path.name,
+        artifact_type=artifact_type,
+        byte_count=len(data),
+        sha256=hashlib.sha256(data).hexdigest(),
+    )
