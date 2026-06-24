@@ -11,6 +11,8 @@ import re
 from dataclasses import dataclass
 from typing import Any, cast
 
+from pydantic import HttpUrl
+
 from constructionsight.ceqa_models import CeqaRecord
 from constructionsight.domain_types import PartyRole
 from constructionsight.entity_models import Entity
@@ -136,7 +138,7 @@ def _provenance_for_record(record: dict[str, Any]) -> Provenance:
 
     return Provenance(
         source_name="CEQAnet",
-        source_url=detail_url or source_url,
+        source_url=_http_url_or_none(detail_url or source_url),
         adapter_family="ceqanet",
         raw_reference=_string_or_none(record.get("sch_number")),
         evidence_text=evidence_text,
@@ -189,6 +191,14 @@ def _lead_agency_entity_for_record(
         jurisdiction=_string_or_none(record.get("city")),
         provenance=[provenance],
     )
+
+
+def _http_url_or_none(value: str | None) -> HttpUrl | None:
+    """Return a validated HTTP URL for Pydantic domain models."""
+
+    if value is None:
+        return None
+    return HttpUrl(value)
 
 
 def _slug(value: str) -> str:
