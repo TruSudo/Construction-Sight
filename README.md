@@ -25,6 +25,16 @@ Initial adapter families:
 - Laserfiche / PDF repositories
 - Custom municipal reports
 
+## Universal Intake Doctrine
+
+ConstructionSight operates under exhaustive lawful intake and progressive understanding.
+
+Formats are finite. Layouts are variable. Meaning is contextual. Evidence must be preserved. Understanding must be progressive. Normalization must be universal.
+
+Every lawful input should first become preserved evidence and a source-neutral intake record. The intake layer detects the digital format family, extracts recognizable material facts, labels anything unknown or unmapped, and routes the record toward a source adapter, human review, adapter backlog, or lead/opportunity intake.
+
+See `docs/architecture/exhaustive_lawful_intake.md` for the intake contract.
+
 ## Phase 1 Status
 
-Repository foundation initialized.
+Repository foundation initialized. CEQAnet public-record intake now has a guarded operator lane and archive verification. The next product spine is universal intake: source-neutral evidence preservation, format-family detection, material-fact extraction, and routing into future lead/opportunity workflows.
