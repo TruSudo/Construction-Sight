@@ -97,8 +97,11 @@ _LABEL_ALIASES: dict[str, str] = {
     "project issues": "project_issues",
     "development type": "development_type",
     "local action": "local_action",
+    "posted": "posted_date",
     "posted date": "posted_date",
+    "received": "received_date",
     "received date": "received_date",
+    "review period": "review_period",
     "review period start": "review_period_start",
     "review period end": "review_period_end",
 }
@@ -370,7 +373,7 @@ def _extract_label_values(raw_text: str) -> dict[str, str]:
         canonical = _canonical_label(part)
         if canonical is not None and index + 1 < len(parts):
             value = _clean_field_value(parts[index + 1])
-            if value is not None:
+            if _is_valid_adjacent_label_value(value):
                 values.setdefault(canonical, value)
             continue
 
@@ -382,6 +385,18 @@ def _extract_label_values(raw_text: str) -> dict[str, str]:
         if canonical is not None and value is not None:
             values.setdefault(canonical, value)
     return values
+
+
+def _is_valid_adjacent_label_value(value: str | None) -> bool:
+    """Return false when adjacent text is another label/header, not a field value."""
+
+    if value is None:
+        return False
+    if _canonical_label(value) is not None:
+        return False
+    if _normalize_label(value) in _NAV_TEXTS:
+        return False
+    return True
 
 
 def _canonical_label(value: str) -> str | None:
