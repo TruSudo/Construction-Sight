@@ -69,6 +69,8 @@ def test_ceqanet_operator_bundle_cli_renders_summary(tmp_path: Path) -> None:
     assert result.exit_code == 0
     assert "CEQAnet Operator Bundle" in result.output
     assert "Bundle Artifacts" in result.output
+    assert (bundle_dir / "persistence-preview.json").exists()
+    assert (bundle_dir / "write-plan.json").exists()
     assert (bundle_dir / "operator-report.md").exists()
     assert (bundle_dir / "manifest.json").exists()
 
@@ -94,7 +96,7 @@ def test_ceqanet_operator_bundle_cli_emits_json(tmp_path: Path) -> None:
     payload = json.loads(result.output)
     assert payload["metadata"]["schema_version"] == "ceqanet_operator_bundle.v1"
     assert payload["metadata"]["input"]["operator_package_path"] == str(package_path)
-    assert payload["metadata"]["artifact_count"] == 4
+    assert payload["metadata"]["artifact_count"] == 6
     assert payload["metadata"]["database_opened"] is False
     assert payload["metadata"]["persistence_mutated"] is False
 
@@ -122,7 +124,7 @@ def test_ceqanet_operator_bundle_cli_writes_manifest_output(tmp_path: Path) -> N
     assert result.exit_code == 0
     assert "Wrote CEQAnet operator bundle manifest JSON" in result.output
     payload = json.loads(manifest_path.read_text(encoding="utf-8"))
-    assert payload["metadata"]["artifact_count"] == 4
+    assert payload["metadata"]["artifact_count"] == 6
 
 
 def test_ceqanet_operator_bundle_cli_rejects_output_without_json(tmp_path: Path) -> None:
