@@ -1,8 +1,9 @@
 import json
 from pathlib import Path
 
-from constructionsight.intake_cli import app
 from typer.testing import CliRunner
+
+from constructionsight.intake_cli import app
 
 runner = CliRunner()
 
