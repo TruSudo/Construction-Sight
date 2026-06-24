@@ -485,17 +485,13 @@ def normalize_fact_value(*, kind: MaterialFactKind, value: str) -> str:
 def _delimited_format_family(delimiter: str) -> DigitalFormatFamily:
     """Return delimited table format family."""
 
-    if delimiter == "\t":
-        return DigitalFormatFamily.TSV
-    return DigitalFormatFamily.CSV
+    return DigitalFormatFamily.TSV if delimiter == "\t" else DigitalFormatFamily.CSV
 
 
 def _delimited_media_type(delimiter: str) -> str:
     """Return delimited table media type."""
 
-    if delimiter == "\t":
-        return "text/tab-separated-values"
-    return "text/csv"
+    return "text/tab-separated-values" if delimiter == "\t" else "text/csv"
 
 
 def _detect_zip_family(content: bytes, *, filename: str) -> FormatDetection:
