@@ -13,7 +13,6 @@ from datetime import date
 
 from constructionsight.adapters.ceqanet import CEQANET_SEARCH_URL
 
-
 CEQANET_ADVANCED_SEARCH_ACTION_URL = CEQANET_SEARCH_URL
 
 CEQANET_FIELD_START_RANGE = "StartRange"
