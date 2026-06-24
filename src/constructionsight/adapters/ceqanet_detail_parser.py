@@ -373,7 +373,7 @@ def _extract_label_values(raw_text: str) -> dict[str, str]:
         canonical = _canonical_label(part)
         if canonical is not None and index + 1 < len(parts):
             value = _clean_field_value(parts[index + 1])
-            if _is_valid_adjacent_label_value(value):
+            if value is not None and _is_valid_adjacent_label_value(value):
                 values.setdefault(canonical, value)
             continue
 
@@ -387,11 +387,9 @@ def _extract_label_values(raw_text: str) -> dict[str, str]:
     return values
 
 
-def _is_valid_adjacent_label_value(value: str | None) -> bool:
+def _is_valid_adjacent_label_value(value: str) -> bool:
     """Return false when adjacent text is another label/header, not a field value."""
 
-    if value is None:
-        return False
     if _canonical_label(value) is not None:
         return False
     return _normalize_label(value) not in _NAV_TEXTS
