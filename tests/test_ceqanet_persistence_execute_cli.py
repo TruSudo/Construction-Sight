@@ -18,7 +18,10 @@ def _plan(path: Path) -> None:
                 "target_collection": "sites",
                 "target_key": "site:ceqanet:2017101033",
                 "source_index": 0,
-                "payload": {"site_key": "site:ceqanet:2017101033", "county": "San Bernardino"},
+                "payload": {
+                    "site_key": "site:ceqanet:2017101033",
+                    "county": "San Bernardino",
+                },
             },
             {
                 "operation_id": "entities:entity:ceqanet:lead-agency:san-bernardino-county",
