@@ -113,7 +113,10 @@ def inspect_input(
     ] = False,
     output_path: Annotated[
         Path | None,
-        typer.Option("--output", help="Write intake JSON to a file. Requires --json-output."),
+        typer.Option(
+            "--output",
+            help="Write intake JSON to a file. Requires --json-output.",
+        ),
     ] = None,
 ) -> None:
     """Inspect a lawful input file and classify its intake route."""
