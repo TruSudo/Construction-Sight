@@ -86,7 +86,10 @@ def test_parse_ceqanet_detail_page_rejects_adjacent_header_labels_as_values() ->
     assert report.sch_number == "2017101033"
     assert report.document_type is None
     assert report.lead_agency is None
-    assert report.project_description == "Note: Review Period Per Lead The Project is a comprehensive plan."
+    assert (
+        report.project_description
+        == "Note: Review Period Per Lead The Project is a comprehensive plan."
+    )
     assert "document_type" not in report.label_values
     assert "lead_agency" not in report.label_values
 
