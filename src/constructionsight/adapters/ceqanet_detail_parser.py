@@ -394,9 +394,7 @@ def _is_valid_adjacent_label_value(value: str | None) -> bool:
         return False
     if _canonical_label(value) is not None:
         return False
-    if _normalize_label(value) in _NAV_TEXTS:
-        return False
-    return True
+    return _normalize_label(value) not in _NAV_TEXTS
 
 
 def _canonical_label(value: str) -> str | None:
