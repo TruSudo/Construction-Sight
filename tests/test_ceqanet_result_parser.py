@@ -21,6 +21,7 @@ def test_parse_ceqanet_result_page_extracts_card_record() -> None:
     )
 
     assert report.record_count == 1
+    assert report.detail_enrichment_required_count == 0
     record = report.records[0]
     assert record.title == "Fontana Warehouse Project"
     assert record.detail_url == "https://ceqanet.lci.ca.gov/Project/2026061234"
@@ -29,6 +30,8 @@ def test_parse_ceqanet_result_page_extracts_card_record() -> None:
     assert record.document_type == "NOP - Notice of Preparation of a Draft EIR"
     assert record.county == "San Bernardino"
     assert record.city == "Fontana"
+    assert record.title_source == "human_link_text"
+    assert record.requires_detail_enrichment is False
 
 
 def test_parse_ceqanet_result_page_extracts_table_row_record() -> None:
@@ -54,6 +57,8 @@ def test_parse_ceqanet_result_page_extracts_table_row_record() -> None:
     assert record.sch_number == "2024010001"
     assert record.lead_agency == "Riverside County Transportation Commission"
     assert record.county == "Riverside"
+    assert record.title_source == "human_link_text"
+    assert record.requires_detail_enrichment is False
 
 
 def test_parse_ceqanet_result_page_prefers_project_title_label_over_numeric_link() -> None:
@@ -69,8 +74,11 @@ def test_parse_ceqanet_result_page_prefers_project_title_label_over_numeric_link
     report = parse_ceqanet_result_page(html)
 
     assert report.record_count == 1
+    assert report.detail_enrichment_required_count == 0
     assert report.records[0].title == "Warehouse Distribution Center"
     assert report.records[0].sch_number == "2026060698"
+    assert report.records[0].title_source == "human_label"
+    assert report.records[0].requires_detail_enrichment is False
 
 
 def test_parse_ceqanet_result_page_uses_human_link_title_with_numeric_detail_link() -> None:
@@ -90,6 +98,28 @@ def test_parse_ceqanet_result_page_uses_human_link_title_with_numeric_detail_lin
     assert record.title == "Warehouse Distribution Center"
     assert record.sch_number == "2026060698"
     assert record.detail_url == "https://ceqanet.lci.ca.gov/Project/2026060698"
+    assert record.title_source == "human_link_text"
+    assert record.requires_detail_enrichment is False
+
+
+def test_parse_ceqanet_result_page_marks_sch_only_titles_for_detail_enrichment() -> None:
+    html = """
+    <div class="search-result">
+      <a href="/Project/2026060698">2026060698</a>
+      <span>SCH Number</span><span>2026060698</span>
+      <span>County</span><span>San Bernardino</span>
+    </div>
+    """
+
+    report = parse_ceqanet_result_page(html)
+
+    assert report.record_count == 1
+    assert report.detail_enrichment_required_count == 1
+    record = report.records[0]
+    assert record.title == "2026060698"
+    assert record.sch_number == "2026060698"
+    assert record.title_source == "sch_number"
+    assert record.requires_detail_enrichment is True
 
 
 def test_parse_ceqanet_result_page_does_not_emit_fallback_links_when_blocks_parse() -> None:
@@ -156,4 +186,7 @@ def test_parse_ceqanet_result_page_serializes_report() -> None:
 
     assert payload["metadata"]["schema_version"] == "ceqanet_result_page_parse.v1"
     assert payload["metadata"]["record_count"] == 1
+    assert payload["metadata"]["detail_enrichment_required_count"] == 0
     assert payload["records"][0]["title"] == "Redlands Utility Project"
+    assert payload["records"][0]["title_source"] == "human_link_text"
+    assert payload["records"][0]["requires_detail_enrichment"] is False
