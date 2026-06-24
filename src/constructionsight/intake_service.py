@@ -321,7 +321,9 @@ def extract_material_facts(
         if key in seen:
             continue
         seen.add(key)
-        fact_id = f"fact:{evidence_id.removeprefix('evidence:')}:{len(facts) + 1:03d}"
+        fact_number = len(facts) + 1
+        evidence_suffix = evidence_id.removeprefix("evidence:")
+        fact_id = f"fact:{evidence_suffix}:{fact_number:03d}"
         facts.append(
             ExtractedMaterialFact(
                 fact_id=fact_id,
@@ -357,7 +359,9 @@ def build_unmapped_fragments(
         DigitalFormatFamily.BINARY,
         DigitalFormatFamily.UNKNOWN,
     }:
-        reason = f"{detection.format_family.value} requires a dedicated adapter or extractor"
+        reason = (
+            f"{detection.format_family.value} requires a dedicated adapter or extractor"
+        )
         return [
             UnmappedEvidenceFragment(
                 fragment_id=f"fragment:{evidence_id.removeprefix('evidence:')}:001",
@@ -623,10 +627,14 @@ def _looks_like_email(text: str) -> bool:
     """Return whether text resembles an RFC822 email message."""
 
     first_lines = text.splitlines()[:8]
-    header_names = {line.split(":", 1)[0].lower() for line in first_lines if ":" in line}
-    return {"from", "to", "subject"}.issubset(header_names) or {"from", "subject"}.issubset(
-        header_names
-    )
+    header_names = {
+        line.split(":", 1)[0].lower()
+        for line in first_lines
+        if ":" in line
+    }
+    required_headers = {"from", "to", "subject"}
+    minimal_headers = {"from", "subject"}
+    return required_headers.issubset(header_names) or minimal_headers.issubset(header_names)
 
 
 def _looks_like_jsonl(text: str) -> bool:
