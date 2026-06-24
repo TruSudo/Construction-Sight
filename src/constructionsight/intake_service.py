@@ -15,7 +15,6 @@ import zipfile
 from dataclasses import dataclass
 from io import BytesIO, StringIO
 from pathlib import Path
-from typing import Any
 
 from constructionsight.intake_models import (
     DigitalFormatFamily,
@@ -35,15 +34,28 @@ _ADDRESS_RE = re.compile(
     r"(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Lane|Ln|Court|Ct|Way)\b",
     re.IGNORECASE,
 )
-_APN_RE = re.compile(r"\b(?:APN|Parcel(?:\s+No\.)?)[:#\s-]*([0-9]{3,4}[-\s][0-9]{2,4}[-\s][0-9]{2,4})\b", re.IGNORECASE)
-_SCH_RE = re.compile(r"\bSCH(?:\s*(?:No\.|Number|#))?[:#\s-]*(\d{10})\b", re.IGNORECASE)
+_APN_RE = re.compile(
+    r"\b(?:APN|Parcel(?:\s+No\.)?)[:#\s-]*"
+    r"([0-9]{3,4}[-\s][0-9]{2,4}[-\s][0-9]{2,4})\b",
+    re.IGNORECASE,
+)
+_SCH_RE = re.compile(
+    r"\bSCH(?:\s*(?:No\.|Number|#))?[:#\s-]*(\d{10})\b",
+    re.IGNORECASE,
+)
 _EMAIL_RE = re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.IGNORECASE)
 _URL_RE = re.compile(r"https?://[^\s\"'<>]+", re.IGNORECASE)
 _PHONE_RE = re.compile(r"(?:\+1[-.\s]?)?\(?\d{3}\)?[-.\s]\d{3}[-.\s]\d{4}")
-_MONEY_RE = re.compile(r"\$\s?\d{1,3}(?:,\d{3})+(?:\.\d{2})?|$\s?\d+(?:\.\d{2})?")
+_MONEY_RE = re.compile(r"\$\s?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{2})?")
 _DATE_RE = re.compile(r"\b\d{1,2}/\d{1,2}/\d{2,4}\b|\b\d{4}-\d{2}-\d{2}\b")
-_CSLB_RE = re.compile(r"\b(?:CSLB|License(?:\s+No\.)?)[:#\s-]*(\d{5,8})\b", re.IGNORECASE)
-_PERMIT_RE = re.compile(r"\b(?:Permit(?:\s+No\.)?|Permit #)[:#\s-]*([A-Z]{0,4}\d{4,}[-A-Z0-9]*)\b", re.IGNORECASE)
+_CSLB_RE = re.compile(
+    r"\b(?:CSLB|License(?:\s+No\.)?)[:#\s-]*(\d{5,8})\b",
+    re.IGNORECASE,
+)
+_PERMIT_RE = re.compile(
+    r"\b(?:Permit(?:\s+No\.)?|Permit #)[:#\s-]*([A-Z]{0,4}\d{4,}[-A-Z0-9]*)\b",
+    re.IGNORECASE,
+)
 _AGENCY_RE = re.compile(
     r"\b(?:City|County|Town|Department|Agency)\s+of\s+[A-Z][A-Za-z .'-]{2,60}\b"
 )
@@ -318,9 +330,9 @@ def build_unmapped_fragments(
             UnmappedEvidenceFragment(
                 fragment_id=f"fragment:{evidence_id.removeprefix('evidence:')}:001",
                 evidence_id=evidence_id,
-                reason=f"{detection.format_family} requires a dedicated adapter or extractor",
+                reason=f"{detection.format_family.value} requires a dedicated adapter or extractor",
                 preview=_binary_preview(content),
-                suggested_adapter_family=str(detection.format_family),
+                suggested_adapter_family=detection.format_family.value,
             )
         ]
 
@@ -398,7 +410,7 @@ def adapter_candidate(*, detection: FormatDetection, source_family: str | None) 
         DigitalFormatFamily.JSON,
         DigitalFormatFamily.EMAIL,
     }:
-        return f"{detection.format_family}_adapter_candidate"
+        return f"{detection.format_family.value}_adapter_candidate"
     return None
 
 
@@ -682,7 +694,7 @@ def _record_hints(facts: list[ExtractedMaterialFact]) -> dict[str, str]:
 
     hints: dict[str, str] = {}
     for fact in facts:
-        key = str(fact.fact_kind)
+        key = fact.fact_kind.value
         if key not in hints:
             hints[key] = fact.normalized_value or fact.value
     return hints
