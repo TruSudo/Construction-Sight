@@ -31,7 +31,10 @@ def _write_export_dir(export_dir: Path) -> None:
             }
         )
     manifest = {
-        "metadata": {"schema_version": "ceqanet_operator_bundle.v1", "artifact_count": 5},
+        "metadata": {
+            "schema_version": "ceqanet_operator_bundle.v1",
+            "artifact_count": 5,
+        },
         "artifacts": artifacts,
     }
     (export_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
@@ -50,7 +53,9 @@ def test_build_ceqanet_operator_archive_creates_deterministic_zip(tmp_path: Path
     assert archive["metadata"]["schema_version"] == "ceqanet_operator_archive.v1"
     assert archive["metadata"]["file_count"] == 6
     assert archive["metadata"]["byte_count"] == archive_path.stat().st_size
-    assert archive["metadata"]["sha256"] == hashlib.sha256(archive_path.read_bytes()).hexdigest()
+    assert archive["metadata"]["sha256"] == hashlib.sha256(
+        archive_path.read_bytes()
+    ).hexdigest()
     assert archive["metadata"]["verification_passed"] is True
     assert archive["metadata"]["network_executed"] is False
     assert archive["metadata"]["database_opened"] is False
