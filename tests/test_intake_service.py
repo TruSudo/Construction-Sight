@@ -60,9 +60,10 @@ def test_detect_format_family_identifies_structured_text_families() -> None:
     assert detect_format_family(b"<?xml version='1.0'?><record/>").format_family == (
         DigitalFormatFamily.XML
     )
-    assert detect_format_family(b"From: a@example.com\nTo: b@example.com\nSubject: Test\n").format_family == (
-        DigitalFormatFamily.EMAIL
+    email_detection = detect_format_family(
+        b"From: a@example.com\nTo: b@example.com\nSubject: Test\n"
     )
+    assert email_detection.format_family == DigitalFormatFamily.EMAIL
 
 
 def test_inspect_lawful_input_extracts_material_facts_and_routes_to_opportunity() -> None:
