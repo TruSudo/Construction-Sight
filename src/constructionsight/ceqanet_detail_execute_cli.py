@@ -42,11 +42,11 @@ def _validate_ceqanet_url(url: str) -> str:
 
     parsed = urlparse(url)
     if parsed.scheme not in {"http", "https"}:
-        raise typer.BadParameter("--url must be an HTTP(S) URL.")
+        raise ValueError("--url must be an HTTP(S) URL.")
     if parsed.netloc.lower() != "ceqanet.lci.ca.gov":
-        raise typer.BadParameter("--url must target ceqanet.lci.ca.gov.")
+        raise ValueError("--url must target ceqanet.lci.ca.gov.")
     if not parsed.path or parsed.path == "/":
-        raise typer.BadParameter("--url must identify a CEQAnet detail/project path.")
+        raise ValueError("--url must identify a CEQAnet detail/project path.")
     return url
 
 
@@ -248,7 +248,12 @@ def execute_ceqanet_detail(
         typer.echo("Refusing live execution without --execute-live.")
         raise typer.Exit(code=1)
 
-    resolved_url = _validate_ceqanet_url(detail_url)
+    try:
+        resolved_url = _validate_ceqanet_url(detail_url)
+    except ValueError as exc:
+        typer.echo(str(exc))
+        raise typer.Exit(code=1) from exc
+
     access_result = evaluate_access(
         SourceAccessProfile(
             public_url=public_url,
