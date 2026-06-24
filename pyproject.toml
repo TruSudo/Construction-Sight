@@ -43,6 +43,7 @@ constructionsight-ceqanet-persistence-preview = "constructionsight.ceqanet_persi
 constructionsight-ceqanet-write-plan = "constructionsight.ceqanet_write_plan_cli:app"
 constructionsight-ceqanet-persistence-apply = "constructionsight.ceqanet_persistence_execute_cli:app"
 constructionsight-ceqanet-operator-package = "constructionsight.ceqanet_operator_package_cli:app"
+constructionsight-ceqanet-operator-report = "constructionsight.ceqanet_operator_report_cli:app"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/constructionsight"]
