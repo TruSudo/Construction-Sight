@@ -149,7 +149,10 @@ def test_ceqanet_operator_export_cli_rejects_output_without_json(tmp_path: Path)
 
 def test_ceqanet_operator_export_cli_rejects_bad_chain_report(tmp_path: Path) -> None:
     chain_path = tmp_path / "bad-chain-report.json"
-    chain_path.write_text(json.dumps({"metadata": {"schema_version": "wrong.v1"}}), encoding="utf-8")
+    chain_path.write_text(
+        json.dumps({"metadata": {"schema_version": "wrong.v1"}}),
+        encoding="utf-8",
+    )
 
     result = runner.invoke(
         app,
