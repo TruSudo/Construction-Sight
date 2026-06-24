@@ -73,9 +73,9 @@ def build_ceqanet_operator_bundle(
     """Write a deterministic CEQAnet operator bundle to disk."""
 
     output_dir.mkdir(parents=True, exist_ok=True)
+    report = build_ceqanet_operator_report(operator_package).to_dict()
     persistence_preview = _object_field(operator_package, "persistence_preview")
     write_plan = _object_field(operator_package, "write_plan")
-    report = build_ceqanet_operator_report(operator_package).to_dict()
 
     artifacts: list[CeqanetBundleArtifact] = []
     artifacts.append(
