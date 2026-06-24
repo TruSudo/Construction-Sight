@@ -1,7 +1,6 @@
 import hashlib
 
 import pytest
-
 from constructionsight.intake_models import (
     DigitalFormatFamily,
     ExtractedMaterialFact,
