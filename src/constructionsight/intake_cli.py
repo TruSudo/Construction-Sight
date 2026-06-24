@@ -7,9 +7,10 @@ from pathlib import Path
 from typing import Annotated, cast
 
 import typer
-from constructionsight.intake_service import inspect_lawful_file
 from rich.console import Console
 from rich.table import Table
+
+from constructionsight.intake_service import inspect_lawful_file
 
 app = typer.Typer(help="Inspect lawful digital inputs through universal intake.")
 console = Console(width=240, color_system=None)
