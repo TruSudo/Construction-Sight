@@ -202,14 +202,12 @@ def enrich_ceqanet_result_records(
     """Combine parsed result records with parsed detail records by SCH number."""
 
     details_by_sch = _details_by_sch(detail_parses)
-    enriched_records = tuple(
-        enrich_ceqanet_result_record(
-            result_record,
-            details_by_sch.get(_string_or_none(result_record.get("sch_number"))),
-        )
-        for result_record in result_records
-    )
-    return CeqanetDetailEnrichmentReport(records=enriched_records)
+    enriched_records: list[CeqanetEnrichedRecord] = []
+    for result_record in result_records:
+        result_sch = _string_or_none(result_record.get("sch_number"))
+        detail_parse = None if result_sch is None else details_by_sch.get(result_sch)
+        enriched_records.append(enrich_ceqanet_result_record(result_record, detail_parse))
+    return CeqanetDetailEnrichmentReport(records=tuple(enriched_records))
 
 
 def _details_by_sch(detail_parses: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
