@@ -10,7 +10,10 @@ runner = CliRunner()
 
 def test_intake_cli_renders_summary(tmp_path: Path) -> None:
     input_path = tmp_path / "record.txt"
-    input_path.write_text("City of Hesperia APN: 123-456-78 at 123 Main Street", encoding="utf-8")
+    input_path.write_text(
+        "City of Hesperia APN: 123-456-78 at 123 Main Street",
+        encoding="utf-8",
+    )
 
     result = runner.invoke(
         app,
@@ -30,7 +33,10 @@ def test_intake_cli_renders_summary(tmp_path: Path) -> None:
 
 def test_intake_cli_emits_json(tmp_path: Path) -> None:
     input_path = tmp_path / "record.json"
-    input_path.write_text('{"apn": "123-456-78", "address": "123 Main Street"}', encoding="utf-8")
+    input_path.write_text(
+        '{"apn": "123-456-78", "address": "123 Main Street"}',
+        encoding="utf-8",
+    )
 
     result = runner.invoke(
         app,
