@@ -46,6 +46,15 @@ def _load_json_object(input_path: Path) -> dict[str, Any]:
     return cast(dict[str, Any], payload)
 
 
+def _build_preview_payload(chain_report: dict[str, Any]) -> dict[str, object]:
+    """Build preview payload and convert validation errors to CLI errors."""
+
+    try:
+        return build_ceqanet_persistence_preview(chain_report).to_dict()
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+
 def _write_json_file(output_path: Path, payload: dict[str, object]) -> None:
     """Write deterministic UTF-8 JSON output."""
 
@@ -131,7 +140,7 @@ def preview_ceqanet_persistence(
 
     _reject_output_without_json(output_path, json_output)
     chain_report = _load_json_object(chain_report_path)
-    payload = build_ceqanet_persistence_preview(chain_report).to_dict()
+    payload = _build_preview_payload(chain_report)
     metadata = cast(dict[str, object], payload["metadata"])
     metadata["input"] = {"chain_report_path": str(chain_report_path)}
 
