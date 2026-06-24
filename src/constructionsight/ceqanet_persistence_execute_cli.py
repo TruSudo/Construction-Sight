@@ -58,7 +58,9 @@ def _database_url(database_url: str | None, database_path: Path | None) -> str:
     if database_path is not None:
         database_path.parent.mkdir(parents=True, exist_ok=True)
         return database_url_from_path(database_path)
-    raise typer.BadParameter("A target database must be supplied with --database-url or --database-path.")
+    raise typer.BadParameter(
+        "A target database must be supplied with --database-url or --database-path."
+    )
 
 
 def _execute_payload(write_plan_payload: dict[str, Any], *, database_url: str) -> dict[str, object]:
@@ -148,7 +150,10 @@ def execute_persistence_plan(
     ] = None,
     execute_write: Annotated[
         bool,
-        typer.Option("--execute-write", help="Required explicit consent for persistence mutation."),
+        typer.Option(
+            "--execute-write",
+            help="Required explicit consent for persistence mutation.",
+        ),
     ] = False,
     json_output: Annotated[
         bool,
