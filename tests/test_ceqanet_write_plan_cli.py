@@ -132,7 +132,10 @@ def test_ceqanet_write_plan_cli_rejects_output_without_json(tmp_path: Path) -> N
 
 def test_ceqanet_write_plan_cli_rejects_bad_preview(tmp_path: Path) -> None:
     preview_path = tmp_path / "bad-preview.json"
-    preview_path.write_text(json.dumps({"metadata": {"schema_version": "wrong.v1"}}), encoding="utf-8")
+    preview_path.write_text(
+        json.dumps({"metadata": {"schema_version": "wrong.v1"}}),
+        encoding="utf-8",
+    )
 
     result = runner.invoke(
         app,
