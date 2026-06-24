@@ -57,7 +57,10 @@ def test_ceqanet_result_parse_cli_emits_execution_snapshot_json(tmp_path: Path) 
     assert payload["metadata"]["record_count"] == 1
     assert payload["metadata"]["input"]["input_format"] == "execution-json"
     assert payload["metadata"]["input"]["snapshot"]["status_code"] == 200
+    assert payload["metadata"]["detail_enrichment_required_count"] == 0
     assert payload["records"][0]["title"] == "Fontana Warehouse Project"
+    assert payload["records"][0]["title_source"] == "human_link_text"
+    assert payload["records"][0]["requires_detail_enrichment"] is False
 
 
 def test_ceqanet_result_parse_cli_writes_json_output(tmp_path: Path) -> None:
@@ -93,7 +96,11 @@ def test_ceqanet_result_parse_cli_renders_summary_without_json(tmp_path: Path) -
 
     assert result.exit_code == 0
     assert "CEQAnet Result Page Parse" in result.output
+    assert "Detail enrichment required" in result.output
+    assert "Title Source" in result.output
+    assert "Needs Detail" in result.output
     assert "Fontana Warehouse Project" in result.output
+    assert "human_link_text" in result.output
 
 
 def test_ceqanet_result_parse_cli_rejects_output_without_json(tmp_path: Path) -> None:

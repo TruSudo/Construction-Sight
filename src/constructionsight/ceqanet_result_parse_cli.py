@@ -163,6 +163,10 @@ def _render_summary(payload: dict[str, object]) -> None:
     summary.add_row("Schema", str(metadata["schema_version"]))
     summary.add_row("Input format", str(input_metadata["input_format"]))
     summary.add_row("Records", str(metadata["record_count"]))
+    summary.add_row(
+        "Detail enrichment required",
+        str(metadata["detail_enrichment_required_count"]),
+    )
     summary.add_row("Candidate blocks", str(metadata["candidate_block_count"]))
     summary.add_row("Candidate links", str(metadata["candidate_link_count"]))
     console.print(summary)
@@ -171,6 +175,8 @@ def _render_summary(payload: dict[str, object]) -> None:
     if records:
         table = Table(title="Parsed Records")
         table.add_column("Title")
+        table.add_column("Title Source")
+        table.add_column("Needs Detail")
         table.add_column("SCH")
         table.add_column("Lead Agency")
         table.add_column("County")
@@ -178,6 +184,8 @@ def _render_summary(payload: dict[str, object]) -> None:
         for record in records:
             table.add_row(
                 str(record.get("title") or ""),
+                str(record.get("title_source") or ""),
+                str(record.get("requires_detail_enrichment") or False),
                 str(record.get("sch_number") or ""),
                 str(record.get("lead_agency") or ""),
                 str(record.get("county") or ""),
