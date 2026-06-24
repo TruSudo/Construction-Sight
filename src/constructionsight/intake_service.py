@@ -31,7 +31,8 @@ from constructionsight.intake_models import (
 
 _ADDRESS_RE = re.compile(
     r"\b\d{1,6}\s+[A-Za-z0-9][A-Za-z0-9 .'-]{2,80}\s+"
-    r"(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Lane|Ln|Court|Ct|Way)\b",
+    r"(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Lane|Ln|Court|Ct|"
+    r"Way)\b",
     re.IGNORECASE,
 )
 _APN_RE = re.compile(
@@ -43,21 +44,30 @@ _SCH_RE = re.compile(
     r"\bSCH(?:\s*(?:No\.|Number|#))?[:#\s-]*(\d{10})\b",
     re.IGNORECASE,
 )
-_EMAIL_RE = re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.IGNORECASE)
+_EMAIL_RE = re.compile(
+    r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b",
+    re.IGNORECASE,
+)
 _URL_RE = re.compile(r"https?://[^\s\"'<>]+", re.IGNORECASE)
-_PHONE_RE = re.compile(r"(?:\+1[-.\s]?)?\(?\d{3}\)?[-.\s]\d{3}[-.\s]\d{4}")
+_PHONE_RE = re.compile(
+    r"(?:\+1[-.\s]?)?\(?\d{3}\)?[-.\s]\d{3}[-.\s]\d{4}"
+)
 _MONEY_RE = re.compile(r"\$\s?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{2})?")
-_DATE_RE = re.compile(r"\b\d{1,2}/\d{1,2}/\d{2,4}\b|\b\d{4}-\d{2}-\d{2}\b")
+_DATE_RE = re.compile(
+    r"\b\d{1,2}/\d{1,2}/\d{2,4}\b|\b\d{4}-\d{2}-\d{2}\b"
+)
 _CSLB_RE = re.compile(
     r"\b(?:CSLB|License(?:\s+No\.)?)[:#\s-]*(\d{5,8})\b",
     re.IGNORECASE,
 )
 _PERMIT_RE = re.compile(
-    r"\b(?:Permit(?:\s+No\.)?|Permit #)[:#\s-]*([A-Z]{0,4}\d{4,}[-A-Z0-9]*)\b",
+    r"\b(?:Permit(?:\s+No\.)?|Permit #)[:#\s-]*"
+    r"([A-Z]{0,4}\d{4,}[-A-Z0-9]*)\b",
     re.IGNORECASE,
 )
 _AGENCY_RE = re.compile(
-    r"\b(?:City|County|Town|Department|Agency)\s+of\s+[A-Z][A-Za-z .'-]{2,60}\b"
+    r"\b(?:City|County|Town|Department|Agency)\s+of\s+"
+    r"[A-Z][A-Za-z .'-]{2,60}\b"
 )
 _CONSTRUCTION_KEYWORDS = (
     "construction",
@@ -138,7 +148,10 @@ def inspect_lawful_input(payload: IntakeInspectionInput) -> UniversalIntakeRecor
         unmapped_fragments=unmapped_fragments,
         source_hints=_source_hints(payload),
         record_hints=_record_hints(extracted_facts),
-        adapter_candidate=adapter_candidate(detection=detection, source_family=payload.source_family),
+        adapter_candidate=adapter_candidate(
+            detection=detection,
+            source_family=payload.source_family,
+        ),
         next_action=next_action_for(status=status, routing=routing),
     )
 
@@ -164,7 +177,11 @@ def inspect_lawful_file(
     )
 
 
-def detect_format_family(content: bytes, *, original_filename: str | None = None) -> FormatDetection:
+def detect_format_family(
+    content: bytes,
+    *,
+    original_filename: str | None = None,
+) -> FormatDetection:
     """Detect a finite high-level digital format family from bytes and filename hints."""
 
     filename = (original_filename or "").lower()
@@ -197,7 +214,9 @@ def detect_format_family(content: bytes, *, original_filename: str | None = None
             format_family=DigitalFormatFamily.BINARY,
             media_type="application/octet-stream",
             matched_signals=["binary:undecodable"],
-            limitations=["content is not UTF-8 text and no supported binary signature matched"],
+            limitations=[
+                "content is not UTF-8 text and no supported binary signature matched"
+            ],
         )
 
     stripped = text.lstrip("\ufeff\n\r\t ")
@@ -244,8 +263,8 @@ def detect_format_family(content: bytes, *, original_filename: str | None = None
     if _looks_like_csv(text):
         delimiter = _sniff_delimiter(text)
         return FormatDetection(
-            format_family=DigitalFormatFamily.TSV if delimiter == "\t" else DigitalFormatFamily.CSV,
-            media_type="text/tab-separated-values" if delimiter == "\t" else "text/csv",
+            format_family=_delimited_format_family(delimiter),
+            media_type=_delimited_media_type(delimiter),
             encoding="utf-8",
             matched_signals=["text:delimited-table"],
         )
@@ -291,9 +310,10 @@ def extract_material_facts(
         if key in seen:
             continue
         seen.add(key)
+        fact_id = f"fact:{evidence_id.removeprefix('evidence:')}:{len(facts) + 1:03d}"
         facts.append(
             ExtractedMaterialFact(
-                fact_id=f"fact:{evidence_id.removeprefix('evidence:')}:{len(facts) + 1:03d}",
+                fact_id=fact_id,
                 fact_kind=kind,
                 value=value,
                 normalized_value=normalized,
@@ -326,11 +346,12 @@ def build_unmapped_fragments(
         DigitalFormatFamily.BINARY,
         DigitalFormatFamily.UNKNOWN,
     }:
+        reason = f"{detection.format_family.value} requires a dedicated adapter or extractor"
         return [
             UnmappedEvidenceFragment(
                 fragment_id=f"fragment:{evidence_id.removeprefix('evidence:')}:001",
                 evidence_id=evidence_id,
-                reason=f"{detection.format_family.value} requires a dedicated adapter or extractor",
+                reason=reason,
                 preview=_binary_preview(content),
                 suggested_adapter_family=detection.format_family.value,
             )
@@ -452,6 +473,22 @@ def normalize_fact_value(*, kind: MaterialFactKind, value: str) -> str:
     return normalized
 
 
+def _delimited_format_family(delimiter: str) -> DigitalFormatFamily:
+    """Return delimited table format family."""
+
+    if delimiter == "\t":
+        return DigitalFormatFamily.TSV
+    return DigitalFormatFamily.CSV
+
+
+def _delimited_media_type(delimiter: str) -> str:
+    """Return delimited table media type."""
+
+    if delimiter == "\t":
+        return "text/tab-separated-values"
+    return "text/csv"
+
+
 def _detect_zip_family(content: bytes, *, filename: str) -> FormatDetection:
     """Detect ZIP-derived Office families from archive members."""
 
@@ -469,21 +506,29 @@ def _detect_zip_family(content: bytes, *, filename: str) -> FormatDetection:
     if "word/document.xml" in names or filename.endswith(".docx"):
         return FormatDetection(
             format_family=DigitalFormatFamily.DOCX,
-            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            media_type=(
+                "application/vnd.openxmlformats-officedocument."
+                "wordprocessingml.document"
+            ),
             matched_signals=["magic:PK", "zip:word/document.xml"],
             limitations=["docx text extraction requires a dedicated parser"],
         )
     if "xl/workbook.xml" in names or filename.endswith(".xlsx"):
         return FormatDetection(
             format_family=DigitalFormatFamily.XLSX,
-            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            media_type=(
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            ),
             matched_signals=["magic:PK", "zip:xl/workbook.xml"],
             limitations=["xlsx table extraction requires a dedicated parser"],
         )
     if "ppt/presentation.xml" in names or filename.endswith(".pptx"):
         return FormatDetection(
             format_family=DigitalFormatFamily.PPTX,
-            media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            media_type=(
+                "application/vnd.openxmlformats-officedocument.presentationml."
+                "presentation"
+            ),
             matched_signals=["magic:PK", "zip:ppt/presentation.xml"],
             limitations=["pptx extraction requires a dedicated parser"],
         )
@@ -572,7 +617,9 @@ def _text_for_generic_extraction(
         text = _decode_text(content)
         if text is None:
             return None
-        return _strip_markup(text) if detection.format_family == DigitalFormatFamily.HTML else text
+        if detection.format_family == DigitalFormatFamily.HTML:
+            return _strip_markup(text)
+        return text
     return None
 
 
@@ -651,7 +698,9 @@ def _regex_values(
     return values
 
 
-def _keyword_values(text: str) -> list[tuple[MaterialFactKind, str, str | None]]:
+def _keyword_values(
+    text: str,
+) -> list[tuple[MaterialFactKind, str, str | None]]:
     """Extract construction-relevant keywords."""
 
     lowered = text.lower()
