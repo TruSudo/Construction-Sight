@@ -27,6 +27,7 @@ from constructionsight.adapters.ceqanet_search_contract import (
 
 CeqanetLeadAgencyType = Literal[
     "air_quality_agency",
+    "charter_school",
     "city",
     "county",
     "federal_agency",
@@ -139,6 +140,7 @@ class _CeqanetSearchVocabularyHtmlParser(HTMLParser):
         self._current_field: str | None = None
         self._in_option = False
         self._option_value: str | None = None
+        self._option_label: str | None = None
         self._option_selected = False
         self._option_text_parts: list[str] = []
 
@@ -154,8 +156,11 @@ class _CeqanetSearchVocabularyHtmlParser(HTMLParser):
             return
 
         if normalized_tag == "option" and self._current_field is not None:
+            if self._in_option:
+                self._finalize_option()
             self._in_option = True
             self._option_value = attrs_by_name.get("value")
+            self._option_label = attrs_by_name.get("label")
             self._option_selected = "selected" in attrs_by_name
             self._option_text_parts = []
 
@@ -174,6 +179,8 @@ class _CeqanetSearchVocabularyHtmlParser(HTMLParser):
             return
 
         if normalized_tag == "select":
+            if self._in_option:
+                self._finalize_option()
             self._current_field = None
 
     def _field_name_from_attrs(self, attrs_by_name: dict[str, str | None]) -> str | None:
@@ -196,6 +203,8 @@ class _CeqanetSearchVocabularyHtmlParser(HTMLParser):
             return
 
         label = _normalize_text(" ".join(self._option_text_parts))
+        if not label:
+            label = _normalize_text(self._option_label)
         raw_value = self._option_value if self._option_value is not None else label
         value = _normalize_text(raw_value)
         if label:
@@ -210,6 +219,7 @@ class _CeqanetSearchVocabularyHtmlParser(HTMLParser):
 
         self._in_option = False
         self._option_value = None
+        self._option_label = None
         self._option_selected = False
         self._option_text_parts = []
 
@@ -248,6 +258,9 @@ def classify_ceqanet_lead_agency(label: str) -> CeqanetLeadAgencyType:
     if lower_label.endswith(" county"):
         return "county"
 
+    if "charter school" in lower_label:
+        return "charter_school"
+
     if "school district" in lower_label or "union high school" in lower_label:
         return "school_district"
 
@@ -270,6 +283,9 @@ def classify_ceqanet_lead_agency(label: str) -> CeqanetLeadAgencyType:
         return "sanitation_wastewater"
 
     if "air pollution" in lower_label or "air quality" in lower_label:
+        return "air_quality_agency"
+
+    if "air resources board" in lower_label:
         return "air_quality_agency"
 
     if "united states" in lower_label:

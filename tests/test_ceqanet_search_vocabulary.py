@@ -3,6 +3,7 @@ from constructionsight.adapters.ceqanet_search_contract import (
     CEQANET_FIELD_COUNTY,
     CEQANET_FIELD_DOCUMENT_TYPE,
     CEQANET_FIELD_LEAD_AGENCY,
+    CEQANET_FIELD_REGION,
 )
 from constructionsight.adapters.ceqanet_search_vocabulary import (
     classify_ceqanet_lead_agency,
@@ -77,6 +78,22 @@ def test_parse_ceqanet_search_vocabulary_ignores_uncontracted_selects() -> None:
     )
     assert vocabulary.has_group("Unrelated") is False
 
+def test_parse_ceqanet_search_vocabulary_handles_unclosed_options_and_label_attrs() -> None:
+    html = """
+    <select name="Region">
+      <option value="1" label="Southern California">
+      <option>Inland Empire</option>
+    </select>
+    """
+
+    vocabulary = parse_ceqanet_search_vocabulary(html)
+
+    regions = vocabulary.group(CEQANET_FIELD_REGION)
+    assert [(option.label, option.value) for option in regions.options] == [
+        ("Southern California", "1"),
+        ("Inland Empire", "Inland Empire"),
+    ]
+
 
 def test_parse_ceqanet_search_vocabulary_returns_json_safe_dict() -> None:
     html = """
@@ -124,4 +141,5 @@ def test_classify_ceqanet_lead_agency_identifies_practical_source_types() -> Non
     )
     assert classify_ceqanet_lead_agency("Orange County Water District") == "special_district"
     assert classify_ceqanet_lead_agency("Sanitation District No. 2") == "sanitation_wastewater"
-    assert classify_ceqanet_lead_agency("Air Resources Board (ARB)") == "unknown"
+    assert classify_ceqanet_lead_agency("ACE Charter School") == "charter_school"
+    assert classify_ceqanet_lead_agency("Air Resources Board (ARB)") == "air_quality_agency"
