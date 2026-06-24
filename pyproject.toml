@@ -35,6 +35,7 @@ constructionsight-ceqanet-listing-plan = "constructionsight.ceqanet_listing_plan
 constructionsight-ceqanet-listing-execute = "constructionsight.ceqanet_listing_execute_cli:app"
 constructionsight-ceqanet-vocabulary = "constructionsight.ceqanet_vocabulary_export_cli:app"
 constructionsight-ceqanet-results = "constructionsight.ceqanet_result_parse_cli:app"
+constructionsight-ceqanet-detail = "constructionsight.ceqanet_detail_parse_cli:app"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/constructionsight"]
