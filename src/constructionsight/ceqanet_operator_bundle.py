@@ -11,7 +11,7 @@ import hashlib
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from constructionsight.ceqanet_operator_report import build_ceqanet_operator_report
 
@@ -74,6 +74,8 @@ def build_ceqanet_operator_bundle(
 
     output_dir.mkdir(parents=True, exist_ok=True)
     report = build_ceqanet_operator_report(operator_package).to_dict()
+    persistence_preview = _object_field(operator_package, "persistence_preview")
+    write_plan = _object_field(operator_package, "write_plan")
 
     artifacts: list[CeqanetBundleArtifact] = []
     artifacts.append(
@@ -81,6 +83,20 @@ def build_ceqanet_operator_bundle(
             output_dir / "operator-package.json",
             operator_package,
             artifact_type="operator_package_json",
+        )
+    )
+    artifacts.append(
+        _write_json_artifact(
+            output_dir / "persistence-preview.json",
+            persistence_preview,
+            artifact_type="persistence_preview_json",
+        )
+    )
+    artifacts.append(
+        _write_json_artifact(
+            output_dir / "write-plan.json",
+            write_plan,
+            artifact_type="write_plan_json",
         )
     )
     artifacts.append(
@@ -112,9 +128,18 @@ def build_ceqanet_operator_bundle(
     )
 
 
+def _object_field(payload: dict[str, Any], field_name: str) -> dict[str, Any]:
+    """Return an object field from an operator package."""
+
+    value = payload.get(field_name)
+    if not isinstance(value, dict):
+        raise ValueError(f"Operator package must contain {field_name} object.")
+    return cast(dict[str, Any], value)
+
+
 def _write_json_artifact(
     path: Path,
-    payload: dict[str, object] | dict[str, Any],
+    payload: dict[str, Any],
     *,
     artifact_type: str,
 ) -> CeqanetBundleArtifact:
