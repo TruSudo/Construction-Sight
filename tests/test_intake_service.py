@@ -80,7 +80,10 @@ def test_inspect_lawful_input_extracts_material_facts_and_routes_to_opportunity(
     assert record["format_detection"]["format_family"] == "plain_text"
     assert record["understanding_status"] == "partially_understood"
     assert record["routing"] == "opportunity_intake"
-    facts = {(fact["fact_kind"], fact["normalized_value"]) for fact in record["extracted_facts"]}
+    facts = {
+        (fact["fact_kind"], fact["normalized_value"])
+        for fact in record["extracted_facts"]
+    }
     assert ("address", "123 Main Street") in facts
     assert ("apn", "12345678") in facts
     assert ("sch_number", "2026061234") in facts
@@ -105,9 +108,10 @@ def test_inspect_lawful_input_routes_unknown_binary_for_review() -> None:
 
 
 def test_inspect_lawful_input_uses_source_family_hint_for_adapter_route() -> None:
+    source_json = json.dumps({"project": "Warehouse", "apn": "123-456-78"})
     record = inspect_lawful_input(
         IntakeInspectionInput(
-            content=json.dumps({"project": "Warehouse", "apn": "123-456-78"}).encode(),
+            content=source_json.encode(),
             source_name="CEQAnet snapshot",
             source_family="ceqanet",
         )
@@ -130,5 +134,14 @@ def test_inspect_lawful_file_preserves_snapshot_path(tmp_path: Path) -> None:
 
 
 def test_normalize_fact_value_is_deterministic() -> None:
-    assert normalize_fact_value(kind=MaterialFactKind.ADDRESS, value="  A  B  ") == "A B"
-    assert normalize_fact_value(kind=MaterialFactKind.APN, value="123-456-78") == "12345678"
+    normalized_address = normalize_fact_value(
+        kind=MaterialFactKind.ADDRESS,
+        value="  A  B  ",
+    )
+    normalized_apn = normalize_fact_value(
+        kind=MaterialFactKind.APN,
+        value="123-456-78",
+    )
+
+    assert normalized_address == "A B"
+    assert normalized_apn == "12345678"
