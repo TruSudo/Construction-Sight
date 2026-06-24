@@ -64,6 +64,33 @@ def test_parse_ceqanet_detail_page_extracts_colon_delimited_labels() -> None:
     assert report.document_type == "Mitigated Negative Declaration"
 
 
+def test_parse_ceqanet_detail_page_rejects_adjacent_header_labels_as_values() -> None:
+    html = """
+    <main>
+      <p>Document Type</p>
+      <p>Lead/Public Agency</p>
+      <p>Received</p>
+      <p>Project Title</p>
+      <p>San Bernardino Countywide Plan</p>
+      <p>SCH Number</p>
+      <p>2017101033</p>
+      <p>Document Description</p>
+      <p>Note: Review Period Per Lead The Project is a comprehensive plan.</p>
+    </main>
+    """
+
+    report = parse_ceqanet_detail_page(html)
+
+    assert report.title == "San Bernardino Countywide Plan"
+    assert report.title_source == "human_label"
+    assert report.sch_number == "2017101033"
+    assert report.document_type is None
+    assert report.lead_agency is None
+    assert report.project_description == "Note: Review Period Per Lead The Project is a comprehensive plan."
+    assert "document_type" not in report.label_values
+    assert "lead_agency" not in report.label_values
+
+
 def test_parse_ceqanet_detail_page_uses_heading_when_no_title_label_exists() -> None:
     html = """
     <html>
