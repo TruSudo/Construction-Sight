@@ -3,6 +3,11 @@
 This module parses stored CEQAnet result-page HTML into candidate project
 records. It is intentionally offline and conservative: it does not execute
 network requests, download documents, or mutate persistence.
+
+Some CEQAnet /Search result rows expose SCH-style identifiers as the visible
+link text instead of a human project title. The parser preserves those rows but
+marks the title source and enrichment requirement explicitly instead of treating
+an identifier as a verified human title.
 """
 
 from __future__ import annotations
@@ -10,9 +15,17 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from html.parser import HTMLParser
+from typing import Literal
 from urllib.parse import urljoin
 
 CEQANET_BASE_URL = "https://ceqanet.lci.ca.gov/"
+
+CeqanetResultTitleSource = Literal[
+    "human_label",
+    "human_link_text",
+    "sch_number",
+    "link_text",
+]
 
 _RESULT_BLOCK_TAGS = {"article", "li", "tr"}
 _RESULT_CLASS_HINTS = ("result", "record", "project", "card")
@@ -87,6 +100,12 @@ _SCH_PATTERN = re.compile(r"\b\d{7,}\b")
 
 
 @dataclass(frozen=True)
+class _TitleCandidate:
+    title: str
+    source: CeqanetResultTitleSource
+
+
+@dataclass(frozen=True)
 class CeqanetSearchResultRecord:
     """One parsed CEQAnet project/search-result record."""
 
@@ -99,8 +118,10 @@ class CeqanetSearchResultRecord:
     city: str | None = None
     source_url: str | None = None
     raw_text: str = ""
+    title_source: CeqanetResultTitleSource = "link_text"
+    requires_detail_enrichment: bool = False
 
-    def to_dict(self) -> dict[str, str | None]:
+    def to_dict(self) -> dict[str, str | bool | None]:
         """Return a JSON-safe representation of the parsed record."""
 
         return {
@@ -113,6 +134,8 @@ class CeqanetSearchResultRecord:
             "city": self.city,
             "source_url": self.source_url,
             "raw_text": self.raw_text,
+            "title_source": self.title_source,
+            "requires_detail_enrichment": self.requires_detail_enrichment,
         }
 
 
@@ -131,6 +154,12 @@ class CeqanetResultPageParse:
 
         return len(self.records)
 
+    @property
+    def detail_enrichment_required_count(self) -> int:
+        """Return count of records whose title needs detail-page enrichment."""
+
+        return sum(record.requires_detail_enrichment for record in self.records)
+
     def to_dict(self) -> dict[str, object]:
         """Return a JSON-safe representation of the parse report."""
 
@@ -141,6 +170,7 @@ class CeqanetResultPageParse:
                 "record_count": self.record_count,
                 "candidate_block_count": self.candidate_block_count,
                 "candidate_link_count": self.candidate_link_count,
+                "detail_enrichment_required_count": self.detail_enrichment_required_count,
             },
             "records": [record.to_dict() for record in self.records],
         }
@@ -370,16 +400,17 @@ def _record_from_block(
         return None
 
     raw_text = block.raw_text
-    title = _title_from_block(block, detail_link)
-    if not title:
+    title_candidate = _title_from_block(block, detail_link)
+    if not title_candidate.title:
         return None
 
     sch_number = _extract_labeled_value(raw_text, ("SCH Number", "SCH #", "SCH"))
     if sch_number is None:
         sch_number = _extract_sch_number(detail_link.text, detail_link.href, raw_text)
 
+    requires_detail_enrichment = title_candidate.source == "sch_number"
     return CeqanetSearchResultRecord(
-        title=title,
+        title=title_candidate.title,
         detail_url=urljoin(base_url, detail_link.href),
         sch_number=sch_number,
         document_type=_extract_labeled_value(raw_text, ("Document Type", "Type")),
@@ -388,6 +419,8 @@ def _record_from_block(
         city=_extract_labeled_value(raw_text, ("City",)),
         source_url=source_url,
         raw_text=raw_text,
+        title_source=title_candidate.source,
+        requires_detail_enrichment=requires_detail_enrichment,
     )
 
 
@@ -399,13 +432,15 @@ def _record_from_link(
 ) -> CeqanetSearchResultRecord:
     """Build a minimal record from a result-looking fallback anchor."""
 
-    title = _clean_title(link.text)
+    title_candidate = _title_from_link(link)
     return CeqanetSearchResultRecord(
-        title=title,
+        title=title_candidate.title,
         detail_url=urljoin(base_url, link.href),
         sch_number=_extract_sch_number(link.text, link.href),
         source_url=source_url,
-        raw_text=title,
+        raw_text=title_candidate.title,
+        title_source=title_candidate.source,
+        requires_detail_enrichment=title_candidate.source == "sch_number",
     )
 
 
@@ -427,18 +462,27 @@ def _best_detail_link(links: list[_ParsedLink]) -> _ParsedLink | None:
     return usable_links[0]
 
 
-def _title_from_block(block: _ParsedBlock, detail_link: _ParsedLink) -> str:
-    """Return the best human title available for one result block."""
+def _title_from_block(block: _ParsedBlock, detail_link: _ParsedLink) -> _TitleCandidate:
+    """Return the best available title candidate for one result block."""
 
     labeled_title = _extract_labeled_value(block.raw_text, _PROJECT_TITLE_LABELS)
     if labeled_title and not _is_sch_like(labeled_title):
-        return labeled_title
+        return _TitleCandidate(title=labeled_title, source="human_label")
 
     human_link_text = _best_human_link_text(block.links)
     if human_link_text:
-        return human_link_text
+        return _TitleCandidate(title=human_link_text, source="human_link_text")
 
-    return _clean_title(detail_link.text)
+    return _title_from_link(detail_link)
+
+
+def _title_from_link(link: _ParsedLink) -> _TitleCandidate:
+    """Return title candidate and source from one link."""
+
+    title = _clean_title(link.text)
+    if _is_sch_like(title):
+        return _TitleCandidate(title=title, source="sch_number")
+    return _TitleCandidate(title=title, source="link_text")
 
 
 def _best_human_link_text(links: list[_ParsedLink]) -> str | None:
