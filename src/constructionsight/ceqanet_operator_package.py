@@ -113,7 +113,11 @@ def _warnings_for_package(
     return warnings
 
 
-def _metadata_object(payload: dict[str, Any] | dict[str, object], *, field_name: str) -> dict[str, object]:
+def _metadata_object(
+    payload: dict[str, Any] | dict[str, object],
+    *,
+    field_name: str,
+) -> dict[str, object]:
     """Return the metadata object from a package component."""
 
     metadata = payload.get("metadata")
