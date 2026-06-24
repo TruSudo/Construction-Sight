@@ -29,6 +29,17 @@ from constructionsight.intake_models import (
     UnmappedEvidenceFragment,
 )
 
+_TEXT_EXTRACTABLE_FORMATS = {
+    DigitalFormatFamily.PLAIN_TEXT,
+    DigitalFormatFamily.HTML,
+    DigitalFormatFamily.XML,
+    DigitalFormatFamily.JSON,
+    DigitalFormatFamily.JSONL,
+    DigitalFormatFamily.CSV,
+    DigitalFormatFamily.TSV,
+    DigitalFormatFamily.EMAIL,
+}
+
 _ADDRESS_RE = re.compile(
     r"\b\d{1,6}\s+[A-Za-z0-9][A-Za-z0-9 .'-]{2,80}\s+"
     r"(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Lane|Ln|Court|Ct|"
@@ -380,18 +391,12 @@ def determine_understanding_status(
 
     if detection.format_family in {DigitalFormatFamily.BINARY, DigitalFormatFamily.UNKNOWN}:
         return IntakeUnderstandingStatus.PRESERVED_ONLY
-    if extracted_facts and not unmapped_fragments:
-        if detection.format_family in {
-            DigitalFormatFamily.JSON,
-            DigitalFormatFamily.CSV,
-            DigitalFormatFamily.TSV,
-            DigitalFormatFamily.HTML,
-            DigitalFormatFamily.XML,
-            DigitalFormatFamily.PLAIN_TEXT,
-            DigitalFormatFamily.EMAIL,
-            DigitalFormatFamily.JSONL,
-        }:
-            return IntakeUnderstandingStatus.PARTIALLY_UNDERSTOOD
+    if (
+        extracted_facts
+        and not unmapped_fragments
+        and detection.format_family in _TEXT_EXTRACTABLE_FORMATS
+    ):
+        return IntakeUnderstandingStatus.PARTIALLY_UNDERSTOOD
     if extracted_facts or unmapped_fragments:
         return IntakeUnderstandingStatus.PARTIALLY_UNDERSTOOD
     return IntakeUnderstandingStatus.FORMAT_DETECTED
@@ -604,16 +609,7 @@ def _text_for_generic_extraction(
 ) -> str | None:
     """Return text eligible for generic extraction."""
 
-    if detection.format_family in {
-        DigitalFormatFamily.PLAIN_TEXT,
-        DigitalFormatFamily.HTML,
-        DigitalFormatFamily.XML,
-        DigitalFormatFamily.JSON,
-        DigitalFormatFamily.JSONL,
-        DigitalFormatFamily.CSV,
-        DigitalFormatFamily.TSV,
-        DigitalFormatFamily.EMAIL,
-    }:
+    if detection.format_family in _TEXT_EXTRACTABLE_FORMATS:
         text = _decode_text(content)
         if text is None:
             return None
@@ -657,7 +653,8 @@ def _looks_like_xml(stripped_text: str) -> bool:
 
     if stripped_text.startswith("<?xml"):
         return True
-    return bool(re.match(r"<[A-Za-z_][\w:.-]*(\s|>|/>)", stripped_text))
+    xml_root_pattern = r"<[A-Za-z_][\w:.-]*(\s|>|/>)"
+    return bool(re.match(xml_root_pattern, stripped_text))
 
 
 def _looks_like_csv(text: str) -> bool:
