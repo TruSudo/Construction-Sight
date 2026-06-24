@@ -1,6 +1,7 @@
 import hashlib
 
 import pytest
+
 from constructionsight.intake_models import (
     DigitalFormatFamily,
     ExtractedMaterialFact,
@@ -18,7 +19,7 @@ from constructionsight.intake_models import (
 def test_intake_evidence_ref_requires_lower_hex_sha256() -> None:
     with pytest.raises(ValueError, match="sha256"):
         IntakeEvidenceRef(
-            evidence_id="evidence:bad",
+            evidence_id="evidence:invalid",
             source_name="Example",
             byte_count=1,
             sha256="A" * 64,
