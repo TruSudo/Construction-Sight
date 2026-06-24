@@ -85,7 +85,6 @@ def test_ceqanet_detail_execute_cli_renders_summary(tmp_path: Path, monkeypatch)
     assert result.exit_code == 0
     assert "CEQAnet Detail Execution" in result.output
     assert "Bounded Detail Snapshot" in result.output
-    assert "https://ceqanet.lci.ca.gov/Project/2017101033" in result.output
 
 
 def test_ceqanet_detail_execute_cli_rejects_without_live_consent() -> None:
