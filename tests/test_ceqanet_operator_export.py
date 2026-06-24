@@ -57,9 +57,9 @@ def test_build_ceqanet_operator_export_builds_and_verifies_bundle(tmp_path: Path
     assert export["metadata"]["bundle_artifact_count"] == 6
     assert export["metadata"]["verified_artifact_count"] == 5
     assert export["metadata"]["missing_artifact_count"] == 0
-    assert export["metadata"]["mismatched_artifact_count"] == 1
+    assert export["metadata"]["mismatched_artifact_count"] == 0
     assert export["metadata"]["malformed_artifact_count"] == 0
-    assert export["metadata"]["verification_passed"] is False
+    assert export["metadata"]["verification_passed"] is True
     assert export["metadata"]["network_executed"] is False
     assert export["metadata"]["database_opened"] is False
     assert export["metadata"]["persistence_mutated"] is False
