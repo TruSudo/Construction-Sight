@@ -235,9 +235,11 @@ def _record_from_result_only(
 
     field_sources: dict[str, FieldSource] = {}
     for field_name in _DETAIL_FIELD_NAMES:
-        field_sources[field_name] = (
-            "result_page" if _string_or_none(result_record.get(field_name)) is not None else "unavailable"
-        )
+        result_value = _string_or_none(result_record.get(field_name))
+        if result_value is not None:
+            field_sources[field_name] = "result_page"
+        else:
+            field_sources[field_name] = "unavailable"
 
     return CeqanetEnrichedRecord(
         title=_string_or_none(result_record.get("title")),
