@@ -140,7 +140,8 @@ class IntakeEvidenceRef(BaseModel):
     def require_lower_hex_sha256(cls, value: str) -> str:
         """Require deterministic lower-case SHA-256 strings."""
 
-        if value != value.lower() or any(character not in "0123456789abcdef" for character in value):
+        invalid_hex = any(character not in "0123456789abcdef" for character in value)
+        if value != value.lower() or invalid_hex:
             raise ValueError("sha256 must be lower-case hexadecimal")
         return value
 
@@ -209,7 +210,10 @@ class UniversalIntakeRecord(BaseModel):
     def require_status_to_match_payload(self) -> UniversalIntakeRecord:
         """Ensure understanding status honestly reflects extracted payload."""
 
-        if self.understanding_status == IntakeUnderstandingStatus.PRESERVED_ONLY and self.extracted_facts:
+        if (
+            self.understanding_status == IntakeUnderstandingStatus.PRESERVED_ONLY
+            and self.extracted_facts
+        ):
             raise ValueError("preserved-only intake cannot contain extracted facts")
         if self.routing == IntakeRouting.OPPORTUNITY_INTAKE and not self.extracted_facts:
             raise ValueError("opportunity intake requires extracted facts")
