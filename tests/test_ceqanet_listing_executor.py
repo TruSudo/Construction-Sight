@@ -65,13 +65,13 @@ def test_ceqanet_listing_executor_executes_bounded_get_requests_with_fake_client
             FakeResponse(
                 status_code=200,
                 text="<html>page one</html>",
-                url="https://ceqanet.lci.ca.gov/Search/Advanced?page=1",
+                url="https://ceqanet.lci.ca.gov/Search?County=San+Bernardino&page=1",
                 headers={"content-type": "text/html; charset=utf-8"},
             ),
             FakeResponse(
                 status_code=204,
                 text="",
-                url="https://ceqanet.lci.ca.gov/Search/Advanced?page=2",
+                url="https://ceqanet.lci.ca.gov/Search?County=San+Bernardino&page=2",
                 headers={},
             ),
         )
@@ -88,7 +88,7 @@ def test_ceqanet_listing_executor_executes_bounded_get_requests_with_fake_client
     assert all(value is True for value in client.follow_redirects_values)
     assert client.timeout_values == [7.5, 7.5]
     assert len(client.requested_urls) == 2
-    assert client.requested_urls[0].endswith("page=1&page_size=25&county=San+Bernardino")
+    assert client.requested_urls[0].endswith("County=San+Bernardino&page=1")
     assert report.snapshots[0].status_code == 200
     assert report.snapshots[0].content_type == "text/html; charset=utf-8"
     assert report.snapshots[0].body_text == "<html>page one</html>"
@@ -141,7 +141,7 @@ def test_ceqanet_listing_executor_truncates_large_response_bodies() -> None:
             FakeResponse(
                 status_code=200,
                 text="abcdef",
-                url="https://ceqanet.lci.ca.gov/Search/Advanced?page=1",
+                url="https://ceqanet.lci.ca.gov/Search?County=San+Bernardino",
                 headers={"content-type": "text/html"},
             ),
         )

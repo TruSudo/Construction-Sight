@@ -22,6 +22,7 @@ from constructionsight.models import PlatformFamily, SourceVerificationResult
 from constructionsight.provenance import Provenance
 
 CEQANET_ADVANCED_SEARCH_URL = "https://ceqanet.lci.ca.gov/Search/Advanced"
+CEQANET_SEARCH_URL = "https://ceqanet.lci.ca.gov/Search"
 
 
 def _validate_http_url(value: str) -> HttpUrl:

@@ -32,9 +32,8 @@ def test_ceqanet_listing_plan_cli_renders_allowed_plan_table() -> None:
     assert "Allowed" in result.output
     assert "True" in result.output
     assert "Planned GET Requests" in result.output
-    assert "county=San Bernardino" in result.output
-    assert "document_type=EIR" in result.output
-    assert "high_signal_only=true" in result.output
+    assert "County=San Bernardino" in result.output
+    assert "DocumentType=EIR - Draft EIR" in result.output
 
 
 def test_ceqanet_listing_plan_cli_emits_json_allowed_plan() -> None:
@@ -103,7 +102,10 @@ def test_ceqanet_listing_plan_cli_writes_json_output(tmp_path: Path) -> None:
     assert "Wrote CEQAnet listing plan JSON" in result.output
     payload = json.loads(output_path.read_text(encoding="utf-8"))
     assert payload["metadata"]["query"]["counties"] == ["Riverside"]
-    assert payload["pages"][0]["params"][2] == {"name": "county", "value": "Riverside"}
+    assert payload["pages"][0]["params"][0] == {
+        "name": "County",
+        "value": "Riverside",
+    }
 
 
 def test_ceqanet_listing_plan_cli_rejects_output_without_json(tmp_path: Path) -> None:

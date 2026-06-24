@@ -12,7 +12,10 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Literal
 
-from constructionsight.adapters.ceqanet import CEQANET_ADVANCED_SEARCH_URL
+from constructionsight.adapters.ceqanet_search_contract import (
+    CEQANET_ADVANCED_SEARCH_ACTION_URL,
+    build_ceqanet_advanced_search_params,
+)
 from constructionsight.legal import AccessDecision, AccessPolicyResult
 
 
@@ -109,7 +112,7 @@ class CeqanetListingPlan:
 class CeqanetReadOnlyListingPlanner:
     """Build conservative read-only CEQAnet listing plans."""
 
-    def __init__(self, search_url: str = CEQANET_ADVANCED_SEARCH_URL) -> None:
+    def __init__(self, search_url: str = CEQANET_ADVANCED_SEARCH_ACTION_URL) -> None:
         self.search_url = search_url
 
     def build_plan(
@@ -150,22 +153,18 @@ class CeqanetReadOnlyListingPlanner:
     ) -> tuple[tuple[str, str], ...]:
         """Create deterministic query parameters for one planned listing page."""
 
-        params: list[tuple[str, str]] = [
-            ("page", str(page_number)),
-            ("page_size", str(query.page_size)),
-        ]
-        params.extend(("county", county) for county in query.counties)
-        params.extend(("document_type", document_type) for document_type in query.document_types)
-        params.extend(("lead_agency", lead_agency) for lead_agency in query.lead_agencies)
-        params.extend(("text", term) for term in query.text_terms)
-        if query.received_from:
-            params.append(("received_from", query.received_from.isoformat()))
-        if query.received_to:
-            params.append(("received_to", query.received_to.isoformat()))
-        if query.posted_from:
-            params.append(("posted_from", query.posted_from.isoformat()))
-        if query.posted_to:
-            params.append(("posted_to", query.posted_to.isoformat()))
-        if query.high_signal_only:
-            params.append(("high_signal_only", "true"))
+        params = list(
+            build_ceqanet_advanced_search_params(
+                counties=query.counties,
+                document_types=query.document_types,
+                lead_agencies=query.lead_agencies,
+                start_range=query.received_from,
+                end_range=query.received_to,
+                state_review_period_end=query.posted_from,
+                public_review_period_end=query.posted_to,
+                high_signal_only=query.high_signal_only,
+            )
+        )
+        if query.max_pages > 1:
+            params.append(("page", str(page_number)))
         return tuple(params)

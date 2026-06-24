@@ -1,6 +1,6 @@
 from datetime import date
 
-from constructionsight.adapters.ceqanet import CEQANET_ADVANCED_SEARCH_URL
+from constructionsight.adapters.ceqanet import CEQANET_SEARCH_URL
 from constructionsight.adapters.ceqanet_listing import (
     CeqanetListingQuery,
     CeqanetReadOnlyListingPlanner,
@@ -44,17 +44,16 @@ def test_ceqanet_listing_dry_run_emits_request_intent_without_execution() -> Non
     assert report.requests[0].page_number == 1
     assert report.requests[0].method == "GET"
     assert report.requests[0].params == (
+        ("DocumentType", "EIR - Draft EIR"),
+        ("County", "San Bernardino"),
         ("page", "1"),
-        ("page_size", "50"),
-        ("county", "San Bernardino"),
-        ("document_type", "EIR"),
-        ("text", "warehouse"),
     )
     assert report.requests[0].url == (
-        f"{CEQANET_ADVANCED_SEARCH_URL}?"
-        "page=1&page_size=50&county=San+Bernardino&document_type=EIR&text=warehouse"
+        f"{CEQANET_SEARCH_URL}?"
+        "DocumentType=EIR+-+Draft+EIR&County=San+Bernardino&page=1"
     )
-    assert report.requests[1].url.startswith(f"{CEQANET_ADVANCED_SEARCH_URL}?page=2")
+    assert report.requests[1].url.startswith(f"{CEQANET_SEARCH_URL}?DocumentType=")
+    assert report.requests[1].url.endswith("&page=2")
 
 
 def test_ceqanet_listing_dry_run_blocks_requests_when_plan_is_blocked() -> None:
@@ -82,14 +81,12 @@ def test_ceqanet_listing_dry_run_preserves_date_request_intent() -> None:
     report = CeqanetListingDryRunExecutor().run(plan)
 
     assert report.requests[0].params == (
-        ("page", "1"),
-        ("page_size", "25"),
-        ("lead_agency", "City of Fontana"),
-        ("received_from", "2026-01-01"),
-        ("received_to", "2026-01-31"),
+        ("StartRange", "2026-01-01"),
+        ("EndRange", "2026-01-31"),
+        ("LeadAgency", "City of Fontana"),
     )
-    assert "received_from=2026-01-01" in report.requests[0].url
-    assert "received_to=2026-01-31" in report.requests[0].url
+    assert "StartRange=2026-01-01" in report.requests[0].url
+    assert "EndRange=2026-01-31" in report.requests[0].url
 
 
 def test_ceqanet_listing_dry_run_handles_existing_query_separator() -> None:
@@ -101,5 +98,5 @@ def test_ceqanet_listing_dry_run_handles_existing_query_separator() -> None:
     report = CeqanetListingDryRunExecutor().run(plan)
 
     assert report.requests[0].url == (
-        "https://example.test/search?mode=advanced&page=1&page_size=25&county=Riverside"
+        "https://example.test/search?mode=advanced&County=Riverside"
     )

@@ -2,7 +2,7 @@ from datetime import date
 
 import pytest
 
-from constructionsight.adapters.ceqanet import CEQANET_ADVANCED_SEARCH_URL
+from constructionsight.adapters.ceqanet import CEQANET_SEARCH_URL
 from constructionsight.adapters.ceqanet_listing import (
     CeqanetListingQuery,
     CeqanetReadOnlyListingPlanner,
@@ -64,18 +64,15 @@ def test_ceqanet_listing_planner_builds_get_only_pages_after_access_allowance() 
     assert plan.maximum_records == 100
     assert len(plan.pages) == 2
     assert {page.method for page in plan.pages} == {"GET"}
-    assert {page.search_url for page in plan.pages} == {CEQANET_ADVANCED_SEARCH_URL}
+    assert {page.search_url for page in plan.pages} == {CEQANET_SEARCH_URL}
     assert all(page.downloads_documents is False for page in plan.pages)
     assert all(page.mutates_remote_state is False for page in plan.pages)
     assert plan.pages[0].params == (
+        ("DocumentType", "EIR - Draft EIR"),
+        ("County", "San Bernardino"),
         ("page", "1"),
-        ("page_size", "50"),
-        ("county", "San Bernardino"),
-        ("document_type", "EIR"),
-        ("text", "warehouse"),
-        ("high_signal_only", "true"),
     )
-    assert plan.pages[1].params[0] == ("page", "2")
+    assert plan.pages[1].params[-1] == ("page", "2")
 
 
 def test_ceqanet_listing_planner_blocks_pages_when_access_preflight_blocks() -> None:
@@ -101,11 +98,9 @@ def test_ceqanet_listing_planner_includes_date_filters_deterministically() -> No
     plan = CeqanetReadOnlyListingPlanner().build_plan(query, _allowed())
 
     assert plan.pages[0].params == (
-        ("page", "1"),
-        ("page_size", "25"),
-        ("lead_agency", "City of Fontana"),
-        ("received_from", "2026-01-01"),
-        ("received_to", "2026-01-31"),
-        ("posted_from", "2026-02-01"),
-        ("posted_to", "2026-02-28"),
+        ("StartRange", "2026-01-01"),
+        ("EndRange", "2026-01-31"),
+        ("LeadAgency", "City of Fontana"),
+        ("StateReviewPeriodEnd", "2026-02-01"),
+        ("PublicReviewPeriodEnd", "2026-02-28"),
     )

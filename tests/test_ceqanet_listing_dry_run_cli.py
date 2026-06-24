@@ -33,7 +33,7 @@ def test_ceqanet_listing_dry_run_cli_renders_request_evidence_table() -> None:
     assert "Executed requests" in result.output
     assert "False" in result.output
     assert "San+Bernardino" in result.output
-    assert "document_type=EIR" in result.output
+    assert "DocumentType=EIR+-+Draft+EIR" in result.output
 
 
 def test_ceqanet_listing_dry_run_cli_emits_json_request_evidence() -> None:
@@ -62,7 +62,7 @@ def test_ceqanet_listing_dry_run_cli_emits_json_request_evidence() -> None:
     assert payload["metadata"]["query"]["lead_agencies"] == ["City of Fontana"]
     assert payload["requests"][0]["method"] == "GET"
     assert payload["requests"][0]["executed"] is False
-    assert "received_from=2026-01-01" in payload["requests"][0]["url"]
+    assert "StartRange=2026-01-01" in payload["requests"][0]["url"]
 
 
 def test_ceqanet_listing_dry_run_cli_blocks_when_access_policy_blocks() -> None:
@@ -107,7 +107,7 @@ def test_ceqanet_listing_dry_run_cli_writes_json_output(tmp_path: Path) -> None:
     assert "Wrote CEQAnet listing dry-run JSON" in result.output
     payload = json.loads(output_path.read_text(encoding="utf-8"))
     assert payload["metadata"]["query"]["counties"] == ["Riverside"]
-    assert payload["requests"][0]["url"].endswith("page=1&page_size=25&county=Riverside")
+    assert payload["requests"][0]["url"].endswith("County=Riverside")
 
 
 def test_ceqanet_listing_dry_run_cli_rejects_output_without_json(tmp_path: Path) -> None:
