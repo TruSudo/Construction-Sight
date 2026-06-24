@@ -92,7 +92,7 @@ def _validate_operator_package(operator_package: dict[str, Any]) -> None:
 def _summary_table(metadata: dict[str, object]) -> str:
     """Return Markdown summary table."""
 
-    rows = [
+    rows: list[tuple[object, ...]] = [
         ("Result records", metadata.get("result_record_count")),
         ("CEQA records", metadata.get("ceqa_record_count")),
         ("Sites", metadata.get("site_count")),
@@ -116,7 +116,7 @@ def _ceqa_record_table(records: list[dict[str, object]]) -> str:
 
     if not records:
         return "No CEQA record previews."
-    rows = []
+    rows: list[tuple[object, ...]] = []
     for record in records:
         rows.append(
             (
@@ -135,7 +135,7 @@ def _operation_table(operations: list[dict[str, object]]) -> str:
 
     if not operations:
         return "No planned operations."
-    rows = []
+    rows: list[tuple[object, ...]] = []
     for operation in operations:
         rows.append(
             (
@@ -151,7 +151,7 @@ def _operation_table(operations: list[dict[str, object]]) -> str:
 def _boundary_section(metadata: dict[str, object]) -> str:
     """Return Markdown execution-boundary section."""
 
-    rows = [
+    rows: list[tuple[object, ...]] = [
         ("Network executed", metadata.get("network_executed")),
         ("Database opened", metadata.get("database_opened")),
         ("Persistence mutated", metadata.get("persistence_mutated")),
