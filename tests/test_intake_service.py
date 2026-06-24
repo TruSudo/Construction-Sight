@@ -67,11 +67,11 @@ def test_detect_format_family_identifies_structured_text_families() -> None:
 
 
 def test_inspect_lawful_input_extracts_material_facts_and_routes_to_opportunity() -> None:
-    content = """
+    content = b"""
     City of Hesperia reviewed SCH No. 2026061234 for warehouse construction.
     Project site: 123 Main Street. APN: 123-456-78.
     Contact: planner@example.gov. Estimated value: $1,250,000.
-    """.encode()
+    """
 
     record = inspect_lawful_input(
         IntakeInspectionInput(content=content, source_name="manual test note")
