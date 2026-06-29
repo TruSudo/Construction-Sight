@@ -135,7 +135,9 @@ class SiteResolutionInput(BaseModel):
         """Require at least one site signal."""
 
         if not (self.identifiers or self.geometry_hints or self.source_hints):
-            raise ValueError("site resolution input requires an identifier, geometry hint, or source hint")
+            raise ValueError(
+                "site resolution input requires an identifier, geometry hint, or source hint"
+            )
         return self
 
 
