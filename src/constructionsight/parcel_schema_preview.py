@@ -62,11 +62,33 @@ _ROLE_ALIASES: dict[ParcelFieldRole, tuple[str, ...]] = {
     ParcelFieldRole.ZONING: ("zoning", "zone", "zoning_code", "zoning_description"),
     ParcelFieldRole.LAND_USE: ("land_use", "usecode", "usedesc", "use_desc"),
     ParcelFieldRole.ACREAGE: ("acreage", "acres", "area_acres", "gisacre"),
-    ParcelFieldRole.CENTROID_LATITUDE: ("lat", "latitude", "centroid_latitude", "centroid_y"),
-    ParcelFieldRole.CENTROID_LONGITUDE: ("lon", "lng", "longitude", "centroid_longitude", "centroid_x"),
+    ParcelFieldRole.CENTROID_LATITUDE: (
+        "lat",
+        "latitude",
+        "centroid_latitude",
+        "centroid_y",
+    ),
+    ParcelFieldRole.CENTROID_LONGITUDE: (
+        "lon",
+        "lng",
+        "longitude",
+        "centroid_longitude",
+        "centroid_x",
+    ),
     ParcelFieldRole.GEOMETRY: ("geometry", "geom", "shape", "wkt", "geojson"),
-    ParcelFieldRole.SOURCE_RECORD_ID: ("objectid", "object_id", "fid", "id", "source_record_id"),
-    ParcelFieldRole.UPDATED_AT: ("updated_at", "last_updated", "ll_updated_at", "editdate"),
+    ParcelFieldRole.SOURCE_RECORD_ID: (
+        "objectid",
+        "object_id",
+        "fid",
+        "id",
+        "source_record_id",
+    ),
+    ParcelFieldRole.UPDATED_AT: (
+        "updated_at",
+        "last_updated",
+        "ll_updated_at",
+        "editdate",
+    ),
 }
 _REQUIRED_ROLES = {ParcelFieldRole.APN, ParcelFieldRole.COUNTY}
 
@@ -125,7 +147,11 @@ def preview_schema(preview_input: ParcelSchemaPreviewInput) -> ParcelSchemaPrevi
         key=lambda role: role.value,
     )
     status = _status_for_preview(preview_input, matches, missing_required_roles)
-    limitations = _limitations_for_preview(preview_input, unmapped_fields, missing_required_roles)
+    limitations = _limitations_for_preview(
+        preview_input,
+        unmapped_fields,
+        missing_required_roles,
+    )
     return ParcelSchemaPreviewReport(
         preview_id=_preview_id(preview_input),
         source_key=preview_input.source_key,
