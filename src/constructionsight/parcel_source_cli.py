@@ -10,6 +10,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
+from constructionsight.parcel_row_preview import load_row_preview_input, preview_rows
 from constructionsight.parcel_schema_preview import (
     load_schema_preview_input,
     preview_schema,
@@ -128,6 +129,41 @@ def _render_schema_preview(payload: dict[str, object]) -> None:
         console.print(mapped_table)
 
 
+def _render_row_preview(payload: dict[str, object]) -> None:
+    """Render a compact parcel row preview report."""
+
+    table = Table(title="Parcel Row Preview")
+    table.add_column("Field")
+    table.add_column("Value")
+    for field_name in (
+        "preview_id",
+        "source_key",
+        "status",
+        "row_count",
+        "usable_row_count",
+        "skipped_row_count",
+        "next_action",
+    ):
+        table.add_row(field_name, str(payload.get(field_name)))
+    console.print(table)
+
+    rows = cast(list[dict[str, object]], payload.get("rows", []))
+    if rows:
+        row_table = Table(title="Row Preview Samples")
+        row_table.add_column("Row")
+        row_table.add_column("Usable")
+        row_table.add_column("APN")
+        row_table.add_column("County")
+        for row in rows[:10]:
+            row_table.add_row(
+                str(row.get("row_number") or ""),
+                str(row.get("usable") or ""),
+                str(row.get("normalized_apn") or ""),
+                str(row.get("county") or ""),
+            )
+        console.print(row_table)
+
+
 @app.command("matrix")
 def matrix(
     county: Annotated[
@@ -244,3 +280,42 @@ def preview_schema_command(
         typer.echo(json.dumps(result, indent=2, sort_keys=True, default=str))
         return
     _render_schema_preview(result)
+
+
+@app.command("preview-rows")
+def preview_rows_command(
+    input_path: Annotated[
+        Path,
+        typer.Option(
+            "--input",
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+            help="Parcel row preview input JSON.",
+        ),
+    ],
+    json_output: Annotated[
+        bool,
+        typer.Option("--json-output", help="Emit machine-readable row preview JSON."),
+    ] = False,
+    output_path: Annotated[
+        Path | None,
+        typer.Option(
+            "--output",
+            help="Write row preview JSON to a file. Requires --json-output.",
+        ),
+    ] = None,
+) -> None:
+    """Preview candidate parcel rows without persistence."""
+
+    _reject_output_without_json(output_path, json_output)
+    result = preview_rows(load_row_preview_input(input_path)).to_dict()
+    if output_path is not None:
+        _write_json_file(output_path, result)
+        typer.echo(f"Wrote parcel row preview JSON to {output_path}.")
+        return
+    if json_output:
+        typer.echo(json.dumps(result, indent=2, sort_keys=True, default=str))
+        return
+    _render_row_preview(result)
