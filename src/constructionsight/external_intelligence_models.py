@@ -171,7 +171,10 @@ class CapabilityGapReport(BaseModel):
 
     @field_validator("platforms")
     @classmethod
-    def require_unique_platforms(cls, values: list[ReferencePlatform]) -> list[ReferencePlatform]:
+    def require_unique_platforms(
+        cls,
+        values: list[ReferencePlatform],
+    ) -> list[ReferencePlatform]:
         """Reject duplicate platforms."""
 
         if len(values) != len(set(values)):
