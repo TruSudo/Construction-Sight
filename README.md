@@ -45,6 +45,16 @@ Universal intake records can now be converted into source-neutral opportunity ca
 
 See `docs/architecture/opportunity_transition_intake.md` for the opportunity candidate contract.
 
+## External Intelligence Capability Doctrine
+
+ConstructionSight lawfully studies Shovels and Regrid as capability targets, not as protected implementations to copy.
+
+Shovels-style intelligence teaches the product to model permits, contractors, contractor groups, addresses, parcels, properties, residents, employees, universal people, decisions, and first-seen/status-change timelines as an entity graph. Regrid-style intelligence teaches the product to treat parcel geometry as the stable land identity object: geometry to canonical parcel to owner to portfolio to development activity.
+
+The implementation target is better than static aggregation: preserved source evidence, normalized records, identity resolution, field diffs, transition events, opportunity candidates, project graph, lead score, outreach preview, and audit trail.
+
+See `docs/architecture/external_intelligence_capability_spine.md` for the Shovels/Regrid capability matrix and gap-report contract.
+
 ## Phase 1 Status
 
-Repository foundation initialized. CEQAnet public-record intake now has a guarded operator lane and archive verification. Universal intake now preserves lawful inputs, detects format families, extracts material facts, and routes records. The next product spine is opportunity transition intake: converting extracted facts into lead candidates for enrichment, deduplication, monitoring, outreach preview, and later bid workflows.
+Repository foundation initialized. CEQAnet public-record intake now has a guarded operator lane and archive verification. Universal intake now preserves lawful inputs, detects format families, extracts material facts, and routes records. Opportunity transition intake converts extracted facts into lead candidates for enrichment, deduplication, monitoring, outreach preview, and later bid workflows. External intelligence capability tracking now maps Shovels/Regrid parity, licensed blockers, and ConstructionSight outperform targets.
