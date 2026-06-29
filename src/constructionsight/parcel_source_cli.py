@@ -83,7 +83,10 @@ def _render_report(payload: dict[str, object]) -> None:
     table.add_row("counties", ", ".join(cast(list[str], payload["counties"])))
     table.add_row("ready_sources", str(len(cast(list[object], payload["ready_sources"]))))
     table.add_row("target_sources", str(len(cast(list[object], payload["target_sources"]))))
-    table.add_row("blocked_sources", str(len(cast(list[object], payload["blocked_sources"]))))
+    table.add_row(
+        "blocked_sources",
+        str(len(cast(list[object], payload["blocked_sources"]))),
+    )
     console.print(table)
 
 
@@ -103,7 +106,10 @@ def matrix(
     ] = False,
     output_path: Annotated[
         Path | None,
-        typer.Option("--output", help="Write matrix JSON to a file. Requires --json-output."),
+        typer.Option(
+            "--output",
+            help="Write matrix JSON to a file. Requires --json-output.",
+        ),
     ] = None,
 ) -> None:
     """Show parcel source targets."""
@@ -132,7 +138,10 @@ def report(
     ] = False,
     output_path: Annotated[
         Path | None,
-        typer.Option("--output", help="Write report JSON to a file. Requires --json-output."),
+        typer.Option(
+            "--output",
+            help="Write report JSON to a file. Requires --json-output.",
+        ),
     ] = None,
 ) -> None:
     """Show parcel source readiness report."""
