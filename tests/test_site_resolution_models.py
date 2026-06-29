@@ -10,6 +10,7 @@ from constructionsight.site_resolution_models import (
     SiteMatchStrength,
     SiteResolutionCandidate,
     SiteResolutionInput,
+    SiteResolutionResult,
     SiteResolutionStatus,
 )
 
@@ -55,8 +56,6 @@ def test_result_model_rejects_unresolved_with_candidate() -> None:
     )
 
     with pytest.raises(ValidationError):
-        from constructionsight.site_resolution_models import SiteResolutionResult
-
         SiteResolutionResult(
             resolution_id="site-resolution:abc",
             source_name="test source",
