@@ -146,11 +146,18 @@ class ParcelSource(BaseModel):
 
     @field_validator("field_mappings")
     @classmethod
-    def require_unique_field_roles(cls, values: list[ParcelFieldMapping]) -> list[ParcelFieldMapping]:
+    def require_unique_field_roles(
+        cls,
+        values: list[ParcelFieldMapping],
+    ) -> list[ParcelFieldMapping]:
         """Reject duplicate source fields and duplicate canonical roles."""
 
         source_fields = [mapping.source_field.lower() for mapping in values]
-        roles = [mapping.field_role for mapping in values if mapping.field_role != ParcelFieldRole.UNKNOWN]
+        roles = [
+            mapping.field_role
+            for mapping in values
+            if mapping.field_role != ParcelFieldRole.UNKNOWN
+        ]
         if len(source_fields) != len(set(source_fields)):
             raise ValueError("field_mappings cannot repeat source fields")
         if len(roles) != len(set(roles)):
