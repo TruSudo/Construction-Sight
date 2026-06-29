@@ -55,6 +55,18 @@ The implementation target is better than static aggregation: preserved source ev
 
 See `docs/architecture/external_intelligence_capability_spine.md` for the Shovels/Regrid capability matrix and gap-report contract.
 
+## Shovels/Regrid Gap Alignment Doctrine
+
+ConstructionSight separates Shovels and Regrid into different architectural roles.
+
+Regrid-style capability is the parcel and geometry spine: stable parcel identity, parcel paths, parcel schema, GeoJSON geometry, tiles, feature service, batch lookup, bulk delivery, zoning, ownership, building, address, and roadway add-ons.
+
+Shovels-style capability is the construction-activity overlay: permits, permit status/lifecycle data, contractor search, contractor employees, contractor metrics, address search, residents, decisions, coverage metadata, release metadata, GIS, CLI, API, and warehouse delivery.
+
+ConstructionSight's native advantage is the timing layer above both: transition detection, evidence-backed opportunity scoring, outreach preview, confidence transparency, and limitations preservation.
+
+See `docs/architecture/shovels_regrid_gap_alignment.md` and run `constructionsight-shovels-regrid-gaps` for the research-aligned gap matrix and implementation roadmap.
+
 ## Parcel/Site Resolution Doctrine
 
 ConstructionSight treats parcel and site identity as the land anchor for every public-record lead.
@@ -73,4 +85,4 @@ See `docs/architecture/parcel_source_registry.md` for the parcel source registry
 
 ## Phase 1 Status
 
-Repository foundation initialized. CEQAnet public-record intake now has a guarded operator lane and archive verification. Universal intake now preserves lawful inputs, detects format families, extracts material facts, and routes records. Opportunity transition intake converts extracted facts into lead candidates for enrichment, deduplication, monitoring, outreach preview, and later bid workflows. External intelligence capability tracking maps Shovels/Regrid parity, licensed blockers, and ConstructionSight outperform targets. Parcel/site resolution anchors APN, address, coordinate, geometry, jurisdiction, and county signals into deterministic site keys for graph expansion. Parcel source registry now tracks source targets, lawful boundaries, coverage status, field mappings, and provider readiness before live import.
+Repository foundation initialized. CEQAnet public-record intake now has a guarded operator lane and archive verification. Universal intake now preserves lawful inputs, detects format families, extracts material facts, and routes records. Opportunity transition intake converts extracted facts into lead candidates for enrichment, deduplication, monitoring, outreach preview, and later bid workflows. External intelligence capability tracking maps Shovels/Regrid parity, licensed blockers, and ConstructionSight outperform targets. Shovels/Regrid gap alignment now encodes the research-backed roadmap: Regrid as parcel/geometry spine, Shovels as permit/contractor/decision overlay, and ConstructionSight as the timing/opportunity layer. Parcel/site resolution anchors APN, address, coordinate, geometry, jurisdiction, and county signals into deterministic site keys for graph expansion. Parcel source registry tracks source targets, lawful boundaries, coverage status, field mappings, and provider readiness before live import.
