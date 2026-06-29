@@ -35,6 +35,16 @@ Every lawful input should first become preserved evidence and a source-neutral i
 
 See `docs/architecture/exhaustive_lawful_intake.md` for the intake contract.
 
+## Opportunity Transition Doctrine
+
+ConstructionSight treats the transition event as the actionable sales signal.
+
+A static permit or CEQA record matters because it can expose movement: a new project signal, CEQA notice, permit application, issued permit, contractor identification, valuation signal, inspection movement, expiration, finalization, site anchor, contact channel, agency anchor, or construction-scope signal.
+
+Universal intake records can now be converted into source-neutral opportunity candidates with transition events, lead score, readiness, priority, reasons, limitations, confidence band, and recommended next action.
+
+See `docs/architecture/opportunity_transition_intake.md` for the opportunity candidate contract.
+
 ## Phase 1 Status
 
-Repository foundation initialized. CEQAnet public-record intake now has a guarded operator lane and archive verification. The next product spine is universal intake: source-neutral evidence preservation, format-family detection, material-fact extraction, and routing into future lead/opportunity workflows.
+Repository foundation initialized. CEQAnet public-record intake now has a guarded operator lane and archive verification. Universal intake now preserves lawful inputs, detects format families, extracts material facts, and routes records. The next product spine is opportunity transition intake: converting extracted facts into lead candidates for enrichment, deduplication, monitoring, outreach preview, and later bid workflows.
