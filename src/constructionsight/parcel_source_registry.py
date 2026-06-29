@@ -86,7 +86,8 @@ def build_parcel_source_report(
         target_sources=[
             gap
             for gap in gaps
-            if gap.coverage_status in {ParcelCoverageStatus.TARGET, ParcelCoverageStatus.DESIGNED}
+            if gap.coverage_status
+            in {ParcelCoverageStatus.TARGET, ParcelCoverageStatus.DESIGNED}
         ],
         blocked_sources=[
             gap for gap in gaps if gap.coverage_status == ParcelCoverageStatus.BLOCKED_BY_LICENSE
@@ -178,7 +179,9 @@ def _default_parcel_sources() -> list[ParcelSource]:
             field_mappings=_standard_parcel_field_targets(),
             priority=70,
             limitations=["requires lawful license or user-provided authorization"],
-            next_action="support pluggable licensed provider once credentials/license exist",
+            next_action=(
+                "support pluggable licensed provider once credentials/license exist"
+            ),
         ),
         ParcelSource(
             source_key="user-provided:parcel-export",
@@ -191,7 +194,10 @@ def _default_parcel_sources() -> list[ParcelSource]:
                 county="User supplied",
                 geometry_support=ParcelGeometrySupport.UNKNOWN,
                 coverage_notes=[
-                    "supports CSV, GeoJSON, shapefile, or other lawful user-provided exports",
+                    (
+                        "supports CSV, GeoJSON, shapefile, or other lawful "
+                        "user-provided exports"
+                    ),
                 ],
             ),
             field_mappings=_standard_parcel_field_targets(),
@@ -206,11 +212,22 @@ def _standard_parcel_field_targets() -> list[ParcelFieldMapping]:
     """Return canonical field targets expected from parcel sources."""
 
     return [
-        ParcelFieldMapping(source_field="apn", field_role=ParcelFieldRole.APN, required=True),
+        ParcelFieldMapping(
+            source_field="apn",
+            field_role=ParcelFieldRole.APN,
+            required=True,
+        ),
         ParcelFieldMapping(source_field="situs_address", field_role=ParcelFieldRole.ADDRESS),
         ParcelFieldMapping(source_field="owner_name", field_role=ParcelFieldRole.OWNER),
-        ParcelFieldMapping(source_field="county", field_role=ParcelFieldRole.COUNTY, required=True),
-        ParcelFieldMapping(source_field="jurisdiction", field_role=ParcelFieldRole.JURISDICTION),
+        ParcelFieldMapping(
+            source_field="county",
+            field_role=ParcelFieldRole.COUNTY,
+            required=True,
+        ),
+        ParcelFieldMapping(
+            source_field="jurisdiction",
+            field_role=ParcelFieldRole.JURISDICTION,
+        ),
         ParcelFieldMapping(source_field="zoning", field_role=ParcelFieldRole.ZONING),
         ParcelFieldMapping(source_field="land_use", field_role=ParcelFieldRole.LAND_USE),
         ParcelFieldMapping(source_field="acreage", field_role=ParcelFieldRole.ACREAGE),
