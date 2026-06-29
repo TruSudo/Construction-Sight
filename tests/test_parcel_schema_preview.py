@@ -26,12 +26,30 @@ def _regrid_like_input() -> ParcelSchemaPreviewInput:
         source_name="Regrid-like Test Source",
         source_format=ParcelSourceFormat.API_JSON,
         observed_fields=[
-            ParcelSchemaField(source_field="parcelnumb", observed_type=ParcelObservedFieldType.STRING),
-            ParcelSchemaField(source_field="county", observed_type=ParcelObservedFieldType.STRING),
-            ParcelSchemaField(source_field="owner", observed_type=ParcelObservedFieldType.STRING),
-            ParcelSchemaField(source_field="zoning", observed_type=ParcelObservedFieldType.STRING),
-            ParcelSchemaField(source_field="geometry", observed_type=ParcelObservedFieldType.GEOMETRY),
-            ParcelSchemaField(source_field="ll_updated_at", observed_type=ParcelObservedFieldType.DATETIME),
+            ParcelSchemaField(
+                source_field="parcelnumb",
+                observed_type=ParcelObservedFieldType.STRING,
+            ),
+            ParcelSchemaField(
+                source_field="county",
+                observed_type=ParcelObservedFieldType.STRING,
+            ),
+            ParcelSchemaField(
+                source_field="owner",
+                observed_type=ParcelObservedFieldType.STRING,
+            ),
+            ParcelSchemaField(
+                source_field="zoning",
+                observed_type=ParcelObservedFieldType.STRING,
+            ),
+            ParcelSchemaField(
+                source_field="geometry",
+                observed_type=ParcelObservedFieldType.GEOMETRY,
+            ),
+            ParcelSchemaField(
+                source_field="ll_updated_at",
+                observed_type=ParcelObservedFieldType.DATETIME,
+            ),
         ],
         geometry_support=ParcelGeometrySupport.POLYGON,
         spatial_reference="EPSG:4326",
