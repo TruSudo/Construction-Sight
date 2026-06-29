@@ -71,7 +71,10 @@ def resolve_site(site_input: SiteResolutionInput) -> SiteResolutionResult:
 
     identifiers = site_input.identifiers
     if not identifiers and not site_input.geometry_hints:
-        return _unresolved(site_input, ["no APN, address, coordinate, or geometry signal present"])
+        return _unresolved(
+            site_input,
+            ["no APN, address, coordinate, or geometry signal present"],
+        )
 
     conflicts = _detect_conflicts(identifiers)
     candidate = _build_candidate(site_input, conflicts)
@@ -118,7 +121,12 @@ def _identifier_from_fact(fact: ExtractedMaterialFact) -> SiteIdentifier | None:
     if fact.fact_kind == MaterialFactKind.ADDRESS:
         return _identifier(SiteIdentifierKind.ADDRESS, fact, normalize_address(value), 75)
     if fact.fact_kind == MaterialFactKind.AGENCY:
-        return _identifier(SiteIdentifierKind.JURISDICTION, fact, normalize_jurisdiction(value), 35)
+        return _identifier(
+            SiteIdentifierKind.JURISDICTION,
+            fact,
+            normalize_jurisdiction(value),
+            35,
+        )
     return None
 
 
@@ -182,9 +190,10 @@ def _dedupe_identifiers(identifiers: list[SiteIdentifier]) -> list[SiteIdentifie
 def _detect_conflicts(identifiers: Iterable[SiteIdentifier]) -> list[str]:
     """Detect multiple values for the same hard site identifier kind."""
 
+    hard_identifier_kinds = {SiteIdentifierKind.APN, SiteIdentifierKind.ADDRESS}
     by_kind: dict[SiteIdentifierKind, set[str]] = defaultdict(set)
     for identifier in identifiers:
-        if identifier.identifier_kind in {SiteIdentifierKind.APN, SiteIdentifierKind.ADDRESS}:
+        if identifier.identifier_kind in hard_identifier_kinds:
             by_kind[identifier.identifier_kind].add(identifier.normalized_value)
 
     conflicts: list[str] = []
@@ -233,7 +242,11 @@ def _build_candidate(
         supporting_identifiers=identifiers,
         geometry_hints=site_input.geometry_hints,
         reasons=_candidate_reasons(identifiers, site_input.geometry_hints),
-        limitations=_candidate_limitations(identifiers, site_input.geometry_hints, conflicts),
+        limitations=_candidate_limitations(
+            identifiers,
+            site_input.geometry_hints,
+            conflicts,
+        ),
     )
 
 
@@ -337,7 +350,10 @@ def _result_limitations(
     return _unique(limitations)
 
 
-def _unresolved(site_input: SiteResolutionInput, limitations: list[str]) -> SiteResolutionResult:
+def _unresolved(
+    site_input: SiteResolutionInput,
+    limitations: list[str],
+) -> SiteResolutionResult:
     """Return an unresolved site-resolution result."""
 
     basis = site_input.evidence_id or site_input.source_name
@@ -406,8 +422,9 @@ def _has_identifier(
 def _first_point(geometry_hints: list[GeometryHint]) -> GeometryHint | None:
     """Return first point-like geometry hint."""
 
+    point_kinds = {GeometryHintKind.POINT, GeometryHintKind.CENTROID}
     for geometry_hint in geometry_hints:
-        if geometry_hint.geometry_kind in {GeometryHintKind.POINT, GeometryHintKind.CENTROID}:
+        if geometry_hint.geometry_kind in point_kinds:
             return geometry_hint
     return None
 
