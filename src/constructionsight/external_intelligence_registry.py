@@ -33,9 +33,13 @@ def get_external_capabilities(
 
     capabilities = [*_shovels_capabilities(), *_regrid_capabilities()]
     if platform is not None:
-        capabilities = [capability for capability in capabilities if capability.platform == platform]
+        capabilities = [
+            capability for capability in capabilities if capability.platform == platform
+        ]
     if domain is not None:
-        capabilities = [capability for capability in capabilities if capability.domain == domain]
+        capabilities = [
+            capability for capability in capabilities if capability.domain == domain
+        ]
     return capabilities
 
 
@@ -199,37 +203,53 @@ def _shovels_capabilities() -> list[ExternalCapability]:
             domain=CapabilityDomain.PERMIT_DATA,
             label="Standardized permit data feed",
             description=(
-                "Permit records with lifecycle dates, status, value, type, scope, geography, "
-                "property attributes, owner/applicant fields, contractor joins, and first-seen timing."
+                "Permit records with lifecycle dates, status, value, type, scope, "
+                "geography, property attributes, owner/applicant fields, contractor "
+                "joins, and first-seen timing."
             ),
-            delivery_modes=[DeliveryMode.API, DeliveryMode.DATA_WAREHOUSE, DeliveryMode.BULK_FILE],
-            update_frequency="twice monthly public target; source-level monitoring can be faster",
+            delivery_modes=[
+                DeliveryMode.API,
+                DeliveryMode.DATA_WAREHOUSE,
+                DeliveryMode.BULK_FILE,
+            ],
+            update_frequency="twice monthly public target; source monitoring can be faster",
             lawful_boundary=LawfulAccessBoundary.OPEN_PUBLIC_RECORDS,
             references=[
                 _public_reference(
                     "Shovels API",
                     SHOVELS_API_URL,
-                    "Advertises permit, contractor, property, geo-search, filtering, metrics, and decision data.",
+                    "Advertises permit, contractor, property, geo-search, filtering, "
+                    "metrics, and decision data.",
                 ),
                 _public_reference(
                     "Shovels Data Feed",
                     SHOVELS_DATA_FEED_URL,
-                    "Advertises warehouse/file delivery for permits, contractors, decisions, residents, employees, licenses, and Regrid-linked parcels.",
+                    "Advertises warehouse/file delivery for permits, contractors, "
+                    "decisions, residents, employees, licenses, and Regrid-linked "
+                    "parcels.",
                 ),
                 _user_research(
                     "Shovels direct schema research",
-                    "PERMITS fields include ID, PERMIT_NUMBER, ADDRESS_ID, APN, contractor IDs, lifecycle dates, job value, derived work flags, and FIRST_SEEN_DATE.",
+                    "PERMITS fields include ID, PERMIT_NUMBER, ADDRESS_ID, APN, "
+                    "contractor IDs, lifecycle dates, job value, derived work flags, "
+                    "and FIRST_SEEN_DATE.",
                 ),
             ],
             construction_sight_target=(
-                "Normalize public permit evidence into PermitRecord, UniversalIntakeRecord, "
-                "OpportunityCandidate, and future transition-diff records."
+                "Normalize public permit evidence into PermitRecord, "
+                "UniversalIntakeRecord, OpportunityCandidate, and future "
+                "transition-diff records."
             ),
             improvement_strategy=(
-                "Outperform static permit aggregation by preserving source snapshots, detecting field "
-                "changes, and turning first-seen/status/value/contractor movement into lead triggers."
+                "Outperform static permit aggregation by preserving source snapshots, "
+                "detecting field changes, and turning first-seen/status/value/"
+                "contractor movement into lead triggers."
             ),
-            normalized_output_contracts=["PermitRecord", "UniversalIntakeRecord", "OpportunityCandidate"],
+            normalized_output_contracts=[
+                "PermitRecord",
+                "UniversalIntakeRecord",
+                "OpportunityCandidate",
+            ],
             implementation_status=ImplementationStatus.IN_PROGRESS,
         ),
         _capability(
@@ -238,8 +258,9 @@ def _shovels_capabilities() -> list[ExternalCapability]:
             domain=CapabilityDomain.CONTRACTOR_INTELLIGENCE,
             label="Contractor graph and firm grouping",
             description=(
-                "Contractor records are grouped, enriched, linked to permits and employees, "
-                "and represented through canonical firm/person relationships."
+                "Contractor records are grouped, enriched, linked to permits and "
+                "employees, and represented through canonical firm/person "
+                "relationships."
             ),
             delivery_modes=[DeliveryMode.API, DeliveryMode.DATA_WAREHOUSE],
             update_frequency="monthly or twice monthly depending on table",
@@ -248,22 +269,31 @@ def _shovels_capabilities() -> list[ExternalCapability]:
                 _public_reference(
                     "Shovels API",
                     SHOVELS_API_URL,
-                    "Advertises contractor search by specialties, license types, work history, active permits, and historical performance.",
+                    "Advertises contractor search by specialties, license types, "
+                    "work history, active permits, and historical performance.",
                 ),
                 _user_research(
                     "Shovels direct schema research",
-                    "CONTRACTORS includes GROUP_ID and IS_REPRESENTATIVE; EMPLOYEES links via CONTRACTOR_ID and PERSON_ID; UNIVERSAL_PERSON represents deduped people.",
+                    "CONTRACTORS includes GROUP_ID and IS_REPRESENTATIVE; EMPLOYEES "
+                    "links via CONTRACTOR_ID and PERSON_ID; UNIVERSAL_PERSON "
+                    "represents deduped people.",
                 ),
             ],
             construction_sight_target=(
-                "Resolve contractors, contractor groups, employees, principals, license numbers, "
-                "and reachable contacts from lawful public and user-provided sources."
+                "Resolve contractors, contractor groups, employees, principals, "
+                "license numbers, and reachable contacts from lawful public and "
+                "user-provided sources."
             ),
             improvement_strategy=(
-                "Pair contractor grouping with project/parcel transition timing so outreach targets "
-                "the correct firm at the correct moment, not merely the largest contractor list."
+                "Pair contractor grouping with project/parcel transition timing so "
+                "outreach targets the correct firm at the correct moment, not "
+                "merely the largest contractor list."
             ),
-            normalized_output_contracts=["Entity", "Relationship", "OpportunityCandidate"],
+            normalized_output_contracts=[
+                "Entity",
+                "Relationship",
+                "OpportunityCandidate",
+            ],
         ),
         _capability(
             capability_key="shovels:decisions-pre-permit-signal",
@@ -271,8 +301,8 @@ def _shovels_capabilities() -> list[ExternalCapability]:
             domain=CapabilityDomain.GOVERNMENT_DECISIONS,
             label="Government decisions before permits",
             description=(
-                "Decision records capture council, planning-board, zoning, and approval intelligence "
-                "before many building permits are filed."
+                "Decision records capture council, planning-board, zoning, and "
+                "approval intelligence before many building permits are filed."
             ),
             delivery_modes=[DeliveryMode.API, DeliveryMode.DATA_WAREHOUSE],
             update_frequency="real time public target for decisions",
@@ -281,7 +311,8 @@ def _shovels_capabilities() -> list[ExternalCapability]:
                 _public_reference(
                     "Shovels API",
                     SHOVELS_API_URL,
-                    "Advertises city council decisions, planning board approvals, zoning changes, and months-earlier visibility before permits.",
+                    "Advertises city council decisions, planning board approvals, "
+                    "zoning changes, and months-earlier visibility before permits.",
                 ),
                 _public_reference(
                     "Shovels Data Feed",
@@ -290,18 +321,24 @@ def _shovels_capabilities() -> list[ExternalCapability]:
                 ),
                 _user_research(
                     "ConstructionSight locked doctrine",
-                    "Planning, capital, legislative, procurement, and environmental-review data are earlier signals; permits are often later confirmation.",
+                    "Planning, capital, legislative, procurement, and "
+                    "environmental-review data are earlier signals; permits are "
+                    "often later confirmation.",
                 ),
             ],
             construction_sight_target=(
-                "Ingest agendas, staff reports, CEQA records, planning decisions, and zoning actions "
-                "as pre-permit project signals."
+                "Ingest agendas, staff reports, CEQA records, planning decisions, "
+                "and zoning actions as pre-permit project signals."
             ),
             improvement_strategy=(
-                "Beat permit-only products by treating decisions and CEQA as first-class transition "
-                "events in the lead score."
+                "Beat permit-only products by treating decisions and CEQA as "
+                "first-class transition events in the lead score."
             ),
-            normalized_output_contracts=["UniversalIntakeRecord", "OpportunityCandidate", "Relationship"],
+            normalized_output_contracts=[
+                "UniversalIntakeRecord",
+                "OpportunityCandidate",
+                "Relationship",
+            ],
             implementation_status=ImplementationStatus.OUTPERFORM_TARGET,
         ),
         _capability(
@@ -310,8 +347,8 @@ def _shovels_capabilities() -> list[ExternalCapability]:
             domain=CapabilityDomain.DATA_WAREHOUSE_FEED,
             label="Enterprise warehouse and file delivery",
             description=(
-                "Enterprise customers can receive data in warehouses or cloud storage using "
-                "preformatted tables and recurring refreshes."
+                "Enterprise customers can receive data in warehouses or cloud "
+                "storage using preformatted tables and recurring refreshes."
             ),
             delivery_modes=[DeliveryMode.DATA_WAREHOUSE, DeliveryMode.BULK_FILE],
             update_frequency="automatic recurring updates",
@@ -320,18 +357,24 @@ def _shovels_capabilities() -> list[ExternalCapability]:
                 _public_reference(
                     "Shovels Data Feed",
                     SHOVELS_DATA_FEED_URL,
-                    "Advertises Snowflake, BigQuery, Databricks, S3, GCS, Azure, Parquet, CSV, SFTP, HTTPS, and automatic updates.",
+                    "Advertises Snowflake, BigQuery, Databricks, S3, GCS, Azure, "
+                    "Parquet, CSV, SFTP, HTTPS, and automatic updates.",
                 )
             ],
             construction_sight_target=(
-                "Export normalized ConstructionSight records as JSONL/CSV/Parquet-ready contracts "
-                "and future warehouse tables."
+                "Export normalized ConstructionSight records as JSONL/CSV/"
+                "Parquet-ready contracts and future warehouse tables."
             ),
             improvement_strategy=(
-                "Add evidence snapshots, source limitations, transition diffs, and confidence bands "
-                "to every exported table so downstream users see why a lead exists."
+                "Add evidence snapshots, source limitations, transition diffs, "
+                "and confidence bands to every exported table so downstream users "
+                "see why a lead exists."
             ),
-            normalized_output_contracts=["UniversalIntakeRecord", "OpportunityCandidate", "CapabilityGapReport"],
+            normalized_output_contracts=[
+                "UniversalIntakeRecord",
+                "OpportunityCandidate",
+                "CapabilityGapReport",
+            ],
             implementation_status=ImplementationStatus.DESIGNED,
         ),
         _capability(
@@ -340,8 +383,8 @@ def _shovels_capabilities() -> list[ExternalCapability]:
             domain=CapabilityDomain.AUDIENCE_TARGETING,
             label="Audience and contact targeting",
             description=(
-                "Resident, employee, owner, and contractor contact datasets support audience "
-                "targeting and B2B/B2C outreach workflows."
+                "Resident, employee, owner, and contractor contact datasets support "
+                "audience targeting and B2B/B2C outreach workflows."
             ),
             delivery_modes=[DeliveryMode.API, DeliveryMode.DATA_WAREHOUSE],
             update_frequency="monthly public target for residents and employees",
@@ -350,20 +393,24 @@ def _shovels_capabilities() -> list[ExternalCapability]:
                 _public_reference(
                     "Shovels Data Feed",
                     SHOVELS_DATA_FEED_URL,
-                    "Advertises residents linked through address_id and employees linked through contractor_id.",
+                    "Advertises residents linked through address_id and employees "
+                    "linked through contractor_id.",
                 ),
                 _user_research(
                     "Shovels direct schema research",
-                    "RESIDENTS, EMPLOYEES, and UNIVERSAL_PERSON expose person/contact resolution concepts that must be tracked separately from public-record facts.",
+                    "RESIDENTS, EMPLOYEES, and UNIVERSAL_PERSON expose person/"
+                    "contact resolution concepts that must be tracked separately "
+                    "from public-record facts.",
                 ),
             ],
             construction_sight_target=(
-                "Support outreach only after lawful enrichment, deduplication, preview, suppression, "
-                "and evidence-backed role identification."
+                "Support outreach only after lawful enrichment, deduplication, "
+                "preview, suppression, and evidence-backed role identification."
             ),
             improvement_strategy=(
-                "Avoid black-box people-data dependence by separating public-record parties, user-provided "
-                "contacts, licensed enrichment, and outreach suppression state."
+                "Avoid black-box people-data dependence by separating public-record "
+                "parties, user-provided contacts, licensed enrichment, and outreach "
+                "suppression state."
             ),
             normalized_output_contracts=["Entity", "Relationship", "OpportunityCandidate"],
             implementation_status=ImplementationStatus.BLOCKED_BY_LICENSE,
@@ -374,24 +421,31 @@ def _shovels_capabilities() -> list[ExternalCapability]:
             domain=CapabilityDomain.WORKFLOW_INTEGRATION,
             label="API, CLI, GIS, and app access",
             description=(
-                "Multiple access modes let users query, download, automate, map, and integrate "
-                "construction intelligence."
+                "Multiple access modes let users query, download, automate, map, "
+                "and integrate construction intelligence."
             ),
-            delivery_modes=[DeliveryMode.API, DeliveryMode.CLI, DeliveryMode.GIS, DeliveryMode.WEB_APP],
+            delivery_modes=[
+                DeliveryMode.API,
+                DeliveryMode.CLI,
+                DeliveryMode.GIS,
+                DeliveryMode.WEB_APP,
+            ],
             lawful_boundary=LawfulAccessBoundary.PUBLIC_DOCS_ONLY,
             references=[
                 _public_reference(
                     "Shovels API",
                     SHOVELS_API_URL,
-                    "Advertises API access, GIS, CLI, Shovels Online, Charlie AI, and audience workflows.",
+                    "Advertises API access, GIS, CLI, Shovels Online, Charlie AI, "
+                    "and audience workflows.",
                 )
             ],
             construction_sight_target=(
-                "Expose every durable capability through deterministic services first, then CLI, API, "
-                "desktop/mobile UI, exports, and GIS layers."
+                "Expose every durable capability through deterministic services "
+                "first, then CLI, API, desktop/mobile UI, exports, and GIS layers."
             ),
             improvement_strategy=(
-                "Keep all access modes explainable and audit-backed instead of presentation-only."
+                "Keep all access modes explainable and audit-backed instead of "
+                "presentation-only."
             ),
             normalized_output_contracts=["UniversalIntakeRecord", "OpportunityCandidate"],
             implementation_status=ImplementationStatus.IN_PROGRESS,
@@ -409,29 +463,39 @@ def _regrid_capabilities() -> list[ExternalCapability]:
             domain=CapabilityDomain.PARCEL_GEOMETRY,
             label="Parcel API, boundaries, and geometry",
             description=(
-                "Parcel APIs and tiles expose parcel boundaries, property details, labels, and "
-                "polygon search for nationwide parcel workflows."
+                "Parcel APIs and tiles expose parcel boundaries, property details, "
+                "labels, and polygon search for nationwide parcel workflows."
             ),
-            delivery_modes=[DeliveryMode.API, DeliveryMode.TILE_SERVICE, DeliveryMode.FEATURE_SERVICE],
+            delivery_modes=[
+                DeliveryMode.API,
+                DeliveryMode.TILE_SERVICE,
+                DeliveryMode.FEATURE_SERVICE,
+            ],
             lawful_boundary=LawfulAccessBoundary.LAWFUL_API_OR_LICENSE,
             references=[
                 _public_reference(
                     "Regrid API",
                     REGRID_API_URL,
-                    "Advertises nationwide parcel data, property boundaries, parcel details, API sandbox, Tile API, OpenAPI specification, and polygon search.",
+                    "Advertises nationwide parcel data, property boundaries, "
+                    "parcel details, API sandbox, Tile API, OpenAPI specification, "
+                    "and polygon search.",
                 ),
                 _user_research(
                     "Regrid direct research",
-                    "Parcel geometry is the universal anchor: geometry -> canonical parcel -> owner -> portfolio -> assembly -> development activity.",
+                    "Parcel geometry is the universal anchor: geometry -> "
+                    "canonical parcel -> owner -> portfolio -> assembly -> "
+                    "development activity.",
                 ),
             ],
             construction_sight_target=(
-                "Use APN, address, centroid, geometry, jurisdiction, and county parcels as the stable "
-                "site anchor for projects, permits, CEQA, agendas, and outreach territories."
+                "Use APN, address, centroid, geometry, jurisdiction, and county "
+                "parcels as the stable site anchor for projects, permits, CEQA, "
+                "agendas, and outreach territories."
             ),
             improvement_strategy=(
-                "Build a parcel-first project graph and make parcel geometry drive deduplication, "
-                "nearby influence, map overlays, and opportunity territories."
+                "Build a parcel-first project graph and make parcel geometry drive "
+                "deduplication, nearby influence, map overlays, and opportunity "
+                "territories."
             ),
             normalized_output_contracts=["Site", "Relationship", "OpportunityCandidate"],
             implementation_status=ImplementationStatus.IN_PROGRESS,
@@ -442,25 +506,31 @@ def _regrid_capabilities() -> list[ExternalCapability]:
             domain=CapabilityDomain.BULK_DELIVERY,
             label="Bulk files and feature service delivery",
             description=(
-                "Regrid publicly advertises bulk files, feature service, parcel API/tiles, and an "
-                "interactive API sandbox as delivery methods."
+                "Regrid publicly advertises bulk files, feature service, parcel "
+                "API/tiles, and an interactive API sandbox as delivery methods."
             ),
-            delivery_modes=[DeliveryMode.BULK_FILE, DeliveryMode.FEATURE_SERVICE, DeliveryMode.API],
+            delivery_modes=[
+                DeliveryMode.BULK_FILE,
+                DeliveryMode.FEATURE_SERVICE,
+                DeliveryMode.API,
+            ],
             lawful_boundary=LawfulAccessBoundary.LAWFUL_API_OR_LICENSE,
             references=[
                 _public_reference(
                     "Regrid API",
                     REGRID_API_URL,
-                    "Lists bulk files, feature service, parcel API and tiles, and interactive API sandbox as delivery methods.",
+                    "Lists bulk files, feature service, parcel API and tiles, and "
+                    "interactive API sandbox as delivery methods.",
                 )
             ],
             construction_sight_target=(
-                "Support county parcel imports from open data, user-provided licensed exports, and "
-                "future feature-service layers without coupling the core graph to one vendor."
+                "Support county parcel imports from open data, user-provided "
+                "licensed exports, and future feature-service layers without "
+                "coupling the core graph to one vendor."
             ),
             improvement_strategy=(
-                "Make Regrid a pluggable provider while preserving open county parcel sources as first-class "
-                "fallbacks and comparison sources."
+                "Make Regrid a pluggable provider while preserving open county "
+                "parcel sources as first-class fallbacks and comparison sources."
             ),
             normalized_output_contracts=["Site", "UniversalIntakeRecord"],
         ),
@@ -470,26 +540,35 @@ def _regrid_capabilities() -> list[ExternalCapability]:
             domain=CapabilityDomain.PROPERTY_ENRICHMENT,
             label="Spatial add-ons: addresses, buildings, zoning, ownership",
             description=(
-                "Regrid advertises matched secondary addresses, matched building footprints, "
-                "standardized zoning, daily ownership updates, and roadway polygons."
+                "Regrid advertises matched secondary addresses, matched building "
+                "footprints, standardized zoning, daily ownership updates, and "
+                "roadway polygons."
             ),
-            delivery_modes=[DeliveryMode.API, DeliveryMode.FEATURE_SERVICE, DeliveryMode.BULK_FILE],
-            update_frequency="daily for ownership add-on; monthly for standardized zoning public claim",
+            delivery_modes=[
+                DeliveryMode.API,
+                DeliveryMode.FEATURE_SERVICE,
+                DeliveryMode.BULK_FILE,
+            ],
+            update_frequency=(
+                "daily for ownership add-on; monthly for standardized zoning public claim"
+            ),
             lawful_boundary=LawfulAccessBoundary.LAWFUL_API_OR_LICENSE,
             references=[
                 _public_reference(
                     "Regrid API",
                     REGRID_API_URL,
-                    "Advertises matched secondary addresses, building footprints, zoning, daily ownership updates, and roadway polygons.",
+                    "Advertises matched secondary addresses, building footprints, "
+                    "zoning, daily ownership updates, and roadway polygons.",
                 )
             ],
             construction_sight_target=(
-                "Represent buildings, secondary addresses, zoning, ownership, and road adjacency as optional "
-                "parcel enrichments with provenance and license boundaries."
+                "Represent buildings, secondary addresses, zoning, ownership, and "
+                "road adjacency as optional parcel enrichments with provenance and "
+                "license boundaries."
             ),
             improvement_strategy=(
-                "Use enrichments to explain lead quality: access, buildable land, zoning fit, owner portfolio, "
-                "and nearby project influence."
+                "Use enrichments to explain lead quality: access, buildable land, "
+                "zoning fit, owner portfolio, and nearby project influence."
             ),
             normalized_output_contracts=["Site", "Entity", "Relationship"],
             implementation_status=ImplementationStatus.DESIGNED,
@@ -500,8 +579,8 @@ def _regrid_capabilities() -> list[ExternalCapability]:
             domain=CapabilityDomain.ADDRESS_RESOLUTION,
             label="Address-to-parcel and point-to-parcel resolution",
             description=(
-                "Address and point queries can locate parcel records and associated geometry for "
-                "site matching."
+                "Address and point queries can locate parcel records and associated "
+                "geometry for site matching."
             ),
             delivery_modes=[DeliveryMode.API, DeliveryMode.INTERNAL_ENGINE],
             lawful_boundary=LawfulAccessBoundary.LAWFUL_API_OR_LICENSE,
@@ -509,19 +588,22 @@ def _regrid_capabilities() -> list[ExternalCapability]:
                 _public_reference(
                     "Regrid API",
                     REGRID_API_URL,
-                    "Advertises search for nationwide properties, full attribute sets, labels, parcel APIs, and map layers.",
+                    "Advertises search for nationwide properties, full attribute "
+                    "sets, labels, parcel APIs, and map layers.",
                 ),
                 _user_research(
                     "Regrid direct research",
-                    "Search pathways include lat/lon, APN, address, polygon, and attributes; point-to-parcel is central to parcel anchoring.",
+                    "Search pathways include lat/lon, APN, address, polygon, and "
+                    "attributes; point-to-parcel is central to parcel anchoring.",
                 ),
             ],
             construction_sight_target=(
-                "Normalize address, APN, coordinate, and polygon pivots into one site-resolution contract."
+                "Normalize address, APN, coordinate, and polygon pivots into one "
+                "site-resolution contract."
             ),
             improvement_strategy=(
-                "Compare multiple lawful sources for the same parcel and preserve conflicts instead of "
-                "silently accepting one vendor geometry."
+                "Compare multiple lawful sources for the same parcel and preserve "
+                "conflicts instead of silently accepting one vendor geometry."
             ),
             normalized_output_contracts=["Site", "UniversalIntakeRecord"],
         ),
@@ -531,8 +613,9 @@ def _regrid_capabilities() -> list[ExternalCapability]:
             domain=CapabilityDomain.COVERAGE_METRICS,
             label="Coverage and parcel schema tracking",
             description=(
-                "Coverage maps and parcel schema documentation guide where parcel data exists, what "
-                "fields are available, and where source quality varies."
+                "Coverage maps and parcel schema documentation guide where parcel "
+                "data exists, what fields are available, and where source quality "
+                "varies."
             ),
             delivery_modes=[DeliveryMode.INTERNAL_ENGINE, DeliveryMode.WEB_APP],
             lawful_boundary=LawfulAccessBoundary.PUBLIC_DOCS_ONLY,
@@ -545,16 +628,18 @@ def _regrid_capabilities() -> list[ExternalCapability]:
                 _public_reference(
                     "Regrid parcel schema",
                     REGRID_SCHEMA_URL,
-                    "Parcel schema documentation is the public schema target for field mapping.",
+                    "Parcel schema documentation is the public schema target for "
+                    "field mapping.",
                 ),
             ],
             construction_sight_target=(
-                "Maintain source coverage, schema coverage, stale-field warnings, and county-by-county "
-                "parcel confidence."
+                "Maintain source coverage, schema coverage, stale-field warnings, "
+                "and county-by-county parcel confidence."
             ),
             improvement_strategy=(
-                "Make coverage a visible lead-quality input so missing parcel geometry or stale assessor "
-                "fields reduce confidence rather than corrupting the graph."
+                "Make coverage a visible lead-quality input so missing parcel "
+                "geometry or stale assessor fields reduce confidence rather than "
+                "corrupting the graph."
             ),
             normalized_output_contracts=["Site", "CapabilityGapReport"],
             implementation_status=ImplementationStatus.DESIGNED,
