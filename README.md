@@ -55,6 +55,14 @@ The implementation target is better than static aggregation: preserved source ev
 
 See `docs/architecture/external_intelligence_capability_spine.md` for the Shovels/Regrid capability matrix and gap-report contract.
 
+## Parcel/Site Resolution Doctrine
+
+ConstructionSight treats parcel and site identity as the land anchor for every public-record lead.
+
+APNs, addresses, coordinates, geometry, jurisdiction, and county hints are normalized into source-neutral site-resolution candidates with deterministic `site:` keys, match strength, confidence, reasons, limitations, and conflict preservation. This is the Regrid-style backbone that later lets permits, CEQA records, agendas, staff reports, contractors, owners, zoning, and outreach territories snap to a common project/site graph.
+
+See `docs/architecture/parcel_site_resolution_spine.md` for the parcel/site resolution contract.
+
 ## Phase 1 Status
 
-Repository foundation initialized. CEQAnet public-record intake now has a guarded operator lane and archive verification. Universal intake now preserves lawful inputs, detects format families, extracts material facts, and routes records. Opportunity transition intake converts extracted facts into lead candidates for enrichment, deduplication, monitoring, outreach preview, and later bid workflows. External intelligence capability tracking now maps Shovels/Regrid parity, licensed blockers, and ConstructionSight outperform targets.
+Repository foundation initialized. CEQAnet public-record intake now has a guarded operator lane and archive verification. Universal intake now preserves lawful inputs, detects format families, extracts material facts, and routes records. Opportunity transition intake converts extracted facts into lead candidates for enrichment, deduplication, monitoring, outreach preview, and later bid workflows. External intelligence capability tracking maps Shovels/Regrid parity, licensed blockers, and ConstructionSight outperform targets. Parcel/site resolution now anchors APN, address, coordinate, geometry, jurisdiction, and county signals into deterministic site keys for graph expansion.
