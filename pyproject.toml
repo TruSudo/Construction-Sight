@@ -32,6 +32,7 @@ dev = [
 constructionsight = "constructionsight.cli:app"
 constructionsight-intake = "constructionsight.intake_cli:app"
 constructionsight-opportunity-intake = "constructionsight.opportunity_cli:app"
+constructionsight-external-intelligence = "constructionsight.external_intelligence_cli:app"
 constructionsight-ceqanet-fixtures = "constructionsight.ceqanet_fixture_query_cli:app"
 constructionsight-ceqanet-listing-plan = "constructionsight.ceqanet_listing_plan_cli:app"
 constructionsight-ceqanet-listing-execute = "constructionsight.ceqanet_listing_execute_cli:app"
