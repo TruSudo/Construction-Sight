@@ -63,6 +63,14 @@ APNs, addresses, coordinates, geometry, jurisdiction, and county hints are norma
 
 See `docs/architecture/parcel_site_resolution_spine.md` for the parcel/site resolution contract.
 
+## Parcel Source Registry Doctrine
+
+ConstructionSight does not treat a county parcel layer, licensed provider, open-data portal, or user-provided file as import-ready until its lawful boundary, coverage, schema, geometry support, and field mappings are represented.
+
+The parcel source registry separates source targets from verified imports. It tracks provider type, access boundary, coverage status, source format, expected field roles, geometry support, limitations, priority, and next action. This creates the control surface required before live parcel ingestion, geometry normalization, and site-resolution enrichment.
+
+See `docs/architecture/parcel_source_registry.md` for the parcel source registry contract.
+
 ## Phase 1 Status
 
-Repository foundation initialized. CEQAnet public-record intake now has a guarded operator lane and archive verification. Universal intake now preserves lawful inputs, detects format families, extracts material facts, and routes records. Opportunity transition intake converts extracted facts into lead candidates for enrichment, deduplication, monitoring, outreach preview, and later bid workflows. External intelligence capability tracking maps Shovels/Regrid parity, licensed blockers, and ConstructionSight outperform targets. Parcel/site resolution now anchors APN, address, coordinate, geometry, jurisdiction, and county signals into deterministic site keys for graph expansion.
+Repository foundation initialized. CEQAnet public-record intake now has a guarded operator lane and archive verification. Universal intake now preserves lawful inputs, detects format families, extracts material facts, and routes records. Opportunity transition intake converts extracted facts into lead candidates for enrichment, deduplication, monitoring, outreach preview, and later bid workflows. External intelligence capability tracking maps Shovels/Regrid parity, licensed blockers, and ConstructionSight outperform targets. Parcel/site resolution anchors APN, address, coordinate, geometry, jurisdiction, and county signals into deterministic site keys for graph expansion. Parcel source registry now tracks source targets, lawful boundaries, coverage status, field mappings, and provider readiness before live import.
