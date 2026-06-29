@@ -36,7 +36,10 @@ def test_parcel_source_cli_emits_filtered_json() -> None:
 def test_parcel_source_cli_writes_report_json(tmp_path: Path) -> None:
     output_path = tmp_path / "parcel-source-report.json"
 
-    result = runner.invoke(app, ["report", "--json-output", "--output", str(output_path)])
+    result = runner.invoke(
+        app,
+        ["report", "--json-output", "--output", str(output_path)],
+    )
 
     assert result.exit_code == 0
     assert "Wrote parcel source registry report JSON" in result.output
@@ -46,7 +49,10 @@ def test_parcel_source_cli_writes_report_json(tmp_path: Path) -> None:
 
 
 def test_parcel_source_cli_rejects_output_without_json(tmp_path: Path) -> None:
-    result = runner.invoke(app, ["matrix", "--output", str(tmp_path / "matrix.json")])
+    result = runner.invoke(
+        app,
+        ["matrix", "--output", str(tmp_path / "matrix.json")],
+    )
 
     assert result.exit_code != 0
     assert "--output requires --json-output" in result.output
