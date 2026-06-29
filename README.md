@@ -83,6 +83,14 @@ The parcel source registry separates source targets from verified imports. It tr
 
 See `docs/architecture/parcel_source_registry.md` for the parcel source registry contract.
 
+## Parcel Source Schema Preview Doctrine
+
+ConstructionSight previews parcel source schemas before import.
+
+A parcel source or file must expose enough fields to map APN, county, and high-value roles such as address, owner, zoning, land use, geometry, source record ID, and updated timestamp. Schema preview reports observed fields, inferred canonical roles, missing required roles, unmapped fields, geometry support, spatial reference, limitations, status, and next action.
+
+See `docs/architecture/parcel_source_schema_preview.md` and run `constructionsight-parcel-sources preview-schema` for the pre-import schema gate.
+
 ## Phase 1 Status
 
-Repository foundation initialized. CEQAnet public-record intake now has a guarded operator lane and archive verification. Universal intake now preserves lawful inputs, detects format families, extracts material facts, and routes records. Opportunity transition intake converts extracted facts into lead candidates for enrichment, deduplication, monitoring, outreach preview, and later bid workflows. External intelligence capability tracking maps Shovels/Regrid parity, licensed blockers, and ConstructionSight outperform targets. Shovels/Regrid gap alignment now encodes the research-backed roadmap: Regrid as parcel/geometry spine, Shovels as permit/contractor/decision overlay, and ConstructionSight as the timing/opportunity layer. Parcel/site resolution anchors APN, address, coordinate, geometry, jurisdiction, and county signals into deterministic site keys for graph expansion. Parcel source registry tracks source targets, lawful boundaries, coverage status, field mappings, and provider readiness before live import.
+Repository foundation initialized. CEQAnet public-record intake now has a guarded operator lane and archive verification. Universal intake now preserves lawful inputs, detects format families, extracts material facts, and routes records. Opportunity transition intake converts extracted facts into lead candidates for enrichment, deduplication, monitoring, outreach preview, and later bid workflows. External intelligence capability tracking maps Shovels/Regrid parity, licensed blockers, and ConstructionSight outperform targets. Shovels/Regrid gap alignment now encodes the research-backed roadmap: Regrid as parcel/geometry spine, Shovels as permit/contractor/decision overlay, and ConstructionSight as the timing/opportunity layer. Parcel/site resolution anchors APN, address, coordinate, geometry, jurisdiction, and county signals into deterministic site keys for graph expansion. Parcel source registry tracks source targets, lawful boundaries, coverage status, field mappings, and provider readiness before live import. Parcel source schema preview now validates observed fields and inferred canonical roles before parcel import preview.
