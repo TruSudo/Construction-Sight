@@ -85,8 +85,14 @@ def _render_report(payload: dict[str, object]) -> None:
     table.add_row("report_id", str(payload["report_id"]))
     table.add_row("capabilities_reviewed", str(payload["capabilities_reviewed"]))
     table.add_row("gaps", str(len(cast(list[object], payload["gaps"]))))
-    table.add_row("outperform_targets", str(len(cast(list[object], payload["outperform_targets"]))))
-    table.add_row("blocked_by_license", str(len(cast(list[object], payload["blocked_by_license"]))))
+    table.add_row(
+        "outperform_targets",
+        str(len(cast(list[object], payload["outperform_targets"]))),
+    )
+    table.add_row(
+        "blocked_by_license",
+        str(len(cast(list[object], payload["blocked_by_license"]))),
+    )
     console.print(table)
 
 
@@ -106,7 +112,10 @@ def matrix(
     ] = False,
     output_path: Annotated[
         Path | None,
-        typer.Option("--output", help="Write matrix JSON to a file. Requires --json-output."),
+        typer.Option(
+            "--output",
+            help="Write matrix JSON to a file. Requires --json-output.",
+        ),
     ] = None,
 ) -> None:
     """Show lawful Shovels/Regrid capability targets."""
@@ -135,7 +144,10 @@ def gap_report(
     ] = False,
     output_path: Annotated[
         Path | None,
-        typer.Option("--output", help="Write gap-report JSON to a file. Requires --json-output."),
+        typer.Option(
+            "--output",
+            help="Write gap-report JSON to a file. Requires --json-output.",
+        ),
     ] = None,
 ) -> None:
     """Show capability gaps, blocked licensed targets, and outperform targets."""
