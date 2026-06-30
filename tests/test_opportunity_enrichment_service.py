@@ -20,8 +20,9 @@ def _site_result() -> SiteResolutionResult:
         candidates=[
             SiteResolutionCandidate(
                 site_key="site:test",
+                match_strength="exact",
                 confidence_score=90,
-                confidence_band="high",
+                confidence_band="verified",
                 reasons=["site matched"],
             )
         ],
