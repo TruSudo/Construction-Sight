@@ -1,0 +1,146 @@
+# Full-Repo Audit Inventory
+
+This audit reconciles the current ConstructionSight repository state after the movement/identity persistence work merged into `main`.
+
+## Executive status
+
+ConstructionSight now has a substantial tested model/service architecture for lawful public-record construction intelligence. The strongest implemented areas are source-neutral records, CEQAnet guarded operator tooling, parcel/site reasoning, permit movement modeling, contractor identity normalization, decision records, opportunity enrichment, lead review, dedupe, workflow status, result ledger modeling, and selected persistence.
+
+This is not yet a production live-source platform. Live source coverage remains limited. Most adapter families remain contract-ready or placeholder contracts, not verified recurring integrations. CEQAnet has guarded operator/archive tooling and live-execution-adjacent commands, but it must not be described as production-grade recurring coverage unless later source-maturity work proves that status.
+
+No external outreach-sending behavior is implemented or implied. The GUI/operator application remains planned.
+
+## Status labels
+
+| Label | Meaning |
+|---|---|
+| Implemented | Runtime model, service, CLI, or audit logic exists in `src/constructionsight`. |
+| Tested | Dedicated test coverage exists in `tests`. |
+| Documented | Architecture, doctrine, matrix, or README documentation exists. |
+| Persisted | SQLAlchemy ORM/store coverage exists or the layer is deliberately fixture/config-backed. |
+| CLI/operator access | A script or Typer command exposes the function to an operator. |
+| Live source integrated | The code performs lawful live source execution and is documented/tested as such. |
+| Planned | Identified but not implemented. |
+
+## Pipeline inventory
+
+| Layer | Primary files | Implemented | Tested | Documented | Persisted | CLI/operator access | Live source integrated | Known limitations | Required next cleanup |
+|---|---|---:|---:|---:|---:|---:|---:|---|---|
+| Lawful intake boundary | `access_policy.py`, intake modules, adapter contracts | Yes | Yes | Yes | Partial | Yes | No | Boundary is enforced at contract/tooling level; source breadth remains limited. | Preserve lawful boundary in every new source PR. |
+| Source registry | `source_registry.py`, `source_registry_store.py`, `data/source_registry.seed.json` | Yes | Yes | Yes | Yes | Yes | No | Seed records remain unverified until checked. | Add source verification workflow before claiming coverage. |
+| Adapter contracts | `adapters/specs.py`, `adapters/registry.py` | Yes | Yes | Yes | N/A | Yes | No | Contracts are not equivalent to live integrations. | Add maturity status per adapter family. |
+| CEQAnet fixture/query/listing/detail/operator/archive tooling | `ceqanet_*` modules and CLIs | Yes | Yes | Yes | Partial | Yes | Limited/guarded | Operator/archive tooling exists, but production recurring coverage is not established. | Add source-maturity report and recurring-run governance. |
+| Universal intake | `intake_models.py`, `intake_service.py`, `intake_cli.py` | Yes | Yes | Yes | Partial | Yes | No | Routes unknown/unmapped fields but does not imply all formats are covered. | Expand fixture coverage before broader source claims. |
+| Opportunity transition intake | `opportunity_models.py`, `opportunity_service.py`, `opportunity_cli.py` | Yes | Yes | Yes | Partial | Yes | No | Converts source-neutral facts into candidates; not an outreach system. | Persist candidate runs if used operationally. |
+| External intelligence capability spine | `external_intelligence_*` | Yes | Yes | Yes | N/A | Yes | No | Capability modeling only; not Shovels parity. | Keep as gap/maturity analysis, not runtime parity claim. |
+| Shovels/Regrid gap alignment | `external_gap_*`, `docs/architecture/shovels_regrid_gap_alignment.md` | Yes | Yes | Yes | N/A | Yes | No | Capability targets only. | Continue separating capability target from implementation truth. |
+| Parcel source registry | `parcel_source_*` | Yes | Yes | Yes | Config/fixture-backed | Yes | No | Tracks targets, not verified imports. | Add source verification and import-readiness gate. |
+| Parcel schema preview | `parcel_schema_*`, `parcel_source_cli.py` | Yes | Yes | Yes | No | Yes | No | Preview reports are ephemeral unless persisted later. | Store reports only if operator audit requires replay. |
+| Parcel row preview | `parcel_row_preview*`, `parcel_source_cli.py` | Yes | Yes | Yes | No | Yes | No | Preview only; does not create canonical records by itself. | Add persisted import batch audit if live parcel ingestion begins. |
+| Parcel core record | `parcel_core_models.py`, `parcel_record_builder.py` | Yes | Yes | Yes | No dedicated ORM | No | No | Canonical model exists but storage is pending. | Add `parcel_core_records` or deliberate lossless mapping. |
+| Geometry normalization | `parcel_geometry.py` | Yes | Yes | Yes | No dedicated ORM | No | No | First-pass geometry summaries; not survey-grade topology. | Add robust geometry/topology library or stricter limitation checks. |
+| Parcel-backed site resolution | `parcel_site_resolution.py` | Yes | Yes | Yes | No dedicated ORM | No | No | Envelope containment can overmatch; ambiguity must be preserved. | Add topology-grade containment and persisted resolution reports. |
+| Permit snapshot transition spine | `permit_transition_models.py`, `permit_transition_service.py`, `storage/movement_identity_*` | Yes | Yes | Yes | Yes | No | No | Persisted movement records exist, but no recurring live adapter workflow is proven. | Add operator workflow and recurring run storage governance. |
+| Contractor identity | `contractor_identity_*`, `storage/movement_identity_*` | Yes | Yes | Yes | Yes | No | No | Conservative normalization only; CSLB live verification remains pending. | Add verification adapter and CLI only after lawful source maturity review. |
+| Decision records | `decision_record_*`, `storage/movement_identity_*` | Yes | Yes | Yes | Yes | No | No | Model/service/storage exist; agenda/staff-report adapters remain pending. | Add source adapters and relationship mapping. |
+| Opportunity enrichment | `opportunity_enrichment_*` | Yes | Yes | Yes | No dedicated ORM | No | No | Scores are deterministic but hardcoded, not profile-versioned. | Add versioned scoring profile and persisted report store. |
+| Lead review package | `lead_review_*` | Yes | Yes | Yes | No dedicated ORM | No | No | Review package exists as model/service only. | Add persisted review package and operator CLI. |
+| Lead dedupe | `lead_dedupe_*` | Yes | Yes | Yes | No dedicated ORM | No | No | Cross-run dedupe needs persistence. | Add lead fingerprint/dedupe persistence. |
+| Lead workflow status | `lead_workflow_*` | Yes | Yes | Yes | No dedicated ORM | No | No | Events append; full transition matrix is not enforced. | Add matrix-constrained workflow rules and persistence. |
+| Result ledger/share calculation | `result_ledger_*` | Yes | Yes | Yes | No dedicated ORM | No | No | Business semantics for won results with missing share rate need review. | Add persisted ledger/share records and pending-share doctrine. |
+| Storage/database initialization | `storage/database.py`, `storage/*_orm.py`, `storage/*_store.py` | Yes | Yes | Yes | Partial | N/A | No | Movement/identity records are covered; remaining workflow layers are not. | Continue persistence batches without lossy projection. |
+| CLI script registration | `pyproject.toml`, CLI modules | Yes | Yes | Yes | N/A | Partial | No | Many model/service layers lack operator commands. | Add consolidated lead/operator CLI after persistence. |
+| CI quality gate | `.github/workflows/ci.yml` | Yes | N/A | Yes | N/A | N/A | N/A | Local Python 3.12 passing does not prove 3.11 unless CI also passes. | Keep 3.11/3.12 matrix green. |
+| Adapter/source coverage audits | `adapter_audit`, `adapter_coverage`, CLI audit commands | Yes | Yes | Yes | N/A | Yes | No | Source count is small and seed-based. | Add source maturity audit before coverage claims. |
+
+## Contradiction ledger
+
+| ID | Severity | File(s) | Observed contradiction | Runtime truth | Required fix | Disposition in this PR |
+|---|---|---|---|---|---|---|
+| CS-AUDIT-001 | P1 | `docs/architecture/current_implementation_status.md`, `docs/storage_model_matrix.md` | Implementation status marked permit snapshot transition, contractor identity, and decision record persistence as missing while storage matrix and runtime contain dedicated movement/identity ORM/store coverage. | `permit_snapshots`, `permit_transitions`, `contractor_identities`, and `decision_records` have dedicated ORM/store coverage with payload JSON preservation. | Mark movement/identity persistence accurately while keeping CLI and live integration as absent. | Fixed in this PR. |
+| CS-AUDIT-002 | P2 | `docs/architecture/current_implementation_status.md`, architecture docs | Lead dedupe, lead workflow, and result ledger documentation status was stale if marked undocumented. | Dedicated docs exist for lead dedupe, lead workflow status, and result ledger. | Mark documentation accurately without claiming persistence or CLI. | Fixed in this PR. |
+| CS-AUDIT-003 | P2 | `README.md` | Broad limitation language can imply no newer layers have any ORM coverage. | Movement/identity records are persisted; lead workflow/result and parcel core persistence remain pending. | Narrow limitation language to remaining persistence gaps. | Fixed in this PR. |
+
+## Persistence coverage ledger
+
+| Layer | Persistence truth | Notes |
+|---|---|---|
+| Domain records | Persisted | First-generation domain ORM/store exists. |
+| Intelligence records | Persisted | First-generation intelligence ORM/store exists. |
+| Source registry | Persisted/config-backed | Seed/config source records and store support exist, but source maturity remains unverified. |
+| Parcel source/schema/row preview | Not dedicated ORM | Preview layers are generally ephemeral unless operator audit requires storage. |
+| Parcel core/geometry/site resolution | Not dedicated ORM | Do not collapse into generic domain tables unless lossless payloads are preserved. |
+| Permit snapshots | Persisted | `permit_snapshots` stores indexed fields plus full payload JSON. |
+| Permit transitions | Persisted | `permit_transitions` stores indexed fields plus full payload JSON. |
+| Contractor identities | Persisted | `contractor_identities` stores indexed fields plus full payload JSON. |
+| Decision records | Persisted | `decision_records` stores indexed fields plus full payload JSON. |
+| Opportunity enrichment reports | Not dedicated ORM | Required for replayable lead scores. |
+| Lead review packages | Not dedicated ORM | Required before durable operator review. |
+| Lead fingerprints / duplicate results | Not dedicated ORM | Required before dedupe works across runs. |
+| Lead workflows / workflow events | Not dedicated ORM | Required for durable workflow state and audit trail. |
+| Result ledgers / share records | Not dedicated ORM | Required for business result/share audit. |
+
+Persistence rule: generic domain tables are not equivalent to newer source-neutral models unless the mapping is deliberate, lossless, and preserves full payloads, reasons, confidence, limitations, provenance, and future fields.
+
+## CLI/operator exposure ledger
+
+| CLI/script area | Runtime exposure | Notes |
+|---|---|---|
+| Core CLI | Present | Main `constructionsight` command exposes audit/list/graph and related commands. |
+| Intake CLI | Present | Universal intake has operator access. |
+| Opportunity intake CLI | Present | Opportunity candidate conversion has operator access. |
+| External intelligence/gap CLI | Present | Capability/gap reporting has operator access. |
+| Parcel source/schema/row preview CLI | Present | Parcel pre-import preview tooling exists. |
+| Site resolution CLI | Present | Site-resolution preview tooling exists. |
+| CEQAnet CLIs | Present | Fixture, listing, detail, enrichment, chain, persistence preview/apply, operator package/report/bundle/export/archive/verify commands exist. |
+| Permit transition CLI | Absent | Model/service/storage exist but operator CLI is pending. |
+| Contractor identity CLI | Absent | Model/service/storage exist but operator CLI is pending. |
+| Decision record CLI | Absent | Model/service/storage exist but operator CLI is pending. |
+| Opportunity enrichment CLI | Absent | Model/service exists; no dedicated operator command. |
+| Lead review/dedupe/workflow/result CLI | Absent | Model/service exists; persistence and operator commands pending. |
+| Outreach sending CLI | Absent | No external outreach-sending behavior is implemented or implied. |
+| GUI/operator app | Absent | Planned only. |
+
+## Source maturity ledger
+
+| Maturity stage | ConstructionSight status |
+|---|---|
+| Seed source | Exists in `data/source_registry.seed.json`; records remain unverified until checked. |
+| Verified source | Limited; do not infer broad verification from seed registry presence. |
+| Contract-ready adapter | Exists for registered adapter families. |
+| Live read-only integration | Limited/guarded; CEQAnet tooling has live-execution-adjacent commands but must not be overclaimed as production recurring coverage. |
+| Production-grade recurring integration | Not established. |
+| Operator workflow | Partial for CEQAnet and preview/audit commands; lead workflow operator app/CLI remains pending. |
+
+## Limitation and uncertainty preservation check
+
+Current architecture must preserve the following fields or concepts wherever applicable:
+
+- reasons
+- limitations
+- confidence scores or confidence bands
+- source keys
+- source record IDs
+- payload JSON or full normalized payloads
+- provenance/evidence references
+- lawful-access boundaries
+- review-needed states
+- unknown/unmapped fields
+
+These fields are not cleanup noise. They are audit and evidentiary controls. Future PRs must not delete, narrow, or flatten them merely to simplify models, storage, CLI output, or tests.
+
+## Forward cleanup enforcement
+
+Every future feature PR must either update the implementation-status matrix or explicitly state why no status changed.
+
+Every new model or service must be reviewed for:
+
+- tests
+- documentation
+- persistence need
+- CLI/operator need
+- lawful-access boundary
+- reasons/confidence/limitations preservation
+- doctrine/runtime impact
+
+No future PR should merge while it knowingly introduces doctrine/runtime drift, stale maturity claims, missing limitations, broken quality gates, or unreviewed persistence/CLI implications.
