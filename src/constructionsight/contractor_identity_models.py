@@ -138,7 +138,11 @@ class ContractorIdentityResolution(BaseModel):
         """Require primary key to be among candidates."""
 
         candidate_keys = {candidate.contractor_key for candidate in self.candidates}
-        if self.primary_contractor_key is not None and self.primary_contractor_key not in candidate_keys:
+        primary_key_missing = (
+            self.primary_contractor_key is not None
+            and self.primary_contractor_key not in candidate_keys
+        )
+        if primary_key_missing:
             raise ValueError("primary_contractor_key must be in candidates")
         return self
 
