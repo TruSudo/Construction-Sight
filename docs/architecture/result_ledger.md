@@ -1,19 +1,21 @@
 # Result Ledger
 
-The result ledger records the final business result for a reviewed lead workflow.
+The result ledger records the business result for a reviewed lead workflow.
 
 ## Current implementation
 
 The current implementation includes:
 
 - `ResultLedgerStatus`
+- `ResultShareStatus`
 - `ResultLedgerRecord`
 - `ResultShareRecord`
 - result ledger service helper
 - calculated share value
-- model and service tests
+- explicit pending-share states
+- model, service, and storage tests
 
-## Statuses
+## Result statuses
 
 The current result statuses are:
 
@@ -23,26 +25,35 @@ The current result statuses are:
 - `no_fit`
 - `unknown`
 
+## Share states
+
+The current share states are:
+
+- `not_applicable` — non-won result or result where share does not apply
+- `pending_gross_value` — won result exists but gross contract value is not known yet
+- `pending_share_rate` — won result has gross value but share rate is not known yet
+- `calculated` — won result has a valid calculated share record
+
 ## Share calculation
 
-A share record stores:
+A calculated share record stores:
 
 - workflow ID
 - gross value
 - share rate
 - calculated share value
 
-The current model requires `share_value` to equal `gross_value * share_rate`, rounded to cents.
+The model requires `share_value` to equal `gross_value * share_rate`, rounded to cents.
 
-## Known limitation
+## Business rule
 
-The current service can create a `won` ledger row with a gross value and a limitation when the share rate is missing. This preserves uncertainty but does not yet distinguish a complete won result from a pending-share result.
+A `won` ledger may be incomplete, but it must be explicit. It may not silently look complete when share math is pending.
 
-## Required hardening
+```text
+won + no gross value -> pending_gross_value
+won + gross value + no share rate -> pending_share_rate
+won + gross value + share rate -> calculated share record
+non-won -> not_applicable
+```
 
-A future cleanup PR should decide one of these policies:
-
-1. add an explicit pending-share status, or
-2. require every won result to include both gross value and share record.
-
-Do not silently change this rule without business review.
+This preserves the uncertainty required for audit replay while keeping pending-share work queryable.
