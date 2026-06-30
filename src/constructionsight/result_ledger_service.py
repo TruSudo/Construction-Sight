@@ -10,6 +10,7 @@ from constructionsight.result_ledger_models import (
     ResultLedgerRecord,
     ResultLedgerStatus,
     ResultShareRecord,
+    ResultShareStatus,
 )
 
 
@@ -25,13 +26,17 @@ def build_result_ledger_record(
     """Build a result ledger row for a workflow."""
 
     share = None
+    share_status = ResultShareStatus.NOT_APPLICABLE
     limitations: list[str] = []
     if status == ResultLedgerStatus.WON:
         if gross_value is None:
+            share_status = ResultShareStatus.PENDING_GROSS_VALUE
             limitations.append("gross value is missing")
         elif share_rate is None:
+            share_status = ResultShareStatus.PENDING_SHARE_RATE
             limitations.append("share rate is missing")
         else:
+            share_status = ResultShareStatus.CALCULATED
             share = _share_record(workflow.workflow_id, gross_value, share_rate)
     return ResultLedgerRecord(
         ledger_id=_ledger_id(workflow.workflow_id, status),
@@ -40,6 +45,7 @@ def build_result_ledger_record(
         status=status,
         decided_date=decided_date,
         gross_value=gross_value,
+        share_status=share_status,
         share=share,
         reasons=reasons or [],
         limitations=limitations,
