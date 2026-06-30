@@ -10,7 +10,9 @@ from constructionsight.models import (
 )
 from constructionsight.source_readiness_models import HttpReachabilityResult
 from constructionsight.source_registry_update_plan_cli import app
-from constructionsight.source_registry_update_plan_service import build_source_registry_update_plan
+from constructionsight.source_registry_update_plan_service import (
+    build_source_registry_update_plan,
+)
 from constructionsight.source_verification_checklist_models import SourceVerificationObservation
 
 
