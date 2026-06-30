@@ -12,10 +12,11 @@ from constructionsight.opportunity_enrichment_models import (
     OpportunityEnrichmentReport,
     OpportunityEnrichmentSignal,
 )
-from constructionsight.permit_transition_models import (
-    PermitTransition,
-    PermitTransitionKind,
+from constructionsight.opportunity_scoring_profile import (
+    DEFAULT_OPPORTUNITY_SCORING_PROFILE,
+    OpportunityScoringProfile,
 )
+from constructionsight.permit_transition_models import PermitTransition
 from constructionsight.site_resolution_models import SiteResolutionResult, SiteResolutionStatus
 
 
@@ -26,44 +27,52 @@ def enrich_opportunity(
     permit_transitions: list[PermitTransition] | None = None,
     contractor_identity: ContractorIdentity | None = None,
     decision_records: list[DecisionRecord] | None = None,
+    scoring_profile: OpportunityScoringProfile = DEFAULT_OPPORTUNITY_SCORING_PROFILE,
 ) -> OpportunityEnrichmentReport:
     """Build a cross-layer opportunity enrichment report."""
 
     signals: list[OpportunityEnrichmentSignal] = []
     if site_resolution is not None:
-        signal = _site_signal(site_resolution)
+        signal = _site_signal(site_resolution, scoring_profile)
         if signal is not None:
             signals.append(signal)
     for transition in permit_transitions or []:
-        signals.append(_permit_signal(transition))
+        signals.append(_permit_signal(transition, scoring_profile))
     if contractor_identity is not None:
-        signals.append(_contractor_signal(contractor_identity))
+        signals.append(_contractor_signal(contractor_identity, scoring_profile))
     for decision in decision_records or []:
-        signals.append(_decision_signal(decision))
+        signals.append(_decision_signal(decision, scoring_profile))
 
     lead_score = min(sum(signal.score_delta for signal in signals), 100)
     confidence_score = _average_confidence(signals)
     limitations = _limitations(signals)
     reasons = [signal.reason for signal in signals]
     return OpportunityEnrichmentReport(
-        report_id=_report_id(base_candidate_id, signals),
+        report_id=_report_id(base_candidate_id, scoring_profile, signals),
         base_candidate_id=base_candidate_id,
         lead_score=lead_score,
         confidence_score=confidence_score,
         confidence_band=confidence_band(confidence_score),
+        scoring_profile_key=scoring_profile.profile_key,
+        scoring_profile_version=scoring_profile.version,
         signals=signals,
         reasons=_unique(reasons),
         limitations=limitations,
-        next_action=_next_action(lead_score, limitations),
+        next_action=_next_action(lead_score, limitations, scoring_profile),
     )
 
 
-def _site_signal(site_resolution: SiteResolutionResult) -> OpportunityEnrichmentSignal | None:
+def _site_signal(
+    site_resolution: SiteResolutionResult,
+    scoring_profile: OpportunityScoringProfile,
+) -> OpportunityEnrichmentSignal | None:
     """Return site-resolution enrichment signal when meaningful."""
 
     if site_resolution.status == SiteResolutionStatus.UNRESOLVED:
         return None
-    score = 20 if site_resolution.status == SiteResolutionStatus.RESOLVED else 10
+    score = scoring_profile.site_score(site_resolution.status)
+    if score is None:
+        return None
     confidence_score = (
         site_resolution.candidates[0].confidence_score if site_resolution.candidates else 0
     )
@@ -78,19 +87,13 @@ def _site_signal(site_resolution: SiteResolutionResult) -> OpportunityEnrichment
     )
 
 
-def _permit_signal(transition: PermitTransition) -> OpportunityEnrichmentSignal:
+def _permit_signal(
+    transition: PermitTransition,
+    scoring_profile: OpportunityScoringProfile,
+) -> OpportunityEnrichmentSignal:
     """Return permit transition enrichment signal."""
 
-    score_by_kind = {
-        PermitTransitionKind.NEW_RECORD: 10,
-        PermitTransitionKind.STATUS_CHANGED: 20,
-        PermitTransitionKind.VALUE_CHANGED: 15,
-        PermitTransitionKind.CONTRACTOR_CHANGED: 15,
-        PermitTransitionKind.DATE_CHANGED: 10,
-        PermitTransitionKind.SITE_CHANGED: 20,
-        PermitTransitionKind.DESCRIPTION_CHANGED: 5,
-    }
-    score = score_by_kind[transition.transition_kind]
+    score = scoring_profile.permit_transition_scores[transition.transition_kind]
     return OpportunityEnrichmentSignal(
         signal_key=f"signal:permit:{_short_hash(transition.transition_id)}",
         signal_kind=EnrichmentSignalKind.PERMIT_TRANSITION,
@@ -102,10 +105,17 @@ def _permit_signal(transition: PermitTransition) -> OpportunityEnrichmentSignal:
     )
 
 
-def _contractor_signal(identity: ContractorIdentity) -> OpportunityEnrichmentSignal:
+def _contractor_signal(
+    identity: ContractorIdentity,
+    scoring_profile: OpportunityScoringProfile,
+) -> OpportunityEnrichmentSignal:
     """Return contractor identity enrichment signal."""
 
-    score = 15 if identity.license is not None else 8
+    score = (
+        scoring_profile.contractor_with_license_score
+        if identity.license is not None
+        else scoring_profile.contractor_without_license_score
+    )
     return OpportunityEnrichmentSignal(
         signal_key=f"signal:contractor:{_short_hash(identity.contractor_key)}",
         signal_kind=EnrichmentSignalKind.CONTRACTOR_IDENTITY,
@@ -117,10 +127,17 @@ def _contractor_signal(identity: ContractorIdentity) -> OpportunityEnrichmentSig
     )
 
 
-def _decision_signal(decision: DecisionRecord) -> OpportunityEnrichmentSignal:
+def _decision_signal(
+    decision: DecisionRecord,
+    scoring_profile: OpportunityScoringProfile,
+) -> OpportunityEnrichmentSignal:
     """Return public decision enrichment signal."""
 
-    score = 15 if decision.site_key or decision.apn else 10
+    score = (
+        scoring_profile.decision_with_site_score
+        if decision.site_key or decision.apn
+        else scoring_profile.decision_without_site_score
+    )
     return OpportunityEnrichmentSignal(
         signal_key=f"signal:decision:{_short_hash(decision.decision_key)}",
         signal_kind=EnrichmentSignalKind.DECISION_SIGNAL,
@@ -151,26 +168,38 @@ def _limitations(signals: list[OpportunityEnrichmentSignal]) -> list[str]:
     return _unique(values)
 
 
-def _next_action(lead_score: int, limitations: list[str]) -> str:
+def _next_action(
+    lead_score: int,
+    limitations: list[str],
+    scoring_profile: OpportunityScoringProfile,
+) -> str:
     """Return deterministic next action from score and limitations."""
 
-    if lead_score >= 70 and not limitations:
+    if lead_score >= scoring_profile.high_value_threshold and not limitations:
         return "prepare outreach preview"
-    if lead_score >= 50:
+    if lead_score >= scoring_profile.review_threshold:
         return "review limitations before outreach"
-    if lead_score > 0:
+    if lead_score >= scoring_profile.monitor_threshold:
         return "monitor and enrich with more source evidence"
     return "hold until parcel, permit, contractor, or decision signal appears"
 
 
 def _report_id(
     base_candidate_id: str,
+    scoring_profile: OpportunityScoringProfile,
     signals: list[OpportunityEnrichmentSignal],
 ) -> str:
     """Build deterministic enrichment report id."""
 
     signal_basis = ",".join(signal.signal_key for signal in signals)
-    basis = "|".join([base_candidate_id, signal_basis])
+    basis = "|".join(
+        [
+            base_candidate_id,
+            scoring_profile.profile_key,
+            scoring_profile.version,
+            signal_basis,
+        ]
+    )
     return f"opportunity-enrichment:{_short_hash(basis)}"
 
 
