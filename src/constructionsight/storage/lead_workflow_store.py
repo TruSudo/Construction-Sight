@@ -44,6 +44,8 @@ def store_opportunity_enrichment_report(
             lead_score=report.lead_score,
             confidence_score=report.confidence_score,
             confidence_band=report.confidence_band.value,
+            scoring_profile_key=report.scoring_profile_key,
+            scoring_profile_version=report.scoring_profile_version,
             next_action=report.next_action,
             observed_created_at=report.created_at.isoformat(),
             payload_json=payload_json,
@@ -54,6 +56,8 @@ def store_opportunity_enrichment_report(
     existing.lead_score = report.lead_score
     existing.confidence_score = report.confidence_score
     existing.confidence_band = report.confidence_band.value
+    existing.scoring_profile_key = report.scoring_profile_key
+    existing.scoring_profile_version = report.scoring_profile_version
     existing.next_action = report.next_action
     existing.observed_created_at = report.created_at.isoformat()
     existing.payload_json = payload_json

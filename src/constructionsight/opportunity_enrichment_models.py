@@ -49,6 +49,8 @@ class OpportunityEnrichmentReport(BaseModel):
     lead_score: int = Field(ge=0, le=100)
     confidence_score: int = Field(default=0, ge=0, le=100)
     confidence_band: ConfidenceBand = ConfidenceBand.UNKNOWN
+    scoring_profile_key: str = Field(default="opportunity-scoring:default", min_length=1)
+    scoring_profile_version: str = Field(default="2026-06-30.1", min_length=1)
     signals: list[OpportunityEnrichmentSignal] = Field(default_factory=list)
     reasons: list[str] = Field(default_factory=list)
     limitations: list[str] = Field(default_factory=list)
