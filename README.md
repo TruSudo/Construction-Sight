@@ -197,14 +197,14 @@ See:
 
 ## Known Limitations
 
-- SQLAlchemy ORM/storage coverage is still incomplete for parcel core, geometry, parcel-backed site-resolution reports, and optional preview-report archives. Movement, identity, and post-enrichment lead workflow records now have dedicated storage.
+- SQLAlchemy ORM/storage coverage now exists for movement, identity, parcel core, site-resolution reports, and post-enrichment lead workflow records. Remaining storage gaps are optional preview-report archives and optional nested child tables.
 - Most adapter families are placeholder contracts, not live source integrations.
 - Source registry seed records remain unverified until checked.
 - Geometry containment currently has first-pass limitations and must not be treated as survey-grade parcel topology.
 - Opportunity scoring weights are deterministic but not yet versioned in a scoring profile file.
 - Lead workflow transitions preserve event history but do not yet enforce a full transition matrix.
 - Result ledger share semantics require business review for won results with missing share rate.
-- New lead workflow/result layers are persisted and tested but do not yet have operator CLI commands.
+- Persisted model/service layers still need operator CLI commands.
 - No external outreach-sending behavior is implemented or implied.
 
 ## Forward Cleanup Doctrine
@@ -215,4 +215,4 @@ Do not claim Regrid or Shovels parity merely because model layers exist. Parity 
 
 ## Phase 1 Status
 
-Repository foundation initialized. CEQAnet public-record intake has guarded operator and archive tooling, but CEQAnet remains contract-ready rather than live production coverage. Universal intake, opportunity transition intake, parcel/site resolution, parcel source registry, schema preview, row preview, parcel core record, geometry normalization, parcel-backed site resolution, permit transitions, contractor identity, decision records, opportunity enrichment, lead review, dedupe, workflow status, and result ledger now exist as tested model/service architecture. The next required cleanup phases are parcel/site persistence coverage, CLI/operator access, geometry hardening, scoring profile versioning, and source/adapter maturity clarification.
+Repository foundation initialized. CEQAnet public-record intake has guarded operator and archive tooling, but CEQAnet remains contract-ready rather than live production coverage. Universal intake, opportunity transition intake, parcel/site resolution, parcel source registry, schema preview, row preview, parcel core record, geometry normalization, parcel-backed site resolution, permit transitions, contractor identity, decision records, opportunity enrichment, lead review, dedupe, workflow status, and result ledger now exist as tested model/service architecture. The next required cleanup phases are CLI/operator access, geometry hardening, scoring profile versioning, source/adapter maturity clarification, and optional preview archive persistence.
