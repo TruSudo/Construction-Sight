@@ -62,3 +62,27 @@ class SourceRegistryUpdatePlanReport(BaseModel):
         """Return JSON-safe report payload."""
 
         return self.model_dump(mode="json")
+
+
+class SourceRegistryOutputReport(BaseModel):
+    """Separate output registry report."""
+
+    source_count: int = Field(ge=0)
+    update_count: int = Field(ge=0)
+    source_payloads: list[dict[str, Any]] = Field(default_factory=list)
+    limitations: list[str] = Field(default_factory=list)
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    @field_validator("limitations")
+    @classmethod
+    def require_unique_limitations(cls, values: list[str]) -> list[str]:
+        """Reject duplicate limitations."""
+
+        if len(values) != len(set(values)):
+            raise ValueError("output limitations must contain unique values")
+        return values
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return JSON-safe report payload."""
+
+        return self.model_dump(mode="json")
