@@ -1,10 +1,10 @@
 # Full-Repo Audit Inventory
 
-This audit reconciles the current ConstructionSight repository state after the movement/identity persistence work and post-enrichment lead workflow persistence work merged into the branch history.
+This audit reconciles the current ConstructionSight repository state after movement/identity persistence, post-enrichment lead workflow persistence, and parcel/site persistence work.
 
 ## Executive status
 
-ConstructionSight now has a substantial tested model/service architecture for lawful public-record construction intelligence. The strongest implemented areas are source-neutral records, CEQAnet guarded operator tooling, parcel/site reasoning, permit movement modeling, contractor identity normalization, decision records, opportunity enrichment, lead review, dedupe, workflow status, result ledger modeling, and dedicated persistence for movement/identity plus post-enrichment workflow records.
+ConstructionSight now has a substantial tested model/service architecture for lawful public-record construction intelligence. The strongest implemented areas are source-neutral records, CEQAnet guarded operator tooling, parcel/site reasoning, parcel core records, parcel-backed site resolution, permit movement modeling, contractor identity normalization, decision records, opportunity enrichment, lead review, dedupe, workflow status, result ledger modeling, and dedicated persistence for movement/identity, parcel/site, and post-enrichment workflow records.
 
 This is not yet a production live-source platform. Live source coverage remains limited. Most adapter families remain contract-ready or placeholder contracts, not verified recurring integrations. CEQAnet has guarded operator/archive tooling and live-execution-adjacent commands, but it must not be described as production-grade recurring coverage unless later source-maturity work proves that status.
 
@@ -37,9 +37,9 @@ No external outreach-sending behavior is implemented or implied. The GUI/operato
 | Parcel source registry | `parcel_source_*` | Yes | Yes | Yes | Config/fixture-backed | Yes | No | Tracks targets, not verified imports. | Add source verification and import-readiness gate. |
 | Parcel schema preview | `parcel_schema_*`, `parcel_source_cli.py` | Yes | Yes | Yes | No | Yes | No | Preview reports are ephemeral unless persisted later. | Store reports only if operator audit requires replay. |
 | Parcel row preview | `parcel_row_preview*`, `parcel_source_cli.py` | Yes | Yes | Yes | No | Yes | No | Preview only; does not create canonical records by itself. | Add persisted import batch audit if live parcel ingestion begins. |
-| Parcel core record | `parcel_core_models.py`, `parcel_record_builder.py` | Yes | Yes | Yes | No dedicated ORM | No | No | Canonical model exists but storage is pending. | Add `parcel_core_records` or deliberate lossless mapping. |
-| Geometry normalization | `parcel_geometry.py` | Yes | Yes | Yes | No dedicated ORM | No | No | First-pass geometry summaries; not survey-grade topology. | Add robust geometry/topology library or stricter limitation checks. |
-| Parcel-backed site resolution | `parcel_site_resolution.py` | Yes | Yes | Yes | No dedicated ORM | No | No | Envelope containment can overmatch; ambiguity must be preserved. | Add topology-grade containment and persisted resolution reports. |
+| Parcel core record | `parcel_core_models.py`, `parcel_record_builder.py`, `storage/parcel_site_*` | Yes | Yes | Yes | Yes | No | No | Canonical model and storage exist; live import workflow remains pending. | Add verified import workflow when source maturity permits. |
+| Geometry normalization | `parcel_geometry.py`, `storage/parcel_site_*` | Yes | Yes | Yes | Payload | No | No | First-pass geometry summaries are stored but not survey-grade topology. | Add robust geometry/topology library or stricter limitation checks. |
+| Parcel-backed site resolution | `parcel_site_resolution.py`, `storage/parcel_site_*` | Yes | Yes | Yes | Yes | No | No | Envelope containment can overmatch; ambiguity must be preserved. | Add topology-grade containment and operator replay flow. |
 | Permit snapshot transition spine | `permit_transition_models.py`, `permit_transition_service.py`, `storage/movement_identity_*` | Yes | Yes | Yes | Yes | No | No | Persisted movement records exist, but no recurring live adapter workflow is proven. | Add operator workflow and recurring run storage governance. |
 | Contractor identity | `contractor_identity_*`, `storage/movement_identity_*` | Yes | Yes | Yes | Yes | No | No | Conservative normalization only; CSLB live verification remains pending. | Add verification adapter and CLI only after lawful source maturity review. |
 | Decision records | `decision_record_*`, `storage/movement_identity_*` | Yes | Yes | Yes | Yes | No | No | Model/service/storage exist; agenda/staff-report adapters remain pending. | Add source adapters and relationship mapping. |
@@ -48,7 +48,7 @@ No external outreach-sending behavior is implemented or implied. The GUI/operato
 | Lead dedupe | `lead_dedupe_*`, `storage/lead_workflow_*` | Yes | Yes | Yes | Yes | No | No | Cross-run dedupe storage exists; operator CLI is pending. | Add lead/operator CLI. |
 | Lead workflow status | `lead_workflow_*`, `storage/lead_workflow_*` | Yes | Yes | Yes | Yes | No | No | Events append; full transition matrix is not enforced. | Add matrix-constrained workflow rules. |
 | Result ledger/share calculation | `result_ledger_*`, `storage/lead_workflow_*` | Yes | Yes | Yes | Yes | No | No | Business semantics for won results with missing share rate need review. | Add pending-share doctrine or enforcement. |
-| Storage/database initialization | `storage/database.py`, `storage/*_orm.py`, `storage/*_store.py` | Yes | Yes | Yes | Partial | N/A | No | Movement/identity and lead workflow records are covered; parcel/site storage gaps remain. | Continue persistence batches without lossy projection. |
+| Storage/database initialization | `storage/database.py`, `storage/*_orm.py`, `storage/*_store.py` | Yes | Yes | Yes | Partial | N/A | No | Core model records are covered; optional preview archives and child tables remain. | Continue persistence only when query or replay needs require it. |
 | CLI script registration | `pyproject.toml`, CLI modules | Yes | Yes | Yes | N/A | Partial | No | Many persisted workflow layers still lack operator commands. | Add consolidated lead/operator CLI. |
 | CI quality gate | `.github/workflows/ci.yml` | Yes | N/A | Yes | N/A | N/A | N/A | Local Python 3.12 passing does not prove 3.11 unless CI also passes. | Keep 3.11/3.12 matrix green. |
 | Adapter/source coverage audits | `adapter_audit`, `adapter_coverage`, CLI audit commands | Yes | Yes | Yes | N/A | Yes | No | Source count is small and seed-based. | Add source maturity audit before coverage claims. |
@@ -57,10 +57,11 @@ No external outreach-sending behavior is implemented or implied. The GUI/operato
 
 | ID | Severity | File(s) | Observed contradiction | Runtime truth | Required fix | Disposition in this PR |
 |---|---|---|---|---|---|---|
-| CS-AUDIT-001 | P1 | `docs/architecture/current_implementation_status.md`, `docs/storage_model_matrix.md` | Implementation status previously marked permit snapshot transition, contractor identity, and decision record persistence as missing while storage matrix and runtime contain dedicated movement/identity ORM/store coverage. | `permit_snapshots`, `permit_transitions`, `contractor_identities`, and `decision_records` have dedicated ORM/store coverage with payload JSON preservation. | Mark movement/identity persistence accurately while keeping CLI and live integration as absent. | Fixed. |
+| CS-AUDIT-001 | P1 | `docs/architecture/current_implementation_status.md`, `docs/storage_model_matrix.md` | Earlier status marked movement/identity persistence as missing. | Movement/identity records have dedicated ORM/store coverage with payload JSON preservation. | Mark persistence accurately while keeping CLI and live integration absent. | Fixed. |
 | CS-AUDIT-002 | P2 | `docs/architecture/current_implementation_status.md`, architecture docs | Lead dedupe, lead workflow, and result ledger documentation status was stale if marked undocumented. | Dedicated docs exist for lead dedupe, lead workflow status, and result ledger. | Mark documentation accurately without claiming CLI. | Fixed. |
-| CS-AUDIT-003 | P2 | `README.md` | Broad limitation language can imply no newer layers have any ORM coverage. | Movement/identity and post-enrichment lead workflow records are persisted; parcel core/geometry/site-resolution persistence remains pending. | Narrow limitation language to remaining persistence gaps. | Fixed in this PR. |
-| CS-AUDIT-004 | P1 | `docs/storage_model_matrix.md`, runtime storage modules | Batch 2 lead workflow records were listed as pending storage. | `opportunity_enrichment_reports`, `lead_review_packages`, `lead_fingerprints`, `lead_duplicate_results`, `lead_workflows`, `lead_workflow_events`, `result_ledgers`, and `result_share_records` now have dedicated ORM/store coverage. | Update matrix/status/audit/README maturity language. | Fixed in this PR. |
+| CS-AUDIT-003 | P2 | `README.md` | Broad limitation language can imply no newer layers have ORM coverage. | Movement/identity, parcel/site, and post-enrichment lead workflow records are persisted. | Narrow limitation language to remaining persistence gaps. | Fixed in this PR. |
+| CS-AUDIT-004 | P1 | `docs/storage_model_matrix.md`, runtime storage modules | Batch 2 lead workflow records were listed as pending storage. | Lead workflow records now have dedicated ORM/store coverage. | Update matrix/status/audit/README maturity language. | Fixed. |
+| CS-AUDIT-005 | P1 | `docs/storage_model_matrix.md`, runtime storage modules | Parcel core and parcel-backed site-resolution reports were listed as pending storage. | `parcel_core_records` and `site_resolution_results` now have dedicated ORM/store coverage. | Update matrix/status/audit/README maturity language. | Fixed in this PR. |
 
 ## Persistence coverage ledger
 
@@ -70,7 +71,9 @@ No external outreach-sending behavior is implemented or implied. The GUI/operato
 | Intelligence records | Persisted | First-generation intelligence ORM/store exists. |
 | Source registry | Persisted/config-backed | Seed/config source records and store support exist, but source maturity remains unverified. |
 | Parcel source/schema/row preview | Not dedicated ORM | Preview layers are generally ephemeral unless operator audit requires storage. |
-| Parcel core/geometry/site resolution | Not dedicated ORM | Do not collapse into generic domain tables unless lossless payloads are preserved. |
+| Parcel core records | Persisted | `parcel_core_records` stores indexed parcel and geometry summary fields plus full JSON payload. |
+| Parcel geometry summaries | Payload/indexed parent fields | Stored in parcel payload with selected indexed parent columns; not survey-grade topology. |
+| Parcel-backed site-resolution reports | Persisted | `site_resolution_results` stores indexed result fields plus full JSON payload. |
 | Permit snapshots | Persisted | `permit_snapshots` stores indexed fields plus full payload JSON. |
 | Permit transitions | Persisted | `permit_transitions` stores indexed fields plus full payload JSON. |
 | Contractor identities | Persisted | `contractor_identities` stores indexed fields plus full payload JSON. |
@@ -99,6 +102,7 @@ Persistence rule: generic domain tables are not equivalent to newer source-neutr
 | Decision record CLI | Absent | Model/service/storage exist but operator CLI is pending. |
 | Opportunity enrichment CLI | Absent | Model/service/storage exists; no dedicated operator command. |
 | Lead review/dedupe/workflow/result CLI | Absent | Model/service/storage exists; operator commands pending. |
+| Parcel core / site-resolution persistence CLI | Absent | Model/service/storage exists; operator commands pending. |
 | Outreach sending CLI | Absent | No external outreach-sending behavior is implemented or implied. |
 | GUI/operator app | Absent | Planned only. |
 

@@ -10,6 +10,7 @@ Current database initialization imports these ORM modules before `Base.metadata.
 - `constructionsight.storage.intelligence_orm`
 - `constructionsight.storage.movement_identity_orm`
 - `constructionsight.storage.lead_workflow_orm`
+- `constructionsight.storage.parcel_site_orm`
 
 That means only tables represented in those modules are created by the current database initializer.
 
@@ -17,7 +18,7 @@ That means only tables represented in those modules are created by the current d
 
 | Runtime/domain concept | ORM coverage | Notes |
 |---|---|---|
-| Normalized site/domain records | Yes | `domain_sites` exists. This is not the same as `ParcelCoreRecord`. |
+| Normalized site/domain records | Yes | `domain_sites` exists. This is not the same as `ParcelCoreRecord`, which now has dedicated coverage. |
 | Normalized named entities | Yes | `domain_entities` exists. This is not the same as `ContractorIdentity`; contractor identity now has dedicated coverage. |
 | Normalized permit records | Yes | `domain_permits` exists. This is not the same as `PermitSnapshot`/`PermitTransition`; those now have dedicated coverage. |
 | Normalized planning cases | Yes | `domain_planning_cases` exists. |
@@ -40,9 +41,9 @@ That means only tables represented in those modules are created by the current d
 | Parcel source registry | Yes | Yes | Yes | No dedicated ORM | Add only if source registry should become database-backed rather than fixture/config-backed. |
 | Parcel schema preview | Yes | Yes | Yes | No | Usually ephemeral; persistence optional. Store reports only if operator audit requires it. |
 | Parcel row preview | Yes | Yes | Yes | No | Usually ephemeral; persistence optional. Store reports only if operator audit requires it. |
-| ParcelCoreRecord | Yes | Yes | Yes | No dedicated ORM | Add `parcel_core_records` table or map deliberately into `domain_sites` with lossless JSON payload. |
-| ParcelGeometry | Yes | Yes | Yes | No dedicated ORM | Store as part of parcel core payload or dedicated geometry table. |
-| Parcel-backed site resolution | Yes | Yes | Yes | No | Store resolution reports if used by lead review or audit trails. |
+| ParcelCoreRecord | Yes | Yes | Yes | Yes | `parcel_core_records` stores indexed parcel and geometry summary fields plus full JSON payload. |
+| ParcelGeometry | Yes | Yes | Yes | Payload only | Stored inside `parcel_core_records.payload_json` with selected geometry fields indexed on the parcel row. |
+| Parcel-backed site resolution | Yes | Yes | Yes | Yes | `site_resolution_results` stores indexed result fields plus full JSON payload. |
 | PermitSnapshot | Yes | Yes | Yes | Yes | `permit_snapshots` stores indexed fields plus full JSON payload. |
 | PermitTransition | Yes | Yes | Yes | Yes | `permit_transitions` stores indexed fields plus full JSON payload. |
 | ContractorIdentity | Yes | Yes | Yes | Yes | `contractor_identities` stores indexed identity fields plus full JSON payload. |
@@ -87,14 +88,22 @@ Implemented in `constructionsight.storage.lead_workflow_orm` and `constructionsi
 
 Reason: these are operator/workflow records that depend on the movement and identity records.
 
+### Batch 3: parcel and site-resolution records
+
+Implemented in `constructionsight.storage.parcel_site_orm` and `constructionsight.storage.parcel_site_store`:
+
+- `parcel_core_records`
+- `site_resolution_results`
+
+Reason: these are land-identity and site-resolution records needed before durable parcel-backed lead review and operator workflow.
+
 ## Remaining storage backlog
 
 Remaining persistence gaps are intentionally narrow:
 
-- parcel core records and geometry payloads
-- parcel-backed site-resolution reports
 - optional preview report archives for parcel schema and row previews
-- optional child tables for nested signals, licenses, review items, and share notes if query needs justify them later
+- optional child tables for nested parcel geometry points, site-resolution candidates, signals, licenses, review items, and share notes when query requirements justify them
+- decision-site match storage if decision matching feeds review packages directly
 
 ## Persistence design rule
 

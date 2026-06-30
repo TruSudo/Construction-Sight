@@ -22,13 +22,13 @@ This document reconciles implemented ConstructionSight layers with documentation
 | Universal intake | Yes | Yes | Yes | Partial | Yes | No | Source-neutral records and routing exist; live source breadth is limited. |
 | Opportunity transition intake | Yes | Yes | Yes | Partial | Yes | No | Converts intake facts into opportunity candidates. |
 | Shovels/Regrid gap alignment | Yes | Yes | Yes | N/A | Yes | No | Planning and gap matrix exists; not a claim of platform parity. |
-| Parcel/site resolution | Yes | Yes | Yes | Partial | Yes | No | Hint-based resolution exists with confidence and limitations. |
+| Parcel/site resolution | Yes | Yes | Yes | Yes | Yes | No | Hint-based and parcel-backed resolution exist with confidence, limitations, and dedicated result storage. |
 | Parcel source registry | Yes | Yes | Yes | No | Yes | No | Tracks source targets; does not import live parcel coverage. |
 | Parcel schema preview | Yes | Yes | Yes | No | Yes | No | Pre-import schema gate exists. |
 | Parcel row preview | Yes | Yes | Yes | No | Yes | No | Pre-record row gate exists. |
-| Parcel core record | Yes | Yes | Yes | No | No | No | Canonical parcel model exists; ORM/store coverage is pending. |
-| Geometry normalization | Yes | Yes | Yes | No | No | No | First-pass WKT/GeoJSON summary exists; polygon-grade topology is pending. |
-| Parcel-backed site resolution | Yes | Yes | Yes | No | No | No | Matches site hints to parcel records; envelope-only containment can overmatch. |
+| Parcel core record | Yes | Yes | Yes | Yes | No | No | Canonical parcel model and dedicated storage exist; live import workflow remains pending. |
+| Geometry normalization | Yes | Yes | Yes | Payload | No | No | First-pass WKT/GeoJSON summary is stored in parcel payload/indexed fields; polygon-grade topology is pending. |
+| Parcel-backed site resolution | Yes | Yes | Yes | Yes | No | No | Matches site hints to parcel records and persists result reports; envelope-only containment can overmatch. |
 | Permit snapshot transition spine | Yes | Yes | Yes | Yes | No | No | Source-neutral permit movement model and movement storage exist; recurring live adapters and operator commands remain pending. |
 | Contractor identity | Yes | Yes | Yes | Yes | No | No | Model/service and dedicated storage exist; CSLB live verification and operator commands remain pending. |
 | Decision record | Yes | Yes | Yes | Yes | No | No | Pre-permit decision model/service and dedicated storage exist; agenda/staff-report adapters and operator commands remain pending. |
@@ -45,7 +45,7 @@ This document reconciles implemented ConstructionSight layers with documentation
 | ID | Severity | Layer | File(s) | Observed fact | Why it matters | Root cause | Recommended fix | Disposition |
 |---|---|---|---|---|---|---|---|---|
 | CS-VIAM-001 | P1 | Doctrine | `README.md` | README previously lagged the newer post-parcel layers. | Runtime and doctrine drift apart. | Rapid implementation outpaced docs. | Keep README linked to the canonical implementation-status matrix and audit inventory. | Fixed; monitor forward. |
-| CS-VIAM-002 | P1 | Persistence | `src/constructionsight/storage/*` | Movement/identity and post-enrichment lead workflow layers now have dedicated ORM/store coverage, but parcel core, geometry, and site-resolution reports are not fully represented in ORM/store coverage. | Remaining parcel/site model layers cannot all be operationally stored or queried across runs. | Architecture-first implementation sequence. | Continue persistence batches without lossy projection; preserve full payloads, reasons, confidence, and limitations. | Partially fixed; narrow remaining backlog. |
+| CS-VIAM-002 | P1 | Persistence | `src/constructionsight/storage/*` | Movement/identity, post-enrichment lead workflow, parcel core, and site-resolution report layers now have dedicated ORM/store coverage. Optional preview archives and some nested child tables remain intentionally unimplemented. | Remaining gaps are now narrower and should not be confused with missing core persistence. | Architecture-first implementation sequence. | Add optional archives or child tables only when query needs justify them. | Partially fixed; narrow remaining backlog. |
 | CS-VIAM-003 | P1 | Source maturity | `data/source_registry.seed.json` | Seed sources are marked `unverified`. | Product must not overclaim source readiness. | Source hardening is not complete. | Preserve unverified status and document meaning. | Fix docs now; verify later. |
 | CS-VIAM-004 | P1 | Adapter maturity | `src/constructionsight/adapters/specs.py` | Most adapter families are placeholders; CEQAnet is contract-ready, not live production coverage. | Avoid false live-integration claims. | Adapter contracts preceded live adapters. | Add maturity language to README/status/audit docs. | Fix docs now. |
 | CS-VIAM-005 | P1 | Geometry | `parcel_geometry.py`, `parcel_site_resolution.py` | Centroid is first-pass coordinate average; site containment uses envelope checks. | Can produce spatial false positives. | Dependency-light first implementation. | Add geometry hardening PR with topology limitations and tests. | Backlog Phase 6. |
