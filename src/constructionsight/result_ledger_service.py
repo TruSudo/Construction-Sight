@@ -1,0 +1,83 @@
+"""Result ledger service."""
+
+from __future__ import annotations
+
+import hashlib
+from datetime import date
+
+from constructionsight.lead_workflow_models import LeadWorkflowRecord
+from constructionsight.result_ledger_models import (
+    ResultLedgerRecord,
+    ResultLedgerStatus,
+    ResultShareRecord,
+)
+
+
+def build_result_ledger_record(
+    *,
+    workflow: LeadWorkflowRecord,
+    status: ResultLedgerStatus,
+    decided_date: date | None = None,
+    gross_value: float | None = None,
+    share_rate: float | None = None,
+    reasons: list[str] | None = None,
+) -> ResultLedgerRecord:
+    """Build a result ledger row for a workflow."""
+
+    share = None
+    limitations: list[str] = []
+    if status == ResultLedgerStatus.WON:
+        if gross_value is None:
+            limitations.append("gross value is missing")
+        elif share_rate is None:
+            limitations.append("share rate is missing")
+        else:
+            share = _share_record(workflow.workflow_id, gross_value, share_rate)
+    return ResultLedgerRecord(
+        ledger_id=_ledger_id(workflow.workflow_id, status),
+        workflow_id=workflow.workflow_id,
+        package_id=workflow.package_id,
+        status=status,
+        decided_date=decided_date,
+        gross_value=gross_value,
+        share=share,
+        reasons=reasons or [],
+        limitations=limitations,
+    )
+
+
+def _share_record(
+    workflow_id: str,
+    gross_value: float,
+    share_rate: float,
+) -> ResultShareRecord:
+    """Build a calculated share record."""
+
+    share_value = round(gross_value * share_rate, 2)
+    return ResultShareRecord(
+        share_record_id=_share_id(workflow_id, gross_value, share_rate),
+        workflow_id=workflow_id,
+        gross_value=gross_value,
+        share_rate=share_rate,
+        share_value=share_value,
+    )
+
+
+def _ledger_id(workflow_id: str, status: ResultLedgerStatus) -> str:
+    """Build deterministic ledger id."""
+
+    basis = "|".join([workflow_id, status.value])
+    return f"result-ledger:{_short_hash(basis)}"
+
+
+def _share_id(workflow_id: str, gross_value: float, share_rate: float) -> str:
+    """Build deterministic share id."""
+
+    basis = "|".join([workflow_id, f"{gross_value:.2f}", f"{share_rate:.4f}"])
+    return f"result-share:{_short_hash(basis)}"
+
+
+def _short_hash(value: str) -> str:
+    """Return short deterministic hash."""
+
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()[:16]
