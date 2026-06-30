@@ -83,7 +83,11 @@ def _initial_status(
 ) -> LeadWorkflowStatus:
     """Return initial workflow status."""
 
-    if duplicate_result is not None and duplicate_result.status == LeadDuplicateStatus.DUPLICATE:
+    duplicate = (
+        duplicate_result is not None
+        and duplicate_result.status == LeadDuplicateStatus.DUPLICATE
+    )
+    if duplicate:
         return LeadWorkflowStatus.HOLD
     if package.status == LeadReviewStatus.HOLD:
         return LeadWorkflowStatus.HOLD
@@ -110,9 +114,8 @@ def _event(
 ) -> LeadWorkflowEvent:
     """Build deterministic workflow event."""
 
-    basis = "|".join(
-        [workflow_id_basis, previous_status.value if previous_status else "", current_status.value, reason]
-    )
+    previous_value = previous_status.value if previous_status else ""
+    basis = "|".join([workflow_id_basis, previous_value, current_status.value, reason])
     return LeadWorkflowEvent(
         event_id=f"lead-workflow-event:{_short_hash(basis)}",
         previous_status=previous_status,
