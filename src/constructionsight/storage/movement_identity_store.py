@@ -23,7 +23,9 @@ def store_permit_snapshot(session: Session, snapshot: PermitSnapshot) -> PermitS
 
     payload_json = _payload_json(snapshot.to_dict())
     existing = session.execute(
-        select(PermitSnapshotRecord).where(PermitSnapshotRecord.snapshot_id == snapshot.snapshot_id)
+        select(PermitSnapshotRecord).where(
+            PermitSnapshotRecord.snapshot_id == snapshot.snapshot_id
+        )
     ).scalar_one_or_none()
     if existing is None:
         existing = PermitSnapshotRecord(
@@ -118,7 +120,9 @@ def store_decision_record(session: Session, decision: DecisionRecord) -> Decisio
 
     payload_json = _payload_json(decision.to_dict())
     existing = session.execute(
-        select(DecisionRecordRow).where(DecisionRecordRow.decision_key == decision.decision_key)
+        select(DecisionRecordRow).where(
+            DecisionRecordRow.decision_key == decision.decision_key
+        )
     ).scalar_one_or_none()
     if existing is None:
         existing = DecisionRecordRow(
