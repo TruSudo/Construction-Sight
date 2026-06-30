@@ -57,7 +57,7 @@ def test_checklist_without_observations_stays_entry_reachable_only() -> None:
     assert row.checklist_status == SourceVerificationChecklistStatus.PUBLIC_ENTRY_REACHABLE
     assert row.public_entry_page == ChecklistItemStatus.OBSERVED
     assert row.query_behavior == ChecklistItemStatus.NOT_CHECKED
-    assert "entry reachability is not query/list/detail verification" in row.limitations
+    assert "entry reachability is not query/list/detail evidence" in row.limitations
 
 
 def test_checklist_observation_can_record_query_and_detail_behavior() -> None:
