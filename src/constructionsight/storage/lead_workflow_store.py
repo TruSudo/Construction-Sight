@@ -297,6 +297,7 @@ def store_result_ledger_record(
             status=ledger.status.value,
             decided_date=decided_date,
             gross_value=ledger.gross_value,
+            share_status=ledger.share_status.value,
             share_record_id=share_record_id,
             observed_created_at=ledger.created_at.isoformat(),
             payload_json=payload_json,
@@ -308,6 +309,7 @@ def store_result_ledger_record(
         existing.status = ledger.status.value
         existing.decided_date = decided_date
         existing.gross_value = ledger.gross_value
+        existing.share_status = ledger.share_status.value
         existing.share_record_id = share_record_id
         existing.observed_created_at = ledger.created_at.isoformat()
         existing.payload_json = payload_json
