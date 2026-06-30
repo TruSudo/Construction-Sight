@@ -34,14 +34,20 @@ Ownership/contact enrichment is intentionally deferred. This phase establishes l
 The geometry layer supports:
 
 - WKT point parsing
-- GeoJSON point/polygon/multipolygon coordinate extraction
+- GeoJSON geometry, feature, point, polygon, and multipolygon coordinate extraction
 - coordinate-average centroid
 - envelope calculation
 - geometry hash
 - spatial-reference preservation
-- limitations for unparsed geometry or unverified spatial reference
+- limitations for unparsed geometry, unverified spatial reference, and polygon centroid approximation
 
-No external GIS dependency is required in this phase. More exact topology and projection behavior can be added later.
+No external GIS dependency is required in this phase. More exact topology, area-weighted centroids, coordinate projection, and point-in-polygon behavior can be added later.
+
+## Geometry hardening limits
+
+Current polygon and multipolygon centroids are coordinate-average summaries, not area-weighted GIS centroids. Closed simple polygon rings have a redundant closing coordinate removed before the coordinate-average centroid is calculated, but this is still not survey-grade parcel topology.
+
+Envelope fields are bounding-box summaries. They are useful for coarse candidate matching and indexed search, not legal boundary determinations.
 
 ## Relationship to earlier gates
 
@@ -56,4 +62,4 @@ parcel source registry
 
 ## Next phase
 
-After this layer lands, the next phase is site resolver enrichment from parcel records: APN/address/coordinate hints should be matched against parcel core records with reasons, confidence, and limitations.
+Future geometry work may add topology-grade containment and projection-aware calculations. Until then, every polygon-derived coordinate match must preserve its limitations.

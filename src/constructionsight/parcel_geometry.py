@@ -15,6 +15,9 @@ _WKT_POINT_RE = re.compile(
     ),
     re.IGNORECASE,
 )
+_APPROXIMATE_CENTROID_LIMITATION = (
+    "polygon centroid is a coordinate-average approximation, not an area-weighted centroid"
+)
 
 
 def normalize_parcel_geometry(
@@ -41,6 +44,8 @@ def normalize_parcel_geometry(
         parsed = _parse_raw_geometry(raw_geometry)
         if parsed is not None:
             parsed_kind, calculated_centroid, envelope = parsed
+            if parsed_kind in {ParcelGeometryKind.POLYGON, ParcelGeometryKind.MULTIPOLYGON}:
+                limitations.append(_APPROXIMATE_CENTROID_LIMITATION)
         else:
             limitations.append("raw geometry could not be parsed for envelope")
     if spatial_reference is None:
@@ -86,15 +91,37 @@ def _parse_raw_geometry(
         return None
     if not isinstance(payload, dict):
         return None
-    geometry_type = str(payload.get("type") or "").lower()
-    coordinates = payload.get("coordinates")
-    points = _extract_points(coordinates)
+    geometry_payload = _geojson_geometry_payload(payload)
+    if geometry_payload is None:
+        return None
+    geometry_type = str(geometry_payload.get("type") or "").lower()
+    coordinates = geometry_payload.get("coordinates")
+    points = _without_closing_duplicate(_extract_points(coordinates))
     if not points:
         return None
     envelope = _envelope(points)
     centroid = _centroid(points)
     kind = _kind_from_geojson_type(geometry_type)
     return (kind, centroid, envelope)
+
+
+def _geojson_geometry_payload(payload: dict[str, object]) -> dict[str, object] | None:
+    """Return a GeoJSON geometry object from geometry, feature, or feature collection input."""
+
+    payload_type = str(payload.get("type") or "").lower()
+    if payload_type == "feature":
+        geometry = payload.get("geometry")
+        return geometry if isinstance(geometry, dict) else None
+    if payload_type == "featurecollection":
+        features = payload.get("features")
+        if not isinstance(features, list) or not features:
+            return None
+        first_feature = features[0]
+        if not isinstance(first_feature, dict):
+            return None
+        geometry = first_feature.get("geometry")
+        return geometry if isinstance(geometry, dict) else None
+    return payload
 
 
 def _extract_points(value: object) -> list[tuple[float, float]]:
@@ -111,6 +138,14 @@ def _extract_points(value: object) -> list[tuple[float, float]]:
     points: list[tuple[float, float]] = []
     for item in value:
         points.extend(_extract_points(item))
+    return points
+
+
+def _without_closing_duplicate(points: list[tuple[float, float]]) -> list[tuple[float, float]]:
+    """Remove one redundant closing coordinate from simple closed rings."""
+
+    if len(points) > 1 and points[0] == points[-1]:
+        return points[:-1]
     return points
 
 

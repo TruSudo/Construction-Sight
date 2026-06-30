@@ -138,7 +138,7 @@ See `docs/architecture/parcel_core_record_geometry.md` for the parcel core recor
 
 ConstructionSight resolves site hints against parcel core records when available.
 
-APN, address, and coordinate hints can produce parcel-backed site candidates with confidence, reasons, geometry-derived coordinates, ambiguity preservation, and fallback to hint-only resolution when no parcel core record matches.
+APN, address, and coordinate hints can produce parcel-backed site candidates with confidence, reasons, geometry-derived coordinates, ambiguity preservation, and fallback to hint-only resolution when no parcel core record matches. Polygon and multipolygon coordinate matches preserve limitations because current containment is envelope-only, not topology-grade point-in-polygon proof.
 
 See `docs/architecture/parcel_backed_site_resolution.md` for the parcel-backed site resolution contract.
 
@@ -215,4 +215,4 @@ Do not claim Regrid or Shovels parity merely because model layers exist. Parity 
 
 ## Phase 1 Status
 
-Repository foundation initialized. CEQAnet public-record intake has guarded operator and archive tooling, but CEQAnet remains contract-ready rather than live production coverage. Universal intake, opportunity transition intake, parcel/site resolution, parcel source registry, schema preview, row preview, parcel core record, geometry normalization, parcel-backed site resolution, permit transitions, contractor identity, decision records, opportunity enrichment, lead review, dedupe, workflow status, and result ledger now exist as tested model/service architecture. The next required cleanup phases are dedicated action/list/detail operator CLIs, geometry hardening, scoring profile versioning, source/adapter maturity clarification, and optional preview archive persistence.
+Repository foundation initialized. CEQAnet public-record intake has guarded operator and archive tooling, but CEQAnet remains contract-ready rather than live production coverage. Universal intake, opportunity transition intake, parcel/site resolution, parcel source registry, schema preview, row preview, parcel core record, geometry normalization, parcel-backed site resolution, permit transitions, contractor identity, decision records, opportunity enrichment, lead review, dedupe, workflow status, and result ledger now exist as tested model/service architecture. The next required cleanup phases are topology-grade geometry, dedicated action/list/detail operator CLIs, scoring profile versioning, source/adapter maturity clarification, and optional preview archive persistence.

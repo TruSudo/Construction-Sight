@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 
 from constructionsight.domain_types import confidence_band
-from constructionsight.parcel_core_models import ParcelCoreRecord
+from constructionsight.parcel_core_models import ParcelCoreRecord, ParcelGeometryKind
 from constructionsight.site_resolution_models import (
     GeometryHint,
     SiteIdentifier,
@@ -17,6 +17,10 @@ from constructionsight.site_resolution_models import (
     SiteResolutionStatus,
 )
 from constructionsight.site_resolution_service import resolve_site
+
+_ENVELOPE_CONTAINMENT_LIMITATION = (
+    "coordinate containment uses parcel envelope only, not polygon topology"
+)
 
 
 def resolve_site_with_parcels(
@@ -101,6 +105,10 @@ def _candidate_from_parcel(
     limitations = list(parcel.limitations)
     if parcel.geometry is None:
         limitations.append("matched parcel does not include geometry")
+    else:
+        limitations.extend(parcel.geometry.limitations)
+        if _uses_polygon_envelope_match(reasons, parcel):
+            limitations.append(_ENVELOPE_CONTAINMENT_LIMITATION)
     return SiteResolutionCandidate(
         site_key=_site_key_from_parcel(parcel),
         match_strength=_match_strength(score),
@@ -118,6 +126,19 @@ def _candidate_from_parcel(
         reasons=_unique(reasons),
         limitations=_unique(limitations),
     )
+
+
+def _uses_polygon_envelope_match(reasons: list[str], parcel: ParcelCoreRecord) -> bool:
+    """Return whether a candidate used polygon-like envelope containment."""
+
+    if parcel.geometry is None:
+        return False
+    if "coordinate hint falls within parcel envelope" not in reasons:
+        return False
+    return parcel.geometry.geometry_kind in {
+        ParcelGeometryKind.POLYGON,
+        ParcelGeometryKind.MULTIPOLYGON,
+    }
 
 
 def _point_hits_parcel(

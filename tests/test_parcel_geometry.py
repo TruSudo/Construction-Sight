@@ -45,8 +45,30 @@ def test_normalize_geojson_polygon_geometry() -> None:
     assert geometry.envelope_min_longitude == -117.1
     assert geometry.envelope_max_latitude == 34.1
     assert geometry.envelope_max_longitude == -117.0
-    assert geometry.centroid_latitude is not None
-    assert geometry.centroid_longitude is not None
+    assert geometry.centroid_latitude == 34.05
+    assert geometry.centroid_longitude == -117.05
+    assert geometry.limitations == [
+        "polygon centroid is a coordinate-average approximation, not an area-weighted centroid"
+    ]
+
+
+def test_normalize_geojson_feature_geometry() -> None:
+    raw_geometry = json.dumps(
+        {
+            "type": "Feature",
+            "properties": {"apn": "123"},
+            "geometry": {"type": "Point", "coordinates": [-117.2, 34.1]},
+        }
+    )
+
+    geometry = normalize_parcel_geometry(
+        raw_geometry=raw_geometry,
+        spatial_reference="EPSG:4326",
+    )
+
+    assert geometry.geometry_kind == ParcelGeometryKind.POINT
+    assert geometry.centroid_latitude == 34.1
+    assert geometry.centroid_longitude == -117.2
 
 
 def test_unparseable_geometry_preserves_hash_and_limitation() -> None:
