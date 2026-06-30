@@ -19,6 +19,15 @@ class ResultLedgerStatus(StrEnum):
     UNKNOWN = "unknown"
 
 
+class ResultShareStatus(StrEnum):
+    """Share calculation state for a result ledger record."""
+
+    NOT_APPLICABLE = "not_applicable"
+    PENDING_GROSS_VALUE = "pending_gross_value"
+    PENDING_SHARE_RATE = "pending_share_rate"
+    CALCULATED = "calculated"
+
+
 class ResultShareRecord(BaseModel):
     """Calculated share record for a successful outcome."""
 
@@ -57,6 +66,7 @@ class ResultLedgerRecord(BaseModel):
     status: ResultLedgerStatus
     decided_date: date | None = None
     gross_value: float | None = Field(default=None, ge=0)
+    share_status: ResultShareStatus = ResultShareStatus.NOT_APPLICABLE
     share: ResultShareRecord | None = None
     reasons: list[str] = Field(default_factory=list)
     limitations: list[str] = Field(default_factory=list)
@@ -73,12 +83,30 @@ class ResultLedgerRecord(BaseModel):
 
     @model_validator(mode="after")
     def require_status_payload_consistency(self) -> ResultLedgerRecord:
-        """Keep outcome fields consistent with status."""
+        """Keep outcome and share fields consistent with status."""
 
-        if self.status == ResultLedgerStatus.WON and self.gross_value is None:
-            raise ValueError("won ledger records require gross_value")
-        if self.share is not None and self.status != ResultLedgerStatus.WON:
-            raise ValueError("share records require won status")
+        if self.status != ResultLedgerStatus.WON:
+            if self.share is not None:
+                raise ValueError("share records require won status")
+            if self.share_status != ResultShareStatus.NOT_APPLICABLE:
+                raise ValueError("non-won ledgers require not_applicable share status")
+            return self
+        if self.share is not None:
+            if self.share_status == ResultShareStatus.NOT_APPLICABLE:
+                self.share_status = ResultShareStatus.CALCULATED
+            if self.share_status != ResultShareStatus.CALCULATED:
+                raise ValueError("share records require calculated share status")
+            return self
+        if self.gross_value is None:
+            if self.share_status == ResultShareStatus.NOT_APPLICABLE:
+                self.share_status = ResultShareStatus.PENDING_GROSS_VALUE
+            if self.share_status != ResultShareStatus.PENDING_GROSS_VALUE:
+                raise ValueError("won ledger without gross value requires pending_gross_value")
+            return self
+        if self.share_status == ResultShareStatus.NOT_APPLICABLE:
+            self.share_status = ResultShareStatus.PENDING_SHARE_RATE
+        if self.share_status != ResultShareStatus.PENDING_SHARE_RATE:
+            raise ValueError("won ledger without share requires pending_share_rate")
         return self
 
     def to_dict(self) -> dict[str, Any]:
