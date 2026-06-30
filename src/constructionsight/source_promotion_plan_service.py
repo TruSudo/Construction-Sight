@@ -6,6 +6,11 @@ from collections.abc import Iterable
 
 from constructionsight.adapters.specs import AdapterFamilySpec
 from constructionsight.models import PlatformFamily, PublicSource
+from constructionsight.source_promotion_plan_models import (
+    SourcePromotionPlanAction,
+    SourcePromotionPlanReport,
+    SourcePromotionPlanRow,
+)
 from constructionsight.source_readiness_service import HttpReachabilityChecker
 from constructionsight.source_verification_checklist_models import (
     ChecklistItemStatus,
@@ -14,11 +19,6 @@ from constructionsight.source_verification_checklist_models import (
 )
 from constructionsight.source_verification_checklist_service import (
     build_source_verification_checklist_report,
-)
-from constructionsight.source_promotion_plan_models import (
-    SourcePromotionPlanAction,
-    SourcePromotionPlanReport,
-    SourcePromotionPlanRow,
 )
 
 
@@ -119,7 +119,9 @@ def _plan_reasons(
     if action == SourcePromotionPlanAction.MARK_PARTIAL_CANDIDATE:
         return ["some manual source behavior was observed"]
     if action == SourcePromotionPlanAction.VERIFIED_CANDIDATE_REVIEW:
-        return ["manual entry, query, list, detail, barrier, terms, and evidence review is complete"]
+        return [
+            "manual entry, query, list, detail, barrier, terms, and evidence review is complete"
+        ]
     if action == SourcePromotionPlanAction.MARK_BLOCKED_CANDIDATE:
         return ["operator observed an access barrier"]
     return [f"checklist status is {row.checklist_status.value}"]
