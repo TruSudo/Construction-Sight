@@ -50,7 +50,7 @@ lawful public-record intake
   -> result ledger and share calculation
 ```
 
-See `docs/architecture/current_implementation_status.md` for the implemented-versus-planned matrix and active defect ledger.
+See `docs/architecture/current_implementation_status.md` for the implemented-versus-planned matrix and active defect ledger. See `docs/audits/full_repo_audit_inventory.md` for the full repository audit inventory.
 
 ## Universal Intake Doctrine
 
@@ -197,7 +197,7 @@ See:
 
 ## Known Limitations
 
-- Newer model/service layers are not yet fully represented in SQLAlchemy ORM/storage.
+- Newer model/service layers are only partially represented in SQLAlchemy ORM/storage: movement and identity records are persisted, while parcel core/geometry/site-resolution reports, opportunity enrichment, lead review, dedupe, workflow, and result ledger persistence remain pending.
 - Most adapter families are placeholder contracts, not live source integrations.
 - Source registry seed records remain unverified until checked.
 - Geometry containment currently has first-pass limitations and must not be treated as survey-grade parcel topology.
@@ -215,4 +215,4 @@ Do not claim Regrid or Shovels parity merely because model layers exist. Parity 
 
 ## Phase 1 Status
 
-Repository foundation initialized. CEQAnet public-record intake has guarded operator and archive tooling, but CEQAnet remains contract-ready rather than live production coverage. Universal intake, opportunity transition intake, parcel/site resolution, parcel source registry, schema preview, row preview, parcel core record, geometry normalization, parcel-backed site resolution, permit transitions, contractor identity, decision records, opportunity enrichment, lead review, dedupe, workflow status, and result ledger now exist as tested model/service architecture. The next required cleanup phases are persistence coverage, CLI/operator access, geometry hardening, scoring profile versioning, and source/adapter maturity clarification.
+Repository foundation initialized. CEQAnet public-record intake has guarded operator and archive tooling, but CEQAnet remains contract-ready rather than live production coverage. Universal intake, opportunity transition intake, parcel/site resolution, parcel source registry, schema preview, row preview, parcel core record, geometry normalization, parcel-backed site resolution, permit transitions, contractor identity, decision records, opportunity enrichment, lead review, dedupe, workflow status, and result ledger now exist as tested model/service architecture. The next required cleanup phases are remaining persistence coverage, CLI/operator access, geometry hardening, scoring profile versioning, and source/adapter maturity clarification.
