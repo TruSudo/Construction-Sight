@@ -6,6 +6,7 @@ from collections.abc import Iterable
 
 from constructionsight.adapters.specs import AdapterFamilySpec
 from constructionsight.models import PlatformFamily, PublicSource
+from constructionsight.source_readiness_service import HttpReachabilityChecker
 from constructionsight.source_verification_checklist_models import (
     ChecklistItemStatus,
     SourceVerificationChecklistReport,
@@ -14,7 +15,6 @@ from constructionsight.source_verification_checklist_models import (
     SourceVerificationObservation,
 )
 from constructionsight.source_verification_evidence_service import (
-    HttpReachabilityChecker,
     build_source_verification_evidence_package,
 )
 
