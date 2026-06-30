@@ -1,5 +1,3 @@
-from typer.testing import CliRunner
-
 from constructionsight.adapters.specs import (
     AdapterFamilySpec,
     AdapterImplementationStatus,
@@ -12,6 +10,8 @@ from constructionsight.models import (
     SourceType,
     VerificationStatus,
 )
+from typer.testing import CliRunner
+
 from constructionsight.source_status_cli import app
 from constructionsight.source_status_report import build_source_status_report
 
