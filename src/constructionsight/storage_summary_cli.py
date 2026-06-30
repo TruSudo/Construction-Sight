@@ -90,6 +90,11 @@ def build_storage_summary(database_url: str | None = None) -> list[StorageTableS
         return summaries
 
 
+@app.callback()
+def storage_summary_root() -> None:
+    """ConstructionSight storage summary commands."""
+
+
 @app.command("summary")
 def storage_summary(
     database_url: Annotated[
