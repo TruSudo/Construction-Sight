@@ -129,22 +129,22 @@ def _point_hits_parcel(
     if parcel.geometry is None:
         return False
     geometry = parcel.geometry
-    if None in {
-        geometry.envelope_min_latitude,
-        geometry.envelope_min_longitude,
-        geometry.envelope_max_latitude,
-        geometry.envelope_max_longitude,
-    }:
+    min_latitude = geometry.envelope_min_latitude
+    min_longitude = geometry.envelope_min_longitude
+    max_latitude = geometry.envelope_max_latitude
+    max_longitude = geometry.envelope_max_longitude
+    if (
+        min_latitude is None
+        or min_longitude is None
+        or max_latitude is None
+        or max_longitude is None
+    ):
         return False
     for hint in geometry_hints:
         if hint.latitude is None or hint.longitude is None:
             continue
-        latitude_in_range = geometry.envelope_min_latitude <= hint.latitude <= (
-            geometry.envelope_max_latitude
-        )
-        longitude_in_range = geometry.envelope_min_longitude <= hint.longitude <= (
-            geometry.envelope_max_longitude
-        )
+        latitude_in_range = min_latitude <= hint.latitude <= max_latitude
+        longitude_in_range = min_longitude <= hint.longitude <= max_longitude
         if latitude_in_range and longitude_in_range:
             return True
     return False
