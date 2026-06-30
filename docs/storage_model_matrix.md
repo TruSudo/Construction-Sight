@@ -9,6 +9,7 @@ Current database initialization imports these ORM modules before `Base.metadata.
 - `constructionsight.storage.domain_orm`
 - `constructionsight.storage.intelligence_orm`
 - `constructionsight.storage.movement_identity_orm`
+- `constructionsight.storage.lead_workflow_orm`
 
 That means only tables represented in those modules are created by the current database initializer.
 
@@ -48,15 +49,15 @@ That means only tables represented in those modules are created by the current d
 | ContractorLicense | Yes | Yes | Yes | Payload only | Stored inside `contractor_identities.payload_json`; child table not yet required. |
 | DecisionRecord | Yes | Yes | Yes | Yes | `decision_records` stores indexed decision fields plus full JSON payload. |
 | DecisionSiteMatch | Yes | Yes | Yes | No | Store if decision matching feeds review packages. |
-| OpportunityEnrichmentReport | Yes | Yes | Yes | No dedicated ORM | Add `opportunity_enrichment_reports`; required for replayable lead scores. |
-| OpportunityEnrichmentSignal | Yes | Yes | Yes | No | Store as JSON payload or child table. |
-| LeadReviewPackage | Yes | Yes | Yes | No dedicated ORM | Add `lead_review_packages`; required before operator workflow. |
-| LeadFingerprint | Yes | Yes | Yes | No dedicated ORM | Add `lead_fingerprints`; required before dedupe can operate across runs. |
-| LeadDuplicateResult | Yes | Yes | Yes | No | Store if dedupe decision must be auditable. |
-| LeadWorkflowRecord | Yes | Yes | Yes | No dedicated ORM | Add `lead_workflows`; required for operational workflow. |
-| LeadWorkflowEvent | Yes | Yes | Yes | No dedicated ORM | Add `lead_workflow_events`; required for state audit trail. |
-| ResultLedgerRecord | Yes | Yes | Yes | No dedicated ORM | Add `result_ledgers`; required for business outcome tracking. |
-| ResultShareRecord | Yes | Yes | Yes | No dedicated ORM | Add `result_share_records`; required for calculated share audit. |
+| OpportunityEnrichmentReport | Yes | Yes | Yes | Yes | `opportunity_enrichment_reports` stores indexed score fields plus full JSON payload. |
+| OpportunityEnrichmentSignal | Yes | Yes | Yes | Payload only | Stored inside `opportunity_enrichment_reports.payload_json`; child table not yet required. |
+| LeadReviewPackage | Yes | Yes | Yes | Yes | `lead_review_packages` stores indexed review fields plus full JSON payload. |
+| LeadFingerprint | Yes | Yes | Yes | Yes | `lead_fingerprints` stores indexed dedupe fields plus full JSON payload. |
+| LeadDuplicateResult | Yes | Yes | Yes | Yes | `lead_duplicate_results` stores indexed duplicate status fields plus full JSON payload. |
+| LeadWorkflowRecord | Yes | Yes | Yes | Yes | `lead_workflows` stores indexed workflow fields plus full JSON payload. |
+| LeadWorkflowEvent | Yes | Yes | Yes | Yes | `lead_workflow_events` stores indexed event fields plus full JSON payload. |
+| ResultLedgerRecord | Yes | Yes | Yes | Yes | `result_ledgers` stores indexed outcome fields plus full JSON payload. |
+| ResultShareRecord | Yes | Yes | Yes | Yes | `result_share_records` stores indexed share fields plus full JSON payload. |
 
 ## Persistence batches
 
@@ -73,7 +74,7 @@ Reason: these are source-signal records that later enrichment depends on.
 
 ### Batch 2: lead workflow records
 
-Implement next:
+Implemented in `constructionsight.storage.lead_workflow_orm` and `constructionsight.storage.lead_workflow_store`:
 
 - `opportunity_enrichment_reports`
 - `lead_review_packages`
@@ -85,6 +86,15 @@ Implement next:
 - `result_share_records`
 
 Reason: these are operator/workflow records that depend on the movement and identity records.
+
+## Remaining storage backlog
+
+Remaining persistence gaps are intentionally narrow:
+
+- parcel core records and geometry payloads
+- parcel-backed site-resolution reports
+- optional preview report archives for parcel schema and row previews
+- optional child tables for nested signals, licenses, review items, and share notes if query needs justify them later
 
 ## Persistence design rule
 
