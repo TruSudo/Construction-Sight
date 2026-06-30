@@ -170,7 +170,7 @@ See `docs/architecture/decision_record_spine.md` for the decision record contrac
 
 ConstructionSight combines parcel/site, permit transition, contractor identity, and decision signals into explainable opportunity enrichment reports.
 
-Every score contribution must come from a named signal with a reason, confidence score, and limitations.
+Every score contribution must come from a named signal with a reason, confidence score, and limitations. Enrichment reports also preserve scoring profile key/version so future tuning does not silently change the meaning of historical scores.
 
 See `docs/architecture/opportunity_enrichment_spine.md` for the enrichment contract.
 
@@ -201,7 +201,7 @@ See:
 - Most adapter families are placeholder contracts, not live source integrations.
 - Source registry seed records remain unverified until checked.
 - Geometry containment currently has first-pass limitations and must not be treated as survey-grade parcel topology.
-- Opportunity scoring weights are deterministic but not yet versioned in a scoring profile file.
+- Opportunity scoring uses a versioned default profile; additional profiles must be introduced explicitly with doctrine and tests.
 - Lead workflow transitions preserve event history but do not yet enforce a full transition matrix.
 - Result ledger share semantics require business review for won results with missing share rate.
 - Persisted model/service layers now have storage-summary visibility; dedicated action/list/detail operator CLIs remain pending.
@@ -215,4 +215,4 @@ Do not claim Regrid or Shovels parity merely because model layers exist. Parity 
 
 ## Phase 1 Status
 
-Repository foundation initialized. CEQAnet public-record intake has guarded operator and archive tooling, but CEQAnet remains contract-ready rather than live production coverage. Universal intake, opportunity transition intake, parcel/site resolution, parcel source registry, schema preview, row preview, parcel core record, geometry normalization, parcel-backed site resolution, permit transitions, contractor identity, decision records, opportunity enrichment, lead review, dedupe, workflow status, and result ledger now exist as tested model/service architecture. The next required cleanup phases are topology-grade geometry, dedicated action/list/detail operator CLIs, scoring profile versioning, source/adapter maturity clarification, and optional preview archive persistence.
+Repository foundation initialized. CEQAnet public-record intake has guarded operator and archive tooling, but CEQAnet remains contract-ready rather than live production coverage. Universal intake, opportunity transition intake, parcel/site resolution, parcel source registry, schema preview, row preview, parcel core record, geometry normalization, parcel-backed site resolution, permit transitions, contractor identity, decision records, opportunity enrichment, lead review, dedupe, workflow status, and result ledger now exist as tested model/service architecture. The next required cleanup phases are topology-grade geometry, dedicated action/list/detail operator CLIs, source/adapter maturity clarification, optional preview archive persistence, and workflow transition matrix hardening.
