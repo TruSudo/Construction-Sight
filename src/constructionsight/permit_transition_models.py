@@ -108,7 +108,8 @@ class PermitTransition(BaseModel):
     def require_change_payload(self) -> PermitTransition:
         """Require field payload for non-new transitions."""
 
-        if self.transition_kind != PermitTransitionKind.NEW_RECORD and self.field_name is None:
+        non_new_transition = self.transition_kind != PermitTransitionKind.NEW_RECORD
+        if non_new_transition and self.field_name is None:
             raise ValueError("non-new permit transitions require field_name")
         return self
 
