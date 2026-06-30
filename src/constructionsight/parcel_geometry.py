@@ -5,12 +5,14 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from typing import Any
 
 from constructionsight.parcel_core_models import ParcelGeometry, ParcelGeometryKind
 
 _WKT_POINT_RE = re.compile(
-    r"POINT\s*\(\s*(?P<lon>-?\d+(?:\.\d+)?)\s+(?P<lat>-?\d+(?:\.\d+)?)\s*\)",
+    (
+        r"POINT\s*\(\s*(?P<lon>-?\d+(?:\.\d+)?)\s+"
+        r"(?P<lat>-?\d+(?:\.\d+)?)\s*\)"
+    ),
     re.IGNORECASE,
 )
 
