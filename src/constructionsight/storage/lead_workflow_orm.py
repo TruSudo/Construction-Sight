@@ -30,6 +30,8 @@ class OpportunityEnrichmentReportRecord(Base):
     lead_score: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     confidence_score: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     confidence_band: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    scoring_profile_key: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    scoring_profile_version: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     next_action: Mapped[str] = mapped_column(String(500), nullable=False, index=True)
     observed_created_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     payload_json: Mapped[str] = mapped_column(Text, nullable=False)
