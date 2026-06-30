@@ -1,3 +1,5 @@
+from typer.testing import CliRunner
+
 from constructionsight.adapters.specs import (
     AdapterFamilySpec,
     AdapterImplementationStatus,
@@ -10,6 +12,7 @@ from constructionsight.models import (
     SourceType,
     VerificationStatus,
 )
+from constructionsight.source_status_cli import app
 from constructionsight.source_status_report import build_source_status_report
 
 
@@ -74,3 +77,33 @@ def test_source_status_report_serializes_rows() -> None:
 
     assert payload["source_count"] == 1
     assert payload["rows"][0]["status_level"] == "seed_only"
+
+
+def test_source_status_cli_requires_report_subcommand(tmp_path) -> None:
+    registry_path = tmp_path / "sources.json"
+    registry_path.write_text(
+        """
+        [
+          {
+            "jurisdiction": {
+              "name": "Test City",
+              "county": "San Bernardino",
+              "state": "CA",
+              "jurisdiction_type": "city"
+            },
+            "source_name": "Test Source",
+            "source_type": "city_portal",
+            "platform_family": "accela_aca",
+            "public_url": "https://example.invalid/source",
+            "verification_status": "unverified"
+          }
+        ]
+        """,
+        encoding="utf-8",
+    )
+    runner = CliRunner()
+
+    result = runner.invoke(app, ["report", str(registry_path), "--json-output"])
+
+    assert result.exit_code == 0
+    assert '"status_level": "seed_only"' in result.output
