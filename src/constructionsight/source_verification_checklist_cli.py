@@ -16,6 +16,7 @@ from constructionsight.source_verification_checklist_models import (
     SourceVerificationObservation,
 )
 from constructionsight.source_verification_checklist_service import (
+    build_source_observation_templates,
     build_source_verification_checklist_report,
 )
 
@@ -42,6 +43,27 @@ def _load_observations(path: Path | None) -> list[SourceVerificationObservation]
 @app.callback()
 def source_verification_root() -> None:
     """ConstructionSight source verification commands."""
+
+
+@app.command("observation-template")
+def source_observation_template(
+    registry_path: Annotated[Path, typer.Argument(help="Path to source registry JSON.")],
+    output: Annotated[
+        Path | None,
+        typer.Option("--output", help="Optional output path for editable JSON template."),
+    ] = None,
+) -> None:
+    """Build an editable observation JSON template without changing the registry."""
+
+    templates = build_source_observation_templates(_load_sources_from_json(registry_path))
+    payload = [template.model_dump(mode="json") for template in templates]
+    rendered = json.dumps(payload, indent=2)
+    if output is not None:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(f"{rendered}\n", encoding="utf-8")
+        console.print(f"Wrote source observation template to {output}")
+        return
+    console.print_json(rendered)
 
 
 @app.command("checklist")

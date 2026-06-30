@@ -1,3 +1,5 @@
+import json
+
 from typer.testing import CliRunner
 
 from constructionsight.adapters.specs import default_adapter_family_specs
@@ -16,6 +18,7 @@ from constructionsight.source_verification_checklist_models import (
     SourceVerificationObservation,
 )
 from constructionsight.source_verification_checklist_service import (
+    build_source_observation_templates,
     build_source_verification_checklist_report,
 )
 
@@ -33,6 +36,26 @@ def _source() -> PublicSource:
         public_url="https://example.invalid/source",
         verification_status=VerificationStatus.UNVERIFIED,
     )
+
+
+def _registry_json() -> str:
+    return """
+    [
+      {
+        "jurisdiction": {
+          "name": "Test City",
+          "county": "San Bernardino",
+          "state": "CA",
+          "jurisdiction_type": "city"
+        },
+        "source_name": "Test Source",
+        "source_type": "city_portal",
+        "platform_family": "accela_aca",
+        "public_url": "https://example.invalid/source",
+        "verification_status": "unverified"
+      }
+    ]
+    """
 
 
 def _reachable(source: PublicSource) -> HttpReachabilityResult:
@@ -86,28 +109,24 @@ def test_checklist_observation_can_record_query_and_detail_behavior() -> None:
     assert row.evidence_refs == ["manual:test"]
 
 
+def test_source_observation_template_defaults_to_unknowns() -> None:
+    templates = build_source_observation_templates([_source()])
+    template = templates[0]
+
+    assert template.source_name == "Test Source"
+    assert template.public_entry_observed is None
+    assert template.query_behavior_observed is None
+    assert template.result_list_observed is None
+    assert template.detail_page_observed is None
+    assert template.access_barrier_observed is None
+    assert template.terms_review_observed is None
+    assert template.instructions
+    assert template.to_observation().source_key == template.source_key
+
+
 def test_checklist_cli_outputs_json(tmp_path) -> None:
     registry_path = tmp_path / "sources.json"
-    registry_path.write_text(
-        """
-        [
-          {
-            "jurisdiction": {
-              "name": "Test City",
-              "county": "San Bernardino",
-              "state": "CA",
-              "jurisdiction_type": "city"
-            },
-            "source_name": "Test Source",
-            "source_type": "city_portal",
-            "platform_family": "accela_aca",
-            "public_url": "https://example.invalid/source",
-            "verification_status": "unverified"
-          }
-        ]
-        """,
-        encoding="utf-8",
-    )
+    registry_path.write_text(_registry_json(), encoding="utf-8")
     runner = CliRunner()
 
     result = runner.invoke(app, ["checklist", str(registry_path), "--json-output"])
@@ -115,3 +134,21 @@ def test_checklist_cli_outputs_json(tmp_path) -> None:
     assert result.exit_code == 0
     assert '"source_count": 1' in result.output
     assert '"needs_manual_review": 1' in result.output
+
+
+def test_observation_template_cli_writes_file(tmp_path) -> None:
+    registry_path = tmp_path / "sources.json"
+    output_path = tmp_path / "observations.template.json"
+    registry_path.write_text(_registry_json(), encoding="utf-8")
+    runner = CliRunner()
+
+    result = runner.invoke(
+        app,
+        ["observation-template", str(registry_path), "--output", str(output_path)],
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(output_path.read_text(encoding="utf-8"))
+    assert payload[0]["source_name"] == "Test Source"
+    assert payload[0]["query_behavior_observed"] is None
+    assert payload[0]["evidence_refs"] == []

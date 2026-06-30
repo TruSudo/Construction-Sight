@@ -14,14 +14,18 @@ The checklist tracks:
 - terms or access-boundary review
 - notes and evidence references
 
-Operator command:
+Operator commands:
 
 ```text
+constructionsight-source-checklist observation-template data/source_registry.seed.json
+constructionsight-source-checklist observation-template data/source_registry.seed.json --output data/source_verification_observations.template.json
 constructionsight-source-checklist checklist data/source_registry.seed.json
 constructionsight-source-checklist checklist data/source_registry.seed.json --json-output
 constructionsight-source-checklist checklist data/source_registry.seed.json --check-http
 constructionsight-source-checklist checklist data/source_registry.seed.json --observations-path observations.json
 ```
+
+The observation-template command creates editable JSON with all observation booleans set to `null`. Operators should set booleans only after manual lawful public review. Unknown values should remain `null` instead of being guessed.
 
 The optional observations file is a JSON list of source observations. Each observation may match by `source_key` or `source_name` and may include booleans for entry, query, list, detail, barrier, and terms review.
 
