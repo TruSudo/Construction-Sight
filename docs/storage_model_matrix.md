@@ -50,15 +50,15 @@ That means only tables represented in those modules are created by the current d
 | ContractorLicense | Yes | Yes | Yes | Payload only | Stored inside `contractor_identities.payload_json`; child table not yet required. |
 | DecisionRecord | Yes | Yes | Yes | Yes | `decision_records` stores indexed decision fields plus full JSON payload. |
 | DecisionSiteMatch | Yes | Yes | Yes | No | Store if decision matching feeds review packages. |
-| OpportunityEnrichmentReport | Yes | Yes | Yes | Yes | `opportunity_enrichment_reports` stores indexed score fields plus full JSON payload. |
+| OpportunityEnrichmentReport | Yes | Yes | Yes | Yes | `opportunity_enrichment_reports` stores indexed score/confidence/profile fields plus full JSON payload. |
 | OpportunityEnrichmentSignal | Yes | Yes | Yes | Payload only | Stored inside `opportunity_enrichment_reports.payload_json`; child table not yet required. |
 | LeadReviewPackage | Yes | Yes | Yes | Yes | `lead_review_packages` stores indexed review fields plus full JSON payload. |
 | LeadFingerprint | Yes | Yes | Yes | Yes | `lead_fingerprints` stores indexed dedupe fields plus full JSON payload. |
 | LeadDuplicateResult | Yes | Yes | Yes | Yes | `lead_duplicate_results` stores indexed duplicate status fields plus full JSON payload. |
 | LeadWorkflowRecord | Yes | Yes | Yes | Yes | `lead_workflows` stores indexed workflow fields plus full JSON payload. |
 | LeadWorkflowEvent | Yes | Yes | Yes | Yes | `lead_workflow_events` stores indexed event fields plus full JSON payload. |
-| ResultLedgerRecord | Yes | Yes | Yes | Yes | `result_ledgers` stores indexed outcome fields plus full JSON payload. |
-| ResultShareRecord | Yes | Yes | Yes | Yes | `result_share_records` stores indexed share fields plus full JSON payload. |
+| ResultLedgerRecord | Yes | Yes | Yes | Yes | `result_ledgers` stores indexed outcome/share-state fields plus full JSON payload. |
+| ResultShareRecord | Yes | Yes | Yes | Yes | `result_share_records` stores indexed calculated share fields plus full JSON payload. |
 
 ## Persistence batches
 
@@ -86,7 +86,7 @@ Implemented in `constructionsight.storage.lead_workflow_orm` and `constructionsi
 - `result_ledgers`
 - `result_share_records`
 
-Reason: these are operator/workflow records that depend on the movement and identity records.
+Reason: these are operator/workflow records that depend on the movement and identity records. Result ledgers now include explicit share-state persistence for pending gross value, pending share rate, calculated share, and not-applicable outcomes.
 
 ### Batch 3: parcel and site-resolution records
 
