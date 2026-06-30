@@ -21,6 +21,7 @@ from constructionsight.storage.movement_identity_orm import (
 def store_permit_snapshot(session: Session, snapshot: PermitSnapshot) -> PermitSnapshotRecord:
     """Insert or update a permit snapshot record."""
 
+    session.flush()
     payload_json = _payload_json(snapshot.to_dict())
     existing = session.execute(
         select(PermitSnapshotRecord).where(
@@ -56,6 +57,7 @@ def store_permit_transition(
 ) -> PermitTransitionRecord:
     """Insert or update a permit transition record."""
 
+    session.flush()
     payload_json = _payload_json(transition.to_dict())
     existing = session.execute(
         select(PermitTransitionRecord).where(
@@ -91,6 +93,7 @@ def store_contractor_identity(
 ) -> ContractorIdentityRecord:
     """Insert or update a contractor identity record."""
 
+    session.flush()
     payload_json = _payload_json(identity.to_dict())
     existing = session.execute(
         select(ContractorIdentityRecord).where(
@@ -121,6 +124,7 @@ def store_contractor_identity(
 def store_decision_record(session: Session, decision: DecisionRecord) -> DecisionRecordRow:
     """Insert or update a public decision record."""
 
+    session.flush()
     payload_json = _payload_json(decision.to_dict())
     existing = session.execute(
         select(DecisionRecordRow).where(
