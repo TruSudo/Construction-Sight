@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from typing import Any
 
 from constructionsight.adapters.specs import AdapterFamilySpec
 from constructionsight.models import PlatformFamily, PublicSource
-from constructionsight.source_promotion_plan_models import SourcePromotionPlanAction
+from constructionsight.source_promotion_plan_models import (
+    SourcePromotionPlanAction,
+    SourcePromotionPlanRow,
+)
 from constructionsight.source_promotion_plan_service import build_source_promotion_plan
 from constructionsight.source_readiness_service import HttpReachabilityChecker
 from constructionsight.source_registry_update_plan_models import (
@@ -41,31 +45,33 @@ def build_source_registry_update_plan(
     return SourceRegistryUpdatePlanReport.from_rows(rows)
 
 
-def _update_row(plan_row: object, source: PublicSource) -> SourceRegistryUpdatePlanRow:
-    planned_action = getattr(plan_row, "planned_action")
-    proposed_status = getattr(plan_row, "proposed_registry_status")
+def _update_row(
+    plan_row: SourcePromotionPlanRow,
+    source: PublicSource,
+) -> SourceRegistryUpdatePlanRow:
+    proposed_status = plan_row.proposed_registry_status
     original_payload = source.model_dump(mode="json")
     proposed_payload = _proposed_payload(original_payload, proposed_status)
     update_required = proposed_status is not None and proposed_status != source.verification_status.value
     return SourceRegistryUpdatePlanRow(
-        source_key=getattr(plan_row, "source_key"),
+        source_key=plan_row.source_key,
         source_name=source.source_name,
         current_verification_status=source.verification_status.value,
         proposed_verification_status=proposed_status,
-        planned_action=planned_action.value,
+        planned_action=plan_row.planned_action.value,
         update_required=update_required,
         original_source_payload=original_payload,
         proposed_source_payload=proposed_payload if update_required else None,
-        reasons=getattr(plan_row, "reasons"),
-        limitations=_limitations(getattr(plan_row, "limitations"), update_required),
-        next_action=_next_action(planned_action, update_required),
+        reasons=plan_row.reasons,
+        limitations=_limitations(plan_row.limitations, update_required),
+        next_action=_next_action(plan_row.planned_action, update_required),
     )
 
 
 def _proposed_payload(
-    original_payload: dict[str, object],
+    original_payload: dict[str, Any],
     proposed_status: str | None,
-) -> dict[str, object] | None:
+) -> dict[str, Any] | None:
     if proposed_status is None:
         return None
     proposed = dict(original_payload)
