@@ -204,7 +204,7 @@ See:
 - Opportunity scoring weights are deterministic but not yet versioned in a scoring profile file.
 - Lead workflow transitions preserve event history but do not yet enforce a full transition matrix.
 - Result ledger share semantics require business review for won results with missing share rate.
-- Persisted model/service layers still need operator CLI commands.
+- Persisted model/service layers now have storage-summary visibility; dedicated action/list/detail operator CLIs remain pending.
 - No external outreach-sending behavior is implemented or implied.
 
 ## Forward Cleanup Doctrine
@@ -215,4 +215,4 @@ Do not claim Regrid or Shovels parity merely because model layers exist. Parity 
 
 ## Phase 1 Status
 
-Repository foundation initialized. CEQAnet public-record intake has guarded operator and archive tooling, but CEQAnet remains contract-ready rather than live production coverage. Universal intake, opportunity transition intake, parcel/site resolution, parcel source registry, schema preview, row preview, parcel core record, geometry normalization, parcel-backed site resolution, permit transitions, contractor identity, decision records, opportunity enrichment, lead review, dedupe, workflow status, and result ledger now exist as tested model/service architecture. The next required cleanup phases are CLI/operator access, geometry hardening, scoring profile versioning, source/adapter maturity clarification, and optional preview archive persistence.
+Repository foundation initialized. CEQAnet public-record intake has guarded operator and archive tooling, but CEQAnet remains contract-ready rather than live production coverage. Universal intake, opportunity transition intake, parcel/site resolution, parcel source registry, schema preview, row preview, parcel core record, geometry normalization, parcel-backed site resolution, permit transitions, contractor identity, decision records, opportunity enrichment, lead review, dedupe, workflow status, and result ledger now exist as tested model/service architecture. The next required cleanup phases are dedicated action/list/detail operator CLIs, geometry hardening, scoring profile versioning, source/adapter maturity clarification, and optional preview archive persistence.
