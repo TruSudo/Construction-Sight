@@ -1,4 +1,4 @@
-"""Source verification checklist service."""
+"""Source checklist service."""
 
 from __future__ import annotations
 
@@ -27,7 +27,7 @@ def build_source_verification_checklist_report(
     http_checker: HttpReachabilityChecker | None = None,
     observations: Iterable[SourceVerificationObservation] | None = None,
 ) -> SourceVerificationChecklistReport:
-    """Build a report-only manual source-verification checklist."""
+    """Build a report-only source checklist."""
 
     observation_index = _observation_index(observations or [])
     evidence_package = build_source_verification_evidence_package(
@@ -36,26 +36,29 @@ def build_source_verification_checklist_report(
         check_http=check_http,
         http_checker=http_checker,
     )
-    rows = [
-        _build_row(
-            source_key=row.source_key,
-            source_name=row.source_name,
-            platform_family=row.platform_family,
-            original_url=row.original_url,
-            final_url=row.final_url,
-            http_status_code=row.http_status_code,
-            redirect_classification=row.redirect_classification.value,
-            registry_status=row.verification_status,
-            adapter_status=row.adapter_status,
-            readiness_status=row.readiness_status,
-            recommendation=row.recommendation.value,
-            reasons=row.reasons,
-            limitations=row.limitations,
-            observation=observation_index.get(row.source_key)
-            or observation_index.get(row.source_name),
+    rows = []
+    for row in evidence_package.rows:
+        observation = observation_index.get(row.source_key) or observation_index.get(
+            row.source_name
         )
-        for row in evidence_package.rows
-    ]
+        rows.append(
+            _build_row(
+                source_key=row.source_key,
+                source_name=row.source_name,
+                platform_family=row.platform_family,
+                original_url=row.original_url,
+                final_url=row.final_url,
+                http_status_code=row.http_status_code,
+                redirect_classification=row.redirect_classification.value,
+                registry_status=row.verification_status,
+                adapter_status=row.adapter_status,
+                readiness_status=row.readiness_status,
+                recommendation=row.recommendation.value,
+                reasons=row.reasons,
+                limitations=row.limitations,
+                observation=observation,
+            )
+        )
     return SourceVerificationChecklistReport.from_rows(rows)
 
 
@@ -152,7 +155,10 @@ def _checklist_status(
         return SourceVerificationChecklistStatus.BLOCKED
     if detail_page == ChecklistItemStatus.OBSERVED:
         return SourceVerificationChecklistStatus.DETAIL_BEHAVIOR_OBSERVED
-    if query_behavior == ChecklistItemStatus.OBSERVED and result_list == ChecklistItemStatus.OBSERVED:
+    if (
+        query_behavior == ChecklistItemStatus.OBSERVED
+        and result_list == ChecklistItemStatus.OBSERVED
+    ):
         return SourceVerificationChecklistStatus.QUERY_BEHAVIOR_OBSERVED
     if public_entry_page == ChecklistItemStatus.OBSERVED:
         return SourceVerificationChecklistStatus.PUBLIC_ENTRY_REACHABLE
@@ -168,28 +174,28 @@ def _checklist_status(
 
 def _next_action(status: SourceVerificationChecklistStatus) -> str:
     if status == SourceVerificationChecklistStatus.BLOCKED:
-        return "review access boundary before any source update"
+        return "review access boundary"
     if status == SourceVerificationChecklistStatus.DETAIL_BEHAVIOR_OBSERVED:
-        return "review source evidence for verified-candidate treatment"
+        return "review source evidence"
     if status == SourceVerificationChecklistStatus.QUERY_BEHAVIOR_OBSERVED:
-        return "manually inspect detail-page behavior"
+        return "inspect detail-page behavior"
     if status == SourceVerificationChecklistStatus.PUBLIC_ENTRY_REACHABLE:
-        return "manually inspect query, list, detail, captcha, and terms behavior"
+        return "inspect query, list, detail, barrier, and terms behavior"
     if status == SourceVerificationChecklistStatus.FAILED:
-        return "repair or replace source target before source update"
-    return "complete manual source verification checklist"
+        return "repair or replace source target"
+    return "complete manual source checklist"
 
 
 def _checklist_limitations(status: SourceVerificationChecklistStatus) -> list[str]:
     if status == SourceVerificationChecklistStatus.PUBLIC_ENTRY_REACHABLE:
-        return ["entry reachability is not query/list/detail verification"]
+        return ["entry reachability is not query/list/detail evidence"]
     if status in {
         SourceVerificationChecklistStatus.NEEDS_MANUAL_REVIEW,
         SourceVerificationChecklistStatus.NOT_CHECKED,
     }:
-        return ["manual query/list/detail verification is incomplete"]
+        return ["manual query/list/detail checklist is incomplete"]
     if status == SourceVerificationChecklistStatus.QUERY_BEHAVIOR_OBSERVED:
-        return ["detail-page behavior remains unverified"]
+        return ["detail-page behavior remains unchecked"]
     return []
 
 
