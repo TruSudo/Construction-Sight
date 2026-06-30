@@ -64,7 +64,9 @@ def _site_signal(site_resolution: SiteResolutionResult) -> OpportunityEnrichment
     if site_resolution.status == SiteResolutionStatus.UNRESOLVED:
         return None
     score = 20 if site_resolution.status == SiteResolutionStatus.RESOLVED else 10
-    confidence_score = site_resolution.candidates[0].confidence_score if site_resolution.candidates else 0
+    confidence_score = (
+        site_resolution.candidates[0].confidence_score if site_resolution.candidates else 0
+    )
     return OpportunityEnrichmentSignal(
         signal_key=f"signal:site:{_short_hash(site_resolution.resolution_id)}",
         signal_kind=EnrichmentSignalKind.PARCEL_SITE,
@@ -167,7 +169,8 @@ def _report_id(
 ) -> str:
     """Build deterministic enrichment report id."""
 
-    basis = "|".join([base_candidate_id, ",".join(signal.signal_key for signal in signals)])
+    signal_basis = ",".join(signal.signal_key for signal in signals)
+    basis = "|".join([base_candidate_id, signal_basis])
     return f"opportunity-enrichment:{_short_hash(basis)}"
 
 
