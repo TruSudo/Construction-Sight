@@ -169,7 +169,7 @@ def _readiness_decision(
     if adapter_status == AdapterImplementationStatus.CONTRACT_READY:
         return (
             SourceReadinessStatus.PARTIAL,
-            "source is verified and adapter contract exists, but live read behavior is not established",
+            "source is verified and adapter contract exists, but live reads are not proven",
             ["contract-ready adapter is not production live coverage"],
             "add guarded live-read evidence before live coverage claims",
         )
