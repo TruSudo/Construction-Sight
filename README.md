@@ -2,7 +2,7 @@
 
 ConstructionSight is a lawful public-record construction intelligence platform focused initially on San Bernardino County and Riverside County, California.
 
-The platform is designed to discover, verify, normalize, store, and analyze public construction, planning, entitlement, CEQA, permit, contractor, parcel, and agenda data. Current implementation is strongest in source-neutral models, deterministic services, evidence-first workflow logic, and test-backed architecture. Live source integrations, persistence for newer workflow layers, and operator UI remain planned work unless expressly marked otherwise.
+The platform is designed to discover, verify, normalize, store, and analyze public construction, planning, entitlement, CEQA, permit, contractor, parcel, and agenda data. Current implementation is strongest in source-neutral models, deterministic services, evidence-first workflow logic, persistence for core post-enrichment records, source/status audit reporting, and test-backed architecture. Live source integrations and operator UI remain planned work unless expressly marked otherwise.
 
 ## Operating Boundary
 
@@ -25,7 +25,7 @@ Initial adapter families:
 - Laserfiche / PDF repositories
 - Custom municipal reports
 
-Adapter contracts are not the same thing as live source integrations. Most adapter families are still placeholder contracts. Source records in `data/source_registry.seed.json` are seed targets and must remain treated as unverified until checked.
+Adapter contracts are not the same thing as live source integrations. Most adapter families are still placeholder contracts. Source records in `data/source_registry.seed.json` are seed targets and must remain treated as unverified until checked. Run `constructionsight-source-status report data/source_registry.seed.json` before making any source-readiness claim.
 
 ## Current Pipeline
 
@@ -188,6 +188,8 @@ OpportunityEnrichmentReport
   -> ResultLedgerRecord / ResultShareRecord
 ```
 
+Lead workflow status changes are matrix-constrained, and final statuses have no outgoing transitions unless a later explicit override/reopen doctrine is added. Result ledgers preserve explicit share states: `not_applicable`, `pending_gross_value`, `pending_share_rate`, and `calculated`.
+
 See:
 
 - `docs/architecture/lead_review_package.md`
@@ -199,12 +201,12 @@ See:
 
 - SQLAlchemy ORM/storage coverage now exists for movement, identity, parcel core, site-resolution reports, and post-enrichment lead workflow records. Remaining storage gaps are optional preview-report archives and optional nested child tables.
 - Most adapter families are placeholder contracts, not live source integrations.
-- Source registry seed records remain unverified until checked.
+- Source registry seed records remain unverified until checked; source-status reporting currently shows four seed-only records and zero verified usable sources.
 - Geometry containment currently has first-pass limitations and must not be treated as survey-grade parcel topology.
 - Opportunity scoring uses a versioned default profile; additional profiles must be introduced explicitly with doctrine and tests.
-- Lead workflow transitions preserve event history but do not yet enforce a full transition matrix.
-- Result ledger share semantics require business review for won results with missing share rate.
-- Persisted model/service layers now have storage-summary visibility; dedicated action/list/detail operator CLIs remain pending.
+- Lead workflow transitions preserve event history and are constrained by a status matrix; override/reopen behavior is not implemented.
+- Result ledgers distinguish pending gross value, pending share rate, calculated share, and not-applicable share states; business-specific share enforcement remains future work.
+- Persisted model/service layers now have storage-summary visibility and source maturity has source-status visibility; dedicated action/list/detail operator CLIs remain pending.
 - No external outreach-sending behavior is implemented or implied.
 
 ## Forward Cleanup Doctrine
@@ -215,4 +217,4 @@ Do not claim Regrid or Shovels parity merely because model layers exist. Parity 
 
 ## Phase 1 Status
 
-Repository foundation initialized. CEQAnet public-record intake has guarded operator and archive tooling, but CEQAnet remains contract-ready rather than live production coverage. Universal intake, opportunity transition intake, parcel/site resolution, parcel source registry, schema preview, row preview, parcel core record, geometry normalization, parcel-backed site resolution, permit transitions, contractor identity, decision records, opportunity enrichment, lead review, dedupe, workflow status, and result ledger now exist as tested model/service architecture. The next required cleanup phases are topology-grade geometry, dedicated action/list/detail operator CLIs, source/adapter maturity clarification, optional preview archive persistence, and workflow transition matrix hardening.
+Repository foundation initialized. CEQAnet public-record intake has guarded operator and archive tooling, but CEQAnet remains contract-ready rather than live production coverage. Universal intake, opportunity transition intake, parcel/site resolution, parcel source registry, schema preview, row preview, parcel core record, geometry normalization, parcel-backed site resolution, permit transitions, contractor identity, decision records, opportunity enrichment, lead review, dedupe, workflow status, result ledger, storage-summary reporting, and source-status reporting now exist as tested model/service/operator-support architecture. The next required cleanup phases are topology-grade geometry, dedicated action/list/detail operator CLIs, verified source-readiness workflows, optional preview archive persistence, and any future business-specific share enforcement.
