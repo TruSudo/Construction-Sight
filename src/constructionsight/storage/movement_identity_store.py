@@ -50,7 +50,10 @@ def store_permit_snapshot(session: Session, snapshot: PermitSnapshot) -> PermitS
     return existing
 
 
-def store_permit_transition(session: Session, transition: PermitTransition) -> PermitTransitionRecord:
+def store_permit_transition(
+    session: Session,
+    transition: PermitTransition,
+) -> PermitTransitionRecord:
     """Insert or update a permit transition record."""
 
     payload_json = _payload_json(transition.to_dict())
