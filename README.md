@@ -2,7 +2,7 @@
 
 ConstructionSight is a lawful public-record construction intelligence platform focused initially on San Bernardino County and Riverside County, California.
 
-The platform is designed to discover, verify, normalize, store, and analyze public construction, planning, entitlement, CEQA, permit, contractor, parcel, and agenda data.
+The platform is designed to discover, verify, normalize, store, and analyze public construction, planning, entitlement, CEQA, permit, contractor, parcel, and agenda data. Current implementation is strongest in source-neutral models, deterministic services, evidence-first workflow logic, and test-backed architecture. Live source integrations, persistence for newer workflow layers, and operator UI remain planned work unless expressly marked otherwise.
 
 ## Operating Boundary
 
@@ -24,6 +24,33 @@ Initial adapter families:
 - CivicPlus / PrimeGov
 - Laserfiche / PDF repositories
 - Custom municipal reports
+
+Adapter contracts are not the same thing as live source integrations. Most adapter families are still placeholder contracts. Source records in `data/source_registry.seed.json` are seed targets and must remain treated as unverified until checked.
+
+## Current Pipeline
+
+```text
+lawful public-record intake
+  -> evidence preservation
+  -> source registry
+  -> source adapter contracts
+  -> parcel source registry
+  -> parcel source schema preview
+  -> parcel row preview
+  -> parcel core record
+  -> geometry normalization
+  -> parcel-backed site resolution
+  -> permit snapshot and transition detection
+  -> contractor identity
+  -> decision records
+  -> opportunity enrichment
+  -> lead review package
+  -> lead dedupe
+  -> lead workflow status
+  -> result ledger and share calculation
+```
+
+See `docs/architecture/current_implementation_status.md` for the implemented-versus-planned matrix and active defect ledger.
 
 ## Universal Intake Doctrine
 
@@ -51,7 +78,7 @@ ConstructionSight lawfully studies Shovels and Regrid as capability targets, not
 
 Shovels-style intelligence teaches the product to model permits, contractors, contractor groups, addresses, parcels, properties, residents, employees, universal people, decisions, and first-seen/status-change timelines as an entity graph. Regrid-style intelligence teaches the product to treat parcel geometry as the stable land identity object: geometry to canonical parcel to owner to portfolio to development activity.
 
-The implementation target is better than static aggregation: preserved source evidence, normalized records, identity resolution, field diffs, transition events, opportunity candidates, project graph, lead score, outreach preview, and audit trail.
+The implementation target is better than static aggregation: preserved source evidence, normalized records, identity resolution, field diffs, transition events, opportunity candidates, project graph, lead score, review package, dedupe, workflow status, result ledger, and audit trail.
 
 See `docs/architecture/external_intelligence_capability_spine.md` for the Shovels/Regrid capability matrix and gap-report contract.
 
@@ -63,7 +90,7 @@ Regrid-style capability is the parcel and geometry spine: stable parcel identity
 
 Shovels-style capability is the construction-activity overlay: permits, permit status/lifecycle data, contractor search, contractor employees, contractor metrics, address search, residents, decisions, coverage metadata, release metadata, GIS, CLI, API, and warehouse delivery.
 
-ConstructionSight's native advantage is the timing layer above both: transition detection, evidence-backed opportunity scoring, outreach preview, confidence transparency, and limitations preservation.
+ConstructionSight's native advantage is the timing layer above both: transition detection, evidence-backed opportunity scoring, review workflow, duplicate suppression, confidence transparency, limitations preservation, and result/share tracking.
 
 See `docs/architecture/shovels_regrid_gap_alignment.md` and run `constructionsight-shovels-regrid-gaps` for the research-aligned gap matrix and implementation roadmap.
 
@@ -71,7 +98,7 @@ See `docs/architecture/shovels_regrid_gap_alignment.md` and run `constructionsig
 
 ConstructionSight treats parcel and site identity as the land anchor for every public-record lead.
 
-APNs, addresses, coordinates, geometry, jurisdiction, and county hints are normalized into source-neutral site-resolution candidates with deterministic `site:` keys, match strength, confidence, reasons, limitations, and conflict preservation. This is the Regrid-style backbone that later lets permits, CEQA records, agendas, staff reports, contractors, owners, zoning, and outreach territories snap to a common project/site graph.
+APNs, addresses, coordinates, geometry, jurisdiction, and county hints are normalized into source-neutral site-resolution candidates with deterministic `site:` keys, match strength, confidence, reasons, limitations, and conflict preservation. This is the Regrid-style backbone that later lets permits, CEQA records, agendas, staff reports, contractors, owners, zoning, and workflow territories snap to a common project/site graph.
 
 See `docs/architecture/parcel_site_resolution_spine.md` for the parcel/site resolution contract.
 
@@ -95,7 +122,7 @@ See `docs/architecture/parcel_source_schema_preview.md` and run `constructionsig
 
 ConstructionSight previews candidate parcel rows before creating parcel records.
 
-Mapped rows must contain usable APN and county values, can normalize APNs and addresses, can flag geometry presence, and must preserve row-level limitations. Row preview reports usable and skipped counts without writing records, allowing bad rows and missing mappings to be corrected before `ParcelRecord` and geometry normalization are built.
+Mapped rows must contain usable APN and county values, can normalize APNs and addresses, can flag geometry presence, and must preserve row-level limitations. Row preview reports usable and skipped counts without writing records, allowing bad rows and missing mappings to be corrected before parcel core record and geometry normalization are built.
 
 See `docs/architecture/parcel_row_preview.md` and run `constructionsight-parcel-sources preview-rows` for the pre-record row gate.
 
@@ -107,6 +134,85 @@ The first canonical parcel object preserves source key, source record ID, APN, n
 
 See `docs/architecture/parcel_core_record_geometry.md` for the parcel core record and geometry normalization contract.
 
+## Parcel-Backed Site Resolution Doctrine
+
+ConstructionSight resolves site hints against parcel core records when available.
+
+APN, address, and coordinate hints can produce parcel-backed site candidates with confidence, reasons, geometry-derived coordinates, ambiguity preservation, and fallback to hint-only resolution when no parcel core record matches.
+
+See `docs/architecture/parcel_backed_site_resolution.md` for the parcel-backed site resolution contract.
+
+## Permit Snapshot Transition Doctrine
+
+ConstructionSight detects movement by comparing permit snapshots.
+
+A source-neutral permit snapshot captures record identity, permit number, status, key dates, value, contractor signals, and site key. Transition detection emits first-seen, status, value, contractor, date, site, and description changes.
+
+See `docs/architecture/permit_snapshot_transition_spine.md` for the permit movement contract.
+
+## Contractor Identity Doctrine
+
+ConstructionSight treats contractor identity as a conservative source-neutral match layer.
+
+Contractor names, license numbers, license status, classifications, group signals, reasons, confidence, and limitations are normalized before contractor signals are used by opportunity enrichment.
+
+See `docs/architecture/contractor_identity_spine.md` for the contractor identity contract.
+
+## Decision Record Doctrine
+
+ConstructionSight treats CEQA records, agenda items, staff reports, planning hearings, and public decision signals as pre-permit opportunity evidence.
+
+Decision records preserve source kind, decision kind, title, normalized title, APN/site hints, applicant/developer signals, confidence, reasons, and limitations.
+
+See `docs/architecture/decision_record_spine.md` for the decision record contract.
+
+## Opportunity Enrichment Doctrine
+
+ConstructionSight combines parcel/site, permit transition, contractor identity, and decision signals into explainable opportunity enrichment reports.
+
+Every score contribution must come from a named signal with a reason, confidence score, and limitations.
+
+See `docs/architecture/opportunity_enrichment_spine.md` for the enrichment contract.
+
+## Lead Review, Dedupe, Workflow, and Result Doctrine
+
+ConstructionSight separates scoring from operator review and later workflow states.
+
+The current post-enrichment spine is:
+
+```text
+OpportunityEnrichmentReport
+  -> LeadReviewPackage
+  -> LeadFingerprint / LeadDuplicateResult
+  -> LeadWorkflowRecord / LeadWorkflowEvent
+  -> ResultLedgerRecord / ResultShareRecord
+```
+
+See:
+
+- `docs/architecture/lead_review_package.md`
+- `docs/architecture/lead_dedupe.md`
+- `docs/architecture/lead_workflow_status.md`
+- `docs/architecture/result_ledger.md`
+
+## Known Limitations
+
+- Newer model/service layers are not yet fully represented in SQLAlchemy ORM/storage.
+- Most adapter families are placeholder contracts, not live source integrations.
+- Source registry seed records remain unverified until checked.
+- Geometry containment currently has first-pass limitations and must not be treated as survey-grade parcel topology.
+- Opportunity scoring weights are deterministic but not yet versioned in a scoring profile file.
+- Lead workflow transitions preserve event history but do not yet enforce a full transition matrix.
+- Result ledger share semantics require business review for won results with missing share rate.
+- New lead workflow/result layers are tested but do not yet have operator CLI commands.
+- No external outreach-sending behavior is implemented or implied.
+
+## Forward Cleanup Doctrine
+
+Every future feature PR must include a cleanup review before merge. New models and services must be checked for tests, documentation, persistence needs, CLI needs, lawful-access boundaries, reasons, confidence, limitations, and doctrine/runtime impact.
+
+Do not claim Regrid or Shovels parity merely because model layers exist. Parity requires lawful source coverage, live adapter maturity, persistence, operator workflow, and verified results.
+
 ## Phase 1 Status
 
-Repository foundation initialized. CEQAnet public-record intake now has a guarded operator lane and archive verification. Universal intake now preserves lawful inputs, detects format families, extracts material facts, and routes records. Opportunity transition intake converts extracted facts into lead candidates for enrichment, deduplication, monitoring, outreach preview, and later bid workflows. External intelligence capability tracking maps Shovels/Regrid parity, licensed blockers, and ConstructionSight outperform targets. Shovels/Regrid gap alignment encodes the research-backed roadmap: Regrid as parcel/geometry spine, Shovels as permit/contractor/decision overlay, and ConstructionSight as the timing/opportunity layer. Parcel/site resolution anchors APN, address, coordinate, geometry, jurisdiction, and county signals into deterministic site keys for graph expansion. Parcel source registry tracks source targets, lawful boundaries, coverage status, field mappings, and provider readiness before live import. Parcel source schema preview validates observed fields and inferred canonical roles. Parcel row preview validates candidate row usability before ParcelRecord creation. Parcel core record and geometry normalization now create the first canonical parcel identity object for later site-resolver enrichment.
+Repository foundation initialized. CEQAnet public-record intake has guarded operator and archive tooling, but CEQAnet remains contract-ready rather than live production coverage. Universal intake, opportunity transition intake, parcel/site resolution, parcel source registry, schema preview, row preview, parcel core record, geometry normalization, parcel-backed site resolution, permit transitions, contractor identity, decision records, opportunity enrichment, lead review, dedupe, workflow status, and result ledger now exist as tested model/service architecture. The next required cleanup phases are persistence coverage, CLI/operator access, geometry hardening, scoring profile versioning, and source/adapter maturity clarification.
