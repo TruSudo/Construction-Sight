@@ -26,10 +26,19 @@ def detect_permit_transitions(
         raise ValueError("permit snapshots must have the same source_record_id")
 
     transitions: list[PermitTransition] = []
-    transitions.extend(_field_transition(previous, current, "status", PermitTransitionKind.STATUS_CHANGED))
-    transitions.extend(_field_transition(previous, current, "job_value", PermitTransitionKind.VALUE_CHANGED))
     transitions.extend(
-        _field_transition(previous, current, "contractor_key", PermitTransitionKind.CONTRACTOR_CHANGED)
+        _field_transition(previous, current, "status", PermitTransitionKind.STATUS_CHANGED)
+    )
+    transitions.extend(
+        _field_transition(previous, current, "job_value", PermitTransitionKind.VALUE_CHANGED)
+    )
+    transitions.extend(
+        _field_transition(
+            previous,
+            current,
+            "contractor_key",
+            PermitTransitionKind.CONTRACTOR_CHANGED,
+        )
     )
     transitions.extend(
         _field_transition(
@@ -43,7 +52,9 @@ def detect_permit_transitions(
         transitions.extend(
             _field_transition(previous, current, field_name, PermitTransitionKind.DATE_CHANGED)
         )
-    transitions.extend(_field_transition(previous, current, "site_key", PermitTransitionKind.SITE_CHANGED))
+    transitions.extend(
+        _field_transition(previous, current, "site_key", PermitTransitionKind.SITE_CHANGED)
+    )
     transitions.extend(
         _field_transition(
             previous,
@@ -152,4 +163,5 @@ def _transition_id(
             current_value or "",
         ]
     )
-    return f"permit-transition:{hashlib.sha256(basis.encode('utf-8')).hexdigest()[:16]}"
+    hashed = hashlib.sha256(basis.encode("utf-8")).hexdigest()[:16]
+    return f"permit-transition:{hashed}"
