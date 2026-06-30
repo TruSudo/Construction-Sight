@@ -1,10 +1,10 @@
 # Full-Repo Audit Inventory
 
-This audit reconciles the current ConstructionSight repository state after the movement/identity persistence work merged into `main`.
+This audit reconciles the current ConstructionSight repository state after the movement/identity persistence work and post-enrichment lead workflow persistence work merged into the branch history.
 
 ## Executive status
 
-ConstructionSight now has a substantial tested model/service architecture for lawful public-record construction intelligence. The strongest implemented areas are source-neutral records, CEQAnet guarded operator tooling, parcel/site reasoning, permit movement modeling, contractor identity normalization, decision records, opportunity enrichment, lead review, dedupe, workflow status, result ledger modeling, and selected persistence.
+ConstructionSight now has a substantial tested model/service architecture for lawful public-record construction intelligence. The strongest implemented areas are source-neutral records, CEQAnet guarded operator tooling, parcel/site reasoning, permit movement modeling, contractor identity normalization, decision records, opportunity enrichment, lead review, dedupe, workflow status, result ledger modeling, and dedicated persistence for movement/identity plus post-enrichment workflow records.
 
 This is not yet a production live-source platform. Live source coverage remains limited. Most adapter families remain contract-ready or placeholder contracts, not verified recurring integrations. CEQAnet has guarded operator/archive tooling and live-execution-adjacent commands, but it must not be described as production-grade recurring coverage unless later source-maturity work proves that status.
 
@@ -43,13 +43,13 @@ No external outreach-sending behavior is implemented or implied. The GUI/operato
 | Permit snapshot transition spine | `permit_transition_models.py`, `permit_transition_service.py`, `storage/movement_identity_*` | Yes | Yes | Yes | Yes | No | No | Persisted movement records exist, but no recurring live adapter workflow is proven. | Add operator workflow and recurring run storage governance. |
 | Contractor identity | `contractor_identity_*`, `storage/movement_identity_*` | Yes | Yes | Yes | Yes | No | No | Conservative normalization only; CSLB live verification remains pending. | Add verification adapter and CLI only after lawful source maturity review. |
 | Decision records | `decision_record_*`, `storage/movement_identity_*` | Yes | Yes | Yes | Yes | No | No | Model/service/storage exist; agenda/staff-report adapters remain pending. | Add source adapters and relationship mapping. |
-| Opportunity enrichment | `opportunity_enrichment_*` | Yes | Yes | Yes | No dedicated ORM | No | No | Scores are deterministic but hardcoded, not profile-versioned. | Add versioned scoring profile and persisted report store. |
-| Lead review package | `lead_review_*` | Yes | Yes | Yes | No dedicated ORM | No | No | Review package exists as model/service only. | Add persisted review package and operator CLI. |
-| Lead dedupe | `lead_dedupe_*` | Yes | Yes | Yes | No dedicated ORM | No | No | Cross-run dedupe needs persistence. | Add lead fingerprint/dedupe persistence. |
-| Lead workflow status | `lead_workflow_*` | Yes | Yes | Yes | No dedicated ORM | No | No | Events append; full transition matrix is not enforced. | Add matrix-constrained workflow rules and persistence. |
-| Result ledger/share calculation | `result_ledger_*` | Yes | Yes | Yes | No dedicated ORM | No | No | Business semantics for won results with missing share rate need review. | Add persisted ledger/share records and pending-share doctrine. |
-| Storage/database initialization | `storage/database.py`, `storage/*_orm.py`, `storage/*_store.py` | Yes | Yes | Yes | Partial | N/A | No | Movement/identity records are covered; remaining workflow layers are not. | Continue persistence batches without lossy projection. |
-| CLI script registration | `pyproject.toml`, CLI modules | Yes | Yes | Yes | N/A | Partial | No | Many model/service layers lack operator commands. | Add consolidated lead/operator CLI after persistence. |
+| Opportunity enrichment | `opportunity_enrichment_*`, `storage/lead_workflow_*` | Yes | Yes | Yes | Yes | No | No | Scores are deterministic but hardcoded, not profile-versioned. | Add versioned scoring profile. |
+| Lead review package | `lead_review_*`, `storage/lead_workflow_*` | Yes | Yes | Yes | Yes | No | No | Review package exists and is persisted; operator CLI is pending. | Add operator CLI after workflow semantics are hardened. |
+| Lead dedupe | `lead_dedupe_*`, `storage/lead_workflow_*` | Yes | Yes | Yes | Yes | No | No | Cross-run dedupe storage exists; operator CLI is pending. | Add lead/operator CLI. |
+| Lead workflow status | `lead_workflow_*`, `storage/lead_workflow_*` | Yes | Yes | Yes | Yes | No | No | Events append; full transition matrix is not enforced. | Add matrix-constrained workflow rules. |
+| Result ledger/share calculation | `result_ledger_*`, `storage/lead_workflow_*` | Yes | Yes | Yes | Yes | No | No | Business semantics for won results with missing share rate need review. | Add pending-share doctrine or enforcement. |
+| Storage/database initialization | `storage/database.py`, `storage/*_orm.py`, `storage/*_store.py` | Yes | Yes | Yes | Partial | N/A | No | Movement/identity and lead workflow records are covered; parcel/site storage gaps remain. | Continue persistence batches without lossy projection. |
+| CLI script registration | `pyproject.toml`, CLI modules | Yes | Yes | Yes | N/A | Partial | No | Many persisted workflow layers still lack operator commands. | Add consolidated lead/operator CLI. |
 | CI quality gate | `.github/workflows/ci.yml` | Yes | N/A | Yes | N/A | N/A | N/A | Local Python 3.12 passing does not prove 3.11 unless CI also passes. | Keep 3.11/3.12 matrix green. |
 | Adapter/source coverage audits | `adapter_audit`, `adapter_coverage`, CLI audit commands | Yes | Yes | Yes | N/A | Yes | No | Source count is small and seed-based. | Add source maturity audit before coverage claims. |
 
@@ -57,9 +57,10 @@ No external outreach-sending behavior is implemented or implied. The GUI/operato
 
 | ID | Severity | File(s) | Observed contradiction | Runtime truth | Required fix | Disposition in this PR |
 |---|---|---|---|---|---|---|
-| CS-AUDIT-001 | P1 | `docs/architecture/current_implementation_status.md`, `docs/storage_model_matrix.md` | Implementation status marked permit snapshot transition, contractor identity, and decision record persistence as missing while storage matrix and runtime contain dedicated movement/identity ORM/store coverage. | `permit_snapshots`, `permit_transitions`, `contractor_identities`, and `decision_records` have dedicated ORM/store coverage with payload JSON preservation. | Mark movement/identity persistence accurately while keeping CLI and live integration as absent. | Fixed in this PR. |
-| CS-AUDIT-002 | P2 | `docs/architecture/current_implementation_status.md`, architecture docs | Lead dedupe, lead workflow, and result ledger documentation status was stale if marked undocumented. | Dedicated docs exist for lead dedupe, lead workflow status, and result ledger. | Mark documentation accurately without claiming persistence or CLI. | Fixed in this PR. |
-| CS-AUDIT-003 | P2 | `README.md` | Broad limitation language can imply no newer layers have any ORM coverage. | Movement/identity records are persisted; lead workflow/result and parcel core persistence remain pending. | Narrow limitation language to remaining persistence gaps. | Fixed in this PR. |
+| CS-AUDIT-001 | P1 | `docs/architecture/current_implementation_status.md`, `docs/storage_model_matrix.md` | Implementation status previously marked permit snapshot transition, contractor identity, and decision record persistence as missing while storage matrix and runtime contain dedicated movement/identity ORM/store coverage. | `permit_snapshots`, `permit_transitions`, `contractor_identities`, and `decision_records` have dedicated ORM/store coverage with payload JSON preservation. | Mark movement/identity persistence accurately while keeping CLI and live integration as absent. | Fixed. |
+| CS-AUDIT-002 | P2 | `docs/architecture/current_implementation_status.md`, architecture docs | Lead dedupe, lead workflow, and result ledger documentation status was stale if marked undocumented. | Dedicated docs exist for lead dedupe, lead workflow status, and result ledger. | Mark documentation accurately without claiming CLI. | Fixed. |
+| CS-AUDIT-003 | P2 | `README.md` | Broad limitation language can imply no newer layers have any ORM coverage. | Movement/identity and post-enrichment lead workflow records are persisted; parcel core/geometry/site-resolution persistence remains pending. | Narrow limitation language to remaining persistence gaps. | Fixed in this PR. |
+| CS-AUDIT-004 | P1 | `docs/storage_model_matrix.md`, runtime storage modules | Batch 2 lead workflow records were listed as pending storage. | `opportunity_enrichment_reports`, `lead_review_packages`, `lead_fingerprints`, `lead_duplicate_results`, `lead_workflows`, `lead_workflow_events`, `result_ledgers`, and `result_share_records` now have dedicated ORM/store coverage. | Update matrix/status/audit/README maturity language. | Fixed in this PR. |
 
 ## Persistence coverage ledger
 
@@ -74,11 +75,11 @@ No external outreach-sending behavior is implemented or implied. The GUI/operato
 | Permit transitions | Persisted | `permit_transitions` stores indexed fields plus full payload JSON. |
 | Contractor identities | Persisted | `contractor_identities` stores indexed fields plus full payload JSON. |
 | Decision records | Persisted | `decision_records` stores indexed fields plus full payload JSON. |
-| Opportunity enrichment reports | Not dedicated ORM | Required for replayable lead scores. |
-| Lead review packages | Not dedicated ORM | Required before durable operator review. |
-| Lead fingerprints / duplicate results | Not dedicated ORM | Required before dedupe works across runs. |
-| Lead workflows / workflow events | Not dedicated ORM | Required for durable workflow state and audit trail. |
-| Result ledgers / share records | Not dedicated ORM | Required for business result/share audit. |
+| Opportunity enrichment reports | Persisted | `opportunity_enrichment_reports` stores indexed score/confidence fields plus full payload JSON. |
+| Lead review packages | Persisted | `lead_review_packages` stores indexed review fields plus full payload JSON. |
+| Lead fingerprints / duplicate results | Persisted | `lead_fingerprints` and `lead_duplicate_results` store indexed dedupe fields plus full payload JSON. |
+| Lead workflows / workflow events | Persisted | `lead_workflows` and `lead_workflow_events` store indexed status/event fields plus full payload JSON. |
+| Result ledgers / share records | Persisted | `result_ledgers` and `result_share_records` store indexed outcome/share fields plus full payload JSON. |
 
 Persistence rule: generic domain tables are not equivalent to newer source-neutral models unless the mapping is deliberate, lossless, and preserves full payloads, reasons, confidence, limitations, provenance, and future fields.
 
@@ -96,8 +97,8 @@ Persistence rule: generic domain tables are not equivalent to newer source-neutr
 | Permit transition CLI | Absent | Model/service/storage exist but operator CLI is pending. |
 | Contractor identity CLI | Absent | Model/service/storage exist but operator CLI is pending. |
 | Decision record CLI | Absent | Model/service/storage exist but operator CLI is pending. |
-| Opportunity enrichment CLI | Absent | Model/service exists; no dedicated operator command. |
-| Lead review/dedupe/workflow/result CLI | Absent | Model/service exists; persistence and operator commands pending. |
+| Opportunity enrichment CLI | Absent | Model/service/storage exists; no dedicated operator command. |
+| Lead review/dedupe/workflow/result CLI | Absent | Model/service/storage exists; operator commands pending. |
 | Outreach sending CLI | Absent | No external outreach-sending behavior is implemented or implied. |
 | GUI/operator app | Absent | Planned only. |
 

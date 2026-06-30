@@ -1,0 +1,318 @@
+"""Store helpers for post-enrichment lead workflow records."""
+
+from __future__ import annotations
+
+import json
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from constructionsight.lead_dedupe_models import LeadDuplicateResult, LeadFingerprint
+from constructionsight.lead_review_models import LeadReviewPackage
+from constructionsight.lead_workflow_models import LeadWorkflowEvent, LeadWorkflowRecord
+from constructionsight.opportunity_enrichment_models import OpportunityEnrichmentReport
+from constructionsight.result_ledger_models import ResultLedgerRecord, ResultShareRecord
+from constructionsight.storage.lead_workflow_orm import (
+    LeadDuplicateResultRecord,
+    LeadFingerprintRecord,
+    LeadReviewPackageRecord,
+    LeadWorkflowEventRecord,
+    LeadWorkflowRecordRow,
+    OpportunityEnrichmentReportRecord,
+    ResultLedgerRecordRow,
+    ResultShareRecordRow,
+)
+
+
+def store_opportunity_enrichment_report(
+    session: Session,
+    report: OpportunityEnrichmentReport,
+) -> OpportunityEnrichmentReportRecord:
+    """Insert or update an opportunity enrichment report."""
+
+    session.flush()
+    payload_json = _payload_json(report.to_dict())
+    existing = session.execute(
+        select(OpportunityEnrichmentReportRecord).where(
+            OpportunityEnrichmentReportRecord.report_id == report.report_id
+        )
+    ).scalar_one_or_none()
+    if existing is None:
+        existing = OpportunityEnrichmentReportRecord(
+            report_id=report.report_id,
+            base_candidate_id=report.base_candidate_id,
+            lead_score=report.lead_score,
+            confidence_score=report.confidence_score,
+            confidence_band=report.confidence_band.value,
+            next_action=report.next_action,
+            observed_created_at=report.created_at.isoformat(),
+            payload_json=payload_json,
+        )
+        session.add(existing)
+        return existing
+    existing.base_candidate_id = report.base_candidate_id
+    existing.lead_score = report.lead_score
+    existing.confidence_score = report.confidence_score
+    existing.confidence_band = report.confidence_band.value
+    existing.next_action = report.next_action
+    existing.observed_created_at = report.created_at.isoformat()
+    existing.payload_json = payload_json
+    return existing
+
+
+def store_lead_review_package(
+    session: Session,
+    package: LeadReviewPackage,
+) -> LeadReviewPackageRecord:
+    """Insert or update a lead review package."""
+
+    session.flush()
+    payload_json = _payload_json(package.to_dict())
+    existing = session.execute(
+        select(LeadReviewPackageRecord).where(
+            LeadReviewPackageRecord.package_id == package.package_id
+        )
+    ).scalar_one_or_none()
+    if existing is None:
+        existing = LeadReviewPackageRecord(
+            package_id=package.package_id,
+            base_candidate_id=package.base_candidate_id,
+            lead_score=package.lead_score,
+            status=package.status.value,
+            observed_created_at=package.created_at.isoformat(),
+            payload_json=payload_json,
+        )
+        session.add(existing)
+        return existing
+    existing.base_candidate_id = package.base_candidate_id
+    existing.lead_score = package.lead_score
+    existing.status = package.status.value
+    existing.observed_created_at = package.created_at.isoformat()
+    existing.payload_json = payload_json
+    return existing
+
+
+def store_lead_fingerprint(
+    session: Session,
+    fingerprint: LeadFingerprint,
+) -> LeadFingerprintRecord:
+    """Insert or update a lead fingerprint."""
+
+    session.flush()
+    payload_json = _payload_json(fingerprint.model_dump(mode="json"))
+    existing = session.execute(
+        select(LeadFingerprintRecord).where(
+            LeadFingerprintRecord.fingerprint_key == fingerprint.fingerprint_key
+        )
+    ).scalar_one_or_none()
+    if existing is None:
+        existing = LeadFingerprintRecord(
+            fingerprint_key=fingerprint.fingerprint_key,
+            base_candidate_id=fingerprint.base_candidate_id,
+            site_key=fingerprint.site_key,
+            source_key=fingerprint.source_key,
+            source_record_id=fingerprint.source_record_id,
+            normalized_title=fingerprint.normalized_title,
+            lead_score=fingerprint.lead_score,
+            observed_created_at=fingerprint.created_at.isoformat(),
+            payload_json=payload_json,
+        )
+        session.add(existing)
+        return existing
+    existing.base_candidate_id = fingerprint.base_candidate_id
+    existing.site_key = fingerprint.site_key
+    existing.source_key = fingerprint.source_key
+    existing.source_record_id = fingerprint.source_record_id
+    existing.normalized_title = fingerprint.normalized_title
+    existing.lead_score = fingerprint.lead_score
+    existing.observed_created_at = fingerprint.created_at.isoformat()
+    existing.payload_json = payload_json
+    return existing
+
+
+def store_lead_duplicate_result(
+    session: Session,
+    result: LeadDuplicateResult,
+) -> LeadDuplicateResultRecord:
+    """Insert or update a lead duplicate check result."""
+
+    session.flush()
+    payload_json = _payload_json(result.to_dict())
+    existing = session.execute(
+        select(LeadDuplicateResultRecord).where(
+            LeadDuplicateResultRecord.result_id == result.result_id
+        )
+    ).scalar_one_or_none()
+    if existing is None:
+        existing = LeadDuplicateResultRecord(
+            result_id=result.result_id,
+            status=result.status.value,
+            candidate_fingerprint_key=result.candidate.fingerprint_key,
+            base_candidate_id=result.candidate.base_candidate_id,
+            matched_count=len(result.matched_fingerprint_keys),
+            payload_json=payload_json,
+        )
+        session.add(existing)
+        return existing
+    existing.status = result.status.value
+    existing.candidate_fingerprint_key = result.candidate.fingerprint_key
+    existing.base_candidate_id = result.candidate.base_candidate_id
+    existing.matched_count = len(result.matched_fingerprint_keys)
+    existing.payload_json = payload_json
+    return existing
+
+
+def store_lead_workflow_event(
+    session: Session,
+    event: LeadWorkflowEvent,
+    workflow_id: str | None = None,
+) -> LeadWorkflowEventRecord:
+    """Insert or update a lead workflow event."""
+
+    session.flush()
+    payload_json = _payload_json(event.model_dump(mode="json"))
+    existing = session.execute(
+        select(LeadWorkflowEventRecord).where(
+            LeadWorkflowEventRecord.event_id == event.event_id
+        )
+    ).scalar_one_or_none()
+    previous_status = event.previous_status.value if event.previous_status else None
+    if existing is None:
+        existing = LeadWorkflowEventRecord(
+            event_id=event.event_id,
+            workflow_id=workflow_id,
+            previous_status=previous_status,
+            current_status=event.current_status.value,
+            reason=event.reason,
+            observed_created_at=event.created_at.isoformat(),
+            payload_json=payload_json,
+        )
+        session.add(existing)
+        return existing
+    existing.workflow_id = workflow_id
+    existing.previous_status = previous_status
+    existing.current_status = event.current_status.value
+    existing.reason = event.reason
+    existing.observed_created_at = event.created_at.isoformat()
+    existing.payload_json = payload_json
+    return existing
+
+
+def store_lead_workflow_record(
+    session: Session,
+    workflow: LeadWorkflowRecord,
+) -> LeadWorkflowRecordRow:
+    """Insert or update a lead workflow record and its events."""
+
+    session.flush()
+    payload_json = _payload_json(workflow.to_dict())
+    existing = session.execute(
+        select(LeadWorkflowRecordRow).where(
+            LeadWorkflowRecordRow.workflow_id == workflow.workflow_id
+        )
+    ).scalar_one_or_none()
+    if existing is None:
+        existing = LeadWorkflowRecordRow(
+            workflow_id=workflow.workflow_id,
+            package_id=workflow.package_id,
+            base_candidate_id=workflow.base_candidate_id,
+            fingerprint_key=workflow.fingerprint_key,
+            status=workflow.status.value,
+            lead_score=workflow.lead_score,
+            observed_created_at=workflow.created_at.isoformat(),
+            observed_updated_at=workflow.updated_at.isoformat(),
+            payload_json=payload_json,
+        )
+        session.add(existing)
+    else:
+        existing.package_id = workflow.package_id
+        existing.base_candidate_id = workflow.base_candidate_id
+        existing.fingerprint_key = workflow.fingerprint_key
+        existing.status = workflow.status.value
+        existing.lead_score = workflow.lead_score
+        existing.observed_created_at = workflow.created_at.isoformat()
+        existing.observed_updated_at = workflow.updated_at.isoformat()
+        existing.payload_json = payload_json
+    for event in workflow.events:
+        store_lead_workflow_event(session, event, workflow_id=workflow.workflow_id)
+    return existing
+
+
+def store_result_share_record(
+    session: Session,
+    share: ResultShareRecord,
+) -> ResultShareRecordRow:
+    """Insert or update a calculated result share record."""
+
+    session.flush()
+    payload_json = _payload_json(share.model_dump(mode="json"))
+    existing = session.execute(
+        select(ResultShareRecordRow).where(
+            ResultShareRecordRow.share_record_id == share.share_record_id
+        )
+    ).scalar_one_or_none()
+    if existing is None:
+        existing = ResultShareRecordRow(
+            share_record_id=share.share_record_id,
+            workflow_id=share.workflow_id,
+            gross_value=share.gross_value,
+            share_rate=share.share_rate,
+            share_value=share.share_value,
+            payload_json=payload_json,
+        )
+        session.add(existing)
+        return existing
+    existing.workflow_id = share.workflow_id
+    existing.gross_value = share.gross_value
+    existing.share_rate = share.share_rate
+    existing.share_value = share.share_value
+    existing.payload_json = payload_json
+    return existing
+
+
+def store_result_ledger_record(
+    session: Session,
+    ledger: ResultLedgerRecord,
+) -> ResultLedgerRecordRow:
+    """Insert or update a result ledger record and optional share."""
+
+    session.flush()
+    payload_json = _payload_json(ledger.to_dict())
+    existing = session.execute(
+        select(ResultLedgerRecordRow).where(
+            ResultLedgerRecordRow.ledger_id == ledger.ledger_id
+        )
+    ).scalar_one_or_none()
+    share_record_id = ledger.share.share_record_id if ledger.share else None
+    decided_date = ledger.decided_date.isoformat() if ledger.decided_date else None
+    if existing is None:
+        existing = ResultLedgerRecordRow(
+            ledger_id=ledger.ledger_id,
+            workflow_id=ledger.workflow_id,
+            package_id=ledger.package_id,
+            status=ledger.status.value,
+            decided_date=decided_date,
+            gross_value=ledger.gross_value,
+            share_record_id=share_record_id,
+            observed_created_at=ledger.created_at.isoformat(),
+            payload_json=payload_json,
+        )
+        session.add(existing)
+    else:
+        existing.workflow_id = ledger.workflow_id
+        existing.package_id = ledger.package_id
+        existing.status = ledger.status.value
+        existing.decided_date = decided_date
+        existing.gross_value = ledger.gross_value
+        existing.share_record_id = share_record_id
+        existing.observed_created_at = ledger.created_at.isoformat()
+        existing.payload_json = payload_json
+    if ledger.share is not None:
+        store_result_share_record(session, ledger.share)
+    return existing
+
+
+def _payload_json(payload: dict[str, object]) -> str:
+    """Return deterministic JSON payload."""
+
+    return json.dumps(payload, sort_keys=True)
