@@ -7,11 +7,11 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
+from constructionsight.adapters import default_adapter_family_specs
+from constructionsight.cli import _load_sources_from_json
 from rich.console import Console
 from rich.table import Table
 
-from constructionsight.adapters import default_adapter_family_specs
-from constructionsight.cli import _load_sources_from_json
 from constructionsight.source_status_report import build_source_status_report
 
 app = typer.Typer(help="ConstructionSight source status reporting tools.")
