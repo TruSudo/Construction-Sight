@@ -3,7 +3,11 @@ from constructionsight.lead_dedupe_models import (
     LeadDuplicateStatus,
     LeadFingerprint,
 )
-from constructionsight.lead_review_models import LeadReviewPackage, LeadReviewStatus
+from constructionsight.lead_review_models import (
+    LeadReviewItem,
+    LeadReviewPackage,
+    LeadReviewStatus,
+)
 from constructionsight.lead_workflow_models import LeadWorkflowStatus
 from constructionsight.lead_workflow_service import (
     create_lead_workflow,
@@ -12,12 +16,22 @@ from constructionsight.lead_workflow_service import (
 
 
 def _package(status: LeadReviewStatus, score: int = 50) -> LeadReviewPackage:
+    items = []
+    if status == LeadReviewStatus.READY:
+        items = [
+            LeadReviewItem(
+                item_key="lead-item:test",
+                label="review package",
+                rationale="test rationale",
+            )
+        ]
     return LeadReviewPackage(
         package_id="lead-review:test",
         base_candidate_id="candidate:test",
         lead_score=score,
         status=status,
         summary="test package",
+        items=items,
     )
 
 
