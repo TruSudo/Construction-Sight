@@ -13,6 +13,8 @@ The current implementation includes:
 - optional dedupe-result influence
 - deterministic status events
 - append-only status transition helper
+- matrix-constrained status rules
+- immutable final statuses
 - model and service tests
 
 ## Statuses
@@ -28,13 +30,9 @@ The current status enum includes:
 - `closed_success`
 - `closed_no_fit`
 
-## Known limitation
+## Transition matrix
 
-The current transition helper appends status events but does not yet enforce a transition matrix. That means the model can preserve a status history, but it does not yet prevent every invalid state jump.
-
-## Required hardening
-
-A future cleanup PR must add transition rules for at least:
+Workflow status changes are constrained by this matrix:
 
 ```text
 hold -> monitor/review
@@ -43,8 +41,11 @@ review -> ready/hold/monitor
 ready -> active/paused/closed_no_fit
 active -> paused/closed_success/closed_no_fit
 paused -> active/closed_no_fit
-closed_* -> immutable unless explicit override
+closed_success -> no outgoing status
+closed_no_fit -> no outgoing status
 ```
+
+A status move outside the matrix raises an error before an event is appended. Final statuses do not move to another status unless a later explicit override feature is added with separate doctrine and tests.
 
 ## Forward requirement
 
