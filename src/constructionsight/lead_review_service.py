@@ -93,12 +93,12 @@ def _evidence_notes(report: OpportunityEnrichmentReport) -> list[str]:
 
 
 def _review_note(status: LeadReviewStatus, limitations: list[str]) -> str | None:
-    """Return operator review note when needed."""
+    """Return review note when needed."""
 
     if status == LeadReviewStatus.REVIEW_REQUIRED:
-        return f"Resolve {len(limitations)} limitation(s) before external action."
+        return f"Resolve {len(limitations)} limitation(s) before review completion."
     if status == LeadReviewStatus.HOLD:
-        return "No source signal is strong enough for action."
+        return "No source signal is strong enough for review."
     return None
 
 
