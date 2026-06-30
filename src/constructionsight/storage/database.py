@@ -32,11 +32,12 @@ def initialize_database(engine: Engine) -> None:
 
     SQLAlchemy only creates tables whose ORM classes have been imported into
     metadata. Import ORM modules here so `create_all()` sees source-registry,
-    normalized domain, and intelligence-layer tables.
+    normalized domain, intelligence-layer, movement, and identity tables.
     """
 
     import constructionsight.storage.domain_orm  # noqa: F401
     import constructionsight.storage.intelligence_orm  # noqa: F401
+    import constructionsight.storage.movement_identity_orm  # noqa: F401
 
     Base.metadata.create_all(engine)
 
