@@ -15,6 +15,7 @@ The first implementation supports:
 - coordinate hint inside parcel envelope
 - ambiguity preservation when multiple parcel records match equally
 - fallback to hint-only resolution when no parcel record matches
+- propagation of parcel geometry limitations into site-resolution candidates
 
 ## Scoring
 
@@ -25,6 +26,12 @@ coordinate inside parcel envelope: +10
 ```
 
 A single high-confidence parcel match resolves the site. Equal top-scoring parcel matches produce an ambiguous result.
+
+## Geometry limitation rule
+
+Coordinate containment currently uses the parcel envelope, not polygon topology. When a coordinate hint contributes to a polygon or multipolygon parcel match, the candidate must preserve a limitation stating that containment is envelope-only. Geometry limitations from the parcel core record must also carry forward into the site-resolution candidate.
+
+This prevents parcel-backed resolution from being mistaken for survey-grade GIS proof.
 
 ## Why this matters
 
@@ -40,4 +47,4 @@ public record hints
 
 ## Next phase
 
-After parcel-backed site resolution lands, ConstructionSight can begin the Shovels-style permit layer: `PermitSnapshot` and `PermitTransition` records can attach to the parcel-backed site identity.
+Future work may replace envelope containment with topology-grade point-in-polygon checks and projection-aware geometry calculations. Until then, parcel-backed coordinate matches remain useful candidate signals, not legal boundary determinations.
