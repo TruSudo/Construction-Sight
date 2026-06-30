@@ -59,6 +59,49 @@ class SourceVerificationObservation(BaseModel):
         return values
 
 
+class SourceVerificationObservationTemplate(BaseModel):
+    """Editable observation template for one source."""
+
+    source_key: str = Field(min_length=1)
+    source_name: str = Field(min_length=1)
+    platform_family: str = Field(min_length=1)
+    public_url: str = Field(min_length=1)
+    public_entry_observed: bool | None = None
+    query_behavior_observed: bool | None = None
+    result_list_observed: bool | None = None
+    detail_page_observed: bool | None = None
+    access_barrier_observed: bool | None = None
+    terms_review_observed: bool | None = None
+    notes: str | None = None
+    evidence_refs: list[str] = Field(default_factory=list)
+    instructions: list[str] = Field(default_factory=list)
+
+    @field_validator("evidence_refs", "instructions")
+    @classmethod
+    def require_unique_template_values(cls, values: list[str]) -> list[str]:
+        """Reject duplicate template text values."""
+
+        if len(values) != len(set(values)):
+            raise ValueError("template text values must contain unique values")
+        return values
+
+    def to_observation(self) -> SourceVerificationObservation:
+        """Return observation fields without template-only metadata."""
+
+        return SourceVerificationObservation(
+            source_key=self.source_key,
+            source_name=self.source_name,
+            public_entry_observed=self.public_entry_observed,
+            query_behavior_observed=self.query_behavior_observed,
+            result_list_observed=self.result_list_observed,
+            detail_page_observed=self.detail_page_observed,
+            access_barrier_observed=self.access_barrier_observed,
+            terms_review_observed=self.terms_review_observed,
+            notes=self.notes,
+            evidence_refs=self.evidence_refs,
+        )
+
+
 class SourceVerificationChecklistRow(BaseModel):
     """Manual verification checklist row for one source."""
 
