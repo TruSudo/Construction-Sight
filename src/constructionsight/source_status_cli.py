@@ -27,6 +27,11 @@ def _load_sources_from_json(registry_path: Path) -> list[PublicSource]:
     return [PublicSource.model_validate(item) for item in data]
 
 
+@app.callback()
+def source_status_root() -> None:
+    """ConstructionSight source status commands."""
+
+
 @app.command("report")
 def source_status_report(
     registry_path: Annotated[
