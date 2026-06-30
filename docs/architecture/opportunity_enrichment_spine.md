@@ -15,7 +15,16 @@ The first implementation supports:
 - contractor identity signal
 - public decision signal
 
-## First scoring behavior
+## Versioned scoring profile
+
+Opportunity scoring is governed by a versioned profile, not anonymous hardcoded weights. The default profile is:
+
+```text
+profile key: opportunity-scoring:default
+version: 2026-06-30.1
+```
+
+The default profile preserves the original behavior:
 
 ```text
 resolved site anchor: +20
@@ -37,12 +46,14 @@ Scores are capped at 100.
 
 ## Next action
 
-The first next-action logic is deterministic:
+The default next-action thresholds are deterministic:
 
 - 70+ with no limitations: prepare outreach preview
 - 50+ with limitations: review limitations before outreach
 - positive score below 50: monitor and enrich with more source evidence
 - zero score: hold until a source signal appears
+
+The enrichment report records the scoring profile key and version so later tuning does not erase the meaning of previously generated reports.
 
 ## Why this matters
 
@@ -57,4 +68,4 @@ parcel/site anchor
   -> next action
 ```
 
-Later PRs can tune weights using real sales feedback from Ron's workflow.
+Later PRs can tune weights using real sales feedback from Ron's workflow by adding new profile versions while preserving old report semantics.
