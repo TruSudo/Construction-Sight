@@ -234,6 +234,7 @@ class ResultLedgerRecordRow(Base):
     status: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     decided_date: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
     gross_value: Mapped[float | None] = mapped_column(Float, nullable=True, index=True)
+    share_status: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     share_record_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     observed_created_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     payload_json: Mapped[str] = mapped_column(Text, nullable=False)

@@ -1,5 +1,5 @@
 from constructionsight.lead_workflow_models import LeadWorkflowRecord, LeadWorkflowStatus
-from constructionsight.result_ledger_models import ResultLedgerStatus
+from constructionsight.result_ledger_models import ResultLedgerStatus, ResultShareStatus
 from constructionsight.result_ledger_service import build_result_ledger_record
 
 
@@ -22,6 +22,7 @@ def test_build_result_ledger_record_with_share() -> None:
     )
 
     assert ledger.status == ResultLedgerStatus.WON
+    assert ledger.share_status == ResultShareStatus.CALCULATED
     assert ledger.share is not None
     assert ledger.share.share_value == 100.0
     assert ledger.limitations == []
@@ -35,8 +36,22 @@ def test_build_result_ledger_record_missing_share_rate() -> None:
     )
 
     assert ledger.status == ResultLedgerStatus.WON
+    assert ledger.share_status == ResultShareStatus.PENDING_SHARE_RATE
     assert ledger.share is None
     assert ledger.limitations == ["share rate is missing"]
+
+
+def test_build_result_ledger_record_missing_gross_value() -> None:
+    ledger = build_result_ledger_record(
+        workflow=_workflow(),
+        status=ResultLedgerStatus.WON,
+    )
+
+    assert ledger.status == ResultLedgerStatus.WON
+    assert ledger.share_status == ResultShareStatus.PENDING_GROSS_VALUE
+    assert ledger.gross_value is None
+    assert ledger.share is None
+    assert ledger.limitations == ["gross value is missing"]
 
 
 def test_build_result_ledger_record_for_lost_result() -> None:
@@ -47,5 +62,6 @@ def test_build_result_ledger_record_for_lost_result() -> None:
     )
 
     assert ledger.status == ResultLedgerStatus.LOST
+    assert ledger.share_status == ResultShareStatus.NOT_APPLICABLE
     assert ledger.gross_value is None
     assert ledger.reasons == ["not selected"]
