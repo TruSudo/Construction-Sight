@@ -1,10 +1,10 @@
 # Full-Repo Audit Inventory
 
-This audit reconciles the current ConstructionSight repository state after movement/identity persistence, post-enrichment lead workflow persistence, parcel/site persistence, geometry hardening, and versioned scoring-profile work.
+This audit reconciles the current ConstructionSight repository state after movement/identity persistence, post-enrichment lead workflow persistence, parcel/site persistence, geometry hardening, versioned scoring-profile work, and lead workflow status-rule hardening.
 
 ## Executive status
 
-ConstructionSight now has a substantial tested model/service architecture for lawful public-record construction intelligence. The strongest implemented areas are source-neutral records, CEQAnet guarded operator tooling, parcel/site reasoning, parcel core records, parcel-backed site resolution, permit movement modeling, contractor identity normalization, decision records, versioned opportunity enrichment, lead review, dedupe, workflow status, result ledger modeling, and dedicated persistence for movement/identity, parcel/site, and post-enrichment workflow records.
+ConstructionSight now has a substantial tested model/service architecture for lawful public-record construction intelligence. The strongest implemented areas are source-neutral records, CEQAnet guarded operator tooling, parcel/site reasoning, parcel core records, parcel-backed site resolution, permit movement modeling, contractor identity normalization, decision records, versioned opportunity enrichment, lead review, dedupe, matrix-constrained workflow status, result ledger modeling, and dedicated persistence for movement/identity, parcel/site, and post-enrichment workflow records.
 
 This is not yet a production live-source platform. Live source coverage remains limited. Most adapter families remain contract-ready or placeholder contracts, not verified recurring integrations. CEQAnet has guarded operator/archive tooling and live-execution-adjacent commands, but it must not be described as production-grade recurring coverage unless later source-maturity work proves that status.
 
@@ -46,7 +46,7 @@ No external outreach-sending behavior is implemented or implied. The GUI/operato
 | Opportunity enrichment | `opportunity_enrichment_*`, `opportunity_scoring_profile.py`, `storage/lead_workflow_*` | Yes | Yes | Yes | Yes | No | No | Default scoring profile is versioned; future profile changes need explicit tests/doctrine. | Add operator CLI only after workflow semantics are hardened. |
 | Lead review package | `lead_review_*`, `storage/lead_workflow_*` | Yes | Yes | Yes | Yes | No | No | Review package exists and is persisted; operator CLI is pending. | Add operator CLI after workflow semantics are hardened. |
 | Lead dedupe | `lead_dedupe_*`, `storage/lead_workflow_*` | Yes | Yes | Yes | Yes | No | No | Cross-run dedupe storage exists; operator CLI is pending. | Add lead/operator CLI. |
-| Lead workflow status | `lead_workflow_*`, `storage/lead_workflow_*` | Yes | Yes | Yes | Yes | No | No | Events append; full transition matrix is not enforced. | Add matrix-constrained workflow rules. |
+| Lead workflow status | `lead_workflow_*`, `lead_workflow_rules.py`, `storage/lead_workflow_*` | Yes | Yes | Yes | Yes | No | No | Status moves are matrix-constrained; final statuses have no outgoing moves. | Add explicit override/reopen only if business doctrine later requires it. |
 | Result ledger/share calculation | `result_ledger_*`, `storage/lead_workflow_*` | Yes | Yes | Yes | Yes | No | No | Business semantics for won results with missing share rate need review. | Add pending-share doctrine or enforcement. |
 | Storage/database initialization | `storage/database.py`, `storage/*_orm.py`, `storage/*_store.py` | Yes | Yes | Yes | Partial | N/A | No | Core model records are covered; optional preview archives and child tables remain. | Continue persistence only when query or replay needs require it. |
 | CLI script registration | `pyproject.toml`, CLI modules | Yes | Yes | Yes | N/A | Partial | No | Many persisted workflow layers still lack operator commands. | Add consolidated lead/operator CLI. |
@@ -62,7 +62,8 @@ No external outreach-sending behavior is implemented or implied. The GUI/operato
 | CS-AUDIT-003 | P2 | `README.md` | Broad limitation language can imply no newer layers have ORM coverage. | Movement/identity, parcel/site, and post-enrichment lead workflow records are persisted. | Narrow limitation language to remaining persistence gaps. | Fixed. |
 | CS-AUDIT-004 | P1 | `docs/storage_model_matrix.md`, runtime storage modules | Batch 2 lead workflow records were listed as pending storage. | Lead workflow records now have dedicated ORM/store coverage. | Update matrix/status/audit/README maturity language. | Fixed. |
 | CS-AUDIT-005 | P1 | `docs/storage_model_matrix.md`, runtime storage modules | Parcel core and parcel-backed site-resolution reports were listed as pending storage. | `parcel_core_records` and `site_resolution_results` now have dedicated ORM/store coverage. | Update matrix/status/audit/README maturity language. | Fixed. |
-| CS-AUDIT-006 | P1 | `opportunity_enrichment_service.py`, docs | Scoring weights were previously hardcoded and not profile-versioned. | `OpportunityScoringProfile` now provides a versioned default profile, and reports/store rows preserve profile key/version. | Reconcile status, README, enrichment docs, and audit language. | Fixed in this PR. |
+| CS-AUDIT-006 | P1 | `opportunity_enrichment_service.py`, docs | Scoring weights were previously hardcoded and not profile-versioned. | `OpportunityScoringProfile` now provides a versioned default profile, and reports/store rows preserve profile key/version. | Reconcile status, README, enrichment docs, and audit language. | Fixed. |
+| CS-AUDIT-007 | P1 | `lead_workflow_service.py`, `lead_workflow_rules.py`, docs | Workflow transitions were previously append-only without matrix enforcement. | Status moves are constrained by `LEAD_WORKFLOW_TRANSITION_RULES`; final statuses have no outgoing moves. | Reconcile workflow docs, status, and audit language. | Fixed in this PR. |
 
 ## Persistence coverage ledger
 
