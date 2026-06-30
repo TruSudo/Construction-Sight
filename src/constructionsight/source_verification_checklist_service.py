@@ -13,6 +13,7 @@ from constructionsight.source_verification_checklist_models import (
     SourceVerificationChecklistRow,
     SourceVerificationChecklistStatus,
     SourceVerificationObservation,
+    SourceVerificationObservationTemplate,
 )
 from constructionsight.source_verification_evidence_service import (
     build_source_verification_evidence_package,
@@ -60,6 +61,36 @@ def build_source_verification_checklist_report(
             )
         )
     return SourceVerificationChecklistReport.from_rows(rows)
+
+
+def build_source_observation_templates(
+    sources: list[PublicSource],
+) -> list[SourceVerificationObservationTemplate]:
+    """Build editable source observation templates without checking or mutating sources."""
+
+    return [
+        SourceVerificationObservationTemplate(
+            source_key=_source_key(source),
+            source_name=source.source_name,
+            platform_family=source.platform_family.value,
+            public_url=str(source.public_url),
+            instructions=[
+                "Set booleans only after manual lawful public review.",
+                "Leave unknown fields null instead of guessing.",
+                "Use evidence_refs for screenshots, archive paths, notes, or run IDs.",
+            ],
+        )
+        for source in sources
+    ]
+
+
+def _source_key(source: PublicSource) -> str:
+    evidence_package = build_source_verification_evidence_package(
+        [source],
+        {},
+        check_http=False,
+    )
+    return evidence_package.rows[0].source_key
 
 
 def _build_row(
