@@ -26,6 +26,9 @@ def _parcel(
     parcel_record_id: str,
     apn: str,
     address: str | None = None,
+    *,
+    geometry_kind: ParcelGeometryKind = ParcelGeometryKind.POINT,
+    geometry_limitations: list[str] | None = None,
 ) -> ParcelCoreRecord:
     return ParcelCoreRecord(
         parcel_record_id=parcel_record_id,
@@ -37,7 +40,7 @@ def _parcel(
         address=address,
         normalized_address=address,
         geometry=ParcelGeometry(
-            geometry_kind=ParcelGeometryKind.POINT,
+            geometry_kind=geometry_kind,
             centroid_latitude=34.1,
             centroid_longitude=-117.2,
             envelope_min_latitude=34.0,
@@ -45,7 +48,17 @@ def _parcel(
             envelope_max_latitude=34.2,
             envelope_max_longitude=-117.1,
             spatial_reference="EPSG:4326",
+            limitations=geometry_limitations or [],
         ),
+    )
+
+
+def _point_hint() -> GeometryHint:
+    return GeometryHint(
+        geometry_kind=GeometryHintKind.POINT,
+        latitude=34.1,
+        longitude=-117.2,
+        source_name="test source",
     )
 
 
@@ -74,14 +87,7 @@ def test_resolve_site_with_parcels_combines_apn_address_and_point() -> None:
             _identifier(SiteIdentifierKind.APN, "12345678"),
             _identifier(SiteIdentifierKind.ADDRESS, "123 MAIN ST"),
         ],
-        geometry_hints=[
-            GeometryHint(
-                geometry_kind=GeometryHintKind.POINT,
-                latitude=34.1,
-                longitude=-117.2,
-                source_name="test source",
-            )
-        ],
+        geometry_hints=[_point_hint()],
     )
 
     result = resolve_site_with_parcels(
@@ -94,6 +100,32 @@ def test_resolve_site_with_parcels_combines_apn_address_and_point() -> None:
     assert candidate.confidence_score == 100
     assert candidate.match_strength == "exact"
     assert "coordinate hint falls within parcel envelope" in candidate.reasons
+
+
+def test_resolve_site_with_parcels_preserves_geometry_limitations() -> None:
+    site_input = SiteResolutionInput(
+        source_name="test source",
+        identifiers=[_identifier(SiteIdentifierKind.APN, "12345678")],
+        geometry_hints=[_point_hint()],
+    )
+
+    result = resolve_site_with_parcels(
+        site_input,
+        [
+            _parcel(
+                "parcel:one",
+                "12345678",
+                geometry_kind=ParcelGeometryKind.POLYGON,
+                geometry_limitations=[
+                    "polygon centroid is a coordinate-average approximation, not an area-weighted centroid"
+                ],
+            )
+        ],
+    )
+    candidate = result.candidates[0]
+
+    assert "polygon centroid is a coordinate-average approximation, not an area-weighted centroid" in candidate.limitations
+    assert "coordinate containment uses parcel envelope only, not polygon topology" in candidate.limitations
 
 
 def test_resolve_site_with_parcels_preserves_ambiguity() -> None:
