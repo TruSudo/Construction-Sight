@@ -110,13 +110,13 @@ def _status_level(
     if verification_status == VerificationStatus.UNVERIFIED:
         return ("seed_only", "source record is not verified")
     if verification_status in {VerificationStatus.FAILED, VerificationStatus.BLOCKED}:
-        return ("not_usable", "source verification did not establish usable access")
+        return ("not_usable", "source verification did not establish usable status")
     if verification_status == VerificationStatus.PARTIAL:
         return ("partial_verification", "source verification is partial")
     if adapter_status == AdapterImplementationStatus.PLACEHOLDER:
         return ("verified_source_placeholder_adapter", "adapter is placeholder-only")
     if adapter_status == AdapterImplementationStatus.CONTRACT_READY:
-        return ("contract_ready_not_live", "adapter contract exists but live reads are not established")
+        return ("contract_ready_not_live", "adapter contract exists")
     if adapter_status == AdapterImplementationStatus.LIVE_READ_ONLY:
-        return ("verified_live_read_only", "source and adapter support read-only use")
+        return ("verified_live_read_only", "source and adapter are read-only ready")
     return ("verified_production_ready", "source and adapter are production ready")
