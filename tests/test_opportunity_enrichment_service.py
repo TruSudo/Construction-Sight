@@ -79,7 +79,9 @@ def test_enrich_opportunity_handles_no_signals() -> None:
     assert report.confidence_score == 0
     assert report.signals == []
     assert report.limitations == ["no enrichment signals were available"]
-    assert report.next_action == "hold until parcel, permit, contractor, or decision signal appears"
+    assert report.next_action == (
+        "hold until parcel, permit, contractor, or decision signal appears"
+    )
 
 
 def test_enrich_opportunity_keeps_limitations_for_lower_confidence_signals() -> None:
