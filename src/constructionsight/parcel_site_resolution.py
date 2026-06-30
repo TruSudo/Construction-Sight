@@ -35,10 +35,19 @@ def resolve_site_with_parcels(
     top_score = matches[0][1]
     top_matches = [match for match in matches if match[1] == top_score]
     candidates = [
-        _candidate_from_parcel(site_input=site_input, parcel=parcel, score=score, reasons=reasons)
+        _candidate_from_parcel(
+            site_input=site_input,
+            parcel=parcel,
+            score=score,
+            reasons=reasons,
+        )
         for parcel, score, reasons in top_matches
     ]
-    status = SiteResolutionStatus.RESOLVED if len(candidates) == 1 else SiteResolutionStatus.AMBIGUOUS
+    status = (
+        SiteResolutionStatus.RESOLVED
+        if len(candidates) == 1
+        else SiteResolutionStatus.AMBIGUOUS
+    )
     limitations = [] if len(candidates) == 1 else ["multiple parcel records matched equally"]
     primary_site_key = candidates[0].site_key if len(candidates) == 1 else None
     return SiteResolutionResult(
@@ -111,7 +120,10 @@ def _candidate_from_parcel(
     )
 
 
-def _point_hits_parcel(geometry_hints: list[GeometryHint], parcel: ParcelCoreRecord) -> bool:
+def _point_hits_parcel(
+    geometry_hints: list[GeometryHint],
+    parcel: ParcelCoreRecord,
+) -> bool:
     """Return whether a point hint falls inside the parcel envelope."""
 
     if parcel.geometry is None:
@@ -127,12 +139,13 @@ def _point_hits_parcel(geometry_hints: list[GeometryHint], parcel: ParcelCoreRec
     for hint in geometry_hints:
         if hint.latitude is None or hint.longitude is None:
             continue
-        if (
-            geometry.envelope_min_latitude <= hint.latitude <= geometry.envelope_max_latitude
-            and geometry.envelope_min_longitude
-            <= hint.longitude
-            <= geometry.envelope_max_longitude
-        ):
+        latitude_in_range = geometry.envelope_min_latitude <= hint.latitude <= (
+            geometry.envelope_max_latitude
+        )
+        longitude_in_range = geometry.envelope_min_longitude <= hint.longitude <= (
+            geometry.envelope_max_longitude
+        )
+        if latitude_in_range and longitude_in_range:
             return True
     return False
 
