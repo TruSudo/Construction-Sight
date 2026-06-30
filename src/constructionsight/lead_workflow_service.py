@@ -11,6 +11,7 @@ from constructionsight.lead_workflow_models import (
     LeadWorkflowRecord,
     LeadWorkflowStatus,
 )
+from constructionsight.lead_workflow_rules import validate_lead_workflow_transition
 
 
 def create_lead_workflow(
@@ -55,8 +56,9 @@ def transition_lead_workflow(
     next_status: LeadWorkflowStatus,
     reason: str,
 ) -> LeadWorkflowRecord:
-    """Return a new workflow record with an appended status event."""
+    """Return a new workflow record with an appended matrix-valid status event."""
 
+    validate_lead_workflow_transition(record.status, next_status)
     event = _event(
         workflow_id_basis=record.workflow_id,
         previous_status=record.status,
