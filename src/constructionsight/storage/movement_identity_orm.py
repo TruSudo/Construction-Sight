@@ -27,8 +27,16 @@ class PermitSnapshotRecord(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     snapshot_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     source_key: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    source_record_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    permit_number: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    source_record_id: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+        index=True,
+    )
+    permit_number: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+        index=True,
+    )
     status: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     site_key: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     observed_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
@@ -60,9 +68,17 @@ class PermitTransitionRecord(Base):
     transition_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     transition_kind: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     source_key: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    source_record_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    source_record_id: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+        index=True,
+    )
     field_name: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
-    opportunity_relevant: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    opportunity_relevant: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=True,
+    )
     detected_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     payload_json: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
