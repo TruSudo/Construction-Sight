@@ -13,6 +13,13 @@ from constructionsight.site_resolution_models import (
     SiteResolutionStatus,
 )
 
+_APPROXIMATE_CENTROID_LIMITATION = (
+    "polygon centroid is a coordinate-average approximation, not an area-weighted centroid"
+)
+_ENVELOPE_CONTAINMENT_LIMITATION = (
+    "coordinate containment uses parcel envelope only, not polygon topology"
+)
+
 
 def _identifier(kind: SiteIdentifierKind, value: str) -> SiteIdentifier:
     return SiteIdentifier(
@@ -116,16 +123,14 @@ def test_resolve_site_with_parcels_preserves_geometry_limitations() -> None:
                 "parcel:one",
                 "12345678",
                 geometry_kind=ParcelGeometryKind.POLYGON,
-                geometry_limitations=[
-                    "polygon centroid is a coordinate-average approximation, not an area-weighted centroid"
-                ],
+                geometry_limitations=[_APPROXIMATE_CENTROID_LIMITATION],
             )
         ],
     )
     candidate = result.candidates[0]
 
-    assert "polygon centroid is a coordinate-average approximation, not an area-weighted centroid" in candidate.limitations
-    assert "coordinate containment uses parcel envelope only, not polygon topology" in candidate.limitations
+    assert _APPROXIMATE_CENTROID_LIMITATION in candidate.limitations
+    assert _ENVELOPE_CONTAINMENT_LIMITATION in candidate.limitations
 
 
 def test_resolve_site_with_parcels_preserves_ambiguity() -> None:
