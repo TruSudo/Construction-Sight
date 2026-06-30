@@ -94,7 +94,12 @@ class ContractorIdentityRecord(Base):
     normalized_name: Mapped[str] = mapped_column(String(500), nullable=False, index=True)
     source_kind: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     status: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
-    confidence_score: Mapped[int] = mapped_column(Integer, nullable=False, default=0, index=True)
+    confidence_score: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=0,
+        index=True,
+    )
     payload_json: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -115,17 +120,28 @@ class DecisionRecordRow(Base):
     """Persisted public decision record."""
 
     __tablename__ = "decision_records"
-    __table_args__ = (UniqueConstraint("decision_key", name="uq_decision_records_key"),)
+    __table_args__ = (
+        UniqueConstraint("decision_key", name="uq_decision_records_key"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     decision_key: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     source_key: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    source_record_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    source_record_id: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+        index=True,
+    )
     source_kind: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     decision_kind: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     site_key: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     apn: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
-    confidence_score: Mapped[int] = mapped_column(Integer, nullable=False, default=0, index=True)
+    confidence_score: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=0,
+        index=True,
+    )
     payload_json: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
