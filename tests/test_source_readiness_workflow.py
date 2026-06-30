@@ -76,7 +76,7 @@ def test_source_readiness_seed_only_without_http_check() -> None:
 
     assert row.readiness_status == SourceReadinessStatus.SEED_ONLY
     assert row.http_reachability.checked is False
-    assert row.status_counts if False else report.status_counts == {"seed_only": 1}
+    assert report.status_counts == {"seed_only": 1}
     assert "source remains a registry seed" in row.limitations[0]
 
 
