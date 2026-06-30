@@ -3,6 +3,7 @@ from constructionsight.decision_record_models import DecisionKind, DecisionSourc
 from constructionsight.decision_record_service import build_decision_record
 from constructionsight.opportunity_enrichment_models import EnrichmentSignalKind
 from constructionsight.opportunity_enrichment_service import enrich_opportunity
+from constructionsight.opportunity_scoring_profile import OpportunityScoringProfile
 from constructionsight.permit_transition_models import PermitTransition, PermitTransitionKind
 from constructionsight.site_resolution_models import (
     SiteResolutionCandidate,
@@ -42,6 +43,23 @@ def _permit_transition() -> PermitTransition:
     )
 
 
+def _custom_profile() -> OpportunityScoringProfile:
+    return OpportunityScoringProfile(
+        profile_key="opportunity-scoring:custom",
+        version="1",
+        site_resolved_score=30,
+        site_partial_score=12,
+        permit_transition_scores={kind: 1 for kind in PermitTransitionKind},
+        contractor_with_license_score=2,
+        contractor_without_license_score=1,
+        decision_with_site_score=3,
+        decision_without_site_score=2,
+        high_value_threshold=30,
+        review_threshold=20,
+        monitor_threshold=1,
+    )
+
+
 def test_enrich_opportunity_combines_all_signal_layers() -> None:
     contractor = build_contractor_identity(
         display_name="Acme Builders",
@@ -66,10 +84,32 @@ def test_enrich_opportunity_combines_all_signal_layers() -> None:
     signal_kinds = {signal.signal_kind for signal in report.signals}
 
     assert report.lead_score == 70
+    assert report.scoring_profile_key == "opportunity-scoring:default"
+    assert report.scoring_profile_version == "2026-06-30.1"
     assert EnrichmentSignalKind.PARCEL_SITE in signal_kinds
     assert EnrichmentSignalKind.PERMIT_TRANSITION in signal_kinds
     assert EnrichmentSignalKind.CONTRACTOR_IDENTITY in signal_kinds
     assert EnrichmentSignalKind.DECISION_SIGNAL in signal_kinds
+    assert report.next_action == "prepare outreach preview"
+
+
+def test_enrich_opportunity_accepts_custom_scoring_profile() -> None:
+    contractor = build_contractor_identity(
+        display_name="Acme Builders",
+        license_number="123456",
+    )
+
+    report = enrich_opportunity(
+        base_candidate_id="candidate:test",
+        site_resolution=_site_result(),
+        permit_transitions=[_permit_transition()],
+        contractor_identity=contractor,
+        scoring_profile=_custom_profile(),
+    )
+
+    assert report.lead_score == 33
+    assert report.scoring_profile_key == "opportunity-scoring:custom"
+    assert report.scoring_profile_version == "1"
     assert report.next_action == "prepare outreach preview"
 
 
