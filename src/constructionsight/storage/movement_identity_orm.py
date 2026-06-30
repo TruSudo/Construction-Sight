@@ -20,7 +20,9 @@ class PermitSnapshotRecord(Base):
     """Persisted source-neutral permit snapshot."""
 
     __tablename__ = "permit_snapshots"
-    __table_args__ = (UniqueConstraint("snapshot_id", name="uq_permit_snapshots_snapshot_id"),)
+    __table_args__ = (
+        UniqueConstraint("snapshot_id", name="uq_permit_snapshots_snapshot_id"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     snapshot_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
@@ -32,7 +34,10 @@ class PermitSnapshotRecord(Base):
     observed_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     payload_json: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=utc_now, server_default=func.now()
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+        server_default=func.now(),
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -61,7 +66,10 @@ class PermitTransitionRecord(Base):
     detected_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     payload_json: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=utc_now, server_default=func.now()
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+        server_default=func.now(),
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -89,7 +97,10 @@ class ContractorIdentityRecord(Base):
     confidence_score: Mapped[int] = mapped_column(Integer, nullable=False, default=0, index=True)
     payload_json: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=utc_now, server_default=func.now()
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+        server_default=func.now(),
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -117,7 +128,10 @@ class DecisionRecordRow(Base):
     confidence_score: Mapped[int] = mapped_column(Integer, nullable=False, default=0, index=True)
     payload_json: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=utc_now, server_default=func.now()
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+        server_default=func.now(),
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
