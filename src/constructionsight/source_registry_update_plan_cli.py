@@ -114,6 +114,10 @@ def source_registry_update_plan(
     ] = None,
     json_output: Annotated[bool, typer.Option("--json-output")] = False,
     check_http: Annotated[bool, typer.Option("--check-http")] = False,
+    overwrite: Annotated[
+        bool,
+        typer.Option("--overwrite", help="Allow replacement of an existing plan output file."),
+    ] = False,
 ) -> None:
     """Build a dry-run source registry update plan without writing registry data."""
 
@@ -125,9 +129,17 @@ def source_registry_update_plan(
     )
     rendered = json.dumps(report.to_dict(), indent=2)
     if output is not None:
-        output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_text(f"{rendered}\n", encoding="utf-8")
+        plan_paths = {
+            "registry input": registry_path,
+            "plan output": output,
+        }
+        if observations_path is not None:
+            plan_paths["observations input"] = observations_path
+        _require_distinct_paths(plan_paths)
+        _require_available_output(output, overwrite=overwrite)
+        _atomic_write_text(output, f"{rendered}\n")
         console.print(f"Wrote source registry update plan to {output}")
+        console.print(f"Registry digest: {report.registry_digest}")
         console.print(f"Plan digest: {report.plan_digest}")
         return
     if json_output:
@@ -139,6 +151,7 @@ def source_registry_update_plan(
     summary.add_column("Value")
     summary.add_row("Source records", str(report.source_count))
     summary.add_row("Updates proposed", str(report.update_count))
+    summary.add_row("Registry digest", report.registry_digest)
     summary.add_row("Plan digest", report.plan_digest)
     for action, count in sorted(report.action_counts.items()):
         summary.add_row(action, str(count))
@@ -213,10 +226,19 @@ def source_registry_apply(
     target_path = registry_path if in_place else output
     if target_path is None:
         raise typer.BadParameter("Updated registry target could not be resolved.")
-    paths = {"registry target": target_path, "audit output": audit_output}
-    if backup_output is not None:
-        paths["backup output"] = backup_output
-    _require_distinct_paths(paths)
+
+    apply_paths = {
+        "registry input": registry_path,
+        "plan input": plan_path,
+        "audit output": audit_output,
+    }
+    if in_place:
+        if backup_output is None:
+            raise typer.BadParameter("--backup-output is required with --in-place.")
+        apply_paths["backup output"] = backup_output
+    else:
+        apply_paths["updated registry output"] = target_path
+    _require_distinct_paths(apply_paths)
 
     if not in_place:
         _require_available_output(target_path, overwrite=overwrite)
@@ -237,12 +259,13 @@ def source_registry_apply(
 
     if backup_output is not None:
         _atomic_write_text(backup_output, registry_path.read_text(encoding="utf-8"))
-    _atomic_write_text(target_path, _registry_json(updated_sources))
     _atomic_write_text(
         audit_output,
         f"{json.dumps(report.to_dict(), indent=2)}\n",
     )
+    _atomic_write_text(target_path, _registry_json(updated_sources))
     console.print(f"Applied {report.applied_count} source registry status update(s).")
     console.print(f"Updated registry: {target_path}")
     console.print(f"Audit report: {audit_output}")
+    console.print(f"Registry digest: {report.updated_registry_digest}")
     console.print(f"Plan digest: {report.plan_digest}")
