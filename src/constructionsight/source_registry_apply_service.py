@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import hashlib
-import json
+from collections import Counter
 from typing import Any
 
 from constructionsight.models import PublicSource, VerificationStatus
@@ -11,6 +10,7 @@ from constructionsight.source_registry_apply_models import (
     SourceRegistryApplyReport,
     SourceRegistryApplyRow,
 )
+from constructionsight.source_registry_integrity import source_registry_digest
 from constructionsight.source_registry_update_plan_models import (
     SourceRegistryUpdatePlanReport,
     SourceRegistryUpdatePlanRow,
@@ -42,7 +42,11 @@ def apply_source_registry_update_plan(
 ) -> tuple[list[PublicSource], SourceRegistryApplyReport]:
     """Apply an approved, current, evidence-backed plan in memory as one transaction."""
 
-    _validate_plan(plan, approved_plan_digest=approved_plan_digest)
+    _validate_plan(
+        sources,
+        plan,
+        approved_plan_digest=approved_plan_digest,
+    )
     if plan.update_count == 0:
         raise SourceRegistryApplyError("source registry update plan proposes no changes")
 
@@ -95,34 +99,38 @@ def apply_source_registry_update_plan(
     return updated_sources, report
 
 
-def source_registry_digest(sources: list[PublicSource]) -> str:
-    """Return a deterministic SHA-256 digest for registry content and order."""
-
-    payload = [source.model_dump(mode="json") for source in sources]
-    encoded = json.dumps(
-        payload,
-        sort_keys=True,
-        separators=(",", ":"),
-        ensure_ascii=True,
-    ).encode("utf-8")
-    return hashlib.sha256(encoded).hexdigest()
-
-
 def _validate_plan(
+    sources: list[PublicSource],
     plan: SourceRegistryUpdatePlanReport,
     *,
     approved_plan_digest: str,
 ) -> None:
     if plan.source_count != len(plan.rows):
         raise SourceRegistryApplyError("plan source count does not match plan rows")
+    if plan.source_count != len(sources):
+        raise SourceRegistryApplyError("plan source count does not match current registry")
+
+    actual_registry_digest = source_registry_digest(sources)
+    if plan.registry_digest != actual_registry_digest:
+        raise SourceRegistryApplyError("current registry digest does not match planned registry")
+
     actual_update_count = sum(1 for row in plan.rows if row.update_required)
     if plan.update_count != actual_update_count:
         raise SourceRegistryApplyError("plan update count does not match plan rows")
-    calculated_digest = compute_source_registry_update_plan_digest(plan.rows)
+
+    actual_action_counts = dict(Counter(row.planned_action for row in plan.rows))
+    if plan.action_counts != actual_action_counts:
+        raise SourceRegistryApplyError("plan action counts do not match plan rows")
+
+    calculated_digest = compute_source_registry_update_plan_digest(
+        plan.rows,
+        registry_digest=plan.registry_digest,
+    )
     if plan.plan_digest != calculated_digest:
         raise SourceRegistryApplyError("plan digest does not match plan content")
     if approved_plan_digest != plan.plan_digest:
         raise SourceRegistryApplyError("approved plan digest does not match plan digest")
+
     plan_keys = [row.source_key for row in plan.rows]
     if len(plan_keys) != len(set(plan_keys)):
         raise SourceRegistryApplyError("plan contains duplicate source keys")
