@@ -33,7 +33,10 @@ def _require_decimal_places(value: float, *, maximum: int, field_name: str) -> f
     """Reject numeric values whose decimal precision exceeds the domain boundary."""
 
     decimal_value = Decimal(str(value))
-    decimal_places = max(0, -decimal_value.as_tuple().exponent)
+    exponent = decimal_value.as_tuple().exponent
+    if not isinstance(exponent, int):
+        raise ValueError(f"{field_name} must be finite")
+    decimal_places = max(0, -exponent)
     if decimal_places > maximum:
         raise ValueError(f"{field_name} must use at most {maximum} decimal places")
     return value
