@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from sqlalchemy import Select, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from constructionsight.lead_operator_models import (
@@ -70,10 +70,13 @@ def list_lead_operator_records(
         statement = select(OpportunityEnrichmentReportRecord)
         if base_candidate_id is not None:
             statement = statement.where(
-                OpportunityEnrichmentReportRecord.base_candidate_id == base_candidate_id
+                OpportunityEnrichmentReportRecord.base_candidate_id
+                == base_candidate_id
             )
         rows = session.execute(
-            statement.order_by(OpportunityEnrichmentReportRecord.id.desc()).limit(limit)
+            statement.order_by(OpportunityEnrichmentReportRecord.id.desc()).limit(
+                limit
+            )
         ).scalars()
         return [_enrichment_record(row) for row in rows]
 
@@ -123,7 +126,9 @@ def list_lead_operator_records(
                 LeadWorkflowRecordRow.base_candidate_id == base_candidate_id
             )
         if workflow_id is not None:
-            statement = statement.where(LeadWorkflowRecordRow.workflow_id == workflow_id)
+            statement = statement.where(
+                LeadWorkflowRecordRow.workflow_id == workflow_id
+            )
         rows = session.execute(
             statement.order_by(LeadWorkflowRecordRow.id.desc()).limit(limit)
         ).scalars()
@@ -132,9 +137,13 @@ def list_lead_operator_records(
     if record_kind == LeadOperatorRecordKind.EVENT:
         statement = select(LeadWorkflowEventRecord)
         if status is not None:
-            statement = statement.where(LeadWorkflowEventRecord.current_status == status)
+            statement = statement.where(
+                LeadWorkflowEventRecord.current_status == status
+            )
         if workflow_id is not None:
-            statement = statement.where(LeadWorkflowEventRecord.workflow_id == workflow_id)
+            statement = statement.where(
+                LeadWorkflowEventRecord.workflow_id == workflow_id
+            )
         rows = session.execute(
             statement.order_by(LeadWorkflowEventRecord.id.desc()).limit(limit)
         ).scalars()
@@ -145,7 +154,9 @@ def list_lead_operator_records(
         if status is not None:
             statement = statement.where(ResultLedgerRecordRow.status == status)
         if workflow_id is not None:
-            statement = statement.where(ResultLedgerRecordRow.workflow_id == workflow_id)
+            statement = statement.where(
+                ResultLedgerRecordRow.workflow_id == workflow_id
+            )
         rows = session.execute(
             statement.order_by(ResultLedgerRecordRow.id.desc()).limit(limit)
         ).scalars()
@@ -207,7 +218,9 @@ def get_lead_operator_record(
         return None if row is None else _event_record(row)
     if record_kind == LeadOperatorRecordKind.LEDGER:
         row = session.execute(
-            select(ResultLedgerRecordRow).where(ResultLedgerRecordRow.ledger_id == record_id)
+            select(ResultLedgerRecordRow).where(
+                ResultLedgerRecordRow.ledger_id == record_id
+            )
         ).scalar_one_or_none()
         return None if row is None else _ledger_record(row)
     row = session.execute(
@@ -218,15 +231,22 @@ def get_lead_operator_record(
     return None if row is None else _share_record(row)
 
 
-def load_persisted_lead_workflow(session: Session, workflow_id: str) -> LeadWorkflowRecord:
+def load_persisted_lead_workflow(
+    session: Session,
+    workflow_id: str,
+) -> LeadWorkflowRecord:
     """Load and integrity-check one workflow before an operator mutation."""
 
     row = _workflow_row(session, workflow_id)
     if row is None:
         raise LeadOperatorError(f"lead workflow not found: {workflow_id}")
-    payload = _decode_payload(row.payload_json, LeadOperatorRecordKind.WORKFLOW, workflow_id)
+    payload = _decode_payload(
+        row.payload_json,
+        LeadOperatorRecordKind.WORKFLOW,
+        workflow_id,
+    )
     record = LeadWorkflowRecord.model_validate(payload)
-    indexed_values = {
+    indexed_values: dict[str, object] = {
         "workflow_id": row.workflow_id,
         "package_id": row.package_id,
         "base_candidate_id": row.base_candidate_id,
@@ -250,11 +270,14 @@ def load_persisted_lead_workflow(session: Session, workflow_id: str) -> LeadWork
     if drifted_fields:
         fields = ", ".join(sorted(drifted_fields))
         raise LeadOperatorError(
-            f"lead workflow indexed fields disagree with payload for {workflow_id}: {fields}"
+            "lead workflow indexed fields disagree with payload for "
+            f"{workflow_id}: {fields}"
         )
     event_ids = [event.event_id for event in record.events]
     if len(event_ids) != len(set(event_ids)):
-        raise LeadOperatorError(f"lead workflow contains duplicate event ids: {workflow_id}")
+        raise LeadOperatorError(
+            f"lead workflow contains duplicate event ids: {workflow_id}"
+        )
     return record
 
 
@@ -275,7 +298,8 @@ def transition_persisted_lead_workflow(
     if record.status != expected_current_status:
         raise LeadOperatorError(
             "lead workflow current status does not match the operator expectation: "
-            f"expected {expected_current_status.value}, observed {record.status.value}"
+            f"expected {expected_current_status.value}, "
+            f"observed {record.status.value}"
         )
     updated = transition_lead_workflow(
         record=record,
@@ -321,7 +345,10 @@ def _validate_filters(
         )
 
 
-def _workflow_row(session: Session, workflow_id: str) -> LeadWorkflowRecordRow | None:
+def _workflow_row(
+    session: Session,
+    workflow_id: str,
+) -> LeadWorkflowRecordRow | None:
     return session.execute(
         select(LeadWorkflowRecordRow).where(
             LeadWorkflowRecordRow.workflow_id == workflow_id
@@ -342,12 +369,15 @@ def _decode_payload(
         ) from exc
     if not isinstance(data, dict):
         raise LeadOperatorError(
-            f"{record_kind.value} payload must be a JSON object for record: {record_id}"
+            f"{record_kind.value} payload must be a JSON object for record: "
+            f"{record_id}"
         )
     return {str(key): value for key, value in data.items()}
 
 
-def _enrichment_record(row: OpportunityEnrichmentReportRecord) -> LeadOperatorRecord:
+def _enrichment_record(
+    row: OpportunityEnrichmentReportRecord,
+) -> LeadOperatorRecord:
     return LeadOperatorRecord(
         record_kind=LeadOperatorRecordKind.ENRICHMENT,
         record_id=row.report_id,
@@ -371,7 +401,11 @@ def _review_record(row: LeadReviewPackageRecord) -> LeadOperatorRecord:
         package_id=row.package_id,
         lead_score=row.lead_score,
         observed_created_at=row.observed_created_at,
-        payload=_decode_payload(row.payload_json, LeadOperatorRecordKind.REVIEW, row.package_id),
+        payload=_decode_payload(
+            row.payload_json,
+            LeadOperatorRecordKind.REVIEW,
+            row.package_id,
+        ),
     )
 
 
@@ -430,7 +464,11 @@ def _event_record(row: LeadWorkflowEventRecord) -> LeadOperatorRecord:
         status=row.current_status,
         workflow_id=row.workflow_id,
         observed_created_at=row.observed_created_at,
-        payload=_decode_payload(row.payload_json, LeadOperatorRecordKind.EVENT, row.event_id),
+        payload=_decode_payload(
+            row.payload_json,
+            LeadOperatorRecordKind.EVENT,
+            row.event_id,
+        ),
     )
 
 
@@ -442,7 +480,11 @@ def _ledger_record(row: ResultLedgerRecordRow) -> LeadOperatorRecord:
         workflow_id=row.workflow_id,
         package_id=row.package_id,
         observed_created_at=row.observed_created_at,
-        payload=_decode_payload(row.payload_json, LeadOperatorRecordKind.LEDGER, row.ledger_id),
+        payload=_decode_payload(
+            row.payload_json,
+            LeadOperatorRecordKind.LEDGER,
+            row.ledger_id,
+        ),
     )
 
 
