@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+from contextlib import suppress
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -73,10 +74,8 @@ def _atomic_write_text(path: Path, content: str) -> None:
             os.fsync(handle.fileno())
         os.replace(temporary_name, path)
     except Exception:
-        try:
+        with suppress(FileNotFoundError):
             os.unlink(temporary_name)
-        except FileNotFoundError:
-            pass
         raise
 
 
