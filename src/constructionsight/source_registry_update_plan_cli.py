@@ -7,7 +7,7 @@ import os
 import tempfile
 from contextlib import suppress
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, NoReturn
 
 import typer
 from rich.console import Console
@@ -33,10 +33,17 @@ app = typer.Typer(help="ConstructionSight source registry update plan and apply 
 console = Console()
 
 
+def _abort(message: str) -> NoReturn:
+    """Emit a deterministic operator error without Rich wrapping or styling."""
+
+    typer.echo(message, err=True)
+    raise typer.Exit(code=2)
+
+
 def _load_sources_from_json(path: Path) -> list[PublicSource]:
     data: Any = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(data, list):
-        raise typer.BadParameter("Registry JSON must be a list.")
+        _abort("Registry JSON must be a list.")
     return [PublicSource.model_validate(item) for item in data]
 
 
@@ -45,7 +52,7 @@ def _load_observations(path: Path | None) -> list[SourceVerificationObservation]
         return []
     data: Any = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(data, list):
-        raise typer.BadParameter("Observation JSON must be a list.")
+        _abort("Observation JSON must be a list.")
     return [SourceVerificationObservation.model_validate(item) for item in data]
 
 
@@ -81,7 +88,7 @@ def _atomic_write_text(path: Path, content: str) -> None:
 
 def _require_available_output(path: Path, *, overwrite: bool) -> None:
     if path.exists() and not overwrite:
-        raise typer.BadParameter(f"Output path already exists; use --overwrite: {path}")
+        _abort(f"Output path already exists; use --overwrite: {path}")
 
 
 def _require_distinct_paths(paths: dict[str, Path]) -> None:
@@ -90,9 +97,7 @@ def _require_distinct_paths(paths: dict[str, Path]) -> None:
         canonical = path.resolve()
         previous = resolved.get(canonical)
         if previous is not None:
-            raise typer.BadParameter(
-                f"{label} path must differ from {previous} path: {path}"
-            )
+            _abort(f"{label} path must differ from {previous} path: {path}")
         resolved[canonical] = label
 
 
@@ -213,19 +218,19 @@ def source_registry_apply(
     """Apply an approved evidence-backed plan with atomic file replacement."""
 
     if not apply_changes:
-        raise typer.BadParameter("Explicit --apply authorization is required.")
+        _abort("Explicit --apply authorization is required.")
     if in_place and output is not None:
-        raise typer.BadParameter("Use either --in-place or --output, not both.")
+        _abort("Use either --in-place or --output, not both.")
     if not in_place and output is None:
-        raise typer.BadParameter("Use --output or explicitly select --in-place.")
+        _abort("Use --output or explicitly select --in-place.")
     if in_place and backup_output is None:
-        raise typer.BadParameter("--backup-output is required with --in-place.")
+        _abort("--backup-output is required with --in-place.")
     if not in_place and backup_output is not None:
-        raise typer.BadParameter("--backup-output is valid only with --in-place.")
+        _abort("--backup-output is valid only with --in-place.")
 
     target_path = registry_path if in_place else output
     if target_path is None:
-        raise typer.BadParameter("Updated registry target could not be resolved.")
+        _abort("Updated registry target could not be resolved.")
 
     apply_paths = {
         "registry input": registry_path,
@@ -234,7 +239,7 @@ def source_registry_apply(
     }
     if in_place:
         if backup_output is None:
-            raise typer.BadParameter("--backup-output is required with --in-place.")
+            _abort("--backup-output is required with --in-place.")
         apply_paths["backup output"] = backup_output
     else:
         apply_paths["updated registry output"] = target_path
@@ -255,7 +260,7 @@ def source_registry_apply(
             approved_plan_digest=approved_plan_digest.strip(),
         )
     except SourceRegistryApplyError as exc:
-        raise typer.BadParameter(str(exc)) from exc
+        _abort(str(exc))
 
     if backup_output is not None:
         _atomic_write_text(backup_output, registry_path.read_text(encoding="utf-8"))
