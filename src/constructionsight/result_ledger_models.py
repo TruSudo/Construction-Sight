@@ -95,11 +95,15 @@ class ResultLedgerRecord(BaseModel):
                 raise ValueError("root result ledger revision cannot have a correction reason")
             return self
         if self.supersedes_ledger_id is None:
-            raise ValueError("result ledger revisions after one must identify the superseded ledger")
+            raise ValueError(
+                "result ledger revisions after one must identify the superseded ledger"
+            )
         if self.supersedes_ledger_id == self.ledger_id:
             raise ValueError("result ledger revision cannot supersede itself")
         if self.correction_reason is None or not self.correction_reason.strip():
-            raise ValueError("result ledger revisions after one require a correction reason")
+            raise ValueError(
+                "result ledger revisions after one require a correction reason"
+            )
         return self
 
     @model_validator(mode="after")
