@@ -41,44 +41,17 @@ jobs:
           python -m pip install -e ".[dev]"
 
       - name: Ruff
-        run: python -m ruff check src tests --output-format=json > ruff-results.json
-
-      - name: Upload Ruff results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ruff-results-${{ matrix.python-version }}
-          path: ruff-results.json
-          if-no-files-found: error
-          retention-days: 1
+        run: python -m ruff check src tests
 
       - name: Mypy
-        run: python -m mypy src > mypy-results.txt 2>&1
-
-      - name: Upload mypy results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: mypy-results-${{ matrix.python-version }}
-          path: mypy-results.txt
-          if-no-files-found: error
-          retention-days: 1
+        run: python -m mypy src
 
       - name: Compile source and tests
         run: |
           python -m compileall -q src tests
 
       - name: Pytest
-        run: python -m pytest --junitxml=pytest-results.xml
-
-      - name: Upload pytest results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: pytest-results-${{ matrix.python-version }}
-          path: pytest-results.xml
-          if-no-files-found: error
-          retention-days: 1
+        run: python -m pytest
 
       - name: Adapter contract audit
         run: constructionsight audit-adapters
