@@ -311,7 +311,7 @@ def test_source_registry_plan_cli_refuses_registry_as_output(tmp_path) -> None:
     )
 
     assert result.exit_code != 0
-    assert "plan output path must differ from registry input path" in result.stdout
+    assert "plan output path must differ from registry input path" in result.stderr
     assert registry_path.read_text(encoding="utf-8") == original
 
 
@@ -404,7 +404,7 @@ def test_source_registry_apply_cli_refuses_output_equal_to_registry(tmp_path) ->
     )
 
     assert result.exit_code != 0
-    assert "updated registry output path must differ from registry input path" in result.stdout
+    assert "updated registry output path must differ from registry input path" in result.stderr
 
 
 def test_source_registry_apply_cli_requires_explicit_apply_flag(tmp_path) -> None:
@@ -445,4 +445,4 @@ def test_source_registry_apply_cli_requires_explicit_apply_flag(tmp_path) -> Non
     )
 
     assert result.exit_code != 0
-    assert "Explicit --apply authorization is required" in result.stdout
+    assert "Explicit --apply authorization is required" in result.stderr
