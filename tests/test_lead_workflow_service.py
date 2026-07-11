@@ -102,3 +102,26 @@ def test_transition_lead_workflow_appends_event() -> None:
     assert len(updated.events) == 2
     assert updated.events[-1].previous_status == LeadWorkflowStatus.MONITOR
     assert updated.events[-1].current_status == LeadWorkflowStatus.REVIEW
+
+
+def test_repeated_transition_and_reason_keeps_unique_event_ids() -> None:
+    record = create_lead_workflow(package=_package(LeadReviewStatus.MONITOR, score=20))
+    first_review = transition_lead_workflow(
+        record=record,
+        next_status=LeadWorkflowStatus.REVIEW,
+        reason="review recurring evidence",
+    )
+    back_to_monitor = transition_lead_workflow(
+        record=first_review,
+        next_status=LeadWorkflowStatus.MONITOR,
+        reason="continue monitoring",
+    )
+    second_review = transition_lead_workflow(
+        record=back_to_monitor,
+        next_status=LeadWorkflowStatus.REVIEW,
+        reason="review recurring evidence",
+    )
+
+    event_ids = [event.event_id for event in second_review.events]
+    assert len(event_ids) == 4
+    assert len(set(event_ids)) == 4

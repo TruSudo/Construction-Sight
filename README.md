@@ -2,7 +2,7 @@
 
 ConstructionSight is a lawful public-record construction intelligence platform focused initially on San Bernardino County and Riverside County, California.
 
-The platform is designed to discover, verify, normalize, store, and analyze public construction, planning, entitlement, CEQA, permit, contractor, parcel, and agenda data. Current implementation is strongest in source-neutral models, deterministic services, evidence-first workflow logic, persistence for core post-enrichment records, layered source-status/readiness/audit/checklist/planning governance, controlled registry-status apply, and test-backed architecture. Live source integrations and operator UI remain planned work unless expressly marked otherwise.
+The platform is designed to discover, verify, normalize, store, and analyze public construction, planning, entitlement, CEQA, permit, contractor, parcel, and agenda data. Current implementation is strongest in source-neutral models, deterministic services, evidence-first workflow logic, persistence for core post-enrichment records, layered source-status/readiness/audit/checklist/planning governance, controlled registry-status apply, consolidated post-enrichment lead operator tooling, and test-backed architecture. Live source integrations and operator UI remain planned work unless expressly marked otherwise.
 
 ## Operating Boundary
 
@@ -52,6 +52,7 @@ lawful public-record intake
   -> lead dedupe
   -> lead workflow status
   -> result ledger and share calculation
+  -> consolidated lead operator inspection and governed workflow transition
 ```
 
 See `docs/architecture/current_implementation_status.md` for the implemented-versus-planned matrix and active defect ledger. See `docs/audits/full_repo_audit_inventory.md` for the full repository audit inventory.
@@ -196,7 +197,7 @@ Every score contribution must come from a named signal with a reason, confidence
 
 See `docs/architecture/opportunity_enrichment_spine.md` for the enrichment contract.
 
-## Lead Review, Dedupe, Workflow, and Result Doctrine
+## Lead Review, Dedupe, Workflow, Result, and Operator Doctrine
 
 ConstructionSight separates scoring from operator review and later workflow states.
 
@@ -212,12 +213,15 @@ OpportunityEnrichmentReport
 
 Lead workflow status changes are matrix-constrained, and final statuses have no outgoing transitions unless a later explicit override/reopen doctrine is added. Result ledgers preserve explicit share states: `not_applicable`, `pending_gross_value`, `pending_share_rate`, and `calculated`.
 
+`constructionsight-leads` exposes persisted enrichment, review, fingerprint, duplicate, workflow, event, ledger, and share records through list/detail commands. Workflow transitions require explicit `--apply`, an expected current status, a nonblank audit reason, indexed-column/full-payload integrity agreement, and a matrix-valid next status. Ledger and share mutation remain deliberately unavailable until authoritative outcome correction or supersession doctrine is defined.
+
 See:
 
 - `docs/architecture/lead_review_package.md`
 - `docs/architecture/lead_dedupe.md`
 - `docs/architecture/lead_workflow_status.md`
 - `docs/architecture/result_ledger.md`
+- `docs/architecture/lead_operator_cli.md`
 
 ## Known Limitations
 
@@ -227,9 +231,9 @@ See:
 - HTTP audit-package evidence currently classifies CEQAnet as `cross_host_redirect`, CSLB as `no_redirect`, San Bernardino EZOP as `same_host_redirect`, and Riverside PLUS as `downgraded_to_http`; all four remain `keep_unverified_reachable` until manual source verification occurs.
 - Geometry containment currently has first-pass limitations and must not be treated as survey-grade parcel topology.
 - Opportunity scoring uses a versioned default profile; additional profiles must be introduced explicitly with doctrine and tests.
-- Lead workflow transitions preserve event history and are constrained by a status matrix; override/reopen behavior is not implemented.
-- Result ledgers distinguish pending gross value, pending share rate, calculated share, and not-applicable share states; business-specific share enforcement remains future work.
-- Persisted model/service layers now have storage-summary visibility and source maturity has layered reporting/planning/apply visibility; dedicated action/list/detail operator CLIs remain pending.
+- Lead workflow transitions preserve unique event history and are constrained by a status matrix; override/reopen behavior is not implemented.
+- Result ledgers distinguish pending gross value, pending share rate, calculated share, and not-applicable share states. Operator mutation is intentionally withheld because authoritative outcome replacement/history rules are not yet defined.
+- Post-enrichment lead records now have consolidated list/detail access and governed workflow transitions. Dedicated permit, contractor, decision, parcel-core, and site-resolution action/list/detail commands remain pending.
 - No external outreach-sending behavior is implemented or implied.
 
 ## Forward Cleanup Doctrine
@@ -240,4 +244,4 @@ Do not claim Regrid or Shovels parity merely because model layers exist. Parity 
 
 ## Phase 1 Status
 
-Repository foundation initialized. CEQAnet public-record intake has guarded operator and archive tooling, but CEQAnet remains contract-ready rather than live production coverage. Universal intake, layered source-governance reporting/checklist/planning/controlled apply, opportunity transition intake, parcel/site resolution, parcel source registry, schema preview, row preview, parcel core record, geometry normalization, parcel-backed site resolution, permit transitions, contractor identity, decision records, opportunity enrichment, lead review, dedupe, workflow status, result ledger, and storage-summary reporting now exist as tested model/service/operator-support architecture. The next required phases are evidence-backed manual verification of individual sources, topology-grade geometry, dedicated action/list/detail operator CLIs, verified live adapter execution, optional preview archive persistence, and any future business-specific share enforcement.
+Repository foundation initialized. CEQAnet public-record intake has guarded operator and archive tooling, but CEQAnet remains contract-ready rather than live production coverage. Universal intake, layered source-governance reporting/checklist/planning/controlled apply, opportunity transition intake, parcel/site resolution, parcel source registry, schema preview, row preview, parcel core record, geometry normalization, parcel-backed site resolution, permit transitions, contractor identity, decision records, opportunity enrichment, lead review, dedupe, workflow status, result ledger, consolidated lead operator access, and storage-summary reporting now exist as tested model/service/operator-support architecture. The next required phases are evidence-backed manual verification of individual sources, topology-grade geometry, dedicated upstream action/list/detail operator commands, verified live adapter execution, optional preview archive persistence, and explicit result-ledger correction/supersession doctrine before any ledger mutation command.

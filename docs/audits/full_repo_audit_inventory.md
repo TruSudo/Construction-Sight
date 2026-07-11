@@ -1,14 +1,14 @@
 # Full-Repo Audit Inventory
 
-This audit reconciles the current ConstructionSight repository state after movement/identity persistence, post-enrichment lead workflow persistence, parcel/site persistence, geometry hardening, versioned scoring-profile work, lead workflow status-rule hardening, result-ledger share-state hardening, layered source-status/readiness/audit/checklist/planning work, and controlled source-registry apply governance.
+This audit reconciles the current ConstructionSight repository after controlled source-registry apply governance and the consolidated post-enrichment lead operator CLI.
 
 ## Executive status
 
-ConstructionSight now has a substantial tested model/service architecture for lawful public-record construction intelligence. The strongest implemented areas are source-neutral records, CEQAnet guarded operator tooling, parcel/site reasoning, parcel core records, parcel-backed site resolution, permit movement modeling, contractor identity normalization, decision records, versioned opportunity enrichment, lead review, dedupe, matrix-constrained workflow status, result ledger/share-state modeling, layered source-governance reporting and planning, controlled registry-status apply, storage-summary reporting, and dedicated persistence for movement/identity, parcel/site, and post-enrichment workflow records.
+ConstructionSight has a substantial tested model/service architecture for lawful public-record construction intelligence. Implemented strengths include source-neutral intake, guarded CEQAnet tooling, parcel/site reasoning, permit movement, contractor identity, decision records, versioned opportunity enrichment, lead review and dedupe, matrix-constrained workflow status, result ledger/share-state modeling, layered source-governance reporting, controlled registry-status apply, dedicated persistence, storage-summary reporting, and operator access to persisted post-enrichment lead records.
 
-This is not yet a production live-source platform. Live source coverage remains limited. Most adapter families remain contract-ready or placeholder contracts, not verified recurring integrations. CEQAnet has guarded operator/archive tooling and live-execution-adjacent commands, but it must not be described as production-grade recurring coverage unless later source-maturity work proves that status. Controlled registry apply changes only an approved verification-status field and does not itself establish live coverage.
+This is not yet a production live-source platform. Most adapter families remain contract-ready or placeholder contracts, not verified recurring integrations. CEQAnet has guarded operator/archive tooling but is not production-grade recurring coverage. Controlled registry apply changes only an approved verification-status field and does not establish live coverage.
 
-No external outreach-sending behavior is implemented or implied. The GUI/operator application remains planned.
+No external outreach-sending behavior is implemented or implied. A GUI/operator application remains planned.
 
 ## Status labels
 
@@ -19,48 +19,43 @@ No external outreach-sending behavior is implemented or implied. The GUI/operato
 | Documented | Architecture, doctrine, matrix, or README documentation exists. |
 | Persisted | SQLAlchemy ORM/store coverage exists or the layer is deliberately fixture/config-backed. |
 | CLI/operator access | A script or Typer command exposes the function to an operator. |
-| Live source integrated | The code performs lawful live source execution and is documented/tested as such. |
+| Live source integrated | Lawful live execution is implemented and documented/tested as live. |
 | Planned | Identified but not implemented. |
 
 ## Pipeline inventory
 
-| Layer | Primary files | Implemented | Tested | Documented | Persisted | CLI/operator access | Live source integrated | Known limitations | Required next cleanup |
-|---|---|---:|---:|---:|---:|---:|---:|---|---|
-| Lawful intake boundary | `access_policy.py`, intake modules, adapter contracts | Yes | Yes | Yes | Partial | Yes | No | Boundary is enforced at contract/tooling level; source breadth remains limited. | Preserve lawful boundary in every new source PR. |
-| Source registry | `source_registry.py`, `source_registry_store.py`, `source_status_report.py`, `source_readiness_*`, `source_verification_*`, `source_registry_update_plan_*`, `source_registry_apply_*`, `data/source_registry.seed.json` | Yes | Yes | Yes | Yes/file-backed | Yes | No | Current seed records remain unverified; controlled apply can change only an approved evidence-backed verification status. | Perform source-specific manual verification before any actual status promotion. |
-| Source readiness workflow | `source_readiness_models.py`, `source_readiness_service.py`, `source_readiness_cli.py` | Yes | Yes | Yes | No | Yes | No | Report-only workflow; does not mutate source verification status or claim live coverage. | Preserve non-mutating readiness evidence. |
-| Audit package | `source_verification_evidence_models.py`, `source_verification_evidence_service.py`, `audit_package_cli.py`, `docs/architecture/audit_package.md` | Yes | Yes | Yes | No | Yes | No | Report-only package; preserves redirect/final URL evidence but does not replace manual verification or create source coverage. | Use with checklist evidence before planning a status change. |
-| Source verification checklist | `source_verification_checklist_*` | Yes | Yes | Yes | No | Yes | No | Operator observations remain file/report-backed and require evidence references for apply. | Complete source-specific observations with reproducible evidence. |
-| Source promotion and registry planning | `source_promotion_plan_*`, `source_registry_update_plan_*` | Yes | Yes | Yes | No | Yes | No | Planning is dry-run-first and may propose only registry verification-status payloads. | Review plan reasons, limitations, evidence, and digest before apply. |
-| Controlled source registry apply | `source_registry_apply_models.py`, `source_registry_apply_service.py`, `source_registry_update_plan_cli.py` | Yes | Yes | Yes | File-backed | Yes | No | Requires exact plan digest, current-state match, evidence references, status-only mutation, explicit `--apply`, audit output, and atomic file replacement. Verified-source downgrade is intentionally excluded. | Add separate revocation doctrine only if verified-source downgrade becomes necessary. |
-| Adapter contracts | `adapters/specs.py`, `adapters/registry.py`, `source_status_report.py` | Yes | Yes | Yes | N/A | Yes | No | Contracts are not equivalent to live integrations. | Add live maturity only after verified source workflows exist. |
-| CEQAnet fixture/query/listing/detail/operator/archive tooling | `ceqanet_*` modules and CLIs | Yes | Yes | Yes | Partial | Yes | Limited/guarded | Production recurring coverage is not established and the seed source remains unverified. | Complete source verification and recurring-run governance. |
-| Universal intake | `intake_models.py`, `intake_service.py`, `intake_cli.py` | Yes | Yes | Yes | Partial | Yes | No | Routes unknown/unmapped fields but does not imply all formats are covered. | Expand fixture coverage before broader source claims. |
-| Opportunity transition intake | `opportunity_models.py`, `opportunity_service.py`, `opportunity_cli.py` | Yes | Yes | Yes | Partial | Yes | No | Converts source-neutral facts into candidates; not an outreach system. | Persist candidate runs if used operationally. |
-| External intelligence capability spine | `external_intelligence_*` | Yes | Yes | Yes | N/A | Yes | No | Capability modeling only; not Shovels parity. | Keep as gap/maturity analysis, not runtime parity claim. |
-| Shovels/Regrid gap alignment | `external_gap_*`, `docs/architecture/shovels_regrid_gap_alignment.md` | Yes | Yes | Yes | N/A | Yes | No | Capability targets only. | Continue separating capability target from implementation truth. |
-| Parcel source registry | `parcel_source_*` | Yes | Yes | Yes | Config/fixture-backed | Yes | No | Tracks source targets, not verified imports. | Add source verification and import-readiness gate. |
-| Parcel schema preview | `parcel_schema_*`, `parcel_source_cli.py` | Yes | Yes | Yes | No | Yes | No | Preview reports are ephemeral unless persisted later. | Store reports only if operator audit requires replay. |
-| Parcel row preview | `parcel_row_preview*`, `parcel_source_cli.py` | Yes | Yes | Yes | No | Yes | No | Preview only; does not create canonical records by itself. | Add persisted import batch audit if live parcel ingestion begins. |
-| Parcel core record | `parcel_core_models.py`, `parcel_record_builder.py`, `storage/parcel_site_*` | Yes | Yes | Yes | Yes | No | No | Canonical model and storage exist; live import workflow remains pending. | Add verified import workflow when source maturity permits. |
-| Geometry normalization | `parcel_geometry.py`, `storage/parcel_site_*` | Yes | Yes | Yes | Payload | No | No | Geometry parsing is hardened, but still not survey-grade topology. | Add topology-grade containment and projection-aware calculations later. |
-| Parcel-backed site resolution | `parcel_site_resolution.py`, `storage/parcel_site_*` | Yes | Yes | Yes | Yes | No | No | Envelope containment can overmatch; geometry limitations are propagated. | Add topology-grade containment and operator replay flow. |
-| Permit snapshot transition spine | `permit_transition_models.py`, `permit_transition_service.py`, `storage/movement_identity_*` | Yes | Yes | Yes | Yes | No | No | Persisted movement records exist, but no recurring live adapter workflow is proven. | Add operator workflow and recurring run storage governance. |
-| Contractor identity | `contractor_identity_*`, `storage/movement_identity_*` | Yes | Yes | Yes | Yes | No | No | Conservative normalization only; CSLB live verification remains pending. | Add verification adapter and CLI after lawful source maturity review. |
-| Decision records | `decision_record_*`, `storage/movement_identity_*` | Yes | Yes | Yes | Yes | No | No | Model/service/storage exist; agenda/staff-report adapters remain pending. | Add source adapters and relationship mapping. |
-| Opportunity enrichment | `opportunity_enrichment_*`, `opportunity_scoring_profile.py`, `storage/lead_workflow_*` | Yes | Yes | Yes | Yes | No | No | Default scoring profile is versioned; future profile changes need explicit tests/doctrine. | Add operator CLI. |
-| Lead review package | `lead_review_*`, `storage/lead_workflow_*` | Yes | Yes | Yes | Yes | No | No | Review package exists and is persisted; operator CLI is pending. | Add operator CLI. |
-| Lead dedupe | `lead_dedupe_*`, `storage/lead_workflow_*` | Yes | Yes | Yes | Yes | No | No | Cross-run dedupe storage exists; operator CLI is pending. | Add lead/operator CLI. |
-| Lead workflow status | `lead_workflow_*`, `lead_workflow_rules.py`, `storage/lead_workflow_*` | Yes | Yes | Yes | Yes | No | No | Status moves are matrix-constrained; final statuses have no outgoing moves. | Add explicit override/reopen only if business doctrine later requires it. |
-| Result ledger/share calculation | `result_ledger_*`, `storage/lead_workflow_*` | Yes | Yes | Yes | Yes | No | No | Share state is explicit and persisted; business-specific enforcement may still evolve later. | Add business-specific share enforcement only after explicit review. |
-| Storage/database initialization | `storage/database.py`, `storage/*_orm.py`, `storage/*_store.py` | Yes | Yes | Yes | Partial | Yes | No | Core model records are covered; optional preview archives and child tables remain. | Continue persistence only when query or replay needs require it. |
-| CLI script registration | `pyproject.toml`, CLI modules | Yes | Yes | Yes | N/A | Partial | No | Layered source governance and storage-summary CLIs exist; many persisted workflow layers still lack action/list/detail commands. | Add consolidated lead/operator CLI. |
-| CI quality gate | `.github/workflows/ci.yml` | Yes | N/A | Yes | N/A | N/A | N/A | Local Python 3.12 passing does not prove 3.11 unless CI also passes. | Keep 3.11/3.12 matrix green. |
-| Adapter/source coverage audits | audit modules, source-governance services, CLI audit commands | Yes | Yes | Yes | N/A | Yes | No | Source count is small and seed-based; layered governance prevents seed records from being overclaimed. | Verify sources individually before coverage claims. |
+| Layer | Implemented | Tested | Documented | Persisted | CLI/operator access | Live source integrated | Known limitation / required cleanup |
+|---|---:|---:|---:|---:|---:|---:|---|
+| Lawful intake boundary | Yes | Yes | Yes | Partial | Yes | No | Preserve the public-access boundary in every source PR. |
+| Source registry | Yes | Yes | Yes | Yes/file-backed | Yes | No | Four seed records remain unverified; perform source-specific evidence review before promotion. |
+| Source readiness | Yes | Yes | Yes | No | Yes | No | Report-only; does not mutate verification status. |
+| Source audit package | Yes | Yes | Yes | No | Yes | No | Preserves URL/HTTP/redirect evidence but does not replace manual verification. |
+| Source verification checklist | Yes | Yes | Yes | No | Yes | No | Operator observations remain evidence-backed file/report records. |
+| Source promotion/update planning | Yes | Yes | Yes | No | Yes | No | Dry-run-first and limited to proposed verification-status changes. |
+| Controlled source registry apply | Yes | Yes | Yes | File-backed | Yes | No | Requires complete-registry and plan digests, evidence, status-only mutation, path separation, audit output, and explicit authorization. |
+| Adapter contracts | Yes | Yes | Yes | N/A | Yes | No | Contracts are not equivalent to live recurring integrations. |
+| CEQAnet guarded tooling | Yes | Yes | Yes | Partial | Yes | Limited/guarded | Complete source verification and recurring-run governance before stronger claims. |
+| Universal intake | Yes | Yes | Yes | Partial | Yes | No | Unknown/unmapped fields remain explicit; source breadth is limited. |
+| Opportunity transition intake | Yes | Yes | Yes | Partial | Yes | No | Candidate conversion is not an outreach system. |
+| External intelligence/gap spine | Yes | Yes | Yes | N/A | Yes | No | Capability modeling is not platform parity. |
+| Parcel source/schema/row preview | Yes | Yes | Yes | Config/report-backed | Yes | No | Add persisted import-batch audit only when live ingestion begins. |
+| Parcel core record | Yes | Yes | Yes | Yes | Partial | No | Verified live import workflow remains pending. |
+| Geometry normalization | Yes | Yes | Yes | Payload | Partial | No | Not survey-grade; topology and projection-aware calculations remain backlog. |
+| Parcel-backed site resolution | Yes | Yes | Yes | Yes | Partial | No | Envelope containment can overmatch; limitations are propagated. |
+| Permit transition spine | Yes | Yes | Yes | Yes | Partial | No | Consolidated action/list/detail operator commands remain pending. |
+| Contractor identity | Yes | Yes | Yes | Yes | Partial | No | CSLB live verification and dedicated operator actions remain pending. |
+| Decision records | Yes | Yes | Yes | Yes | Partial | No | Agenda/staff-report adapters and dedicated operator actions remain pending. |
+| Opportunity enrichment | Yes | Yes | Yes | Yes | Yes | No | Versioned scoring is persisted and exposed through lead list/detail commands. |
+| Lead review package | Yes | Yes | Yes | Yes | Yes | No | Full payload, reasons, limitations, and score remain operator-visible. |
+| Lead dedupe | Yes | Yes | Yes | Yes | Yes | No | Fingerprints and duplicate results are available through list/detail commands. |
+| Lead workflow status | Yes | Yes | Yes | Yes | Yes | No | List/detail, allowed-transition inspection, and explicit stale-state-protected transitions exist. |
+| Result ledger/share calculation | Yes | Yes | Yes | Yes | Read-only | No | Mutation is blocked until authoritative outcome correction/supersession doctrine exists. |
+| Outreach preview/sending | No | No | No | No | No | No | Planned only; no external action is implied. |
+| GUI/operator application | No | No | No | No | No | No | Planned only. |
 
 ## Current observed source-audit outcome
 
-An HTTP audit-package run against `data/source_registry.seed.json` produced this report-only review state:
+A report-only HTTP audit against `data/source_registry.seed.json` observed:
 
 | Source | Redirect classification | Recommendation |
 |---|---|---|
@@ -69,128 +64,98 @@ An HTTP audit-package run against `data/source_registry.seed.json` produced this
 | San Bernardino County EZOP | `same_host_redirect` | `keep_unverified_reachable` |
 | Riverside County PLUS Online | `downgraded_to_http` | `keep_unverified_reachable` |
 
-All four URLs were reachable in that run, but all four source records remain unverified. The audit package does not replace manual verification. The controlled apply layer added after this observation does not itself promote any current source.
+All four URLs were reachable in that observation, but all four records remain unverified. Neither the audit package nor controlled apply promotes a source without reviewed evidence.
 
-## Contradiction ledger
+## Contradiction and defect ledger
 
-| ID | Severity | File(s) | Observed contradiction | Runtime truth | Required fix | Disposition |
-|---|---|---|---|---|---|---|
-| CS-AUDIT-001 | P1 | status/storage docs | Earlier status marked movement/identity persistence as missing. | Movement/identity records have dedicated ORM/store coverage with payload JSON preservation. | Mark persistence accurately while keeping CLI and live integration absent. | Fixed. |
-| CS-AUDIT-002 | P2 | status/architecture docs | Lead dedupe, lead workflow, and result ledger documentation status was stale. | Dedicated docs exist. | Mark documentation accurately without claiming CLI. | Fixed. |
-| CS-AUDIT-003 | P2 | `README.md` | Broad limitation language implied no newer ORM coverage. | Movement/identity, parcel/site, and post-enrichment workflow records are persisted. | Narrow limitation language. | Fixed. |
-| CS-AUDIT-004 | P1 | storage matrix/runtime | Batch 2 lead workflow records were listed as pending storage. | Dedicated ORM/store coverage exists. | Reconcile docs. | Fixed. |
-| CS-AUDIT-005 | P1 | storage matrix/runtime | Parcel core and site-resolution reports were listed as pending storage. | Dedicated storage exists. | Reconcile docs. | Fixed. |
-| CS-AUDIT-006 | P1 | enrichment service/docs | Scoring weights were hardcoded and not profile-versioned. | Versioned profile and persisted profile identity exist. | Reconcile docs. | Fixed. |
-| CS-AUDIT-007 | P1 | workflow service/rules/docs | Workflow transitions were append-only without matrix enforcement. | Transition matrix and final-state immutability exist. | Reconcile docs. | Fixed. |
-| CS-AUDIT-008 | P1 | result ledger service/storage/docs | Won-result share uncertainty was limitation text only. | Explicit share states exist and persist. | Reconcile docs. | Fixed. |
-| CS-AUDIT-009 | P1 | source status CLI/docs | Seed records and adapter contracts could be conflated with verified usable sources. | Source-status reporting separates source and adapter maturity. | Reconcile maturity language. | Fixed. |
-| CS-AUDIT-010 | P2 | source status CLI/tests | CLI root behavior conflicted with documented `report` usage. | Tested `report` subcommand exists. | Align tests and docs. | Fixed. |
-| CS-AUDIT-011 | P1 | source readiness modules/docs | Readiness evidence lacked a dedicated report-only workflow. | Conservative report-only readiness exists. | Preserve non-mutating behavior. | Fixed. |
-| CS-AUDIT-012 | P1 | audit package modules/docs | Audit-package operator surface was absent from canonical docs. | Report-only URL/HTTP/redirect evidence exists. | Reconcile docs. | Fixed. |
-| CS-AUDIT-013 | P1 | source plan/apply modules/docs | Registry planning previously ended with proposed payloads but no explicit safe apply boundary. | Apply now requires an exact reviewed digest, unchanged source payload, evidence references, action/status agreement, status-only mutation, explicit authorization, audit output, and atomic replacement. | Reconcile README, status matrix, audit inventory, and architecture contract without promoting current sources. | Fixed in this PR. |
+| ID | Severity | Area | Observed issue | Runtime truth / disposition |
+|---|---|---|---|---|
+| CS-AUDIT-001 | P1 | Persistence docs | Movement/identity persistence was previously marked missing. | Dedicated ORM/store coverage exists; fixed. |
+| CS-AUDIT-002 | P2 | Architecture docs | Lead dedupe/workflow/result documentation status was stale. | Dedicated docs exist; fixed. |
+| CS-AUDIT-003 | P2 | README | Broad limitations understated newer persistence coverage. | Language narrowed; monitor forward. |
+| CS-AUDIT-004 | P1 | Lead persistence | Post-enrichment workflow records were listed as pending storage. | Dedicated ORM/store coverage exists; fixed. |
+| CS-AUDIT-005 | P1 | Parcel persistence | Parcel core/site-resolution records were listed as pending. | Dedicated storage exists; fixed. |
+| CS-AUDIT-006 | P1 | Enrichment | Scoring weights were not profile-versioned. | Versioned profile identity is persisted; fixed. |
+| CS-AUDIT-007 | P1 | Workflow | Status events lacked a transition matrix. | Matrix enforcement and final-state immutability exist; fixed. |
+| CS-AUDIT-008 | P1 | Result ledger | Share uncertainty existed only in limitation text. | Explicit share-state fields exist and persist; fixed. |
+| CS-AUDIT-009 | P1 | Source maturity | Seed records and adapter contracts could be mistaken for verified sources. | Layered status/readiness/audit/checklist/apply governance separates maturity; fixed. |
+| CS-AUDIT-010 | P1 | Registry apply | Planning lacked a safe execution boundary. | Digest-bound, evidence-backed, status-only controlled apply exists; fixed. |
+| CS-AUDIT-011 | P1 | Workflow event identity | Repeating the same valid transition and reason after a cycle could reuse an event ID and overwrite prior event history. | Event identity includes workflow sequence; models reject duplicate IDs; repeated persisted cycles are tested; fixed. |
+| CS-AUDIT-012 | P1 | Result authority | Ledger IDs include outcome status, permitting differing outcome rows for one workflow without supersession doctrine. | Operator ledger/share access remains read-only. Mutation is deliberately blocked pending authoritative current-state or append-only supersession rules; open. |
+| CS-AUDIT-013 | P2 | Operator exposure | Persisted post-enrichment records lacked consolidated list/detail/action access. | `constructionsight-leads` exposes list/detail, allowed transitions, and governed workflow transitions; fixed for lead layers. |
 
 ## Persistence coverage ledger
 
 | Layer | Persistence truth | Notes |
 |---|---|---|
-| Domain records | Persisted | First-generation domain ORM/store exists. |
-| Intelligence records | Persisted | First-generation intelligence ORM/store exists. |
-| Source registry | Persisted/config-backed | Seed/config source records and store support exist; file-backed controlled apply is available. |
-| Source readiness reports | Not persisted | JSON-safe report output; persistence only if audit replay requires it. |
-| Audit packages | Not persisted | JSON-safe report output; persistence only if audit replay requires it. |
-| Checklist/promotion/update plans | Not dedicated ORM | File/report-backed evidence and plans. |
-| Source apply reports | Not dedicated ORM | Required JSON audit output contains plan and registry digests plus row-level evidence. |
-| Parcel source/schema/row preview | Not dedicated ORM | Preview layers are generally ephemeral unless operator audit requires storage. |
-| Parcel core records | Persisted | Indexed fields plus full JSON payload. |
-| Parcel geometry summaries | Payload/indexed parent fields | Not survey-grade topology. |
-| Parcel-backed site-resolution reports | Persisted | Indexed result fields plus full JSON payload. |
-| Permit snapshots | Persisted | Indexed fields plus full payload JSON. |
-| Permit transitions | Persisted | Indexed fields plus full payload JSON. |
-| Contractor identities | Persisted | Indexed fields plus full payload JSON. |
-| Decision records | Persisted | Indexed fields plus full payload JSON. |
-| Opportunity enrichment reports | Persisted | Indexed score/confidence/profile fields plus full payload JSON. |
-| Lead review packages | Persisted | Indexed review fields plus full payload JSON. |
-| Lead fingerprints / duplicate results | Persisted | Indexed dedupe fields plus full payload JSON. |
-| Lead workflows / workflow events | Persisted | Indexed status/event fields plus full payload JSON. |
-| Result ledgers / share records | Persisted | Indexed outcome/share-state fields plus full payload JSON and calculated share rows. |
+| Domain and intelligence records | Persisted | First-generation ORM/store coverage exists. |
+| Source registry | Persisted/config-backed | Seed/config storage plus file-backed controlled apply. |
+| Source readiness/audit/checklist/plans | Report/file-backed | Persist only if replay requirements justify dedicated tables. |
+| Source apply reports | Required JSON audit | Includes plan/registry digests and row-level evidence. |
+| Parcel preview layers | Report/config-backed | Generally ephemeral. |
+| Parcel core/site-resolution | Persisted | Indexed fields plus complete JSON payloads. |
+| Permit snapshots/transitions | Persisted | Indexed fields plus complete JSON payloads. |
+| Contractor identities | Persisted | Indexed fields plus complete JSON payloads. |
+| Decision records | Persisted | Indexed fields plus complete JSON payloads. |
+| Opportunity enrichment | Persisted | Score/confidence/profile identity plus complete payload. |
+| Lead review/dedupe | Persisted | Indexed review/dedupe fields plus complete payloads. |
+| Lead workflows/events | Persisted | Indexed status/event fields plus complete payload and event history. |
+| Result ledgers/shares | Persisted | Indexed outcome/share state plus complete payloads. |
 
-Persistence rule: generic domain tables are not equivalent to newer source-neutral models unless the mapping is deliberate, lossless, and preserves full payloads, reasons, confidence, limitations, provenance, and future fields.
+Persistence rule: generic tables are not equivalent to source-neutral models unless mapping is deliberate, lossless, and preserves full payloads, reasons, confidence, limitations, provenance, and future fields.
 
 ## CLI/operator exposure ledger
 
 | CLI/script area | Runtime exposure | Notes |
 |---|---|---|
-| Core CLI | Present | Main `constructionsight` command exposes audit/list/graph and related commands. |
-| Intake CLI | Present | Universal intake has operator access. |
-| Opportunity intake CLI | Present | Opportunity candidate conversion has operator access. |
-| External intelligence/gap CLI | Present | Capability/gap reporting has operator access. |
-| Parcel source/schema/row preview CLI | Present | Parcel pre-import preview tooling exists. |
-| Site resolution CLI | Present | Site-resolution preview tooling exists. |
-| Storage summary CLI | Present | Reports ORM table existence and row counts. |
-| Source status/readiness/audit CLI | Present | Non-mutating source maturity evidence is exposed. |
-| Source checklist/promotion/plan CLI | Present | Manual observation and dry-run planning surfaces exist. |
-| Source controlled apply CLI | Present | `constructionsight-source-plan apply` enforces digest approval, evidence, status-only mutation, audit output, and atomic replacement. |
-| CEQAnet CLIs | Present | Fixture, listing, detail, enrichment, chain, persistence, operator, export, archive, and verify commands exist. |
-| Permit transition CLI | Absent | Model/service/storage exist but operator CLI is pending. |
-| Contractor identity CLI | Absent | Model/service/storage exist but operator CLI is pending. |
-| Decision record CLI | Absent | Model/service/storage exist but operator CLI is pending. |
-| Opportunity enrichment CLI | Absent | Model/service/storage exists; no dedicated operator command. |
-| Lead review/dedupe/workflow/result CLI | Absent | Model/service/storage exists; operator commands pending. |
-| Parcel core / site-resolution persistence CLI | Absent | Model/service/storage exists; operator commands pending. |
-| Outreach sending CLI | Absent | No external outreach-sending behavior is implemented or implied. |
+| Core, intake, opportunity, gap, parcel preview, site resolution, and storage summary | Present | Existing operator surfaces remain available. |
+| Source status/readiness/audit/checklist/plan/apply | Present | Evidence and controlled mutation boundaries remain explicit. |
+| CEQAnet tooling | Present | Guarded fixture-to-archive command family exists. |
+| Consolidated lead operator CLI | Present | `constructionsight-leads` exposes enrichment, review, fingerprint, duplicate, workflow, event, ledger, and share records. |
+| Workflow transition action | Present | Requires `--apply`, expected current status, nonblank reason, payload/index integrity, and matrix-valid next status. |
+| Ledger/share mutation | Absent by design | Read-only until authoritative outcome correction/history doctrine is defined. |
+| Permit transition actions | Absent | Model/service/storage exist; operator actions pending. |
+| Contractor identity actions | Absent | Model/service/storage exist; operator actions pending. |
+| Decision record actions | Absent | Model/service/storage exist; operator actions pending. |
+| Parcel-core persistence actions | Absent | Model/service/storage exist; operator actions pending. |
+| Outreach sending | Absent | No external sending behavior is implemented or implied. |
 | GUI/operator app | Absent | Planned only. |
 
 ## Source maturity ledger
 
 | Maturity stage | ConstructionSight status |
 |---|---|
-| Seed source | Four seed-only records remain in `data/source_registry.seed.json`. |
-| Source-readiness evidence | Report-only workflow exists. |
-| Audit-package evidence | Report-only workflow exists. |
-| Manual checklist evidence | Observation template and checklist workflow exist. |
+| Seed source | Four unverified records remain in `data/source_registry.seed.json`. |
+| Readiness/audit/checklist evidence | Report-only workflows exist. |
 | Promotion/update plan | Dry-run plan and deterministic approval digest exist. |
-| Controlled registry apply | Evidence-gated status-only file apply exists; no current source is promoted by implementation alone. |
-| Verified usable source | Current source-status report shows zero verified usable sources. |
-| Contract-ready adapter | Exists for registered families, including CEQAnet; not a live coverage claim. |
+| Controlled registry apply | Evidence-gated status-only file apply exists. |
+| Verified usable source | Current canonical state remains zero verified usable sources. |
+| Contract-ready adapter | Registered families exist; this is not a coverage claim. |
 | Live read-only integration | Limited/guarded. |
-| Production-grade recurring integration | Not established. |
-| Operator workflow | Partial for source governance, CEQAnet, preview/audit commands, and storage summary; lead workflow operator app/CLI remains pending. |
+| Production recurring integration | Not established. |
+| Operator workflow | Source governance, CEQAnet, preview/audit, storage summary, and post-enrichment lead workflow commands exist. |
 
 ## Limitation and uncertainty preservation check
 
-Current architecture must preserve the following fields or concepts wherever applicable:
+The architecture must preserve, where applicable:
 
-- reasons
-- limitations
-- confidence scores or confidence bands
-- source keys and source record IDs
-- payload JSON or full normalized payloads
-- provenance and evidence references
-- lawful-access boundaries
-- review-needed states
-- unknown/unmapped fields
-- workflow status-transition history
-- result share-state uncertainty
-- source verification and adapter maturity state
-- source-readiness reachability evidence and next action
-- audit-package original/final URL, HTTP, redirect, recommendation, and next-action evidence
-- source plan action, original/proposed payload, evidence references, and approval digest
-- source apply original/updated registry digests and row-level audit outcome
+- reasons and limitations;
+- confidence scores or confidence bands;
+- source keys, record IDs, and full normalized payloads;
+- provenance and evidence references;
+- lawful-access boundaries;
+- review-needed and unknown/unmapped states;
+- workflow status-transition history and unique event identity;
+- stale-state expectations for operator mutations;
+- result share-state uncertainty;
+- source verification and adapter maturity;
+- readiness, redirect, recommendation, and next-action evidence;
+- plan/apply digests and row-level audit outcomes.
 
-These fields are not cleanup noise. They are audit and evidentiary controls. Future PRs must not delete, narrow, or flatten them merely to simplify models, storage, CLI output, or tests.
+These are evidentiary controls, not cleanup noise. Future PRs must not delete or flatten them merely to simplify models, persistence, CLI output, or tests.
 
 ## Forward cleanup enforcement
 
-Every future feature PR must either update the implementation-status matrix or explicitly state why no status changed.
+Every feature PR must update the implementation-status matrix or explicitly state why no status changed. Every new model or service must be reviewed for tests, documentation, persistence, CLI/operator need, lawful-access boundaries, limitation/provenance preservation, and doctrine/runtime impact.
 
-Every new model or service must be reviewed for:
-
-- tests
-- documentation
-- persistence need
-- CLI/operator need
-- lawful-access boundary
-- reasons/confidence/limitations preservation
-- doctrine/runtime impact
-
-No future PR should merge while it knowingly introduces doctrine/runtime drift, stale maturity claims, missing limitations, broken quality gates, or unreviewed persistence/CLI implications.
+No PR should merge while it knowingly introduces doctrine/runtime drift, stale maturity claims, missing limitations, broken quality gates, or unreviewed persistence/CLI implications.
