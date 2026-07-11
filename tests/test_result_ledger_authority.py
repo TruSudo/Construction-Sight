@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from sqlalchemy import inspect, select
-
 import pytest
+from sqlalchemy import inspect, select
 
 from constructionsight.lead_workflow_models import LeadWorkflowRecord, LeadWorkflowStatus
 from constructionsight.result_ledger_authority_service import (
@@ -186,15 +185,17 @@ def test_stale_authority_expectation_rejects_without_new_rows() -> None:
             reason="initial result",
         )
 
-    with managed_session(factory) as session:
-        with pytest.raises(ResultLedgerAuthorityError, match="operator expectation"):
-            apply_authoritative_result_ledger(
-                session,
-                workflow=workflow,
-                ledger=corrected,
-                expected_current_ledger_id="result-ledger:stale",
-                reason="stale correction",
-            )
+    with (
+        managed_session(factory) as session,
+        pytest.raises(ResultLedgerAuthorityError, match="operator expectation"),
+    ):
+        apply_authoritative_result_ledger(
+            session,
+            workflow=workflow,
+            ledger=corrected,
+            expected_current_ledger_id="result-ledger:stale",
+            reason="stale correction",
+        )
 
     with managed_session(factory) as session:
         ledger_count = len(
@@ -221,14 +222,18 @@ def test_noop_authority_correction_is_rejected() -> None:
             expected_current_ledger_id=None,
             reason="initial result",
         )
-        with pytest.raises(ResultLedgerAuthorityError, match="different ledger"):
-            apply_authoritative_result_ledger(
-                session,
-                workflow=workflow,
-                ledger=ledger,
-                expected_current_ledger_id=ledger.ledger_id,
-                reason="repeat same result",
-            )
+
+    with (
+        managed_session(factory) as session,
+        pytest.raises(ResultLedgerAuthorityError, match="different ledger"),
+    ):
+        apply_authoritative_result_ledger(
+            session,
+            workflow=workflow,
+            ledger=ledger,
+            expected_current_ledger_id=ledger.ledger_id,
+            reason="repeat same result",
+        )
 
 
 def test_atomic_compare_and_swap_rejects_stale_revision() -> None:
@@ -244,19 +249,23 @@ def test_atomic_compare_and_swap_rejects_stale_revision() -> None:
             expected_current_ledger_id=None,
             reason="initial result",
         )
-        stale_replacement = ResultLedgerAuthorityRecord(
-            authority_id=report.authority.authority_id,
-            workflow_id=workflow.workflow_id,
-            current_ledger_id="result-ledger:replacement",
-            revision=2,
+
+    stale_replacement = ResultLedgerAuthorityRecord(
+        authority_id=report.authority.authority_id,
+        workflow_id=workflow.workflow_id,
+        current_ledger_id="result-ledger:replacement",
+        revision=2,
+    )
+    with (
+        managed_session(factory) as session,
+        pytest.raises(ValueError, match="changed after operator review"),
+    ):
+        compare_and_swap_result_ledger_authority_record(
+            session,
+            stale_replacement,
+            expected_current_ledger_id=ledger.ledger_id,
+            expected_revision=0,
         )
-        with pytest.raises(ValueError, match="changed after operator review"):
-            compare_and_swap_result_ledger_authority_record(
-                session,
-                stale_replacement,
-                expected_current_ledger_id=ledger.ledger_id,
-                expected_revision=0,
-            )
 
 
 def test_immutable_ledger_store_rejects_same_id_with_different_content() -> None:
@@ -271,8 +280,12 @@ def test_immutable_ledger_store_rejects_same_id_with_different_content() -> None
 
     with managed_session(factory) as session:
         store_result_ledger_record(session, ledger)
-        with pytest.raises(ValueError, match="identity collision"):
-            store_result_ledger_record(session, collision)
+
+    with (
+        managed_session(factory) as session,
+        pytest.raises(ValueError, match="identity collision"),
+    ):
+        store_result_ledger_record(session, collision)
 
 
 def test_workflow_and_result_status_must_agree() -> None:
@@ -286,23 +299,29 @@ def test_workflow_and_result_status_must_agree() -> None:
         reasons=["not selected"],
     )
 
-    with managed_session(factory) as session:
-        with pytest.raises(ResultLedgerAuthorityError, match="non-final workflow"):
-            apply_authoritative_result_ledger(
-                session,
-                workflow=active_workflow,
-                ledger=won,
-                expected_current_ledger_id=None,
-                reason="invalid early win",
-            )
-        with pytest.raises(ResultLedgerAuthorityError, match="requires a won"):
-            apply_authoritative_result_ledger(
-                session,
-                workflow=successful_workflow,
-                ledger=lost,
-                expected_current_ledger_id=None,
-                reason="incompatible result",
-            )
+    with (
+        managed_session(factory) as session,
+        pytest.raises(ResultLedgerAuthorityError, match="non-final workflow"),
+    ):
+        apply_authoritative_result_ledger(
+            session,
+            workflow=active_workflow,
+            ledger=won,
+            expected_current_ledger_id=None,
+            reason="invalid early win",
+        )
+
+    with (
+        managed_session(factory) as session,
+        pytest.raises(ResultLedgerAuthorityError, match="requires a won"),
+    ):
+        apply_authoritative_result_ledger(
+            session,
+            workflow=successful_workflow,
+            ledger=lost,
+            expected_current_ledger_id=None,
+            reason="incompatible result",
+        )
 
 
 def test_closed_no_fit_workflow_accepts_lost_authority() -> None:
@@ -344,6 +363,8 @@ def test_authority_loader_rejects_indexed_payload_drift() -> None:
         row = session.execute(select(ResultLedgerAuthorityRecordRow)).scalar_one()
         row.revision = 99
 
-    with managed_session(factory) as session:
-        with pytest.raises(ResultLedgerAuthorityError, match="disagree with payload"):
-            load_result_ledger_authority(session, workflow.workflow_id)
+    with (
+        managed_session(factory) as session,
+        pytest.raises(ResultLedgerAuthorityError, match="disagree with payload"),
+    ):
+        load_result_ledger_authority(session, workflow.workflow_id)
