@@ -1,10 +1,10 @@
 # Full-Repo Audit Inventory
 
-This audit reconciles the current ConstructionSight repository after controlled source-registry apply governance and the consolidated post-enrichment lead operator CLI.
+This audit reconciles the current ConstructionSight repository after controlled source-registry apply governance, consolidated post-enrichment lead operator tooling, and read-only upstream record access.
 
 ## Executive status
 
-ConstructionSight has a substantial tested model/service architecture for lawful public-record construction intelligence. Implemented strengths include source-neutral intake, guarded CEQAnet tooling, parcel/site reasoning, permit movement, contractor identity, decision records, versioned opportunity enrichment, lead review and dedupe, matrix-constrained workflow status, result ledger/share-state modeling, layered source-governance reporting, controlled registry-status apply, dedicated persistence, storage-summary reporting, and operator access to persisted post-enrichment lead records.
+ConstructionSight has a substantial tested model/service architecture for lawful public-record construction intelligence. Implemented strengths include source-neutral intake, guarded CEQAnet tooling, parcel/site reasoning, permit movement, contractor identity, decision records, versioned opportunity enrichment, lead review and dedupe, matrix-constrained workflow status, result ledger/share-state modeling, layered source-governance reporting, controlled registry-status apply, dedicated persistence, storage-summary reporting, post-enrichment lead operator tooling, and read-only access to persisted upstream records.
 
 This is not yet a production live-source platform. Most adapter families remain contract-ready or placeholder contracts, not verified recurring integrations. CEQAnet has guarded operator/archive tooling but is not production-grade recurring coverage. Controlled registry apply changes only an approved verification-status field and does not establish live coverage.
 
@@ -39,12 +39,12 @@ No external outreach-sending behavior is implemented or implied. A GUI/operator 
 | Opportunity transition intake | Yes | Yes | Yes | Partial | Yes | No | Candidate conversion is not an outreach system. |
 | External intelligence/gap spine | Yes | Yes | Yes | N/A | Yes | No | Capability modeling is not platform parity. |
 | Parcel source/schema/row preview | Yes | Yes | Yes | Config/report-backed | Yes | No | Add persisted import-batch audit only when live ingestion begins. |
-| Parcel core record | Yes | Yes | Yes | Yes | Partial | No | Verified live import workflow remains pending. |
-| Geometry normalization | Yes | Yes | Yes | Payload | Partial | No | Not survey-grade; topology and projection-aware calculations remain backlog. |
-| Parcel-backed site resolution | Yes | Yes | Yes | Yes | Partial | No | Envelope containment can overmatch; limitations are propagated. |
-| Permit transition spine | Yes | Yes | Yes | Yes | Partial | No | Consolidated action/list/detail operator commands remain pending. |
-| Contractor identity | Yes | Yes | Yes | Yes | Partial | No | CSLB live verification and dedicated operator actions remain pending. |
-| Decision records | Yes | Yes | Yes | Yes | Partial | No | Agenda/staff-report adapters and dedicated operator actions remain pending. |
+| Parcel core record | Yes | Yes | Yes | Yes | Read-only | No | List/detail access exists; verified live import and domain-specific correction actions remain pending. |
+| Geometry normalization | Yes | Yes | Yes | Payload | Partial | No | Geometry is preserved in parcel payloads; topology and projection-aware calculations remain backlog. |
+| Parcel-backed site resolution | Yes | Yes | Yes | Yes | Read-only | No | List/detail access preserves candidates, conflicts, and limitations; envelope containment can overmatch. |
+| Permit transition spine | Yes | Yes | Yes | Yes | Read-only | No | Snapshot and transition list/detail access exists; recurring live adapters and governed write actions remain pending. |
+| Contractor identity | Yes | Yes | Yes | Yes | Read-only | No | Identity list/detail access exists; CSLB live verification and governed correction actions remain pending. |
+| Decision records | Yes | Yes | Yes | Yes | Read-only | No | Decision list/detail access exists; agenda/staff-report adapters and governed write actions remain pending. |
 | Opportunity enrichment | Yes | Yes | Yes | Yes | Yes | No | Versioned scoring is persisted and exposed through lead list/detail commands. |
 | Lead review package | Yes | Yes | Yes | Yes | Yes | No | Full payload, reasons, limitations, and score remain operator-visible. |
 | Lead dedupe | Yes | Yes | Yes | Yes | Yes | No | Fingerprints and duplicate results are available through list/detail commands. |
@@ -82,7 +82,8 @@ All four URLs were reachable in that observation, but all four records remain un
 | CS-AUDIT-010 | P1 | Registry apply | Planning lacked a safe execution boundary. | Digest-bound, evidence-backed, status-only controlled apply exists; fixed. |
 | CS-AUDIT-011 | P1 | Workflow event identity | Repeating the same valid transition and reason after a cycle could reuse an event ID and overwrite prior event history. | Event identity includes workflow sequence; models reject duplicate IDs; repeated persisted cycles are tested; fixed. |
 | CS-AUDIT-012 | P1 | Result authority | Ledger IDs include outcome status, permitting differing outcome rows for one workflow without supersession doctrine. | Operator ledger/share access remains read-only. Mutation is deliberately blocked pending authoritative current-state or append-only supersession rules; open. |
-| CS-AUDIT-013 | P2 | Operator exposure | Persisted post-enrichment records lacked consolidated list/detail/action access. | `constructionsight-leads` exposes list/detail, allowed transitions, and governed workflow transitions; fixed for lead layers. |
+| CS-AUDIT-013 | P2 | Lead operator exposure | Persisted post-enrichment records lacked consolidated list/detail/action access. | `constructionsight-leads` exposes list/detail, allowed transitions, and governed workflow transitions; fixed. |
+| CS-AUDIT-014 | P1 | Upstream operator boundary | Permit, contractor, decision, parcel, and site-resolution rows lacked consolidated inspection, while generic mutation would bypass their domain semantics. | `constructionsight-upstream` exposes full-payload list/detail access only. Unsupported filters and malformed payloads fail explicitly; generic mutation remains blocked. |
 
 ## Persistence coverage ledger
 
@@ -108,16 +109,14 @@ Persistence rule: generic tables are not equivalent to source-neutral models unl
 
 | CLI/script area | Runtime exposure | Notes |
 |---|---|---|
-| Core, intake, opportunity, gap, parcel preview, site resolution, and storage summary | Present | Existing operator surfaces remain available. |
+| Core intake, opportunity, gap, parcel preview, site resolution, and storage summary | Present | Existing operator surfaces remain available. |
 | Source status/readiness/audit/checklist/plan/apply | Present | Evidence and controlled mutation boundaries remain explicit. |
 | CEQAnet tooling | Present | Guarded fixture-to-archive command family exists. |
+| Consolidated upstream operator CLI | Present, read-only | `constructionsight-upstream` exposes permit snapshots/transitions, contractor identities, decision records, parcel core records, and site-resolution results. |
 | Consolidated lead operator CLI | Present | `constructionsight-leads` exposes enrichment, review, fingerprint, duplicate, workflow, event, ledger, and share records. |
 | Workflow transition action | Present | Requires `--apply`, expected current status, nonblank reason, payload/index integrity, and matrix-valid next status. |
 | Ledger/share mutation | Absent by design | Read-only until authoritative outcome correction/history doctrine is defined. |
-| Permit transition actions | Absent | Model/service/storage exist; operator actions pending. |
-| Contractor identity actions | Absent | Model/service/storage exist; operator actions pending. |
-| Decision record actions | Absent | Model/service/storage exist; operator actions pending. |
-| Parcel-core persistence actions | Absent | Model/service/storage exist; operator actions pending. |
+| Upstream generic mutation | Absent by design | Observed and derived records may be changed only through future domain-specific governed actions. |
 | Outreach sending | Absent | No external sending behavior is implemented or implied. |
 | GUI/operator app | Absent | Planned only. |
 
@@ -133,7 +132,7 @@ Persistence rule: generic tables are not equivalent to source-neutral models unl
 | Contract-ready adapter | Registered families exist; this is not a coverage claim. |
 | Live read-only integration | Limited/guarded. |
 | Production recurring integration | Not established. |
-| Operator workflow | Source governance, CEQAnet, preview/audit, storage summary, and post-enrichment lead workflow commands exist. |
+| Operator workflow | Source governance, CEQAnet, preview/audit, storage summary, upstream read-only, and post-enrichment lead workflow commands exist. |
 
 ## Limitation and uncertainty preservation check
 
