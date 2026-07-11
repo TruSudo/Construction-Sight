@@ -117,6 +117,10 @@ class ResultLedgerRecord(BaseModel):
                 raise ValueError("non-won ledgers require not_applicable share status")
             return self
         if self.share is not None:
+            if self.share.workflow_id != self.workflow_id:
+                raise ValueError("share workflow_id must match ledger workflow_id")
+            if self.gross_value != self.share.gross_value:
+                raise ValueError("share gross_value must match ledger gross_value")
             if self.share_status == ResultShareStatus.NOT_APPLICABLE:
                 self.share_status = ResultShareStatus.CALCULATED
             if self.share_status != ResultShareStatus.CALCULATED:

@@ -2,7 +2,7 @@
 
 ConstructionSight is a lawful public-record construction intelligence platform focused initially on San Bernardino County and Riverside County, California.
 
-The platform is designed to discover, verify, normalize, store, and analyze public construction, planning, entitlement, CEQA, permit, contractor, parcel, and agenda data. Current implementation is strongest in source-neutral models, deterministic services, evidence-first workflow logic, persistence for core upstream and post-enrichment records, layered source-status/readiness/audit/checklist/planning governance, controlled registry-status apply, read-only upstream operator tooling, consolidated post-enrichment lead operator tooling, and test-backed architecture. Live source integrations and operator UI remain planned work unless expressly marked otherwise.
+The platform is designed to discover, verify, normalize, store, and analyze public construction, planning, entitlement, CEQA, permit, contractor, parcel, and agenda data. Current implementation is strongest in source-neutral models, deterministic services, evidence-first workflow logic, persistence for core upstream and post-enrichment records, layered source-status/readiness/audit/checklist/planning governance, controlled registry-status apply, read-only upstream operator tooling, consolidated post-enrichment lead operator tooling, governed result authority operations, and test-backed architecture. Live source integrations and operator UI remain planned work unless expressly marked otherwise.
 
 ## Operating Boundary
 
@@ -54,6 +54,7 @@ lawful public-record intake
   -> lead workflow status
   -> result ledger and share calculation
   -> consolidated lead operator inspection and governed workflow transition
+  -> governed result authority inspection and append-only correction
 ```
 
 See `docs/architecture/current_implementation_status.md` for the implemented-versus-planned matrix and active defect ledger. See `docs/audits/full_repo_audit_inventory.md` for the full repository audit inventory.
@@ -224,7 +225,9 @@ OpportunityEnrichmentReport
 
 Lead workflow status changes are matrix-constrained, and final statuses have no outgoing transitions unless a later explicit override/reopen doctrine is added. Result ledgers preserve explicit share states: `not_applicable`, `pending_gross_value`, `pending_share_rate`, and `calculated`.
 
-`constructionsight-leads` exposes persisted enrichment, review, fingerprint, duplicate, workflow, event, ledger, and share records through list/detail commands. Workflow transitions require explicit `--apply`, an expected current status, a nonblank audit reason, indexed-column/full-payload integrity agreement, and a matrix-valid next status. Ledger and share mutation remain deliberately unavailable until authoritative outcome correction or supersession doctrine is defined.
+`constructionsight-leads` exposes persisted enrichment, review, fingerprint, duplicate, workflow, event, ledger, and share records through list/detail commands. Workflow transitions require explicit `--apply`, an expected current status, a nonblank audit reason, indexed-column/full-payload integrity agreement, and a matrix-valid next status.
+
+Result authority uses a separate `constructionsight-results` surface. `current` and `history` validate the immutable revision chain; `record` requires explicit `--apply`, the exact reviewed current ledger ID or literal `none`, and a nonblank authority reason. Each correction appends a new ledger revision and authority event. A unique per-workflow head serializes compare-and-swap writes but does not replace immutable ledger evidence. New canonical writes enforce monetary precision and reject non-won monetary inputs while historical payloads remain readable.
 
 See:
 
@@ -243,16 +246,16 @@ See:
 - Geometry containment currently has first-pass limitations and must not be treated as survey-grade parcel topology.
 - Opportunity scoring uses a versioned default profile; additional profiles must be introduced explicitly with doctrine and tests.
 - Lead workflow transitions preserve unique event history and are constrained by a status matrix; override/reopen behavior is not implemented.
-- Result ledgers distinguish pending gross value, pending share rate, calculated share, and not-applicable share states. Operator mutation is intentionally withheld because authoritative outcome replacement/history rules are not yet defined.
-- Upstream permit, contractor, decision, parcel, and site-resolution records now have consolidated read-only list/detail access. Generic mutation remains blocked; future writes require domain-specific governed actions.
+- Result authority now supports governed initial selection and append-only correction. Authority events begin when the governed operator boundary is used; validated older ledger histories are not assigned fabricated retroactive events.
+- Upstream permit, contractor, decision, parcel, and site-resolution records have consolidated read-only list/detail access. Generic mutation remains blocked; future writes require domain-specific governed actions.
 - No external outreach-sending behavior is implemented or implied.
 
 ## Forward Cleanup Doctrine
 
-Every future feature PR must include a cleanup review before merge. New models and services must be checked for tests, documentation, persistence needs, CLI needs, lawful-access boundaries, reasons, confidence, limitations, and doctrine/runtime impact.
+Every future feature PR must include a cleanup review before merge. New models and services must be checked for tests, documentation, persistence needs, CLI needs, lawful-access boundaries, reasons, confidence, limitations, backward compatibility, and doctrine/runtime impact.
 
 Do not claim Regrid or Shovels parity merely because model layers exist. Parity requires lawful source coverage, live adapter maturity, persistence, operator workflow, and verified results.
 
 ## Phase 1 Status
 
-Repository foundation initialized. CEQAnet public-record intake has guarded operator and archive tooling, but CEQAnet remains contract-ready rather than live production coverage. Universal intake, layered source-governance reporting/checklist/planning/controlled apply, opportunity transition intake, parcel/site resolution, parcel source registry, schema preview, row preview, parcel core record, geometry normalization, parcel-backed site resolution, permit transitions, contractor identity, decision records, read-only upstream operator access, opportunity enrichment, lead review, dedupe, workflow status, result ledger, consolidated lead operator access, and storage-summary reporting now exist as tested model/service/operator-support architecture. The next required phases are evidence-backed manual verification of individual sources, topology-grade geometry, domain-specific governed upstream write actions where justified, verified live adapter execution, optional preview archive persistence, and explicit result-ledger correction/supersession doctrine before any ledger mutation command.
+Repository foundation initialized. CEQAnet public-record intake has guarded operator and archive tooling, but CEQAnet remains contract-ready rather than live production coverage. Universal intake, layered source-governance reporting/checklist/planning/controlled apply, opportunity transition intake, parcel/site resolution, parcel source registry, schema preview, row preview, parcel core record, geometry normalization, parcel-backed site resolution, permit transitions, contractor identity, decision records, read-only upstream operator access, opportunity enrichment, lead review, dedupe, workflow status, append-only result ledger authority, governed result inspection/correction, consolidated lead operator access, and storage-summary reporting now exist as tested model/service/operator-support architecture. The next required phases are evidence-backed manual verification of individual sources, topology-grade geometry, domain-specific governed upstream write actions where justified, verified live adapter execution, optional preview archive persistence, outreach preview doctrine, and operator UI implementation.

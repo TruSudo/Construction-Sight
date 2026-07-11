@@ -1,10 +1,10 @@
 # Full-Repo Audit Inventory
 
-This audit reconciles the current ConstructionSight repository after controlled source-registry apply governance, consolidated post-enrichment lead operator tooling, read-only upstream record access, and append-only result-ledger authority hardening.
+This audit reconciles the current ConstructionSight repository after controlled source-registry apply governance, consolidated post-enrichment lead operator tooling, read-only upstream record access, append-only result-ledger authority hardening, and governed result authority operations.
 
 ## Executive status
 
-ConstructionSight has a substantial tested model/service architecture for lawful public-record construction intelligence. Implemented strengths include source-neutral intake, guarded CEQAnet tooling, parcel/site reasoning, permit movement, contractor identity, decision records, versioned opportunity enrichment, lead review and dedupe, matrix-constrained workflow status, append-only result ledger/share-state modeling, layered source-governance reporting, controlled registry-status apply, dedicated persistence, storage-summary reporting, post-enrichment lead operator tooling, and read-only access to persisted upstream records.
+ConstructionSight has a substantial tested model/service architecture for lawful public-record construction intelligence. Implemented strengths include source-neutral intake, guarded CEQAnet tooling, parcel/site reasoning, permit movement, contractor identity, decision records, versioned opportunity enrichment, lead review and dedupe, matrix-constrained workflow status, append-only result ledger/share-state modeling, serialized result authority operations, layered source-governance reporting, controlled registry-status apply, dedicated persistence, storage-summary reporting, post-enrichment lead operator tooling, and read-only access to persisted upstream records.
 
 This is not yet a production live-source platform. Most adapter families remain contract-ready or placeholder contracts, not verified recurring integrations. CEQAnet has guarded operator/archive tooling but is not production-grade recurring coverage. Controlled registry apply changes only an approved verification-status field and does not establish live coverage.
 
@@ -49,7 +49,7 @@ No external outreach-sending behavior is implemented or implied. A GUI/operator 
 | Lead review package | Yes | Yes | Yes | Yes | Yes | No | Full payload, reasons, limitations, and score remain operator-visible. |
 | Lead dedupe | Yes | Yes | Yes | Yes | Yes | No | Fingerprints and duplicate results are available through list/detail commands. |
 | Lead workflow status | Yes | Yes | Yes | Yes | Yes | No | List/detail, allowed-transition inspection, and explicit stale-state-protected transitions exist. |
-| Result ledger/share calculation | Yes | Yes | Yes | Yes | Read-only | No | Append-only revision/supersession doctrine establishes one validated authoritative tip while preserving prior outcomes; a dedicated stale-state-protected operator correction action remains pending. |
+| Result ledger/share authority | Yes | Yes | Yes | Yes | Yes | No | `constructionsight-results` validates current/history views and permits only explicit exact-state initial selection or append-only correction. Immutable ledgers remain evidence; a unique authority head serializes writes and append-only events preserve operator action history. |
 | Outreach preview/sending | No | No | No | No | No | No | Planned only; no external action is implied. |
 | GUI/operator application | No | No | No | No | No | No | Planned only. |
 
@@ -81,9 +81,10 @@ All four URLs were reachable in that observation, but all four records remain un
 | CS-AUDIT-009 | P1 | Source maturity | Seed records and adapter contracts could be mistaken for verified sources. | Layered status/readiness/audit/checklist/apply governance separates maturity; fixed. |
 | CS-AUDIT-010 | P1 | Registry apply | Planning lacked a safe execution boundary. | Digest-bound, evidence-backed, status-only controlled apply exists; fixed. |
 | CS-AUDIT-011 | P1 | Workflow event identity | Repeating the same valid transition and reason after a cycle could reuse an event ID and overwrite prior event history. | Event identity includes workflow sequence; models reject duplicate IDs; repeated persisted cycles are tested; fixed. |
-| CS-AUDIT-012 | P1 | Result authority | Ledger IDs included outcome status, permitting differing outcome rows for one workflow without authority doctrine. | Result histories now require one root, contiguous immutable revisions, explicit predecessor links, correction reasons, one workflow/package identity, and one unbranched authoritative tip; fixed at model/service/persistence boundary. |
+| CS-AUDIT-012 | P1 | Result authority | Ledger IDs initially permitted differing outcomes without complete authority and concurrency doctrine. | Result histories are immutable linear chains; a unique per-workflow head serializes exact-ledger/revision compare-and-swap writes; every governed initial selection or correction appends an audit event; fixed. |
 | CS-AUDIT-013 | P2 | Lead operator exposure | Persisted post-enrichment records lacked consolidated list/detail/action access. | `constructionsight-leads` exposes list/detail, allowed transitions, and governed workflow transitions; fixed. |
 | CS-AUDIT-014 | P1 | Upstream operator boundary | Permit, contractor, decision, parcel, and site-resolution rows lacked consolidated inspection, while generic mutation would bypass their domain semantics. | `constructionsight-upstream` exposes full-payload list/detail access only. Unsupported filters and malformed payloads fail explicitly; generic mutation remains blocked. |
+| CS-AUDIT-015 | P1 | Result compatibility | New numeric constraints applied at model-load time would have invalidated older persisted result payloads. | Precision and non-won monetary rules are enforced by the canonical builder for new writes, while historical payloads remain readable; fixed before merge. |
 
 ## Persistence coverage ledger
 
@@ -102,6 +103,7 @@ All four URLs were reachable in that observation, but all four records remain un
 | Lead review/dedupe | Persisted | Indexed review/dedupe fields plus complete payloads. |
 | Lead workflows/events | Persisted | Indexed status/event fields plus complete payload and event history. |
 | Result ledgers/shares | Persisted, append-only | Indexed outcome/share state plus complete immutable revision payloads; full-history validation occurs before append. |
+| Result authority heads/events | Persisted | One unique compare-and-swap head per workflow plus immutable operator audit events; the head is concurrency control, not replacement evidence. |
 
 Persistence rule: generic tables are not equivalent to source-neutral models unless mapping is deliberate, lossless, and preserves full payloads, reasons, confidence, limitations, provenance, and future fields.
 
@@ -115,7 +117,7 @@ Persistence rule: generic tables are not equivalent to source-neutral models unl
 | Consolidated upstream operator CLI | Present, read-only | `constructionsight-upstream` exposes permit snapshots/transitions, contractor identities, decision records, parcel core records, and site-resolution results. |
 | Consolidated lead operator CLI | Present | `constructionsight-leads` exposes enrichment, review, fingerprint, duplicate, workflow, event, ledger, and share records. |
 | Workflow transition action | Present | Requires `--apply`, expected current status, nonblank reason, payload/index integrity, and matrix-valid next status. |
-| Ledger/share correction action | Absent by design | Authority doctrine and append-only persistence now exist; expose correction only through a future explicit `--apply`, expected-current-ledger/revision, reason, and audit boundary. |
+| Result authority inspection/correction | Present | `constructionsight-results current/history/record` requires explicit `--apply` for writes, exact current ledger ID or `none`, nonblank audit reason, canonical construction, transactional head/event updates, and stale-state rejection. |
 | Upstream generic mutation | Absent by design | Observed and derived records may be changed only through future domain-specific governed actions. |
 | Outreach sending | Absent | No external sending behavior is implemented or implied. |
 | GUI/operator app | Absent | Planned only. |
@@ -132,7 +134,7 @@ Persistence rule: generic tables are not equivalent to source-neutral models unl
 | Contract-ready adapter | Registered families exist; this is not a coverage claim. |
 | Live read-only integration | Limited/guarded. |
 | Production recurring integration | Not established. |
-| Operator workflow | Source governance, CEQAnet, preview/audit, storage summary, upstream read-only, and post-enrichment lead workflow commands exist. |
+| Operator workflow | Source governance, CEQAnet, preview/audit, storage summary, upstream read-only, lead workflow, and governed result authority commands exist. |
 
 ## Limitation and uncertainty preservation check
 
@@ -147,7 +149,7 @@ The architecture must preserve, where applicable:
 - workflow status-transition history and unique event identity;
 - stale-state expectations for operator mutations;
 - result share-state uncertainty;
-- result revision, predecessor, correction reason, and immutable prior outcome history;
+- result revision, predecessor, correction reason, immutable prior outcome history, serialized authority head, and authority events;
 - source verification and adapter maturity;
 - readiness, redirect, recommendation, and next-action evidence;
 - plan/apply digests and row-level audit outcomes.
@@ -156,6 +158,6 @@ These are evidentiary controls, not cleanup noise. Future PRs must not delete or
 
 ## Forward cleanup enforcement
 
-Every feature PR must update the implementation-status matrix or explicitly state why no status changed. Every new model or service must be reviewed for tests, documentation, persistence, CLI/operator need, lawful-access boundaries, limitation/provenance preservation, and doctrine/runtime impact.
+Every feature PR must update the implementation-status matrix or explicitly state why no status changed. Every new model or service must be reviewed for tests, documentation, persistence, CLI/operator need, lawful-access boundaries, limitation/provenance preservation, compatibility, and doctrine/runtime impact.
 
-No PR should merge while it knowingly introduces doctrine/runtime drift, stale maturity claims, missing limitations, broken quality gates, or unreviewed persistence/CLI implications.
+No PR should merge while it knowingly introduces doctrine/runtime drift, stale maturity claims, missing limitations, broken quality gates, backward-incompatible history reads, or unreviewed persistence/CLI implications.
