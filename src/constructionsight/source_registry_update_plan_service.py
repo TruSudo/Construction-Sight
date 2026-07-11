@@ -13,6 +13,7 @@ from constructionsight.source_promotion_plan_models import (
 )
 from constructionsight.source_promotion_plan_service import build_source_promotion_plan
 from constructionsight.source_readiness_service import HttpReachabilityChecker
+from constructionsight.source_registry_integrity import source_registry_digest
 from constructionsight.source_registry_update_plan_models import (
     SourceRegistryUpdatePlanReport,
     SourceRegistryUpdatePlanRow,
@@ -42,7 +43,10 @@ def build_source_registry_update_plan(
         observations=observations,
     )
     rows = [_update_row(row, source_index[row.source_key]) for row in promotion_plan.rows]
-    return SourceRegistryUpdatePlanReport.from_rows(rows)
+    return SourceRegistryUpdatePlanReport.from_rows(
+        rows,
+        registry_digest=source_registry_digest(sources),
+    )
 
 
 def _update_row(
