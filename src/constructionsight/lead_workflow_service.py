@@ -36,6 +36,7 @@ def create_lead_workflow(
         previous_status=None,
         current_status=status,
         reason="workflow created from lead review package",
+        sequence=0,
     )
     return LeadWorkflowRecord(
         workflow_id=_workflow_id(package.package_id, fingerprint_key),
@@ -64,6 +65,7 @@ def transition_lead_workflow(
         previous_status=record.status,
         current_status=next_status,
         reason=reason,
+        sequence=len(record.events),
     )
     return LeadWorkflowRecord(
         workflow_id=record.workflow_id,
@@ -113,11 +115,20 @@ def _event(
     previous_status: LeadWorkflowStatus | None,
     current_status: LeadWorkflowStatus,
     reason: str,
+    sequence: int,
 ) -> LeadWorkflowEvent:
-    """Build deterministic workflow event."""
+    """Build a deterministic event id that remains unique within one workflow."""
 
     previous_value = previous_status.value if previous_status else ""
-    basis = "|".join([workflow_id_basis, previous_value, current_status.value, reason])
+    basis = "|".join(
+        [
+            workflow_id_basis,
+            previous_value,
+            current_status.value,
+            reason,
+            str(sequence),
+        ]
+    )
     return LeadWorkflowEvent(
         event_id=f"lead-workflow-event:{_short_hash(basis)}",
         previous_status=previous_status,
