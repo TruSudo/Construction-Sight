@@ -111,13 +111,15 @@ def test_list_rejects_unsupported_filter(tmp_path) -> None:
     database_url = _database_url(tmp_path)
     factory = _factory(database_url)
 
-    with managed_session(factory) as session:
-        with pytest.raises(LeadOperatorError, match="unsupported filter"):
-            list_lead_operator_records(
-                session,
-                LeadOperatorRecordKind.SHARE,
-                status="calculated",
-            )
+    with (
+        managed_session(factory) as session,
+        pytest.raises(LeadOperatorError, match="unsupported filter"),
+    ):
+        list_lead_operator_records(
+            session,
+            LeadOperatorRecordKind.SHARE,
+            status="calculated",
+        )
 
 
 def test_load_rejects_indexed_payload_drift(tmp_path) -> None:
@@ -129,9 +131,11 @@ def test_load_rejects_indexed_payload_drift(tmp_path) -> None:
         row = session.execute(select(LeadWorkflowRecordRow)).scalar_one()
         row.status = "review"
 
-    with managed_session(factory) as session:
-        with pytest.raises(LeadOperatorError, match="disagree with payload"):
-            load_persisted_lead_workflow(session, "lead-workflow:test")
+    with (
+        managed_session(factory) as session,
+        pytest.raises(LeadOperatorError, match="disagree with payload"),
+    ):
+        load_persisted_lead_workflow(session, "lead-workflow:test")
 
 
 def test_transition_rejects_stale_operator_expectation(tmp_path) -> None:
@@ -139,15 +143,17 @@ def test_transition_rejects_stale_operator_expectation(tmp_path) -> None:
     _seed(database_url)
     factory = _factory(database_url)
 
-    with managed_session(factory) as session:
-        with pytest.raises(LeadOperatorError, match="operator expectation"):
-            transition_persisted_lead_workflow(
-                session,
-                workflow_id="lead-workflow:test",
-                expected_current_status=LeadWorkflowStatus.REVIEW,
-                next_status=LeadWorkflowStatus.READY,
-                reason="review completed",
-            )
+    with (
+        managed_session(factory) as session,
+        pytest.raises(LeadOperatorError, match="operator expectation"),
+    ):
+        transition_persisted_lead_workflow(
+            session,
+            workflow_id="lead-workflow:test",
+            expected_current_status=LeadWorkflowStatus.REVIEW,
+            next_status=LeadWorkflowStatus.READY,
+            reason="review completed",
+        )
 
 
 def test_transition_persists_status_and_event(tmp_path) -> None:
