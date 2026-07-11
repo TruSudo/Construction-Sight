@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 from collections.abc import Iterable
 from datetime import date
+from decimal import Decimal
 
 from constructionsight.lead_workflow_models import LeadWorkflowRecord
 from constructionsight.result_ledger_models import (
@@ -112,6 +113,14 @@ def _build_revision(
 ) -> ResultLedgerRecord:
     """Build one internally consistent immutable ledger revision."""
 
+    if status != ResultLedgerStatus.WON:
+        if gross_value is not None:
+            raise ValueError("gross_value may be provided only for won results")
+        if share_rate is not None:
+            raise ValueError("share_rate may be provided only for won results")
+    if status == ResultLedgerStatus.WON and gross_value is None and share_rate is not None:
+        raise ValueError("share_rate requires gross_value")
+
     share = None
     share_status = ResultShareStatus.NOT_APPLICABLE
     limitations: list[str] = []
@@ -173,7 +182,10 @@ def _ledger_id(workflow_id: str, status: ResultLedgerStatus, revision: int) -> s
 def _share_id(ledger_id: str, gross_value: float, share_rate: float) -> str:
     """Build deterministic share identity scoped to one ledger revision."""
 
-    basis = "|".join([ledger_id, f"{gross_value:.2f}", f"{share_rate:.4f}"])
+    rate_decimal = Decimal(str(share_rate))
+    rate_places = max(4, max(0, -rate_decimal.as_tuple().exponent))
+    rate_text = f"{share_rate:.{rate_places}f}"
+    basis = "|".join([ledger_id, f"{gross_value:.2f}", rate_text])
     return f"result-share:{_short_hash(basis)}"
 
 
