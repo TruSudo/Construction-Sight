@@ -16,7 +16,10 @@ The plan preserves:
 - limitations
 - evidence references
 - next action
-- a deterministic SHA-256 plan digest that excludes generation timestamps
+- a deterministic SHA-256 digest of the complete ordered registry snapshot
+- a deterministic SHA-256 approval digest covering the registry digest and all approval-significant plan-row content
+
+Generation timestamps are excluded from the approval digest so equivalent plans remain reproducible. Registry order is included in the registry digest because the registry file is an ordered operational artifact.
 
 Operator commands:
 
@@ -27,7 +30,7 @@ constructionsight-source-plan plan data/source_registry.seed.json --output data/
 constructionsight-source-plan plan data/source_registry.seed.json --observations-path observations.json
 ```
 
-The plan command never edits registry data.
+The plan command never edits registry data. A plan output may not alias the registry or observation input path. Existing plan output files are refused unless `--overwrite` is supplied, and plan output uses same-directory atomic replacement.
 
 ## Controlled apply boundary
 
@@ -36,13 +39,15 @@ The apply command is intentionally narrow. It rejects the operation unless all o
 1. The operator supplies `--apply`.
 2. The supplied approval digest exactly matches the reviewed plan digest.
 3. Recomputed plan content still matches that digest.
-4. Every planned source still matches its original payload and current status.
-5. Every applied status change has at least one evidence reference.
-6. The planned action and proposed status agree.
-7. The proposed payload changes only `verification_status`.
-8. The proposed payload preserves the canonical source identity.
-9. A currently verified source is not downgraded through the promotion workflow.
-10. The entire plan validates before any registry output is written.
+4. The complete current registry content and order match the registry snapshot digest embedded in the plan.
+5. Plan source counts, update counts, and action counts match the plan rows.
+6. Every planned source still matches its original payload and current status.
+7. Every applied status change has at least one evidence reference.
+8. The planned action and proposed status agree.
+9. The proposed payload changes only `verification_status`.
+10. The proposed payload preserves the canonical source identity.
+11. A currently verified source is not downgraded through the promotion workflow.
+12. The entire plan validates before any registry output is written.
 
 Separate-output example:
 
@@ -69,6 +74,10 @@ constructionsight-source-plan apply \
   --apply
 ```
 
-Each file replacement is atomic. Existing output, audit, or backup files are refused unless `--overwrite` is supplied. The audit report preserves the plan digest, original and updated registry digests, row-level reasons, limitations, evidence references, and applied statuses.
+Apply inputs and outputs must resolve to distinct paths, except that `--in-place` intentionally designates the registry input as the final target. This prevents a nominal separate-output operation from overwriting the live registry without a backup and prevents audit or output paths from destroying the approved plan.
+
+Each individual file replacement is atomic. For in-place apply, the backup is written first, the audit report second, and the registry target last. For separate-output apply, the audit report is written before the updated registry output. This commit order ensures that a changed registry target is never created before its required audit artifact and, for in-place operation, its backup artifact.
+
+Existing output, audit, or backup files are refused unless `--overwrite` is supplied. The audit report preserves the plan digest, original and updated registry digests, row-level reasons, limitations, evidence references, and applied statuses.
 
 A registry verification status is not a claim of production-grade recurring integration. This workflow does not make any current seed source verified, does not implement live adapters, and does not establish production coverage.
