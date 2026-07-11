@@ -51,16 +51,7 @@ jobs:
           python -m compileall -q src tests
 
       - name: Pytest
-        run: python -m pytest --junitxml=pytest-results.xml
-
-      - name: Upload pytest results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: pytest-results-${{ matrix.python-version }}
-          path: pytest-results.xml
-          if-no-files-found: error
-          retention-days: 7
+        run: python -m pytest
 
       - name: Adapter contract audit
         run: constructionsight audit-adapters
