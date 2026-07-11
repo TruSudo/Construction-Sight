@@ -12,6 +12,7 @@ from constructionsight.lead_review_models import LeadReviewPackage
 from constructionsight.lead_workflow_models import LeadWorkflowEvent, LeadWorkflowRecord
 from constructionsight.opportunity_enrichment_models import OpportunityEnrichmentReport
 from constructionsight.result_ledger_models import ResultLedgerRecord, ResultShareRecord
+from constructionsight.result_ledger_service import validate_result_ledger_history
 from constructionsight.storage.lead_workflow_orm import (
     LeadDuplicateResultRecord,
     LeadFingerprintRecord,
@@ -246,7 +247,7 @@ def store_result_share_record(
     session: Session,
     share: ResultShareRecord,
 ) -> ResultShareRecordRow:
-    """Insert or update a calculated result share record."""
+    """Insert an immutable calculated result share record."""
 
     session.flush()
     payload_json = _payload_json(share.model_dump(mode="json"))
@@ -255,22 +256,19 @@ def store_result_share_record(
             ResultShareRecordRow.share_record_id == share.share_record_id
         )
     ).scalar_one_or_none()
-    if existing is None:
-        existing = ResultShareRecordRow(
-            share_record_id=share.share_record_id,
-            workflow_id=share.workflow_id,
-            gross_value=share.gross_value,
-            share_rate=share.share_rate,
-            share_value=share.share_value,
-            payload_json=payload_json,
-        )
-        session.add(existing)
+    if existing is not None:
+        if existing.payload_json != payload_json:
+            raise ValueError("persisted result share records are immutable")
         return existing
-    existing.workflow_id = share.workflow_id
-    existing.gross_value = share.gross_value
-    existing.share_rate = share.share_rate
-    existing.share_value = share.share_value
-    existing.payload_json = payload_json
+    existing = ResultShareRecordRow(
+        share_record_id=share.share_record_id,
+        workflow_id=share.workflow_id,
+        gross_value=share.gross_value,
+        share_rate=share.share_rate,
+        share_value=share.share_value,
+        payload_json=payload_json,
+    )
+    session.add(existing)
     return existing
 
 
@@ -278,44 +276,44 @@ def store_result_ledger_record(
     session: Session,
     ledger: ResultLedgerRecord,
 ) -> ResultLedgerRecordRow:
-    """Insert or update a result ledger record and optional share."""
+    """Append one validated immutable result ledger revision and optional share."""
 
     session.flush()
     payload_json = _payload_json(ledger.to_dict())
     existing = session.execute(
-        select(ResultLedgerRecordRow).where(
-            ResultLedgerRecordRow.ledger_id == ledger.ledger_id
-        )
+        select(ResultLedgerRecordRow).where(ResultLedgerRecordRow.ledger_id == ledger.ledger_id)
     ).scalar_one_or_none()
+    if existing is not None:
+        if existing.payload_json != payload_json:
+            raise ValueError("persisted result ledger revisions are immutable")
+        return existing
+
+    history_rows = session.execute(
+        select(ResultLedgerRecordRow).where(ResultLedgerRecordRow.workflow_id == ledger.workflow_id)
+    ).scalars()
+    history = [
+        ResultLedgerRecord.model_validate(json.loads(row.payload_json)) for row in history_rows
+    ]
+    validate_result_ledger_history([*history, ledger])
+
     share_record_id = ledger.share.share_record_id if ledger.share else None
     decided_date = ledger.decided_date.isoformat() if ledger.decided_date else None
-    if existing is None:
-        existing = ResultLedgerRecordRow(
-            ledger_id=ledger.ledger_id,
-            workflow_id=ledger.workflow_id,
-            package_id=ledger.package_id,
-            status=ledger.status.value,
-            decided_date=decided_date,
-            gross_value=ledger.gross_value,
-            share_status=ledger.share_status.value,
-            share_record_id=share_record_id,
-            observed_created_at=ledger.created_at.isoformat(),
-            payload_json=payload_json,
-        )
-        session.add(existing)
-    else:
-        existing.workflow_id = ledger.workflow_id
-        existing.package_id = ledger.package_id
-        existing.status = ledger.status.value
-        existing.decided_date = decided_date
-        existing.gross_value = ledger.gross_value
-        existing.share_status = ledger.share_status.value
-        existing.share_record_id = share_record_id
-        existing.observed_created_at = ledger.created_at.isoformat()
-        existing.payload_json = payload_json
+    row = ResultLedgerRecordRow(
+        ledger_id=ledger.ledger_id,
+        workflow_id=ledger.workflow_id,
+        package_id=ledger.package_id,
+        status=ledger.status.value,
+        decided_date=decided_date,
+        gross_value=ledger.gross_value,
+        share_status=ledger.share_status.value,
+        share_record_id=share_record_id,
+        observed_created_at=ledger.created_at.isoformat(),
+        payload_json=payload_json,
+    )
+    session.add(row)
     if ledger.share is not None:
         store_result_share_record(session, ledger.share)
-    return existing
+    return row
 
 
 def _payload_json(payload: dict[str, object]) -> str:

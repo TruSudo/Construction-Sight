@@ -58,11 +58,14 @@ class ResultShareRecord(BaseModel):
 
 
 class ResultLedgerRecord(BaseModel):
-    """Outcome ledger row for one lead workflow."""
+    """One immutable outcome revision for a lead workflow."""
 
     ledger_id: str = Field(min_length=1)
     workflow_id: str = Field(min_length=1)
     package_id: str = Field(min_length=1)
+    revision: int = Field(default=1, ge=1)
+    supersedes_ledger_id: str | None = None
+    correction_reason: str | None = None
     status: ResultLedgerStatus
     decided_date: date | None = None
     gross_value: float | None = Field(default=None, ge=0)
@@ -80,6 +83,28 @@ class ResultLedgerRecord(BaseModel):
         if len(values) != len(set(values)):
             raise ValueError("ledger text lists must contain unique values")
         return values
+
+    @model_validator(mode="after")
+    def require_revision_integrity(self) -> ResultLedgerRecord:
+        """Require explicit, linear supersession metadata after the root revision."""
+
+        if self.revision == 1:
+            if self.supersedes_ledger_id is not None:
+                raise ValueError("root result ledger revision cannot supersede another ledger")
+            if self.correction_reason is not None:
+                raise ValueError("root result ledger revision cannot have a correction reason")
+            return self
+        if self.supersedes_ledger_id is None:
+            raise ValueError(
+                "result ledger revisions after one must identify the superseded ledger"
+            )
+        if self.supersedes_ledger_id == self.ledger_id:
+            raise ValueError("result ledger revision cannot supersede itself")
+        if self.correction_reason is None or not self.correction_reason.strip():
+            raise ValueError(
+                "result ledger revisions after one require a correction reason"
+            )
+        return self
 
     @model_validator(mode="after")
     def require_status_payload_consistency(self) -> ResultLedgerRecord:
