@@ -62,6 +62,27 @@ def build_result_ledger_record(
     )
 
 
+def compute_result_ledger_id(ledger: ResultLedgerRecord) -> str:
+    """Recompute the canonical identity for an existing ledger record."""
+
+    share_rate = ledger.share.share_rate if ledger.share is not None else None
+    return _ledger_id(
+        workflow_id=ledger.workflow_id,
+        package_id=ledger.package_id,
+        status=ledger.status,
+        decided_date=ledger.decided_date,
+        gross_value=ledger.gross_value,
+        share_rate=share_rate,
+        reasons=ledger.reasons,
+    )
+
+
+def compute_result_share_id(share: ResultShareRecord) -> str:
+    """Recompute the canonical identity for an existing share record."""
+
+    return _share_id(share.workflow_id, share.gross_value, share.share_rate)
+
+
 def _share_record(
     workflow_id: str,
     gross_value: float,
