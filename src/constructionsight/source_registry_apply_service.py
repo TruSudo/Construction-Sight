@@ -224,7 +224,9 @@ def _apply_limitations(
             "registry status apply does not establish production-grade recurring source integration"
         )
     else:
-        limitations.append("plan row was not applied because no registry status change was proposed")
+        limitations.append(
+            "plan row was not applied because no registry status change was proposed"
+        )
     return _unique(limitations)
 
 
