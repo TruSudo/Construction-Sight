@@ -183,7 +183,10 @@ def _share_id(ledger_id: str, gross_value: float, share_rate: float) -> str:
     """Build deterministic share identity scoped to one ledger revision."""
 
     rate_decimal = Decimal(str(share_rate))
-    rate_places = max(4, max(0, -rate_decimal.as_tuple().exponent))
+    exponent = rate_decimal.as_tuple().exponent
+    if not isinstance(exponent, int):
+        raise ValueError("share_rate must be finite")
+    rate_places = max(4, max(0, -exponent))
     rate_text = f"{share_rate:.{rate_places}f}"
     basis = "|".join([ledger_id, f"{gross_value:.2f}", rate_text])
     return f"result-share:{_short_hash(basis)}"
