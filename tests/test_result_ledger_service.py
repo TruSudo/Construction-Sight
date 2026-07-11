@@ -1,6 +1,12 @@
+import pytest
+
 from constructionsight.lead_workflow_models import LeadWorkflowRecord, LeadWorkflowStatus
 from constructionsight.result_ledger_models import ResultLedgerStatus, ResultShareStatus
-from constructionsight.result_ledger_service import build_result_ledger_record
+from constructionsight.result_ledger_service import (
+    build_result_ledger_record,
+    supersede_result_ledger_record,
+    validate_result_ledger_history,
+)
 
 
 def _workflow() -> LeadWorkflowRecord:
@@ -22,6 +28,8 @@ def test_build_result_ledger_record_with_share() -> None:
     )
 
     assert ledger.status == ResultLedgerStatus.WON
+    assert ledger.revision == 1
+    assert ledger.supersedes_ledger_id is None
     assert ledger.share_status == ResultShareStatus.CALCULATED
     assert ledger.share is not None
     assert ledger.share.share_value == 100.0
@@ -65,3 +73,81 @@ def test_build_result_ledger_record_for_lost_result() -> None:
     assert ledger.share_status == ResultShareStatus.NOT_APPLICABLE
     assert ledger.gross_value is None
     assert ledger.reasons == ["not selected"]
+
+
+def test_supersede_result_ledger_record_creates_linear_revision() -> None:
+    original = build_result_ledger_record(
+        workflow=_workflow(),
+        status=ResultLedgerStatus.UNKNOWN,
+        reasons=["outcome not yet confirmed"],
+    )
+
+    corrected = supersede_result_ledger_record(
+        current=original,
+        status=ResultLedgerStatus.WON,
+        correction_reason="signed contract received",
+        decided_date=None,
+        gross_value=2500.0,
+        share_rate=0.1,
+        reasons=["award confirmed by executed agreement"],
+    )
+
+    assert corrected.revision == 2
+    assert corrected.supersedes_ledger_id == original.ledger_id
+    assert corrected.correction_reason == "signed contract received"
+    assert corrected.ledger_id != original.ledger_id
+    assert corrected.share is not None
+    assert validate_result_ledger_history([corrected, original]) == corrected
+
+
+def test_supersede_result_ledger_record_rejects_blank_reason() -> None:
+    original = build_result_ledger_record(
+        workflow=_workflow(),
+        status=ResultLedgerStatus.UNKNOWN,
+    )
+
+    with pytest.raises(ValueError, match="correction_reason must not be blank"):
+        supersede_result_ledger_record(
+            current=original,
+            status=ResultLedgerStatus.LOST,
+            correction_reason="   ",
+        )
+
+
+def test_validate_result_ledger_history_rejects_branch() -> None:
+    original = build_result_ledger_record(
+        workflow=_workflow(),
+        status=ResultLedgerStatus.UNKNOWN,
+    )
+    second = supersede_result_ledger_record(
+        current=original,
+        status=ResultLedgerStatus.LOST,
+        correction_reason="first correction",
+    )
+    third = supersede_result_ledger_record(
+        current=second,
+        status=ResultLedgerStatus.WON,
+        correction_reason="second correction",
+        gross_value=1000.0,
+        share_rate=0.1,
+    )
+    branched = third.model_copy(update={"supersedes_ledger_id": original.ledger_id})
+
+    with pytest.raises(ValueError, match="unbranched supersession chain"):
+        validate_result_ledger_history([original, second, branched])
+
+
+def test_validate_result_ledger_history_rejects_revision_gap() -> None:
+    original = build_result_ledger_record(
+        workflow=_workflow(),
+        status=ResultLedgerStatus.UNKNOWN,
+    )
+    second = supersede_result_ledger_record(
+        current=original,
+        status=ResultLedgerStatus.LOST,
+        correction_reason="correction",
+    )
+    gapped = second.model_copy(update={"revision": 3})
+
+    with pytest.raises(ValueError, match="contiguous from one"):
+        validate_result_ledger_history([original, gapped])
