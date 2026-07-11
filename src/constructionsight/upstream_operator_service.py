@@ -73,21 +73,29 @@ def list_upstream_operator_records(
     )
 
     if record_kind == UpstreamOperatorRecordKind.PERMIT_SNAPSHOT:
-        statement = select(PermitSnapshotRecord)
+        snapshot_statement = select(PermitSnapshotRecord)
         if status is not None:
-            statement = statement.where(PermitSnapshotRecord.status == status)
+            snapshot_statement = snapshot_statement.where(
+                PermitSnapshotRecord.status == status
+            )
         if source_key is not None:
-            statement = statement.where(PermitSnapshotRecord.source_key == source_key)
+            snapshot_statement = snapshot_statement.where(
+                PermitSnapshotRecord.source_key == source_key
+            )
         if source_record_id is not None:
-            statement = statement.where(
+            snapshot_statement = snapshot_statement.where(
                 PermitSnapshotRecord.source_record_id == source_record_id
             )
         if site_key is not None:
-            statement = statement.where(PermitSnapshotRecord.site_key == site_key)
-        rows = session.execute(
-            statement.order_by(PermitSnapshotRecord.id.desc()).limit(limit)
+            snapshot_statement = snapshot_statement.where(
+                PermitSnapshotRecord.site_key == site_key
+            )
+        snapshot_rows = session.execute(
+            snapshot_statement.order_by(PermitSnapshotRecord.id.desc()).limit(limit)
         ).scalars()
-        return [_permit_snapshot_record(row) for row in rows]
+        return [
+            _permit_snapshot_record(snapshot_row) for snapshot_row in snapshot_rows
+        ]
 
     if record_kind == UpstreamOperatorRecordKind.PERMIT_TRANSITION:
         transition_statement = select(PermitTransitionRecord)
@@ -139,7 +147,9 @@ def list_upstream_operator_records(
                 DecisionRecordRow.site_key == site_key
             )
         if apn is not None:
-            decision_statement = decision_statement.where(DecisionRecordRow.apn == apn)
+            decision_statement = decision_statement.where(
+                DecisionRecordRow.apn == apn
+            )
         decision_rows = session.execute(
             decision_statement.order_by(DecisionRecordRow.id.desc()).limit(limit)
         ).scalars()
@@ -192,12 +202,16 @@ def get_upstream_operator_record(
     """Return one persisted upstream record by canonical identifier."""
 
     if record_kind == UpstreamOperatorRecordKind.PERMIT_SNAPSHOT:
-        row = session.execute(
+        snapshot_row = session.execute(
             select(PermitSnapshotRecord).where(
                 PermitSnapshotRecord.snapshot_id == record_id
             )
         ).scalar_one_or_none()
-        return None if row is None else _permit_snapshot_record(row)
+        return (
+            None
+            if snapshot_row is None
+            else _permit_snapshot_record(snapshot_row)
+        )
     if record_kind == UpstreamOperatorRecordKind.PERMIT_TRANSITION:
         transition_row = session.execute(
             select(PermitTransitionRecord).where(
@@ -220,7 +234,9 @@ def get_upstream_operator_record(
         )
     if record_kind == UpstreamOperatorRecordKind.DECISION:
         decision_row = session.execute(
-            select(DecisionRecordRow).where(DecisionRecordRow.decision_key == record_id)
+            select(DecisionRecordRow).where(
+                DecisionRecordRow.decision_key == record_id
+            )
         ).scalar_one_or_none()
         return None if decision_row is None else _decision_record(decision_row)
     if record_kind == UpstreamOperatorRecordKind.PARCEL:
@@ -248,7 +264,9 @@ def _validate_filters(
 ) -> None:
     supported = _FILTER_SUPPORT[record_kind]
     unsupported = [
-        name for name, value in filters.items() if value is not None and name not in supported
+        name
+        for name, value in filters.items()
+        if value is not None and name not in supported
     ]
     if unsupported:
         names = ", ".join(sorted(unsupported))
@@ -257,7 +275,11 @@ def _validate_filters(
         )
 
 
-def _payload(payload_json: str, kind: UpstreamOperatorRecordKind, record_id: str) -> dict[str, Any]:
+def _payload(
+    payload_json: str,
+    kind: UpstreamOperatorRecordKind,
+    record_id: str,
+) -> dict[str, Any]:
     try:
         data: Any = json.loads(payload_json)
     except json.JSONDecodeError as exc:
@@ -288,7 +310,9 @@ def _permit_snapshot_record(row: PermitSnapshotRecord) -> UpstreamOperatorRecord
     )
 
 
-def _permit_transition_record(row: PermitTransitionRecord) -> UpstreamOperatorRecord:
+def _permit_transition_record(
+    row: PermitTransitionRecord,
+) -> UpstreamOperatorRecord:
     return UpstreamOperatorRecord(
         record_kind=UpstreamOperatorRecordKind.PERMIT_TRANSITION,
         record_id=row.transition_id,
@@ -353,7 +377,9 @@ def _parcel_record(row: ParcelCoreRecordRow) -> UpstreamOperatorRecord:
     )
 
 
-def _site_resolution_record(row: SiteResolutionResultRow) -> UpstreamOperatorRecord:
+def _site_resolution_record(
+    row: SiteResolutionResultRow,
+) -> UpstreamOperatorRecord:
     return UpstreamOperatorRecord(
         record_kind=UpstreamOperatorRecordKind.SITE_RESOLUTION,
         record_id=row.resolution_id,
