@@ -13,6 +13,7 @@ from constructionsight.source_promotion_plan_models import (
 )
 from constructionsight.source_promotion_plan_service import build_source_promotion_plan
 from constructionsight.source_readiness_service import HttpReachabilityChecker
+from constructionsight.source_registry_integrity import source_registry_digest
 from constructionsight.source_registry_update_plan_models import (
     SourceRegistryUpdatePlanReport,
     SourceRegistryUpdatePlanRow,
@@ -33,7 +34,7 @@ def build_source_registry_update_plan(
 ) -> SourceRegistryUpdatePlanReport:
     """Build a dry-run registry update plan without writing registry files."""
 
-    source_index = {_source_key(source): source for source in sources}
+    source_index = {source_registry_key(source): source for source in sources}
     promotion_plan = build_source_promotion_plan(
         sources,
         adapter_specs,
@@ -42,7 +43,10 @@ def build_source_registry_update_plan(
         observations=observations,
     )
     rows = [_update_row(row, source_index[row.source_key]) for row in promotion_plan.rows]
-    return SourceRegistryUpdatePlanReport.from_rows(rows)
+    return SourceRegistryUpdatePlanReport.from_rows(
+        rows,
+        registry_digest=source_registry_digest(sources),
+    )
 
 
 def _update_row(
@@ -67,6 +71,7 @@ def _update_row(
         proposed_source_payload=proposed_payload if update_required else None,
         reasons=plan_row.reasons,
         limitations=_limitations(plan_row.limitations, update_required),
+        evidence_refs=plan_row.evidence_refs,
         next_action=_next_action(plan_row.planned_action, update_required),
     )
 
@@ -101,7 +106,9 @@ def _next_action(action: SourcePromotionPlanAction, update_required: bool) -> st
     return "review proposed failed status before any explicit apply workflow"
 
 
-def _source_key(source: PublicSource) -> str:
+def source_registry_key(source: PublicSource) -> str:
+    """Return the canonical source key used across verification workflows."""
+
     evidence_package = build_source_verification_evidence_package([source], {}, check_http=False)
     return evidence_package.rows[0].source_key
 

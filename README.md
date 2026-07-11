@@ -2,7 +2,7 @@
 
 ConstructionSight is a lawful public-record construction intelligence platform focused initially on San Bernardino County and Riverside County, California.
 
-The platform is designed to discover, verify, normalize, store, and analyze public construction, planning, entitlement, CEQA, permit, contractor, parcel, and agenda data. Current implementation is strongest in source-neutral models, deterministic services, evidence-first workflow logic, persistence for core post-enrichment records, source/status/readiness/audit-package reporting, and test-backed architecture. Live source integrations and operator UI remain planned work unless expressly marked otherwise.
+The platform is designed to discover, verify, normalize, store, and analyze public construction, planning, entitlement, CEQA, permit, contractor, parcel, and agenda data. Current implementation is strongest in source-neutral models, deterministic services, evidence-first workflow logic, persistence for core post-enrichment records, layered source-status/readiness/audit/checklist/planning governance, controlled registry-status apply, and test-backed architecture. Live source integrations and operator UI remain planned work unless expressly marked otherwise.
 
 ## Operating Boundary
 
@@ -25,7 +25,7 @@ Initial adapter families:
 - Laserfiche / PDF repositories
 - Custom municipal reports
 
-Adapter contracts are not the same thing as live source integrations. Most adapter families are still placeholder contracts. Source records in `data/source_registry.seed.json` are seed targets and must remain treated as unverified until checked. Run `constructionsight-source-status report data/source_registry.seed.json` before making any source-readiness claim. Run `constructionsight-source-readiness check data/source_registry.seed.json` to produce conservative report-only readiness evidence before any future registry-status change. Run `constructionsight-audit-package build data/source_registry.seed.json --check-http` to preserve original/final URL, HTTP, redirect, limitation, and recommendation evidence for operator review without mutating the registry.
+Adapter contracts are not the same thing as live source integrations. Most adapter families are still placeholder contracts. Source records in `data/source_registry.seed.json` are seed targets and must remain treated as unverified until checked. Run `constructionsight-source-status report data/source_registry.seed.json` before making any source-readiness claim. Run `constructionsight-source-readiness check data/source_registry.seed.json` and `constructionsight-audit-package build data/source_registry.seed.json --check-http` to produce non-mutating evidence. Use the source checklist, promotion plan, and registry plan commands before any status change. Controlled apply requires a reviewed plan digest, evidence references, explicit `--apply`, status-only mutation, stale-state validation, audit output, and atomic file replacement.
 
 ## Current Pipeline
 
@@ -34,6 +34,9 @@ lawful public-record intake
   -> evidence preservation
   -> source registry
   -> source status/readiness/audit-package reporting
+  -> source verification checklist and observations
+  -> source promotion and registry update planning
+  -> controlled registry-status apply
   -> source adapter contracts
   -> parcel source registry
   -> parcel source schema preview
@@ -63,17 +66,23 @@ Every lawful input should first become preserved evidence and a source-neutral i
 
 See `docs/architecture/exhaustive_lawful_intake.md` for the intake contract.
 
-## Source Status, Readiness, and Audit Package Doctrine
+## Source Status, Readiness, Evidence, Planning, and Apply Doctrine
 
-ConstructionSight separates source status, source readiness, and audit-package evidence.
+ConstructionSight separates source status, source readiness, audit-package evidence, manual observations, promotion planning, registry update planning, and controlled apply.
 
-`constructionsight-source-status report data/source_registry.seed.json` reports what the source registry and adapter metadata currently claim. `constructionsight-source-readiness check data/source_registry.seed.json` produces a conservative, non-mutating readiness report with source key/name, platform family, public URL, lawful-access boundary, verification status, adapter status, optional HTTP reachability, reasons, limitations, next action, timestamp, and JSON output. `constructionsight-audit-package build data/source_registry.seed.json --check-http` produces a report-only review package with original URL, final URL, HTTP status, redirect classification, source/adapter/readiness state, reasons, limitations, recommendation, and next action.
+`constructionsight-source-status report data/source_registry.seed.json` reports what the source registry and adapter metadata currently claim. `constructionsight-source-readiness check data/source_registry.seed.json` produces a conservative, non-mutating readiness report. `constructionsight-audit-package build data/source_registry.seed.json --check-http` preserves original URL, final URL, HTTP status, redirect classification, source/adapter/readiness state, reasons, limitations, recommendation, and next action.
 
-Readiness statuses are `seed_only`, `reachable`, `blocked`, `failed`, `partial`, and `verified_candidate`. Audit-package recommendations include `keep_seed_only` and `keep_unverified_reachable`. A reachable URL is not the same thing as verified usable source coverage, and audit-package output does not replace manual source verification or mutate `data/source_registry.seed.json`.
+Readiness statuses are `seed_only`, `reachable`, `blocked`, `failed`, `partial`, and `verified_candidate`. Audit-package recommendations include `keep_seed_only` and `keep_unverified_reachable`. A reachable URL is not verified usable source coverage.
 
-Current observed HTTP audit-package outcome for the seed registry is: CEQAnet `cross_host_redirect`, CSLB `no_redirect`, San Bernardino EZOP `same_host_redirect`, Riverside PLUS `downgraded_to_http`, and all four sources `keep_unverified_reachable`.
+Manual observation, promotion-plan, and registry-plan commands preserve checklist state and evidence references before proposing any registry payload. Registry plans include a deterministic SHA-256 digest over approval-significant content. The controlled apply command refuses a write unless the approval digest matches, the current registry is unchanged from the plan, evidence references exist, the action and status agree, and only `verification_status` changes. A verified source cannot be downgraded through the promotion workflow; that requires separate revocation doctrine.
 
-See `docs/architecture/source_readiness_workflow.md` for the readiness contract and `docs/architecture/audit_package.md` for the audit-package contract.
+Current observed HTTP audit-package outcome for the seed registry is: CEQAnet `cross_host_redirect`, CSLB `no_redirect`, San Bernardino EZOP `same_host_redirect`, Riverside PLUS `downgraded_to_http`, and all four sources `keep_unverified_reachable`. This implementation does not promote any current seed source.
+
+See:
+
+- `docs/architecture/source_readiness_workflow.md`
+- `docs/architecture/audit_package.md`
+- `docs/architecture/source_registry_update_plan.md`
 
 ## Opportunity Transition Doctrine
 
@@ -214,13 +223,13 @@ See:
 
 - SQLAlchemy ORM/storage coverage now exists for movement, identity, parcel core, site-resolution reports, and post-enrichment lead workflow records. Remaining storage gaps are optional preview-report archives and optional nested child tables.
 - Most adapter families are placeholder contracts, not live source integrations.
-- Source registry seed records remain unverified until checked; source-status reporting currently shows four seed-only records and zero verified usable sources, source-readiness reports do not mutate registry status, and audit-package reports do not create source promotion.
+- Source registry seed records remain unverified until checked. Controlled apply can change only an evidence-backed approved status and does not create live integration or verified production coverage by itself.
 - HTTP audit-package evidence currently classifies CEQAnet as `cross_host_redirect`, CSLB as `no_redirect`, San Bernardino EZOP as `same_host_redirect`, and Riverside PLUS as `downgraded_to_http`; all four remain `keep_unverified_reachable` until manual source verification occurs.
 - Geometry containment currently has first-pass limitations and must not be treated as survey-grade parcel topology.
 - Opportunity scoring uses a versioned default profile; additional profiles must be introduced explicitly with doctrine and tests.
 - Lead workflow transitions preserve event history and are constrained by a status matrix; override/reopen behavior is not implemented.
 - Result ledgers distinguish pending gross value, pending share rate, calculated share, and not-applicable share states; business-specific share enforcement remains future work.
-- Persisted model/service layers now have storage-summary visibility and source maturity has source-status/source-readiness/audit-package visibility; dedicated action/list/detail operator CLIs remain pending.
+- Persisted model/service layers now have storage-summary visibility and source maturity has layered reporting/planning/apply visibility; dedicated action/list/detail operator CLIs remain pending.
 - No external outreach-sending behavior is implemented or implied.
 
 ## Forward Cleanup Doctrine
@@ -231,4 +240,4 @@ Do not claim Regrid or Shovels parity merely because model layers exist. Parity 
 
 ## Phase 1 Status
 
-Repository foundation initialized. CEQAnet public-record intake has guarded operator and archive tooling, but CEQAnet remains contract-ready rather than live production coverage. Universal intake, source-status/readiness/audit-package reporting, opportunity transition intake, parcel/site resolution, parcel source registry, schema preview, row preview, parcel core record, geometry normalization, parcel-backed site resolution, permit transitions, contractor identity, decision records, opportunity enrichment, lead review, dedupe, workflow status, result ledger, and storage-summary reporting now exist as tested model/service/operator-support architecture. The next required cleanup phases are manual source verification checklist/reporting, topology-grade geometry, dedicated action/list/detail operator CLIs, explicit registry update/dry-run workflow if source promotion is needed, optional preview archive persistence, and any future business-specific share enforcement.
+Repository foundation initialized. CEQAnet public-record intake has guarded operator and archive tooling, but CEQAnet remains contract-ready rather than live production coverage. Universal intake, layered source-governance reporting/checklist/planning/controlled apply, opportunity transition intake, parcel/site resolution, parcel source registry, schema preview, row preview, parcel core record, geometry normalization, parcel-backed site resolution, permit transitions, contractor identity, decision records, opportunity enrichment, lead review, dedupe, workflow status, result ledger, and storage-summary reporting now exist as tested model/service/operator-support architecture. The next required phases are evidence-backed manual verification of individual sources, topology-grade geometry, dedicated action/list/detail operator CLIs, verified live adapter execution, optional preview archive persistence, and any future business-specific share enforcement.
