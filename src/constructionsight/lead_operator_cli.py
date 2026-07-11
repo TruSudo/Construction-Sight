@@ -63,7 +63,9 @@ def list_records(
     ] = 100,
     status: Annotated[
         str | None,
-        typer.Option(help="Exact indexed status filter when supported by the record kind."),
+        typer.Option(
+            help="Exact indexed status filter when supported by the record kind."
+        ),
     ] = None,
     base_candidate_id: Annotated[
         str | None,
@@ -122,14 +124,20 @@ def record_detail(
         LeadOperatorRecordKind,
         typer.Argument(help="Persisted lead record family."),
     ],
-    record_id: Annotated[str, typer.Argument(help="Canonical persisted record identifier.")],
+    record_id: Annotated[
+        str,
+        typer.Argument(help="Canonical persisted record identifier."),
+    ],
     database_url: Annotated[
         str | None,
         typer.Option(help="SQLAlchemy database URL."),
     ] = None,
     json_output: Annotated[
         bool,
-        typer.Option("--json-output", help="Print the normalized record envelope as JSON."),
+        typer.Option(
+            "--json-output",
+            help="Print the normalized record envelope as JSON.",
+        ),
     ] = False,
 ) -> None:
     """Show one record and its complete preserved payload."""
@@ -153,7 +161,8 @@ def record_detail(
     summary.add_row("Base candidate", record.base_candidate_id or "")
     summary.add_row("Workflow", record.workflow_id or "")
     summary.add_row("Package", record.package_id or "")
-    summary.add_row("Lead score", "" if record.lead_score is None else str(record.lead_score))
+    score = "" if record.lead_score is None else str(record.lead_score)
+    summary.add_row("Lead score", score)
     summary.add_row("Observed created", record.observed_created_at or "")
     summary.add_row("Observed updated", record.observed_updated_at or "")
     console.print(summary)
@@ -162,7 +171,10 @@ def record_detail(
 
 @app.command("allowed-transitions")
 def allowed_transitions(
-    workflow_id: Annotated[str, typer.Argument(help="Persisted workflow identifier.")],
+    workflow_id: Annotated[
+        str,
+        typer.Argument(help="Persisted workflow identifier."),
+    ],
     database_url: Annotated[
         str | None,
         typer.Option(help="SQLAlchemy database URL."),
@@ -178,7 +190,7 @@ def allowed_transitions(
     try:
         with managed_session(factory) as session:
             workflow = load_persisted_lead_workflow(session, workflow_id)
-    except (LeadOperatorError, ValueError) as exc:
+    except ValueError as exc:
         _fail(str(exc))
     allowed = sorted(
         status.value for status in LEAD_WORKFLOW_TRANSITION_RULES[workflow.status]
@@ -196,13 +208,20 @@ def allowed_transitions(
     table.add_column("Workflow")
     table.add_column("Current")
     table.add_column("Allowed next statuses")
-    table.add_row(workflow.workflow_id, workflow.status.value, ", ".join(allowed) or "none")
+    table.add_row(
+        workflow.workflow_id,
+        workflow.status.value,
+        ", ".join(allowed) or "none",
+    )
     console.print(table)
 
 
 @app.command("transition")
 def transition_workflow(
-    workflow_id: Annotated[str, typer.Argument(help="Persisted workflow identifier.")],
+    workflow_id: Annotated[
+        str,
+        typer.Argument(help="Persisted workflow identifier."),
+    ],
     next_status: Annotated[
         LeadWorkflowStatus,
         typer.Argument(help="Matrix-valid next workflow status."),
@@ -211,12 +230,18 @@ def transition_workflow(
         LeadWorkflowStatus,
         typer.Option(
             "--expected-current-status",
-            help="Required stale-state guard matching the currently reviewed workflow status.",
+            help=(
+                "Required stale-state guard matching the currently reviewed "
+                "workflow status."
+            ),
         ),
     ],
     reason: Annotated[
         str,
-        typer.Option("--reason", help="Required audit reason for the status transition."),
+        typer.Option(
+            "--reason",
+            help="Required audit reason for the status transition.",
+        ),
     ],
     database_url: Annotated[
         str | None,
@@ -224,7 +249,10 @@ def transition_workflow(
     ] = None,
     apply_changes: Annotated[
         bool,
-        typer.Option("--apply", help="Explicitly authorize the persisted status transition."),
+        typer.Option(
+            "--apply",
+            help="Explicitly authorize the persisted status transition.",
+        ),
     ] = False,
     json_output: Annotated[
         bool,
@@ -245,7 +273,7 @@ def transition_workflow(
                 next_status=next_status,
                 reason=reason,
             )
-    except (LeadOperatorError, ValueError) as exc:
+    except ValueError as exc:
         _fail(str(exc))
     if json_output:
         console.print_json(json.dumps(report.to_dict()))
