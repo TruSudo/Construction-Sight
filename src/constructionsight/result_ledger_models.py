@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, date, datetime
+from decimal import Decimal
 from enum import StrEnum
 from typing import Any
 
@@ -28,6 +29,16 @@ class ResultShareStatus(StrEnum):
     CALCULATED = "calculated"
 
 
+def _require_decimal_places(value: float, *, maximum: int, field_name: str) -> float:
+    """Reject numeric values whose decimal precision exceeds the domain boundary."""
+
+    decimal_value = Decimal(str(value))
+    decimal_places = max(0, -decimal_value.as_tuple().exponent)
+    if decimal_places > maximum:
+        raise ValueError(f"{field_name} must use at most {maximum} decimal places")
+    return value
+
+
 class ResultShareRecord(BaseModel):
     """Calculated share record for a successful outcome."""
 
@@ -37,6 +48,20 @@ class ResultShareRecord(BaseModel):
     share_rate: float = Field(ge=0, le=1)
     share_value: float = Field(ge=0)
     notes: list[str] = Field(default_factory=list)
+
+    @field_validator("gross_value", "share_value")
+    @classmethod
+    def require_currency_precision(cls, value: float) -> float:
+        """Require cent-precision currency values."""
+
+        return _require_decimal_places(value, maximum=2, field_name="currency values")
+
+    @field_validator("share_rate")
+    @classmethod
+    def require_rate_precision(cls, value: float) -> float:
+        """Require a bounded share-rate precision used by deterministic identity."""
+
+        return _require_decimal_places(value, maximum=6, field_name="share_rate")
 
     @field_validator("notes")
     @classmethod
@@ -75,6 +100,15 @@ class ResultLedgerRecord(BaseModel):
     limitations: list[str] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
+    @field_validator("gross_value")
+    @classmethod
+    def require_gross_value_precision(cls, value: float | None) -> float | None:
+        """Require cent precision when gross value is known."""
+
+        if value is None:
+            return None
+        return _require_decimal_places(value, maximum=2, field_name="gross_value")
+
     @field_validator("reasons", "limitations")
     @classmethod
     def require_unique_text_values(cls, values: list[str]) -> list[str]:
@@ -111,12 +145,18 @@ class ResultLedgerRecord(BaseModel):
         """Keep outcome and share fields consistent with status."""
 
         if self.status != ResultLedgerStatus.WON:
+            if self.gross_value is not None:
+                raise ValueError("gross_value requires won status")
             if self.share is not None:
                 raise ValueError("share records require won status")
             if self.share_status != ResultShareStatus.NOT_APPLICABLE:
                 raise ValueError("non-won ledgers require not_applicable share status")
             return self
         if self.share is not None:
+            if self.share.workflow_id != self.workflow_id:
+                raise ValueError("share workflow_id must match ledger workflow_id")
+            if self.gross_value != self.share.gross_value:
+                raise ValueError("share gross_value must match ledger gross_value")
             if self.share_status == ResultShareStatus.NOT_APPLICABLE:
                 self.share_status = ResultShareStatus.CALCULATED
             if self.share_status != ResultShareStatus.CALCULATED:
