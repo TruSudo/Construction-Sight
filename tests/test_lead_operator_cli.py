@@ -246,7 +246,7 @@ def test_list_cli_outputs_machine_readable_ledger_payload(tmp_path) -> None:
 
     assert result.exit_code == 0
     payload = json.loads(result.stdout)
-    assert payload[0]["record_id"] == "result-ledger:test"
+    assert payload[0]["record_id"] == _ledger().ledger_id
     assert payload[0]["payload"]["share_status"] == "pending_share_rate"
     assert payload[0]["payload"]["limitations"] == ["share rate is missing"]
 
