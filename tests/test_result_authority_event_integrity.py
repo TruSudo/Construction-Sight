@@ -34,6 +34,8 @@ def test_authority_event_must_resolve_to_immutable_ledger_revision() -> None:
 
     with managed_session(factory) as session:
         store_lead_workflow_record(session, workflow)
+
+    with managed_session(factory) as session:
         apply_authoritative_result(
             session,
             workflow_id=workflow.workflow_id,
