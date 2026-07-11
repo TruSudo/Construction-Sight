@@ -120,6 +120,10 @@ def _build_revision(
             raise ValueError("share_rate may be provided only for won results")
     if status == ResultLedgerStatus.WON and gross_value is None and share_rate is not None:
         raise ValueError("share_rate requires gross_value")
+    if gross_value is not None:
+        _require_decimal_places(gross_value, maximum=2, field_name="gross_value")
+    if share_rate is not None:
+        _require_decimal_places(share_rate, maximum=6, field_name="share_rate")
 
     share = None
     share_status = ResultShareStatus.NOT_APPLICABLE
@@ -190,6 +194,23 @@ def _share_id(ledger_id: str, gross_value: float, share_rate: float) -> str:
     rate_text = f"{share_rate:.{rate_places}f}"
     basis = "|".join([ledger_id, f"{gross_value:.2f}", rate_text])
     return f"result-share:{_short_hash(basis)}"
+
+
+def _require_decimal_places(
+    value: float,
+    *,
+    maximum: int,
+    field_name: str,
+) -> None:
+    """Require finite input precision for newly constructed result revisions."""
+
+    decimal_value = Decimal(str(value))
+    exponent = decimal_value.as_tuple().exponent
+    if not isinstance(exponent, int):
+        raise ValueError(f"{field_name} must be finite")
+    decimal_places = max(0, -exponent)
+    if decimal_places > maximum:
+        raise ValueError(f"{field_name} must use at most {maximum} decimal places")
 
 
 def _short_hash(value: str) -> str:
