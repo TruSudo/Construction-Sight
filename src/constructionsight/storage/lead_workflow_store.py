@@ -246,7 +246,7 @@ def store_result_share_record(
     session: Session,
     share: ResultShareRecord,
 ) -> ResultShareRecordRow:
-    """Insert or update a calculated result share record."""
+    """Insert an immutable share row or accept an exact idempotent replay."""
 
     session.flush()
     payload_json = _payload_json(share.model_dump(mode="json"))
@@ -266,11 +266,16 @@ def store_result_share_record(
         )
         session.add(existing)
         return existing
-    existing.workflow_id = share.workflow_id
-    existing.gross_value = share.gross_value
-    existing.share_rate = share.share_rate
-    existing.share_value = share.share_value
-    existing.payload_json = payload_json
+    if (
+        existing.workflow_id != share.workflow_id
+        or existing.gross_value != share.gross_value
+        or existing.share_rate != share.share_rate
+        or existing.share_value != share.share_value
+        or existing.payload_json != payload_json
+    ):
+        raise ValueError(
+            f"result share identity collision with different content: {share.share_record_id}"
+        )
     return existing
 
 
@@ -278,7 +283,7 @@ def store_result_ledger_record(
     session: Session,
     ledger: ResultLedgerRecord,
 ) -> ResultLedgerRecordRow:
-    """Insert or update a result ledger record and optional share."""
+    """Insert an immutable ledger row or accept a semantic idempotent replay."""
 
     session.flush()
     payload_json = _payload_json(ledger.to_dict())
@@ -304,18 +309,36 @@ def store_result_ledger_record(
         )
         session.add(existing)
     else:
-        existing.workflow_id = ledger.workflow_id
-        existing.package_id = ledger.package_id
-        existing.status = ledger.status.value
-        existing.decided_date = decided_date
-        existing.gross_value = ledger.gross_value
-        existing.share_status = ledger.share_status.value
-        existing.share_record_id = share_record_id
-        existing.observed_created_at = ledger.created_at.isoformat()
-        existing.payload_json = payload_json
+        indexed_values_match = (
+            existing.workflow_id == ledger.workflow_id
+            and existing.package_id == ledger.package_id
+            and existing.status == ledger.status.value
+            and existing.decided_date == decided_date
+            and existing.gross_value == ledger.gross_value
+            and existing.share_status == ledger.share_status.value
+            and existing.share_record_id == share_record_id
+        )
+        payload_values_match = _result_ledger_semantic_payload(
+            existing.payload_json
+        ) == _result_ledger_semantic_payload(payload_json)
+        if not indexed_values_match or not payload_values_match:
+            raise ValueError(
+                "result ledger identity collision with different content: "
+                f"{ledger.ledger_id}"
+            )
     if ledger.share is not None:
         store_result_share_record(session, ledger.share)
     return existing
+
+
+def _result_ledger_semantic_payload(payload_json: str) -> str:
+    """Return ledger content excluding the non-identity observation timestamp."""
+
+    data = json.loads(payload_json)
+    if not isinstance(data, dict):
+        raise ValueError("result ledger payload must be a JSON object")
+    data.pop("created_at", None)
+    return _payload_json({str(key): value for key, value in data.items()})
 
 
 def _payload_json(payload: dict[str, object]) -> str:
