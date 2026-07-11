@@ -2,7 +2,7 @@
 
 ConstructionSight is a lawful public-record construction intelligence platform focused initially on San Bernardino County and Riverside County, California.
 
-The platform is designed to discover, verify, normalize, store, and analyze public construction, planning, entitlement, CEQA, permit, contractor, parcel, and agenda data. Current implementation is strongest in source-neutral models, deterministic services, evidence-first workflow logic, persistence for core post-enrichment records, layered source-status/readiness/audit/checklist/planning governance, controlled registry-status apply, consolidated post-enrichment lead operator tooling, and test-backed architecture. Live source integrations and operator UI remain planned work unless expressly marked otherwise.
+The platform is designed to discover, verify, normalize, store, and analyze public construction, planning, entitlement, CEQA, permit, contractor, parcel, and agenda data. Current implementation is strongest in source-neutral models, deterministic services, evidence-first workflow logic, persistence for core upstream and post-enrichment records, layered source-status/readiness/audit/checklist/planning governance, controlled registry-status apply, read-only upstream operator tooling, consolidated post-enrichment lead operator tooling, and test-backed architecture. Live source integrations and operator UI remain planned work unless expressly marked otherwise.
 
 ## Operating Boundary
 
@@ -47,6 +47,7 @@ lawful public-record intake
   -> permit snapshot and transition detection
   -> contractor identity
   -> decision records
+  -> read-only upstream operator inspection
   -> opportunity enrichment
   -> lead review package
   -> lead dedupe
@@ -189,6 +190,16 @@ Decision records preserve source kind, decision kind, title, normalized title, A
 
 See `docs/architecture/decision_record_spine.md` for the decision record contract.
 
+## Upstream Operator Doctrine
+
+ConstructionSight exposes persisted permit snapshots, permit transitions, contractor identities, decision records, parcel core records, and site-resolution results through the read-only `constructionsight-upstream` command.
+
+List and detail results preserve the complete stored JSON payload alongside indexed source, site, APN, county, status, confidence, and observed-time fields. Filters are explicit per record family. Unsupported filters and malformed payload JSON fail instead of being ignored or flattened.
+
+The command does not edit these records. Generic mutation would bypass their source evidence, normalization, transition detection, contractor-resolution, geometry, confidence, and site-resolution rules. Future writes must be domain-specific and use canonical builders with stale-state, correction, supersession, and audit behavior.
+
+See `docs/architecture/upstream_operator_cli.md` for the read-only operator contract.
+
 ## Opportunity Enrichment Doctrine
 
 ConstructionSight combines parcel/site, permit transition, contractor identity, and decision signals into explainable opportunity enrichment reports.
@@ -233,7 +244,7 @@ See:
 - Opportunity scoring uses a versioned default profile; additional profiles must be introduced explicitly with doctrine and tests.
 - Lead workflow transitions preserve unique event history and are constrained by a status matrix; override/reopen behavior is not implemented.
 - Result ledgers distinguish pending gross value, pending share rate, calculated share, and not-applicable share states. Operator mutation is intentionally withheld because authoritative outcome replacement/history rules are not yet defined.
-- Post-enrichment lead records now have consolidated list/detail access and governed workflow transitions. Dedicated permit, contractor, decision, parcel-core, and site-resolution action/list/detail commands remain pending.
+- Upstream permit, contractor, decision, parcel, and site-resolution records now have consolidated read-only list/detail access. Generic mutation remains blocked; future writes require domain-specific governed actions.
 - No external outreach-sending behavior is implemented or implied.
 
 ## Forward Cleanup Doctrine
@@ -244,4 +255,4 @@ Do not claim Regrid or Shovels parity merely because model layers exist. Parity 
 
 ## Phase 1 Status
 
-Repository foundation initialized. CEQAnet public-record intake has guarded operator and archive tooling, but CEQAnet remains contract-ready rather than live production coverage. Universal intake, layered source-governance reporting/checklist/planning/controlled apply, opportunity transition intake, parcel/site resolution, parcel source registry, schema preview, row preview, parcel core record, geometry normalization, parcel-backed site resolution, permit transitions, contractor identity, decision records, opportunity enrichment, lead review, dedupe, workflow status, result ledger, consolidated lead operator access, and storage-summary reporting now exist as tested model/service/operator-support architecture. The next required phases are evidence-backed manual verification of individual sources, topology-grade geometry, dedicated upstream action/list/detail operator commands, verified live adapter execution, optional preview archive persistence, and explicit result-ledger correction/supersession doctrine before any ledger mutation command.
+Repository foundation initialized. CEQAnet public-record intake has guarded operator and archive tooling, but CEQAnet remains contract-ready rather than live production coverage. Universal intake, layered source-governance reporting/checklist/planning/controlled apply, opportunity transition intake, parcel/site resolution, parcel source registry, schema preview, row preview, parcel core record, geometry normalization, parcel-backed site resolution, permit transitions, contractor identity, decision records, read-only upstream operator access, opportunity enrichment, lead review, dedupe, workflow status, result ledger, consolidated lead operator access, and storage-summary reporting now exist as tested model/service/operator-support architecture. The next required phases are evidence-backed manual verification of individual sources, topology-grade geometry, domain-specific governed upstream write actions where justified, verified live adapter execution, optional preview archive persistence, and explicit result-ledger correction/supersession doctrine before any ledger mutation command.
