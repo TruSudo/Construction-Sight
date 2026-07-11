@@ -19,6 +19,7 @@ from constructionsight.lead_workflow_models import (
     LeadWorkflowStatus,
 )
 from constructionsight.result_ledger_models import ResultLedgerRecord, ResultLedgerStatus
+from constructionsight.result_ledger_service import build_result_ledger_record
 from constructionsight.storage.database import (
     create_database_engine,
     initialize_database,
@@ -59,10 +60,8 @@ def _workflow(status: LeadWorkflowStatus = LeadWorkflowStatus.MONITOR) -> LeadWo
 
 
 def _ledger() -> ResultLedgerRecord:
-    return ResultLedgerRecord(
-        ledger_id="result-ledger:test",
-        workflow_id="lead-workflow:test",
-        package_id="lead-review:test",
+    return build_result_ledger_record(
+        workflow=_workflow(),
         status=ResultLedgerStatus.WON,
         gross_value=2500.0,
         reasons=["operator confirmed contract result"],
