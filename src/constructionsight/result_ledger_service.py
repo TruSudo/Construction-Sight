@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Iterable
 from datetime import date
-from typing import Iterable
 
 from constructionsight.lead_workflow_models import LeadWorkflowRecord
 from constructionsight.result_ledger_models import (
