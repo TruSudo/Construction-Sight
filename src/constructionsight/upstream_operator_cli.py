@@ -57,7 +57,10 @@ def list_records(
         int,
         typer.Option(min=1, max=1000, help="Maximum records to return."),
     ] = 100,
-    status: Annotated[str | None, typer.Option(help="Exact indexed status filter.")] = None,
+    status: Annotated[
+        str | None,
+        typer.Option(help="Exact indexed status filter."),
+    ] = None,
     source_key: Annotated[
         str | None,
         typer.Option(help="Exact source key filter."),
@@ -70,8 +73,14 @@ def list_records(
         str | None,
         typer.Option(help="Exact site or primary-site key filter."),
     ] = None,
-    apn: Annotated[str | None, typer.Option(help="Exact APN filter.")] = None,
-    county: Annotated[str | None, typer.Option(help="Exact county filter.")] = None,
+    apn: Annotated[
+        str | None,
+        typer.Option(help="Exact APN filter."),
+    ] = None,
+    county: Annotated[
+        str | None,
+        typer.Option(help="Exact county filter."),
+    ] = None,
     json_output: Annotated[
         bool,
         typer.Option("--json-output", help="Print machine-readable JSON."),
@@ -109,6 +118,9 @@ def list_records(
     table.add_column("Confidence")
     table.add_column("Observed")
     for record in records:
+        confidence = (
+            "" if record.confidence_score is None else str(record.confidence_score)
+        )
         table.add_row(
             record.record_id,
             record.status or "",
@@ -117,7 +129,7 @@ def list_records(
             record.site_key or "",
             record.apn or "",
             record.county or "",
-            "" if record.confidence_score is None else str(record.confidence_score),
+            confidence,
             record.observed_at or "",
         )
     console.print(table)
