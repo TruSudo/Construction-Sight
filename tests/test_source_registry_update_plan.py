@@ -38,6 +38,21 @@ def _source() -> PublicSource:
     )
 
 
+def _other_source() -> PublicSource:
+    return PublicSource(
+        jurisdiction=Jurisdiction(
+            name="Other City",
+            county="Riverside",
+            jurisdiction_type="city",
+        ),
+        source_name="Other Source",
+        source_type=SourceType.CITY_PORTAL,
+        platform_family=PlatformFamily.TYLER_ENERGOV,
+        public_url="https://example.invalid/other",
+        verification_status=VerificationStatus.UNVERIFIED,
+    )
+
+
 def _registry_json() -> str:
     return """
     [
@@ -98,18 +113,6 @@ def _reachable(source: PublicSource) -> HttpReachabilityResult:
     )
 
 
-def _partial_plan() -> tuple[PublicSource, object]:
-    source = _source()
-    plan = build_source_registry_update_plan(
-        [source],
-        default_adapter_family_specs(),
-        check_http=True,
-        http_checker=_reachable,
-        observations=[_complete_observation()],
-    )
-    return source, plan
-
-
 def test_update_plan_has_no_updates_without_observations() -> None:
     report = build_source_registry_update_plan(
         [_source()],
@@ -120,6 +123,7 @@ def test_update_plan_has_no_updates_without_observations() -> None:
     row = report.rows[0]
 
     assert report.update_count == 0
+    assert len(report.registry_digest) == 64
     assert len(report.plan_digest) == 64
     assert row.update_required is False
     assert row.proposed_source_payload is None
@@ -157,6 +161,7 @@ def test_plan_digest_excludes_generation_timestamps() -> None:
         observations=[_complete_observation()],
     )
 
+    assert first.registry_digest == second.registry_digest
     assert first.plan_digest == second.plan_digest
 
 
@@ -177,6 +182,7 @@ def test_apply_updates_only_the_approved_status_change() -> None:
     assert updated[0].verification_status == VerificationStatus.PARTIAL
     assert report.applied_count == 1
     assert report.registry_changed is True
+    assert report.original_registry_digest == plan.registry_digest
     assert report.original_registry_digest != report.updated_registry_digest
     assert report.rows[0].evidence_refs == ["manual:test"]
 
@@ -198,6 +204,39 @@ def test_apply_rejects_tampered_plan_content() -> None:
         )
 
 
+def test_apply_rejects_tampered_action_counts() -> None:
+    source = _source()
+    plan = build_source_registry_update_plan(
+        [source],
+        default_adapter_family_specs(),
+        observations=[_complete_observation()],
+    )
+    plan.action_counts = {"keep_unverified": 1}
+
+    with pytest.raises(SourceRegistryApplyError, match="action counts"):
+        apply_source_registry_update_plan(
+            [source],
+            plan,
+            approved_plan_digest=plan.plan_digest,
+        )
+
+
+def test_apply_rejects_reordered_registry_snapshot() -> None:
+    sources = [_source(), _other_source()]
+    plan = build_source_registry_update_plan(
+        sources,
+        default_adapter_family_specs(),
+        observations=[_complete_observation()],
+    )
+
+    with pytest.raises(SourceRegistryApplyError, match="current registry digest"):
+        apply_source_registry_update_plan(
+            list(reversed(sources)),
+            plan,
+            approved_plan_digest=plan.plan_digest,
+        )
+
+
 def test_apply_rejects_stale_registry_source() -> None:
     source = _source()
     plan = build_source_registry_update_plan(
@@ -207,7 +246,7 @@ def test_apply_rejects_stale_registry_source() -> None:
     )
     changed_source = source.model_copy(update={"confidence_score": 20})
 
-    with pytest.raises(SourceRegistryApplyError, match="changed after plan generation"):
+    with pytest.raises(SourceRegistryApplyError, match="current registry digest"):
         apply_source_registry_update_plan(
             [changed_source],
             plan,
@@ -250,7 +289,30 @@ def test_source_registry_update_plan_cli_writes_json(tmp_path) -> None:
     assert result.exit_code == 0
     assert output_path.exists()
     assert '"source_count": 1' in output_path.read_text(encoding="utf-8")
+    assert "Registry digest:" in result.stdout
     assert "Plan digest:" in result.stdout
+
+
+def test_source_registry_plan_cli_refuses_registry_as_output(tmp_path) -> None:
+    registry_path = tmp_path / "sources.json"
+    registry_path.write_text(_registry_json(), encoding="utf-8")
+    original = registry_path.read_text(encoding="utf-8")
+    runner = CliRunner()
+
+    result = runner.invoke(
+        app,
+        [
+            "plan",
+            str(registry_path),
+            "--output",
+            str(registry_path),
+            "--overwrite",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "plan output path must differ from registry input path" in result.stdout
+    assert registry_path.read_text(encoding="utf-8") == original
 
 
 def test_source_registry_apply_cli_writes_separate_registry_and_audit(tmp_path) -> None:
@@ -300,6 +362,49 @@ def test_source_registry_apply_cli_writes_separate_registry_and_audit(tmp_path) 
     assert original_payload[0]["verification_status"] == "unverified"
     assert updated_payload[0]["verification_status"] == "partial"
     assert audit_payload["applied_count"] == 1
+    assert audit_path.stat().st_mtime_ns <= updated_path.stat().st_mtime_ns
+
+
+def test_source_registry_apply_cli_refuses_output_equal_to_registry(tmp_path) -> None:
+    registry_path = tmp_path / "sources.json"
+    observations_path = tmp_path / "observations.json"
+    plan_path = tmp_path / "plan.json"
+    audit_path = tmp_path / "apply_audit.json"
+    registry_path.write_text(_registry_json(), encoding="utf-8")
+    observations_path.write_text(_observation_json(), encoding="utf-8")
+    runner = CliRunner()
+    runner.invoke(
+        app,
+        [
+            "plan",
+            str(registry_path),
+            "--observations-path",
+            str(observations_path),
+            "--output",
+            str(plan_path),
+        ],
+    )
+    plan_payload = json.loads(plan_path.read_text(encoding="utf-8"))
+
+    result = runner.invoke(
+        app,
+        [
+            "apply",
+            str(registry_path),
+            str(plan_path),
+            "--approved-plan-digest",
+            plan_payload["plan_digest"],
+            "--audit-output",
+            str(audit_path),
+            "--output",
+            str(registry_path),
+            "--apply",
+            "--overwrite",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "updated registry output path must differ from registry input path" in result.stdout
 
 
 def test_source_registry_apply_cli_requires_explicit_apply_flag(tmp_path) -> None:
