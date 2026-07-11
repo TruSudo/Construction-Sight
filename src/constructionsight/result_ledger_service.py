@@ -26,7 +26,7 @@ def build_result_ledger_record(
 ) -> ResultLedgerRecord:
     """Build an immutable content-addressed result row for a workflow."""
 
-    normalized_reasons = reasons or []
+    normalized_reasons = sorted(reasons or [])
     share = None
     share_status = ResultShareStatus.NOT_APPLICABLE
     limitations: list[str] = []
