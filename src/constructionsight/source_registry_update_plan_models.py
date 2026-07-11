@@ -44,6 +44,7 @@ class SourceRegistryUpdatePlanReport(BaseModel):
     source_count: int = Field(ge=0)
     update_count: int = Field(ge=0)
     action_counts: dict[str, int] = Field(default_factory=dict)
+    registry_digest: str = Field(min_length=64, max_length=64)
     plan_digest: str = Field(min_length=64, max_length=64)
     rows: list[SourceRegistryUpdatePlanRow] = Field(default_factory=list)
     generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
@@ -52,6 +53,8 @@ class SourceRegistryUpdatePlanReport(BaseModel):
     def from_rows(
         cls,
         rows: list[SourceRegistryUpdatePlanRow],
+        *,
+        registry_digest: str,
     ) -> SourceRegistryUpdatePlanReport:
         """Build plan summary counts and a stable approval digest from rows."""
 
@@ -59,7 +62,11 @@ class SourceRegistryUpdatePlanReport(BaseModel):
             source_count=len(rows),
             update_count=sum(1 for row in rows if row.update_required),
             action_counts=dict(Counter(row.planned_action for row in rows)),
-            plan_digest=compute_source_registry_update_plan_digest(rows),
+            registry_digest=registry_digest,
+            plan_digest=compute_source_registry_update_plan_digest(
+                rows,
+                registry_digest=registry_digest,
+            ),
             rows=rows,
         )
 
@@ -71,15 +78,20 @@ class SourceRegistryUpdatePlanReport(BaseModel):
 
 def compute_source_registry_update_plan_digest(
     rows: list[SourceRegistryUpdatePlanRow],
+    *,
+    registry_digest: str,
 ) -> str:
-    """Return a deterministic SHA-256 digest for approval-significant plan content."""
+    """Return a deterministic digest for approval-significant plan content."""
 
-    canonical_rows = [
-        row.model_dump(mode="json", exclude={"generated_at"})
-        for row in rows
-    ]
+    canonical_payload = {
+        "registry_digest": registry_digest,
+        "rows": [
+            row.model_dump(mode="json", exclude={"generated_at"})
+            for row in rows
+        ],
+    }
     encoded = json.dumps(
-        canonical_rows,
+        canonical_payload,
         sort_keys=True,
         separators=(",", ":"),
         ensure_ascii=True,
