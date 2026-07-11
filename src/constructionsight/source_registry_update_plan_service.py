@@ -33,7 +33,7 @@ def build_source_registry_update_plan(
 ) -> SourceRegistryUpdatePlanReport:
     """Build a dry-run registry update plan without writing registry files."""
 
-    source_index = {_source_key(source): source for source in sources}
+    source_index = {source_registry_key(source): source for source in sources}
     promotion_plan = build_source_promotion_plan(
         sources,
         adapter_specs,
@@ -67,6 +67,7 @@ def _update_row(
         proposed_source_payload=proposed_payload if update_required else None,
         reasons=plan_row.reasons,
         limitations=_limitations(plan_row.limitations, update_required),
+        evidence_refs=plan_row.evidence_refs,
         next_action=_next_action(plan_row.planned_action, update_required),
     )
 
@@ -101,7 +102,9 @@ def _next_action(action: SourcePromotionPlanAction, update_required: bool) -> st
     return "review proposed failed status before any explicit apply workflow"
 
 
-def _source_key(source: PublicSource) -> str:
+def source_registry_key(source: PublicSource) -> str:
+    """Return the canonical source key used across verification workflows."""
+
     evidence_package = build_source_verification_evidence_package([source], {}, check_http=False)
     return evidence_package.rows[0].source_key
 
