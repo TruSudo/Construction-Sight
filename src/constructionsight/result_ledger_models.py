@@ -58,7 +58,7 @@ class ResultShareRecord(BaseModel):
 
 
 class ResultLedgerRecord(BaseModel):
-    """Outcome ledger row for one lead workflow."""
+    """Immutable outcome ledger row for one lead workflow."""
 
     ledger_id: str = Field(min_length=1)
     workflow_id: str = Field(min_length=1)
@@ -111,5 +111,58 @@ class ResultLedgerRecord(BaseModel):
 
     def to_dict(self) -> dict[str, Any]:
         """Return deterministic JSON-safe ledger payload."""
+
+        return self.model_dump(mode="json")
+
+
+class ResultLedgerAuthorityRecord(BaseModel):
+    """Current authoritative result pointer for one workflow."""
+
+    authority_id: str = Field(min_length=1)
+    workflow_id: str = Field(min_length=1)
+    current_ledger_id: str = Field(min_length=1)
+    revision: int = Field(ge=1)
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a JSON-safe authority payload."""
+
+        return self.model_dump(mode="json")
+
+
+class ResultLedgerAuthorityEvent(BaseModel):
+    """Append-only change to the authoritative ledger pointer."""
+
+    event_id: str = Field(min_length=1)
+    workflow_id: str = Field(min_length=1)
+    previous_ledger_id: str | None = None
+    current_ledger_id: str = Field(min_length=1)
+    revision: int = Field(ge=1)
+    reason: str = Field(min_length=1)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    @model_validator(mode="after")
+    def require_actual_authority_change(self) -> ResultLedgerAuthorityEvent:
+        """Reject events that do not change the authoritative ledger."""
+
+        if self.previous_ledger_id == self.current_ledger_id:
+            raise ValueError("authority event must change the current ledger")
+        return self
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a JSON-safe authority-event payload."""
+
+        return self.model_dump(mode="json")
+
+
+class ResultLedgerAuthorityApplyReport(BaseModel):
+    """Audit-safe result of one authoritative ledger apply."""
+
+    authority: ResultLedgerAuthorityRecord
+    event: ResultLedgerAuthorityEvent
+    ledger: ResultLedgerRecord
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a JSON-safe apply report."""
 
         return self.model_dump(mode="json")
