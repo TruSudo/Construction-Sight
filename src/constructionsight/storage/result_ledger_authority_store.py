@@ -54,7 +54,7 @@ def compare_and_swap_result_ledger_authority_record(
     """Atomically replace a current pointer only when reviewed state is unchanged."""
 
     payload_json = _payload_json(authority.to_dict())
-    result = session.execute(
+    updated_row_id = session.execute(
         update(ResultLedgerAuthorityRecordRow)
         .where(
             ResultLedgerAuthorityRecordRow.workflow_id == authority.workflow_id,
@@ -69,15 +69,16 @@ def compare_and_swap_result_ledger_authority_record(
             observed_updated_at=authority.updated_at.isoformat(),
             payload_json=payload_json,
         )
-    )
-    if result.rowcount != 1:
+        .returning(ResultLedgerAuthorityRecordRow.id)
+    ).scalar_one_or_none()
+    if updated_row_id is None:
         raise ValueError(
             "result ledger authority changed after operator review for workflow: "
             f"{authority.workflow_id}"
         )
     return session.execute(
         select(ResultLedgerAuthorityRecordRow).where(
-            ResultLedgerAuthorityRecordRow.workflow_id == authority.workflow_id
+            ResultLedgerAuthorityRecordRow.id == updated_row_id
         )
     ).scalar_one()
 
