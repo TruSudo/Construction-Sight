@@ -57,9 +57,12 @@ class LeadWorkflowRecord(BaseModel):
         return values
 
     @model_validator(mode="after")
-    def require_status_event_consistency(self) -> LeadWorkflowRecord:
-        """Require the latest event to match current status when events exist."""
+    def require_event_integrity(self) -> LeadWorkflowRecord:
+        """Require unique event ids and latest-event status consistency."""
 
+        event_ids = [event.event_id for event in self.events]
+        if len(event_ids) != len(set(event_ids)):
+            raise ValueError("lead workflow event ids must be unique")
         if self.events and self.events[-1].current_status != self.status:
             raise ValueError("latest workflow event must match record status")
         return self
