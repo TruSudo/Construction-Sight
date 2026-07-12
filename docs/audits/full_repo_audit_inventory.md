@@ -1,167 +1,173 @@
 # Full-Repo Audit Inventory
 
-This audit reconciles the current ConstructionSight repository after controlled source-registry apply governance, consolidated post-enrichment lead operator tooling, read-only upstream record access, append-only result-ledger authority hardening, governed result authority operations, and GeoJSON/WKT topology-aware parcel geometry hardening.
+This document is the canonical repository-wide inventory for ConstructionSight. It distinguishes implemented runtime, resolved defects, planned capabilities, live-source maturity, persistence truth, operator exposure, and certification requirements.
+
+See [the repository certification protocol](repository_certification.md) and [the current implementation-status matrix](../architecture/current_implementation_status.md).
 
 ## Executive status
 
-ConstructionSight has a substantial tested model/service architecture for lawful public-record construction intelligence. Implemented strengths include source-neutral intake, guarded CEQAnet tooling, parcel/site reasoning with GeoJSON and WKT/EWKT topology containment, source-plane area-weighted centroid summaries, conservative CRS boundaries, permit movement, contractor identity, decision records, versioned opportunity enrichment, lead review and dedupe, matrix-constrained workflow status, append-only result ledger/share-state modeling, serialized result authority operations, layered source-governance reporting, controlled registry-status apply, dedicated persistence, storage-summary reporting, post-enrichment lead operator tooling, and read-only access to persisted upstream records.
+ConstructionSight has a substantial tested model/service architecture for lawful public-record construction intelligence. Implemented strengths include:
 
-This is not yet a production live-source platform. Most adapter families remain contract-ready or placeholder contracts, not verified recurring integrations. CEQAnet has guarded operator/archive tooling but is not production-grade recurring coverage. Controlled registry apply changes only an approved verification-status field and does not establish live coverage.
+- source-neutral intake and guarded CEQAnet tooling;
+- layered source status, readiness, audit, checklist, planning, and controlled apply governance;
+- parcel and site reasoning with GeoJSON and WKT/EWKT topology;
+- source-plane area-weighted polygon centroids and conservative CRS boundaries;
+- permit movement, contractor identity, and decision records;
+- versioned opportunity enrichment, lead review, and dedupe;
+- matrix-constrained lead workflow status;
+- immutable result revisions, explicit share state, serialized authority, and audit events;
+- dedicated persistence for core upstream and post-enrichment records;
+- read-only upstream inspection and governed lead/result actions; and
+- an executable complete tracked-tree certification gate.
 
-No external outreach-sending behavior is implemented or implied. A GUI/operator application remains planned.
+ConstructionSight is not yet a production recurring live-source platform. Most adapter families are contracts or planned integrations. CEQAnet has guarded execution and archive tooling but is not represented as production recurring coverage. Four canonical source-registry seed records remain unverified. No external outreach-sending behavior or GUI/operator application is implemented.
 
-## Status labels
+## Certification status model
 
-| Label | Meaning |
-|---|---|
-| Implemented | Runtime model, service, CLI, or audit logic exists in `src/constructionsight`. |
-| Tested | Dedicated test coverage exists in `tests`. |
-| Documented | Architecture, doctrine, matrix, or README documentation exists. |
-| Persisted | SQLAlchemy ORM/store coverage exists or the layer is deliberately fixture/config-backed. |
-| CLI/operator access | A script or Typer command exposes the function to an operator. |
-| Live source integrated | Lawful live execution is implemented and documented/tested as live. |
-| Planned | Identified but not implemented. |
+Certification is evaluated for an exact Git tree. A certifiable tree must pass the complete Python 3.11 and 3.12 matrix, all domain audits, the tracked-tree certification command, warning failure, clean-worktree verification, and diff hygiene.
+
+The active-defect count for a certified tree must be zero. Planned capabilities are not counted as defects when their absence is explicit, guarded, non-overclaiming, and recorded with an entry condition.
 
 ## Pipeline inventory
 
-| Layer | Implemented | Tested | Documented | Persisted | CLI/operator access | Live source integrated | Known limitation / required cleanup |
+| Layer | Implemented | Tested | Documented | Persisted | Operator access | Live source integrated | Current boundary |
 |---|---:|---:|---:|---:|---:|---:|---|
-| Lawful intake boundary | Yes | Yes | Yes | Partial | Yes | No | Preserve the public-access boundary in every source PR. |
-| Source registry | Yes | Yes | Yes | Yes/file-backed | Yes | No | Four seed records remain unverified; perform source-specific evidence review before promotion. |
-| Source readiness | Yes | Yes | Yes | No | Yes | No | Report-only; does not mutate verification status. |
-| Source audit package | Yes | Yes | Yes | No | Yes | No | Preserves URL/HTTP/redirect evidence but does not replace manual verification. |
-| Source verification checklist | Yes | Yes | Yes | No | Yes | No | Operator observations remain evidence-backed file/report records. |
-| Source promotion/update planning | Yes | Yes | Yes | No | Yes | No | Dry-run-first and limited to proposed verification-status changes. |
-| Controlled source registry apply | Yes | Yes | Yes | File-backed | Yes | No | Requires complete-registry and plan digests, evidence, status-only mutation, path separation, audit output, and explicit authorization. |
-| Adapter contracts | Yes | Yes | Yes | N/A | Yes | No | Contracts are not equivalent to live recurring integrations. |
-| CEQAnet guarded tooling | Yes | Yes | Yes | Partial | Yes | Limited/guarded | Complete source verification and recurring-run governance before stronger claims. |
-| Universal intake | Yes | Yes | Yes | Partial | Yes | No | Unknown/unmapped fields remain explicit; source breadth is limited. |
-| Opportunity transition intake | Yes | Yes | Yes | Partial | Yes | No | Candidate conversion is not an outreach system. |
-| External intelligence/gap spine | Yes | Yes | Yes | N/A | Yes | No | Capability modeling is not platform parity. |
-| Parcel source/schema/row preview | Yes | Yes | Yes | Config/report-backed | Yes | No | Add persisted import-batch audit only when live ingestion begins. |
-| Parcel core record | Yes | Yes | Yes | Yes | Read-only | No | List/detail access, raw geometry, hash, CRS labels, and compatible derived summaries exist; verified live import and domain-specific correction actions remain pending. |
-| Geometry normalization/topology | Yes | Yes | Yes | Payload | Partial | No | GeoJSON and WKT/EWKT Point/Polygon/MultiPolygon parsing preserves rings, holes, parts, optional extra dimensions, and embedded SRIDs. Polygon centroids are area-weighted in the source plane. Explicit projected or conflicting CRS blocks latitude/longitude summaries and containment. Governed CRS transforms, projection-aware calculations, and topology validity repair remain backlog. |
-| Parcel-backed site resolution | Yes | Yes | Yes | Yes | Read-only | No | Point and GeoJSON/WKT topology matches are distinguished from explicitly limited envelope fallback. Valid topology prevents bounding-box false positives, while explicit incompatible CRS is not compared to longitude/latitude hints. No survey-grade claim is made. |
-| Permit transition spine | Yes | Yes | Yes | Yes | Read-only | No | Snapshot and transition list/detail access exists; recurring live adapters and governed write actions remain pending. |
-| Contractor identity | Yes | Yes | Yes | Yes | Read-only | No | Identity list/detail access exists; CSLB live verification and governed correction actions remain pending. |
-| Decision records | Yes | Yes | Yes | Yes | Read-only | No | Decision list/detail access exists; agenda/staff-report adapters and governed write actions remain pending. |
-| Opportunity enrichment | Yes | Yes | Yes | Yes | Yes | No | Versioned scoring is persisted and exposed through lead list/detail commands. |
-| Lead review package | Yes | Yes | Yes | Yes | Yes | No | Full payload, reasons, limitations, and score remain operator-visible. |
-| Lead dedupe | Yes | Yes | Yes | Yes | Yes | No | Fingerprints and duplicate results are available through list/detail commands. |
-| Lead workflow status | Yes | Yes | Yes | Yes | Yes | No | List/detail, allowed-transition inspection, and explicit stale-state-protected transitions exist. |
-| Result ledger/share authority | Yes | Yes | Yes | Yes | Yes | No | `constructionsight-results` validates current/history views and permits only explicit exact-state initial selection or append-only correction. Immutable ledgers remain evidence; a unique authority head serializes writes and append-only events preserve operator action history. |
-| Outreach preview/sending | No | No | No | No | No | No | Planned only; no external action is implied. |
-| GUI/operator application | No | No | No | No | No | No | Planned only. |
+| Lawful intake boundary | Yes | Yes | Yes | Partial | Yes | No | Public-access constraints and unknown fields remain explicit. |
+| Source registry | Yes | Yes | Yes | File-backed | Yes | No | Seed status is distinct from verified usable coverage. |
+| Source readiness/audit/checklist/plans | Yes | Yes | Yes | Report/file-backed | Yes | No | Evidence and proposed actions do not mutate source state. |
+| Controlled source registry apply | Yes | Yes | Yes | File-backed | Yes | No | Full-snapshot, digest, evidence, identity, status-only, path, audit, and explicit-authorization controls apply. |
+| Adapter contracts | Yes | Yes | Yes | N/A | Yes | No | Contracts are not live-integration claims. |
+| CEQAnet guarded tooling | Yes | Yes | Yes | Partial | Yes | Guarded only | Bounded public execution, offline parsing, persistence planning/application, export, and archive verification exist. |
+| Universal intake | Yes | Yes | Yes | Partial | Yes | No | Source breadth remains limited. |
+| Opportunity transition intake | Yes | Yes | Yes | Partial | Yes | No | Candidate production is not outreach. |
+| External intelligence/gap spine | Yes | Yes | Yes | N/A | Yes | No | Capability models do not establish vendor parity. |
+| Parcel source/schema/row preview | Yes | Yes | Yes | Config/report-backed | Yes | No | Live import remains absent. |
+| Parcel core records | Yes | Yes | Yes | Yes | Read-only | No | Raw geometry, hash, CRS, and compatible summaries are preserved. |
+| Geometry normalization/topology | Yes | Yes | Yes | Payload | Internal | No | Supported GeoJSON/WKT topology and conservative CRS refusal exist; no survey-grade claim is made. |
+| Parcel-backed site resolution | Yes | Yes | Yes | Yes | Read-only | No | Exact point/topology signals are separated from explicit limited fallback. |
+| Permit snapshots/transitions | Yes | Yes | Yes | Yes | Read-only | No | Recurring live polling is planned capability. |
+| Contractor identities | Yes | Yes | Yes | Yes | Read-only | No | Live CSLB verification and governed correction are planned capability. |
+| Decision records | Yes | Yes | Yes | Yes | Read-only | No | Agenda/staff-report live adapters are planned capability. |
+| Opportunity enrichment | Yes | Yes | Yes | Yes | Yes | No | Score profile identity and full evidence are preserved. |
+| Lead review/dedupe | Yes | Yes | Yes | Yes | Yes | No | Review and duplicate evidence remain inspectable. |
+| Lead workflow status | Yes | Yes | Yes | Yes | Yes | No | Exact-state matrix-valid transitions append unique events. |
+| Result ledger/share authority | Yes | Yes | Yes | Yes | Yes | No | Immutable revisions and serialized exact-state authority govern corrections. |
+| Repository certification | Yes | Yes | Yes | N/A | Yes | N/A | Complete tracked-tree and CI policy validation is permanent. |
+| Outreach preview/sending | No | No | Planned | No | No | No | No external action is implied. |
+| GUI/operator application | No | No | Planned | No | No | No | CLI remains the supported interface. |
 
-## Current observed source-audit outcome
+## Active defect ledger
 
-A report-only HTTP audit against `data/source_registry.seed.json` observed:
+**No active defect may be present in a certified tree.**
 
-| Source | Redirect classification | Recommendation |
-|---|---|---|
-| CEQAnet State Clearinghouse | `cross_host_redirect` | `keep_unverified_reachable` |
-| CSLB Public License Search | `no_redirect` | `keep_unverified_reachable` |
-| San Bernardino County EZOP | `same_host_redirect` | `keep_unverified_reachable` |
-| Riverside County PLUS Online | `downgraded_to_http` | `keep_unverified_reachable` |
+Any newly discovered defect is added here immediately, invalidates certification, and blocks feature work until the entry is resolved and moved to the resolved-defect ledger. The certification PR itself remains incomplete while this ledger is nonempty or any executable audit finding remains.
 
-All four URLs were reachable in that observation, but all four records remain unverified. Neither the audit package nor controlled apply promotes a source without reviewed evidence.
+Current active entries: **none recorded in the canonical inventory**. CI remains the authoritative executable check for the exact tree.
 
-## Contradiction and defect ledger
+## Resolved defect ledger
 
-| ID | Severity | Area | Observed issue | Runtime truth / disposition |
+| ID | Severity | Area | Prior defect | Resolution |
 |---|---|---|---|---|
-| CS-AUDIT-001 | P1 | Persistence docs | Movement/identity persistence was previously marked missing. | Dedicated ORM/store coverage exists; fixed. |
-| CS-AUDIT-002 | P2 | Architecture docs | Lead dedupe/workflow/result documentation status was stale. | Dedicated docs exist; fixed. |
-| CS-AUDIT-003 | P2 | README | Broad limitations understated newer persistence coverage. | Language narrowed; monitor forward. |
-| CS-AUDIT-004 | P1 | Lead persistence | Post-enrichment workflow records were listed as pending storage. | Dedicated ORM/store coverage exists; fixed. |
-| CS-AUDIT-005 | P1 | Parcel persistence | Parcel core/site-resolution records were listed as pending. | Dedicated storage exists; fixed. |
-| CS-AUDIT-006 | P1 | Enrichment | Scoring weights were not profile-versioned. | Versioned profile identity is persisted; fixed. |
-| CS-AUDIT-007 | P1 | Workflow | Status events lacked a transition matrix. | Matrix enforcement and final-state immutability exist; fixed. |
-| CS-AUDIT-008 | P1 | Result ledger | Share uncertainty existed only in limitation text. | Explicit share-state fields exist and persist; fixed. |
-| CS-AUDIT-009 | P1 | Source maturity | Seed records and adapter contracts could be mistaken for verified sources. | Layered status/readiness/audit/checklist/apply governance separates maturity; fixed. |
-| CS-AUDIT-010 | P1 | Registry apply | Planning lacked a safe execution boundary. | Digest-bound, evidence-backed, status-only controlled apply exists; fixed. |
-| CS-AUDIT-011 | P1 | Workflow event identity | Repeating the same valid transition and reason after a cycle could reuse an event ID and overwrite prior event history. | Event identity includes workflow sequence; models reject duplicate IDs; repeated persisted cycles are tested; fixed. |
-| CS-AUDIT-012 | P1 | Result authority | Ledger IDs initially permitted differing outcomes without complete authority and concurrency doctrine. | Result histories are immutable linear chains; a unique per-workflow head serializes exact-ledger/revision compare-and-swap writes; every governed initial selection or correction appends an audit event; fixed. |
-| CS-AUDIT-013 | P2 | Lead operator exposure | Persisted post-enrichment records lacked consolidated list/detail/action access. | `constructionsight-leads` exposes list/detail, allowed transitions, and governed workflow transitions; fixed. |
-| CS-AUDIT-014 | P1 | Upstream operator boundary | Permit, contractor, decision, parcel, and site-resolution rows lacked consolidated inspection, while generic mutation would bypass their domain semantics. | `constructionsight-upstream` exposes full-payload list/detail access only. Unsupported filters and malformed payloads fail explicitly; generic mutation remains blocked. |
-| CS-AUDIT-015 | P1 | Result compatibility | New numeric constraints applied at model-load time would have invalidated older persisted result payloads. | Precision and non-won monetary rules are enforced by the canonical builder for new writes, while historical payloads remain readable; fixed before merge. |
-| CS-AUDIT-016 | P1 | Parcel topology | Polygon coordinate matches previously used only a bounding envelope, allowing concave shapes and holes to produce false parcel matches. | Verified GeoJSON Polygon/MultiPolygon longitude/latitude geometry now uses ring-preserving topology; fixed for supported topology. |
-| CS-AUDIT-017 | P1 | Geometry format and centroid | WKT polygons were unparsed, polygon centroids used coordinate averages, and explicit projected coordinates could be mistaken for latitude/longitude summaries or direct matches. | Shared GeoJSON/WKT/EWKT parsing now preserves topology and embedded SRIDs; centroids use exterior-minus-hole area weighting in the source plane; projected or conflicting CRS blocks geographic summaries and containment; fixed for supported formats with explicit remaining GIS limitations. |
+| CS-AUDIT-001 | P1 | Persistence docs | Movement and identity persistence was marked missing. | Dedicated ORM/store coverage exists and documentation is reconciled. |
+| CS-AUDIT-002 | P2 | Architecture docs | Lead dedupe, workflow, and result documentation was stale. | Dedicated architecture and status documentation exists. |
+| CS-AUDIT-003 | P2 | README | Broad limitations understated implemented persistence and operator scope. | Language is narrowed and certification guards future drift. |
+| CS-AUDIT-004 | P1 | Lead persistence | Post-enrichment workflow records lacked dedicated storage. | Indexed fields and full payloads are persisted. |
+| CS-AUDIT-005 | P1 | Parcel persistence | Parcel core and site-resolution results lacked dedicated storage. | Dedicated storage and round-trip validation exist. |
+| CS-AUDIT-006 | P1 | Enrichment | Scoring weights lacked profile version identity. | Versioned profile identity is persisted with reports. |
+| CS-AUDIT-007 | P1 | Workflow | Status events lacked a transition matrix. | Matrix enforcement and final-state immutability exist. |
+| CS-AUDIT-008 | P1 | Result ledger | Share uncertainty existed only in limitation prose. | Explicit share states are modeled and persisted. |
+| CS-AUDIT-009 | P1 | Source maturity | Seed records, reachability, contracts, and verified usable sources could be conflated. | Layered maturity governance separates each class. |
+| CS-AUDIT-010 | P1 | Registry apply | Source planning lacked a safe execution boundary. | Digest-bound, evidence-backed, status-only controlled apply exists. |
+| CS-AUDIT-011 | P1 | Workflow event identity | Repeated transition cycles could reuse an event ID and overwrite history. | Sequence participates in identity; collisions are rejected and tested. |
+| CS-AUDIT-012 | P1 | Result authority | Differing outcomes lacked immutable correction and concurrency doctrine. | Linear immutable revisions, exact-state authority heads, and append-only events exist. |
+| CS-AUDIT-013 | P2 | Lead operator exposure | Persisted post-enrichment records lacked consolidated inspection/action access. | Lead list/detail, transition inspection, and governed transition commands exist. |
+| CS-AUDIT-014 | P1 | Upstream operator boundary | Upstream records lacked consolidated inspection, while generic mutation could bypass provenance. | Full-payload read access exists and generic mutation is blocked. |
+| CS-AUDIT-015 | P1 | Result compatibility | New numeric constraints could invalidate historical persisted rows. | New writes are strict while legacy payloads remain readable. |
+| CS-AUDIT-016 | P1 | Parcel topology | Envelope-only matching allowed concavity and hole false positives. | Ring-preserving topology is used for supported geometry. |
+| CS-AUDIT-017 | P1 | Geometry format/centroid/CRS | WKT was unparsed, centroids used coordinate averages, and projected coordinates could be treated as geographic. | Shared parsing, area-weighted source-plane centroids, CRS conflict preservation, and direct-comparison refusal exist. |
+| CS-AUDIT-018 | P1 | Governance metadata | Standing doctrine and PR validation references became stale. | Doctrine issue and historical PR metadata are reconciled through GitHub API. |
+| CS-AUDIT-019 | P1 | Certification coverage | CI did not independently scan every tracked file or reject suppressions, skipped tests, transient files, broken links, invalid entrypoints, secrets, and dirty worktrees. | Permanent `constructionsight-certify` and hardened CI gates cover the complete tracked tree. |
+| CS-AUDIT-020 | P1 | Defect classification | Planned capabilities were labeled as partially fixed defects. | Resolved defects and planned capabilities are separate canonical ledgers. |
 
-## Persistence coverage ledger
+## Planned capability ledger
 
-| Layer | Persistence truth | Notes |
-|---|---|---|
-| Domain and intelligence records | Persisted | First-generation ORM/store coverage exists. |
-| Source registry | Persisted/config-backed | Seed/config storage plus file-backed controlled apply. |
-| Source readiness/audit/checklist/plans | Report/file-backed | Persist only if replay requirements justify dedicated tables. |
-| Source apply reports | Required JSON audit | Includes plan/registry digests and row-level evidence. |
-| Parcel preview layers | Report/config-backed | Generally ephemeral. |
-| Parcel core/site-resolution | Persisted | Indexed fields plus complete JSON payloads, raw geometry, hash, CRS labels, and compatibility-limited summaries; topology is derived from preserved raw evidence at resolution time. |
-| Permit snapshots/transitions | Persisted | Indexed fields plus complete JSON payloads. |
-| Contractor identities | Persisted | Indexed fields plus complete JSON payloads. |
-| Decision records | Persisted | Indexed fields plus complete JSON payloads. |
-| Opportunity enrichment | Persisted | Score/confidence/profile identity plus complete payload. |
-| Lead review/dedupe | Persisted | Indexed review/dedupe fields plus complete payloads. |
-| Lead workflows/events | Persisted | Indexed status/event fields plus complete payload and event history. |
-| Result ledgers/shares | Persisted, append-only | Indexed outcome/share state plus complete immutable revision payloads; full-history validation occurs before append. |
-| Result authority heads/events | Persisted | One unique compare-and-swap head per workflow plus immutable operator audit events; the head is concurrency control, not replacement evidence. |
+These are intentionally absent capabilities, not defects in the currently supported boundary.
 
-Persistence rule: generic tables are not equivalent to source-neutral models unless mapping is deliberate, lossless, and preserves full payloads, reasons, confidence, limitations, provenance, and future fields.
+| ID | Planned capability | Current guard | Entry condition |
+|---|---|---|---|
+| CS-PLAN-001 | Optional preview archives and nested child tables | Core persisted records remain lossless; report/config layers are explicitly ephemeral. | Add only when replay or query requirements justify schema expansion. |
+| CS-PLAN-002 | Verified recurring live source adapters | Contracts and guarded tools are not represented as production coverage. | Complete source-specific verification, recurring-run governance, and maturity promotion. |
+| CS-PLAN-003 | CRS transformation, projection-aware/geodesic calculations, and topology repair | Incompatible CRS is preserved and refused; no survey-grade conclusion is emitted. | Pin a GIS stack and define transformation provenance, axis order, grid behavior, accuracy, failure, and repair doctrine. |
+| CS-PLAN-004 | Domain-specific upstream correction actions | Generic mutation is unavailable. | Define record-family-specific stale-state, correction, supersession, provenance, and audit behavior. |
+| CS-PLAN-005 | Workflow reopen/override | Final states have no outgoing transitions. | Define explicit authority, reason, stale-state, and append-only event rules. |
+| CS-PLAN-006 | Outreach preview and sending | No sending path exists. | Implement human preview, explicit approval, duplicate suppression, compliance, evidence, and delivery audit first. |
+| CS-PLAN-007 | GUI/operator application | CLI and service boundaries remain authoritative. | Build after source maturity and operator workflows justify exposure. |
 
-## CLI/operator exposure ledger
+## Current source maturity
 
-| CLI/script area | Runtime exposure | Notes |
-|---|---|---|
-| Core intake, opportunity, gap, parcel preview, site resolution, and storage summary | Present | Existing operator surfaces remain available. |
-| Source status/readiness/audit/checklist/plan/apply | Present | Evidence and controlled mutation boundaries remain explicit. |
-| CEQAnet tooling | Present | Guarded fixture-to-archive command family exists. |
-| Consolidated upstream operator CLI | Present, read-only | `constructionsight-upstream` exposes permit snapshots/transitions, contractor identities, decision records, parcel core records, and site-resolution results. |
-| Consolidated lead operator CLI | Present | `constructionsight-leads` exposes enrichment, review, fingerprint, duplicate, workflow, event, ledger, and share records. |
-| Workflow transition action | Present | Requires `--apply`, expected current status, nonblank reason, payload/index integrity, and matrix-valid next status. |
-| Result authority inspection/correction | Present | `constructionsight-results current/history/record` requires explicit `--apply` for writes, exact current ledger ID or `none`, nonblank audit reason, canonical construction, transactional head/event updates, and stale-state rejection. |
-| Parcel topology evaluation | Internal service | Used by parcel-backed site resolution for supported GeoJSON/WKT topology; no standalone mutation, coordinate-transform, or boundary-proof command is implied. |
-| Upstream generic mutation | Absent by design | Observed and derived records may be changed only through future domain-specific governed actions. |
-| Outreach sending | Absent | No external sending behavior is implemented or implied. |
-| GUI/operator app | Absent | Planned only. |
-
-## Source maturity ledger
-
-| Maturity stage | ConstructionSight status |
+| Stage | Canonical status |
 |---|---|
-| Seed source | Four unverified records remain in `data/source_registry.seed.json`. |
+| Seed source records | Four unverified records. |
 | Readiness/audit/checklist evidence | Report-only workflows exist. |
-| Promotion/update plan | Dry-run plan and deterministic approval digest exist. |
-| Controlled registry apply | Evidence-gated status-only file apply exists. |
-| Verified usable source | Current canonical state remains zero verified usable sources. |
-| Contract-ready adapter | Registered families exist; this is not a coverage claim. |
-| Live read-only integration | Limited/guarded. |
+| Promotion/update planning | Deterministic dry-run plans and approval digests exist. |
+| Controlled registry apply | Evidence-gated status-only apply exists. |
+| Verified usable source | Zero in the canonical registry. |
+| Contract-ready adapters | Registered families exist; no coverage claim follows. |
+| Guarded live read-only execution | Limited CEQAnet tooling exists. |
 | Production recurring integration | Not established. |
-| Operator workflow | Source governance, CEQAnet, preview/audit, storage summary, upstream read-only, lead workflow, and governed result authority commands exist. |
 
-## Limitation and uncertainty preservation check
+A prior report-only HTTP observation classified CEQAnet as `cross_host_redirect`, CSLB as `no_redirect`, San Bernardino EZOP as `same_host_redirect`, and Riverside PLUS as `downgraded_to_http`. Reachability evidence does not promote verification status.
 
-The architecture must preserve, where applicable:
+## Persistence coverage
 
-- reasons and limitations;
-- confidence scores or confidence bands;
-- source keys, record IDs, and full normalized payloads;
-- provenance and evidence references;
-- lawful-access boundaries;
-- review-needed and unknown/unmapped states;
-- raw geometry, format, embedded and supplied CRS, CRS conflict, coordinate bounds, topology method, ring/hole structure, topology-validity limitation, source-plane centroid limitation, envelope-fallback reason, and non-survey-grade limitations;
-- workflow status-transition history and unique event identity;
-- stale-state expectations for operator mutations;
-- result share-state uncertainty;
-- result revision, predecessor, correction reason, immutable prior outcome history, serialized authority head, and authority events;
-- source verification and adapter maturity;
-- readiness, redirect, recommendation, and next-action evidence;
-- plan/apply digests and row-level audit outcomes.
+| Layer | Persistence truth |
+|---|---|
+| Domain and intelligence records | First-generation ORM/store coverage exists. |
+| Source registry | Seed/config plus controlled file-backed apply. |
+| Readiness/audit/checklist/plans | Report/file-backed by design. |
+| Source apply reports | Required JSON audit with digests and row-level outcomes. |
+| Parcel preview layers | Report/config-backed and intentionally ephemeral. |
+| Parcel core/site resolution | Indexed fields plus full payload, raw geometry, hashes, CRS, and compatible summaries. |
+| Permit snapshots/transitions | Indexed fields plus full payload. |
+| Contractor identities | Indexed fields plus full payload. |
+| Decision records | Indexed fields plus full payload. |
+| Enrichment/review/dedupe | Indexed operational fields plus full payload. |
+| Lead workflows/events | Indexed status/event fields plus append-only full history. |
+| Result ledgers/shares | Immutable append-only revisions with full-history validation. |
+| Result authority heads/events | Unique compare-and-swap head plus immutable operator events; the head is control state, not evidence replacement. |
 
-These are evidentiary controls, not cleanup noise. Future PRs must not delete or flatten them merely to simplify models, persistence, CLI output, or tests.
+Persistence is valid only when mapping is deliberate and preserves reasons, confidence, limitations, provenance, unknown fields, and future-compatible full payloads.
 
-## Forward cleanup enforcement
+## Operator exposure
 
-Every feature PR must update the implementation-status matrix or explicitly state why no status changed. Every new model or service must be reviewed for tests, documentation, persistence, CLI/operator need, lawful-access boundaries, limitation/provenance preservation, compatibility, and doctrine/runtime impact.
+| Area | Exposure |
+|---|---|
+| Core intake, opportunity, gap, parcel preview, site resolution, and storage summary | Present. |
+| Source status/readiness/audit/checklist/plan/apply | Present with evidence and mutation boundaries. |
+| CEQAnet fixture-to-archive tooling | Present and guarded. |
+| Upstream records | Full-payload list/detail only. |
+| Lead records | Consolidated list/detail plus governed workflow transitions. |
+| Result authority | Validated current/history plus explicit exact-state record/correction. |
+| Repository certification | Complete tracked-tree audit command. |
+| Generic upstream mutation | Absent by design. |
+| Outreach sending | Absent. |
+| GUI | Absent. |
 
-No PR should merge while it knowingly introduces doctrine/runtime drift, stale maturity claims, missing limitations, broken quality gates, backward-incompatible history reads, cross-CRS comparisons, geometry overclaims, or unreviewed persistence/CLI implications.
+## Limitation and uncertainty preservation
+
+Where applicable, the architecture must preserve:
+
+- reasons, limitations, confidence, and review-needed state;
+- source keys, source record IDs, full normalized payloads, provenance, and evidence references;
+- lawful-access and source-maturity boundaries;
+- unknown and unmapped fields;
+- raw geometry, format, embedded/supplied CRS, conflicts, coordinate bounds, topology method, rings, holes, validity limitations, centroid limitations, fallback reasons, and non-survey-grade boundaries;
+- workflow transitions, event sequence, unique identity, and stale-state expectations;
+- result share uncertainty, immutable revision chain, predecessor, correction reason, authority head, and authority events; and
+- source plan/apply digests and row-level audit outcomes.
+
+These fields are evidentiary controls, not cleanup noise.
+
+## Forward enforcement
+
+Every feature PR must reconcile runtime, tests, documentation, persistence, operator exposure, lawful access, provenance, compatibility, source maturity, and planned-capability boundaries. The complete certification matrix must pass on the exact final head. No PR may merge with a known defect, executable audit finding, unresolved review thread, stale status claim, hidden suppression, skipped test, or unreviewed mutation boundary.
