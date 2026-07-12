@@ -1,0 +1,61 @@
+name: PR98 status reconciliation
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - scripts/patch_pr98_status_docs.py
+      - .github/workflows/pr98-doc-reconciliation.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-validate-remove:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: agent/ceqanet-live-csv-proof-v3
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - run: python -m pip install -e ".[dev]"
+      - name: Apply exact documentation reconciliation
+        run: python scripts/patch_pr98_status_docs.py
+      - name: Remove temporary documentation tooling
+        run: |
+          git rm -f \
+            scripts/patch_pr98_status_docs.py \
+            .github/workflows/pr98-doc-reconciliation.yml
+      - name: Commit production documentation candidate
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "Reconcile CEQAnet live CSV proof status"
+      - name: Dependency integrity
+        run: python -m pip check
+      - name: Ruff
+        run: python -m ruff check src tests
+      - name: Mypy
+        run: python -m mypy src
+      - name: Compile
+        run: python -m compileall -q src tests
+      - name: Pytest
+        run: python -m pytest --strict-config --strict-markers -ra -W error
+      - name: Adapter audit
+        run: constructionsight audit-adapters
+      - name: Source coverage audit
+        run: constructionsight audit-source-coverage data/source_registry.seed.json
+      - name: Repository certification
+        run: python -m constructionsight.repository_certification --root . --require-clean-worktree
+      - name: Diff hygiene
+        run: git diff --check
+      - name: Push production candidate
+        run: git push origin HEAD:agent/ceqanet-live-csv-proof-v3
