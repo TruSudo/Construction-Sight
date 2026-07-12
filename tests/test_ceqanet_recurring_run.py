@@ -1,18 +1,20 @@
 from __future__ import annotations
 
 from datetime import UTC, date, datetime
-from typing import Any
 
+import pytest
 from pydantic import HttpUrl
 
 from constructionsight.ceqanet_recurring_run_models import (
     CeqanetAccessAssumptions,
     CeqanetRecurringQueryTemplate,
+    CeqanetRecurringRunDefinition,
     CeqanetRecurringRunExecution,
     CeqanetRunReadiness,
     CeqanetWindowField,
 )
 from constructionsight.ceqanet_recurring_run_service import (
+    assert_ceqanet_definition_evidence_current,
     build_ceqanet_recurring_run_definition,
     build_ceqanet_recurring_run_manifest,
     execute_ceqanet_recurring_run,
@@ -132,10 +134,18 @@ def _template() -> CeqanetRecurringQueryTemplate:
     )
 
 
-def _ready_definition() -> Any:
+def _ready_sources() -> list[PublicSource]:
+    return [_source(VerificationStatus.VERIFIED)]
+
+
+def _ready_checklist() -> SourceVerificationChecklistReport:
+    return _checklist(full=True)
+
+
+def _ready_definition() -> CeqanetRecurringRunDefinition:
     return build_ceqanet_recurring_run_definition(
-        [_source(VerificationStatus.VERIFIED)],
-        _checklist(full=True),
+        _ready_sources(),
+        _ready_checklist(),
         source_key="source:ceqanet-state-clearinghouse",
         query_template=_template(),
         timeout_seconds=9.0,
@@ -179,6 +189,7 @@ def test_ready_definition_and_manifest_are_deterministic() -> None:
     assert definition.definition_digest == repeated.definition_digest
     assert definition.registry_public_url == "https://ceqanet.opr.ca.gov/"
     assert definition.execution_base_url == "https://ceqanet.lci.ca.gov/"
+    assert any("attempt sequence uniqueness" in item for item in definition.limitations)
 
     manifest = build_ceqanet_recurring_run_manifest(
         definition,
@@ -203,16 +214,47 @@ def test_manifest_rejects_tampered_definition_digest() -> None:
     definition = _ready_definition()
     tampered = definition.model_copy(update={"source_name": "Changed source"})
 
-    try:
+    with pytest.raises(
+        ValueError,
+        match="CEQAnet recurring-run definition digest mismatch",
+    ):
         build_ceqanet_recurring_run_manifest(
             tampered,
             window_start=date(2026, 7, 1),
             window_end=date(2026, 7, 7),
         )
-    except ValueError as exc:
-        assert str(exc) == "CEQAnet recurring-run definition digest mismatch"
-    else:
-        raise AssertionError("tampered definition was accepted")
+
+
+def test_current_registry_drift_blocks_execution_authority() -> None:
+    definition = _ready_definition()
+
+    with pytest.raises(
+        ValueError,
+        match="current source registry digest does not match definition",
+    ):
+        assert_ceqanet_definition_evidence_current(
+            definition,
+            [_source(VerificationStatus.UNVERIFIED)],
+            _ready_checklist(),
+        )
+
+
+def test_current_checklist_drift_blocks_execution_authority() -> None:
+    definition = _ready_definition()
+    changed_row = _checklist_row(full=True).model_copy(
+        update={"observation_notes": "Evidence was re-reviewed and changed."}
+    )
+    changed_checklist = SourceVerificationChecklistReport.from_rows([changed_row])
+
+    with pytest.raises(
+        ValueError,
+        match="current checklist evidence digest does not match definition",
+    ):
+        assert_ceqanet_definition_evidence_current(
+            definition,
+            _ready_sources(),
+            changed_checklist,
+        )
 
 
 def test_execution_requires_explicit_authorization() -> None:
@@ -223,18 +265,19 @@ def test_execution_requires_explicit_authorization() -> None:
         window_end=date(2026, 7, 7),
     )
 
-    try:
+    with pytest.raises(
+        ValueError,
+        match="explicit live execution authorization is required",
+    ):
         execute_ceqanet_recurring_run(
             definition,
             manifest,
+            _ready_sources(),
+            _ready_checklist(),
             attempt_sequence=1,
             execute_live=False,
             client=_FakeClient(),
         )
-    except ValueError as exc:
-        assert str(exc) == "explicit live execution authorization is required"
-    else:
-        raise AssertionError("execution occurred without explicit authorization")
 
 
 def test_ready_manifest_executes_through_bounded_existing_executor() -> None:
@@ -249,6 +292,8 @@ def test_ready_manifest_executes_through_bounded_existing_executor() -> None:
     execution = execute_ceqanet_recurring_run(
         definition,
         manifest,
+        _ready_sources(),
+        _ready_checklist(),
         attempt_sequence=1,
         execute_live=True,
         client=client,
@@ -268,6 +313,8 @@ def test_ready_manifest_executes_through_bounded_existing_executor() -> None:
         definition,
         manifest,
         execution,
+        _ready_sources(),
+        _ready_checklist(),
     )
     assert verification.passed is True
     assert verification.findings == []
@@ -283,6 +330,8 @@ def test_verification_detects_execution_query_and_host_drift() -> None:
     execution = execute_ceqanet_recurring_run(
         definition,
         manifest,
+        _ready_sources(),
+        _ready_checklist(),
         attempt_sequence=1,
         execute_live=True,
         client=_FakeClient(),
@@ -297,6 +346,8 @@ def test_verification_detects_execution_query_and_host_drift() -> None:
         definition,
         manifest,
         tampered,
+        _ready_sources(),
+        _ready_checklist(),
     )
 
     assert verification.passed is False
@@ -304,10 +355,76 @@ def test_verification_detects_execution_query_and_host_drift() -> None:
     assert "snapshots[0] request_url host is outside manifest" in verification.findings
 
 
+def test_verification_detects_network_execution_flag_drift() -> None:
+    definition = _ready_definition()
+    manifest = build_ceqanet_recurring_run_manifest(
+        definition,
+        window_start=date(2026, 7, 1),
+        window_end=date(2026, 7, 7),
+    )
+    execution = execute_ceqanet_recurring_run(
+        definition,
+        manifest,
+        _ready_sources(),
+        _ready_checklist(),
+        attempt_sequence=1,
+        execute_live=True,
+        client=_FakeClient(),
+    ).model_copy(update={"network_executed": False})
+
+    verification = verify_ceqanet_recurring_run_execution(
+        definition,
+        manifest,
+        execution,
+        _ready_sources(),
+        _ready_checklist(),
+    )
+
+    assert verification.passed is False
+    assert "network_executed does not match executed request count" in verification.findings
+
+
+def test_manifest_semantic_drift_is_detected_even_with_recomputed_digest() -> None:
+    definition = _ready_definition()
+    manifest = build_ceqanet_recurring_run_manifest(
+        definition,
+        window_start=date(2026, 7, 1),
+        window_end=date(2026, 7, 7),
+    )
+    tampered = manifest.model_copy(
+        update={
+            "readiness": CeqanetRunReadiness.BLOCKED,
+            "blockers": ["tampered blocker"],
+        }
+    )
+    tampered = tampered.model_copy(update={"manifest_digest": tampered.computed_digest()})
+    execution = CeqanetRecurringRunExecution(
+        run_id=tampered.run_id,
+        attempt_sequence=1,
+        attempt_id="0" * 64,
+        definition_digest=definition.definition_digest,
+        manifest_digest=tampered.manifest_digest,
+        source_key=definition.source_key,
+        execution_report={},
+        network_executed=False,
+    )
+
+    verification = verify_ceqanet_recurring_run_execution(
+        definition,
+        tampered,
+        execution,
+        _ready_sources(),
+        _ready_checklist(),
+    )
+
+    assert verification.passed is False
+    assert "manifest readiness does not match definition" in verification.findings
+
+
 def test_access_assumption_blocker_prevents_ready_definition() -> None:
     definition = build_ceqanet_recurring_run_definition(
-        [_source(VerificationStatus.VERIFIED)],
-        _checklist(full=True),
+        _ready_sources(),
+        _ready_checklist(),
         source_key="source:ceqanet-state-clearinghouse",
         query_template=_template(),
         access_assumptions=CeqanetAccessAssumptions(has_captcha=True),
