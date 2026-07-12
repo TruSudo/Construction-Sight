@@ -1,4 +1,5 @@
 name: Source verification metadata governance
+# Trigger after workflow registration.
 
 on:
   pull_request:
