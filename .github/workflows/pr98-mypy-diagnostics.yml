@@ -1,0 +1,32 @@
+name: PR98 mypy diagnostics
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/pr98-mypy-diagnostics.yml
+      - src/constructionsight/ceqanet_csv_live_models.py
+      - src/constructionsight/ceqanet_csv_live_service.py
+      - src/constructionsight/ceqanet_csv_cli.py
+
+permissions:
+  contents: read
+
+jobs:
+  mypy-diagnostics:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - run: python -m pip install -e ".[dev]"
+      - name: Capture mypy output
+        run: python -m mypy src > /tmp/mypy.txt 2>&1 || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pr98-mypy-diagnostics
+          path: /tmp/mypy.txt
+      - name: Enforce mypy
+        run: python -m mypy src
