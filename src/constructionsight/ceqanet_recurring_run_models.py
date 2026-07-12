@@ -78,6 +78,16 @@ class CeqanetRecurringQueryTemplate(BaseModel):
             raise ValueError("query template values must be unique")
         return normalized
 
+    @model_validator(mode="after")
+    def reject_unsupported_text_terms(self) -> CeqanetRecurringQueryTemplate:
+        """Reject filters not represented by the verified CEQAnet search contract."""
+
+        if self.text_terms:
+            raise ValueError(
+                "CEQAnet recurring-run text_terms are unsupported by the verified search contract"
+            )
+        return self
+
 
 class CeqanetRecurringRunDefinition(BaseModel):
     """Immutable reviewed definition for a recurring CEQAnet run family."""
