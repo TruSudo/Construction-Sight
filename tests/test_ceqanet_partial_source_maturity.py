@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -35,7 +34,7 @@ def test_ceqanet_partial_maturity_is_evidenced_but_execution_blocked() -> None:
     assert len(ceqanet_sources) == 1
     ceqanet = ceqanet_sources[0]
     assert ceqanet.verification_status is VerificationStatus.PARTIAL
-    assert ceqanet.last_checked_date == date(2026, 7, 12)
+    assert ceqanet.last_checked_date is None
 
     evidence_path = EVIDENCE_DIR / "ceqanet_public_access_2026-07-12.json"
     checklist_path = EVIDENCE_DIR / "ceqanet_checklist_2026-07-12.json"
