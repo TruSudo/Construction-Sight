@@ -1,25 +1,24 @@
-name: CEQAnet bounded source evidence collection
+name: CEQAnet evidence repair and partial maturity
 
 on:
   push:
     branches:
-      - agent/ceqanet-source-verification
+      - agent/repair-ceqanet-evidence-partial
     paths:
-      - scripts/collect_ceqanet_source_evidence.py
       - .github/workflows/ceqanet-source-evidence.yml
 
 permissions:
   contents: write
 
 jobs:
-  collect-validate-and-remove:
+  collect-promote-partial-and-remove:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check out verification branch
+      - name: Check out repair branch
         uses: actions/checkout@v6
         with:
-          ref: agent/ceqanet-source-verification
+          ref: agent/repair-ceqanet-evidence-partial
           fetch-depth: 0
 
       - name: Set up Python
@@ -34,22 +33,92 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e ".[dev]"
 
-      - name: Collect bounded live public evidence
+      - name: Collect bounded public evidence
         run: python scripts/collect_ceqanet_source_evidence.py
 
-      - name: Remove temporary live collector
+      - name: Assert required evidence artifacts
+        run: |
+          test -s evidence/source_verification/ceqanet_public_access_2026-07-12.json
+          test -s evidence/source_verification/ceqanet_checklist_2026-07-12.json
+          test -s docs/audits/ceqanet_source_verification_2026-07-12.md
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          evidence = json.loads(
+              Path("evidence/source_verification/ceqanet_public_access_2026-07-12.json")
+              .read_text(encoding="utf-8")
+          )
+          checklist = json.loads(
+              Path("evidence/source_verification/ceqanet_checklist_2026-07-12.json")
+              .read_text(encoding="utf-8")
+          )
+          assert evidence["schema_version"] == "ceqanet_source_verification_evidence.v1"
+          assert evidence["registry_status"] == "unverified"
+          assert evidence["bounded_search"]["method"] == "GET"
+          assert evidence["bounded_search"]["document_downloads"] is False
+          assert evidence["bounded_search"]["persistence_mutated"] is False
+          assert evidence["public_detail"]["document_downloads"] is False
+          assert evidence["public_detail"]["persistence_mutated"] is False
+          assert evidence["access_barrier_observation"] == {
+              "login_required": False,
+              "captcha_observed": False,
+              "paywall_observed": False,
+          }
+          rows = checklist["rows"]
+          assert len(rows) == 1
+          row = rows[0]
+          assert row["public_entry_page"] == "observed"
+          assert row["query_behavior"] == "observed"
+          assert row["result_list"] == "observed"
+          assert row["detail_page"] == "observed"
+          assert row["access_barrier"] == "not_observed"
+          assert row["terms_review"] == "not_checked"
+          PY
+
+      - name: Classify CEQAnet as partially verified
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path("data/source_registry.seed.json")
+          rows = json.loads(path.read_text(encoding="utf-8"))
+          matches = [row for row in rows if row.get("platform_family") == "ceqanet"]
+          if len(matches) != 1:
+              raise RuntimeError("canonical registry must contain exactly one CEQAnet source")
+          row = matches[0]
+          if row.get("verification_status") != "unverified":
+              raise RuntimeError("CEQAnet source must be unverified before partial promotion")
+          row["verification_status"] = "partial"
+          row["last_checked_date"] = "2026-07-12"
+          row["provenance_notes"] = (
+              "Bounded official public entry, GET search, result-list, detail-page, robots, "
+              "and access-barrier evidence observed on 2026-07-12. Classified partial only; "
+              "manual terms review and controlled verified promotion remain required."
+          )
+          path.write_text(json.dumps(rows, indent=2) + "\n", encoding="utf-8")
+          PY
+
+      - name: Remove temporary live tooling
         run: |
           git rm \
             scripts/collect_ceqanet_source_evidence.py \
             .github/workflows/ceqanet-source-evidence.yml
 
-      - name: Commit evidence-only production tree candidate
+      - name: Commit exact production candidate
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add evidence/source_verification docs/audits
+          git add \
+            data/source_registry.seed.json \
+            evidence/source_verification/ceqanet_public_access_2026-07-12.json \
+            evidence/source_verification/ceqanet_checklist_2026-07-12.json \
+            docs/audits/ceqanet_source_verification_2026-07-12.md
+          test ! -e scripts/collect_ceqanet_source_evidence.py
+          test ! -e .github/workflows/ceqanet-source-evidence.yml
           git diff --cached --check
-          git commit -m "Add bounded CEQAnet source verification evidence"
+          git commit -m "Repair CEQAnet evidence and classify source partial"
 
       - name: Dependency integrity
         run: python -m pip check
@@ -78,5 +147,5 @@ jobs:
       - name: Final diff hygiene
         run: git diff --check
 
-      - name: Push evidence candidate
-        run: git push origin HEAD:agent/ceqanet-source-verification
+      - name: Push repaired production candidate
+        run: git push origin HEAD:agent/repair-ceqanet-evidence-partial
