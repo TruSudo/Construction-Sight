@@ -32,7 +32,14 @@ CeqanetRecurringRunExecution
 CeqanetRecurringRunVerification
 ```
 
-All four artifacts are schema-versioned JSON models.
+All four artifacts are exact-schema JSON models. Their accepted schema identifiers are:
+
+- `ceqanet_recurring_run_definition.v1`;
+- `ceqanet_recurring_run_manifest.v1`;
+- `ceqanet_recurring_run_execution.v1`; and
+- `ceqanet_recurring_run_verification.v1`.
+
+An artifact carrying another schema identifier is rejected rather than interpreted as the current contract.
 
 ## Definition readiness
 
@@ -74,7 +81,7 @@ Free-text terms are rejected. The prior listing query model exposed `text_terms`
 
 Page size remains limited to 100 and page count to 10. Every manifest must contain at least one transmitted bounding filter.
 
-## Deterministic identity
+## Deterministic identity and evidence integrity
 
 A definition digest covers approval-significant content, including:
 
@@ -90,6 +97,19 @@ A definition digest covers approval-significant content, including:
 A manifest adds the exact inclusive date window and produces a deterministic run ID and manifest digest. Rebuilding the same manifest from the same definition and window produces the same identities.
 
 An execution attempt ID is derived from the run ID, manifest digest, and positive attempt sequence. Attempt-sequence uniqueness remains operator-controlled until a dedicated persisted attempt ledger is introduced.
+
+Every newly constructed execution also receives an execution digest over the complete retained evidence envelope, excluding only the execution timestamp and the digest field itself. The digest binds:
+
+- run, definition, manifest, source, and attempt identities;
+- the complete schema-versioned execution report;
+- planned, executed, successful, and failed counts;
+- exact request and final URLs;
+- status, content type, body length, retained body text, and truncation state;
+- execution and error fields;
+- the top-level network-executed truth; and
+- the no-persistence assertion.
+
+Changing a retained body, URL, count, query, flag, or any other execution evidence produces an explicit digest-mismatch finding even when the altered values remain superficially plausible.
 
 ## Stale-evidence protection
 
@@ -115,14 +135,15 @@ Each live attempt requires explicit `--execute-live` authorization. The executio
 4. evaluates lawful-access assumptions;
 5. rebuilds the exact listing query from the manifest;
 6. confirms the official CEQAnet `/Search` target;
-7. invokes the existing bounded read-only listing executor; and
-8. records a schema-versioned execution envelope.
+7. invokes the existing bounded read-only listing executor;
+8. records an exact-schema execution envelope; and
+9. binds the complete retained envelope with an execution digest.
 
 The execution boundary authorizes no persistence. Existing parsing, detail retrieval, archive, write planning, and persistence-apply tools remain separate governed stages.
 
 ## Verification boundary
 
-Verification checks:
+Verification independently recomputes the execution digest before reporting semantic agreement. It also checks:
 
 - definition, manifest, run, and attempt identities;
 - current registry and checklist authorization when supplied;
@@ -138,7 +159,7 @@ Verification checks:
 - top-level network-execution truth; and
 - absence of persistence mutation.
 
-Verification failures are explicit findings and produce a nonzero CLI exit.
+Verification failures are explicit findings and produce a nonzero CLI exit. Digest failure does not suppress semantic findings; both are retained when applicable.
 
 ## Operator commands
 
@@ -157,7 +178,7 @@ constructionsight-ceqanet-recurring-run verify
 
 The canonical CEQAnet registry record remains unverified. Therefore, a definition produced from current canonical repository data remains blocked and cannot execute through this boundary.
 
-This implementation proves the governance and replay contract. It does not establish verified usable coverage, recurring production operation, autonomous scheduling, or ingestion completeness.
+This implementation proves the governance, replay, stale-evidence, and retained-execution-integrity contracts. It does not establish verified usable coverage, recurring production operation, autonomous scheduling, or ingestion completeness.
 
 ## Entry conditions for later recurring operation
 
