@@ -27,7 +27,6 @@ def test_ceqanet_listing_dry_run_emits_request_intent_without_execution() -> Non
     query = CeqanetListingQuery(
         counties=("San Bernardino",),
         document_types=("EIR",),
-        text_terms=("warehouse",),
         page_size=50,
         max_pages=2,
     )
