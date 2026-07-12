@@ -4,7 +4,12 @@
 
 ConstructionSight treats CEQAnet source-provided CSV exports as a distinct integration surface from HTML browsing and the existing guarded listing executor.
 
-This phase is offline-first. It can build or parse an exact official export URL and inspect an already-obtained CSV body. It performs no network request, downloads no attachment, mutates no persistence, and does not change CEQAnet source maturity.
+The contract now has two governed layers:
+
+1. deterministic URL planning and offline inspection; and
+2. one-request live proof execution with independently verifiable response evidence.
+
+It downloads no CEQA attachment, mutates no persistence, schedules no work, retries no request, and does not change CEQAnet source maturity.
 
 ## Supported URL identities
 
@@ -38,11 +43,11 @@ The parser rejects:
 - a malformed SCH number; and
 - a nonpositive document ID.
 
-A request model always records `network_authorized=false` and `persistence_authorized=false`.
+The reusable request model records `network_authorized=false` and `persistence_authorized=false`. Network authority is never embedded in the reusable URL artifact; it must be supplied separately for each live attempt.
 
-## Body inspection
+## Offline body inspection
 
-`inspect_ceqanet_csv_bytes` accepts bytes that were obtained outside this contract. It does not fetch the URL.
+`inspect_ceqanet_csv_bytes` accepts bytes that were obtained outside the offline contract. It does not fetch the URL.
 
 The inspection boundary:
 
@@ -79,9 +84,50 @@ The first contract recognizes aliases for:
 
 Original names, normalized names, ordinal position, and optional canonical roles are all retained. An unrecognized column remains in the normalized row and is listed in `unknown_columns`.
 
+## One-request live execution
+
+`execute_ceqanet_csv_live_request` requires explicit per-attempt authorization. It then:
+
+1. reparses the request URL and requires exact request-model agreement;
+2. permits one GET request only;
+3. performs no retry;
+4. uses an honest ConstructionSight user agent and CSV-oriented `Accept` header;
+5. follows redirects only so the final URL can be inspected;
+6. applies an explicit timeout;
+7. enforces the 10,000,000-byte ceiling;
+8. retains the complete response body as Base64 when within the ceiling;
+9. preserves the complete-body byte length and SHA-256 even when an oversized body is not retained;
+10. records status, final URL, content type, content disposition, errors, and execution time;
+11. records explicit no-document-download and no-persistence-mutation assertions;
+12. invokes the canonical offline inspector only for an HTTP 200 complete body; and
+13. binds the complete retained execution envelope with a canonical digest.
+
+An HTTP 403, non-CSV response, malformed CSV, oversized response, redirected identity, or network error remains an explicit failed artifact. The executor does not retry, alter headers to impersonate a browser, bypass access controls, or silently reinterpret failure as success.
+
+## Independent live verification
+
+`verify_ceqanet_csv_live_execution` operates offline and independently checks:
+
+- execution-envelope digest integrity;
+- request URL agreement;
+- final official host, `/Search` path, and exact query identity;
+- GET-only and zero-retry state;
+- network-executed truth;
+- no document download and no persistence mutation;
+- HTTP 200 and absence of an execution error;
+- Base64 validity;
+- retained and observed byte counts;
+- complete-body SHA-256;
+- complete-body retention;
+- successful canonical offline inspection;
+- inspection digest integrity; and
+- exact agreement between the stored inspection and a recomputation from retained bytes.
+
+Literal-safe model fields do not replace these semantic checks. The verifier deliberately widens its local views so post-construction tampering through unsafe object-copy operations is still detected.
+
 ## Evidence and replay
 
-An inspection records:
+An offline inspection records:
 
 - exact export request identity;
 - normalized content type when supplied;
@@ -96,35 +142,27 @@ An inspection records:
 - no-network and no-persistence assertions; and
 - an inspection digest over all retained evidence.
 
-Changing the request, body hash, columns, rows, counts, limitations, or flags invalidates the digest.
+A live execution additionally records the exact response envelope and embeds the inspection when valid. Changing the request, URL, response body, body hash, headers, status, errors, inspection, limitations, or safety flags invalidates the execution or inspection digest.
 
 ## Operator commands
 
 ```text
 constructionsight-ceqanet-csv plan --sch-number <SCH> [--document-id <ID>]
 constructionsight-ceqanet-csv inspect-file <path> --source-url <official CSV URL>
+constructionsight-ceqanet-csv execute-live --sch-number <SCH> --output <artifact> --execute-live
+constructionsight-ceqanet-csv verify-execution <artifact> [--output <verification>]
 ```
 
-Both commands emit schema-versioned JSON. `inspect-file` may accept an observed content type and a maximum retained-row count. Neither command performs a network call.
+`plan`, `inspect-file`, and `verify-execution` perform no network call. `execute-live` requires explicit authorization, writes the execution artifact before returning a failing exit code, and will not overwrite an existing artifact unless `--overwrite` is supplied.
 
 ## Current source maturity
 
 CEQAnet remains `partial`.
 
-This contract proves deterministic planning and offline validation only. It does not prove that a live CEQAnet CSV request is currently allowed, reliable, complete, or stable. The recorded automated HTML path returned HTTP 403 and remains blocked.
+The implementation now proves deterministic planning, strict offline validation, and a bounded live-proof mechanism. It does not yet prove that the current official CSV endpoint returns a reliable valid CSV response to ConstructionSight. The recorded automated HTML path returned HTTP 403 and remains blocked.
 
-## Entry condition for live CSV proof
+## Next gate
 
-A separate phase may perform one explicitly authorized, bounded request to an observed official CSV URL only after it defines:
+A separate, self-removing evidence phase may perform one project-scoped request for observed SCH `2026030377`.
 
-- the exact request being attempted;
-- the user agent and media types;
-- timeout and maximum body size;
-- redirect and final-host rules;
-- response content-type expectations;
-- archive or hash retention;
-- rate and retry policy;
-- failure/no-bypass behavior; and
-- whether source-specific clarification is required.
-
-The response must pass this offline contract before any verified promotion, parser handoff, recurring schedule, or persistence mutation is considered.
+The resulting success or failure artifact must be committed with an offline verification report and reviewed before any source-status promotion, parser handoff, recurring schedule, rate policy, persisted attempt ledger, or persistence mutation is considered.
