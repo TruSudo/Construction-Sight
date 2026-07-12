@@ -26,6 +26,7 @@ A planned capability is not an active defect when the current supported boundary
 | Source plan reports | Yes | Yes | Yes | No | Yes | No | Dry-run plans preserve proposed payloads, evidence, complete-registry digests, and deterministic approval digests. |
 | Source registry controlled apply | Yes | Yes | Yes | File-backed | Yes | No | Explicit apply validates complete snapshots, digests, evidence, counts, identity, status-only mutation, path separation, audit output, and target-last replacement. |
 | Adapter contracts | Yes | Yes | Yes | N/A | Yes | No | Contracts are not represented as verified live integrations. |
+| CEQAnet recurring-run governance | Yes | Yes | Yes | Artifact-only | Yes | Guarded only | Evidence-bound definitions, exact-window manifests, explicit attempts, current-evidence revalidation, and execution verification exist. Canonical CEQAnet data remains unverified, so current repository artifacts remain blocked. |
 | Universal intake | Yes | Yes | Yes | Partial | Yes | No | Source-neutral records and routing exist; live source breadth is intentionally limited. |
 | Opportunity transition intake | Yes | Yes | Yes | Partial | Yes | No | Converts intake facts into opportunity candidates without implying outreach. |
 | Shovels/Regrid gap alignment | Yes | Yes | Yes | N/A | Yes | No | Capability planning exists; it is not a parity claim. |
@@ -74,6 +75,7 @@ Every entry below is resolved within the currently supported scope. Monitoring l
 | CS-VIAM-012 | P1 | Result authority | Differing outcomes lacked complete immutable correction and concurrency governance. | Linear immutable revisions, exact-state authority heads, and append-only authority events are enforced. |
 | CS-VIAM-013 | P1 | Upstream mutation boundary | Generic edits could bypass source-specific provenance and domain builders. | Generic mutation is unavailable; only read access exists until a domain-specific governed action is justified. |
 | CS-VIAM-014 | P1 | Certification governance | CI success did not independently scan every tracked file or distinguish planned scope from active defects. | `constructionsight-certify` and permanent CI certification gates now enforce the complete tracked-tree and governance boundary. |
+| CS-VIAM-015 | P1 | CEQAnet query truth | `text_terms` counted as a bounding filter even though the verified CEQAnet request contract did not transmit it. | Listing and recurring-run query models reject free-text terms, so no run can claim an unapplied filter. |
 
 ## Planned capability ledger
 
@@ -82,7 +84,7 @@ These entries are future product scope, not defects in the current supported imp
 | ID | Capability | Current safe boundary | Required entry condition |
 |---|---|---|---|
 | CS-PLAN-001 | Optional preview archives and nested child tables | Current core records are losslessly persisted; report/config layers remain deliberately ephemeral. | Add only when replay or query requirements justify schema expansion. |
-| CS-PLAN-002 | Verified recurring live adapters | Contracts and guarded CEQAnet tooling are not represented as production coverage. | Complete source-specific evidence review, recurring-run governance, and maturity promotion. |
+| CS-PLAN-002 | Verified recurring live adapters | CEQAnet now has evidence-bound definitions, exact-window manifests, stale-evidence rejection, and explicit bounded attempts; canonical source data remains unverified and no scheduler exists. | Complete source-specific evidence review and maturity promotion, then define persisted attempt, scheduling, retry, archive, observability, and downstream handoff governance. |
 | CS-PLAN-003 | CRS transformation, projection-aware/geodesic calculations, and topology repair | Incompatible CRS is preserved and refused rather than guessed; current results are not survey-grade. | Select and pin a GIS stack, define provenance and failure doctrine, and add exact tests. |
 | CS-PLAN-004 | Domain-specific upstream corrections | Generic upstream mutation is blocked. | Define source-aware stale-state, correction, supersession, and audit semantics per record family. |
 | CS-PLAN-005 | Workflow reopen or override | Final states remain immutable. | Introduce explicit authority, reason, stale-state, and append-only event doctrine. |
