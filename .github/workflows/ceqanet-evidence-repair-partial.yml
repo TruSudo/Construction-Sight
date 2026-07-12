@@ -1,18 +1,20 @@
-name: CEQAnet evidence repair and partial classification
+name: CEQAnet evidence repair and verified classification
 
 on:
   pull_request:
     branches:
       - main
     paths:
-      - scripts/repair_ceqanet_evidence_partial.py
+      - scripts/repair_ceqanet_evidence_verified.py
+      - scripts/patch_ceqanet_collector_current.py
       - .github/workflows/ceqanet-evidence-repair-partial.yml
       - tests/test_ceqanet_partial_source_maturity.py
   push:
     branches:
       - agent/ceqanet-evidence-repair-partial-v2
     paths:
-      - scripts/repair_ceqanet_evidence_partial.py
+      - scripts/repair_ceqanet_evidence_verified.py
+      - scripts/patch_ceqanet_collector_current.py
       - .github/workflows/ceqanet-evidence-repair-partial.yml
 
 permissions:
@@ -44,6 +46,9 @@ jobs:
       - name: Dependency integrity before collection
         run: python -m pip check
 
+      - name: Patch collector for current CEQAnet detail structure
+        run: python scripts/patch_ceqanet_collector_current.py
+
       - name: Collect bounded public evidence
         run: |
           set +e
@@ -59,39 +64,39 @@ jobs:
           name: ceqanet-collector-diagnostics
           path: /tmp/ceqanet-collector.log
 
-      - name: Prepare evidence-bound observations
-        run: python scripts/repair_ceqanet_evidence_partial.py prepare
+      - name: Prepare reviewed source evidence
+        run: python scripts/repair_ceqanet_evidence_verified.py prepare
 
-      - name: Build deterministic partial update plan
+      - name: Build deterministic verified update plan
         run: |
           constructionsight-source-plan plan \
             data/source_registry.seed.json \
             --observations-path evidence/source_verification/ceqanet_observations_2026-07-12.json \
-            --output evidence/source_verification/ceqanet_partial_update_plan_2026-07-12.json
+            --output evidence/source_verification/ceqanet_verified_update_plan_2026-07-12.json
 
-      - name: Validate partial update plan
-        run: python scripts/repair_ceqanet_evidence_partial.py validate-plan
+      - name: Validate verified update plan
+        run: python scripts/repair_ceqanet_evidence_verified.py validate-plan
 
-      - name: Apply approved partial status atomically
+      - name: Apply approved verified status atomically
         run: |
           PLAN_DIGEST=$(python - <<'PY'
           import json
           from pathlib import Path
-          plan = json.loads(Path("evidence/source_verification/ceqanet_partial_update_plan_2026-07-12.json").read_text(encoding="utf-8"))
+          plan = json.loads(Path("evidence/source_verification/ceqanet_verified_update_plan_2026-07-12.json").read_text(encoding="utf-8"))
           print(plan["plan_digest"])
           PY
           )
           constructionsight-source-plan apply \
             data/source_registry.seed.json \
-            evidence/source_verification/ceqanet_partial_update_plan_2026-07-12.json \
+            evidence/source_verification/ceqanet_verified_update_plan_2026-07-12.json \
             --approved-plan-digest "$PLAN_DIGEST" \
-            --audit-output evidence/source_verification/ceqanet_partial_apply_audit_2026-07-12.json \
+            --audit-output evidence/source_verification/ceqanet_verified_apply_audit_2026-07-12.json \
             --in-place \
-            --backup-output /tmp/source_registry.seed.pre-partial.json \
+            --backup-output /tmp/source_registry.seed.pre-verified.json \
             --apply
 
-      - name: Reconcile maturity documentation and evidence
-        run: python scripts/repair_ceqanet_evidence_partial.py reconcile
+      - name: Reconcile verified maturity documentation and evidence
+        run: python scripts/repair_ceqanet_evidence_verified.py reconcile
 
       - name: Remove all temporary collection and repair tooling
         run: |
@@ -99,13 +104,15 @@ jobs:
             .github/workflows/ceqanet-source-evidence.yml \
             scripts/collect_ceqanet_source_evidence.py \
             .github/workflows/ceqanet-evidence-repair-partial.yml \
-            scripts/repair_ceqanet_evidence_partial.py
+            scripts/repair_ceqanet_evidence_partial.py \
+            scripts/repair_ceqanet_evidence_verified.py \
+            scripts/patch_ceqanet_collector_current.py
 
       - name: Reject stale maturity claims
         run: |
           if git grep -n -E \
-            'canonical CEQAnet source remains unverified|canonical source remains `unverified`|Four canonical source-registry seed records remain unverified|Four unverified records|all four sources `keep_unverified_reachable`|does not promote any current seed source' \
-            -- README.md docs data; then
+            'canonical CEQAnet source remains unverified|canonical source remains `unverified`|Four canonical source-registry seed records remain unverified|Four unverified records|all four sources `keep_unverified_reachable`|does not promote any current seed source|classify partial maturity|CEQAnet is `partial`' \
+            -- README.md docs data tests; then
             echo "Stale CEQAnet maturity claim remains" >&2
             exit 1
           fi
@@ -116,7 +123,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           git diff --cached --check
-          git commit -m "Repair CEQAnet evidence and classify partial maturity"
+          git commit -m "Repair CEQAnet evidence and classify verified maturity"
 
       - name: Ruff
         run: python -m ruff check src tests
