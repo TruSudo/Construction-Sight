@@ -16,9 +16,7 @@ from constructionsight.site_resolution_models import (
 _APPROXIMATE_CENTROID_LIMITATION = (
     "polygon centroid is a coordinate-average approximation, not an area-weighted centroid"
 )
-_ENVELOPE_CONTAINMENT_LIMITATION = (
-    "coordinate containment uses parcel envelope only, not polygon topology"
-)
+_ENVELOPE_CONTAINMENT_LIMITATION = "coordinate containment uses parcel envelope only"
 
 
 def _identifier(kind: SiteIdentifierKind, value: str) -> SiteIdentifier:
@@ -106,7 +104,7 @@ def test_resolve_site_with_parcels_combines_apn_address_and_point() -> None:
     assert result.status == SiteResolutionStatus.RESOLVED
     assert candidate.confidence_score == 100
     assert candidate.match_strength == "exact"
-    assert "coordinate hint falls within parcel envelope" in candidate.reasons
+    assert "coordinate hint matches parcel point geometry" in candidate.reasons
 
 
 def test_resolve_site_with_parcels_preserves_geometry_limitations() -> None:
@@ -131,6 +129,9 @@ def test_resolve_site_with_parcels_preserves_geometry_limitations() -> None:
 
     assert _APPROXIMATE_CENTROID_LIMITATION in candidate.limitations
     assert _ENVELOPE_CONTAINMENT_LIMITATION in candidate.limitations
+    assert "polygon topology was not used because raw polygon geometry is unavailable" in (
+        candidate.limitations
+    )
 
 
 def test_resolve_site_with_parcels_preserves_ambiguity() -> None:
