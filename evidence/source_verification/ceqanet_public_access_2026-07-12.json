@@ -1,0 +1,136 @@
+{
+  "schema_version": "ceqanet_source_verification_evidence.v2",
+  "observation_date": "2026-07-12",
+  "source_key": "source:ceqanet-state-clearinghouse",
+  "source_name": "CEQAnet State Clearinghouse",
+  "registry_public_url": "https://ceqanet.opr.ca.gov/",
+  "observed_final_host": "ceqanet.lci.ca.gov",
+  "evidence_method": "official-page browser review plus bounded GitHub Actions diagnostics",
+  "recommended_registry_status": "partial",
+  "verified_status_authorized": false,
+  "browser_review": {
+    "public_entry": {
+      "url": "https://ceqanet.opr.ca.gov/",
+      "redirected_url": "https://ceqanet.lci.ca.gov/",
+      "observed": true,
+      "observed_markers": [
+        "CEQAnet Web Portal",
+        "California Environmental Quality Act",
+        "Advanced Search",
+        "Recent Postings"
+      ]
+    },
+    "advanced_search": {
+      "url": "https://ceqanet.lci.ca.gov/Search/Advanced",
+      "observed": true,
+      "observed_filters": [
+        "SCH Number",
+        "Start Range",
+        "End Range",
+        "Document Type",
+        "Lead/Public Agency"
+      ]
+    },
+    "result_list": {
+      "url": "https://ceqanet.lci.ca.gov/Search/Recent",
+      "observed": true,
+      "observed_columns": [
+        "SCH Number",
+        "Type",
+        "Lead/Public Agency",
+        "Received",
+        "Title"
+      ]
+    },
+    "project_summary_example": {
+      "url": "https://ceqanet.lci.ca.gov/Project/2026030377",
+      "sch_number": "2026030377",
+      "observed": true,
+      "observed_markers": [
+        "Project Info",
+        "Title",
+        "Description",
+        "documents in project"
+      ]
+    },
+    "document_detail_example": {
+      "url": "https://ceqanet.lci.ca.gov/2026070311",
+      "sch_number": "2026070311",
+      "observed": true,
+      "observed_markers": [
+        "Summary",
+        "SCH Number",
+        "Lead Agency",
+        "Document Title",
+        "Document Type",
+        "Received",
+        "Contact Information",
+        "Location",
+        "Attachments"
+      ]
+    },
+    "official_csv_exports": [
+      {
+        "scope": "project",
+        "url": "https://ceqanet.lci.ca.gov/Search?OutputFormat=CSV&Sch=2026030377",
+        "link_observed": true,
+        "download_executed": false
+      },
+      {
+        "scope": "document",
+        "url": "https://ceqanet.lci.ca.gov/Search?DocumentId=1&OutputFormat=CSV&Sch=2026070311",
+        "link_observed": true,
+        "download_executed": false
+      }
+    ]
+  },
+  "terms_review": {
+    "status": "observed",
+    "reviewed_urls": [
+      "https://ceqanet.lci.ca.gov/Home/ConditionsOfUse",
+      "https://ceqanet.lci.ca.gov/Home/Privacy",
+      "https://ceqanet.lci.ca.gov/Home/Accessibility"
+    ],
+    "conclusion": "The reviewed official policies describe public browsing and downloading, monitoring, public-record disclosure, and general public-domain treatment. They prohibit unauthorized modification, security circumvention, and use outside intended purposes. No explicit authorization for recurring automated collection was found.",
+    "functional_boundary": "Use ordinary public browsing and official export surfaces only. Do not bypass access controls. Automated recurring execution remains blocked pending an approved access method."
+  },
+  "automated_collection_diagnostics": [
+    {
+      "workflow_run_id": 29182194949,
+      "result": "failed",
+      "finding": "The original collector used brittle detail-page wording and rejected a valid CEQAnet detail shape. No repository mutation occurred."
+    },
+    {
+      "workflow_run_id": 29182315544,
+      "result": "failed",
+      "finding": "The detail-page identity check passed, but robots.txt returned HTTP 406 under the collector request headers. No repository mutation occurred."
+    },
+    {
+      "workflow_run_id": 29182383903,
+      "result": "failed",
+      "finding": "The CEQAnet entry endpoint returned HTTP 403 to the automated collector. No bypass was attempted and no repository mutation occurred."
+    }
+  ],
+  "access_assessment": {
+    "public_browser_access_observed": true,
+    "login_required_on_reviewed_pages": false,
+    "captcha_observed_on_reviewed_pages": false,
+    "paywall_observed_on_reviewed_pages": false,
+    "automated_access_currently_reliable": false,
+    "automation_blocker": "HTTP 403 observed during bounded automated collection",
+    "robots_conclusion": "No positive permission conclusion is asserted because robots.txt was not reliably retrievable by the collector."
+  },
+  "collection_actions": {
+    "documents_downloaded": false,
+    "persistence_mutated": false,
+    "outreach_sent": false,
+    "security_controls_bypassed": false
+  },
+  "limitations": [
+    "Browser-reviewed evidence does not include raw response bodies or body hashes.",
+    "The official pages and policies may change after the observation date.",
+    "Observed CSV links were not downloaded during this evidence phase.",
+    "Partial maturity does not authorize recurring live collection.",
+    "A source-specific official CSV or other approved access contract is required before verified promotion."
+  ]
+}

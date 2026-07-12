@@ -11,13 +11,13 @@
     "platform_family": "ceqanet",
     "public_url": "https://ceqanet.opr.ca.gov/",
     "record_categories": ["ceqa", "document", "planning_case"],
-    "search_method": "County/date/document-type search for public CEQA filings and attached documents.",
+    "search_method": "Browser search and source-provided CSV exports by SCH number or document ID; automated recurring access requires separate approval.",
     "extraction_difficulty": "low",
     "update_frequency": "daily",
     "confidence_score": 85,
-    "verification_status": "unverified",
-    "provenance_notes": "Seed record from architectural planning. Must be verified before ingestion.",
-    "last_checked_date": null
+    "verification_status": "partial",
+    "provenance_notes": "Official entry, search, result-list, project-summary, document-detail, policy, and CSV-link surfaces were browser-reviewed on 2026-07-12. Automated collection later received HTTP 403; no bypass was attempted. Partial status supports operator use while verified recurring execution remains blocked pending an approved official access method.",
+    "last_checked_date": "2026-07-12"
   },
   {
     "jurisdiction": {

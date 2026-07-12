@@ -1,0 +1,49 @@
+{
+  "source_count": 1,
+  "status_counts": {
+    "partial_candidate": 1
+  },
+  "rows": [
+    {
+      "source_key": "source:ceqanet-state-clearinghouse",
+      "source_name": "CEQAnet State Clearinghouse",
+      "platform_family": "ceqanet",
+      "original_url": "https://ceqanet.opr.ca.gov/",
+      "final_url": "https://ceqanet.lci.ca.gov/",
+      "http_status_code": null,
+      "redirect_classification": "cross_host_redirect_observed",
+      "registry_status": "partial",
+      "adapter_status": "contract_ready",
+      "readiness_status": "browser_verified_automation_blocked",
+      "checklist_status": "partial_candidate",
+      "public_entry_page": "observed",
+      "query_behavior": "observed",
+      "result_list": "observed",
+      "detail_page": "observed",
+      "access_barrier": "needs_manual_review",
+      "terms_review": "observed",
+      "recommendation": "retain_partial_and_prioritize_official_csv_access",
+      "reasons": [
+        "Official CEQAnet entry, advanced search, recent result list, project summary, and document detail pages were observed in a browser review.",
+        "The reviewed Conditions of Use, Privacy Policy, and Accessibility pages did not identify an explicit prohibition on ordinary public browsing or official downloads.",
+        "Official project and document CSV export links are exposed by CEQAnet.",
+        "A bounded automated collector received HTTP 403 and was not disguised or retried through a bypass."
+      ],
+      "limitations": [
+        "Automated recurring access is not currently reliable and remains unauthorized by ConstructionSight governance.",
+        "robots.txt was not reliably retrievable by the automated collector, so no positive robots permission conclusion is asserted.",
+        "Browser-reviewed evidence does not preserve raw response bodies or body hashes.",
+        "Official CSV links were observed but not downloaded during this phase.",
+        "Verified status and recurring execution remain blocked pending an approved source-specific access method."
+      ],
+      "next_action": "Implement and validate a bounded official CSV ingestion path or obtain source-specific access clarification before verified promotion.",
+      "observation_notes": "No documents were downloaded, no persistence was mutated, no outreach was sent, and no access control was bypassed.",
+      "evidence_refs": [
+        "evidence/source_verification/ceqanet_public_access_2026-07-12.json",
+        "docs/audits/ceqanet_source_verification_2026-07-12.md"
+      ],
+      "generated_at": "2026-07-12T06:15:48Z"
+    }
+  ],
+  "generated_at": "2026-07-12T06:15:48Z"
+}
