@@ -81,7 +81,7 @@ class CeqanetCsvInspection(BaseModel):
     schema_version: Literal["ceqanet_csv_inspection.v1"] = CSV_INSPECTION_SCHEMA_VERSION
     request: CeqanetCsvExportRequest
     content_type: str | None = None
-    encoding: Literal["utf-8-sig"] = "utf-8-sig"
+    encoding: Literal["utf-8-sig", "windows-1252"] = "utf-8-sig"
     delimiter: Literal[","] = ","
     byte_length: int = Field(ge=1)
     body_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
