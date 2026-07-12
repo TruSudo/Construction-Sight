@@ -6,14 +6,14 @@ import hashlib
 import json
 from datetime import UTC, date, datetime
 from enum import StrEnum
-from typing import Any, Literal
+from typing import Any, Final, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-DEFINITION_SCHEMA_VERSION = "ceqanet_recurring_run_definition.v1"
-MANIFEST_SCHEMA_VERSION = "ceqanet_recurring_run_manifest.v1"
-EXECUTION_SCHEMA_VERSION = "ceqanet_recurring_run_execution.v1"
-VERIFICATION_SCHEMA_VERSION = "ceqanet_recurring_run_verification.v1"
+DEFINITION_SCHEMA_VERSION: Final = "ceqanet_recurring_run_definition.v1"
+MANIFEST_SCHEMA_VERSION: Final = "ceqanet_recurring_run_manifest.v1"
+EXECUTION_SCHEMA_VERSION: Final = "ceqanet_recurring_run_execution.v1"
+VERIFICATION_SCHEMA_VERSION: Final = "ceqanet_recurring_run_verification.v1"
 
 
 class CeqanetRunReadiness(StrEnum):
