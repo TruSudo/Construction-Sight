@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import re
 from dataclasses import dataclass
 
@@ -13,17 +14,21 @@ from constructionsight.parcel_topology_parse import (
     ParsedParcelTopology,
     parse_parcel_topology,
     summarize_parcel_topology,
+    topology_fits_longitude_latitude,
 )
 
 _NUMBER_PATTERN = r"[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?"
 _WKT_POINT_RE = re.compile(
     rf"^\s*(?:SRID\s*=\s*(?P<srid>\d+)\s*;\s*)?POINT\s*(?:ZM|Z|M)?\s*"
-    rf"\(\s*(?P<lon>{_NUMBER_PATTERN})\s+(?P<lat>{_NUMBER_PATTERN})"
+    rf"\(\s*(?P<x>{_NUMBER_PATTERN})\s+(?P<y>{_NUMBER_PATTERN})"
     rf"(?:\s+{_NUMBER_PATTERN})*\s*\)\s*$",
     re.IGNORECASE,
 )
 _PLANAR_CENTROID_LIMITATION = (
     "polygon centroid is area-weighted in the source coordinate plane, not projection-aware"
+)
+_TOPOLOGY_VALIDITY_LIMITATION = (
+    "polygon topology has not been validated for self-intersections or hole placement"
 )
 _INVALID_AREA_LIMITATION = (
     "polygon centroid is unavailable because topology has zero or invalid effective area"
@@ -32,12 +37,16 @@ _INCOMPATIBLE_CRS_SUMMARY_LIMITATION = (
     "geometry coordinates were not summarized because the explicit spatial reference "
     "is not recognized as longitude/latitude"
 )
+_OUT_OF_BOUNDS_LIMITATION = (
+    "geometry coordinates were not summarized because one or more vertices fall outside "
+    "longitude/latitude bounds"
+)
 
 
 @dataclass(frozen=True)
 class _ParsedPoint:
-    latitude: float
-    longitude: float
+    x_value: float
+    y_value: float
     embedded_spatial_reference: str | None = None
 
 
@@ -69,43 +78,52 @@ def normalize_parcel_geometry(
             parsed_point,
             parsed_topology,
         )
-        if (
+        crs_conflict = (
             spatial_reference is not None
             and embedded_spatial_reference is not None
             and not _same_spatial_reference(
                 spatial_reference,
                 embedded_spatial_reference,
             )
-        ):
+        )
+        if crs_conflict:
             limitations.append(
                 "supplied spatial reference conflicts with the geometry-embedded "
                 f"spatial reference {embedded_spatial_reference}"
             )
         effective_spatial_reference = spatial_reference or embedded_spatial_reference
-        explicit_incompatible_crs = (
+        incompatible_summary = crs_conflict or (
             effective_spatial_reference is not None
             and not _is_verified_longitude_latitude(effective_spatial_reference)
         )
 
         if parsed_point is not None:
             parsed_kind = ParcelGeometryKind.POINT
-            if explicit_incompatible_crs:
+            if incompatible_summary:
                 limitations.append(_INCOMPATIBLE_CRS_SUMMARY_LIMITATION)
+            elif not _valid_longitude_latitude(
+                parsed_point.x_value,
+                parsed_point.y_value,
+            ):
+                limitations.append(_OUT_OF_BOUNDS_LIMITATION)
             else:
                 calculated_centroid = (
-                    parsed_point.latitude,
-                    parsed_point.longitude,
+                    parsed_point.y_value,
+                    parsed_point.x_value,
                 )
                 envelope = (
-                    parsed_point.latitude,
-                    parsed_point.longitude,
-                    parsed_point.latitude,
-                    parsed_point.longitude,
+                    parsed_point.y_value,
+                    parsed_point.x_value,
+                    parsed_point.y_value,
+                    parsed_point.x_value,
                 )
         elif parsed_topology is not None:
             parsed_kind = parsed_topology.geometry_kind
-            if explicit_incompatible_crs:
+            limitations.append(_TOPOLOGY_VALIDITY_LIMITATION)
+            if incompatible_summary:
                 limitations.append(_INCOMPATIBLE_CRS_SUMMARY_LIMITATION)
+            elif not topology_fits_longitude_latitude(parsed_topology.polygons):
+                limitations.append(_OUT_OF_BOUNDS_LIMITATION)
             else:
                 envelope = _topology_envelope(parsed_topology)
                 summary = summarize_parcel_topology(parsed_topology.polygons)
@@ -138,18 +156,18 @@ def normalize_parcel_geometry(
 
 
 def _parse_point_geometry(raw_geometry: str) -> _ParsedPoint | None:
-    """Parse supported WKT/EWKT or GeoJSON point geometry."""
+    """Parse supported finite WKT/EWKT or GeoJSON point geometry."""
 
     point_match = _WKT_POINT_RE.fullmatch(raw_geometry)
     if point_match is not None:
-        longitude = float(point_match.group("lon"))
-        latitude = float(point_match.group("lat"))
-        if not _valid_longitude_latitude(longitude, latitude):
+        x_value = float(point_match.group("x"))
+        y_value = float(point_match.group("y"))
+        if not _finite_coordinate(x_value, y_value):
             return None
         srid = point_match.group("srid")
         return _ParsedPoint(
-            latitude=latitude,
-            longitude=longitude,
+            x_value=x_value,
+            y_value=y_value,
             embedded_spatial_reference=f"EPSG:{srid}" if srid is not None else None,
         )
 
@@ -167,19 +185,17 @@ def _parse_point_geometry(raw_geometry: str) -> _ParsedPoint | None:
     coordinates = geometry_payload.get("coordinates")
     if not isinstance(coordinates, list) or len(coordinates) < 2:
         return None
-    raw_longitude = coordinates[0]
-    raw_latitude = coordinates[1]
-    if isinstance(raw_longitude, bool) or isinstance(raw_latitude, bool):
+    raw_x = coordinates[0]
+    raw_y = coordinates[1]
+    if isinstance(raw_x, bool) or isinstance(raw_y, bool):
         return None
-    if not isinstance(raw_longitude, int | float) or not isinstance(
-        raw_latitude, int | float
-    ):
+    if not isinstance(raw_x, int | float) or not isinstance(raw_y, int | float):
         return None
-    longitude = float(raw_longitude)
-    latitude = float(raw_latitude)
-    if not _valid_longitude_latitude(longitude, latitude):
+    x_value = float(raw_x)
+    y_value = float(raw_y)
+    if not _finite_coordinate(x_value, y_value):
         return None
-    return _ParsedPoint(latitude=latitude, longitude=longitude)
+    return _ParsedPoint(x_value=x_value, y_value=y_value)
 
 
 def _geojson_geometry_payload(payload: dict[str, object]) -> dict[str, object] | None:
@@ -226,6 +242,12 @@ def _topology_envelope(
     latitudes = [point[1] for point in points]
     longitudes = [point[0] for point in points]
     return (min(latitudes), min(longitudes), max(latitudes), max(longitudes))
+
+
+def _finite_coordinate(x_value: float, y_value: float) -> bool:
+    """Return whether a coordinate pair contains finite values."""
+
+    return math.isfinite(x_value) and math.isfinite(y_value)
 
 
 def _valid_longitude_latitude(longitude: float, latitude: float) -> bool:
