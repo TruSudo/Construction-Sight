@@ -18,6 +18,8 @@ from constructionsight.ceqanet_recurring_run_service import (
     build_ceqanet_recurring_run_definition,
     build_ceqanet_recurring_run_manifest,
     execute_ceqanet_recurring_run,
+)
+from constructionsight.ceqanet_recurring_run_verifier import (
     verify_ceqanet_recurring_run_execution,
 )
 from constructionsight.models import (
@@ -150,6 +152,14 @@ def _ready_definition() -> CeqanetRecurringRunDefinition:
         query_template=_template(),
         timeout_seconds=9.0,
         max_body_chars=100,
+    )
+
+
+def _ready_manifest(definition: CeqanetRecurringRunDefinition) -> object:
+    return build_ceqanet_recurring_run_manifest(
+        definition,
+        window_start=date(2026, 7, 1),
+        window_end=date(2026, 7, 7),
     )
 
 
@@ -301,6 +311,8 @@ def test_ready_manifest_executes_through_bounded_existing_executor() -> None:
 
     assert execution.network_executed is True
     assert execution.persistence_mutated is False
+    assert len(execution.execution_digest) == 64
+    execution.assert_integrity()
     assert len(client.urls) == 2
     metadata = execution.execution_report["metadata"]
     assert metadata["executed_request_count"] == 2
@@ -351,8 +363,41 @@ def test_verification_detects_execution_query_and_host_drift() -> None:
     )
 
     assert verification.passed is False
+    assert "CEQAnet recurring-run execution digest mismatch" in verification.findings
     assert "execution report query does not match manifest" in verification.findings
     assert "snapshots[0] request_url host is outside manifest" in verification.findings
+
+
+def test_verification_detects_retained_body_tampering() -> None:
+    definition = _ready_definition()
+    manifest = build_ceqanet_recurring_run_manifest(
+        definition,
+        window_start=date(2026, 7, 1),
+        window_end=date(2026, 7, 7),
+    )
+    execution = execute_ceqanet_recurring_run(
+        definition,
+        manifest,
+        _ready_sources(),
+        _ready_checklist(),
+        attempt_sequence=1,
+        execute_live=True,
+        client=_FakeClient(),
+    )
+    payload = execution.model_dump(mode="json")
+    payload["execution_report"]["snapshots"][0]["body_text"] = "altered"
+    tampered = CeqanetRecurringRunExecution.model_validate(payload)
+
+    verification = verify_ceqanet_recurring_run_execution(
+        definition,
+        manifest,
+        tampered,
+        _ready_sources(),
+        _ready_checklist(),
+    )
+
+    assert verification.passed is False
+    assert verification.findings[0] == "CEQAnet recurring-run execution digest mismatch"
 
 
 def test_verification_detects_network_execution_flag_drift() -> None:
@@ -381,6 +426,7 @@ def test_verification_detects_network_execution_flag_drift() -> None:
     )
 
     assert verification.passed is False
+    assert "CEQAnet recurring-run execution digest mismatch" in verification.findings
     assert "network_executed does not match executed request count" in verification.findings
 
 
