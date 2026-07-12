@@ -16,8 +16,8 @@ MultiPolygonTopology = tuple[PolygonTopology, ...]
 
 _NUMBER_PATTERN = r"[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?"
 _WKT_HEADER_RE = re.compile(
-    rf"^\s*(?:SRID\s*=\s*(?P<srid>\d+)\s*;\s*)?"
-    rf"(?P<kind>POLYGON|MULTIPOLYGON)\s*(?:ZM|Z|M)?\s*(?P<body>\(.*\))\s*$",
+    r"^\s*(?:SRID\s*=\s*(?P<srid>\d+)\s*;\s*)?"
+    r"(?P<kind>POLYGON|MULTIPOLYGON)\s*(?:ZM|Z|M)?\s*(?P<body>\(.*\))\s*$",
     re.IGNORECASE | re.DOTALL,
 )
 _WKT_TOKEN_RE = re.compile(rf"\s*(?:(?P<number>{_NUMBER_PATTERN})|(?P<symbol>[(),]))")
