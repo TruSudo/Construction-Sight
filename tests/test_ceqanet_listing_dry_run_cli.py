@@ -17,8 +17,6 @@ def test_ceqanet_listing_dry_run_cli_renders_request_evidence_table() -> None:
             "San Bernardino",
             "--document-type",
             "EIR",
-            "--text",
-            "warehouse",
             "--page-size",
             "50",
             "--max-pages",
@@ -34,6 +32,22 @@ def test_ceqanet_listing_dry_run_cli_renders_request_evidence_table() -> None:
     assert "False" in result.output
     assert "San+Bernardino" in result.output
     assert "DocumentType=EIR+-+Draft+EIR" in result.output
+
+
+def test_ceqanet_listing_dry_run_cli_rejects_unsupported_text_filter() -> None:
+    result = runner.invoke(
+        app,
+        [
+            "dry-run",
+            "--county",
+            "San Bernardino",
+            "--text",
+            "warehouse",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "text_terms are unsupported by the verified search contract" in result.output
 
 
 def test_ceqanet_listing_dry_run_cli_emits_json_request_evidence() -> None:
