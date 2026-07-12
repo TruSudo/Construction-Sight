@@ -48,6 +48,12 @@ A planned capability is not an active defect when the current supported boundary
 | Outreach preview | No | No | No | No | No | No | Planned product capability; no external action is implied. |
 | UI/operator app | No | No | No | No | No | No | Planned product capability. |
 
+## Active defect ledger
+
+A certified tree must contain zero active defects. Any new runtime, data-quality, documentation, persistence, provenance, compatibility, security, or CI defect is recorded here immediately and blocks feature work until resolved.
+
+Current active entries: **none recorded**. The executable certification gate remains authoritative for the exact Git tree.
+
 ## Resolved defect ledger
 
 Every entry below is resolved within the currently supported scope. Monitoring language is preventive and does not represent an open defect.
