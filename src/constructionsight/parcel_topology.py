@@ -19,6 +19,10 @@ _UNVERIFIED_CRS_LIMITATION = (
     "polygon topology was not used because the spatial reference is not verified "
     "as longitude/latitude"
 )
+_INCOMPATIBLE_CRS_LIMITATION = (
+    "coordinate containment was not evaluated because the explicit spatial reference "
+    "is not recognized as longitude/latitude"
+)
 _UNPARSEABLE_TOPOLOGY_LIMITATION = (
     "polygon topology was not used because raw geometry could not be parsed as "
     "supported GeoJSON or WKT"
@@ -53,8 +57,14 @@ def evaluate_parcel_point_containment(
     latitude: float,
     longitude: float,
 ) -> ParcelPointContainment:
-    """Evaluate one WGS84-style point with topology when the geometry supports it."""
+    """Evaluate one longitude/latitude point without crossing an explicit CRS boundary."""
 
+    if _has_explicit_incompatible_spatial_reference(geometry.spatial_reference):
+        return ParcelPointContainment(
+            contained=False,
+            method=ParcelContainmentMethod.NONE,
+            limitations=(_INCOMPATIBLE_CRS_LIMITATION,),
+        )
     if geometry.geometry_kind == ParcelGeometryKind.POINT:
         return _point_geometry_containment(
             geometry,
@@ -91,7 +101,7 @@ def evaluate_parcel_point_containment(
                 if geometry.raw_geometry is None
                 else _UNPARSEABLE_TOPOLOGY_LIMITATION
             )
-        if not _is_verified_longitude_latitude(geometry.spatial_reference):
+        if geometry.spatial_reference is None:
             fallback_limitations.append(_UNVERIFIED_CRS_LIMITATION)
         return _envelope_containment(
             geometry,
@@ -265,6 +275,16 @@ def _coordinates_equal(first: Coordinate, second: Coordinate) -> bool:
     """Return whether two coordinates are equal within numeric tolerance."""
 
     return abs(first[0] - second[0]) <= 1e-10 and abs(first[1] - second[1]) <= 1e-10
+
+
+def _has_explicit_incompatible_spatial_reference(
+    spatial_reference: str | None,
+) -> bool:
+    """Return whether an explicit CRS cannot be compared to longitude/latitude hints."""
+
+    return spatial_reference is not None and not _is_verified_longitude_latitude(
+        spatial_reference
+    )
 
 
 def _is_verified_longitude_latitude(spatial_reference: str | None) -> bool:
