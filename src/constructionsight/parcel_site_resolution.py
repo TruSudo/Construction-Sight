@@ -5,7 +5,11 @@ from __future__ import annotations
 import hashlib
 
 from constructionsight.domain_types import confidence_band
-from constructionsight.parcel_core_models import ParcelCoreRecord, ParcelGeometryKind
+from constructionsight.parcel_core_models import ParcelCoreRecord
+from constructionsight.parcel_topology import (
+    ParcelPointContainment,
+    evaluate_parcel_point_containment,
+)
 from constructionsight.site_resolution_models import (
     GeometryHint,
     SiteIdentifier,
@@ -18,9 +22,7 @@ from constructionsight.site_resolution_models import (
 )
 from constructionsight.site_resolution_service import resolve_site
 
-_ENVELOPE_CONTAINMENT_LIMITATION = (
-    "coordinate containment uses parcel envelope only, not polygon topology"
-)
+ParcelMatch = tuple[ParcelCoreRecord, int, list[str], list[str]]
 
 
 def resolve_site_with_parcels(
@@ -44,8 +46,9 @@ def resolve_site_with_parcels(
             parcel=parcel,
             score=score,
             reasons=reasons,
+            match_limitations=match_limitations,
         )
-        for parcel, score, reasons in top_matches
+        for parcel, score, reasons, match_limitations in top_matches
     ]
     status = (
         SiteResolutionStatus.RESOLVED
@@ -68,26 +71,37 @@ def resolve_site_with_parcels(
 def _match_parcels(
     site_input: SiteResolutionInput,
     parcels: list[ParcelCoreRecord],
-) -> list[tuple[ParcelCoreRecord, int, list[str]]]:
+) -> list[ParcelMatch]:
     """Return parcel matches sorted by confidence score."""
 
     apn = _identifier_value(site_input.identifiers, SiteIdentifierKind.APN)
     address = _identifier_value(site_input.identifiers, SiteIdentifierKind.ADDRESS)
-    matches: list[tuple[ParcelCoreRecord, int, list[str]]] = []
+    matches: list[ParcelMatch] = []
     for parcel in parcels:
         score = 0
         reasons: list[str] = []
+        match_limitations: list[str] = []
         if apn and parcel.normalized_apn == apn:
             score += 70
             reasons.append("APN matched parcel core record")
         if address and parcel.normalized_address == address:
             score += 20
             reasons.append("address matched parcel core record")
-        if _point_hits_parcel(site_input.geometry_hints, parcel):
+        containment = _point_hits_parcel(site_input.geometry_hints, parcel)
+        if containment is not None:
             score += 10
-            reasons.append("coordinate hint falls within parcel envelope")
+            if containment.reason is not None:
+                reasons.append(containment.reason)
+            match_limitations.extend(containment.limitations)
         if score:
-            matches.append((parcel, min(score, 100), reasons))
+            matches.append(
+                (
+                    parcel,
+                    min(score, 100),
+                    _unique(reasons),
+                    _unique(match_limitations),
+                )
+            )
     return sorted(matches, key=lambda match: (-match[1], match[0].parcel_record_id))
 
 
@@ -97,18 +111,18 @@ def _candidate_from_parcel(
     parcel: ParcelCoreRecord,
     score: int,
     reasons: list[str],
+    match_limitations: list[str],
 ) -> SiteResolutionCandidate:
     """Build a site candidate from one matched parcel."""
 
     centroid_latitude = parcel.geometry.centroid_latitude if parcel.geometry else None
     centroid_longitude = parcel.geometry.centroid_longitude if parcel.geometry else None
     limitations = list(parcel.limitations)
+    limitations.extend(match_limitations)
     if parcel.geometry is None:
         limitations.append("matched parcel does not include geometry")
     else:
         limitations.extend(parcel.geometry.limitations)
-        if _uses_polygon_envelope_match(reasons, parcel):
-            limitations.append(_ENVELOPE_CONTAINMENT_LIMITATION)
     return SiteResolutionCandidate(
         site_key=_site_key_from_parcel(parcel),
         match_strength=_match_strength(score),
@@ -128,47 +142,25 @@ def _candidate_from_parcel(
     )
 
 
-def _uses_polygon_envelope_match(reasons: list[str], parcel: ParcelCoreRecord) -> bool:
-    """Return whether a candidate used polygon-like envelope containment."""
-
-    if parcel.geometry is None:
-        return False
-    if "coordinate hint falls within parcel envelope" not in reasons:
-        return False
-    return parcel.geometry.geometry_kind in {
-        ParcelGeometryKind.POLYGON,
-        ParcelGeometryKind.MULTIPOLYGON,
-    }
-
-
 def _point_hits_parcel(
     geometry_hints: list[GeometryHint],
     parcel: ParcelCoreRecord,
-) -> bool:
-    """Return whether a point hint falls inside the parcel envelope."""
+) -> ParcelPointContainment | None:
+    """Return the first coordinate hint contained by parcel geometry."""
 
     if parcel.geometry is None:
-        return False
-    geometry = parcel.geometry
-    min_latitude = geometry.envelope_min_latitude
-    min_longitude = geometry.envelope_min_longitude
-    max_latitude = geometry.envelope_max_latitude
-    max_longitude = geometry.envelope_max_longitude
-    if (
-        min_latitude is None
-        or min_longitude is None
-        or max_latitude is None
-        or max_longitude is None
-    ):
-        return False
+        return None
     for hint in geometry_hints:
         if hint.latitude is None or hint.longitude is None:
             continue
-        latitude_in_range = min_latitude <= hint.latitude <= max_latitude
-        longitude_in_range = min_longitude <= hint.longitude <= max_longitude
-        if latitude_in_range and longitude_in_range:
-            return True
-    return False
+        containment = evaluate_parcel_point_containment(
+            parcel.geometry,
+            latitude=hint.latitude,
+            longitude=hint.longitude,
+        )
+        if containment.contained:
+            return containment
+    return None
 
 
 def _identifier_value(
