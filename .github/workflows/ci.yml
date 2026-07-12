@@ -55,6 +55,15 @@ jobs:
       - name: Ruff
         run: python -m ruff check src tests
 
+      - name: Capture mypy diagnostics
+        run: python -m mypy src > /tmp/mypy-results-${{ matrix.python-version }}.txt 2>&1 || true
+
+      - name: Upload mypy diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: mypy-results-${{ matrix.python-version }}
+          path: /tmp/mypy-results-${{ matrix.python-version }}.txt
+
       - name: Mypy
         run: python -m mypy src
 
