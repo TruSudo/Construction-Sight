@@ -39,6 +39,7 @@ from constructionsight.source_verification_checklist_models import (
 
 _OFFICIAL_REGISTRY_HOSTS = {"ceqanet.opr.ca.gov", "ceqanet.lci.ca.gov"}
 _EXECUTION_HOST = "ceqanet.lci.ca.gov"
+_MANIFEST_LIMITATION = "manifest authorizes no persistence and no background scheduling"
 
 
 def build_ceqanet_recurring_run_definition(
@@ -72,6 +73,10 @@ def build_ceqanet_recurring_run_definition(
         "each exact run window requires a separate immutable manifest",
         "source or checklist evidence changes require a new definition digest",
         "live execution still requires an explicit per-attempt operator authorization",
+        (
+            "attempt sequence uniqueness is operator-controlled until a persisted "
+            "attempt ledger exists"
+        ),
     ]
     if urlparse(str(source.public_url)).netloc.lower() != _EXECUTION_HOST:
         limitations.append(
@@ -122,15 +127,11 @@ def build_ceqanet_recurring_run_manifest(
         window_end=window_end,
     )
     _listing_query_from_payload(query)
-    run_id = canonical_digest(
-        {
-            "definition_digest": definition.definition_digest,
-            "source_key": definition.source_key,
-            "window_field": definition.query_template.window_field.value,
-            "window_start": window_start.isoformat(),
-            "window_end": window_end.isoformat(),
-            "query": query,
-        }
+    run_id = _expected_run_id(
+        definition,
+        window_start=window_start,
+        window_end=window_end,
+        query=query,
     )
     payload: dict[str, Any] = {
         "run_id": run_id,
@@ -147,10 +148,7 @@ def build_ceqanet_recurring_run_manifest(
         "access_assumptions": definition.access_assumptions,
         "readiness": definition.readiness,
         "blockers": list(definition.blockers),
-        "limitations": [
-            *definition.limitations,
-            "manifest authorizes no persistence and no background scheduling",
-        ],
+        "limitations": [*definition.limitations, _MANIFEST_LIMITATION],
     }
     digest = canonical_digest(_jsonable_manifest_payload(payload))
     manifest = CeqanetRecurringRunManifest(
@@ -161,9 +159,66 @@ def build_ceqanet_recurring_run_manifest(
     return manifest
 
 
+def assert_ceqanet_definition_evidence_current(
+    definition: CeqanetRecurringRunDefinition,
+    sources: list[PublicSource],
+    checklist_report: SourceVerificationChecklistReport,
+) -> None:
+    """Reject a definition whose current registry or checklist evidence has drifted."""
+
+    definition.assert_integrity()
+    current_registry_digest = _source_registry_digest(sources)
+    if current_registry_digest != definition.source_registry_digest:
+        raise ValueError("current source registry digest does not match definition")
+
+    row = _checklist_row(checklist_report, definition.source_key)
+    source = _registry_source(sources, row)
+    if source.platform_family is not PlatformFamily.CEQANET:
+        raise ValueError("current source is no longer a CEQAnet source")
+    _validate_registry_public_url(str(source.public_url))
+
+    comparisons = (
+        (source.source_name, definition.source_name, "current source name does not match definition"),
+        (
+            str(source.public_url),
+            definition.registry_public_url,
+            "current source URL does not match definition",
+        ),
+        (
+            source.verification_status.value,
+            definition.registry_verification_status,
+            "current registry verification status does not match definition",
+        ),
+        (
+            row.checklist_status.value,
+            definition.checklist_status,
+            "current checklist status does not match definition",
+        ),
+        (
+            row.evidence_refs,
+            definition.evidence_refs,
+            "current checklist evidence references do not match definition",
+        ),
+    )
+    for current, expected, message in comparisons:
+        if current != expected:
+            raise ValueError(message)
+
+    if _checklist_row_digest(row) != definition.checklist_evidence_digest:
+        raise ValueError("current checklist evidence digest does not match definition")
+
+    blockers = _definition_blockers(source, row, definition.access_assumptions)
+    if blockers:
+        raise ValueError(
+            "current source evidence no longer permits execution: " + "; ".join(blockers)
+        )
+
+
 def execute_ceqanet_recurring_run(
     definition: CeqanetRecurringRunDefinition,
     manifest: CeqanetRecurringRunManifest,
+    sources: list[PublicSource],
+    checklist_report: SourceVerificationChecklistReport,
     *,
     attempt_sequence: int,
     execute_live: bool,
@@ -172,6 +227,7 @@ def execute_ceqanet_recurring_run(
     """Execute one manifest through the existing bounded listing executor."""
 
     _validate_definition_manifest_pair(definition, manifest)
+    assert_ceqanet_definition_evidence_current(definition, sources, checklist_report)
     if not execute_live:
         raise ValueError("explicit live execution authorization is required")
     if manifest.readiness is not CeqanetRunReadiness.READY_FOR_MANUAL_EXECUTION:
@@ -203,13 +259,7 @@ def execute_ceqanet_recurring_run(
         timeout_seconds=manifest.timeout_seconds,
         max_body_chars=manifest.max_body_chars,
     ).run(plan)
-    attempt_id = canonical_digest(
-        {
-            "run_id": manifest.run_id,
-            "manifest_digest": manifest.manifest_digest,
-            "attempt_sequence": attempt_sequence,
-        }
-    )
+    attempt_id = _expected_attempt_id(manifest, attempt_sequence)
     return CeqanetRecurringRunExecution(
         run_id=manifest.run_id,
         attempt_sequence=attempt_sequence,
@@ -227,8 +277,10 @@ def verify_ceqanet_recurring_run_execution(
     definition: CeqanetRecurringRunDefinition,
     manifest: CeqanetRecurringRunManifest,
     execution: CeqanetRecurringRunExecution,
+    sources: list[PublicSource] | None = None,
+    checklist_report: SourceVerificationChecklistReport | None = None,
 ) -> CeqanetRecurringRunVerification:
-    """Verify immutable binding and bounded execution invariants."""
+    """Verify immutable binding, current evidence, and bounded execution invariants."""
 
     findings: list[str] = []
     try:
@@ -236,13 +288,19 @@ def verify_ceqanet_recurring_run_execution(
     except ValueError as exc:
         findings.append(str(exc))
 
-    expected_attempt_id = canonical_digest(
-        {
-            "run_id": manifest.run_id,
-            "manifest_digest": manifest.manifest_digest,
-            "attempt_sequence": execution.attempt_sequence,
-        }
-    )
+    if (sources is None) != (checklist_report is None):
+        findings.append("current registry and checklist must be supplied together")
+    elif sources is not None and checklist_report is not None:
+        try:
+            assert_ceqanet_definition_evidence_current(
+                definition,
+                sources,
+                checklist_report,
+            )
+        except ValueError as exc:
+            findings.append(str(exc))
+
+    expected_attempt_id = _expected_attempt_id(manifest, execution.attempt_sequence)
     _compare(findings, execution.run_id, manifest.run_id, "execution run_id mismatch")
     _compare(
         findings,
@@ -270,7 +328,15 @@ def verify_ceqanet_recurring_run_execution(
     )
     if execution.persistence_mutated:
         findings.append("execution reports persistence mutation")
-    _verify_execution_report(manifest, execution.execution_report, findings)
+    executed_count = _verify_execution_report(
+        manifest,
+        execution.execution_report,
+        findings,
+    )
+    if executed_count is not None:
+        expected_network_executed = executed_count > 0
+        if execution.network_executed != expected_network_executed:
+            findings.append("network_executed does not match executed request count")
 
     return CeqanetRecurringRunVerification(
         passed=not findings,
@@ -503,26 +569,101 @@ def _snapshot_to_dict(snapshot: CeqanetListingResponseSnapshot) -> dict[str, Any
     }
 
 
+def _expected_run_id(
+    definition: CeqanetRecurringRunDefinition,
+    *,
+    window_start: date,
+    window_end: date,
+    query: dict[str, Any],
+) -> str:
+    return canonical_digest(
+        {
+            "definition_digest": definition.definition_digest,
+            "source_key": definition.source_key,
+            "window_field": definition.query_template.window_field.value,
+            "window_start": window_start.isoformat(),
+            "window_end": window_end.isoformat(),
+            "query": query,
+        }
+    )
+
+
+def _expected_attempt_id(
+    manifest: CeqanetRecurringRunManifest,
+    attempt_sequence: int,
+) -> str:
+    return canonical_digest(
+        {
+            "run_id": manifest.run_id,
+            "manifest_digest": manifest.manifest_digest,
+            "attempt_sequence": attempt_sequence,
+        }
+    )
+
+
 def _validate_definition_manifest_pair(
     definition: CeqanetRecurringRunDefinition,
     manifest: CeqanetRecurringRunManifest,
 ) -> None:
     definition.assert_integrity()
     manifest.assert_integrity()
-    if manifest.definition_digest != definition.definition_digest:
-        raise ValueError("manifest definition_digest does not match definition")
-    if manifest.source_key != definition.source_key:
-        raise ValueError("manifest source_key does not match definition")
-    if manifest.source_name != definition.source_name:
-        raise ValueError("manifest source_name does not match definition")
-    if manifest.execution_base_url != definition.execution_base_url:
-        raise ValueError("manifest execution_base_url does not match definition")
-    if manifest.timeout_seconds != definition.timeout_seconds:
-        raise ValueError("manifest timeout_seconds does not match definition")
-    if manifest.max_body_chars != definition.max_body_chars:
-        raise ValueError("manifest max_body_chars does not match definition")
-    if manifest.access_assumptions != definition.access_assumptions:
-        raise ValueError("manifest access assumptions do not match definition")
+    comparisons = (
+        (
+            manifest.definition_digest,
+            definition.definition_digest,
+            "manifest definition_digest does not match definition",
+        ),
+        (manifest.source_key, definition.source_key, "manifest source_key does not match definition"),
+        (
+            manifest.source_name,
+            definition.source_name,
+            "manifest source_name does not match definition",
+        ),
+        (
+            manifest.execution_base_url,
+            definition.execution_base_url,
+            "manifest execution_base_url does not match definition",
+        ),
+        (
+            manifest.window_field,
+            definition.query_template.window_field,
+            "manifest window_field does not match definition",
+        ),
+        (
+            manifest.timeout_seconds,
+            definition.timeout_seconds,
+            "manifest timeout_seconds does not match definition",
+        ),
+        (
+            manifest.max_body_chars,
+            definition.max_body_chars,
+            "manifest max_body_chars does not match definition",
+        ),
+        (
+            manifest.access_assumptions,
+            definition.access_assumptions,
+            "manifest access assumptions do not match definition",
+        ),
+        (
+            manifest.readiness,
+            definition.readiness,
+            "manifest readiness does not match definition",
+        ),
+        (
+            manifest.blockers,
+            definition.blockers,
+            "manifest blockers do not match definition",
+        ),
+        (
+            manifest.limitations,
+            [*definition.limitations, _MANIFEST_LIMITATION],
+            "manifest limitations do not match definition",
+        ),
+    )
+    for actual, expected, message in comparisons:
+        if actual != expected:
+            raise ValueError(message)
+
     expected_query = _query_payload(
         definition.query_template,
         window_start=manifest.window_start,
@@ -530,15 +671,11 @@ def _validate_definition_manifest_pair(
     )
     if manifest.query != expected_query:
         raise ValueError("manifest query does not match definition and window")
-    expected_run_id = canonical_digest(
-        {
-            "definition_digest": definition.definition_digest,
-            "source_key": definition.source_key,
-            "window_field": definition.query_template.window_field.value,
-            "window_start": manifest.window_start.isoformat(),
-            "window_end": manifest.window_end.isoformat(),
-            "query": expected_query,
-        }
+    expected_run_id = _expected_run_id(
+        definition,
+        window_start=manifest.window_start,
+        window_end=manifest.window_end,
+        query=expected_query,
     )
     if manifest.run_id != expected_run_id:
         raise ValueError("manifest run_id does not match definition and window")
@@ -553,15 +690,16 @@ def _verify_execution_report(
     manifest: CeqanetRecurringRunManifest,
     report: dict[str, Any],
     findings: list[str],
-) -> None:
+) -> int | None:
     metadata = report.get("metadata")
     snapshots = report.get("snapshots")
     if not isinstance(metadata, dict):
         findings.append("execution report metadata is missing")
-        return
+        return None
     if not isinstance(snapshots, list):
         findings.append("execution report snapshots are missing")
-        return
+        return None
+
     _compare(
         findings,
         metadata.get("schema_version"),
@@ -574,27 +712,140 @@ def _verify_execution_report(
         manifest.query,
         "execution report query does not match manifest",
     )
-    planned = metadata.get("planned_request_count")
-    executed = metadata.get("executed_request_count")
-    if isinstance(planned, bool) or not isinstance(planned, int):
-        findings.append("planned_request_count is not an integer")
-    elif planned > _int_value(manifest.query, "max_pages"):
+    _compare(
+        findings,
+        metadata.get("maximum_records"),
+        _int_value(manifest.query, "page_size") * _int_value(manifest.query, "max_pages"),
+        "execution report maximum_records does not match manifest",
+    )
+
+    planned = _report_int(metadata, "planned_request_count", findings)
+    executed = _report_int(metadata, "executed_request_count", findings)
+    successful = _report_int(metadata, "successful_response_count", findings)
+    failed = _report_int(metadata, "failed_response_count", findings)
+    max_pages = _int_value(manifest.query, "max_pages")
+    if planned is not None and planned > max_pages:
         findings.append("planned_request_count exceeds manifest max_pages")
-    if isinstance(executed, bool) or not isinstance(executed, int):
-        findings.append("executed_request_count is not an integer")
-    elif executed != len(snapshots):
+    if executed is not None and executed != len(snapshots):
         findings.append("executed_request_count does not match snapshots")
+    if None not in {executed, successful, failed}:
+        assert executed is not None
+        assert successful is not None
+        assert failed is not None
+        if successful + failed != executed:
+            findings.append("successful and failed response counts do not equal executed count")
+
     expected_host = urlparse(manifest.execution_base_url).netloc.lower()
+    page_numbers: set[int] = set()
     for index, snapshot in enumerate(snapshots):
-        if not isinstance(snapshot, dict):
-            findings.append(f"snapshots[{index}] is not an object")
-            continue
-        request_url = snapshot.get("request_url")
-        if not isinstance(request_url, str):
-            findings.append(f"snapshots[{index}] request_url is missing")
-            continue
-        parsed = urlparse(request_url)
-        if parsed.scheme != "https" or parsed.netloc.lower() != expected_host:
-            findings.append(f"snapshots[{index}] request_url host is outside manifest")
-        if parsed.path != "/Search":
-            findings.append(f"snapshots[{index}] request_url path is not /Search")
+        _verify_snapshot(
+            snapshot,
+            index=index,
+            expected_host=expected_host,
+            max_pages=max_pages,
+            max_body_chars=manifest.max_body_chars,
+            page_numbers=page_numbers,
+            findings=findings,
+        )
+    return executed
+
+
+def _report_int(
+    metadata: dict[str, Any],
+    field_name: str,
+    findings: list[str],
+) -> int | None:
+    value = metadata.get(field_name)
+    if isinstance(value, bool) or not isinstance(value, int):
+        findings.append(f"{field_name} is not an integer")
+        return None
+    return value
+
+
+def _verify_snapshot(
+    snapshot: object,
+    *,
+    index: int,
+    expected_host: str,
+    max_pages: int,
+    max_body_chars: int,
+    page_numbers: set[int],
+    findings: list[str],
+) -> None:
+    if not isinstance(snapshot, dict):
+        findings.append(f"snapshots[{index}] is not an object")
+        return
+
+    page_number = snapshot.get("page_number")
+    if isinstance(page_number, bool) or not isinstance(page_number, int):
+        findings.append(f"snapshots[{index}] page_number is not an integer")
+    elif not 1 <= page_number <= max_pages:
+        findings.append(f"snapshots[{index}] page_number exceeds manifest bounds")
+    elif page_number in page_numbers:
+        findings.append(f"snapshots[{index}] page_number is duplicated")
+    else:
+        page_numbers.add(page_number)
+
+    if snapshot.get("method") != "GET":
+        findings.append(f"snapshots[{index}] method is not GET")
+    if snapshot.get("executed") is not True:
+        findings.append(f"snapshots[{index}] executed flag is not true")
+
+    request_url = snapshot.get("request_url")
+    if not isinstance(request_url, str):
+        findings.append(f"snapshots[{index}] request_url is missing")
+    else:
+        _verify_snapshot_url(
+            request_url,
+            index=index,
+            label="request_url",
+            expected_host=expected_host,
+            require_search_path=True,
+            findings=findings,
+        )
+
+    final_url = snapshot.get("final_url")
+    if not isinstance(final_url, str):
+        findings.append(f"snapshots[{index}] final_url is missing")
+    else:
+        _verify_snapshot_url(
+            final_url,
+            index=index,
+            label="final_url",
+            expected_host=expected_host,
+            require_search_path=False,
+            findings=findings,
+        )
+
+    body_text = snapshot.get("body_text")
+    body_length = snapshot.get("body_length")
+    body_truncated = snapshot.get("body_truncated")
+    if not isinstance(body_text, str):
+        findings.append(f"snapshots[{index}] body_text is not a string")
+    elif len(body_text) > max_body_chars:
+        findings.append(f"snapshots[{index}] retained body exceeds manifest limit")
+    if isinstance(body_length, bool) or not isinstance(body_length, int):
+        findings.append(f"snapshots[{index}] body_length is not an integer")
+    elif isinstance(body_text, str) and body_length < len(body_text):
+        findings.append(f"snapshots[{index}] body_length is smaller than retained body")
+    if not isinstance(body_truncated, bool):
+        findings.append(f"snapshots[{index}] body_truncated is not a boolean")
+    elif isinstance(body_length, int) and not isinstance(body_length, bool):
+        if body_truncated != (body_length > max_body_chars):
+            findings.append(f"snapshots[{index}] body_truncated is inconsistent")
+
+
+def _verify_snapshot_url(
+    url: str,
+    *,
+    index: int,
+    label: str,
+    expected_host: str,
+    require_search_path: bool,
+    findings: list[str],
+) -> None:
+    parsed = urlparse(url)
+    if parsed.scheme != "https" or parsed.netloc.lower() != expected_host:
+        findings.append(f"snapshots[{index}] {label} host is outside manifest")
+    if require_search_path and parsed.path != "/Search":
+        findings.append(f"snapshots[{index}] {label} path is not /Search")
