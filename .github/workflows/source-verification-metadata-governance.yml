@@ -1,0 +1,119 @@
+name: Source verification metadata governance
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - scripts/apply_source_verification_metadata_governance.py
+      - .github/workflows/source-verification-metadata-governance.yml
+  push:
+    branches:
+      - agent/ceqanet-evidence-repair-partial-v2
+    paths:
+      - scripts/apply_source_verification_metadata_governance.py
+      - .github/workflows/source-verification-metadata-governance.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-validate-remove:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repair branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/ceqanet-evidence-repair-partial-v2
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install package with dev dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Patch verification metadata governance
+        run: python scripts/apply_source_verification_metadata_governance.py patch
+
+      - name: Build metadata reconciliation plan
+        run: |
+          constructionsight-source-plan plan \
+            data/source_registry.seed.json \
+            --observations-path evidence/source_verification/ceqanet_observations_2026-07-12.json \
+            --output evidence/source_verification/ceqanet_verification_metadata_update_plan_2026-07-12.json
+
+      - name: Validate metadata reconciliation plan
+        run: python scripts/apply_source_verification_metadata_governance.py validate-plan
+
+      - name: Apply metadata reconciliation atomically
+        run: |
+          PLAN_DIGEST=$(python - <<'PY'
+          import json
+          from pathlib import Path
+          plan = json.loads(Path("evidence/source_verification/ceqanet_verification_metadata_update_plan_2026-07-12.json").read_text(encoding="utf-8"))
+          print(plan["plan_digest"])
+          PY
+          )
+          constructionsight-source-plan apply \
+            data/source_registry.seed.json \
+            evidence/source_verification/ceqanet_verification_metadata_update_plan_2026-07-12.json \
+            --approved-plan-digest "$PLAN_DIGEST" \
+            --audit-output evidence/source_verification/ceqanet_verification_metadata_apply_audit_2026-07-12.json \
+            --in-place \
+            --backup-output /tmp/source_registry.seed.pre-metadata.json \
+            --apply
+
+      - name: Reconcile evidence and documentation
+        run: python scripts/apply_source_verification_metadata_governance.py reconcile
+
+      - name: Remove temporary metadata tooling
+        run: |
+          git rm -f \
+            .github/workflows/source-verification-metadata-governance.yml \
+            scripts/apply_source_verification_metadata_governance.py
+
+      - name: Commit production metadata governance candidate
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "Govern source verification metadata"
+
+      - name: Dependency integrity
+        run: python -m pip check
+
+      - name: Ruff
+        run: python -m ruff check src tests
+
+      - name: Mypy
+        run: python -m mypy src
+
+      - name: Compile source and tests
+        run: python -m compileall -q src tests
+
+      - name: Pytest
+        run: python -m pytest --strict-config --strict-markers -ra -W error
+
+      - name: Adapter contract audit
+        run: constructionsight audit-adapters
+
+      - name: Source adapter coverage audit
+        run: constructionsight audit-source-coverage data/source_registry.seed.json
+
+      - name: Repository certification audit
+        run: python -m constructionsight.repository_certification --root . --require-clean-worktree
+
+      - name: Diff hygiene
+        run: git diff --check
+
+      - name: Push governed production tree
+        run: git push origin HEAD:agent/ceqanet-evidence-repair-partial-v2
