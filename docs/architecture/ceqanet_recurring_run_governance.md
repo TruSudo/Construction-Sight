@@ -176,7 +176,7 @@ constructionsight-ceqanet-recurring-run verify
 
 ## Current maturity
 
-The canonical CEQAnet registry record remains unverified. Therefore, a definition produced from current canonical repository data remains blocked and cannot execute through this boundary.
+The canonical CEQAnet registry record is verified through bounded public evidence, a reviewed official-policy artifact, and controlled apply. A definition may therefore become ready for explicit manual execution when it binds the current reviewed checklist. This does not authorize scheduling, persistence mutation, or document downloads.
 
 This implementation proves the governance, replay, stale-evidence, and retained-execution-integrity contracts. It does not establish verified usable coverage, recurring production operation, autonomous scheduling, or ingestion completeness.
 

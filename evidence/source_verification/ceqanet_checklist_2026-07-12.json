@@ -1,0 +1,46 @@
+{
+  "generated_at": "2026-07-12T06:24:09.595969Z",
+  "rows": [
+    {
+      "access_barrier": "not_observed",
+      "adapter_status": "contract_ready",
+      "checklist_status": "detail_behavior_observed",
+      "detail_page": "observed",
+      "evidence_refs": [
+        "evidence/source_verification/ceqanet_public_access_2026-07-12.json"
+      ],
+      "final_url": "https://ceqanet.lci.ca.gov/",
+      "generated_at": "2026-07-12T06:24:08.440365Z",
+      "http_status_code": 200,
+      "limitations": [
+        "evidence is a bounded point-in-time public-access observation",
+        "response bodies are represented by lengths and SHA-256 hashes, not archived here",
+        "terms/privacy/accessibility links are inventoried but legal terms review remains manual",
+        "this evidence does not itself promote source verification status",
+        "this evidence does not establish recurring production coverage"
+      ],
+      "next_action": "complete manual terms review before any verification-status promotion",
+      "observation_notes": "Bounded GET observation used County=San Bernardino, retained no full response bodies, downloaded no documents, and performed no persistence mutation.",
+      "original_url": "https://ceqanet.opr.ca.gov/",
+      "platform_family": "ceqanet",
+      "public_entry_page": "observed",
+      "query_behavior": "observed",
+      "readiness_status": "reachable",
+      "reasons": [
+        "official public entry, bounded search, result-list, and detail behavior observed",
+        "no login, captcha, paywall, or robots prohibition observed on reviewed paths"
+      ],
+      "recommendation": "retain_unverified_pending_manual_terms_review",
+      "redirect_classification": "cross_host_redirect",
+      "registry_status": "unverified",
+      "result_list": "observed",
+      "source_key": "source:ceqanet-state-clearinghouse",
+      "source_name": "CEQAnet State Clearinghouse",
+      "terms_review": "not_checked"
+    }
+  ],
+  "source_count": 1,
+  "status_counts": {
+    "detail_behavior_observed": 1
+  }
+}

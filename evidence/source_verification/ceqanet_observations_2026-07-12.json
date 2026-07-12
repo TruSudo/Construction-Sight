@@ -1,0 +1,17 @@
+[
+  {
+    "access_barrier_observed": false,
+    "detail_page_observed": true,
+    "evidence_refs": [
+      "evidence/source_verification/ceqanet_public_access_2026-07-12.json",
+      "evidence/source_verification/ceqanet_terms_review_2026-07-12.json"
+    ],
+    "notes": "Bounded public GET evidence and official policy review support verified manual read-only execution under the retained operating constraints.",
+    "public_entry_observed": true,
+    "query_behavior_observed": true,
+    "result_list_observed": true,
+    "source_key": "source:ceqanet-state-clearinghouse",
+    "source_name": "CEQAnet State Clearinghouse",
+    "terms_review_observed": true
+  }
+]

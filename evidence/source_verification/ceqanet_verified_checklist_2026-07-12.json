@@ -1,0 +1,160 @@
+{
+  "generated_at": "2026-07-12T06:24:11.079732Z",
+  "rows": [
+    {
+      "access_barrier": "not_observed",
+      "adapter_status": "contract_ready",
+      "checklist_status": "detail_behavior_observed",
+      "detail_page": "observed",
+      "evidence_refs": [
+        "evidence/source_verification/ceqanet_public_access_2026-07-12.json",
+        "evidence/source_verification/ceqanet_terms_review_2026-07-12.json"
+      ],
+      "final_url": null,
+      "generated_at": "2026-07-12T06:24:11.079671Z",
+      "http_status_code": null,
+      "limitations": [
+        "source remains a registry seed until reachability is checked",
+        "redirect behavior was not checked",
+        "adapter contract is not live source coverage"
+      ],
+      "next_action": "review source evidence",
+      "observation_notes": "Bounded public GET evidence and official policy review support verified manual read-only execution under the retained operating constraints.",
+      "original_url": "https://ceqanet.opr.ca.gov/",
+      "platform_family": "ceqanet",
+      "public_entry_page": "observed",
+      "query_behavior": "observed",
+      "readiness_status": "seed_only",
+      "reasons": [
+        "source record has not been HTTP-checked by this workflow",
+        "readiness status is seed_only",
+        "adapter status is contract_ready",
+        "source verification status is verified",
+        "operator observation file supplied"
+      ],
+      "recommendation": "keep_seed_only",
+      "redirect_classification": "not_checked",
+      "registry_status": "verified",
+      "result_list": "observed",
+      "source_key": "source:6b19f62b79928b37",
+      "source_name": "CEQAnet State Clearinghouse",
+      "terms_review": "observed"
+    },
+    {
+      "access_barrier": "not_checked",
+      "adapter_status": "placeholder",
+      "checklist_status": "needs_manual_review",
+      "detail_page": "not_checked",
+      "evidence_refs": [],
+      "final_url": null,
+      "generated_at": "2026-07-12T06:24:11.079691Z",
+      "http_status_code": null,
+      "limitations": [
+        "source remains a registry seed until reachability is checked",
+        "redirect behavior was not checked",
+        "adapter is placeholder-only",
+        "manual query/list/detail checklist is incomplete"
+      ],
+      "next_action": "complete manual source checklist",
+      "observation_notes": null,
+      "original_url": "https://www.cslb.ca.gov/",
+      "platform_family": "cslb",
+      "public_entry_page": "not_checked",
+      "query_behavior": "not_checked",
+      "readiness_status": "seed_only",
+      "reasons": [
+        "source record has not been HTTP-checked by this workflow",
+        "readiness status is seed_only",
+        "adapter status is placeholder",
+        "source verification status is unverified",
+        "no operator observation file was supplied"
+      ],
+      "recommendation": "keep_seed_only",
+      "redirect_classification": "not_checked",
+      "registry_status": "unverified",
+      "result_list": "not_checked",
+      "source_key": "source:e69cdd23d3e590f8",
+      "source_name": "CSLB Public License Search",
+      "terms_review": "not_checked"
+    },
+    {
+      "access_barrier": "not_checked",
+      "adapter_status": "placeholder",
+      "checklist_status": "needs_manual_review",
+      "detail_page": "not_checked",
+      "evidence_refs": [],
+      "final_url": null,
+      "generated_at": "2026-07-12T06:24:11.079708Z",
+      "http_status_code": null,
+      "limitations": [
+        "source remains a registry seed until reachability is checked",
+        "redirect behavior was not checked",
+        "adapter is placeholder-only",
+        "manual query/list/detail checklist is incomplete"
+      ],
+      "next_action": "complete manual source checklist",
+      "observation_notes": null,
+      "original_url": "https://ezop.sbcounty.gov/citizenaccess/",
+      "platform_family": "accela_aca",
+      "public_entry_page": "not_checked",
+      "query_behavior": "not_checked",
+      "readiness_status": "seed_only",
+      "reasons": [
+        "source record has not been HTTP-checked by this workflow",
+        "readiness status is seed_only",
+        "adapter status is placeholder",
+        "source verification status is unverified",
+        "no operator observation file was supplied"
+      ],
+      "recommendation": "keep_seed_only",
+      "redirect_classification": "not_checked",
+      "registry_status": "unverified",
+      "result_list": "not_checked",
+      "source_key": "source:057d796d8b0c86d3",
+      "source_name": "San Bernardino County EZOP",
+      "terms_review": "not_checked"
+    },
+    {
+      "access_barrier": "not_checked",
+      "adapter_status": "placeholder",
+      "checklist_status": "needs_manual_review",
+      "detail_page": "not_checked",
+      "evidence_refs": [],
+      "final_url": null,
+      "generated_at": "2026-07-12T06:24:11.079721Z",
+      "http_status_code": null,
+      "limitations": [
+        "source remains a registry seed until reachability is checked",
+        "redirect behavior was not checked",
+        "adapter is placeholder-only",
+        "manual query/list/detail checklist is incomplete"
+      ],
+      "next_action": "complete manual source checklist",
+      "observation_notes": null,
+      "original_url": "https://rivcoplus.org/",
+      "platform_family": "tyler_energov",
+      "public_entry_page": "not_checked",
+      "query_behavior": "not_checked",
+      "readiness_status": "seed_only",
+      "reasons": [
+        "source record has not been HTTP-checked by this workflow",
+        "readiness status is seed_only",
+        "adapter status is placeholder",
+        "source verification status is unverified",
+        "no operator observation file was supplied"
+      ],
+      "recommendation": "keep_seed_only",
+      "redirect_classification": "not_checked",
+      "registry_status": "unverified",
+      "result_list": "not_checked",
+      "source_key": "source:34cbb75ae64bbb7d",
+      "source_name": "Riverside County PLUS Online",
+      "terms_review": "not_checked"
+    }
+  ],
+  "source_count": 4,
+  "status_counts": {
+    "detail_behavior_observed": 1,
+    "needs_manual_review": 3
+  }
+}

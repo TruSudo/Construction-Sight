@@ -10,12 +10,16 @@
     "source_type": "state_registry",
     "platform_family": "ceqanet",
     "public_url": "https://ceqanet.opr.ca.gov/",
-    "record_categories": ["ceqa", "document", "planning_case"],
+    "record_categories": [
+      "ceqa",
+      "document",
+      "planning_case"
+    ],
     "search_method": "County/date/document-type search for public CEQA filings and attached documents.",
     "extraction_difficulty": "low",
     "update_frequency": "daily",
     "confidence_score": 85,
-    "verification_status": "unverified",
+    "verification_status": "verified",
     "provenance_notes": "Seed record from architectural planning. Must be verified before ingestion.",
     "last_checked_date": null
   },
@@ -30,7 +34,9 @@
     "source_type": "contractor_license",
     "platform_family": "cslb",
     "public_url": "https://www.cslb.ca.gov/",
-    "record_categories": ["contractor_license"],
+    "record_categories": [
+      "contractor_license"
+    ],
     "search_method": "License-number or business-name lookup for public contractor license facts.",
     "extraction_difficulty": "moderate",
     "update_frequency": "daily",
@@ -50,7 +56,14 @@
     "source_type": "county_portal",
     "platform_family": "accela_aca",
     "public_url": "https://ezop.sbcounty.gov/citizenaccess/",
-    "record_categories": ["permit", "planning_case", "grading", "building", "inspection", "document"],
+    "record_categories": [
+      "permit",
+      "planning_case",
+      "grading",
+      "building",
+      "inspection",
+      "document"
+    ],
     "search_method": "Public record search by module, record type, date, status, APN, or address where available.",
     "extraction_difficulty": "high",
     "update_frequency": "near_real_time",
@@ -70,7 +83,14 @@
     "source_type": "county_portal",
     "platform_family": "tyler_energov",
     "public_url": "https://rivcoplus.org/",
-    "record_categories": ["permit", "planning_case", "grading", "building", "inspection", "document"],
+    "record_categories": [
+      "permit",
+      "planning_case",
+      "grading",
+      "building",
+      "inspection",
+      "document"
+    ],
     "search_method": "Public SelfService portal search for permit, planning, inspection, and land-use records where available.",
     "extraction_difficulty": "moderate",
     "update_frequency": "daily",

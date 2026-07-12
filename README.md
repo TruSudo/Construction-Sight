@@ -25,7 +25,7 @@ Initial adapter families:
 - Laserfiche / PDF repositories
 - Custom municipal reports
 
-Adapter contracts are not the same thing as live source integrations. Most adapter families are still placeholder contracts. Source records in `data/source_registry.seed.json` are seed targets and must remain treated as unverified until checked. Run `constructionsight-source-status report data/source_registry.seed.json` before making any source-readiness claim. Run `constructionsight-source-readiness check data/source_registry.seed.json` and `constructionsight-audit-package build data/source_registry.seed.json --check-http` to produce non-mutating evidence. Use the source checklist, promotion plan, and registry plan commands before any status change. Controlled apply requires a reviewed plan digest, evidence references, explicit `--apply`, status-only mutation, stale-state validation, audit output, and atomic file replacement.
+Adapter contracts are not the same thing as live source integrations. Most adapter families are still placeholder contracts. Source records in `data/source_registry.seed.json` preserve per-source maturity: CEQAnet is currently `verified` for bounded guarded manual public-read execution, while the other canonical sources remain `unverified`. Verified source status does not imply scheduling, persistence ingestion, document-download authority, or complete coverage. Run `constructionsight-source-status report data/source_registry.seed.json` before making any source-readiness claim. Use the source checklist, promotion plan, registry plan, and controlled apply before any status change. Controlled apply requires a reviewed plan digest, evidence references, explicit `--apply`, status-only mutation, stale-state validation, audit output, and atomic file replacement.
 
 ## Current Pipeline
 
@@ -80,7 +80,7 @@ Readiness statuses are `seed_only`, `reachable`, `blocked`, `failed`, `partial`,
 
 Manual observation, promotion-plan, and registry-plan commands preserve checklist state and evidence references before proposing any registry payload. Registry plans include a deterministic SHA-256 digest over approval-significant content. The controlled apply command refuses a write unless the approval digest matches, the current registry is unchanged from the plan, evidence references exist, the action and status agree, and only `verification_status` changes. A verified source cannot be downgraded through the promotion workflow; that requires separate revocation doctrine.
 
-Current observed HTTP audit-package outcome for the seed registry is: CEQAnet `cross_host_redirect`, CSLB `no_redirect`, San Bernardino EZOP `same_host_redirect`, Riverside PLUS `downgraded_to_http`, and all four sources `keep_unverified_reachable`. This implementation does not promote any current seed source.
+Current canonical maturity is CEQAnet `verified` and the other three source records `unverified`. Bounded evidence and official policy review support guarded manual GET-only CEQAnet execution. Scheduling, autonomous retries, persistence mutation, document downloads, and production coverage remain separately gated.
 
 See:
 

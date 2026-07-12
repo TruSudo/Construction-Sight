@@ -1,0 +1,51 @@
+{
+  "conclusion": "no_explicit_restriction_observed_for_bounded_public_read_only_access",
+  "findings": [
+    "the published policy contemplates public browsing and downloading of information",
+    "state-created information is generally described as public domain and distributable as permitted by law",
+    "the system may be monitored for proper operation and security",
+    "modification, security circumvention, and use outside intended purposes are prohibited",
+    "no explicit prohibition of bounded robots-aware GET-only public-record access was found"
+  ],
+  "limitations": [
+    "this is an operational source-governance review, not a legal opinion",
+    "the policy is subject to change without notice",
+    "third-party documents may carry separate rights or accessibility limitations"
+  ],
+  "operating_constraints": [
+    "GET-only public access",
+    "no authentication or access-control bypass",
+    "no captcha, paywall, or robots bypass",
+    "no remote mutation",
+    "no document download unless separately authorized",
+    "bounded requests with explicit per-attempt authorization",
+    "re-review if the published policies or source behavior changes"
+  ],
+  "reviewed_at": "2026-07-12T06:24:08.440365+00:00",
+  "reviewed_pages": {
+    "accessibility": {
+      "body_length_bytes": 21424,
+      "body_sha256": "9217326175378aa1ab544081d37114e0eaf11987c410e766d61a82fec7c863a8",
+      "status_code": 200,
+      "title": "Accessibility / Help Page",
+      "url": "https://ceqanet.lci.ca.gov/Home/Accessibility"
+    },
+    "conditions_of_use": {
+      "body_length_bytes": 28127,
+      "body_sha256": "deb4ff99c320de0ca8c4529dd5dda5343c5dfc38b088fe77656bf8c8fa20e091",
+      "status_code": 200,
+      "title": "Conditions of Use",
+      "url": "https://ceqanet.lci.ca.gov/Home/ConditionsOfUse"
+    },
+    "privacy_policy": {
+      "body_length_bytes": 13395,
+      "body_sha256": "a91f1d31d7a1f9f3fd0ffabcf382a313045c7c7faa1c25df95dc53a7b875b9e3",
+      "status_code": 200,
+      "title": "Privacy Policy",
+      "url": "https://ceqanet.lci.ca.gov/Home/Privacy"
+    }
+  },
+  "schema_version": "ceqanet_terms_review.v1",
+  "source_key": "source:ceqanet-state-clearinghouse",
+  "source_name": "CEQAnet State Clearinghouse"
+}

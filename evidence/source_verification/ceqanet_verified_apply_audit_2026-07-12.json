@@ -1,0 +1,125 @@
+{
+  "source_count": 4,
+  "proposed_update_count": 1,
+  "applied_count": 1,
+  "action_counts": {
+    "verified_candidate_review": 1,
+    "keep_unverified": 3
+  },
+  "plan_digest": "97609000e4af283088225fb37c4d2af7b6a30f1539d9bca8cd99dff9cd1d16aa",
+  "original_registry_digest": "ba5aab97ebc56aca4e51c646e5a2808de4550ca91d9e2e101447ffaeac8e36c0",
+  "updated_registry_digest": "40c299949ec9a0f33e353b53a7903009594ef781c971b0fed5eab134a7e9b100",
+  "registry_changed": true,
+  "rows": [
+    {
+      "source_key": "source:6b19f62b79928b37",
+      "source_name": "CEQAnet State Clearinghouse",
+      "planned_action": "verified_candidate_review",
+      "previous_verification_status": "unverified",
+      "resulting_verification_status": "verified",
+      "applied": true,
+      "reasons": [
+        "source record has not been HTTP-checked by this workflow",
+        "readiness status is seed_only",
+        "adapter status is contract_ready",
+        "source verification status is unverified",
+        "operator observation file supplied",
+        "manual entry, query, list, detail, barrier, terms, and evidence review is complete"
+      ],
+      "limitations": [
+        "source remains a registry seed until reachability is checked",
+        "redirect behavior was not checked",
+        "adapter contract is not live source coverage",
+        "human approval is still required before registry update",
+        "registry status apply does not establish production-grade recurring source integration"
+      ],
+      "evidence_refs": [
+        "evidence/source_verification/ceqanet_public_access_2026-07-12.json",
+        "evidence/source_verification/ceqanet_terms_review_2026-07-12.json"
+      ],
+      "applied_at": "2026-07-12T06:24:10.820219Z"
+    },
+    {
+      "source_key": "source:e69cdd23d3e590f8",
+      "source_name": "CSLB Public License Search",
+      "planned_action": "keep_unverified",
+      "previous_verification_status": "unverified",
+      "resulting_verification_status": "unverified",
+      "applied": false,
+      "reasons": [
+        "source record has not been HTTP-checked by this workflow",
+        "readiness status is seed_only",
+        "adapter status is placeholder",
+        "source verification status is unverified",
+        "no operator observation file was supplied",
+        "checklist evidence is insufficient for registry status change"
+      ],
+      "limitations": [
+        "source remains a registry seed until reachability is checked",
+        "redirect behavior was not checked",
+        "adapter is placeholder-only",
+        "manual query/list/detail checklist is incomplete",
+        "no evidence references were supplied",
+        "no registry status change is proposed",
+        "plan row was not applied because no registry status change was proposed"
+      ],
+      "evidence_refs": [],
+      "applied_at": "2026-07-12T06:24:10.820230Z"
+    },
+    {
+      "source_key": "source:057d796d8b0c86d3",
+      "source_name": "San Bernardino County EZOP",
+      "planned_action": "keep_unverified",
+      "previous_verification_status": "unverified",
+      "resulting_verification_status": "unverified",
+      "applied": false,
+      "reasons": [
+        "source record has not been HTTP-checked by this workflow",
+        "readiness status is seed_only",
+        "adapter status is placeholder",
+        "source verification status is unverified",
+        "no operator observation file was supplied",
+        "checklist evidence is insufficient for registry status change"
+      ],
+      "limitations": [
+        "source remains a registry seed until reachability is checked",
+        "redirect behavior was not checked",
+        "adapter is placeholder-only",
+        "manual query/list/detail checklist is incomplete",
+        "no evidence references were supplied",
+        "no registry status change is proposed",
+        "plan row was not applied because no registry status change was proposed"
+      ],
+      "evidence_refs": [],
+      "applied_at": "2026-07-12T06:24:10.820239Z"
+    },
+    {
+      "source_key": "source:34cbb75ae64bbb7d",
+      "source_name": "Riverside County PLUS Online",
+      "planned_action": "keep_unverified",
+      "previous_verification_status": "unverified",
+      "resulting_verification_status": "unverified",
+      "applied": false,
+      "reasons": [
+        "source record has not been HTTP-checked by this workflow",
+        "readiness status is seed_only",
+        "adapter status is placeholder",
+        "source verification status is unverified",
+        "no operator observation file was supplied",
+        "checklist evidence is insufficient for registry status change"
+      ],
+      "limitations": [
+        "source remains a registry seed until reachability is checked",
+        "redirect behavior was not checked",
+        "adapter is placeholder-only",
+        "manual query/list/detail checklist is incomplete",
+        "no evidence references were supplied",
+        "no registry status change is proposed",
+        "plan row was not applied because no registry status change was proposed"
+      ],
+      "evidence_refs": [],
+      "applied_at": "2026-07-12T06:24:10.820251Z"
+    }
+  ],
+  "applied_at": "2026-07-12T06:24:10.820575Z"
+}

@@ -21,7 +21,7 @@ ConstructionSight has a substantial tested model/service architecture for lawful
 - read-only upstream inspection and governed lead/result actions; and
 - an executable complete tracked-tree certification gate.
 
-ConstructionSight is not yet a production recurring live-source platform. Most adapter families are contracts or planned integrations. CEQAnet has guarded execution, archive tooling, and recurring-run governance, but the canonical source remains unverified and no production scheduler exists. Four canonical source-registry seed records remain unverified. No external outreach-sending behavior or GUI/operator application is implemented.
+ConstructionSight is not yet a production recurring live-source platform. Most adapter families are contracts or planned integrations. CEQAnet has bounded evidence-backed `verified` maturity, guarded execution, archive tooling, and recurring-run governance, but no production scheduler or persisted attempt ledger exists. The other three canonical source records remain unverified. No external outreach-sending behavior or GUI/operator application is implemented.
 
 ## Certification status model
 
@@ -34,12 +34,12 @@ The active-defect count for a certified tree must be zero. Planned capabilities 
 | Layer | Implemented | Tested | Documented | Persisted | Operator access | Live source integrated | Current boundary |
 |---|---:|---:|---:|---:|---:|---:|---|
 | Lawful intake boundary | Yes | Yes | Yes | Partial | Yes | No | Public-access constraints and unknown fields remain explicit. |
-| Source registry | Yes | Yes | Yes | File-backed | Yes | No | Seed status is distinct from verified usable coverage. |
+| Source registry | Yes | Yes | Yes | File-backed | Yes | No | CEQAnet is `verified` for guarded manual public reads; three canonical sources remain `unverified`. Verification is not a production-coverage claim. |
 | Source readiness/audit/checklist/plans | Yes | Yes | Yes | Report/file-backed | Yes | No | Evidence and proposed actions do not mutate source state. |
 | Controlled source registry apply | Yes | Yes | Yes | File-backed | Yes | No | Full-snapshot, digest, evidence, identity, status-only, path, audit, and explicit-authorization controls apply. |
 | Adapter contracts | Yes | Yes | Yes | N/A | Yes | No | Contracts are not live-integration claims. |
 | CEQAnet guarded tooling | Yes | Yes | Yes | Partial | Yes | Guarded only | Bounded public execution, offline parsing, persistence planning/application, export, and archive verification exist. |
-| CEQAnet recurring-run governance | Yes | Yes | Yes | Artifact-only | Yes | Guarded only | Exact schemas and canonical digests bind source identity, evidence, query, window, attempts, and complete retained response envelopes. Execution requires current registry/checklist agreement and explicit authorization. Canonical source data remains blocked because it is unverified. |
+| CEQAnet recurring-run governance | Yes | Yes | Yes | Artifact-only | Yes | Guarded only | Exact schemas and canonical digests bind source identity, evidence, query, window, attempts, and complete retained response envelopes. Verified CEQAnet may execute only through explicit bounded manual authorization; scheduling and persistence remain unavailable. |
 | Universal intake | Yes | Yes | Yes | Partial | Yes | No | Source breadth remains limited. |
 | Opportunity transition intake | Yes | Yes | Yes | Partial | Yes | No | Candidate production is not outreach. |
 | External intelligence/gap spine | Yes | Yes | Yes | N/A | Yes | No | Capability models do not establish vendor parity. |
@@ -92,6 +92,7 @@ Current active entries: **none recorded in the canonical inventory**. CI remains
 | CS-AUDIT-020 | P1 | Defect classification | Planned capabilities were labeled as partially fixed defects. | Resolved defects and planned capabilities are separate canonical ledgers. |
 | CS-AUDIT-021 | P1 | CEQAnet query truth | `text_terms` counted as a bounding query filter even though the verified advanced-search request builder did not transmit them. | Both listing and recurring-run query models reject free-text terms, preventing false restriction claims. |
 | CS-AUDIT-022 | P1 | CEQAnet execution evidence | Recurring-run executions initially had field-level semantic checks but no digest over the complete retained response envelope. | Exact execution schemas and a canonical execution digest now bind bodies, URLs, queries, counts, flags, identities, and the no-persistence assertion before semantic verification. |
+| CS-AUDIT-023 | P1 | CEQAnet evidence phase | PR #93 merged temporary write-enabled collection files while the claimed evidence JSON and audit report were absent from `main`. | The repair phase regenerated current-structure evidence, added an official-policy review, removed temporary tooling, used deterministic controlled apply for `unverified → verified`, reconciled all maturity claims, and added permanent regression coverage. |
 
 ## Planned capability ledger
 
@@ -100,7 +101,7 @@ These are intentionally absent capabilities, not defects in the currently suppor
 | ID | Planned capability | Current guard | Entry condition |
 |---|---|---|---|
 | CS-PLAN-001 | Optional preview archives and nested child tables | Core persisted records remain lossless; report/config layers are explicitly ephemeral. | Add only when replay or query requirements justify schema expansion. |
-| CS-PLAN-002 | Verified recurring live source adapters | CEQAnet has exact-schema evidence-bound definitions, exact-window manifests, stale-evidence rejection, digest-bound attempts, and complete execution verification. Canonical source data remains unverified; attempts are not scheduled or persisted as a ledger. | Complete source-specific evidence review and maturity promotion, then define persisted attempt identity, scheduling, retry, archive, observability, and downstream handoff governance. |
+| CS-PLAN-002 | Production recurring live source adapters | CEQAnet is verified for guarded manual public-read attempts and has exact-schema evidence-bound definitions, manifests, stale-evidence rejection, digest-bound attempts, and complete verification. Attempts are not scheduled or persisted as a ledger. | Prove a reviewed manual run, then define persisted attempt identity, scheduling, retry, archive, observability, rate, and downstream handoff governance. |
 | CS-PLAN-003 | CRS transformation, projection-aware/geodesic calculations, and topology repair | Incompatible CRS is preserved and refused; no survey-grade conclusion is emitted. | Pin a GIS stack and define transformation provenance, axis order, grid behavior, accuracy, failure, and repair doctrine. |
 | CS-PLAN-004 | Domain-specific upstream correction actions | Generic mutation is unavailable. | Define record-family-specific stale-state, correction, supersession, provenance, and audit behavior. |
 | CS-PLAN-005 | Workflow reopen/override | Final states have no outgoing transitions. | Define explicit authority, reason, stale-state, and append-only event rules. |
@@ -111,13 +112,13 @@ These are intentionally absent capabilities, not defects in the currently suppor
 
 | Stage | Canonical status |
 |---|---|
-| Seed source records | Four unverified records. |
+| Seed source records | One verified CEQAnet record and three unverified records. |
 | Readiness/audit/checklist evidence | Report-only workflows exist. |
 | Promotion/update planning | Deterministic dry-run plans and approval digests exist. |
 | Controlled registry apply | Evidence-gated status-only apply exists. |
-| Verified usable source | Zero in the canonical registry. |
+| Verified usable source | One guarded manual-read source: CEQAnet. |
 | Contract-ready adapters | Registered families exist; no coverage claim follows. |
-| Guarded live read-only execution | Limited CEQAnet executors and recurring-run governance exist. Current canonical CEQAnet definitions remain blocked. |
+| Guarded live read-only execution | Verified CEQAnet may produce current evidence-bound definitions and explicit bounded manual attempts. No scheduler or persistence handoff is authorized. |
 | Production recurring integration | Not established. |
 
 A prior report-only HTTP observation classified CEQAnet as `cross_host_redirect`, CSLB as `no_redirect`, San Bernardino EZOP as `same_host_redirect`, and Riverside PLUS as `downgraded_to_http`. Reachability evidence does not promote verification status.

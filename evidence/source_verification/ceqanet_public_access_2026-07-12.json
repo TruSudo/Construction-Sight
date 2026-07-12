@@ -1,0 +1,136 @@
+{
+  "access_barrier_observation": {
+    "captcha_observed": false,
+    "login_required": false,
+    "paywall_observed": false
+  },
+  "bounded_search": {
+    "body_length_bytes": 69634,
+    "body_sha256": "3580caa318a015820fd0856a520bb6fdbf0e156583edc6412b3c6d303f11d89b",
+    "bounded_parameters": {
+      "County": "San Bernardino"
+    },
+    "captcha_markers": [],
+    "content_type": "text/html; charset=utf-8",
+    "document_downloads": false,
+    "final_url": "https://ceqanet.lci.ca.gov/Search?County=San+Bernardino",
+    "link_count": 224,
+    "login_markers": [],
+    "method": "GET",
+    "official_https_final_url": true,
+    "persistence_mutated": false,
+    "request_url": "https://ceqanet.lci.ca.gov/Search?County=San+Bernardino",
+    "status_code": 200,
+    "title": "Search Results"
+  },
+  "limitations": [
+    "evidence is a bounded point-in-time public-access observation",
+    "response bodies are represented by lengths and SHA-256 hashes, not archived here",
+    "terms/privacy/accessibility links are inventoried but legal terms review remains manual",
+    "this evidence does not itself promote source verification status",
+    "this evidence does not establish recurring production coverage"
+  ],
+  "observed_at": "2026-07-12T06:24:08.440365+00:00",
+  "public_detail": {
+    "body_length_bytes": 13827,
+    "body_sha256": "1ef4d502396d79e038c6f99d316f2cce7ee830f7d486f7471bc017f4facd6474",
+    "captcha_markers": [],
+    "content_type": "text/html; charset=utf-8",
+    "document_downloads": false,
+    "final_url": "https://ceqanet.lci.ca.gov/Project/2024110410",
+    "link_count": 26,
+    "login_markers": [],
+    "observed_field_markers": [
+      "sch_number",
+      "project_info",
+      "title",
+      "description",
+      "documents_in_project",
+      "lead_public_agency"
+    ],
+    "official_https_final_url": true,
+    "persistence_mutated": false,
+    "request_url": "https://ceqanet.lci.ca.gov/Project/2024110410",
+    "status_code": 200,
+    "title": "SCH Number 2024110410"
+  },
+  "public_entry": {
+    "body_length_bytes": 269002,
+    "body_sha256": "e54c32013612c50834d13b1b590ba9df4d58ed297e36a4057def6cd2946a6504",
+    "captcha_markers": [],
+    "content_type": "text/html; charset=utf-8",
+    "final_url": "https://ceqanet.lci.ca.gov/",
+    "link_count": 20,
+    "login_markers": [],
+    "official_https_final_url": true,
+    "request_url": "https://ceqanet.lci.ca.gov/",
+    "status_code": 200,
+    "title": "CEQAnet"
+  },
+  "registry_status": "unverified",
+  "robots": {
+    "body_length_bytes": 138,
+    "body_sha256": "44ba7619aedde3f088b7e570e08ed7c61b52d86801de9bd2a957a030bf1d58b7",
+    "captcha_markers": [],
+    "classification": "published",
+    "content_type": "text/plain",
+    "final_url": "https://ceqanet.lci.ca.gov/robots.txt",
+    "link_count": 0,
+    "login_markers": [],
+    "official_https_final_url": true,
+    "path_permissions": {
+      "/Project/2024110410": true,
+      "/Search": true
+    },
+    "request_url": "https://ceqanet.lci.ca.gov/robots.txt",
+    "status_code": 200,
+    "title": null
+  },
+  "schema_version": "ceqanet_source_verification_evidence.v1",
+  "source_id": null,
+  "source_key": "source:ceqanet-state-clearinghouse",
+  "source_name": "CEQAnet State Clearinghouse",
+  "terms_privacy_accessibility_links": [
+    {
+      "body_length_bytes": 28127,
+      "body_sha256": "deb4ff99c320de0ca8c4529dd5dda5343c5dfc38b088fe77656bf8c8fa20e091",
+      "captcha_markers": [],
+      "content_type": "text/html; charset=utf-8",
+      "final_url": "https://ceqanet.lci.ca.gov/Home/ConditionsOfUse",
+      "link_count": 35,
+      "login_markers": [
+        "password"
+      ],
+      "official_https_final_url": true,
+      "request_url": "https://ceqanet.lci.ca.gov/Home/ConditionsOfUse",
+      "status_code": 200,
+      "title": "Conditions of Use"
+    },
+    {
+      "body_length_bytes": 13395,
+      "body_sha256": "a91f1d31d7a1f9f3fd0ffabcf382a313045c7c7faa1c25df95dc53a7b875b9e3",
+      "captcha_markers": [],
+      "content_type": "text/html; charset=utf-8",
+      "final_url": "https://ceqanet.lci.ca.gov/Home/Privacy",
+      "link_count": 21,
+      "login_markers": [],
+      "official_https_final_url": true,
+      "request_url": "https://ceqanet.lci.ca.gov/Home/Privacy",
+      "status_code": 200,
+      "title": "Privacy Policy"
+    },
+    {
+      "body_length_bytes": 21424,
+      "body_sha256": "9217326175378aa1ab544081d37114e0eaf11987c410e766d61a82fec7c863a8",
+      "captcha_markers": [],
+      "content_type": "text/html; charset=utf-8",
+      "final_url": "https://ceqanet.lci.ca.gov/Home/Accessibility",
+      "link_count": 38,
+      "login_markers": [],
+      "official_https_final_url": true,
+      "request_url": "https://ceqanet.lci.ca.gov/Home/Accessibility",
+      "status_code": 200,
+      "title": "Accessibility / Help Page"
+    }
+  ]
+}

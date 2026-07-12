@@ -1,0 +1,254 @@
+{
+  "source_count": 4,
+  "update_count": 1,
+  "action_counts": {
+    "verified_candidate_review": 1,
+    "keep_unverified": 3
+  },
+  "registry_digest": "ba5aab97ebc56aca4e51c646e5a2808de4550ca91d9e2e101447ffaeac8e36c0",
+  "plan_digest": "97609000e4af283088225fb37c4d2af7b6a30f1539d9bca8cd99dff9cd1d16aa",
+  "rows": [
+    {
+      "source_key": "source:6b19f62b79928b37",
+      "source_name": "CEQAnet State Clearinghouse",
+      "current_verification_status": "unverified",
+      "proposed_verification_status": "verified",
+      "planned_action": "verified_candidate_review",
+      "update_required": true,
+      "original_source_payload": {
+        "jurisdiction": {
+          "name": "California State Clearinghouse",
+          "county": "Statewide",
+          "state": "CA",
+          "jurisdiction_type": "state"
+        },
+        "source_name": "CEQAnet State Clearinghouse",
+        "source_type": "state_registry",
+        "platform_family": "ceqanet",
+        "public_url": "https://ceqanet.opr.ca.gov/",
+        "record_categories": [
+          "ceqa",
+          "document",
+          "planning_case"
+        ],
+        "search_method": "County/date/document-type search for public CEQA filings and attached documents.",
+        "extraction_difficulty": "low",
+        "update_frequency": "daily",
+        "confidence_score": 85,
+        "verification_status": "unverified",
+        "provenance_notes": "Seed record from architectural planning. Must be verified before ingestion.",
+        "last_checked_date": null
+      },
+      "proposed_source_payload": {
+        "jurisdiction": {
+          "name": "California State Clearinghouse",
+          "county": "Statewide",
+          "state": "CA",
+          "jurisdiction_type": "state"
+        },
+        "source_name": "CEQAnet State Clearinghouse",
+        "source_type": "state_registry",
+        "platform_family": "ceqanet",
+        "public_url": "https://ceqanet.opr.ca.gov/",
+        "record_categories": [
+          "ceqa",
+          "document",
+          "planning_case"
+        ],
+        "search_method": "County/date/document-type search for public CEQA filings and attached documents.",
+        "extraction_difficulty": "low",
+        "update_frequency": "daily",
+        "confidence_score": 85,
+        "verification_status": "verified",
+        "provenance_notes": "Seed record from architectural planning. Must be verified before ingestion.",
+        "last_checked_date": null
+      },
+      "reasons": [
+        "source record has not been HTTP-checked by this workflow",
+        "readiness status is seed_only",
+        "adapter status is contract_ready",
+        "source verification status is unverified",
+        "operator observation file supplied",
+        "manual entry, query, list, detail, barrier, terms, and evidence review is complete"
+      ],
+      "limitations": [
+        "source remains a registry seed until reachability is checked",
+        "redirect behavior was not checked",
+        "adapter contract is not live source coverage",
+        "this is a dry-run plan and does not mutate registry data",
+        "human approval is still required before registry update",
+        "dry-run only; source registry file is not modified"
+      ],
+      "evidence_refs": [
+        "evidence/source_verification/ceqanet_public_access_2026-07-12.json",
+        "evidence/source_verification/ceqanet_terms_review_2026-07-12.json"
+      ],
+      "next_action": "review proposed verified status before any explicit apply workflow",
+      "generated_at": "2026-07-12T06:24:10.215633Z"
+    },
+    {
+      "source_key": "source:e69cdd23d3e590f8",
+      "source_name": "CSLB Public License Search",
+      "current_verification_status": "unverified",
+      "proposed_verification_status": null,
+      "planned_action": "keep_unverified",
+      "update_required": false,
+      "original_source_payload": {
+        "jurisdiction": {
+          "name": "California Contractors State License Board",
+          "county": "Statewide",
+          "state": "CA",
+          "jurisdiction_type": "state"
+        },
+        "source_name": "CSLB Public License Search",
+        "source_type": "contractor_license",
+        "platform_family": "cslb",
+        "public_url": "https://www.cslb.ca.gov/",
+        "record_categories": [
+          "contractor_license"
+        ],
+        "search_method": "License-number or business-name lookup for public contractor license facts.",
+        "extraction_difficulty": "moderate",
+        "update_frequency": "daily",
+        "confidence_score": 80,
+        "verification_status": "unverified",
+        "provenance_notes": "Seed record from architectural planning. Must be verified before ingestion.",
+        "last_checked_date": null
+      },
+      "proposed_source_payload": null,
+      "reasons": [
+        "source record has not been HTTP-checked by this workflow",
+        "readiness status is seed_only",
+        "adapter status is placeholder",
+        "source verification status is unverified",
+        "no operator observation file was supplied",
+        "checklist evidence is insufficient for registry status change"
+      ],
+      "limitations": [
+        "source remains a registry seed until reachability is checked",
+        "redirect behavior was not checked",
+        "adapter is placeholder-only",
+        "manual query/list/detail checklist is incomplete",
+        "no evidence references were supplied",
+        "dry-run only; source registry file is not modified",
+        "no registry status change is proposed"
+      ],
+      "evidence_refs": [],
+      "next_action": "complete evidence review before registry update planning",
+      "generated_at": "2026-07-12T06:24:10.215654Z"
+    },
+    {
+      "source_key": "source:057d796d8b0c86d3",
+      "source_name": "San Bernardino County EZOP",
+      "current_verification_status": "unverified",
+      "proposed_verification_status": null,
+      "planned_action": "keep_unverified",
+      "update_required": false,
+      "original_source_payload": {
+        "jurisdiction": {
+          "name": "San Bernardino County",
+          "county": "San Bernardino",
+          "state": "CA",
+          "jurisdiction_type": "county"
+        },
+        "source_name": "San Bernardino County EZOP",
+        "source_type": "county_portal",
+        "platform_family": "accela_aca",
+        "public_url": "https://ezop.sbcounty.gov/citizenaccess/",
+        "record_categories": [
+          "permit",
+          "planning_case",
+          "grading",
+          "building",
+          "inspection",
+          "document"
+        ],
+        "search_method": "Public record search by module, record type, date, status, APN, or address where available.",
+        "extraction_difficulty": "high",
+        "update_frequency": "near_real_time",
+        "confidence_score": 75,
+        "verification_status": "unverified",
+        "provenance_notes": "Seed record from architectural planning. Must be verified before ingestion.",
+        "last_checked_date": null
+      },
+      "proposed_source_payload": null,
+      "reasons": [
+        "source record has not been HTTP-checked by this workflow",
+        "readiness status is seed_only",
+        "adapter status is placeholder",
+        "source verification status is unverified",
+        "no operator observation file was supplied",
+        "checklist evidence is insufficient for registry status change"
+      ],
+      "limitations": [
+        "source remains a registry seed until reachability is checked",
+        "redirect behavior was not checked",
+        "adapter is placeholder-only",
+        "manual query/list/detail checklist is incomplete",
+        "no evidence references were supplied",
+        "dry-run only; source registry file is not modified",
+        "no registry status change is proposed"
+      ],
+      "evidence_refs": [],
+      "next_action": "complete evidence review before registry update planning",
+      "generated_at": "2026-07-12T06:24:10.215672Z"
+    },
+    {
+      "source_key": "source:34cbb75ae64bbb7d",
+      "source_name": "Riverside County PLUS Online",
+      "current_verification_status": "unverified",
+      "proposed_verification_status": null,
+      "planned_action": "keep_unverified",
+      "update_required": false,
+      "original_source_payload": {
+        "jurisdiction": {
+          "name": "Riverside County",
+          "county": "Riverside",
+          "state": "CA",
+          "jurisdiction_type": "county"
+        },
+        "source_name": "Riverside County PLUS Online",
+        "source_type": "county_portal",
+        "platform_family": "tyler_energov",
+        "public_url": "https://rivcoplus.org/",
+        "record_categories": [
+          "permit",
+          "planning_case",
+          "grading",
+          "building",
+          "inspection",
+          "document"
+        ],
+        "search_method": "Public SelfService portal search for permit, planning, inspection, and land-use records where available.",
+        "extraction_difficulty": "moderate",
+        "update_frequency": "daily",
+        "confidence_score": 75,
+        "verification_status": "unverified",
+        "provenance_notes": "Corrected after Phase 3 source hardening: non-www URL redirects to EnerGov SelfService public portal.",
+        "last_checked_date": null
+      },
+      "proposed_source_payload": null,
+      "reasons": [
+        "source record has not been HTTP-checked by this workflow",
+        "readiness status is seed_only",
+        "adapter status is placeholder",
+        "source verification status is unverified",
+        "no operator observation file was supplied",
+        "checklist evidence is insufficient for registry status change"
+      ],
+      "limitations": [
+        "source remains a registry seed until reachability is checked",
+        "redirect behavior was not checked",
+        "adapter is placeholder-only",
+        "manual query/list/detail checklist is incomplete",
+        "no evidence references were supplied",
+        "dry-run only; source registry file is not modified",
+        "no registry status change is proposed"
+      ],
+      "evidence_refs": [],
+      "next_action": "complete evidence review before registry update planning",
+      "generated_at": "2026-07-12T06:24:10.215687Z"
+    }
+  ],
+  "generated_at": "2026-07-12T06:24:10.215941Z"
+}
