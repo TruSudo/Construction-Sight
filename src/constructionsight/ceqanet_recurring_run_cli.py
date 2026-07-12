@@ -11,6 +11,7 @@ import typer
 from pydantic import BaseModel, ValidationError
 from rich.console import Console
 from rich.table import Table
+from typer.models import OptionInfo
 
 from constructionsight.ceqanet_recurring_run_models import (
     CeqanetAccessAssumptions,
@@ -86,25 +87,31 @@ def _write_json(path: Path, payload: dict[str, object]) -> None:
     typer.echo(f"Wrote {path}.")
 
 
-def _registry_option() -> typer.Option:
-    return typer.Option(
-        "--registry",
-        exists=True,
-        file_okay=True,
-        dir_okay=False,
-        readable=True,
-        help="Current source registry JSON used for stale-state validation.",
+def _registry_option() -> OptionInfo:
+    return cast(
+        OptionInfo,
+        typer.Option(
+            "--registry",
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+            help="Current source registry JSON used for stale-state validation.",
+        ),
     )
 
 
-def _checklist_option() -> typer.Option:
-    return typer.Option(
-        "--checklist",
-        exists=True,
-        file_okay=True,
-        dir_okay=False,
-        readable=True,
-        help="Current source checklist JSON used for stale-evidence validation.",
+def _checklist_option() -> OptionInfo:
+    return cast(
+        OptionInfo,
+        typer.Option(
+            "--checklist",
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+            help="Current source checklist JSON used for stale-evidence validation.",
+        ),
     )
 
 
