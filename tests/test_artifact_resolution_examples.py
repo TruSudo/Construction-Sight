@@ -4,7 +4,7 @@ from typing import Any
 
 from typer.testing import CliRunner
 
-from constructionsight.cli import app  # type: ignore[import-untyped]
+from constructionsight.cli import app
 
 runner = CliRunner()
 EXAMPLE_DIR = Path(__file__).resolve().parents[1] / "examples" / "artifact_resolution"
