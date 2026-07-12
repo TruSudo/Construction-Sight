@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from enum import StrEnum
 
 from constructionsight.parcel_core_models import ParcelGeometry, ParcelGeometryKind
-
-Coordinate = tuple[float, float]
-Ring = tuple[Coordinate, ...]
-PolygonTopology = tuple[Ring, ...]
-MultiPolygonTopology = tuple[PolygonTopology, ...]
+from constructionsight.parcel_topology_parse import (
+    Coordinate,
+    MultiPolygonTopology,
+    PolygonTopology,
+    Ring,
+    parse_parcel_topology,
+)
 
 _ENVELOPE_LIMITATION = "coordinate containment uses parcel envelope only"
 _UNVERIFIED_CRS_LIMITATION = (
@@ -19,7 +20,8 @@ _UNVERIFIED_CRS_LIMITATION = (
     "as longitude/latitude"
 )
 _UNPARSEABLE_TOPOLOGY_LIMITATION = (
-    "polygon topology was not used because raw geometry could not be parsed as GeoJSON"
+    "polygon topology was not used because raw geometry could not be parsed as "
+    "supported GeoJSON or WKT"
 )
 _MISSING_TOPOLOGY_LIMITATION = (
     "polygon topology was not used because raw polygon geometry is unavailable"
@@ -63,7 +65,8 @@ def evaluate_parcel_point_containment(
         ParcelGeometryKind.POLYGON,
         ParcelGeometryKind.MULTIPOLYGON,
     }:
-        topology = _parse_geojson_topology(geometry.raw_geometry)
+        parsed = parse_parcel_topology(geometry.raw_geometry)
+        topology = parsed.polygons if parsed is not None else None
         if topology is not None and _is_verified_longitude_latitude(
             geometry.spatial_reference
         ):
@@ -166,109 +169,6 @@ def _envelope_containment(
         reason="coordinate hint falls within parcel envelope" if contained else None,
         limitations=limitations,
     )
-
-
-def _parse_geojson_topology(raw_geometry: str | None) -> MultiPolygonTopology | None:
-    """Parse GeoJSON Polygon or MultiPolygon rings while preserving holes."""
-
-    if raw_geometry is None:
-        return None
-    try:
-        payload = json.loads(raw_geometry)
-    except json.JSONDecodeError:
-        return None
-    if not isinstance(payload, dict):
-        return None
-    geometry = _geojson_geometry_payload(payload)
-    if geometry is None:
-        return None
-    geometry_type = str(geometry.get("type") or "").lower()
-    coordinates = geometry.get("coordinates")
-    if geometry_type == "polygon":
-        polygon = _parse_polygon(coordinates)
-        return (polygon,) if polygon is not None else None
-    if geometry_type == "multipolygon":
-        if not isinstance(coordinates, list):
-            return None
-        polygons: list[PolygonTopology] = []
-        for value in coordinates:
-            polygon = _parse_polygon(value)
-            if polygon is None:
-                return None
-            polygons.append(polygon)
-        return tuple(polygons) if polygons else None
-    return None
-
-
-def _geojson_geometry_payload(payload: dict[str, object]) -> dict[str, object] | None:
-    """Return a GeoJSON geometry from geometry, Feature, or FeatureCollection input."""
-
-    payload_type = str(payload.get("type") or "").lower()
-    if payload_type == "feature":
-        geometry = payload.get("geometry")
-        return geometry if isinstance(geometry, dict) else None
-    if payload_type == "featurecollection":
-        features = payload.get("features")
-        if not isinstance(features, list) or not features:
-            return None
-        first_feature = features[0]
-        if not isinstance(first_feature, dict):
-            return None
-        geometry = first_feature.get("geometry")
-        return geometry if isinstance(geometry, dict) else None
-    return payload
-
-
-def _parse_polygon(value: object) -> PolygonTopology | None:
-    """Parse one GeoJSON polygon into exterior and interior rings."""
-
-    if not isinstance(value, list) or not value:
-        return None
-    rings: list[Ring] = []
-    for ring_value in value:
-        ring = _parse_ring(ring_value)
-        if ring is None:
-            return None
-        rings.append(ring)
-    return tuple(rings)
-
-
-def _parse_ring(value: object) -> Ring | None:
-    """Parse and normalize one closed or open GeoJSON linear ring."""
-
-    if not isinstance(value, list):
-        return None
-    coordinates: list[Coordinate] = []
-    for point_value in value:
-        point = _parse_coordinate(point_value)
-        if point is None:
-            return None
-        coordinates.append(point)
-    if len(coordinates) > 1 and _coordinates_equal(coordinates[0], coordinates[-1]):
-        coordinates.pop()
-    if len(coordinates) < 3 or len(set(coordinates)) < 3:
-        return None
-    return tuple(coordinates)
-
-
-def _parse_coordinate(value: object) -> Coordinate | None:
-    """Parse one GeoJSON longitude/latitude pair."""
-
-    if not isinstance(value, list) or len(value) < 2:
-        return None
-    raw_longitude = value[0]
-    raw_latitude = value[1]
-    if isinstance(raw_longitude, bool) or isinstance(raw_latitude, bool):
-        return None
-    if not isinstance(raw_longitude, int | float) or not isinstance(
-        raw_latitude, int | float
-    ):
-        return None
-    longitude = float(raw_longitude)
-    latitude = float(raw_latitude)
-    if not -180 <= longitude <= 180 or not -90 <= latitude <= 90:
-        return None
-    return (longitude, latitude)
 
 
 def _point_in_multipolygon(
