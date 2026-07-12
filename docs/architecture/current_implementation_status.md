@@ -19,14 +19,14 @@ A planned capability is not an active defect when the current supported boundary
 | Layer | Implemented | Tested | Documented | Persisted | CLI | Live source integrated | Status note |
 |---|---:|---:|---:|---:|---:|---:|---|
 | Lawful intake boundary | Yes | Yes | Yes | Partial | Yes | No | Public-access boundaries are documented and tested through intake and adapter contracts. |
-| Source registry | Yes | Yes | Yes | Yes | Yes | No | Seed records remain unverified until checked; controlled apply changes only an approved evidence-backed verification status and does not create live coverage. |
+| Source registry | Yes | Yes | Yes | Yes | Yes | No | CEQAnet is evidence-backed `partial`; the other three canonical sources remain unverified. Partial status does not establish verified usable coverage. |
 | Source readiness workflow | Yes | Yes | Yes | No | Yes | No | Report-only readiness preserves source identity, lawful boundary, adapter/source state, reachability, reasons, limitations, and next action. |
 | Source audit package | Yes | Yes | Yes | No | Yes | No | Report-only audit packages preserve URL, HTTP, redirect, maturity, reason, limitation, and next-action evidence. |
-| Source verification checklist | Yes | Yes | Yes | No | Yes | No | Manual observations and evidence references do not mutate registry status. |
+| Source verification checklist | Yes | Yes | Yes | File-backed | Yes | No | Browser-reviewed CEQAnet evidence, policy review, automated-access failure, and remaining limitations are preserved without authorizing recurring collection. |
 | Source plan reports | Yes | Yes | Yes | No | Yes | No | Dry-run plans preserve proposed payloads, evidence, complete-registry digests, and deterministic approval digests. |
 | Source registry controlled apply | Yes | Yes | Yes | File-backed | Yes | No | Explicit apply validates complete snapshots, digests, evidence, counts, identity, status-only mutation, path separation, audit output, and target-last replacement. |
 | Adapter contracts | Yes | Yes | Yes | N/A | Yes | No | Contracts are not represented as verified live integrations. |
-| CEQAnet recurring-run governance | Yes | Yes | Yes | Artifact-only | Yes | Guarded only | Exact-schema definitions, manifests, executions, and verifications bind source evidence, exact windows, attempts, retained response envelopes, and current-evidence authority. Canonical CEQAnet data remains unverified, so current repository artifacts remain blocked. |
+| CEQAnet recurring-run governance | Yes | Yes | Yes | Artifact-only | Yes | Guarded only | Exact-schema definitions, manifests, executions, and verifications bind source evidence, exact windows, attempts, retained response envelopes, and current-evidence authority. Canonical CEQAnet maturity is `partial`, so the verified-only execution gate remains closed. |
 | Universal intake | Yes | Yes | Yes | Partial | Yes | No | Source-neutral records and routing exist; live source breadth is intentionally limited. |
 | Opportunity transition intake | Yes | Yes | Yes | Partial | Yes | No | Converts intake facts into opportunity candidates without implying outreach. |
 | Shovels/Regrid gap alignment | Yes | Yes | Yes | N/A | Yes | No | Capability planning exists; it is not a parity claim. |
@@ -77,6 +77,8 @@ Every entry below is resolved within the currently supported scope. Monitoring l
 | CS-VIAM-014 | P1 | Certification governance | CI success did not independently scan every tracked file or distinguish planned scope from active defects. | `constructionsight-certify` and permanent CI certification gates now enforce the complete tracked-tree and governance boundary. |
 | CS-VIAM-015 | P1 | CEQAnet query truth | `text_terms` counted as a bounding filter even though the verified CEQAnet request contract did not transmit it. | Listing and recurring-run query models reject free-text terms, so no run can claim an unapplied filter. |
 | CS-VIAM-016 | P1 | CEQAnet execution evidence | Initial recurring-run executions had semantic verification but no digest over the complete retained response envelope. | Exact execution schemas and a canonical execution digest now bind bodies, URLs, counts, queries, flags, identities, and the no-persistence assertion before semantic verification. |
+| CS-VIAM-017 | P1 | Evidence phase integrity | PR #93 merged temporary collection tooling while the intended evidence artifacts were absent. | The evidence packet and audit are now committed, canonical CI is restored, temporary tooling is removed, and final tree contents are explicitly verified. |
+| CS-VIAM-018 | P1 | Source access truth | Brittle page-marker and robots assumptions could misclassify valid pages or imply an access conclusion; later automated access returned HTTP 403. | Official page structures and policies were reviewed, the 403 and robots uncertainty are preserved, no bypass was attempted, and maturity is limited to `partial`. |
 
 ## Planned capability ledger
 
@@ -85,7 +87,7 @@ These entries are future product scope, not defects in the current supported imp
 | ID | Capability | Current safe boundary | Required entry condition |
 |---|---|---|---|
 | CS-PLAN-001 | Optional preview archives and nested child tables | Current core records are losslessly persisted; report/config layers remain deliberately ephemeral. | Add only when replay or query requirements justify schema expansion. |
-| CS-PLAN-002 | Verified recurring live adapters | CEQAnet now has exact-schema, evidence-bound definitions, exact-window manifests, stale-evidence rejection, digest-bound bounded attempts, and full execution verification; canonical source data remains unverified and no scheduler exists. | Complete source-specific evidence review and maturity promotion, then define persisted attempt, scheduling, retry, archive, observability, and downstream handoff governance. |
+| CS-PLAN-002 | Verified recurring live adapters | CEQAnet has browser-reviewed public surfaces, official CSV links, `partial` maturity, and verified-only recurring-run governance. Automated HTML collection received HTTP 403 and remains blocked; no scheduler exists. | Implement and validate a bounded official CSV contract or obtain source-specific access clarification, then complete controlled `verified` promotion before attempt-ledger, scheduling, retry, archive, observability, and downstream handoff work. |
 | CS-PLAN-003 | CRS transformation, projection-aware/geodesic calculations, and topology repair | Incompatible CRS is preserved and refused rather than guessed; current results are not survey-grade. | Select and pin a GIS stack, define provenance and failure doctrine, and add exact tests. |
 | CS-PLAN-004 | Domain-specific upstream corrections | Generic upstream mutation is blocked. | Define source-aware stale-state, correction, supersession, and audit semantics per record family. |
 | CS-PLAN-005 | Workflow reopen or override | Final states remain immutable. | Introduce explicit authority, reason, stale-state, and append-only event doctrine. |
