@@ -6,7 +6,7 @@ Parcel-backed site resolution enriches the existing hint-only site resolver with
 
 A site should prefer a parcel-backed match when APN, address, or coordinate hints connect to a known parcel core record. If no parcel core record matches, ConstructionSight falls back to the existing source-neutral resolver and preserves the limitation.
 
-Coordinate matching must use the strongest geometry method that can be justified by the stored evidence. A bounding envelope must not substitute for polygon topology when valid topology is available.
+Coordinate matching must use the strongest geometry method that can be justified by the stored evidence. A bounding envelope must not substitute for polygon topology when valid topology is available, and coordinates from an explicit projected CRS must not be compared directly to longitude/latitude hints.
 
 ## Matching signals
 
@@ -15,8 +15,9 @@ The implementation supports:
 - exact normalized APN match
 - exact normalized address match
 - exact normalized point-geometry coordinate match
-- coordinate coverage by verified GeoJSON Polygon or MultiPolygon topology
-- conservative envelope fallback when topology cannot be used
+- coordinate coverage by verified GeoJSON or WKT/EWKT Polygon or MultiPolygon topology
+- conservative envelope fallback when topology cannot be used and no explicit incompatible CRS is present
+- refusal to compare explicit projected coordinates to longitude/latitude hints
 - ambiguity preservation when multiple parcel records match equally
 - fallback to hint-only resolution when no parcel record matches
 - propagation of parcel and containment limitations into site-resolution candidates
@@ -38,9 +39,12 @@ A single high-confidence parcel match resolves the site. Equal top-scoring parce
 ConstructionSight performs dependency-free point-in-polygon checks when all of the following are true:
 
 - the parcel geometry kind is Polygon or MultiPolygon;
-- raw geometry is valid supported GeoJSON;
-- exterior and interior rings contain usable longitude/latitude pairs; and
+- raw geometry is valid supported GeoJSON or WKT/EWKT;
+- exterior and interior rings contain usable finite coordinate pairs;
+- the coordinates fall within longitude/latitude bounds; and
 - the spatial reference is explicitly recognized as longitude/latitude, currently EPSG:4326 or a recognized CRS84 form.
+
+WKT/EWKT support includes Polygon, MultiPolygon, embedded SRIDs, and optional Z, M, or ZM dimensions. Extra dimensions are preserved in raw evidence but only the first two coordinates participate in planar point containment.
 
 Topology evaluation preserves:
 
@@ -69,14 +73,16 @@ Successful point matches use the reason:
 coordinate hint matches parcel point geometry
 ```
 
+Point matching does not override an explicit incompatible CRS. Projected point coordinates remain preserved but are not compared to longitude/latitude hints until a governed transform exists.
+
 ## Envelope fallback
 
-Envelope containment remains available when topology cannot be justified, including:
+Envelope containment remains available when topology cannot be justified because:
 
 - raw polygon geometry is absent;
-- raw geometry cannot be parsed as supported GeoJSON;
+- raw geometry cannot be parsed as supported GeoJSON or WKT/EWKT;
 - the geometry type is unsupported by the topology engine; or
-- the spatial reference is missing or not verified as longitude/latitude.
+- the spatial reference is missing and the stored summary remains geographically plausible.
 
 A successful fallback match uses the reason:
 
@@ -86,11 +92,17 @@ coordinate hint falls within parcel envelope
 
 The candidate must preserve `coordinate containment uses parcel envelope only` plus the specific reason topology was unavailable. Envelope fallback remains a candidate signal, not parcel-boundary proof.
 
+An explicit non-longitude/latitude CRS is different from a missing CRS. It does not permit envelope fallback against latitude/longitude hints. The resolver returns no coordinate match and preserves:
+
+```text
+coordinate containment was not evaluated because the explicit spatial reference is not recognized as longitude/latitude
+```
+
 ## Geometry limitation rule
 
-Geometry limitations already stored on the parcel core record carry forward into the site-resolution candidate. Topology containment removes only the obsolete claim that a verified topology match was envelope-only. It does not remove centroid, projection, source-quality, or survey-grade limitations.
+Geometry limitations already stored on the parcel core record carry forward into the site-resolution candidate. Topology containment removes only the obsolete claim that a verified topology match was envelope-only. It does not remove centroid, projection, source-quality, topology-validity, or survey-grade limitations.
 
-Topology is still not a legal boundary determination. ConstructionSight does not currently perform projection-aware distance or area calculations, repair invalid GIS topology, transform arbitrary coordinate reference systems, or parse WKT Polygon/MultiPolygon input.
+Topology is still not a legal boundary determination. ConstructionSight does not currently transform arbitrary coordinate reference systems, perform projection-aware distance or area calculations, repair invalid GIS topology, or validate all OGC polygon constraints.
 
 ## Why this matters
 
@@ -99,7 +111,8 @@ The parcel source registry, schema preview, row preview, and parcel core record 
 ```text
 public record hints
   -> site-resolution input
-  -> point / topology / limited envelope evaluation
+  -> point / GeoJSON-or-WKT topology / limited envelope evaluation
+  -> CRS compatibility gate
   -> parcel-backed site candidate
   -> opportunity/project graph anchor
 ```
@@ -108,8 +121,8 @@ public record hints
 
 Future work may add:
 
-- projection-aware coordinate transformation and calculations;
-- area-weighted polygon and multipolygon centroids;
-- WKT Polygon and MultiPolygon parsing;
-- validity repair for malformed or self-intersecting topology; and
+- governed coordinate-reference-system transformation;
+- projection-aware or geodesic area and distance calculations;
+- topology validity checking and repair for malformed or self-intersecting geometry;
+- additional lawful geometry and collection types; and
 - optional use of a vetted GIS library when operational requirements justify the dependency.

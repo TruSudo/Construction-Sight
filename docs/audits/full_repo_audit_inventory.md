@@ -1,10 +1,10 @@
 # Full-Repo Audit Inventory
 
-This audit reconciles the current ConstructionSight repository after controlled source-registry apply governance, consolidated post-enrichment lead operator tooling, read-only upstream record access, append-only result-ledger authority hardening, governed result authority operations, and topology-aware parcel containment.
+This audit reconciles the current ConstructionSight repository after controlled source-registry apply governance, consolidated post-enrichment lead operator tooling, read-only upstream record access, append-only result-ledger authority hardening, governed result authority operations, and GeoJSON/WKT topology-aware parcel geometry hardening.
 
 ## Executive status
 
-ConstructionSight has a substantial tested model/service architecture for lawful public-record construction intelligence. Implemented strengths include source-neutral intake, guarded CEQAnet tooling, parcel/site reasoning with verified GeoJSON topology containment, permit movement, contractor identity, decision records, versioned opportunity enrichment, lead review and dedupe, matrix-constrained workflow status, append-only result ledger/share-state modeling, serialized result authority operations, layered source-governance reporting, controlled registry-status apply, dedicated persistence, storage-summary reporting, post-enrichment lead operator tooling, and read-only access to persisted upstream records.
+ConstructionSight has a substantial tested model/service architecture for lawful public-record construction intelligence. Implemented strengths include source-neutral intake, guarded CEQAnet tooling, parcel/site reasoning with GeoJSON and WKT/EWKT topology containment, source-plane area-weighted centroid summaries, conservative CRS boundaries, permit movement, contractor identity, decision records, versioned opportunity enrichment, lead review and dedupe, matrix-constrained workflow status, append-only result ledger/share-state modeling, serialized result authority operations, layered source-governance reporting, controlled registry-status apply, dedicated persistence, storage-summary reporting, post-enrichment lead operator tooling, and read-only access to persisted upstream records.
 
 This is not yet a production live-source platform. Most adapter families remain contract-ready or placeholder contracts, not verified recurring integrations. CEQAnet has guarded operator/archive tooling but is not production-grade recurring coverage. Controlled registry apply changes only an approved verification-status field and does not establish live coverage.
 
@@ -39,9 +39,9 @@ No external outreach-sending behavior is implemented or implied. A GUI/operator 
 | Opportunity transition intake | Yes | Yes | Yes | Partial | Yes | No | Candidate conversion is not an outreach system. |
 | External intelligence/gap spine | Yes | Yes | Yes | N/A | Yes | No | Capability modeling is not platform parity. |
 | Parcel source/schema/row preview | Yes | Yes | Yes | Config/report-backed | Yes | No | Add persisted import-batch audit only when live ingestion begins. |
-| Parcel core record | Yes | Yes | Yes | Yes | Read-only | No | List/detail access and raw geometry preservation exist; verified live import and domain-specific correction actions remain pending. |
-| Geometry normalization/topology | Yes | Yes | Yes | Payload | Partial | No | Verified GeoJSON Polygon/MultiPolygon longitude/latitude geometry uses topology that preserves concavity, holes, boundaries, and separate parts. Projection transforms, WKT polygons, geometry repair, area calculations, and area-weighted centroids remain backlog. |
-| Parcel-backed site resolution | Yes | Yes | Yes | Yes | Read-only | No | Point/topology matches are distinguished from explicitly limited envelope fallback. Valid topology prevents bounding-box false positives; no survey-grade claim is made. |
+| Parcel core record | Yes | Yes | Yes | Yes | Read-only | No | List/detail access, raw geometry, hash, CRS labels, and compatible derived summaries exist; verified live import and domain-specific correction actions remain pending. |
+| Geometry normalization/topology | Yes | Yes | Yes | Payload | Partial | No | GeoJSON and WKT/EWKT Point/Polygon/MultiPolygon parsing preserves rings, holes, parts, optional extra dimensions, and embedded SRIDs. Polygon centroids are area-weighted in the source plane. Explicit projected or conflicting CRS blocks latitude/longitude summaries and containment. Governed CRS transforms, projection-aware calculations, and topology validity repair remain backlog. |
+| Parcel-backed site resolution | Yes | Yes | Yes | Yes | Read-only | No | Point and GeoJSON/WKT topology matches are distinguished from explicitly limited envelope fallback. Valid topology prevents bounding-box false positives, while explicit incompatible CRS is not compared to longitude/latitude hints. No survey-grade claim is made. |
 | Permit transition spine | Yes | Yes | Yes | Yes | Read-only | No | Snapshot and transition list/detail access exists; recurring live adapters and governed write actions remain pending. |
 | Contractor identity | Yes | Yes | Yes | Yes | Read-only | No | Identity list/detail access exists; CSLB live verification and governed correction actions remain pending. |
 | Decision records | Yes | Yes | Yes | Yes | Read-only | No | Decision list/detail access exists; agenda/staff-report adapters and governed write actions remain pending. |
@@ -85,7 +85,8 @@ All four URLs were reachable in that observation, but all four records remain un
 | CS-AUDIT-013 | P2 | Lead operator exposure | Persisted post-enrichment records lacked consolidated list/detail/action access. | `constructionsight-leads` exposes list/detail, allowed transitions, and governed workflow transitions; fixed. |
 | CS-AUDIT-014 | P1 | Upstream operator boundary | Permit, contractor, decision, parcel, and site-resolution rows lacked consolidated inspection, while generic mutation would bypass their domain semantics. | `constructionsight-upstream` exposes full-payload list/detail access only. Unsupported filters and malformed payloads fail explicitly; generic mutation remains blocked. |
 | CS-AUDIT-015 | P1 | Result compatibility | New numeric constraints applied at model-load time would have invalidated older persisted result payloads. | Precision and non-won monetary rules are enforced by the canonical builder for new writes, while historical payloads remain readable; fixed before merge. |
-| CS-AUDIT-016 | P1 | Parcel topology | Polygon coordinate matches previously used only a bounding envelope, allowing concave shapes and holes to produce false parcel matches. | Verified GeoJSON Polygon/MultiPolygon longitude/latitude geometry now uses ring-preserving topology; unsupported or unverified cases retain explicit envelope-fallback limitations; fixed for supported topology. |
+| CS-AUDIT-016 | P1 | Parcel topology | Polygon coordinate matches previously used only a bounding envelope, allowing concave shapes and holes to produce false parcel matches. | Verified GeoJSON Polygon/MultiPolygon longitude/latitude geometry now uses ring-preserving topology; fixed for supported topology. |
+| CS-AUDIT-017 | P1 | Geometry format and centroid | WKT polygons were unparsed, polygon centroids used coordinate averages, and explicit projected coordinates could be mistaken for latitude/longitude summaries or direct matches. | Shared GeoJSON/WKT/EWKT parsing now preserves topology and embedded SRIDs; centroids use exterior-minus-hole area weighting in the source plane; projected or conflicting CRS blocks geographic summaries and containment; fixed for supported formats with explicit remaining GIS limitations. |
 
 ## Persistence coverage ledger
 
@@ -96,7 +97,7 @@ All four URLs were reachable in that observation, but all four records remain un
 | Source readiness/audit/checklist/plans | Report/file-backed | Persist only if replay requirements justify dedicated tables. |
 | Source apply reports | Required JSON audit | Includes plan/registry digests and row-level evidence. |
 | Parcel preview layers | Report/config-backed | Generally ephemeral. |
-| Parcel core/site-resolution | Persisted | Indexed fields plus complete JSON payloads and raw geometry; topology is derived from preserved raw evidence at resolution time. |
+| Parcel core/site-resolution | Persisted | Indexed fields plus complete JSON payloads, raw geometry, hash, CRS labels, and compatibility-limited summaries; topology is derived from preserved raw evidence at resolution time. |
 | Permit snapshots/transitions | Persisted | Indexed fields plus complete JSON payloads. |
 | Contractor identities | Persisted | Indexed fields plus complete JSON payloads. |
 | Decision records | Persisted | Indexed fields plus complete JSON payloads. |
@@ -119,7 +120,7 @@ Persistence rule: generic tables are not equivalent to source-neutral models unl
 | Consolidated lead operator CLI | Present | `constructionsight-leads` exposes enrichment, review, fingerprint, duplicate, workflow, event, ledger, and share records. |
 | Workflow transition action | Present | Requires `--apply`, expected current status, nonblank reason, payload/index integrity, and matrix-valid next status. |
 | Result authority inspection/correction | Present | `constructionsight-results current/history/record` requires explicit `--apply` for writes, exact current ledger ID or `none`, nonblank audit reason, canonical construction, transactional head/event updates, and stale-state rejection. |
-| Parcel topology evaluation | Internal service | Used by parcel-backed site resolution; no standalone mutation or boundary-proof command is implied. |
+| Parcel topology evaluation | Internal service | Used by parcel-backed site resolution for supported GeoJSON/WKT topology; no standalone mutation, coordinate-transform, or boundary-proof command is implied. |
 | Upstream generic mutation | Absent by design | Observed and derived records may be changed only through future domain-specific governed actions. |
 | Outreach sending | Absent | No external sending behavior is implemented or implied. |
 | GUI/operator app | Absent | Planned only. |
@@ -148,7 +149,7 @@ The architecture must preserve, where applicable:
 - provenance and evidence references;
 - lawful-access boundaries;
 - review-needed and unknown/unmapped states;
-- raw geometry, spatial reference, topology method, envelope-fallback reason, and non-survey-grade limitations;
+- raw geometry, format, embedded and supplied CRS, CRS conflict, coordinate bounds, topology method, ring/hole structure, topology-validity limitation, source-plane centroid limitation, envelope-fallback reason, and non-survey-grade limitations;
 - workflow status-transition history and unique event identity;
 - stale-state expectations for operator mutations;
 - result share-state uncertainty;
@@ -163,4 +164,4 @@ These are evidentiary controls, not cleanup noise. Future PRs must not delete or
 
 Every feature PR must update the implementation-status matrix or explicitly state why no status changed. Every new model or service must be reviewed for tests, documentation, persistence, CLI/operator need, lawful-access boundaries, limitation/provenance preservation, compatibility, and doctrine/runtime impact.
 
-No PR should merge while it knowingly introduces doctrine/runtime drift, stale maturity claims, missing limitations, broken quality gates, backward-incompatible history reads, geometry overclaims, or unreviewed persistence/CLI implications.
+No PR should merge while it knowingly introduces doctrine/runtime drift, stale maturity claims, missing limitations, broken quality gates, backward-incompatible history reads, cross-CRS comparisons, geometry overclaims, or unreviewed persistence/CLI implications.
