@@ -1,10 +1,9 @@
 name: PR98 diagnostics
-# Trigger after workflow registration.
 
 on:
-  push:
+  pull_request:
     branches:
-      - agent/ceqanet-live-csv-proof-v3
+      - main
     paths:
       - .github/workflows/pr98-diagnostics.yml
       - src/constructionsight/ceqanet_csv_live_models.py
