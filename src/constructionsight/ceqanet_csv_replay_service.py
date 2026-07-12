@@ -88,9 +88,11 @@ def verify_ceqanet_csv_encoding_replay(
         findings.append("replay source URL does not match the live execution")
     if replay.source_status_code != execution.status_code:
         findings.append("replay source status does not match the live execution")
-    if replay.network_executed:
+    network_executed = _widen_bool(replay.network_executed)
+    persistence_mutated = _widen_bool(replay.persistence_mutated)
+    if network_executed:
         findings.append("encoding replay reports network execution")
-    if replay.persistence_mutated:
+    if persistence_mutated:
         findings.append("encoding replay reports persistence mutation")
 
     try:
@@ -120,3 +122,7 @@ def verify_ceqanet_csv_encoding_replay(
         inspection_digest=replay.inspection.inspection_digest,
         replay_digest=replay.replay_digest,
     )
+
+
+def _widen_bool(value: bool) -> bool:
+    return value
