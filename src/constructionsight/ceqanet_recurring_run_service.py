@@ -178,7 +178,11 @@ def assert_ceqanet_definition_evidence_current(
     _validate_registry_public_url(str(source.public_url))
 
     comparisons = (
-        (source.source_name, definition.source_name, "current source name does not match definition"),
+        (
+            source.source_name,
+            definition.source_name,
+            "current source name does not match definition",
+        ),
         (
             str(source.public_url),
             definition.registry_public_url,
@@ -613,7 +617,11 @@ def _validate_definition_manifest_pair(
             definition.definition_digest,
             "manifest definition_digest does not match definition",
         ),
-        (manifest.source_key, definition.source_key, "manifest source_key does not match definition"),
+        (
+            manifest.source_key,
+            definition.source_key,
+            "manifest source_key does not match definition",
+        ),
         (
             manifest.source_name,
             definition.source_name,
@@ -830,9 +838,12 @@ def _verify_snapshot(
         findings.append(f"snapshots[{index}] body_length is smaller than retained body")
     if not isinstance(body_truncated, bool):
         findings.append(f"snapshots[{index}] body_truncated is not a boolean")
-    elif isinstance(body_length, int) and not isinstance(body_length, bool):
-        if body_truncated != (body_length > max_body_chars):
-            findings.append(f"snapshots[{index}] body_truncated is inconsistent")
+    elif (
+        isinstance(body_length, int)
+        and not isinstance(body_length, bool)
+        and body_truncated != (body_length > max_body_chars)
+    ):
+        findings.append(f"snapshots[{index}] body_truncated is inconsistent")
 
 
 def _verify_snapshot_url(
