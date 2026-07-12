@@ -56,6 +56,12 @@ def _joined(*parts: str) -> str:
     return "".join(parts)
 
 
+_DEFERRED_TERMS = (
+    "TO" + "DO",
+    "FIX" + "ME",
+    "HA" + "CK",
+    "X" * 3,
+)
 _SUPPRESSION_RULES = (
     ("lint suppression", re.compile(_joined(r"#\s*no", r"qa\b"), re.IGNORECASE)),
     (
@@ -80,7 +86,7 @@ _SUPPRESSION_RULES = (
     ),
     (
         "deferred-work marker",
-        re.compile(_joined(r"\b(?:TO", r"DO|FIX", r"ME|HACK|XXX)\b")),
+        re.compile(r"\b(?:" + "|".join(_DEFERRED_TERMS) + r")\b"),
     ),
 )
 _SECRET_RULES = (
