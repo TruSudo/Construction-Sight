@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from contextlib import contextmanager
+from importlib import import_module
 from pathlib import Path
 
 from sqlalchemy import Engine, create_engine
@@ -12,6 +13,14 @@ from sqlalchemy.orm import Session, sessionmaker
 from constructionsight.storage.orm import Base
 
 DEFAULT_DATABASE_PATH = Path("data/constructionsight.sqlite3")
+_ORM_MODULE_NAMES = (
+    "constructionsight.storage.domain_orm",
+    "constructionsight.storage.intelligence_orm",
+    "constructionsight.storage.lead_workflow_orm",
+    "constructionsight.storage.movement_identity_orm",
+    "constructionsight.storage.parcel_site_orm",
+    "constructionsight.storage.result_authority_orm",
+)
 
 
 def database_url_from_path(path: Path = DEFAULT_DATABASE_PATH) -> str:
@@ -31,18 +40,11 @@ def initialize_database(engine: Engine) -> None:
     """Create all known tables.
 
     SQLAlchemy only creates tables whose ORM classes have been imported into
-    metadata. Import ORM modules here so ``create_all()`` sees source-registry,
-    normalized domain, intelligence-layer, parcel/site, movement, identity,
-    lead workflow, result-ledger, and result-authority tables.
+    metadata. Load every registered ORM module before calling ``create_all()``.
     """
 
-    import constructionsight.storage.domain_orm  # noqa: F401
-    import constructionsight.storage.intelligence_orm  # noqa: F401
-    import constructionsight.storage.lead_workflow_orm  # noqa: F401
-    import constructionsight.storage.movement_identity_orm  # noqa: F401
-    import constructionsight.storage.parcel_site_orm  # noqa: F401
-    import constructionsight.storage.result_authority_orm  # noqa: F401
-
+    for module_name in _ORM_MODULE_NAMES:
+        import_module(module_name)
     Base.metadata.create_all(engine)
 
 
