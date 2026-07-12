@@ -44,13 +44,13 @@ jobs:
         run: python -m pip check
 
       - name: Capture Ruff diagnostics
-        run: python -m ruff check src tests --output-format=json > ruff-results.json || true
+        run: python -m ruff check src tests --output-format=json > /tmp/ruff-results.json || true
 
       - name: Upload Ruff diagnostics
         uses: actions/upload-artifact@v4
         with:
           name: ruff-results-${{ matrix.python-version }}
-          path: ruff-results.json
+          path: /tmp/ruff-results.json
 
       - name: Ruff
         run: python -m ruff check src tests
@@ -69,6 +69,20 @@ jobs:
 
       - name: Source adapter coverage audit
         run: constructionsight audit-source-coverage data/source_registry.seed.json
+
+      - name: Capture certification diagnostics
+        run: |
+          python -m constructionsight.repository_certification \
+            --root . \
+            --require-clean-worktree \
+            --json-output \
+            --output /tmp/certification-results.json || true
+
+      - name: Upload certification diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: certification-results-${{ matrix.python-version }}
+          path: /tmp/certification-results.json
 
       - name: Repository certification audit
         run: python -m constructionsight.repository_certification --root . --require-clean-worktree
