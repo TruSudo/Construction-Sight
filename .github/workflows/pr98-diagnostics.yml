@@ -1,4 +1,5 @@
 name: PR98 diagnostics
+# Trigger after workflow registration.
 
 on:
   push:
