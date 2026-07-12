@@ -240,14 +240,18 @@ class CeqanetRecurringRunExecution(BaseModel):
     network_executed: bool
     persistence_mutated: bool = False
     executed_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
-    execution_digest: str = Field(min_length=64, max_length=64)
+    execution_digest: str = ""
 
     @model_validator(mode="after")
-    def reject_persistence_mutation(self) -> CeqanetRecurringRunExecution:
-        """Ensure this boundary never claims or performs persistence mutation."""
+    def validate_execution_state(self) -> CeqanetRecurringRunExecution:
+        """Reject persistence mutation and initialize new execution evidence digest."""
 
         if self.persistence_mutated:
             raise ValueError("recurring-run execution cannot mutate persistence")
+        if not self.execution_digest:
+            object.__setattr__(self, "execution_digest", self.computed_digest())
+        elif len(self.execution_digest) != 64:
+            raise ValueError("execution_digest must contain 64 characters")
         return self
 
     def evidence_payload(self) -> dict[str, Any]:
