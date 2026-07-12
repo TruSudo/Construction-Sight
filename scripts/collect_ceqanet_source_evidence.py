@@ -34,14 +34,25 @@ SEARCH_URL = "https://ceqanet.lci.ca.gov/Search"
 APPROVED_HOSTS = {"ceqanet.opr.ca.gov", "ceqanet.lci.ca.gov", "opr.ca.gov"}
 CAPTCHA_MARKERS = ("captcha", "recaptcha", "hcaptcha")
 LOGIN_MARKERS = ("sign in", "log in", "password")
-DETAIL_MARKERS = ("project title", "lead agency", "document type", "sch")
 TERMS_LINK_MARKERS = ("terms", "privacy", "accessibility", "conditions", "copyright")
+PROJECT_PATH_PATTERN = re.compile(r"^/Project/(?P<sch>\d{10})/?$", re.IGNORECASE)
+DOCUMENT_PATH_PATTERN = re.compile(r"^/(?P<sch>\d{10})/?$")
+PROJECT_DETAIL_MARKERS = ("project info", "title", "description", "documents in project")
+DOCUMENT_DETAIL_MARKERS = (
+    "summary",
+    "sch number",
+    "lead agency",
+    "document title",
+    "document type",
+    "received",
+)
 
 
 class _LinkParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__()
         self.links: list[tuple[str, str]] = []
+        self.text: list[str] = []
         self._href: str | None = None
         self._text: list[str] = []
         self.title: list[str] = []
@@ -55,6 +66,7 @@ class _LinkParser(HTMLParser):
             self._in_title = True
 
     def handle_data(self, data: str) -> None:
+        self.text.append(data)
         if self._href is not None:
             self._text.append(data)
         if self._in_title:
@@ -69,8 +81,10 @@ class _LinkParser(HTMLParser):
             self._in_title = False
 
 
+
 def _sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
+
 
 
 def _slug(value: str) -> str:
@@ -78,9 +92,11 @@ def _slug(value: str) -> str:
     return f"source:{normalized}"
 
 
+
 def _official_url(url: str) -> bool:
     parsed = urlparse(url)
     return parsed.scheme == "https" and parsed.hostname in APPROVED_HOSTS
+
 
 
 def _response_record(response: httpx.Response) -> dict[str, Any]:
@@ -102,23 +118,63 @@ def _response_record(response: httpx.Response) -> dict[str, Any]:
     }
 
 
+
 def _find_detail_url(base_url: str, html: str) -> str:
     parser = _LinkParser()
     parser.feed(html)
-    candidates: list[str] = []
+    document_candidates: list[str] = []
+    project_candidates: list[str] = []
     for href, _ in parser.links:
         absolute = urljoin(base_url, href)
         parsed = urlparse(absolute)
-        lower_path = parsed.path.lower()
         if parsed.hostname != "ceqanet.lci.ca.gov":
             continue
-        if "project" not in lower_path or lower_path == "/search":
+        if DOCUMENT_PATH_PATTERN.fullmatch(parsed.path):
+            if absolute not in document_candidates:
+                document_candidates.append(absolute)
             continue
-        if absolute not in candidates:
-            candidates.append(absolute)
+        if PROJECT_PATH_PATTERN.fullmatch(parsed.path) and absolute not in project_candidates:
+            project_candidates.append(absolute)
+    candidates = [*document_candidates, *project_candidates]
     if not candidates:
-        raise RuntimeError("bounded CEQAnet search returned no public project-detail link")
+        raise RuntimeError("bounded CEQAnet search returned no public detail-page link")
     return candidates[0]
+
+
+
+def _detail_structure(url: str, html: str) -> dict[str, Any]:
+    parsed = urlparse(url)
+    project_match = PROJECT_PATH_PATTERN.fullmatch(parsed.path)
+    document_match = DOCUMENT_PATH_PATTERN.fullmatch(parsed.path)
+    if document_match is not None:
+        detail_kind = "document_detail"
+        sch_number = document_match.group("sch")
+        required_markers = DOCUMENT_DETAIL_MARKERS
+    elif project_match is not None:
+        detail_kind = "project_summary"
+        sch_number = project_match.group("sch")
+        required_markers = PROJECT_DETAIL_MARKERS
+    else:
+        raise RuntimeError("CEQAnet detail URL does not match an approved SCH detail path")
+
+    parser = _LinkParser()
+    parser.feed(html)
+    visible_text = " ".join(" ".join(parser.text).split()).lower()
+    if sch_number not in visible_text:
+        raise RuntimeError("CEQAnet detail page does not repeat its URL SCH identity")
+    observed_markers = [marker for marker in required_markers if marker in visible_text]
+    missing_markers = [marker for marker in required_markers if marker not in visible_text]
+    if missing_markers:
+        raise RuntimeError(
+            "CEQAnet detail page lacks required "
+            f"{detail_kind} structure: {missing_markers}"
+        )
+    return {
+        "detail_kind": detail_kind,
+        "sch_number": sch_number,
+        "observed_field_markers": observed_markers,
+    }
+
 
 
 def _terms_links(base_url: str, *html_documents: str) -> list[str]:
@@ -136,6 +192,7 @@ def _terms_links(base_url: str, *html_documents: str) -> list[str]:
             if absolute not in results:
                 results.append(absolute)
     return results
+
 
 
 def _robots_record(client: httpx.Client, base_url: str, paths: list[str]) -> dict[str, Any]:
@@ -159,12 +216,14 @@ def _robots_record(client: httpx.Client, base_url: str, paths: list[str]) -> dic
     return record
 
 
+
 def _load_ceqanet_source() -> dict[str, Any]:
     payload = json.loads(REGISTRY_PATH.read_text(encoding="utf-8"))
     matches = [row for row in payload if row.get("platform_family") == "ceqanet"]
     if len(matches) != 1:
         raise RuntimeError("canonical registry must contain exactly one CEQAnet source")
     return matches[0]
+
 
 
 def main() -> None:
@@ -190,6 +249,7 @@ def main() -> None:
         detail.raise_for_status()
         if not _official_url(str(detail.url)):
             raise RuntimeError("CEQAnet detail page redirected outside approved official hosts")
+        detail_structure = _detail_structure(str(detail.url), detail.text)
 
         combined_text = f"{entry.text}\n{search.text}\n{detail.text}".lower()
         captcha_markers = [marker for marker in CAPTCHA_MARKERS if marker in combined_text]
@@ -199,16 +259,10 @@ def main() -> None:
         if login_markers:
             raise RuntimeError(f"login marker observed: {login_markers}")
 
-        observed_detail_markers = [
-            marker for marker in DETAIL_MARKERS if marker in detail.text.lower()
-        ]
-        if len(observed_detail_markers) < 2:
-            raise RuntimeError("CEQAnet detail page lacks expected public-record field markers")
-
         robots = _robots_record(
             client,
             "https://ceqanet.lci.ca.gov/",
-            ["/Search", urlparse(detail_url).path],
+            ["/Search", urlparse(str(detail.url)).path],
         )
         terms_urls = _terms_links(
             str(entry.url),
@@ -228,6 +282,8 @@ def main() -> None:
         "source_id": source.get("source_id"),
         "source_name": source["source_name"],
         "registry_status": source["verification_status"],
+        "recommended_registry_status": "partial",
+        "terms_review_required_before_verified": True,
         "public_entry": _response_record(entry),
         "bounded_search": {
             **_response_record(search),
@@ -238,7 +294,7 @@ def main() -> None:
         },
         "public_detail": {
             **_response_record(detail),
-            "observed_field_markers": observed_detail_markers,
+            **detail_structure,
             "document_downloads": False,
             "persistence_mutated": False,
         },
@@ -253,7 +309,7 @@ def main() -> None:
             "evidence is a bounded point-in-time public-access observation",
             "response bodies are represented by lengths and SHA-256 hashes, not archived here",
             "terms/privacy/accessibility links are inventoried but legal terms review remains manual",
-            "this evidence does not itself promote source verification status",
+            "this evidence supports partial maturity only and does not authorize verified status",
             "this evidence does not establish recurring production coverage",
         ],
     }
@@ -277,13 +333,14 @@ def main() -> None:
         detail_page=ChecklistItemStatus.OBSERVED,
         access_barrier=ChecklistItemStatus.NOT_OBSERVED,
         terms_review=ChecklistItemStatus.NOT_CHECKED,
-        recommendation="retain_unverified_pending_manual_terms_review",
+        recommendation="promote_to_partial_pending_manual_terms_review",
         reasons=[
             "official public entry, bounded search, result-list, and detail behavior observed",
+            "detail URL and visible page content agree on a 10-digit SCH identity",
             "no login, captcha, paywall, or robots prohibition observed on reviewed paths",
         ],
         limitations=list(evidence["limitations"]),
-        next_action="complete manual terms review before any verification-status promotion",
+        next_action="classify partial, then complete terms review before verified promotion",
         observation_notes=(
             "Bounded GET observation used County=San Bernardino, retained no full response "
             "bodies, downloaded no documents, and performed no persistence mutation."
@@ -314,15 +371,16 @@ def main() -> None:
                 "",
                 "- Official public entry was reachable over HTTPS and remained on an approved official host.",
                 "- A bounded GET search using `County=San Bernardino` returned a public result list.",
-                "- A public project-detail page was reachable and exposed expected CEQA record markers.",
+                "- A public CEQAnet detail page exposed a matching 10-digit SCH identity and the required page-type structure.",
                 "- No login, captcha, or paywall marker was observed in the reviewed entry, search, or detail pages.",
                 "- The reviewed robots policy did not prohibit the bounded search or observed detail path.",
                 "- No documents were downloaded and no persistence was mutated.",
                 "",
-                "## Remaining blocker",
+                "## Maturity conclusion",
                 "",
-                "Manual review of the inventoried official terms/privacy/accessibility material remains required.",
-                "The canonical source must remain unverified until that review is explicit and a controlled promotion plan is approved.",
+                "The evidence supports `partial` source maturity.",
+                "Manual review of the inventoried official terms/privacy/accessibility material remains required before `verified` promotion.",
+                "Recurring live execution remains blocked until that separate controlled promotion occurs.",
                 "",
                 "## Evidence files",
                 "",
