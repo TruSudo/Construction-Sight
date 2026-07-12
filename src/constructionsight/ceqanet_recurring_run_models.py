@@ -6,7 +6,7 @@ import hashlib
 import json
 from datetime import UTC, date, datetime
 from enum import StrEnum
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -92,7 +92,7 @@ class CeqanetRecurringQueryTemplate(BaseModel):
 class CeqanetRecurringRunDefinition(BaseModel):
     """Immutable reviewed definition for a recurring CEQAnet run family."""
 
-    schema_version: str = DEFINITION_SCHEMA_VERSION
+    schema_version: Literal["ceqanet_recurring_run_definition.v1"] = DEFINITION_SCHEMA_VERSION
     source_key: str = Field(min_length=1)
     source_name: str = Field(min_length=1)
     registry_public_url: str = Field(min_length=1)
@@ -157,7 +157,7 @@ class CeqanetRecurringRunDefinition(BaseModel):
 class CeqanetRecurringRunManifest(BaseModel):
     """Immutable exact-window manifest derived from one reviewed definition."""
 
-    schema_version: str = MANIFEST_SCHEMA_VERSION
+    schema_version: Literal["ceqanet_recurring_run_manifest.v1"] = MANIFEST_SCHEMA_VERSION
     run_id: str = Field(min_length=64, max_length=64)
     definition_digest: str = Field(min_length=64, max_length=64)
     source_key: str = Field(min_length=1)
@@ -229,7 +229,7 @@ class CeqanetRecurringRunManifest(BaseModel):
 class CeqanetRecurringRunExecution(BaseModel):
     """One bounded live attempt tied to an immutable run manifest."""
 
-    schema_version: str = EXECUTION_SCHEMA_VERSION
+    schema_version: Literal["ceqanet_recurring_run_execution.v1"] = EXECUTION_SCHEMA_VERSION
     run_id: str = Field(min_length=64, max_length=64)
     attempt_sequence: int = Field(ge=1)
     attempt_id: str = Field(min_length=64, max_length=64)
@@ -240,6 +240,7 @@ class CeqanetRecurringRunExecution(BaseModel):
     network_executed: bool
     persistence_mutated: bool = False
     executed_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    execution_digest: str = Field(min_length=64, max_length=64)
 
     @model_validator(mode="after")
     def reject_persistence_mutation(self) -> CeqanetRecurringRunExecution:
@@ -249,11 +250,32 @@ class CeqanetRecurringRunExecution(BaseModel):
             raise ValueError("recurring-run execution cannot mutate persistence")
         return self
 
+    def evidence_payload(self) -> dict[str, Any]:
+        """Return the complete execution evidence excluding timestamp and digest."""
+
+        return self.model_dump(
+            mode="json",
+            exclude={"executed_at", "execution_digest"},
+        )
+
+    def computed_digest(self) -> str:
+        """Return the canonical digest of the complete retained execution evidence."""
+
+        return canonical_digest(self.evidence_payload())
+
+    def assert_integrity(self) -> None:
+        """Raise when any retained execution evidence has changed."""
+
+        if self.execution_digest != self.computed_digest():
+            raise ValueError("CEQAnet recurring-run execution digest mismatch")
+
 
 class CeqanetRecurringRunVerification(BaseModel):
     """Verification result for definition, manifest, and execution agreement."""
 
-    schema_version: str = VERIFICATION_SCHEMA_VERSION
+    schema_version: Literal["ceqanet_recurring_run_verification.v1"] = (
+        VERIFICATION_SCHEMA_VERSION
+    )
     passed: bool
     finding_count: int = Field(ge=0)
     findings: list[str] = Field(default_factory=list)
