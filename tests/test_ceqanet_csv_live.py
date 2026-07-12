@@ -15,6 +15,7 @@ from constructionsight.ceqanet_csv_live_service import (
     execute_ceqanet_csv_live_request,
     verify_ceqanet_csv_live_execution,
 )
+from constructionsight.ceqanet_csv_models import CeqanetCsvExportRequest
 from constructionsight.ceqanet_csv_service import build_ceqanet_csv_export_request
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -46,7 +47,7 @@ class _Client:
         return self.response
 
 
-def _request():
+def _request() -> CeqanetCsvExportRequest:
     return build_ceqanet_csv_export_request(sch_number="2026030377")
 
 
@@ -217,7 +218,10 @@ def test_verifier_rejects_final_url_identity_drift() -> None:
 
     assert verification.passed is False
     assert "CEQAnet CSV live execution digest mismatch" in verification.findings
-    assert "live CSV final URL does not match the approved request identity" in verification.findings
+    assert (
+        "live CSV final URL does not match the approved request identity"
+        in verification.findings
+    )
 
 
 def test_live_model_rejects_unknown_fields() -> None:
