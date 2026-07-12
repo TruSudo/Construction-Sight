@@ -161,6 +161,8 @@ CEQAnet remains `partial`.
 
 The implementation now proves deterministic planning, strict offline validation, and a bounded live-proof mechanism. It does not yet prove that the current official CSV endpoint returns a reliable valid CSV response to ConstructionSight. The recorded automated HTML path returned HTTP 403 and remains blocked.
 
+A passing live proof would establish only that one exact request returned a valid response at one point in time. It would not itself authorize source promotion, recurring collection, retries, persistence, or broader coverage claims.
+
 ## Next gate
 
 A separate, self-removing evidence phase may perform one project-scoped request for observed SCH `2026030377`.
