@@ -6,6 +6,7 @@ import base64
 import binascii
 import hashlib
 from collections.abc import Mapping
+from dataclasses import dataclass
 from typing import Any, Protocol
 
 import httpx
@@ -28,12 +29,23 @@ _ACCEPT = "text/csv,application/csv,application/vnd.ms-excel,text/plain;q=0.8,*/
 
 
 class CeqanetCsvLiveHttpResponse(Protocol):
-    """Minimal response contract used by the one-request executor."""
+    """Read-only response contract used by the one-request executor."""
 
-    status_code: int
-    content: bytes
-    url: Any
-    headers: Mapping[str, str]
+    @property
+    def status_code(self) -> int:
+        """Return the HTTP response status."""
+
+    @property
+    def content(self) -> bytes:
+        """Return the exact response bytes."""
+
+    @property
+    def url(self) -> Any:
+        """Return the final response URL."""
+
+    @property
+    def headers(self) -> Mapping[str, str]:
+        """Return response headers through a read-only mapping contract."""
 
 
 class CeqanetCsvLiveHttpClient(Protocol):
@@ -49,6 +61,14 @@ class CeqanetCsvLiveHttpClient(Protocol):
         """Fetch one official public CSV URL."""
 
 
+@dataclass(frozen=True)
+class _HttpxCsvResponseAdapter:
+    status_code: int
+    content: bytes
+    url: str
+    headers: dict[str, str]
+
+
 class _HttpxCsvClientAdapter:
     """Expose httpx.Client through the intentionally narrow executor protocol."""
 
@@ -61,13 +81,19 @@ class _HttpxCsvClientAdapter:
         *,
         follow_redirects: bool,
         timeout: float,
-    ) -> httpx.Response:
-        """Fetch one URL using the wrapped configured HTTPX client."""
+    ) -> CeqanetCsvLiveHttpResponse:
+        """Fetch one URL and narrow the rich HTTPX response contract."""
 
-        return self._client.get(
+        response = self._client.get(
             url,
             follow_redirects=follow_redirects,
             timeout=timeout,
+        )
+        return _HttpxCsvResponseAdapter(
+            status_code=response.status_code,
+            content=response.content,
+            url=str(response.url),
+            headers=dict(response.headers),
         )
 
 

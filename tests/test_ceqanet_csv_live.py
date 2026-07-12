@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -21,6 +22,14 @@ from constructionsight.ceqanet_csv_service import build_ceqanet_csv_export_reque
 ROOT = Path(__file__).resolve().parents[1]
 PROJECT_FIXTURE = ROOT / "tests/fixtures/ceqanet/project_export.csv"
 runner = CliRunner()
+_ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*m")
+_RICH_BORDER = str.maketrans("", "", "│╭╮╰╯─")
+
+
+def _plain_terminal(text: str) -> str:
+    without_ansi = _ANSI_ESCAPE.sub("", text)
+    without_border = without_ansi.translate(_RICH_BORDER)
+    return " ".join(without_border.split())
 
 
 @dataclass
@@ -245,7 +254,10 @@ def test_execute_cli_refuses_missing_authorization(tmp_path: Path) -> None:
     )
 
     assert result.exit_code != 0
-    assert "explicit --execute-live authorization is required" in result.output
+    assert (
+        "explicit --execute-live authorization is required"
+        in _plain_terminal(result.output)
+    )
 
 
 def test_verify_execution_cli_operates_offline(tmp_path: Path) -> None:
