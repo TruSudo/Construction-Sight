@@ -81,10 +81,8 @@ class _LinkParser(HTMLParser):
             self._in_title = False
 
 
-
 def _sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
-
 
 
 def _slug(value: str) -> str:
@@ -92,11 +90,9 @@ def _slug(value: str) -> str:
     return f"source:{normalized}"
 
 
-
 def _official_url(url: str) -> bool:
     parsed = urlparse(url)
     return parsed.scheme == "https" and parsed.hostname in APPROVED_HOSTS
-
 
 
 def _response_record(response: httpx.Response) -> dict[str, Any]:
@@ -116,7 +112,6 @@ def _response_record(response: httpx.Response) -> dict[str, Any]:
         "login_markers": [marker for marker in LOGIN_MARKERS if marker in lower_text],
         "link_count": len(parser.links),
     }
-
 
 
 def _find_detail_url(base_url: str, html: str) -> str:
@@ -139,7 +134,6 @@ def _find_detail_url(base_url: str, html: str) -> str:
     if not candidates:
         raise RuntimeError("bounded CEQAnet search returned no public detail-page link")
     return candidates[0]
-
 
 
 def _detail_structure(url: str, html: str) -> dict[str, Any]:
@@ -176,7 +170,6 @@ def _detail_structure(url: str, html: str) -> dict[str, Any]:
     }
 
 
-
 def _terms_links(base_url: str, *html_documents: str) -> list[str]:
     results: list[str] = []
     for html in html_documents:
@@ -194,14 +187,21 @@ def _terms_links(base_url: str, *html_documents: str) -> list[str]:
     return results
 
 
-
 def _robots_record(client: httpx.Client, base_url: str, paths: list[str]) -> dict[str, Any]:
     robots_url = urljoin(base_url, "/robots.txt")
-    response = client.get(robots_url)
+    response = client.get(
+        robots_url,
+        headers={"Accept": "text/plain,*/*;q=0.1"},
+    )
     record = _response_record(response)
     if response.status_code == 404:
         record["classification"] = "not_published"
         record["path_permissions"] = {path: None for path in paths}
+        return record
+    if response.status_code == 406:
+        record["classification"] = "unavailable"
+        record["path_permissions"] = {path: None for path in paths}
+        record["limitation"] = "robots.txt returned HTTP 406 and could not be evaluated"
         return record
     response.raise_for_status()
     parser = RobotFileParser()
@@ -216,14 +216,12 @@ def _robots_record(client: httpx.Client, base_url: str, paths: list[str]) -> dic
     return record
 
 
-
 def _load_ceqanet_source() -> dict[str, Any]:
     payload = json.loads(REGISTRY_PATH.read_text(encoding="utf-8"))
     matches = [row for row in payload if row.get("platform_family") == "ceqanet"]
     if len(matches) != 1:
         raise RuntimeError("canonical registry must contain exactly one CEQAnet source")
     return matches[0]
-
 
 
 def main() -> None:
@@ -275,6 +273,31 @@ def main() -> None:
             response = client.get(url)
             terms_records.append(_response_record(response))
 
+    limitations = [
+        "evidence is a bounded point-in-time public-access observation",
+        "response bodies are represented by lengths and SHA-256 hashes, not archived here",
+        "terms/privacy/accessibility links are inventoried but legal terms review remains manual",
+        "this evidence supports partial maturity only and does not authorize verified status",
+        "this evidence does not establish recurring production coverage",
+    ]
+    reasons = [
+        "official public entry, bounded search, result-list, and detail behavior observed",
+        "detail URL and visible page content agree on a 10-digit SCH identity",
+        "no login, captcha, or paywall barrier observed on reviewed pages",
+    ]
+    if robots["classification"] == "published":
+        reasons.append("published robots policy did not prohibit the reviewed paths")
+        robots_report = (
+            "- The published robots policy did not prohibit the bounded search or observed "
+            "detail path."
+        )
+    elif robots["classification"] == "not_published":
+        limitations.append("robots.txt was not published; no path-permission conclusion is asserted")
+        robots_report = "- `robots.txt` was not published; no path-permission conclusion is asserted."
+    else:
+        limitations.append("robots.txt returned HTTP 406; no path-permission conclusion is asserted")
+        robots_report = "- `robots.txt` returned HTTP 406; no path-permission conclusion is asserted."
+
     evidence: dict[str, Any] = {
         "schema_version": "ceqanet_source_verification_evidence.v1",
         "observed_at": observed_at.isoformat(),
@@ -305,13 +328,7 @@ def main() -> None:
             "captcha_observed": False,
             "paywall_observed": False,
         },
-        "limitations": [
-            "evidence is a bounded point-in-time public-access observation",
-            "response bodies are represented by lengths and SHA-256 hashes, not archived here",
-            "terms/privacy/accessibility links are inventoried but legal terms review remains manual",
-            "this evidence supports partial maturity only and does not authorize verified status",
-            "this evidence does not establish recurring production coverage",
-        ],
+        "limitations": limitations,
     }
 
     evidence_ref = EVIDENCE_PATH.relative_to(ROOT).as_posix()
@@ -334,12 +351,8 @@ def main() -> None:
         access_barrier=ChecklistItemStatus.NOT_OBSERVED,
         terms_review=ChecklistItemStatus.NOT_CHECKED,
         recommendation="promote_to_partial_pending_manual_terms_review",
-        reasons=[
-            "official public entry, bounded search, result-list, and detail behavior observed",
-            "detail URL and visible page content agree on a 10-digit SCH identity",
-            "no login, captcha, paywall, or robots prohibition observed on reviewed paths",
-        ],
-        limitations=list(evidence["limitations"]),
+        reasons=reasons,
+        limitations=limitations,
         next_action="classify partial, then complete terms review before verified promotion",
         observation_notes=(
             "Bounded GET observation used County=San Bernardino, retained no full response "
@@ -373,7 +386,7 @@ def main() -> None:
                 "- A bounded GET search using `County=San Bernardino` returned a public result list.",
                 "- A public CEQAnet detail page exposed a matching 10-digit SCH identity and the required page-type structure.",
                 "- No login, captcha, or paywall marker was observed in the reviewed entry, search, or detail pages.",
-                "- The reviewed robots policy did not prohibit the bounded search or observed detail path.",
+                robots_report,
                 "- No documents were downloaded and no persistence was mutated.",
                 "",
                 "## Maturity conclusion",
