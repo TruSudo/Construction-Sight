@@ -11,7 +11,7 @@ _ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*m")
 
 
 def _plain(text: str) -> str:
-    return _ANSI_ESCAPE.sub("", text)
+    return " ".join(_ANSI_ESCAPE.sub("", text).split())
 
 
 def test_ceqanet_listing_plan_cli_renders_allowed_plan_table() -> None:
