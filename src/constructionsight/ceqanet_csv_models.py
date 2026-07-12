@@ -5,12 +5,12 @@ from __future__ import annotations
 import hashlib
 import json
 from enum import StrEnum
-from typing import Any, Literal
+from typing import Any, Final, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-CSV_REQUEST_SCHEMA_VERSION = "ceqanet_csv_export_request.v1"
-CSV_INSPECTION_SCHEMA_VERSION = "ceqanet_csv_inspection.v1"
+CSV_REQUEST_SCHEMA_VERSION: Final = "ceqanet_csv_export_request.v1"
+CSV_INSPECTION_SCHEMA_VERSION: Final = "ceqanet_csv_inspection.v1"
 
 
 class CeqanetCsvExportKind(StrEnum):
