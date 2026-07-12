@@ -25,6 +25,8 @@ from constructionsight.ceqanet_recurring_run_service import (
     build_ceqanet_recurring_run_definition,
     build_ceqanet_recurring_run_manifest,
     execute_ceqanet_recurring_run,
+)
+from constructionsight.ceqanet_recurring_run_verifier import (
     verify_ceqanet_recurring_run_execution,
 )
 from constructionsight.models import PublicSource
