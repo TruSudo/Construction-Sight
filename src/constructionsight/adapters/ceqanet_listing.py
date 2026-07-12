@@ -42,6 +42,10 @@ class CeqanetListingQuery:
             raise ValueError("CEQAnet listing page_size must be between 1 and 100")
         if not 1 <= self.max_pages <= 10:
             raise ValueError("CEQAnet listing max_pages must be between 1 and 10")
+        if self.text_terms:
+            raise ValueError(
+                "CEQAnet listing text_terms are unsupported by the verified search contract"
+            )
         if self.received_from and self.received_to and self.received_from > self.received_to:
             raise ValueError("received_from must be on or before received_to")
         if self.posted_from and self.posted_to and self.posted_from > self.posted_to:
@@ -58,7 +62,6 @@ class CeqanetListingQuery:
                 self.counties,
                 self.document_types,
                 self.lead_agencies,
-                self.text_terms,
                 self.received_from,
                 self.received_to,
                 self.posted_from,
