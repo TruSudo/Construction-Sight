@@ -54,6 +54,14 @@ jobs:
         run: python -m mypy src
       - name: Compile
         run: python -m compileall -q src tests
+      - name: Capture pytest output
+        run: |
+          python -m pytest --strict-config --strict-markers -ra -W error \
+            > /tmp/pr98-patched-pytest.txt 2>&1 || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pr98-patched-pytest-diagnostics
+          path: /tmp/pr98-patched-pytest.txt
       - name: Pytest
         run: python -m pytest --strict-config --strict-markers -ra -W error
       - name: Adapter audit
