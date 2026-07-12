@@ -1,6 +1,6 @@
 # Current Implementation Status
 
-This document reconciles implemented ConstructionSight layers with documentation, persistence, CLI exposure, live source status, and known limitations.
+This document reconciles implemented ConstructionSight layers with documentation, persistence, CLI exposure, live-source status, certification controls, and known limitations.
 
 ## Status labels
 
@@ -9,62 +9,88 @@ This document reconciles implemented ConstructionSight layers with documentation
 - `documented`: architecture documentation exists.
 - `persisted`: SQLAlchemy ORM/store coverage exists.
 - `cli`: an operator-facing command exists.
-- `live_source_integrated`: live lawful source execution is implemented and represented as live.
-- `planned`: identified but not implemented.
+- `live_source_integrated`: lawful live execution is implemented and represented as live.
+- `planned`: identified product scope that is intentionally not implemented.
+
+A planned capability is not an active defect when the current supported boundary is explicit, guarded, tested, and non-overclaiming.
 
 ## Pipeline status
 
 | Layer | Implemented | Tested | Documented | Persisted | CLI | Live source integrated | Status note |
 |---|---:|---:|---:|---:|---:|---:|---|
-| Lawful intake boundary | Yes | Yes | Yes | Partial | Yes | No | Public-access boundary is documented and tested through intake/adapter contracts. |
-| Source registry | Yes | Yes | Yes | Yes | Yes | No | Seed records remain unverified until checked; controlled apply can change only an approved evidence-backed verification status and does not create live coverage. |
-| Source readiness workflow | Yes | Yes | Yes | No | Yes | No | Report-only readiness workflow preserves source identity, lawful boundary, adapter/source state, optional HTTP reachability, reasons, limitations, and next action without mutating registry status. |
-| Source audit package | Yes | Yes | Yes | No | Yes | No | Report-only audit package preserves original/final URLs, HTTP status, redirect classification, source/adapter/readiness state, reasons, limitations, and next action before registry review. |
-| Source verification checklist | Yes | Yes | Yes | No | Yes | No | Report-only manual checklist records entry, query, list, detail, access-barrier, terms-review, notes, and evidence references without changing registry status. |
-| Source plan reports | Yes | Yes | Yes | No | Yes | No | Dry-run source plan commands produce review actions, proposed registry payloads, evidence references, complete ordered-registry digests, and deterministic approval digests. |
-| Source registry controlled apply | Yes | Yes | Yes | File-backed | Yes | No | Explicit `--apply` workflow validates the complete registry snapshot, plan digest, derived counts, evidence, status-only mutation, canonical identity, distinct paths, required audit output, and target-last atomic replacement. No current seed source is promoted by this implementation. |
-| Adapter contracts | Yes | Yes | Yes | N/A | Yes | No | Most adapter families remain placeholder contracts; source-status reporting prevents adapter contracts from being mistaken for live coverage. |
-| Universal intake | Yes | Yes | Yes | Partial | Yes | No | Source-neutral records and routing exist; live source breadth is limited. |
-| Opportunity transition intake | Yes | Yes | Yes | Partial | Yes | No | Converts intake facts into opportunity candidates. |
-| Shovels/Regrid gap alignment | Yes | Yes | Yes | N/A | Yes | No | Planning and gap matrix exists; not a claim of platform parity. |
-| Parcel/site resolution | Yes | Yes | Yes | Yes | Yes | No | Hint-based and parcel-backed resolution exist with confidence, limitations, dedicated result storage, GeoJSON/WKT topology-aware coordinate matching, storage-summary visibility, and read-only upstream list/detail access. |
-| Parcel source registry | Yes | Yes | Yes | No | Yes | No | Tracks source targets; does not import live parcel coverage. |
+| Lawful intake boundary | Yes | Yes | Yes | Partial | Yes | No | Public-access boundaries are documented and tested through intake and adapter contracts. |
+| Source registry | Yes | Yes | Yes | Yes | Yes | No | Seed records remain unverified until checked; controlled apply changes only an approved evidence-backed verification status and does not create live coverage. |
+| Source readiness workflow | Yes | Yes | Yes | No | Yes | No | Report-only readiness preserves source identity, lawful boundary, adapter/source state, reachability, reasons, limitations, and next action. |
+| Source audit package | Yes | Yes | Yes | No | Yes | No | Report-only audit packages preserve URL, HTTP, redirect, maturity, reason, limitation, and next-action evidence. |
+| Source verification checklist | Yes | Yes | Yes | No | Yes | No | Manual observations and evidence references do not mutate registry status. |
+| Source plan reports | Yes | Yes | Yes | No | Yes | No | Dry-run plans preserve proposed payloads, evidence, complete-registry digests, and deterministic approval digests. |
+| Source registry controlled apply | Yes | Yes | Yes | File-backed | Yes | No | Explicit apply validates complete snapshots, digests, evidence, counts, identity, status-only mutation, path separation, audit output, and target-last replacement. |
+| Adapter contracts | Yes | Yes | Yes | N/A | Yes | No | Contracts are not represented as verified live integrations. |
+| Universal intake | Yes | Yes | Yes | Partial | Yes | No | Source-neutral records and routing exist; live source breadth is intentionally limited. |
+| Opportunity transition intake | Yes | Yes | Yes | Partial | Yes | No | Converts intake facts into opportunity candidates without implying outreach. |
+| Shovels/Regrid gap alignment | Yes | Yes | Yes | N/A | Yes | No | Capability planning exists; it is not a parity claim. |
+| Parcel/site resolution | Yes | Yes | Yes | Yes | Yes | No | Hint and parcel-backed resolution preserve confidence, ambiguity, limitations, storage, topology, and read-only inspection. |
+| Parcel source registry | Yes | Yes | Yes | No | Yes | No | Tracks source targets without claiming live parcel coverage. |
 | Parcel schema preview | Yes | Yes | Yes | No | Yes | No | Pre-import schema gate exists. |
 | Parcel row preview | Yes | Yes | Yes | No | Yes | No | Pre-record row gate exists. |
-| Parcel core record | Yes | Yes | Yes | Yes | Yes | No | Canonical parcel records, raw geometry, hashes, CRS labels, and compatible summaries are persisted and exposed through read-only upstream commands; live import remains pending. |
-| Geometry normalization and topology | Yes | Yes | Yes | Payload | Partial | No | GeoJSON and WKT/EWKT Polygon/MultiPolygon parsing preserves rings, holes, Z/M-tolerant coordinates, embedded SRIDs, concavity, boundaries, and separate parts. Centroids are area-weighted in the source plane. Explicit projected or conflicting CRS blocks latitude/longitude summaries and containment; governed CRS transformation and topology validity repair remain pending. |
-| Parcel-backed site resolution | Yes | Yes | Yes | Yes | Yes | No | Verified point/topology matches are distinguished from limited envelope fallback. Valid GeoJSON/WKT topology prevents bounding-box false positives. Explicit incompatible CRS is not directly compared to longitude/latitude hints. |
-| Permit snapshot transition spine | Yes | Yes | Yes | Yes | Yes | No | Persisted snapshots and transitions have read-only list/detail access; recurring live adapters and domain-specific write actions remain pending. |
-| Contractor identity | Yes | Yes | Yes | Yes | Yes | No | Persisted identities have read-only list/detail access; CSLB live verification and domain-specific correction actions remain pending. |
-| Decision record | Yes | Yes | Yes | Yes | Yes | No | Persisted decision records have read-only list/detail access; agenda/staff-report adapters and domain-specific write actions remain pending. |
-| Opportunity enrichment | Yes | Yes | Yes | Yes | Yes | No | Versioned scoring reports are persisted and exposed through consolidated lead list/detail commands. |
-| Lead review package | Yes | Yes | Yes | Yes | Yes | No | Review packages are persisted and exposed through consolidated lead list/detail commands. |
-| Lead dedupe | Yes | Yes | Yes | Yes | Yes | No | Fingerprints and duplicate results are persisted and exposed through consolidated lead list/detail commands. |
-| Lead workflow status | Yes | Yes | Yes | Yes | Yes | No | Operator commands expose list/detail, allowed transitions, and explicit stale-state-protected matrix-valid transitions with append-only event persistence. |
-| Result ledger/share authority | Yes | Yes | Yes | Yes | Yes | No | `constructionsight-results` exposes validated current/history views and explicit `--apply` result entry or correction. Immutable revisions remain evidence; a unique per-workflow head serializes exact-ledger compare-and-swap writes, and append-only authority events preserve operator action history. |
-| Outreach preview | No | No | No | No | No | No | Planned only; no external action should be implied. |
-| UI/operator app | No | No | No | No | No | No | Planned only. |
+| Parcel core record | Yes | Yes | Yes | Yes | Yes | No | Raw geometry, hashes, CRS labels, compatible summaries, persistence, and read-only inspection exist. |
+| Geometry normalization and topology | Yes | Yes | Yes | Payload | Partial | No | GeoJSON and WKT/EWKT topology, holes, parts, extra dimensions, embedded SRIDs, source-plane area centroids, and conservative CRS refusal exist. |
+| Parcel-backed site resolution | Yes | Yes | Yes | Yes | Yes | No | Point and topology matches are distinguished from explicit limited fallback; incompatible CRS is never directly compared to longitude/latitude. |
+| Permit snapshot transition spine | Yes | Yes | Yes | Yes | Yes | No | Persisted snapshots and transitions have read-only list/detail access. |
+| Contractor identity | Yes | Yes | Yes | Yes | Yes | No | Persisted identities have read-only list/detail access. |
+| Decision record | Yes | Yes | Yes | Yes | Yes | No | Persisted decisions have read-only list/detail access. |
+| Opportunity enrichment | Yes | Yes | Yes | Yes | Yes | No | Versioned scoring reports are persisted and operator-visible. |
+| Lead review package | Yes | Yes | Yes | Yes | Yes | No | Full review payloads, reasons, limitations, and scores remain visible. |
+| Lead dedupe | Yes | Yes | Yes | Yes | Yes | No | Fingerprints and duplicate results are persisted and visible. |
+| Lead workflow status | Yes | Yes | Yes | Yes | Yes | No | Matrix-valid, exact-state transitions preserve append-only unique events. |
+| Result ledger/share authority | Yes | Yes | Yes | Yes | Yes | No | Immutable revisions, serialized exact-state authority, and append-only operator events govern result entry and correction. |
+| Repository certification | Yes | Yes | Yes | N/A | Yes | N/A | Every tracked file is scanned; CI enforces dependency integrity, strict lint/type/test gates, warning failure, clean worktree, and diff hygiene. |
+| Outreach preview | No | No | No | No | No | No | Planned product capability; no external action is implied. |
+| UI/operator app | No | No | No | No | No | No | Planned product capability. |
 
-## Defect ledger
+## Active defect ledger
 
-| ID | Severity | Layer | File(s) | Observed fact | Why it matters | Root cause | Recommended fix | Disposition |
-|---|---|---|---|---|---|---|---|---|
-| CS-VIAM-001 | P1 | Doctrine | `README.md` | README previously lagged the newer post-parcel layers. | Runtime and doctrine drift apart. | Rapid implementation outpaced docs. | Keep README linked to the canonical implementation-status matrix and audit inventory. | Fixed; monitor forward. |
-| CS-VIAM-002 | P1 | Persistence | `src/constructionsight/storage/*` | Movement/identity, post-enrichment lead workflow, parcel core, and site-resolution report layers now have dedicated ORM/store coverage. Optional preview archives and some nested child tables remain intentionally unimplemented. | Remaining gaps are now narrower and should not be confused with missing core persistence. | Architecture-first implementation sequence. | Add optional archives or child tables only when query requirements justify them. | Partially fixed; narrow remaining backlog. |
-| CS-VIAM-003 | P1 | Source maturity | `source_status_report.py`, `source_readiness_*`, `audit_package_cli.py`, `source_verification_*`, `source_promotion_plan_*`, `source_registry_integrity.py`, `source_registry_update_plan_*`, `source_registry_apply_*`, `data/source_registry.seed.json` | Source maturity layers now separate registry claims, adapter maturity, reachability, redirect evidence, manual observations, dry-run actions, complete registry snapshots, proposed payloads, approval digests, and controlled status-only apply results. | Product must not overclaim source readiness or allow an unreviewed or stale registry mutation. | Source records and adapter contracts originally lacked a complete evidence-to-apply governance chain. | Keep apply evidence-gated, full-snapshot-bound, digest-approved, status-only, path-safe, auditable, and distinct from live-integration claims. | Fixed; monitor forward. |
-| CS-VIAM-004 | P1 | Adapter maturity | `src/constructionsight/adapters/specs.py` | Most adapter families are placeholders; CEQAnet is contract-ready, not live production coverage. | Avoid false live-integration claims. | Adapter contracts preceded live adapters. | Use source-status, readiness, audit, checklist, planning, and controlled apply governance before making coverage claims. | Partially fixed; live maturity still backlog. |
-| CS-VIAM-005 | P1 | Geometry | `parcel_geometry.py`, `parcel_topology_parse.py`, `parcel_topology.py`, `parcel_site_resolution.py` | GeoJSON and WKT/EWKT topology now preserves rings, holes, parts, embedded SRIDs, and optional extra dimensions. Area-weighted source-plane centroids replace coordinate averages. Explicit projected or conflicting CRS is preserved but not mislabeled or compared as longitude/latitude. | Prevents envelope false positives, distorted centroid summaries, and cross-CRS false matches while retaining raw evidence and uncertainty. | The dependency-light first implementation flattened geometry and did not separate parsing, coordinate interpretation, and topology use. | Preserve parser, centroid, CRS-conflict, and containment tests. Add governed CRS transformation, projection-aware calculations, and topology validity repair only with explicit doctrine. | Fixed for supported GeoJSON/WKT topology and conservative CRS boundaries; narrower GIS backlog remains. |
-| CS-VIAM-006 | P1 | Scoring | `opportunity_enrichment_service.py`, `opportunity_scoring_profile.py` | Opportunity enrichment now uses a versioned default scoring profile and records profile key/version in reports. | Future tuning can preserve old report semantics instead of silently changing score meaning. | First-pass scoring implementation was hardcoded. | Add additional profile versions only with explicit doctrine and tests. | Fixed; monitor forward. |
-| CS-VIAM-007 | P1 | Workflow | `lead_workflow_service.py`, `lead_workflow_rules.py` | Lead workflow status moves are constrained by a transition matrix and final statuses have no outgoing moves. | Prevents invalid operational state jumps while preserving append-only event history. | Initial workflow model prioritized audit events. | Add any future override/reopen behavior only with explicit doctrine and tests. | Fixed; monitor forward. |
-| CS-VIAM-008 | P1 | Result ledger | `result_ledger_models.py`, `result_ledger_service.py` | Won results explicitly distinguish pending gross value, pending share rate, and calculated share; every correction is a new immutable revision, and new writes enforce cent/rate precision without invalidating older payloads. | Pending uncertainty and correction history remain queryable without overwriting evidence or silently breaking legacy reads. | Share uncertainty, authority, and numeric policy were implemented in separate phases. | Preserve canonical write validation, immutable revisions, and compatibility-aware reads. | Fixed; monitor forward. |
-| CS-VIAM-009 | P2 | CLI | `pyproject.toml`, `lead_operator_*`, `upstream_operator_*`, `result_authority_*` | Persisted post-enrichment and upstream core records have consolidated inspection commands; workflow and result mutations are separately governed. | Operators can inspect the implemented pipeline and perform only domain-specific stale-state-protected changes. | Model/service/storage-first implementation. | Add only domain-specific upstream write actions that call canonical builders and define stale-state, correction, supersession, and audit behavior. | Fixed for current lead/result scope; upstream writes remain deliberate backlog. |
-| CS-VIAM-010 | P2 | Documentation | `docs/architecture/*` | Lead, upstream, result authority, and current geometry behavior are represented in architecture documentation and this matrix. | Status documentation must not remain stale after runtime behavior lands. | Rapid implementation outpaced matrix reconciliation. | Keep status matrix synchronized with documentation/runtime. | Fixed. |
-| CS-VIAM-011 | P1 | Workflow event identity | `lead_workflow_models.py`, `lead_workflow_service.py`, `storage/lead_workflow_store.py` | Repeating the same valid transition and reason after a workflow cycle could reuse an event ID and upsert over earlier history. | Event identity collision could destroy append-only audit history. | Event IDs omitted workflow event sequence. | Include sequence in event identity, reject duplicate event IDs, and test repeated persisted cycles. | Fixed. |
-| CS-VIAM-012 | P1 | Result ledger authority | `result_ledger_*`, `result_authority_*`, `storage/result_authority_*` | Result histories require one immutable linear chain, while a unique authority head serializes initial selection and corrections through exact-ledger/revision compare-and-swap. Every governed action appends an authority event. | Differing outcomes can be corrected without branching authority, destroying prior evidence, or accepting a concurrent stale write. | Result modeling preceded correction, operator, and concurrency governance. | Keep the head limited to concurrency control, preserve immutable ledger evidence, require explicit `--apply` and exact expected state, and retain append-only events. | Fixed; monitor forward. |
-| CS-VIAM-013 | P1 | Upstream evidence mutation | `upstream_operator_*`, movement/identity and parcel/site stores | Generic edits to permit, contractor, decision, parcel, or site-resolution rows would bypass their source-specific domain builders. | Direct edits could sever provenance, confidence, geometry, transition, and limitation semantics. | Persistence existed before a consolidated operator surface. | Keep the consolidated upstream command read-only; introduce writes only through domain-specific governed actions. | Controlled; read access implemented and generic mutation blocked. |
+A certified tree must contain zero active defects. Any new runtime, data-quality, documentation, persistence, provenance, compatibility, security, or CI defect is recorded here immediately and blocks feature work until resolved.
+
+Current active entries: **none recorded**. The executable certification gate remains authoritative for the exact Git tree.
+
+## Resolved defect ledger
+
+Every entry below is resolved within the currently supported scope. Monitoring language is preventive and does not represent an open defect.
+
+| ID | Severity | Layer | Resolved defect | Resolution |
+|---|---|---|---|---|
+| CS-VIAM-001 | P1 | Doctrine | README and runtime status drifted. | README, architecture status, and audit inventory are reconciled and certification checks forward drift. |
+| CS-VIAM-002 | P1 | Persistence | Core movement, identity, parcel, site, and post-enrichment records lacked dedicated storage. | Dedicated ORM/store coverage preserves indexed fields and complete payloads. |
+| CS-VIAM-003 | P1 | Source maturity | Seed records, reachability, adapter contracts, and verified usable sources could be conflated. | Layered status, readiness, audit, checklist, planning, digest, and controlled-apply governance separates each maturity class. |
+| CS-VIAM-004 | P1 | Adapter maturity claims | Placeholder contracts could be mistaken for live integrations. | Source-status reporting and documentation explicitly prevent live-coverage claims. |
+| CS-VIAM-005 | P1 | Geometry | Envelope-only matching, coordinate-average centroids, unparsed WKT, and direct cross-CRS comparisons could produce false spatial conclusions. | Supported GeoJSON/WKT topology, area-weighted source-plane centroids, CRS conflict preservation, and incompatible-CRS refusal are implemented and tested. |
+| CS-VIAM-006 | P1 | Scoring | Scoring constants lacked profile identity. | Versioned scoring profiles are persisted with reports. |
+| CS-VIAM-007 | P1 | Workflow | Workflow status changes lacked a complete transition matrix. | Matrix enforcement and final-state immutability are implemented. |
+| CS-VIAM-008 | P1 | Result ledger | Share uncertainty was represented only in prose. | Explicit share states are modeled and persisted. |
+| CS-VIAM-009 | P2 | Operator access | Persisted records lacked consolidated inspection and governed actions. | Upstream read-only, lead, workflow, and result-authority commands expose the supported operator surface. |
+| CS-VIAM-010 | P2 | Documentation | Architecture documentation lagged runtime. | Architecture, status, README, and audit ledgers are synchronized. |
+| CS-VIAM-011 | P1 | Workflow event identity | Repeated transition cycles could reuse an event ID and overwrite history. | Event sequence participates in identity; duplicate IDs are rejected and repeated cycles are tested. |
+| CS-VIAM-012 | P1 | Result authority | Differing outcomes lacked complete immutable correction and concurrency governance. | Linear immutable revisions, exact-state authority heads, and append-only authority events are enforced. |
+| CS-VIAM-013 | P1 | Upstream mutation boundary | Generic edits could bypass source-specific provenance and domain builders. | Generic mutation is unavailable; only read access exists until a domain-specific governed action is justified. |
+| CS-VIAM-014 | P1 | Certification governance | CI success did not independently scan every tracked file or distinguish planned scope from active defects. | `constructionsight-certify` and permanent CI certification gates now enforce the complete tracked-tree and governance boundary. |
+
+## Planned capability ledger
+
+These entries are future product scope, not defects in the current supported implementation.
+
+| ID | Capability | Current safe boundary | Required entry condition |
+|---|---|---|---|
+| CS-PLAN-001 | Optional preview archives and nested child tables | Current core records are losslessly persisted; report/config layers remain deliberately ephemeral. | Add only when replay or query requirements justify schema expansion. |
+| CS-PLAN-002 | Verified recurring live adapters | Contracts and guarded CEQAnet tooling are not represented as production coverage. | Complete source-specific evidence review, recurring-run governance, and maturity promotion. |
+| CS-PLAN-003 | CRS transformation, projection-aware/geodesic calculations, and topology repair | Incompatible CRS is preserved and refused rather than guessed; current results are not survey-grade. | Select and pin a GIS stack, define provenance and failure doctrine, and add exact tests. |
+| CS-PLAN-004 | Domain-specific upstream corrections | Generic upstream mutation is blocked. | Define source-aware stale-state, correction, supersession, and audit semantics per record family. |
+| CS-PLAN-005 | Workflow reopen or override | Final states remain immutable. | Introduce explicit authority, reason, stale-state, and append-only event doctrine. |
+| CS-PLAN-006 | Outreach preview and sending | No external sending behavior exists. | Implement preview, approval, dedupe, compliance, evidence, and delivery audit boundaries first. |
+| CS-PLAN-007 | GUI/operator application | CLI and persisted services remain the supported operator surface. | Build only after underlying workflows and source maturity justify UI exposure. |
 
 ## Forward cleanup rule
 
-Every future feature PR must update this matrix or explicitly state why no status changed. A new model or service must not silently bypass documentation, tests, persistence review, CLI review, lawful-access review, and limitation/provenance review.
+Every future feature PR must update this matrix or explicitly state why no status changed. New models and services must not bypass tests, documentation, persistence review, CLI review, lawful-access review, limitation/provenance review, compatibility review, or repository certification.
 
-See `docs/audits/full_repo_audit_inventory.md` for the canonical full-repo audit inventory.
+See [the canonical full-repo audit inventory](../audits/full_repo_audit_inventory.md).

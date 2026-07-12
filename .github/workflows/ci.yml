@@ -40,6 +40,9 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e ".[dev]"
 
+      - name: Dependency integrity
+        run: python -m pip check
+
       - name: Ruff
         run: python -m ruff check src tests
 
@@ -47,14 +50,19 @@ jobs:
         run: python -m mypy src
 
       - name: Compile source and tests
-        run: |
-          python -m compileall -q src tests
+        run: python -m compileall -q src tests
 
       - name: Pytest
-        run: python -m pytest
+        run: python -m pytest --strict-config --strict-markers -ra -W error
 
       - name: Adapter contract audit
         run: constructionsight audit-adapters
 
       - name: Source adapter coverage audit
         run: constructionsight audit-source-coverage data/source_registry.seed.json
+
+      - name: Repository certification audit
+        run: python -m constructionsight.repository_certification --root . --require-clean-worktree
+
+      - name: Diff hygiene
+        run: git diff --check
