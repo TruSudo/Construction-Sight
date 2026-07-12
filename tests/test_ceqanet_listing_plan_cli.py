@@ -8,10 +8,12 @@ from constructionsight.ceqanet_listing_plan_cli import app
 
 runner = CliRunner()
 _ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*m")
+_RICH_BORDER = str.maketrans("", "", "─│╭╮╰╯")
 
 
 def _plain(text: str) -> str:
-    return " ".join(_ANSI_ESCAPE.sub("", text).split())
+    undecorated = _ANSI_ESCAPE.sub("", text).translate(_RICH_BORDER)
+    return " ".join(undecorated.split())
 
 
 def test_ceqanet_listing_plan_cli_renders_allowed_plan_table() -> None:
