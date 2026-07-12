@@ -23,7 +23,7 @@ The canonical source registry currently contains:
 
 CEQAnet is classified `partial` because its official entry, advanced search, result-list, project-summary, document-detail, policy, and CSV-export surfaces were reviewed and recorded. Bounded automated HTML collection later received HTTP 403. No bypass was attempted. The existing recurring-run service remains verified-only, so `partial` status does not authorize live recurring execution.
 
-ConstructionSight now has an official CSV contract that can plan exact project/document export URLs, validate already-obtained CSV bytes, and perform one explicitly authorized bounded GET with no retry. The live-proof boundary retains the complete response envelope and canonical offline inspection but has not yet produced a committed live proof. Source maturity therefore remains `partial`; promotion remains a separate controlled decision supported only by reviewed evidence.
+ConstructionSight has an official CSV contract that plans exact project/document export URLs, validates already-obtained CSV bytes, and performs one explicitly authorized bounded GET with no retry. The bounded project CSV proof failed and was preserved without retry or bypass. HTTP status: 200; findings: live CSV offline inspection failed: CEQAnet CSV body must use UTF-8 or UTF-8 with BOM; live CSV inspection recorded error: CEQAnet CSV body must use UTF-8 or UTF-8 with BOM Source maturity remains `partial`; promotion remains a separate controlled decision supported only by reviewed evidence.
 
 See:
 
@@ -31,6 +31,9 @@ See:
 - `evidence/source_verification/ceqanet_checklist_2026-07-12.json`
 - `docs/audits/ceqanet_source_verification_2026-07-12.md`
 - `docs/architecture/ceqanet_official_csv_contract.md`
+- `evidence/source_verification/ceqanet_csv_live_execution_2026-07-12.json`
+- `evidence/source_verification/ceqanet_csv_live_verification_2026-07-12.json`
+- `docs/audits/ceqanet_csv_live_proof_2026-07-12.md`
 - `docs/architecture/current_implementation_status.md`
 - `docs/audits/full_repo_audit_inventory.md`
 
@@ -201,8 +204,8 @@ No external communication behavior is implied by the existing models or CLI.
 ## Known limitations
 
 - CEQAnet is `partial`, not `verified`; automated HTML collection received HTTP 403.
-- The official CSV contract can perform one explicitly authorized proof request, but no live proof artifact has yet been committed or reviewed.
-- Real CEQAnet CSV availability and column drift remain unknown until a source-provided response is retained and passes the canonical inspection.
+- The bounded project CSV proof failed and was preserved without retry or bypass. HTTP status: 200; findings: live CSV offline inspection failed: CEQAnet CSV body must use UTF-8 or UTF-8 with BOM; live CSV inspection recorded error: CEQAnet CSV body must use UTF-8 or UTF-8 with BOM
+- One point-in-time CSV result does not establish recurring availability, completeness, or broader source coverage.
 - The other three canonical sources remain unverified.
 - Verified usable source coverage remains zero.
 - Most adapter families remain contract-level.

@@ -1,0 +1,13 @@
+{
+  "execution_digest": "9a861dcee42092eb6f2d8f5c86673f4aca4c75cd0d42beddaa930cc093221a95",
+  "finding_count": 2,
+  "findings": [
+    "live CSV offline inspection failed: CEQAnet CSV body must use UTF-8 or UTF-8 with BOM",
+    "live CSV inspection recorded error: CEQAnet CSV body must use UTF-8 or UTF-8 with BOM"
+  ],
+  "inspection_digest": null,
+  "passed": false,
+  "request_url": "https://ceqanet.lci.ca.gov/Search?OutputFormat=CSV&Sch=2026030377",
+  "schema_version": "ceqanet_csv_live_verification.v1",
+  "status_code": 200
+}

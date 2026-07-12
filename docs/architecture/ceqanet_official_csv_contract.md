@@ -159,12 +159,12 @@ constructionsight-ceqanet-csv verify-execution <artifact> [--output <verificatio
 
 CEQAnet remains `partial`.
 
-The implementation now proves deterministic planning, strict offline validation, and a bounded live-proof mechanism. It does not yet prove that the current official CSV endpoint returns a reliable valid CSV response to ConstructionSight. The recorded automated HTML path returned HTTP 403 and remains blocked.
+The implementation proves deterministic planning, strict offline validation, and a bounded live-proof mechanism. The bounded project CSV proof failed and was preserved without retry or bypass. HTTP status: 200; findings: live CSV offline inspection failed: CEQAnet CSV body must use UTF-8 or UTF-8 with BOM; live CSV inspection recorded error: CEQAnet CSV body must use UTF-8 or UTF-8 with BOM The recorded automated HTML path returned HTTP 403 and remains blocked.
 
 A passing live proof would establish only that one exact request returned a valid response at one point in time. It would not itself authorize source promotion, recurring collection, retries, persistence, or broader coverage claims.
 
 ## Next gate
 
-A separate, self-removing evidence phase may perform one project-scoped request for observed SCH `2026030377`.
+One self-removing evidence phase performed the project-scoped request for SCH `2026030377` and committed the execution and offline verification artifacts.
 
-The resulting success or failure artifact must be committed with an offline verification report and reviewed before any source-status promotion, parser handoff, recurring schedule, rate policy, persisted attempt ledger, or persistence mutation is considered.
+Keep CEQAnet partial. Any further access investigation, source clarification, or later proof must be a separate explicitly authorized phase; no retry or bypass is implied.
