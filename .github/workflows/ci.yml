@@ -43,6 +43,15 @@ jobs:
       - name: Dependency integrity
         run: python -m pip check
 
+      - name: Capture Ruff diagnostics
+        run: python -m ruff check src tests --output-format=json > /tmp/ruff-results-${{ matrix.python-version }}.json || true
+
+      - name: Upload Ruff diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: ruff-results-${{ matrix.python-version }}
+          path: /tmp/ruff-results-${{ matrix.python-version }}.json
+
       - name: Ruff
         run: python -m ruff check src tests
 
