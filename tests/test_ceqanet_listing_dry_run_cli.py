@@ -1,12 +1,17 @@
 import json
+import re
 from pathlib import Path
 
-from click import unstyle
 from typer.testing import CliRunner
 
 from constructionsight.ceqanet_listing_plan_cli import app
 
 runner = CliRunner()
+_ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def _plain(text: str) -> str:
+    return _ANSI_ESCAPE.sub("", text)
 
 
 def test_ceqanet_listing_dry_run_cli_renders_request_evidence_table() -> None:
@@ -48,7 +53,7 @@ def test_ceqanet_listing_dry_run_cli_rejects_unsupported_text_filter() -> None:
     )
 
     assert result.exit_code != 0
-    assert "text_terms are unsupported by the verified search contract" in unstyle(
+    assert "text_terms are unsupported by the verified search contract" in _plain(
         result.output
     )
 
