@@ -17,7 +17,7 @@ from constructionsight.parcel_topology_parse import (
 
 _NUMBER_PATTERN = r"[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?"
 _WKT_POINT_RE = re.compile(
-    rf"^\s*(?:SRID\s*=\s*(?P<srid>\d+)\s*;\s*)?POINT\s*(?:Z|M|ZM)?\s*"
+    rf"^\s*(?:SRID\s*=\s*(?P<srid>\d+)\s*;\s*)?POINT\s*(?:ZM|Z|M)?\s*"
     rf"\(\s*(?P<lon>{_NUMBER_PATTERN})\s+(?P<lat>{_NUMBER_PATTERN})"
     rf"(?:\s+{_NUMBER_PATTERN})*\s*\)\s*$",
     re.IGNORECASE,
@@ -27,6 +27,10 @@ _PLANAR_CENTROID_LIMITATION = (
 )
 _INVALID_AREA_LIMITATION = (
     "polygon centroid is unavailable because topology has zero or invalid effective area"
+)
+_INCOMPATIBLE_CRS_SUMMARY_LIMITATION = (
+    "geometry coordinates were not summarized because the explicit spatial reference "
+    "is not recognized as longitude/latitude"
 )
 
 
@@ -45,7 +49,7 @@ def normalize_parcel_geometry(
     centroid_longitude: float | None = None,
     spatial_reference: str | None = None,
 ) -> ParcelGeometry:
-    """Normalize raw geometry or centroid coordinates into a parcel geometry summary."""
+    """Normalize raw geometry without silently crossing coordinate systems."""
 
     limitations: list[str] = []
     parsed_kind = geometry_kind
@@ -61,37 +65,58 @@ def normalize_parcel_geometry(
     if raw_geometry:
         parsed_point = _parse_point_geometry(raw_geometry)
         parsed_topology = parse_parcel_topology(raw_geometry)
+        embedded_spatial_reference = _embedded_spatial_reference(
+            parsed_point,
+            parsed_topology,
+        )
+        if (
+            spatial_reference is not None
+            and embedded_spatial_reference is not None
+            and not _same_spatial_reference(
+                spatial_reference,
+                embedded_spatial_reference,
+            )
+        ):
+            limitations.append(
+                "supplied spatial reference conflicts with the geometry-embedded "
+                f"spatial reference {embedded_spatial_reference}"
+            )
+        effective_spatial_reference = spatial_reference or embedded_spatial_reference
+        explicit_incompatible_crs = (
+            effective_spatial_reference is not None
+            and not _is_verified_longitude_latitude(effective_spatial_reference)
+        )
+
         if parsed_point is not None:
             parsed_kind = ParcelGeometryKind.POINT
-            calculated_centroid = (
-                parsed_point.latitude,
-                parsed_point.longitude,
-            )
-            envelope = (
-                parsed_point.latitude,
-                parsed_point.longitude,
-                parsed_point.latitude,
-                parsed_point.longitude,
-            )
-            effective_spatial_reference = (
-                effective_spatial_reference or parsed_point.embedded_spatial_reference
-            )
-        elif parsed_topology is not None:
-            parsed_kind = parsed_topology.geometry_kind
-            effective_spatial_reference = (
-                effective_spatial_reference
-                or parsed_topology.embedded_spatial_reference
-            )
-            envelope = _topology_envelope(parsed_topology)
-            summary = summarize_parcel_topology(parsed_topology.polygons)
-            if summary is None:
-                limitations.append(_INVALID_AREA_LIMITATION)
+            if explicit_incompatible_crs:
+                limitations.append(_INCOMPATIBLE_CRS_SUMMARY_LIMITATION)
             else:
                 calculated_centroid = (
-                    summary.centroid_latitude,
-                    summary.centroid_longitude,
+                    parsed_point.latitude,
+                    parsed_point.longitude,
                 )
-                limitations.append(_PLANAR_CENTROID_LIMITATION)
+                envelope = (
+                    parsed_point.latitude,
+                    parsed_point.longitude,
+                    parsed_point.latitude,
+                    parsed_point.longitude,
+                )
+        elif parsed_topology is not None:
+            parsed_kind = parsed_topology.geometry_kind
+            if explicit_incompatible_crs:
+                limitations.append(_INCOMPATIBLE_CRS_SUMMARY_LIMITATION)
+            else:
+                envelope = _topology_envelope(parsed_topology)
+                summary = summarize_parcel_topology(parsed_topology.polygons)
+                if summary is None:
+                    limitations.append(_INVALID_AREA_LIMITATION)
+                else:
+                    calculated_centroid = (
+                        summary.centroid_latitude,
+                        summary.centroid_longitude,
+                    )
+                    limitations.append(_PLANAR_CENTROID_LIMITATION)
         else:
             limitations.append("raw geometry could not be parsed for envelope")
     if effective_spatial_reference is None:
@@ -176,6 +201,19 @@ def _geojson_geometry_payload(payload: dict[str, object]) -> dict[str, object] |
     return payload
 
 
+def _embedded_spatial_reference(
+    parsed_point: _ParsedPoint | None,
+    parsed_topology: ParsedParcelTopology | None,
+) -> str | None:
+    """Return the geometry-embedded spatial reference, when available."""
+
+    if parsed_point is not None:
+        return parsed_point.embedded_spatial_reference
+    if parsed_topology is not None:
+        return parsed_topology.embedded_spatial_reference
+    return None
+
+
 def _topology_envelope(
     parsed_topology: ParsedParcelTopology,
 ) -> tuple[float, float, float, float]:
@@ -194,6 +232,29 @@ def _valid_longitude_latitude(longitude: float, latitude: float) -> bool:
     """Return whether a coordinate lies in geographic longitude/latitude bounds."""
 
     return -180 <= longitude <= 180 and -90 <= latitude <= 90
+
+
+def _same_spatial_reference(first: str, second: str) -> bool:
+    """Return whether two spatial-reference labels normalize identically."""
+
+    return _normalized_spatial_reference(first) == _normalized_spatial_reference(second)
+
+
+def _is_verified_longitude_latitude(spatial_reference: str) -> bool:
+    """Return whether the CRS is explicitly recognized as longitude/latitude."""
+
+    return _normalized_spatial_reference(spatial_reference) in {
+        "EPSG:4326",
+        "CRS84",
+        "OGC:CRS84",
+        "URN:OGC:DEF:CRS:OGC::CRS84",
+    }
+
+
+def _normalized_spatial_reference(value: str) -> str:
+    """Normalize a spatial-reference label for conservative comparison."""
+
+    return value.strip().upper().replace(" ", "")
 
 
 def _geometry_hash(raw_geometry: str) -> str:
