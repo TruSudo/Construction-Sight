@@ -22,6 +22,28 @@ def main() -> None:
         "import hashlib\nfrom collections.abc import Mapping\nfrom dataclasses import dataclass\n",
     )
     replace_once(
+        "class CeqanetCsvLiveHttpResponse(Protocol):\n"
+        "    \"\"\"Minimal response contract used by the one-request executor.\"\"\"\n\n"
+        "    status_code: int\n"
+        "    content: bytes\n"
+        "    url: Any\n"
+        "    headers: Mapping[str, str]\n",
+        "class CeqanetCsvLiveHttpResponse(Protocol):\n"
+        "    \"\"\"Read-only response contract used by the one-request executor.\"\"\"\n\n"
+        "    @property\n"
+        "    def status_code(self) -> int:\n"
+        "        \"\"\"Return the HTTP response status.\"\"\"\n\n"
+        "    @property\n"
+        "    def content(self) -> bytes:\n"
+        "        \"\"\"Return the exact response bytes.\"\"\"\n\n"
+        "    @property\n"
+        "    def url(self) -> Any:\n"
+        "        \"\"\"Return the final response URL.\"\"\"\n\n"
+        "    @property\n"
+        "    def headers(self) -> Mapping[str, str]:\n"
+        "        \"\"\"Return response headers through a read-only mapping contract.\"\"\"\n",
+    )
+    replace_once(
         "class _HttpxCsvClientAdapter:\n",
         "@dataclass(frozen=True)\n"
         "class _HttpxCsvResponseAdapter:\n"
