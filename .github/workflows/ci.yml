@@ -43,41 +43,14 @@ jobs:
       - name: Dependency integrity
         run: python -m pip check
 
-      - name: Capture Ruff diagnostics
-        run: python -m ruff check src tests --output-format=json > /tmp/ruff-results-${{ matrix.python-version }}.json || true
-
-      - name: Upload Ruff diagnostics
-        uses: actions/upload-artifact@v4
-        with:
-          name: ruff-results-${{ matrix.python-version }}
-          path: /tmp/ruff-results-${{ matrix.python-version }}.json
-
       - name: Ruff
         run: python -m ruff check src tests
-
-      - name: Capture mypy diagnostics
-        run: python -m mypy src > /tmp/mypy-results-${{ matrix.python-version }}.txt 2>&1 || true
-
-      - name: Upload mypy diagnostics
-        uses: actions/upload-artifact@v4
-        with:
-          name: mypy-results-${{ matrix.python-version }}
-          path: /tmp/mypy-results-${{ matrix.python-version }}.txt
 
       - name: Mypy
         run: python -m mypy src
 
       - name: Compile source and tests
         run: python -m compileall -q src tests
-
-      - name: Capture pytest diagnostics
-        run: python -m pytest --strict-config --strict-markers -ra -W error > /tmp/pytest-results-${{ matrix.python-version }}.txt 2>&1 || true
-
-      - name: Upload pytest diagnostics
-        uses: actions/upload-artifact@v4
-        with:
-          name: pytest-results-${{ matrix.python-version }}
-          path: /tmp/pytest-results-${{ matrix.python-version }}.txt
 
       - name: Pytest
         run: python -m pytest --strict-config --strict-markers -ra -W error
