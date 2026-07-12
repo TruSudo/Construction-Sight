@@ -17,8 +17,6 @@ def test_ceqanet_listing_plan_cli_renders_allowed_plan_table() -> None:
             "San Bernardino",
             "--document-type",
             "EIR",
-            "--text",
-            "warehouse",
             "--high-signal-only",
             "--page-size",
             "50",
@@ -34,6 +32,22 @@ def test_ceqanet_listing_plan_cli_renders_allowed_plan_table() -> None:
     assert "Planned GET Requests" in result.output
     assert "County=San Bernardino" in result.output
     assert "DocumentType=EIR - Draft EIR" in result.output
+
+
+def test_ceqanet_listing_plan_cli_rejects_unsupported_text_filter() -> None:
+    result = runner.invoke(
+        app,
+        [
+            "plan",
+            "--county",
+            "San Bernardino",
+            "--text",
+            "warehouse",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "text_terms are unsupported by the verified search contract" in result.output
 
 
 def test_ceqanet_listing_plan_cli_emits_json_allowed_plan() -> None:
