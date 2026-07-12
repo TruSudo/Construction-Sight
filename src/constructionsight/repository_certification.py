@@ -332,7 +332,10 @@ def _audit_markdown_links(
         target = _link_target(match.group(1))
         if not target or target.startswith(("http://", "https://", "mailto:", "#")):
             continue
-        candidate = root / target.lstrip("/") if target.startswith("/") else root / path.parent / target
+        if target.startswith("/"):
+            candidate = root / target.lstrip("/")
+        else:
+            candidate = root / path.parent / target
         if not candidate.exists():
             findings.append(
                 _finding(
@@ -417,7 +420,13 @@ def _audit_ci(root: Path, findings: list[CertificationFinding]) -> None:
     workflow = absolute_path.read_text(encoding="utf-8")
     for snippet in _REQUIRED_CI_SNIPPETS:
         if snippet not in workflow:
-            findings.append(_finding("CERT-CI-002", path, f"required CI gate is missing: {snippet}"))
+            findings.append(
+                _finding(
+                    "CERT-CI-002",
+                    path,
+                    f"required CI gate is missing: {snippet}",
+                )
+            )
     if "permissions:\n  contents: read" not in workflow:
         findings.append(_finding("CERT-CI-003", path, "CI permissions must remain read-only"))
     for version in ('"3.11"', '"3.12"'):
@@ -482,7 +491,13 @@ def audit_repository(root: Path, *, require_clean_worktree: bool = False) -> Cer
     if require_clean_worktree:
         status = _run_git(repository_root, "status", "--porcelain=v1", "--untracked-files=all")
         if status.strip():
-            findings.append(_finding("CERT-GIT-001", ".", f"worktree is not clean:\n{status.rstrip()}"))
+            findings.append(
+                _finding(
+                    "CERT-GIT-001",
+                    ".",
+                    f"worktree is not clean:\n{status.rstrip()}",
+                )
+            )
 
     ordered_findings = tuple(
         sorted(
