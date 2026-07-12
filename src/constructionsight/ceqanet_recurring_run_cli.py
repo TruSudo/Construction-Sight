@@ -86,6 +86,28 @@ def _write_json(path: Path, payload: dict[str, object]) -> None:
     typer.echo(f"Wrote {path}.")
 
 
+def _registry_option() -> typer.Option:
+    return typer.Option(
+        "--registry",
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        readable=True,
+        help="Current source registry JSON used for stale-state validation.",
+    )
+
+
+def _checklist_option() -> typer.Option:
+    return typer.Option(
+        "--checklist",
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        readable=True,
+        help="Current source checklist JSON used for stale-evidence validation.",
+    )
+
+
 def _render_definition(definition: CeqanetRecurringRunDefinition) -> None:
     table = Table(title="CEQAnet Recurring-Run Definition")
     table.add_column("Field")
@@ -127,26 +149,8 @@ def _render_manifest(manifest: CeqanetRecurringRunManifest) -> None:
 
 @app.command("build-definition")
 def build_definition(
-    registry_path: Annotated[
-        Path,
-        typer.Option(
-            "--registry",
-            exists=True,
-            file_okay=True,
-            dir_okay=False,
-            readable=True,
-        ),
-    ],
-    checklist_path: Annotated[
-        Path,
-        typer.Option(
-            "--checklist",
-            exists=True,
-            file_okay=True,
-            dir_okay=False,
-            readable=True,
-        ),
-    ],
+    registry_path: Annotated[Path, _registry_option()],
+    checklist_path: Annotated[Path, _checklist_option()],
     source_key: Annotated[str, typer.Option("--source-key", help="Exact checklist source key.")],
     output_path: Annotated[Path, typer.Option("--output", help="Definition JSON output path.")],
     county: Annotated[
@@ -160,10 +164,6 @@ def build_definition(
     lead_agency: Annotated[
         list[str] | None,
         typer.Option("--lead-agency", help="Stable lead-agency filter."),
-    ] = None,
-    text: Annotated[
-        list[str] | None,
-        typer.Option("--text", help="Stable required text term."),
     ] = None,
     high_signal_only: Annotated[bool, typer.Option("--high-signal-only")] = False,
     window_field: Annotated[
@@ -196,7 +196,6 @@ def build_definition(
                 counties=_normalize_repeated(county),
                 document_types=_normalize_repeated(document_type),
                 lead_agencies=_normalize_repeated(lead_agency),
-                text_terms=_normalize_repeated(text),
                 high_signal_only=high_signal_only,
                 window_field=window_field,
                 page_size=page_size,
@@ -273,23 +272,35 @@ def execute_manifest(
             readable=True,
         ),
     ],
-    attempt_sequence: Annotated[int, typer.Option(help="Positive retry/attempt sequence.")] = 1,
+    registry_path: Annotated[Path, _registry_option()],
+    checklist_path: Annotated[Path, _checklist_option()],
+    attempt_sequence: Annotated[
+        int,
+        typer.Option(help="Positive retry/attempt sequence."),
+    ] = 1,
     execute_live: Annotated[
         bool,
-        typer.Option("--execute-live", help="Required explicit authorization for network GETs."),
+        typer.Option(
+            "--execute-live",
+            help="Required explicit authorization for network GETs.",
+        ),
     ] = False,
-    output_path: Annotated[Path, typer.Option("--output", help="Execution JSON output path.")] = Path(
-        "ceqanet-run-execution.json"
-    ),
+    output_path: Annotated[
+        Path,
+        typer.Option("--output", help="Execution JSON output path."),
+    ] = Path("ceqanet-run-execution.json"),
 ) -> None:
     """Execute a ready manifest through the bounded CEQAnet listing executor."""
 
     definition = _load_model(definition_path, CeqanetRecurringRunDefinition)
     manifest = _load_model(manifest_path, CeqanetRecurringRunManifest)
+    checklist = _load_model(checklist_path, SourceVerificationChecklistReport)
     try:
         execution = execute_ceqanet_recurring_run(
             definition,
             manifest,
+            _load_registry(registry_path),
+            checklist,
             attempt_sequence=attempt_sequence,
             execute_live=execute_live,
         )
@@ -331,14 +342,18 @@ def verify_execution(
             readable=True,
         ),
     ],
+    registry_path: Annotated[Path, _registry_option()],
+    checklist_path: Annotated[Path, _checklist_option()],
     json_output: Annotated[bool, typer.Option("--json-output")] = False,
 ) -> None:
-    """Verify definition, manifest, and execution integrity."""
+    """Verify artifacts and their current source-evidence authorization."""
 
     verification = verify_ceqanet_recurring_run_execution(
         _load_model(definition_path, CeqanetRecurringRunDefinition),
         _load_model(manifest_path, CeqanetRecurringRunManifest),
         _load_model(execution_path, CeqanetRecurringRunExecution),
+        _load_registry(registry_path),
+        _load_model(checklist_path, SourceVerificationChecklistReport),
     )
     payload = verification.model_dump(mode="json")
     if json_output:
