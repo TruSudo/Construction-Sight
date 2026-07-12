@@ -2,7 +2,7 @@
 
 ConstructionSight is a lawful public-record construction intelligence platform focused initially on San Bernardino County and Riverside County, California.
 
-The platform is designed to discover, verify, normalize, store, and analyze public construction, planning, entitlement, CEQA, permit, contractor, parcel, and agenda data. Current implementation is strongest in source-neutral models, deterministic services, evidence-first workflow logic, persistence for core upstream and post-enrichment records, layered source-status/readiness/audit/checklist/planning governance, controlled registry-status apply, read-only upstream operator tooling, consolidated post-enrichment lead operator tooling, governed result authority operations, and test-backed architecture. Live source integrations and operator UI remain planned work unless expressly marked otherwise.
+The platform is designed to discover, verify, normalize, store, and analyze public construction, planning, entitlement, CEQA, permit, contractor, parcel, and agenda data. Current implementation is strongest in source-neutral models, deterministic services, evidence-first workflow logic, persistence for core upstream and post-enrichment records, topology-aware parcel/site reasoning, layered source-status/readiness/audit/checklist/planning governance, controlled registry-status apply, read-only upstream operator tooling, consolidated post-enrichment lead operator tooling, governed result authority operations, and test-backed architecture. Live source integrations and operator UI remain planned work unless expressly marked otherwise.
 
 ## Operating Boundary
 
@@ -42,7 +42,7 @@ lawful public-record intake
   -> parcel source schema preview
   -> parcel row preview
   -> parcel core record
-  -> geometry normalization
+  -> geometry normalization and topology evaluation
   -> parcel-backed site resolution
   -> permit snapshot and transition detection
   -> contractor identity
@@ -155,15 +155,17 @@ See `docs/architecture/parcel_row_preview.md` and run `constructionsight-parcel-
 
 ConstructionSight creates parcel core records only after schema and row preview gates.
 
-The first canonical parcel object preserves source key, source record ID, APN, normalized APN, county, optional address, optional zoning/land-use hints, optional geometry summary, geometry hash, centroid, envelope, spatial reference, and limitations. Ownership/contact enrichment is intentionally deferred so the land-identity spine remains clean, lawful, and source-neutral.
+The first canonical parcel object preserves source key, source record ID, APN, normalized APN, county, optional address, optional zoning/land-use hints, optional geometry summary, raw geometry, geometry hash, centroid, envelope, spatial reference, and limitations. Ownership/contact enrichment is intentionally deferred so the land-identity spine remains clean, lawful, and source-neutral.
 
-See `docs/architecture/parcel_core_record_geometry.md` for the parcel core record and geometry normalization contract.
+See `docs/architecture/parcel_core_record_geometry.md` for the parcel core record, geometry normalization, and topology contract.
 
 ## Parcel-Backed Site Resolution Doctrine
 
 ConstructionSight resolves site hints against parcel core records when available.
 
-APN, address, and coordinate hints can produce parcel-backed site candidates with confidence, reasons, geometry-derived coordinates, ambiguity preservation, and fallback to hint-only resolution when no parcel core record matches. Polygon and multipolygon coordinate matches preserve limitations because current containment is envelope-only, not topology-grade point-in-polygon proof.
+APN, address, and coordinate hints can produce parcel-backed site candidates with confidence, reasons, geometry-derived coordinates, ambiguity preservation, and fallback to hint-only resolution when no parcel core record matches. Point geometries use coordinate identity. Verified GeoJSON Polygon and MultiPolygon longitude/latitude geometry uses topology that preserves concavity, holes, boundaries, and separate parts, preventing envelope-only false matches. When raw topology or the coordinate reference system cannot be verified, the resolver may use the parcel envelope only with explicit fallback limitations.
+
+Topology-aware matching remains a candidate-resolution control, not survey-grade or legal boundary proof. Projection-aware calculations, WKT polygon parsing, geometry repair, and area-weighted centroids remain pending.
 
 See `docs/architecture/parcel_backed_site_resolution.md` for the parcel-backed site resolution contract.
 
@@ -243,7 +245,7 @@ See:
 - Most adapter families are placeholder contracts, not live source integrations.
 - Source registry seed records remain unverified until checked. Controlled apply can change only an evidence-backed approved status and does not create live integration or verified production coverage by itself.
 - HTTP audit-package evidence currently classifies CEQAnet as `cross_host_redirect`, CSLB as `no_redirect`, San Bernardino EZOP as `same_host_redirect`, and Riverside PLUS as `downgraded_to_http`; all four remain `keep_unverified_reachable` until manual source verification occurs.
-- Geometry containment currently has first-pass limitations and must not be treated as survey-grade parcel topology.
+- Verified GeoJSON Polygon/MultiPolygon longitude/latitude geometry now uses topology-aware containment. Envelope fallback remains explicitly limited when raw topology is unavailable or the spatial reference is unverified. Projection transformation, WKT polygon parsing, geometry validity repair, area calculations, and area-weighted centroids are not implemented; no geometry result is survey-grade legal proof.
 - Opportunity scoring uses a versioned default profile; additional profiles must be introduced explicitly with doctrine and tests.
 - Lead workflow transitions preserve unique event history and are constrained by a status matrix; override/reopen behavior is not implemented.
 - Result authority now supports governed initial selection and append-only correction. Authority events begin when the governed operator boundary is used; validated older ledger histories are not assigned fabricated retroactive events.
@@ -258,4 +260,4 @@ Do not claim Regrid or Shovels parity merely because model layers exist. Parity 
 
 ## Phase 1 Status
 
-Repository foundation initialized. CEQAnet public-record intake has guarded operator and archive tooling, but CEQAnet remains contract-ready rather than live production coverage. Universal intake, layered source-governance reporting/checklist/planning/controlled apply, opportunity transition intake, parcel/site resolution, parcel source registry, schema preview, row preview, parcel core record, geometry normalization, parcel-backed site resolution, permit transitions, contractor identity, decision records, read-only upstream operator access, opportunity enrichment, lead review, dedupe, workflow status, append-only result ledger authority, governed result inspection/correction, consolidated lead operator access, and storage-summary reporting now exist as tested model/service/operator-support architecture. The next required phases are evidence-backed manual verification of individual sources, topology-grade geometry, domain-specific governed upstream write actions where justified, verified live adapter execution, optional preview archive persistence, outreach preview doctrine, and operator UI implementation.
+Repository foundation initialized. CEQAnet public-record intake has guarded operator and archive tooling, but CEQAnet remains contract-ready rather than live production coverage. Universal intake, layered source-governance reporting/checklist/planning/controlled apply, opportunity transition intake, parcel/site resolution, parcel source registry, schema preview, row preview, parcel core record, geometry normalization, topology-aware GeoJSON parcel containment, parcel-backed site resolution, permit transitions, contractor identity, decision records, read-only upstream operator access, opportunity enrichment, lead review, dedupe, workflow status, append-only result ledger authority, governed result inspection/correction, consolidated lead operator access, and storage-summary reporting now exist as tested model/service/operator-support architecture. The next required phases are evidence-backed manual verification of individual sources, projection-aware geometry and broader geometry-format support, domain-specific governed upstream write actions where justified, verified live adapter execution, optional preview archive persistence, outreach preview doctrine, and operator UI implementation.
