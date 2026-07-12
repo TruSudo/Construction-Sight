@@ -1,7 +1,13 @@
 name: CEQAnet evidence repair and partial classification
-# Trigger commit after workflow registration.
 
 on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - scripts/repair_ceqanet_evidence_partial.py
+      - .github/workflows/ceqanet-evidence-repair-partial.yml
+      - tests/test_ceqanet_partial_source_maturity.py
   push:
     branches:
       - agent/ceqanet-evidence-repair-partial-v2
