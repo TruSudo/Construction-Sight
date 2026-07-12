@@ -1,4 +1,4 @@
-"""Patch the temporary CEQAnet collector for the current public detail-page vocabulary."""
+"""Patch the temporary CEQAnet collector for current public source behavior."""
 
 from __future__ import annotations
 
@@ -27,6 +27,13 @@ def main() -> None:
         '    "documents_in_project": ("documents in project",),\n'
         '    "lead_public_agency": ("lead/public agency", "lead agency"),\n'
         '}\n',
+    )
+    replace_once(
+        '    response = client.get(robots_url)\n',
+        '    response = client.get(\n'
+        '        robots_url,\n'
+        '        headers={"Accept": "text/plain,*/*;q=0.1"},\n'
+        '    )\n',
     )
     replace_once(
         '        observed_detail_markers = [\n'
