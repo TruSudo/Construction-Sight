@@ -1,0 +1,127 @@
+name: CEQAnet evidence repair and partial classification
+
+on:
+  push:
+    branches:
+      - agent/ceqanet-evidence-repair-partial-v2
+    paths:
+      - scripts/repair_ceqanet_evidence_partial.py
+      - .github/workflows/ceqanet-evidence-repair-partial.yml
+
+permissions:
+  contents: write
+
+jobs:
+  repair-apply-validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repair branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/ceqanet-evidence-repair-partial-v2
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install package with dev dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Dependency integrity before collection
+        run: python -m pip check
+
+      - name: Collect bounded public evidence
+        run: python scripts/collect_ceqanet_source_evidence.py
+
+      - name: Prepare evidence-bound observations
+        run: python scripts/repair_ceqanet_evidence_partial.py prepare
+
+      - name: Build deterministic partial update plan
+        run: |
+          constructionsight-source-plan plan \
+            data/source_registry.seed.json \
+            --observations-path evidence/source_verification/ceqanet_observations_2026-07-12.json \
+            --output evidence/source_verification/ceqanet_partial_update_plan_2026-07-12.json
+
+      - name: Validate partial update plan
+        run: python scripts/repair_ceqanet_evidence_partial.py validate-plan
+
+      - name: Apply approved partial status atomically
+        run: |
+          PLAN_DIGEST=$(python - <<'PY'
+          import json
+          from pathlib import Path
+          plan = json.loads(Path("evidence/source_verification/ceqanet_partial_update_plan_2026-07-12.json").read_text(encoding="utf-8"))
+          print(plan["plan_digest"])
+          PY
+          )
+          constructionsight-source-plan apply \
+            data/source_registry.seed.json \
+            evidence/source_verification/ceqanet_partial_update_plan_2026-07-12.json \
+            --approved-plan-digest "$PLAN_DIGEST" \
+            --audit-output evidence/source_verification/ceqanet_partial_apply_audit_2026-07-12.json \
+            --in-place \
+            --backup-output /tmp/source_registry.seed.pre-partial.json \
+            --apply
+
+      - name: Reconcile maturity documentation and evidence
+        run: python scripts/repair_ceqanet_evidence_partial.py reconcile
+
+      - name: Remove all temporary collection and repair tooling
+        run: |
+          git rm \
+            .github/workflows/ceqanet-source-evidence.yml \
+            scripts/collect_ceqanet_source_evidence.py \
+            .github/workflows/ceqanet-evidence-repair-partial.yml \
+            scripts/repair_ceqanet_evidence_partial.py
+
+      - name: Reject stale maturity claims
+        run: |
+          if git grep -n -E \
+            'canonical CEQAnet source remains unverified|canonical source remains `unverified`|Four canonical source-registry seed records remain unverified|Four unverified records|all four sources `keep_unverified_reachable`|does not promote any current seed source' \
+            -- README.md docs data; then
+            echo "Stale CEQAnet maturity claim remains" >&2
+            exit 1
+          fi
+
+      - name: Commit production repair candidate
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "Repair CEQAnet evidence and classify partial maturity"
+
+      - name: Ruff
+        run: python -m ruff check src tests
+
+      - name: Mypy
+        run: python -m mypy src
+
+      - name: Compile source and tests
+        run: python -m compileall -q src tests
+
+      - name: Pytest
+        run: python -m pytest --strict-config --strict-markers -ra -W error
+
+      - name: Adapter contract audit
+        run: constructionsight audit-adapters
+
+      - name: Source adapter coverage audit
+        run: constructionsight audit-source-coverage data/source_registry.seed.json
+
+      - name: Repository certification audit
+        run: python -m constructionsight.repository_certification --root . --require-clean-worktree
+
+      - name: Final diff hygiene
+        run: git diff --check
+
+      - name: Push repaired production tree
+        run: git push origin HEAD:agent/ceqanet-evidence-repair-partial-v2
