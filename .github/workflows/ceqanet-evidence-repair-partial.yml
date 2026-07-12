@@ -100,7 +100,7 @@ jobs:
 
       - name: Remove all temporary collection and repair tooling
         run: |
-          git rm \
+          git rm -f \
             .github/workflows/ceqanet-source-evidence.yml \
             scripts/collect_ceqanet_source_evidence.py \
             .github/workflows/ceqanet-evidence-repair-partial.yml \
