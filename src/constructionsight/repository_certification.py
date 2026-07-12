@@ -8,9 +8,10 @@ import subprocess
 import sys
 import tomllib
 import unicodedata
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 
 SCHEMA_VERSION = "constructionsight.repository_certification.v1"
 
@@ -56,10 +57,7 @@ def _joined(*parts: str) -> str:
 
 
 _SUPPRESSION_RULES = (
-    (
-        "lint suppression",
-        re.compile(_joined(r"#\s*no", r"qa\b"), re.IGNORECASE),
-    ),
+    ("lint suppression", re.compile(_joined(r"#\s*no", r"qa\b"), re.IGNORECASE)),
     (
         "type-check suppression",
         re.compile(_joined(r"type\s*:\s*", r"ignore\b"), re.IGNORECASE),
@@ -85,25 +83,26 @@ _SUPPRESSION_RULES = (
         re.compile(_joined(r"\b(?:TO", r"DO|FIX", r"ME|HACK|XXX)\b")),
     ),
 )
-
 _SECRET_RULES = (
     ("private key material", re.compile(_joined("BEGIN ", "(?:RSA |EC |OPENSSH )?PRIVATE KEY"))),
     ("GitHub token", re.compile(_joined(r"\bgh", r"[opsu]_[A-Za-z0-9]{20,}\b"))),
-    ("GitHub fine-grained token", re.compile(_joined(r"\bgithub_pat_", r"[A-Za-z0-9_]{20,}\b"))),
+    (
+        "GitHub fine-grained token",
+        re.compile(_joined(r"\bgithub_pat_", r"[A-Za-z0-9_]{20,}\b")),
+    ),
     ("AWS access key", re.compile(_joined(r"\bAKIA", r"[A-Z0-9]{16}\b"))),
     ("OpenAI-style secret", re.compile(_joined(r"\bsk-", r"[A-Za-z0-9_-]{20,}\b"))),
 )
-
 _REQUIRED_CI_SNIPPETS = (
+    "python -m pip check",
     "python -m ruff check src tests",
     "python -m mypy src",
     "python -m compileall -q src tests",
     "python -m pytest --strict-config --strict-markers -ra",
-    "python -m pip check",
-    "git diff --check",
-    "python -m constructionsight.repository_certification --root . --require-clean-worktree",
     "constructionsight audit-adapters",
     "constructionsight audit-source-coverage data/source_registry.seed.json",
+    "python -m constructionsight.repository_certification --root . --require-clean-worktree",
+    "git diff --check",
 )
 
 
@@ -138,18 +137,23 @@ class CertificationError(RuntimeError):
     pass
 
 
+def _finding(
+    code: str,
+    path: str | Path,
+    message: str,
+    line: int | None = None,
+) -> CertificationFinding:
+    display_path = path.as_posix() if isinstance(path, Path) else path
+    return CertificationFinding(code=code, path=display_path, line=line, message=message)
+
+
 def _run_git(root: Path, *arguments: str) -> str:
     command = ["git", "-C", str(root), *arguments]
-    completed = subprocess.run(
-        command,
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-    if completed.returncode != 0:
-        detail = completed.stderr.strip() or completed.stdout.strip() or "unknown git error"
-        raise CertificationError(f"git command failed: {' '.join(command)}: {detail}")
-    return completed.stdout
+    completed = subprocess.run(command, check=False, capture_output=True, text=True)
+    if completed.returncode == 0:
+        return completed.stdout
+    detail = completed.stderr.strip() or completed.stdout.strip() or "unknown git error"
+    raise CertificationError(f"git command failed: {' '.join(command)}: {detail}")
 
 
 def _tracked_files(root: Path) -> tuple[Path, ...]:
@@ -157,7 +161,7 @@ def _tracked_files(root: Path) -> tuple[Path, ...]:
     paths = tuple(Path(value) for value in output.split("\0") if value)
     if not paths:
         raise CertificationError("repository has no tracked files")
-    return tuple(sorted(paths, key=lambda value: value.as_posix()))
+    return tuple(sorted(paths, key=Path.as_posix))
 
 
 def _line_number(text: str, offset: int) -> int:
@@ -166,8 +170,8 @@ def _line_number(text: str, offset: int) -> int:
 
 def _is_text_path(path: Path) -> bool:
     return path.suffix.lower() in _TEXT_SUFFIXES or path.name in {
-        ".gitignore",
         ".gitattributes",
+        ".gitignore",
         "LICENSE",
     }
 
@@ -179,494 +183,311 @@ def _read_text(path: Path) -> str:
     return data.decode("utf-8")
 
 
-def _add_text_hygiene_findings(
-    relative_path: Path,
+def _audit_text_hygiene(
+    path: Path,
     text: str,
     findings: list[CertificationFinding],
 ) -> None:
-    display_path = relative_path.as_posix()
-    if "\r\n" in text or "\r" in text:
-        findings.append(
-            CertificationFinding(
-                code="CERT-TEXT-001",
-                path=display_path,
-                line=None,
-                message="tracked text must use LF line endings",
-            )
-        )
+    if "\r" in text:
+        findings.append(_finding("CERT-TEXT-001", path, "tracked text must use LF endings"))
     if text and not text.endswith("\n"):
-        findings.append(
-            CertificationFinding(
-                code="CERT-TEXT-002",
-                path=display_path,
-                line=None,
-                message="tracked text must end with a newline",
-            )
-        )
+        findings.append(_finding("CERT-TEXT-002", path, "tracked text must end with a newline"))
     for line_number, line in enumerate(text.splitlines(), start=1):
         if line.rstrip(" \t") != line:
             findings.append(
-                CertificationFinding(
-                    code="CERT-TEXT-003",
-                    path=display_path,
-                    line=line_number,
-                    message="trailing whitespace is not permitted",
+                _finding(
+                    "CERT-TEXT-003",
+                    path,
+                    "trailing whitespace is not permitted",
+                    line_number,
                 )
             )
 
 
-def _add_suppression_findings(
-    relative_path: Path,
+def _audit_suppressions(
+    path: Path,
     text: str,
     findings: list[CertificationFinding],
 ) -> None:
-    if relative_path.suffix.lower() not in _CODE_SUFFIXES:
+    if path.suffix.lower() not in _CODE_SUFFIXES:
         return
-    display_path = relative_path.as_posix()
     for label, pattern in _SUPPRESSION_RULES:
         for match in pattern.finditer(text):
             findings.append(
-                CertificationFinding(
-                    code="CERT-SUPPRESS-001",
-                    path=display_path,
-                    line=_line_number(text, match.start()),
-                    message=f"{label} is prohibited by certification doctrine",
+                _finding(
+                    "CERT-SUPPRESS-001",
+                    path,
+                    f"{label} is prohibited by certification doctrine",
+                    _line_number(text, match.start()),
                 )
             )
 
 
-def _add_secret_findings(
-    relative_path: Path,
+def _audit_secrets(
+    path: Path,
     text: str,
     findings: list[CertificationFinding],
 ) -> None:
-    display_path = relative_path.as_posix()
     for label, pattern in _SECRET_RULES:
         for match in pattern.finditer(text):
             findings.append(
-                CertificationFinding(
-                    code="CERT-SECRET-001",
-                    path=display_path,
-                    line=_line_number(text, match.start()),
-                    message=f"possible {label} is tracked in the repository",
+                _finding(
+                    "CERT-SECRET-001",
+                    path,
+                    f"possible {label} is tracked in the repository",
+                    _line_number(text, match.start()),
                 )
             )
 
 
-def _function_is_abstract(node: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
-    for decorator in node.decorator_list:
-        if isinstance(decorator, ast.Name) and decorator.id == "abstractmethod":
-            return True
-        if isinstance(decorator, ast.Attribute) and decorator.attr == "abstractmethod":
-            return True
-    return False
+def _is_abstract(node: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+    return any(
+        (isinstance(decorator, ast.Name) and decorator.id == "abstractmethod")
+        or (isinstance(decorator, ast.Attribute) and decorator.attr == "abstractmethod")
+        for decorator in node.decorator_list
+    )
 
 
-def _add_python_findings(
-    relative_path: Path,
+def _audit_python(
+    path: Path,
     text: str,
     findings: list[CertificationFinding],
 ) -> None:
-    if relative_path.suffix.lower() != ".py":
+    if path.suffix.lower() != ".py":
         return
-    display_path = relative_path.as_posix()
     try:
-        tree = ast.parse(text, filename=display_path)
+        tree = ast.parse(text, filename=path.as_posix())
     except SyntaxError as exc:
         findings.append(
-            CertificationFinding(
-                code="CERT-PY-001",
-                path=display_path,
-                line=exc.lineno,
-                message=f"Python syntax error: {exc.msg}",
-            )
+            _finding("CERT-PY-001", path, f"Python syntax error: {exc.msg}", exc.lineno)
         )
         return
-    if not display_path.startswith("src/"):
+    if not path.as_posix().startswith("src/"):
         return
     for node in ast.walk(tree):
-        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            continue
-        if _function_is_abstract(node):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) or _is_abstract(node):
             continue
         for child in ast.walk(node):
             if not isinstance(child, ast.Raise):
                 continue
             exception = child.exc
-            if isinstance(exception, ast.Name) and exception.id == "NotImplementedError":
-                findings.append(
-                    CertificationFinding(
-                        code="CERT-PY-002",
-                        path=display_path,
-                        line=child.lineno,
-                        message="non-abstract production code raises NotImplementedError",
-                    )
-                )
-            if (
+            named_placeholder = (
+                isinstance(exception, ast.Name) and exception.id == "NotImplementedError"
+            )
+            called_placeholder = (
                 isinstance(exception, ast.Call)
                 and isinstance(exception.func, ast.Name)
                 and exception.func.id == "NotImplementedError"
-            ):
+            )
+            if named_placeholder or called_placeholder:
                 findings.append(
-                    CertificationFinding(
-                        code="CERT-PY-002",
-                        path=display_path,
-                        line=child.lineno,
-                        message="non-abstract production code raises NotImplementedError",
+                    _finding(
+                        "CERT-PY-002",
+                        path,
+                        "non-abstract production code raises NotImplementedError",
+                        child.lineno,
                     )
                 )
 
 
-def _add_structured_file_findings(
-    relative_path: Path,
+def _audit_structured_file(
+    path: Path,
     text: str,
     findings: list[CertificationFinding],
 ) -> None:
-    display_path = relative_path.as_posix()
     try:
-        if relative_path.suffix.lower() == ".json":
+        if path.suffix.lower() == ".json":
             json.loads(text)
-        elif relative_path.suffix.lower() == ".toml":
+        elif path.suffix.lower() == ".toml":
             tomllib.loads(text)
     except (json.JSONDecodeError, tomllib.TOMLDecodeError) as exc:
         findings.append(
-            CertificationFinding(
-                code="CERT-STRUCT-001",
-                path=display_path,
-                line=getattr(exc, "lineno", None),
-                message=f"malformed structured file: {exc}",
+            _finding(
+                "CERT-STRUCT-001",
+                path,
+                f"malformed structured file: {exc}",
+                getattr(exc, "lineno", None),
             )
         )
 
 
-def _normalize_link_target(target: str) -> str:
-    stripped = target.strip()
-    if stripped.startswith("<") and stripped.endswith(">"):
-        stripped = stripped[1:-1]
-    if " " in stripped:
-        stripped = stripped.split(" ", maxsplit=1)[0]
-    return stripped.split("#", maxsplit=1)[0]
+def _link_target(raw_target: str) -> str:
+    target = raw_target.strip()
+    if target.startswith("<") and target.endswith(">"):
+        target = target[1:-1]
+    if " " in target:
+        target = target.split(" ", maxsplit=1)[0]
+    return target.split("#", maxsplit=1)[0]
 
 
-def _add_markdown_link_findings(
+def _audit_markdown_links(
     root: Path,
-    relative_path: Path,
+    path: Path,
     text: str,
     findings: list[CertificationFinding],
 ) -> None:
-    if relative_path.suffix.lower() != ".md":
+    if path.suffix.lower() != ".md":
         return
-    display_path = relative_path.as_posix()
-    pattern = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
-    for match in pattern.finditer(text):
-        target = _normalize_link_target(match.group(1))
+    for match in re.finditer(r"\[[^\]]*\]\(([^)]+)\)", text):
+        target = _link_target(match.group(1))
         if not target or target.startswith(("http://", "https://", "mailto:", "#")):
             continue
-        if target.startswith("/"):
-            candidate = root / target.lstrip("/")
-        else:
-            candidate = root / relative_path.parent / target
+        candidate = root / target.lstrip("/") if target.startswith("/") else root / path.parent / target
         if not candidate.exists():
             findings.append(
-                CertificationFinding(
-                    code="CERT-DOC-001",
-                    path=display_path,
-                    line=_line_number(text, match.start()),
-                    message=f"local Markdown link target does not exist: {target}",
+                _finding(
+                    "CERT-DOC-001",
+                    path,
+                    f"local Markdown link target does not exist: {target}",
+                    _line_number(text, match.start()),
                 )
             )
 
 
-def _add_pyproject_policy_findings(
+def _defined_module_names(tree: ast.Module) -> set[str]:
+    names: set[str] = set()
+    for node in tree.body:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            names.add(node.name)
+        elif isinstance(node, ast.Assign):
+            names.update(target.id for target in node.targets if isinstance(target, ast.Name))
+        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+            names.add(node.target.id)
+    return names
+
+
+def _audit_pyproject(
     root: Path,
-    tracked_paths: set[Path],
+    tracked: set[Path],
     findings: list[CertificationFinding],
 ) -> None:
-    pyproject_path = root / "pyproject.toml"
-    if not pyproject_path.exists():
-        findings.append(
-            CertificationFinding(
-                code="CERT-CONFIG-001",
-                path="pyproject.toml",
-                line=None,
-                message="pyproject.toml is required",
-            )
-        )
+    path = Path("pyproject.toml")
+    absolute_path = root / path
+    if not absolute_path.exists():
+        findings.append(_finding("CERT-CONFIG-001", path, "pyproject.toml is required"))
         return
-    payload = tomllib.loads(pyproject_path.read_text(encoding="utf-8"))
+    payload = tomllib.loads(absolute_path.read_text(encoding="utf-8"))
     ruff_lint = payload.get("tool", {}).get("ruff", {}).get("lint", {})
     if ruff_lint.get("ignore") != []:
         findings.append(
-            CertificationFinding(
-                code="CERT-CONFIG-002",
-                path="pyproject.toml",
-                line=None,
-                message="Ruff ignore must remain an explicit empty list",
-            )
+            _finding("CERT-CONFIG-002", path, "Ruff ignore must be an explicit empty list")
         )
     if ruff_lint.get("per-file-ignores"):
-        findings.append(
-            CertificationFinding(
-                code="CERT-CONFIG-003",
-                path="pyproject.toml",
-                line=None,
-                message="Ruff per-file ignores are prohibited",
-            )
-        )
+        findings.append(_finding("CERT-CONFIG-003", path, "Ruff per-file ignores are prohibited"))
+
     mypy = payload.get("tool", {}).get("mypy", {})
-    required_mypy = {
-        "strict": True,
-        "warn_return_any": True,
-        "warn_unreachable": True,
-        "warn_unused_ignores": True,
-    }
-    for key, expected in required_mypy.items():
-        if mypy.get(key) is not expected:
-            findings.append(
-                CertificationFinding(
-                    code="CERT-CONFIG-004",
-                    path="pyproject.toml",
-                    line=None,
-                    message=f"mypy {key} must remain {expected!r}",
-                )
-            )
-    forbidden_mypy = {
-        "allow_untyped_defs": True,
-        "ignore_errors": True,
-        "ignore_missing_imports": True,
-    }
-    for key, forbidden in forbidden_mypy.items():
-        if mypy.get(key) is forbidden:
-            findings.append(
-                CertificationFinding(
-                    code="CERT-CONFIG-005",
-                    path="pyproject.toml",
-                    line=None,
-                    message=f"mypy {key}={forbidden!r} weakens certification",
-                )
-            )
+    for key in ("strict", "warn_return_any", "warn_unreachable", "warn_unused_ignores"):
+        if mypy.get(key) is not True:
+            findings.append(_finding("CERT-CONFIG-004", path, f"mypy {key} must be true"))
+    for key in ("allow_untyped_defs", "ignore_errors", "ignore_missing_imports"):
+        if mypy.get(key) is True:
+            findings.append(_finding("CERT-CONFIG-005", path, f"mypy {key}=true is prohibited"))
+
     scripts = payload.get("project", {}).get("scripts", {})
-    for name, target in scripts.items():
-        module_name, separator, attribute_name = str(target).partition(":")
+    for name, raw_target in scripts.items():
+        module_name, separator, attribute_name = str(raw_target).partition(":")
         if not separator or not module_name.startswith("constructionsight.") or not attribute_name:
             findings.append(
-                CertificationFinding(
-                    code="CERT-SCRIPT-001",
-                    path="pyproject.toml",
-                    line=None,
-                    message=f"invalid console script target for {name}: {target}",
-                )
+                _finding("CERT-SCRIPT-001", path, f"invalid script target for {name}: {raw_target}")
             )
             continue
-        relative_module = Path("src", *module_name.split(".")).with_suffix(".py")
-        if relative_module not in tracked_paths:
+        module_path = Path("src", *module_name.split(".")).with_suffix(".py")
+        if module_path not in tracked:
             findings.append(
-                CertificationFinding(
-                    code="CERT-SCRIPT-002",
-                    path="pyproject.toml",
-                    line=None,
-                    message=f"console script module is not tracked for {name}: {relative_module}",
-                )
+                _finding("CERT-SCRIPT-002", path, f"script module is not tracked: {module_path}")
             )
             continue
-        source = (root / relative_module).read_text(encoding="utf-8")
-        module_tree = ast.parse(source, filename=relative_module.as_posix())
-        defined_names = {
-            node.name
-            for node in module_tree.body
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
-        }
-        defined_names.update(
-            target_node.id
-            for node in module_tree.body
-            if isinstance(node, (ast.Assign, ast.AnnAssign))
-            for target_node in (
-                node.targets if isinstance(node, ast.Assign) else [node.target]
-            )
-            if isinstance(target_node, ast.Name)
-        )
-        if attribute_name not in defined_names:
+        source = (root / module_path).read_text(encoding="utf-8")
+        if attribute_name not in _defined_module_names(ast.parse(source)):
             findings.append(
-                CertificationFinding(
-                    code="CERT-SCRIPT-003",
-                    path=relative_module.as_posix(),
-                    line=None,
-                    message=f"console script attribute is missing for {name}: {attribute_name}",
+                _finding(
+                    "CERT-SCRIPT-003",
+                    module_path,
+                    f"script attribute is missing for {name}: {attribute_name}",
                 )
             )
 
 
-def _add_ci_policy_findings(root: Path, findings: list[CertificationFinding]) -> None:
-    workflow_path = root / ".github" / "workflows" / "ci.yml"
-    if not workflow_path.exists():
-        findings.append(
-            CertificationFinding(
-                code="CERT-CI-001",
-                path=".github/workflows/ci.yml",
-                line=None,
-                message="canonical CI workflow is required",
-            )
-        )
+def _audit_ci(root: Path, findings: list[CertificationFinding]) -> None:
+    path = Path(".github/workflows/ci.yml")
+    absolute_path = root / path
+    if not absolute_path.exists():
+        findings.append(_finding("CERT-CI-001", path, "canonical CI workflow is required"))
         return
-    workflow = workflow_path.read_text(encoding="utf-8")
+    workflow = absolute_path.read_text(encoding="utf-8")
     for snippet in _REQUIRED_CI_SNIPPETS:
         if snippet not in workflow:
-            findings.append(
-                CertificationFinding(
-                    code="CERT-CI-002",
-                    path=".github/workflows/ci.yml",
-                    line=None,
-                    message=f"required CI gate is missing: {snippet}",
-                )
-            )
+            findings.append(_finding("CERT-CI-002", path, f"required CI gate is missing: {snippet}"))
     if "permissions:\n  contents: read" not in workflow:
-        findings.append(
-            CertificationFinding(
-                code="CERT-CI-003",
-                path=".github/workflows/ci.yml",
-                line=None,
-                message="CI permissions must remain read-only",
-            )
-        )
+        findings.append(_finding("CERT-CI-003", path, "CI permissions must remain read-only"))
     for version in ('"3.11"', '"3.12"'):
         if version not in workflow:
-            findings.append(
-                CertificationFinding(
-                    code="CERT-CI-004",
-                    path=".github/workflows/ci.yml",
-                    line=None,
-                    message=f"CI matrix is missing Python {version.strip(chr(34))}",
-                )
-            )
+            findings.append(_finding("CERT-CI-004", path, f"CI matrix is missing {version}"))
 
 
 def audit_repository(root: Path, *, require_clean_worktree: bool = False) -> CertificationReport:
-    resolved_root = root.resolve()
+    repository_root = root.resolve()
+    tracked_files = _tracked_files(repository_root)
+    tracked = set(tracked_files)
     findings: list[CertificationFinding] = []
-    tracked_files = _tracked_files(resolved_root)
-    tracked_paths = set(tracked_files)
-
     normalized_paths: dict[str, Path] = {}
     source_python_count = 0
     test_python_count = 0
 
-    for relative_path in tracked_files:
-        display_path = relative_path.as_posix()
+    for path in tracked_files:
+        display_path = path.as_posix()
         normalized_key = unicodedata.normalize("NFC", display_path).casefold()
-        prior_path = normalized_paths.get(normalized_key)
-        if prior_path is not None and prior_path != relative_path:
+        prior = normalized_paths.get(normalized_key)
+        if prior is not None and prior != path:
             findings.append(
-                CertificationFinding(
-                    code="CERT-PATH-001",
-                    path=display_path,
-                    line=None,
-                    message=f"case/Unicode path collision with {prior_path.as_posix()}",
-                )
+                _finding("CERT-PATH-001", path, f"case/Unicode path collision with {prior}")
             )
-        else:
-            normalized_paths[normalized_key] = relative_path
+        normalized_paths[normalized_key] = path
 
-        if any(part in _FORBIDDEN_PATH_PARTS for part in relative_path.parts):
-            findings.append(
-                CertificationFinding(
-                    code="CERT-PATH-002",
-                    path=display_path,
-                    line=None,
-                    message="transient cache or generated directory is tracked",
-                )
-            )
+        if any(part in _FORBIDDEN_PATH_PARTS for part in path.parts):
+            findings.append(_finding("CERT-PATH-002", path, "transient directory is tracked"))
         if (
-            relative_path.name in _FORBIDDEN_FILE_NAMES
-            or relative_path.suffix.lower() in _FORBIDDEN_SUFFIXES
-            or relative_path.name.endswith("~")
+            path.name in _FORBIDDEN_FILE_NAMES
+            or path.suffix.lower() in _FORBIDDEN_SUFFIXES
+            or path.name.endswith("~")
         ):
-            findings.append(
-                CertificationFinding(
-                    code="CERT-PATH-003",
-                    path=display_path,
-                    line=None,
-                    message="transient, diagnostic, or backup file is tracked",
-                )
-            )
-        absolute_path = resolved_root / relative_path
-        size = absolute_path.stat().st_size
-        if size > _MAX_TRACKED_FILE_BYTES:
-            findings.append(
-                CertificationFinding(
-                    code="CERT-PATH-004",
-                    path=display_path,
-                    line=None,
-                    message=f"tracked file exceeds {_MAX_TRACKED_FILE_BYTES} bytes",
-                )
-            )
-        if relative_path.suffix.lower() == ".py":
-            if display_path.startswith("src/"):
-                source_python_count += 1
-            if display_path.startswith("tests/"):
-                test_python_count += 1
-        if not _is_text_path(relative_path):
+            findings.append(_finding("CERT-PATH-003", path, "transient or backup file is tracked"))
+
+        absolute_path = repository_root / path
+        if absolute_path.stat().st_size > _MAX_TRACKED_FILE_BYTES:
+            findings.append(_finding("CERT-PATH-004", path, "tracked file exceeds 5 MiB"))
+        if path.suffix.lower() == ".py":
+            source_python_count += int(display_path.startswith("src/"))
+            test_python_count += int(display_path.startswith("tests/"))
+        if not _is_text_path(path):
             continue
         try:
             text = _read_text(absolute_path)
         except (OSError, UnicodeError) as exc:
-            findings.append(
-                CertificationFinding(
-                    code="CERT-TEXT-004",
-                    path=display_path,
-                    line=None,
-                    message=f"tracked text is not valid UTF-8 text: {exc}",
-                )
-            )
+            findings.append(_finding("CERT-TEXT-004", path, f"invalid tracked text: {exc}"))
             continue
-        _add_text_hygiene_findings(relative_path, text, findings)
-        _add_suppression_findings(relative_path, text, findings)
-        _add_secret_findings(relative_path, text, findings)
-        _add_python_findings(relative_path, text, findings)
-        _add_structured_file_findings(relative_path, text, findings)
-        _add_markdown_link_findings(resolved_root, relative_path, text, findings)
+        _audit_text_hygiene(path, text, findings)
+        _audit_suppressions(path, text, findings)
+        _audit_secrets(path, text, findings)
+        _audit_python(path, text, findings)
+        _audit_structured_file(path, text, findings)
+        _audit_markdown_links(repository_root, path, text, findings)
 
-    _add_pyproject_policy_findings(resolved_root, tracked_paths, findings)
-    _add_ci_policy_findings(resolved_root, findings)
-
+    _audit_pyproject(repository_root, tracked, findings)
+    _audit_ci(repository_root, findings)
     if source_python_count == 0:
-        findings.append(
-            CertificationFinding(
-                code="CERT-INVENTORY-001",
-                path="src",
-                line=None,
-                message="no tracked production Python modules were found",
-            )
-        )
+        findings.append(_finding("CERT-INVENTORY-001", "src", "no production modules found"))
     if test_python_count == 0:
-        findings.append(
-            CertificationFinding(
-                code="CERT-INVENTORY-002",
-                path="tests",
-                line=None,
-                message="no tracked Python tests were found",
-            )
-        )
+        findings.append(_finding("CERT-INVENTORY-002", "tests", "no Python tests found"))
     if require_clean_worktree:
-        status = _run_git(resolved_root, "status", "--porcelain=v1", "--untracked-files=all")
+        status = _run_git(repository_root, "status", "--porcelain=v1", "--untracked-files=all")
         if status.strip():
-            findings.append(
-                CertificationFinding(
-                    code="CERT-GIT-001",
-                    path=".",
-                    line=None,
-                    message=f"worktree is not clean:\n{status.rstrip()}",
-                )
-            )
+            findings.append(_finding("CERT-GIT-001", ".", f"worktree is not clean:\n{status.rstrip()}"))
 
     ordered_findings = tuple(
         sorted(
             findings,
-            key=lambda finding: (
-                finding.code,
-                finding.path,
-                finding.line if finding.line is not None else 0,
-                finding.message,
-            ),
+            key=lambda item: (item.code, item.path, item.line or 0, item.message),
         )
     )
     return CertificationReport(
@@ -679,7 +500,7 @@ def audit_repository(root: Path, *, require_clean_worktree: bool = False) -> Cer
     )
 
 
-def _build_parser() -> argparse.ArgumentParser:
+def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Audit the complete tracked repository tree.")
     parser.add_argument("--root", type=Path, default=Path.cwd())
     parser.add_argument("--require-clean-worktree", action="store_true")
@@ -689,7 +510,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    arguments = _build_parser().parse_args(argv)
+    arguments = _parser().parse_args(argv)
     try:
         report = audit_repository(
             arguments.root,
