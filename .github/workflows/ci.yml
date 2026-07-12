@@ -70,6 +70,15 @@ jobs:
       - name: Compile source and tests
         run: python -m compileall -q src tests
 
+      - name: Capture pytest diagnostics
+        run: python -m pytest --strict-config --strict-markers -ra -W error > /tmp/pytest-results-${{ matrix.python-version }}.txt 2>&1 || true
+
+      - name: Upload pytest diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-results-${{ matrix.python-version }}
+          path: /tmp/pytest-results-${{ matrix.python-version }}.txt
+
       - name: Pytest
         run: python -m pytest --strict-config --strict-markers -ra -W error
 
