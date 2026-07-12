@@ -14,7 +14,10 @@ from constructionsight.ceqanet_csv_live_models import (
     CeqanetCsvLiveExecution,
     CeqanetCsvLiveVerification,
 )
-from constructionsight.ceqanet_csv_models import CeqanetCsvExportRequest
+from constructionsight.ceqanet_csv_models import (
+    CeqanetCsvExportRequest,
+    CeqanetCsvInspection,
+)
 from constructionsight.ceqanet_csv_service import (
     inspect_ceqanet_csv_bytes,
     parse_ceqanet_csv_export_url,
@@ -44,6 +47,28 @@ class CeqanetCsvLiveHttpClient(Protocol):
         timeout: float,
     ) -> CeqanetCsvLiveHttpResponse:
         """Fetch one official public CSV URL."""
+
+
+class _HttpxCsvClientAdapter:
+    """Expose httpx.Client through the intentionally narrow executor protocol."""
+
+    def __init__(self, client: httpx.Client) -> None:
+        self._client = client
+
+    def get(
+        self,
+        url: str,
+        *,
+        follow_redirects: bool,
+        timeout: float,
+    ) -> httpx.Response:
+        """Fetch one URL using the wrapped configured HTTPX client."""
+
+        return self._client.get(
+            url,
+            follow_redirects=follow_redirects,
+            timeout=timeout,
+        )
 
 
 def execute_ceqanet_csv_live_request(
@@ -83,7 +108,7 @@ def execute_ceqanet_csv_live_request(
     ) as owned_client:
         return _execute_with_client(
             request,
-            owned_client,
+            _HttpxCsvClientAdapter(owned_client),
             timeout_seconds=timeout_seconds,
             max_body_bytes=max_body_bytes,
             max_retained_rows=max_retained_rows,
@@ -111,15 +136,20 @@ def verify_ceqanet_csv_live_execution(
         if final_request != execution.request:
             findings.append("live CSV final URL does not match the approved request identity")
 
-    if execution.method != "GET":
+    method = _widen_str(execution.method)
+    retry_count = _widen_int(execution.retry_count)
+    network_executed = _widen_bool(execution.network_executed)
+    documents_downloaded = _widen_bool(execution.documents_downloaded)
+    persistence_mutated = _widen_bool(execution.persistence_mutated)
+    if method != "GET":
         findings.append("live CSV execution method is not GET")
-    if execution.retry_count != 0:
+    if retry_count != 0:
         findings.append("live CSV execution reports a retry")
-    if not execution.network_executed:
+    if not network_executed:
         findings.append("live CSV execution does not affirm network execution")
-    if execution.documents_downloaded:
+    if documents_downloaded:
         findings.append("live CSV execution reports CEQA document downloads")
-    if execution.persistence_mutated:
+    if persistence_mutated:
         findings.append("live CSV execution reports persistence mutation")
     if execution.status_code != 200:
         findings.append(f"live CSV response status is not 200: {execution.status_code}")
@@ -143,7 +173,6 @@ def verify_ceqanet_csv_live_execution(
         if execution.retained_body_byte_length != 0:
             findings.append("incomplete CSV response retained partial bytes")
 
-    recomputed_inspection = None
     if (
         execution.status_code == 200
         and execution.error is None
@@ -229,7 +258,7 @@ def _execute_with_client(
     retained_complete = len(body) <= max_body_bytes
     retained_body = body if retained_complete else b""
     error = None if retained_complete else "response_exceeds_max_body_bytes"
-    inspection = None
+    inspection: CeqanetCsvInspection | None = None
     inspection_error = None
     if response.status_code == 200 and retained_complete:
         try:
@@ -266,7 +295,7 @@ def _build_execution(
     body: bytes,
     retained_complete: bool,
     error: str | None,
-    inspection: Any,
+    inspection: CeqanetCsvInspection | None,
     inspection_error: str | None,
 ) -> CeqanetCsvLiveExecution:
     retained = body if retained_complete else b""
@@ -291,3 +320,15 @@ def _build_execution(
         execution_digest="0" * 64,
     )
     return draft.model_copy(update={"execution_digest": draft.computed_digest()})
+
+
+def _widen_bool(value: bool) -> bool:
+    return value
+
+
+def _widen_int(value: int) -> int:
+    return value
+
+
+def _widen_str(value: str) -> str:
+    return value
