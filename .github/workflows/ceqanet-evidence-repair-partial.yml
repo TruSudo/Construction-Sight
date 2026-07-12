@@ -45,7 +45,19 @@ jobs:
         run: python -m pip check
 
       - name: Collect bounded public evidence
-        run: python scripts/collect_ceqanet_source_evidence.py
+        run: |
+          set +e
+          python scripts/collect_ceqanet_source_evidence.py > /tmp/ceqanet-collector.log 2>&1
+          STATUS=$?
+          cat /tmp/ceqanet-collector.log
+          exit "$STATUS"
+
+      - name: Upload collector diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ceqanet-collector-diagnostics
+          path: /tmp/ceqanet-collector.log
 
       - name: Prepare evidence-bound observations
         run: python scripts/repair_ceqanet_evidence_partial.py prepare
