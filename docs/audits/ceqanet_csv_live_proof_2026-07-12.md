@@ -44,7 +44,9 @@ Executed at: `2026-07-12T07:20:53.708319+00:00`
 
 CEQAnet remains `partial`. This one request does not itself change source maturity.
 
-Keep CEQAnet partial. Any further access investigation, source clarification, or later proof must be a separate explicitly authorized phase; no retry or bypass is implied.
+## Next gate
+
+Add strict, explicitly identified Windows-1252 compatibility to the offline CSV parser and replay the already-retained response bytes. No second network request is required or authorized for that correction. Preserve the original failed execution and verification artifacts as historical evidence; any successful replay must be a separate derived artifact. Source promotion remains a later controlled decision.
 
 ## Evidence artifacts
 
