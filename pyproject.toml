@@ -51,6 +51,7 @@ constructionsight-ceqanet-fixtures = "constructionsight.ceqanet_fixture_query_cl
 constructionsight-ceqanet-listing-plan = "constructionsight.ceqanet_listing_plan_cli:app"
 constructionsight-ceqanet-listing-execute = "constructionsight.ceqanet_listing_execute_cli:app"
 constructionsight-ceqanet-recurring-run = "constructionsight.ceqanet_recurring_run_cli:app"
+constructionsight-ceqanet-csv = "constructionsight.ceqanet_csv_cli:app"
 constructionsight-ceqanet-vocabulary = "constructionsight.ceqanet_vocabulary_export_cli:app"
 constructionsight-ceqanet-results = "constructionsight.ceqanet_result_parse_cli:app"
 constructionsight-ceqanet-detail = "constructionsight.ceqanet_detail_parse_cli:app"

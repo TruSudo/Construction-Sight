@@ -23,13 +23,14 @@ The canonical source registry currently contains:
 
 CEQAnet is classified `partial` because its official entry, advanced search, result-list, project-summary, document-detail, policy, and CSV-export surfaces were reviewed and recorded. Bounded automated HTML collection later received HTTP 403. No bypass was attempted. The existing recurring-run service remains verified-only, so `partial` status does not authorize live recurring execution.
 
-The preferred next CEQAnet integration target is a bounded source-provided CSV contract or source-specific access clarification, followed by a separate controlled promotion to `verified`.
+ConstructionSight now has an offline official CSV contract that can plan exact project/document export URLs and validate already-obtained CSV bytes. It does not fetch the URL or change source maturity. The next source step is a separately authorized bounded live CSV proof or source-specific access clarification, followed by a separate controlled promotion to `verified` only if the evidence supports it.
 
 See:
 
 - `evidence/source_verification/ceqanet_public_access_2026-07-12.json`
 - `evidence/source_verification/ceqanet_checklist_2026-07-12.json`
 - `docs/audits/ceqanet_source_verification_2026-07-12.md`
+- `docs/architecture/ceqanet_official_csv_contract.md`
 - `docs/architecture/current_implementation_status.md`
 - `docs/audits/full_repo_audit_inventory.md`
 
@@ -79,6 +80,18 @@ current registry + current checklist evidence
 
 That boundary requires a registry status of `verified`. CEQAnet currently remains below that threshold.
 
+The official CSV boundary is offline-only:
+
+```text
+10-digit SCH number + optional document ID
+  -> exact official CSV URL identity
+  -> already-obtained CSV bytes
+  -> content-type, encoding, header, row, and SCH validation
+  -> body hash + bounded normalized rows + inspection digest
+```
+
+The CSV boundary authorizes neither a network request nor persistence mutation.
+
 ## Implemented capabilities
 
 ### Source governance
@@ -93,6 +106,9 @@ That boundary requires a registry status of `verified`. CEQAnet currently remain
 - Stale-registry and stale-checklist rejection
 - Whole-execution-envelope digest verification
 - Exact request reconstruction and ordered page-coverage checks
+- Exact official CEQAnet project/document CSV URL planning
+- Offline CSV media-type, UTF-8/BOM, schema, row-width, SCH, and digest validation
+- Preservation of original, normalized, canonical-role, and unknown CSV columns
 
 ### Intelligence and domain layers
 
@@ -146,6 +162,7 @@ constructionsight-source-promotion-plan
 constructionsight-source-registry-plan
 constructionsight-source-registry-apply
 constructionsight-ceqanet-recurring-run
+constructionsight-ceqanet-csv
 constructionsight-upstream
 constructionsight-leads
 constructionsight-results
@@ -178,7 +195,8 @@ No external communication behavior is implied by the existing models or CLI.
 ## Known limitations
 
 - CEQAnet is `partial`, not `verified`; automated HTML collection received HTTP 403.
-- Official CEQAnet CSV links are documented but have not yet been implemented as a governed ingestion contract.
+- The official CSV contract is offline-only; it has not performed or authorized a live export request.
+- Real CEQAnet CSV column drift remains unknown until a source-provided body is obtained and inspected.
 - The other three canonical sources remain unverified.
 - Verified usable source coverage remains zero.
 - Most adapter families remain contract-level.
