@@ -44,6 +44,12 @@ jobs:
         run: python -m pip check
       - name: Ruff
         run: python -m ruff check src tests
+      - name: Capture mypy output
+        run: python -m mypy src > /tmp/pr98-patched-mypy.txt 2>&1 || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pr98-patched-mypy-diagnostics
+          path: /tmp/pr98-patched-mypy.txt
       - name: Mypy
         run: python -m mypy src
       - name: Compile
