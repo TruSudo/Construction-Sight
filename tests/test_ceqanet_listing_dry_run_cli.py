@@ -1,4 +1,5 @@
 import json
+import re
 from pathlib import Path
 
 from typer.testing import CliRunner
@@ -6,6 +7,13 @@ from typer.testing import CliRunner
 from constructionsight.ceqanet_listing_plan_cli import app
 
 runner = CliRunner()
+_ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*m")
+_RICH_BORDER = str.maketrans("", "", "─│╭╮╰╯")
+
+
+def _plain(text: str) -> str:
+    undecorated = _ANSI_ESCAPE.sub("", text).translate(_RICH_BORDER)
+    return " ".join(undecorated.split())
 
 
 def test_ceqanet_listing_dry_run_cli_renders_request_evidence_table() -> None:
@@ -17,8 +25,6 @@ def test_ceqanet_listing_dry_run_cli_renders_request_evidence_table() -> None:
             "San Bernardino",
             "--document-type",
             "EIR",
-            "--text",
-            "warehouse",
             "--page-size",
             "50",
             "--max-pages",
@@ -34,6 +40,24 @@ def test_ceqanet_listing_dry_run_cli_renders_request_evidence_table() -> None:
     assert "False" in result.output
     assert "San+Bernardino" in result.output
     assert "DocumentType=EIR+-+Draft+EIR" in result.output
+
+
+def test_ceqanet_listing_dry_run_cli_rejects_unsupported_text_filter() -> None:
+    result = runner.invoke(
+        app,
+        [
+            "dry-run",
+            "--county",
+            "San Bernardino",
+            "--text",
+            "warehouse",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "text_terms are unsupported by the verified search contract" in _plain(
+        result.output
+    )
 
 
 def test_ceqanet_listing_dry_run_cli_emits_json_request_evidence() -> None:

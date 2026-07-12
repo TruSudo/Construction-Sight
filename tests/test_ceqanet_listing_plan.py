@@ -52,7 +52,6 @@ def test_ceqanet_listing_planner_builds_get_only_pages_after_access_allowance() 
     query = CeqanetListingQuery(
         counties=("San Bernardino",),
         document_types=("EIR",),
-        text_terms=("warehouse",),
         high_signal_only=True,
         page_size=50,
         max_pages=2,

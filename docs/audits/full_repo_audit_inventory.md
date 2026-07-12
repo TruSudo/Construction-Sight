@@ -10,6 +10,7 @@ ConstructionSight has a substantial tested model/service architecture for lawful
 
 - source-neutral intake and guarded CEQAnet tooling;
 - layered source status, readiness, audit, checklist, planning, and controlled apply governance;
+- exact-schema CEQAnet recurring-run definitions, exact-window manifests, digest-bound attempts, stale-evidence checks, and execution verification;
 - parcel and site reasoning with GeoJSON and WKT/EWKT topology;
 - source-plane area-weighted polygon centroids and conservative CRS boundaries;
 - permit movement, contractor identity, and decision records;
@@ -20,7 +21,7 @@ ConstructionSight has a substantial tested model/service architecture for lawful
 - read-only upstream inspection and governed lead/result actions; and
 - an executable complete tracked-tree certification gate.
 
-ConstructionSight is not yet a production recurring live-source platform. Most adapter families are contracts or planned integrations. CEQAnet has guarded execution and archive tooling but is not represented as production recurring coverage. Four canonical source-registry seed records remain unverified. No external outreach-sending behavior or GUI/operator application is implemented.
+ConstructionSight is not yet a production recurring live-source platform. Most adapter families are contracts or planned integrations. CEQAnet has guarded execution, archive tooling, and recurring-run governance, but the canonical source remains unverified and no production scheduler exists. Four canonical source-registry seed records remain unverified. No external outreach-sending behavior or GUI/operator application is implemented.
 
 ## Certification status model
 
@@ -38,6 +39,7 @@ The active-defect count for a certified tree must be zero. Planned capabilities 
 | Controlled source registry apply | Yes | Yes | Yes | File-backed | Yes | No | Full-snapshot, digest, evidence, identity, status-only, path, audit, and explicit-authorization controls apply. |
 | Adapter contracts | Yes | Yes | Yes | N/A | Yes | No | Contracts are not live-integration claims. |
 | CEQAnet guarded tooling | Yes | Yes | Yes | Partial | Yes | Guarded only | Bounded public execution, offline parsing, persistence planning/application, export, and archive verification exist. |
+| CEQAnet recurring-run governance | Yes | Yes | Yes | Artifact-only | Yes | Guarded only | Exact schemas and canonical digests bind source identity, evidence, query, window, attempts, and complete retained response envelopes. Execution requires current registry/checklist agreement and explicit authorization. Canonical source data remains blocked because it is unverified. |
 | Universal intake | Yes | Yes | Yes | Partial | Yes | No | Source breadth remains limited. |
 | Opportunity transition intake | Yes | Yes | Yes | Partial | Yes | No | Candidate production is not outreach. |
 | External intelligence/gap spine | Yes | Yes | Yes | N/A | Yes | No | Capability models do not establish vendor parity. |
@@ -88,6 +90,8 @@ Current active entries: **none recorded in the canonical inventory**. CI remains
 | CS-AUDIT-018 | P1 | Governance metadata | Standing doctrine and PR validation references became stale. | Doctrine issue and historical PR metadata are reconciled through GitHub API. |
 | CS-AUDIT-019 | P1 | Certification coverage | CI did not independently scan every tracked file or reject suppressions, skipped tests, transient files, broken links, invalid entrypoints, secrets, and dirty worktrees. | Permanent `constructionsight-certify` and hardened CI gates cover the complete tracked tree. |
 | CS-AUDIT-020 | P1 | Defect classification | Planned capabilities were labeled as partially fixed defects. | Resolved defects and planned capabilities are separate canonical ledgers. |
+| CS-AUDIT-021 | P1 | CEQAnet query truth | `text_terms` counted as a bounding query filter even though the verified advanced-search request builder did not transmit them. | Both listing and recurring-run query models reject free-text terms, preventing false restriction claims. |
+| CS-AUDIT-022 | P1 | CEQAnet execution evidence | Recurring-run executions initially had field-level semantic checks but no digest over the complete retained response envelope. | Exact execution schemas and a canonical execution digest now bind bodies, URLs, queries, counts, flags, identities, and the no-persistence assertion before semantic verification. |
 
 ## Planned capability ledger
 
@@ -96,7 +100,7 @@ These are intentionally absent capabilities, not defects in the currently suppor
 | ID | Planned capability | Current guard | Entry condition |
 |---|---|---|---|
 | CS-PLAN-001 | Optional preview archives and nested child tables | Core persisted records remain lossless; report/config layers are explicitly ephemeral. | Add only when replay or query requirements justify schema expansion. |
-| CS-PLAN-002 | Verified recurring live source adapters | Contracts and guarded tools are not represented as production coverage. | Complete source-specific verification, recurring-run governance, and maturity promotion. |
+| CS-PLAN-002 | Verified recurring live source adapters | CEQAnet has exact-schema evidence-bound definitions, exact-window manifests, stale-evidence rejection, digest-bound attempts, and complete execution verification. Canonical source data remains unverified; attempts are not scheduled or persisted as a ledger. | Complete source-specific evidence review and maturity promotion, then define persisted attempt identity, scheduling, retry, archive, observability, and downstream handoff governance. |
 | CS-PLAN-003 | CRS transformation, projection-aware/geodesic calculations, and topology repair | Incompatible CRS is preserved and refused; no survey-grade conclusion is emitted. | Pin a GIS stack and define transformation provenance, axis order, grid behavior, accuracy, failure, and repair doctrine. |
 | CS-PLAN-004 | Domain-specific upstream correction actions | Generic mutation is unavailable. | Define record-family-specific stale-state, correction, supersession, provenance, and audit behavior. |
 | CS-PLAN-005 | Workflow reopen/override | Final states have no outgoing transitions. | Define explicit authority, reason, stale-state, and append-only event rules. |
@@ -113,7 +117,7 @@ These are intentionally absent capabilities, not defects in the currently suppor
 | Controlled registry apply | Evidence-gated status-only apply exists. |
 | Verified usable source | Zero in the canonical registry. |
 | Contract-ready adapters | Registered families exist; no coverage claim follows. |
-| Guarded live read-only execution | Limited CEQAnet tooling exists. |
+| Guarded live read-only execution | Limited CEQAnet executors and recurring-run governance exist. Current canonical CEQAnet definitions remain blocked. |
 | Production recurring integration | Not established. |
 
 A prior report-only HTTP observation classified CEQAnet as `cross_host_redirect`, CSLB as `no_redirect`, San Bernardino EZOP as `same_host_redirect`, and Riverside PLUS as `downgraded_to_http`. Reachability evidence does not promote verification status.
@@ -126,6 +130,7 @@ A prior report-only HTTP observation classified CEQAnet as `cross_host_redirect`
 | Source registry | Seed/config plus controlled file-backed apply. |
 | Readiness/audit/checklist/plans | Report/file-backed by design. |
 | Source apply reports | Required JSON audit with digests and row-level outcomes. |
+| CEQAnet recurring-run definitions/manifests/executions | Exact-schema digest-bound JSON artifacts only; no attempt ledger or scheduler state is implied. |
 | Parcel preview layers | Report/config-backed and intentionally ephemeral. |
 | Parcel core/site resolution | Indexed fields plus full payload, raw geometry, hashes, CRS, and compatible summaries. |
 | Permit snapshots/transitions | Indexed fields plus full payload. |
@@ -145,6 +150,7 @@ Persistence is valid only when mapping is deliberate and preserves reasons, conf
 | Core intake, opportunity, gap, parcel preview, site resolution, and storage summary | Present. |
 | Source status/readiness/audit/checklist/plan/apply | Present with evidence and mutation boundaries. |
 | CEQAnet fixture-to-archive tooling | Present and guarded. |
+| CEQAnet recurring-run artifacts and attempts | Definition, manifest, execute, and digest-aware verify commands exist; canonical source data remains blocked. |
 | Upstream records | Full-payload list/detail only. |
 | Lead records | Consolidated list/detail plus governed workflow transitions. |
 | Result authority | Validated current/history plus explicit exact-state record/correction. |
@@ -160,6 +166,7 @@ Where applicable, the architecture must preserve:
 - reasons, limitations, confidence, and review-needed state;
 - source keys, source record IDs, full normalized payloads, provenance, and evidence references;
 - lawful-access and source-maturity boundaries;
+- source registry/checklist digests, recurring-run definition/manifest/execution identities, exact windows, attempt identity, complete retained execution-envelope digest, and stale-evidence findings;
 - unknown and unmapped fields;
 - raw geometry, format, embedded/supplied CRS, conflicts, coordinate bounds, topology method, rings, holes, validity limitations, centroid limitations, fallback reasons, and non-survey-grade boundaries;
 - workflow transitions, event sequence, unique identity, and stale-state expectations;
