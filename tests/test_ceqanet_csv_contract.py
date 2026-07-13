@@ -140,9 +140,9 @@ def test_scope_selects_one_canonical_title_without_discarding_columns(
         document_id=document_id,
     )
     content = (
-        "SCH Number,Document Title,Project Title\r\n"
-        "2026030377,Document value,Project value\r\n"
-    ).encode()
+        b"SCH Number,Document Title,Project Title\r\n"
+        b"2026030377,Document value,Project value\r\n"
+    )
 
     inspection = inspect_ceqanet_csv_bytes(
         request,
