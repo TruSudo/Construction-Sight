@@ -5,7 +5,9 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from typer.testing import CliRunner
 
+from constructionsight.ceqanet_csv_cli import app
 from constructionsight.ceqanet_csv_live_models import CeqanetCsvLiveExecution
 from constructionsight.ceqanet_csv_models import CeqanetCsvInspection
 from constructionsight.ceqanet_csv_replay_models import (
@@ -29,6 +31,7 @@ VERIFICATION_PATH = (
     EVIDENCE_DIR / "ceqanet_csv_windows1252_replay_verification_2026-07-12.json"
 )
 REPORT_PATH = ROOT / "docs/audits/ceqanet_csv_windows1252_replay_2026-07-12.md"
+runner = CliRunner()
 
 
 def _load_json(path: Path) -> Any:
@@ -153,6 +156,46 @@ def test_committed_replay_artifacts_are_replayable_and_consistent() -> None:
     )
     assert all(not path.exists() for path in temporary_paths)
 
+
+
+def test_replay_cli_builds_and_verifies_retained_body(tmp_path: Path) -> None:
+    replay_path = tmp_path / "replay.json"
+    verification_path = tmp_path / "verification.json"
+
+    replay_result = runner.invoke(
+        app,
+        [
+            "replay-execution",
+            str(EXECUTION_PATH),
+            "--output",
+            str(replay_path),
+            "--max-retained-rows",
+            "1000",
+        ],
+    )
+
+    assert replay_result.exit_code == 0, replay_result.output
+    replay_payload = _load_json(replay_path)
+    assert replay_payload["network_executed"] is False
+    assert replay_payload["persistence_mutated"] is False
+    assert replay_payload["inspection"]["encoding"] == "windows-1252"
+
+    verify_result = runner.invoke(
+        app,
+        [
+            "verify-replay",
+            str(EXECUTION_PATH),
+            str(replay_path),
+            "--output",
+            str(verification_path),
+        ],
+    )
+
+    assert verify_result.exit_code == 0, verify_result.output
+    verification_payload = _load_json(verification_path)
+    assert verification_payload["passed"] is True
+    assert verification_payload["finding_count"] == 0
+    assert verification_payload["findings"] == []
 
 def test_replay_models_reject_unknown_fields() -> None:
     execution = CeqanetCsvLiveExecution.model_validate(_load_json(EXECUTION_PATH))
