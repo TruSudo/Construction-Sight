@@ -258,11 +258,12 @@ def test_missing_content_type_is_retained_as_a_warning() -> None:
             "duplicate normalized headers",
         ),
         (
-            b"SCH Number,Title,Document Title\n2026030377,A,B\n",
+            b"SCH Number,Contact,Contact Name\n2026030377,A,B\n",
             "ambiguous canonical roles",
         ),
         (b"SCH Number,\n2026030377,Value\n", "blank header"),
-        (b"\xff\xfe\x00\x00", "UTF-8"),
+        (b"\xff\xfe\x00\x00", "NUL character"),
+        (b"\x81", "UTF-8.*Windows-1252"),
     ],
 )
 def test_inspection_rejects_malformed_or_mismatched_bodies(
