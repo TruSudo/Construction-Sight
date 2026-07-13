@@ -23,7 +23,7 @@ The canonical source registry currently contains:
 
 CEQAnet is classified `partial` because its official entry, advanced search, result-list, project-summary, document-detail, policy, and CSV-export surfaces were reviewed and recorded. Bounded automated HTML collection later received HTTP 403. No bypass was attempted. The existing recurring-run service remains verified-only, so `partial` status does not authorize live recurring execution.
 
-ConstructionSight has an official CSV contract that plans exact project/document export URLs, validates already-obtained CSV bytes, and performs one explicitly authorized bounded GET with no retry. The original HTTP 200 proof failed under the former UTF-8-only parser and remains preserved. An offline replay of the exact retained body now passes as Windows-1252 with 2 source rows and an independently verified replay digest. Source maturity remains `partial`; promotion remains a separate controlled decision supported only by reviewed evidence.
+ConstructionSight has an official CSV contract that plans exact project/document export URLs, validates already-obtained CSV bytes, and performs one explicitly authorized bounded GET with no retry. The original HTTP 200 proof failed under the former UTF-8-only parser and remains preserved. An offline replay of the exact retained body now passes as Windows-1252 with 2 source rows and an independently verified replay digest. A digest-bound maturity proposal independently verifies that evidence and records `keep_partial`; it does not authorize promotion or recurring execution.
 
 See:
 
@@ -37,6 +37,10 @@ See:
 - `evidence/source_verification/ceqanet_csv_windows1252_replay_2026-07-12.json`
 - `evidence/source_verification/ceqanet_csv_windows1252_replay_verification_2026-07-12.json`
 - `docs/audits/ceqanet_csv_windows1252_replay_2026-07-12.md`
+- `evidence/source_verification/ceqanet_source_maturity_proposal_2026-07-13.json`
+- `evidence/source_verification/ceqanet_source_maturity_proposal_verification_2026-07-13.json`
+- `docs/audits/ceqanet_source_maturity_proposal_2026-07-13.md`
+- `docs/architecture/ceqanet_source_maturity_proposal.md`
 - `docs/architecture/current_implementation_status.md`
 - `docs/audits/full_repo_audit_inventory.md`
 
