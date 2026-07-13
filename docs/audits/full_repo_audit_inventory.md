@@ -145,6 +145,7 @@ A prior report-only HTTP observation classified CEQAnet as `cross_host_redirect`
 | Readiness/audit/checklist/plans | Report/file-backed by design. |
 | CEQAnet source evidence | Versioned JSON evidence, checklist JSON, and Markdown audit are committed; raw response bodies are not represented as archived evidence. |
 | CEQAnet CSV inspections/executions/replays | Schema-versioned offline inspections, live-proof envelopes, and derived encoding replays may be written by the operator CLI; no database write, attachment download, retry, or schedule is authorized. |
+| CEQAnet maturity proposals | Schema-versioned proposal and verification JSON plus a Markdown audit are artifact-only; the fixed decision is `keep_partial`, and all mutation/recurring authority remains false. |
 | Source apply reports | Required JSON audit with digests and row-level outcomes. |
 | CEQAnet recurring-run definitions/manifests/executions | Exact-schema digest-bound JSON artifacts only; no attempt ledger or scheduler state is implied. |
 | Parcel preview layers | Report/config-backed and intentionally ephemeral. |
