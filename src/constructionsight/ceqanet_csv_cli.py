@@ -14,6 +14,13 @@ from constructionsight.ceqanet_csv_live_service import (
     execute_ceqanet_csv_live_request,
     verify_ceqanet_csv_live_execution,
 )
+from constructionsight.ceqanet_csv_replay_models import (
+    CeqanetCsvEncodingReplay,
+)
+from constructionsight.ceqanet_csv_replay_service import (
+    build_ceqanet_csv_encoding_replay,
+    verify_ceqanet_csv_encoding_replay,
+)
 from constructionsight.ceqanet_csv_service import (
     build_ceqanet_csv_export_request,
     inspect_ceqanet_csv_bytes,
@@ -187,6 +194,73 @@ def verify_live_csv_execution(
     if not verification.passed:
         raise typer.Exit(code=1)
 
+
+
+@app.command("replay-execution")
+def replay_csv_execution(
+    execution_path: Annotated[
+        Path,
+        typer.Argument(help="Path to a retained live CSV execution artifact."),
+    ],
+    output: Annotated[
+        Path,
+        typer.Option("--output", help="Required derived replay JSON output path."),
+    ],
+    max_retained_rows: Annotated[
+        int,
+        typer.Option("--max-retained-rows", min=0),
+    ] = 1_000,
+    overwrite: Annotated[bool, typer.Option("--overwrite")] = False,
+) -> None:
+    """Replay retained response bytes offline using the current CSV parser."""
+
+    try:
+        payload: Any = json.loads(execution_path.read_text(encoding="utf-8"))
+        execution = CeqanetCsvLiveExecution.model_validate(payload)
+        replay = build_ceqanet_csv_encoding_replay(
+            execution,
+            max_retained_rows=max_retained_rows,
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _write_json_file(
+        output,
+        replay.model_dump(mode="json"),
+        overwrite=overwrite,
+    )
+    console.print(f"Wrote CEQAnet CSV encoding replay to {output}")
+
+
+@app.command("verify-replay")
+def verify_csv_replay(
+    execution_path: Annotated[
+        Path,
+        typer.Argument(help="Path to the source live CSV execution artifact."),
+    ],
+    replay_path: Annotated[
+        Path,
+        typer.Argument(help="Path to the derived encoding replay artifact."),
+    ],
+    output: Annotated[
+        Path | None,
+        typer.Option("--output", help="Optional replay verification JSON output path."),
+    ] = None,
+) -> None:
+    """Verify a derived replay against the original retained live response."""
+
+    try:
+        execution_payload: Any = json.loads(
+            execution_path.read_text(encoding="utf-8")
+        )
+        replay_payload: Any = json.loads(replay_path.read_text(encoding="utf-8"))
+        execution = CeqanetCsvLiveExecution.model_validate(execution_payload)
+        replay = CeqanetCsvEncodingReplay.model_validate(replay_payload)
+        verification = verify_ceqanet_csv_encoding_replay(execution, replay)
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit_json(verification.model_dump(mode="json"), output)
+    if not verification.passed:
+        raise typer.Exit(code=1)
 
 def _write_json_file(path: Path, payload: object, *, overwrite: bool) -> None:
     if path.exists() and not overwrite:

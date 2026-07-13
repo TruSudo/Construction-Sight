@@ -23,7 +23,7 @@ ConstructionSight has a substantial tested model/service architecture for lawful
 - read-only upstream inspection and governed lead/result actions; and
 - an executable complete tracked-tree certification gate.
 
-ConstructionSight is not yet a production recurring live-source platform. Most adapter families are contracts or planned integrations. CEQAnet is canonically `partial`: its official public pages, policies, data fields, and CSV links are materially observed, but bounded automated HTML collection received HTTP 403 and no bypass was attempted. The bounded project CSV proof failed and was preserved without retry or bypass. HTTP status: 200; findings: live CSV offline inspection failed: CEQAnet CSV body must use UTF-8 or UTF-8 with BOM; live CSV inspection recorded error: CEQAnet CSV body must use UTF-8 or UTF-8 with BOM The other three canonical sources remain unverified. No source is currently `verified`, no production scheduler exists, and no external outreach-sending behavior or GUI/operator application is implemented.
+ConstructionSight is not yet a production recurring live-source platform. Most adapter families are contracts or planned integrations. CEQAnet is canonically `partial`: HTML automation returned HTTP 403 without bypass, while the source-provided CSV endpoint returned one retained HTTP 200 response. The original UTF-8 failure remains preserved, and an offline Windows-1252 replay of the exact body now passes with 2 rows. The other three canonical sources remain unverified. No source is currently `verified`, no production scheduler exists, and no external outreach-sending behavior or GUI/operator application is implemented.
 
 ## Certification status model
 
@@ -41,7 +41,7 @@ The active-defect count for a certified tree must be zero. Planned capabilities 
 | Controlled source registry apply | Yes | Yes | Yes | File-backed | Yes | No | Full-snapshot, digest, evidence, identity, status-only, path, audit, and explicit-authorization controls apply. |
 | Adapter contracts | Yes | Yes | Yes | N/A | Yes | No | Contracts are not live-integration claims. |
 | CEQAnet guarded tooling | Yes | Yes | Yes | Partial | Yes | Guarded only | Bounded execution, offline parsing, persistence planning/application, export, and archive verification exist, but the canonical source is not execution-authorized. |
-| CEQAnet official CSV contract | Yes | Yes | Yes | Artifact-only | Yes | Guarded proof only | Exact planning, offline inspection, and one explicit no-retry GET are canonical. The bounded project CSV proof failed and was preserved without retry or bypass. HTTP status: 200; findings: live CSV offline inspection failed: CEQAnet CSV body must use UTF-8 or UTF-8 with BOM; live CSV inspection recorded error: CEQAnet CSV body must use UTF-8 or UTF-8 with BOM The execution and verification artifacts are committed; no persistence is claimed. |
+| CEQAnet official CSV contract | Yes | Yes | Yes | Artifact-only | Yes | Guarded proof only | Exact planning, one no-retry GET, strict UTF-8-first/Windows-1252 parsing, and offline replay are canonical. The retained HTTP 200 body replays successfully with 2 rows; no persistence is claimed. |
 | CEQAnet recurring-run governance | Yes | Yes | Yes | Artifact-only | Yes | Guarded only | Exact schemas and canonical digests bind source identity, evidence, query, window, attempts, and retained response envelopes. `partial` maturity fails the verified-only execution gate. |
 | CEQAnet source evidence | Yes | N/A | Yes | File-backed | Yes | No | Browser review preserves official entry/search/detail/policy/CSV surfaces, workflow diagnostics, HTTP 403, robots uncertainty, and no-bypass limitations. |
 | Universal intake | Yes | Yes | Yes | Partial | Yes | No | Source breadth remains limited. |
@@ -100,6 +100,8 @@ The CEQAnet HTTP 403 is preserved as an external access limitation and verified-
 | CS-AUDIT-022 | P1 | CEQAnet execution evidence | Recurring-run executions initially had field-level semantic checks but no digest over the complete retained response envelope. | Exact execution schemas and a canonical execution digest bind bodies, URLs, queries, counts, flags, identities, and the no-persistence assertion before semantic verification. |
 | CS-AUDIT-023 | P1 | CEQAnet evidence-phase tree | PR #93 merged temporary collector/workflow files while its claimed evidence files were absent. | Evidence and audit artifacts are committed, the canonical CI file is restored, temporary tooling is deleted, and the branch is re-certified before replacement merge. |
 | CS-AUDIT-024 | P1 | CEQAnet observation logic | Brittle text markers and a robots media-type assumption rejected valid source behavior and obscured the true access boundary. | Official page shapes and policies were reviewed, diagnostic failures are preserved, HTTP 403 is treated as a blocker, and no bypass is permitted. |
+| CS-AUDIT-025 | P1 | CEQAnet CSV encoding | The first live CSV proof returned valid source bytes containing Windows-1252 data that the UTF-8-only parser rejected. | Strict UTF-8 remains preferred; explicit Windows-1252 fallback is digest-visible, tested, and used to derive a separately verified replay from the original retained body without network access. |
+| CS-AUDIT-026 | P1 | Replay final-tree integrity | PR #100 left two write-enabled replay workflows and two patch scripts in the production tree after their runtime changes had already landed. | PR #101 deletes all temporary replay machinery, tests complete absence, restores canonical CI-only validation, and certifies the exact cleaned tree. |
 
 ## Planned capability ledger
 
@@ -108,7 +110,7 @@ These are intentionally absent capabilities, not defects in the currently suppor
 | ID | Planned capability | Current guard | Entry condition |
 |---|---|---|---|
 | CS-PLAN-001 | Optional preview archives and nested child tables | Core persisted records remain lossless; report/config layers are explicitly ephemeral. | Add only when replay or query requirements justify schema expansion. |
-| CS-PLAN-002 | Verified recurring live source adapters | CEQAnet is `partial`, verified-only recurring-run governance exists, and one bounded CSV proof is committed. Automated HTML collection received HTTP 403; no attempt ledger or scheduler exists. | Keep CEQAnet partial. Any further access investigation, source clarification, or later proof must be a separate explicitly authorized phase; no retry or bypass is implied. |
+| CS-PLAN-002 | Verified recurring live source adapters | CEQAnet is `partial`, one HTTP 200 CSV proof is committed, and the exact body has a verified Windows-1252 replay. HTML automation remains blocked by HTTP 403; no attempt ledger or scheduler exists. | Review a separate controlled source-maturity proposal binding the original execution and replay digests while preserving surface-specific limitations. |
 | CS-PLAN-003 | CRS transformation, projection-aware/geodesic calculations, and topology repair | Incompatible CRS is preserved and refused; no survey-grade conclusion is emitted. | Pin a GIS stack and define transformation provenance, axis order, grid behavior, accuracy, failure, and repair doctrine. |
 | CS-PLAN-004 | Domain-specific upstream correction actions | Generic mutation is unavailable. | Define record-family-specific stale-state, correction, supersession, provenance, and audit behavior. |
 | CS-PLAN-005 | Workflow reopen/override | Final states have no outgoing transitions. | Define explicit authority, reason, stale-state, and append-only event rules. |
@@ -121,7 +123,7 @@ These are intentionally absent capabilities, not defects in the currently suppor
 |---|---|
 | Canonical source records | One CEQAnet record is `partial`; three records remain unverified. |
 | Readiness/audit/checklist evidence | Report/file-backed workflows exist; CEQAnet has a committed browser-review evidence packet. |
-| Official CSV contract | Deterministic planning, offline inspection, and one-request/no-retry proof execution exist. The bounded project CSV proof failed and was preserved without retry or bypass. HTTP status: 200; findings: live CSV offline inspection failed: CEQAnet CSV body must use UTF-8 or UTF-8 with BOM; live CSV inspection recorded error: CEQAnet CSV body must use UTF-8 or UTF-8 with BOM |
+| Official CSV contract | Deterministic planning, one no-retry HTTP 200 proof, and a verified Windows-1252 offline replay of the exact retained body exist. |
 | Promotion/update planning | Deterministic dry-run plans and approval digests exist. |
 | Controlled registry apply | Evidence-gated status-only apply exists. |
 | Verified usable source | Zero in the canonical registry. |
@@ -139,7 +141,7 @@ A prior report-only HTTP observation classified CEQAnet as `cross_host_redirect`
 | Source registry | Seed/config plus controlled file-backed apply. |
 | Readiness/audit/checklist/plans | Report/file-backed by design. |
 | CEQAnet source evidence | Versioned JSON evidence, checklist JSON, and Markdown audit are committed; raw response bodies are not represented as archived evidence. |
-| CEQAnet CSV inspections/executions | Schema-versioned offline inspections and live-proof execution envelopes may be written by the operator CLI; no database write, attachment download, retry, or schedule is authorized. |
+| CEQAnet CSV inspections/executions/replays | Schema-versioned offline inspections, live-proof envelopes, and derived encoding replays may be written by the operator CLI; no database write, attachment download, retry, or schedule is authorized. |
 | Source apply reports | Required JSON audit with digests and row-level outcomes. |
 | CEQAnet recurring-run definitions/manifests/executions | Exact-schema digest-bound JSON artifacts only; no attempt ledger or scheduler state is implied. |
 | Parcel preview layers | Report/config-backed and intentionally ephemeral. |

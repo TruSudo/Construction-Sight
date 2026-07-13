@@ -45,16 +45,13 @@ def build_ceqanet_csv_encoding_replay(
         content_type=execution.content_type,
         max_retained_rows=max_retained_rows,
     )
-    payload = {
-        "source_execution_digest": execution.execution_digest,
-        "source_body_sha256": execution.body_sha256,
-        "source_body_byte_length": execution.observed_body_byte_length,
-        "source_request_url": execution.request_url,
-        "source_status_code": execution.status_code,
-        "inspection": inspection,
-    }
     draft = CeqanetCsvEncodingReplay(
-        **payload,
+        source_execution_digest=execution.execution_digest,
+        source_body_sha256=execution.body_sha256,
+        source_body_byte_length=execution.observed_body_byte_length,
+        source_request_url=execution.request_url,
+        source_status_code=execution.status_code,
+        inspection=inspection,
         replay_digest="0" * 64,
     )
     replay = draft.model_copy(update={"replay_digest": draft.computed_digest()})

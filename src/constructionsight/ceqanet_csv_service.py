@@ -8,7 +8,7 @@ import io
 import re
 from collections import Counter
 from collections.abc import Iterable
-from typing import Any
+from typing import Any, Literal
 from urllib.parse import parse_qsl, urlencode, urlparse
 
 from constructionsight.ceqanet_csv_models import (
@@ -173,10 +173,7 @@ def inspect_ceqanet_csv_bytes(
     if max_retained_rows < 0:
         raise ValueError("max_retained_rows cannot be negative")
     normalized_content_type = _validate_content_type(content_type)
-    try:
-        text = content.decode("utf-8-sig")
-    except UnicodeDecodeError as exc:
-        raise ValueError("CEQAnet CSV body must use UTF-8 or UTF-8 with BOM") from exc
+    text, encoding = _decode_csv_body(content)
     if "\x00" in text:
         raise ValueError("CEQAnet CSV body contains a NUL character")
 
@@ -190,7 +187,14 @@ def inspect_ceqanet_csv_bytes(
         raise ValueError("CEQAnet CSV must contain a header and at least one data row")
 
     header = [cell.strip() for cell in nonblank_rows[0]]
-    columns = _build_columns(header)
+    title_role_suppressions = _title_role_suppressions(
+        header,
+        request.export_kind,
+    )
+    columns = _build_columns(
+        header,
+        suppressed_role_names=title_role_suppressions,
+    )
     canonical_role_columns = {
         column.canonical_role: column.ordinal
         for column in columns
@@ -232,9 +236,19 @@ def inspect_ceqanet_csv_bytes(
         warnings.append("content type was not supplied; body validation is CSV-only")
     if unknown_columns:
         warnings.append("unknown columns are preserved without inferred meaning")
+    if title_role_suppressions:
+        warnings.append(
+            "multiple title columns were preserved; canonical title was assigned "
+            "by export scope"
+        )
+    if encoding == "windows-1252":
+        warnings.append(
+            "source body decoded as Windows-1252 after strict UTF-8 failure"
+        )
     payload: dict[str, Any] = {
         "request": request,
         "content_type": normalized_content_type,
+        "encoding": encoding,
         "byte_length": len(content),
         "body_sha256": hashlib.sha256(content).hexdigest(),
         "column_count": len(columns),
@@ -253,6 +267,21 @@ def inspect_ceqanet_csv_bytes(
     )
     inspection.assert_integrity()
     return inspection
+
+
+def _decode_csv_body(
+    content: bytes,
+) -> tuple[str, Literal["utf-8-sig", "windows-1252"]]:
+    try:
+        return content.decode("utf-8-sig"), "utf-8-sig"
+    except UnicodeDecodeError:
+        pass
+    try:
+        return content.decode("windows-1252"), "windows-1252"
+    except UnicodeDecodeError as exc:
+        raise ValueError(
+            "CEQAnet CSV body must use UTF-8, UTF-8 with BOM, or Windows-1252"
+        ) from exc
 
 
 def _validate_sch_number(value: str) -> None:
@@ -280,7 +309,34 @@ def _role_for_normalized_header(value: str) -> CeqanetCsvCanonicalRole | None:
     return matches[0] if matches else None
 
 
-def _build_columns(header: Iterable[str]) -> list[CeqanetCsvColumn]:
+def _title_role_suppressions(
+    header: Iterable[str],
+    export_kind: CeqanetCsvExportKind,
+) -> frozenset[str]:
+    normalized_names = {_normalize_header(value) for value in header}
+    title_candidates = normalized_names & _ROLE_ALIASES[CeqanetCsvCanonicalRole.TITLE]
+    if len(title_candidates) <= 1:
+        return frozenset()
+
+    preference = (
+        ("project_title", "title", "document_title")
+        if export_kind is CeqanetCsvExportKind.PROJECT
+        else ("document_title", "title", "project_title")
+    )
+    preferred = next(
+        (name for name in preference if name in title_candidates),
+        None,
+    )
+    if preferred is None:
+        raise ValueError("CEQAnet CSV title columns have no scope-supported identity")
+    return frozenset(title_candidates - {preferred})
+
+
+def _build_columns(
+    header: Iterable[str],
+    *,
+    suppressed_role_names: frozenset[str] = frozenset(),
+) -> list[CeqanetCsvColumn]:
     columns: list[CeqanetCsvColumn] = []
     for ordinal, original_name in enumerate(header):
         if not original_name:
@@ -293,7 +349,11 @@ def _build_columns(header: Iterable[str]) -> list[CeqanetCsvColumn]:
                 ordinal=ordinal,
                 original_name=original_name,
                 normalized_name=normalized_name,
-                canonical_role=_role_for_normalized_header(normalized_name),
+                canonical_role=(
+                    None
+                    if normalized_name in suppressed_role_names
+                    else _role_for_normalized_header(normalized_name)
+                ),
             )
         )
     normalized_names = [column.normalized_name for column in columns]

@@ -1,0 +1,10 @@
+{
+  "finding_count": 0,
+  "findings": [],
+  "inspection_digest": "e6888864835947ef758b22b5c3f8533fafa848a310e9b54acc94fd45fd5add07",
+  "passed": true,
+  "replay_digest": "49d3aaf3357f448252ab8133e83bdfdb65175b0fe4646babfc0cc10af27f9b60",
+  "schema_version": "ceqanet_csv_encoding_replay_verification.v1",
+  "source_body_sha256": "5b1bc503c81d12ed0f00e52539edb437b42ae4c3a539a25e1c82a02b84273163",
+  "source_execution_digest": "9a861dcee42092eb6f2d8f5c86673f4aca4c75cd0d42beddaa930cc093221a95"
+}
