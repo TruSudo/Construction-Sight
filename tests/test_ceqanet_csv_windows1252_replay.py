@@ -147,7 +147,9 @@ def test_committed_replay_artifacts_are_replayable_and_consistent() -> None:
 
     temporary_paths = (
         ROOT / ".github/workflows/ceqanet-csv-windows1252-replay.yml",
+        ROOT / ".github/workflows/ceqanet-csv-windows1252-replay-v2.yml",
         ROOT / "scripts/apply_ceqanet_windows1252_replay.py",
+        ROOT / "scripts/patch_ceqanet_windows1252_runtime.py",
     )
     assert all(not path.exists() for path in temporary_paths)
 
