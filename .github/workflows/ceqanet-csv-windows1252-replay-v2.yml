@@ -9,7 +9,9 @@ on:
       - .github/workflows/ceqanet-csv-windows1252-replay-v2.yml
       - scripts/apply_ceqanet_windows1252_replay.py
       - scripts/patch_ceqanet_windows1252_runtime.py
+      - src/constructionsight/ceqanet_csv_cli.py
       - src/constructionsight/ceqanet_csv_models.py
+      - src/constructionsight/ceqanet_csv_service.py
       - src/constructionsight/ceqanet_csv_replay_models.py
       - src/constructionsight/ceqanet_csv_replay_service.py
       - tests/test_ceqanet_csv_windows1252_replay.py
