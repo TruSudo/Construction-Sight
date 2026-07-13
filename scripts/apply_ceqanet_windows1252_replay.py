@@ -269,8 +269,8 @@ def _reconcile_status(replay: CeqanetCsvEncodingReplay) -> None:
     )
     _replace_once(
         path,
-        "| CS-VIAM-018 | P1 | CEQAnet evidence tree | The prior evidence phase merged temporary collector files while its claimed proof artifacts were absent from `main`. | PR #94 removed temporary tooling, committed the evidence/checklist/audit artifacts, restored canonical CI, and preserved HTTP 403 without bypass or maturity overclaim. |",
-        "| CS-VIAM-018 | P1 | CEQAnet evidence tree | The prior evidence phase merged temporary collector files while its claimed proof artifacts were absent from `main`. | PR #94 removed temporary tooling, committed the evidence/checklist/audit artifacts, restored canonical CI, and preserved HTTP 403 without bypass or maturity overclaim. |\n"
+        "| CS-VIAM-018 | P1 | Source access truth | Brittle page-marker and robots assumptions could misclassify valid pages or imply an access conclusion; later automated access returned HTTP 403. | Official page structures and policies were reviewed, the 403 and robots uncertainty are preserved, no bypass was attempted, and maturity is limited to `partial`. |",
+        "| CS-VIAM-018 | P1 | Source access truth | Brittle page-marker and robots assumptions could misclassify valid pages or imply an access conclusion; later automated access returned HTTP 403. | Official page structures and policies were reviewed, the 403 and robots uncertainty are preserved, no bypass was attempted, and maturity is limited to `partial`. |\n"
         "| CS-VIAM-019 | P1 | CEQAnet CSV encoding | The first live CSV proof returned HTTP 200 but the UTF-8-only parser rejected a source Windows-1252 byte. | Parsing now prefers strict UTF-8 and falls back explicitly to Windows-1252; the exact retained body is replayed offline, digest-bound, independently verified, and tested without another request. |",
     )
 
