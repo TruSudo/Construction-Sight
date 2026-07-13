@@ -120,6 +120,7 @@ Planning, local inspection, and execution verification are offline. Live proof r
 - One-request CEQAnet CSV live-proof execution with explicit authorization and no retries
 - Strict UTF-8-first and explicit Windows-1252 fallback for source-provided CSV
 - Offline encoding replay linked to the original execution digest and body hash
+- Digest-bound, report-only CEQAnet maturity proposals with a fixed `keep_partial` decision
 - Complete response-byte, URL, status, header, body-hash, and inspection evidence
 - Independent offline verification of the retained live execution envelope
 - Preservation of original, normalized, canonical-role, and unknown CSV columns
@@ -177,6 +178,7 @@ constructionsight-source-registry-plan
 constructionsight-source-registry-apply
 constructionsight-ceqanet-recurring-run
 constructionsight-ceqanet-csv
+constructionsight-ceqanet-maturity
 constructionsight-upstream
 constructionsight-leads
 constructionsight-results
@@ -211,6 +213,7 @@ No external communication behavior is implied by the existing models or CLI.
 - CEQAnet is `partial`, not `verified`; automated HTML collection received HTTP 403.
 - The original UTF-8 inspection failure remains preserved; the derived Windows-1252 replay passes against the same retained body hash without a second request.
 - One point-in-time CSV success and offline replay do not establish recurring availability, completeness, or broader source coverage.
+- The maturity-proposal workflow binds that evidence but cannot promote the registry or authorize recurring execution.
 - The other three canonical sources remain unverified.
 - Verified usable source coverage remains zero.
 - Most adapter families remain contract-level.
