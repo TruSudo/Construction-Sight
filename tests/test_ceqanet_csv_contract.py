@@ -122,6 +122,48 @@ def test_project_fixture_inspection_preserves_unknown_columns_and_integrity() ->
     inspection.assert_integrity()
 
 
+
+@pytest.mark.parametrize(
+    ("document_id", "canonical_title", "unassigned_title"),
+    [
+        (None, "project_title", "document_title"),
+        (1, "document_title", "project_title"),
+    ],
+)
+def test_scope_selects_one_canonical_title_without_discarding_columns(
+    document_id: int | None,
+    canonical_title: str,
+    unassigned_title: str,
+) -> None:
+    request = build_ceqanet_csv_export_request(
+        sch_number="2026030377",
+        document_id=document_id,
+    )
+    content = (
+        "SCH Number,Document Title,Project Title\r\n"
+        "2026030377,Document value,Project value\r\n"
+    ).encode()
+
+    inspection = inspect_ceqanet_csv_bytes(
+        request,
+        content,
+        content_type="text/csv",
+    )
+
+    roles = {
+        column.normalized_name: column.canonical_role
+        for column in inspection.columns
+    }
+    assert roles[canonical_title] is CeqanetCsvCanonicalRole.TITLE
+    assert roles[unassigned_title] is None
+    assert inspection.unknown_columns == [unassigned_title]
+    assert inspection.rows[0]["document_title"] == "Document value"
+    assert inspection.rows[0]["project_title"] == "Project value"
+    assert (
+        "multiple title columns were preserved; canonical title was assigned "
+        "by export scope"
+    ) in inspection.warnings
+
 def test_document_fixture_inspection_maps_high_value_roles() -> None:
     request = build_ceqanet_csv_export_request(
         sch_number="2026070311",
