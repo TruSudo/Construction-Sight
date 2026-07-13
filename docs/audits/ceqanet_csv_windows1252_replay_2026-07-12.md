@@ -44,3 +44,9 @@ Review the successful point-in-time CSV proof and replay in a separate controlle
 - `evidence/source_verification/ceqanet_csv_live_execution_2026-07-12.json`
 - `evidence/source_verification/ceqanet_csv_windows1252_replay_2026-07-12.json`
 - `evidence/source_verification/ceqanet_csv_windows1252_replay_verification_2026-07-12.json`
+
+## Repository validation
+
+- Finalization workflow run: `29281179574`
+- Warning-strict test suite: `752 passed`
+- Required gates passed: dependency integrity, Ruff, strict mypy, compileall, adapter contract audit, source adapter coverage audit, repository certification, and diff hygiene.
