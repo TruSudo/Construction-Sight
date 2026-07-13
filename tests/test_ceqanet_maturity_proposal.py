@@ -17,6 +17,7 @@ from constructionsight.ceqanet_maturity_proposal_cli import app
 from constructionsight.ceqanet_maturity_proposal_models import (
     CeqanetMaturityDecision,
     CeqanetSourceMaturityProposal,
+    CeqanetSourceMaturityProposalVerification,
 )
 from constructionsight.ceqanet_maturity_proposal_service import (
     build_ceqanet_source_maturity_proposal,
@@ -31,6 +32,16 @@ EXECUTION_PATH = EVIDENCE_DIR / "ceqanet_csv_live_execution_2026-07-12.json"
 REPLAY_PATH = EVIDENCE_DIR / "ceqanet_csv_windows1252_replay_2026-07-12.json"
 REPLAY_VERIFICATION_PATH = (
     EVIDENCE_DIR / "ceqanet_csv_windows1252_replay_verification_2026-07-12.json"
+)
+PROPOSAL_PATH = (
+    EVIDENCE_DIR / "ceqanet_source_maturity_proposal_2026-07-13.json"
+)
+PROPOSAL_VERIFICATION_PATH = (
+    EVIDENCE_DIR
+    / "ceqanet_source_maturity_proposal_verification_2026-07-13.json"
+)
+PROPOSAL_REPORT_PATH = (
+    ROOT / "docs/audits/ceqanet_source_maturity_proposal_2026-07-13.md"
 )
 runner = CliRunner()
 
@@ -113,6 +124,33 @@ def test_independent_proposal_verification_passes() -> None:
     assert verification.finding_count == 0
     assert verification.findings == []
     assert verification.proposal_digest == proposal.proposal_digest
+
+
+def test_committed_proposal_is_replayable_and_non_authorizing() -> None:
+    assert PROPOSAL_PATH.is_file()
+    assert PROPOSAL_VERIFICATION_PATH.is_file()
+    assert PROPOSAL_REPORT_PATH.is_file()
+
+    proposal = CeqanetSourceMaturityProposal.model_validate(_load_json(PROPOSAL_PATH))
+    stored_verification = CeqanetSourceMaturityProposalVerification.model_validate(
+        _load_json(PROPOSAL_VERIFICATION_PATH)
+    )
+    recomputed = verify_ceqanet_source_maturity_proposal(
+        _sources(),
+        _execution(),
+        _replay(),
+        _replay_verification(),
+        proposal,
+    )
+
+    assert recomputed == stored_verification
+    assert proposal.proposal_digest == (
+        "3a8069a5dd72a921f1e4324347d00d3c5a8ee8f7100676bdff3a702d6a424088"
+    )
+    assert proposal.decision is CeqanetMaturityDecision.KEEP_PARTIAL
+    assert proposal.registry_mutation_authorized is False
+    assert proposal.recurring_execution_authorized is False
+    proposal.assert_integrity()
 
 
 def test_verification_detects_tampered_proposal() -> None:
