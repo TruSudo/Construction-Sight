@@ -54,7 +54,7 @@ The inspection boundary:
 1. reparses the source URL and requires complete agreement with the request fields;
 2. caps the body at 10,000,000 bytes;
 3. permits only explicit CSV-compatible media types when a content type is supplied;
-4. decodes UTF-8 with optional BOM;
+4. decodes strict UTF-8 with optional BOM, then explicit Windows-1252 only if UTF-8 fails;
 5. rejects NUL bytes and malformed CSV syntax;
 6. requires a nonblank, uniquely normalized header;
 7. rejects multiple columns that map to the same canonical role;
@@ -151,6 +151,8 @@ constructionsight-ceqanet-csv plan --sch-number <SCH> [--document-id <ID>]
 constructionsight-ceqanet-csv inspect-file <path> --source-url <official CSV URL>
 constructionsight-ceqanet-csv execute-live --sch-number <SCH> --output <artifact> --execute-live
 constructionsight-ceqanet-csv verify-execution <artifact> [--output <verification>]
+constructionsight-ceqanet-csv replay-execution <execution> --output <replay>
+constructionsight-ceqanet-csv verify-replay <execution> <replay> [--output <verification>]
 ```
 
 `plan`, `inspect-file`, and `verify-execution` perform no network call. `execute-live` requires explicit authorization, writes the execution artifact before returning a failing exit code, and will not overwrite an existing artifact unless `--overwrite` is supplied.
@@ -159,12 +161,12 @@ constructionsight-ceqanet-csv verify-execution <artifact> [--output <verificatio
 
 CEQAnet remains `partial`.
 
-The implementation proves deterministic planning, strict offline validation, and a bounded live-proof mechanism. The bounded project CSV proof failed and was preserved without retry or bypass. HTTP status: 200; findings: live CSV offline inspection failed: CEQAnet CSV body must use UTF-8 or UTF-8 with BOM; live CSV inspection recorded error: CEQAnet CSV body must use UTF-8 or UTF-8 with BOM The recorded automated HTML path returned HTTP 403 and remains blocked.
+The implementation proves deterministic planning, strict offline validation, and a bounded live-proof mechanism. The original HTTP 200 execution and UTF-8 failure remain preserved. A derived offline replay of the exact body now passes as Windows-1252 with 2 rows and no second network request. The recorded automated HTML path returned HTTP 403 and remains blocked.
 
 A passing live proof would establish only that one exact request returned a valid response at one point in time. It would not itself authorize source promotion, recurring collection, retries, persistence, or broader coverage claims.
 
 ## Next gate
 
-One self-removing evidence phase performed the project-scoped request for SCH `2026030377` and committed the execution and offline verification artifacts.
+One self-removing evidence phase performed the project-scoped request for SCH `2026030377`. A later offline-only phase replayed the exact retained body as Windows-1252 and committed a verified derived inspection without another request.
 
-Keep CEQAnet partial. Any further access investigation, source clarification, or later proof must be a separate explicitly authorized phase; no retry or bypass is implied.
+Review the successful proof and replay in a separate controlled maturity phase. No promotion, retry, scheduling, persistence, or broader coverage is implied.

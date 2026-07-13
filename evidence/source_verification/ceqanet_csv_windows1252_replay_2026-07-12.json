@@ -1,0 +1,542 @@
+{
+  "inspection": {
+    "body_sha256": "5b1bc503c81d12ed0f00e52539edb437b42ae4c3a539a25e1c82a02b84273163",
+    "byte_length": 7832,
+    "column_count": 55,
+    "columns": [
+      {
+        "canonical_role": "sch_number",
+        "normalized_name": "sch_number",
+        "ordinal": 0,
+        "original_name": "SCH Number"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "lead_agency_name",
+        "ordinal": 1,
+        "original_name": "Lead Agency Name"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "lead_agency_title",
+        "ordinal": 2,
+        "original_name": "Lead Agency Title"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "lead_agency_acronym",
+        "ordinal": 3,
+        "original_name": "Lead Agency Acronym"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "document_title",
+        "ordinal": 4,
+        "original_name": "Document Title"
+      },
+      {
+        "canonical_role": "document_type",
+        "normalized_name": "document_type",
+        "ordinal": 5,
+        "original_name": "Document Type"
+      },
+      {
+        "canonical_role": "received_date",
+        "normalized_name": "received",
+        "ordinal": 6,
+        "original_name": "Received"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "posted",
+        "ordinal": 7,
+        "original_name": "Posted"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "document_description",
+        "ordinal": 8,
+        "original_name": "Document Description"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "document_portal_url",
+        "ordinal": 9,
+        "original_name": "Document Portal URL"
+      },
+      {
+        "canonical_role": "title",
+        "normalized_name": "project_title",
+        "ordinal": 10,
+        "original_name": "Project Title"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "contact_full_name",
+        "ordinal": 11,
+        "original_name": "Contact Full Name"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "contact_authority",
+        "ordinal": 12,
+        "original_name": "Contact Authority"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "contact_job_title",
+        "ordinal": 13,
+        "original_name": "Contact Job Title"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "contact_email_address",
+        "ordinal": 14,
+        "original_name": "Contact Email Address"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "contact_address_1",
+        "ordinal": 15,
+        "original_name": "Contact Address  1"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "contact_address_2",
+        "ordinal": 16,
+        "original_name": "Contact Address  2"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "contact_city",
+        "ordinal": 17,
+        "original_name": "Contact City"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "contact_state",
+        "ordinal": 18,
+        "original_name": "Contact State"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "contact_zip_code",
+        "ordinal": 19,
+        "original_name": "Contact Zip Code"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "contact_phone_number",
+        "ordinal": 20,
+        "original_name": "Contact Phone Number"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "location_coordinates",
+        "ordinal": 21,
+        "original_name": "Location Coordinates"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "cities",
+        "ordinal": 22,
+        "original_name": "Cities"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "counties",
+        "ordinal": 23,
+        "original_name": "Counties"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "county_clerks",
+        "ordinal": 24,
+        "original_name": "County Clerks"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "location_cross_streets",
+        "ordinal": 25,
+        "original_name": "Location Cross Streets"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "location_zip_code",
+        "ordinal": 26,
+        "original_name": "Location Zip Code"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "location_total_acres",
+        "ordinal": 27,
+        "original_name": "Location Total Acres"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "location_parcel_number",
+        "ordinal": 28,
+        "original_name": "Location Parcel Number"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "location_state_highways",
+        "ordinal": 29,
+        "original_name": "Location State Highways"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "location_waterways",
+        "ordinal": 30,
+        "original_name": "Location Waterways"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "location_airports",
+        "ordinal": 31,
+        "original_name": "Location Airports"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "noc_has_non_late_comment",
+        "ordinal": 32,
+        "original_name": "NOC Has Non Late Comment"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "noc_state_review_start_date",
+        "ordinal": 33,
+        "original_name": "NOC State Review Start Date"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "noc_state_review_end_date",
+        "ordinal": 34,
+        "original_name": "NOC State Review End Date"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "noc_development_type",
+        "ordinal": 35,
+        "original_name": "NOC Development Type"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "noc_local_action",
+        "ordinal": 36,
+        "original_name": "NOC Local Action"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "noc_project_issues",
+        "ordinal": 37,
+        "original_name": "NOC Project Issues"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "noc_public_review_start_date",
+        "ordinal": 38,
+        "original_name": "NOC Public Review Start Date"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "noc_public_review_end_date",
+        "ordinal": 39,
+        "original_name": "NOC Public Review End Date"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "noe_exempt_status",
+        "ordinal": 40,
+        "original_name": "NOE Exempt Status"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "noe_exempt_citation",
+        "ordinal": 41,
+        "original_name": "NOE Exempt Citation"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "noe_reasons_for_exemption",
+        "ordinal": 42,
+        "original_name": "NOE Reasons for Exemption"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "nod_agency",
+        "ordinal": 43,
+        "original_name": "NOD Agency"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "nod_approved_by_lead_agency",
+        "ordinal": 44,
+        "original_name": "NOD Approved By Lead Agency"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "nod_approved_date",
+        "ordinal": 45,
+        "original_name": "NOD Approved Date"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "nod_significant_environmental_impact",
+        "ordinal": 46,
+        "original_name": "NOD Significant Environmental Impact"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "nod_environmental_impact_report_prepared",
+        "ordinal": 47,
+        "original_name": "NOD Environmental Impact Report Prepared"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "nod_negative_declaration_prepared",
+        "ordinal": 48,
+        "original_name": "NOD Negative Declaration Prepared"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "nod_other_document_type",
+        "ordinal": 49,
+        "original_name": "NOD Other Document Type"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "nod_mitigation_measures",
+        "ordinal": 50,
+        "original_name": "NOD Mitigation Measures"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "nod_mitigation_reporting_or_monitoring_plan",
+        "ordinal": 51,
+        "original_name": "NOD Mitigation Reporting Or Monitoring Plan"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "nod_statement_of_overriding_considerations_adopted",
+        "ordinal": 52,
+        "original_name": "NOD Statement Of Overriding Considerations Adopted"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "nod_findings_made_pursuant",
+        "ordinal": 53,
+        "original_name": "NOD Findings Made Pursuant"
+      },
+      {
+        "canonical_role": null,
+        "normalized_name": "nod_final_eir_available_location",
+        "ordinal": 54,
+        "original_name": "NOD Final EIR Available Location"
+      }
+    ],
+    "content_type": "text/csv",
+    "delimiter": ",",
+    "encoding": "windows-1252",
+    "inspection_digest": "e6888864835947ef758b22b5c3f8533fafa848a310e9b54acc94fd45fd5add07",
+    "network_executed": false,
+    "persistence_authorized": false,
+    "request": {
+      "document_id": null,
+      "export_kind": "project",
+      "network_authorized": false,
+      "persistence_authorized": false,
+      "sch_number": "2026030377",
+      "schema_version": "ceqanet_csv_export_request.v1",
+      "source_url": "https://ceqanet.lci.ca.gov/Search?OutputFormat=CSV&Sch=2026030377"
+    },
+    "retained_row_count": 2,
+    "row_count": 2,
+    "rows": [
+      {
+        "cities": "",
+        "contact_address_1": "4080 Lemon Street",
+        "contact_address_2": "12th Floor",
+        "contact_authority": "County of Riverside",
+        "contact_city": "Riverside",
+        "contact_email_address": "CabazonPlan@rivco.org",
+        "contact_full_name": "Candice Hughes",
+        "contact_job_title": "District 5 Principal Planner",
+        "contact_phone_number": "9519551639",
+        "contact_state": "CA",
+        "contact_zip_code": "92502",
+        "counties": "Riverside",
+        "county_clerks": "",
+        "document_description": "The proposed project would include the implementation of the Cabazon Community Plan and corresponding Cabazon Infrastructure Plan (CIP) in accordance with 6th Cycle Housing Element Action H-27. The goal of the Cabazon Community Plan (GPA No. 01206) is to address the Community of Cabazon's land use and infrastructure needs to prepare the Cabazon area for significant anticipated growth and development, particularly as the region plans for the possibility of accommodating up to 22,888 new housing units and an additional 49,420,323 square feet of non-residential uses over the next 30 years. Further, the Community Plan addresses  topics related to the Cabazon community such as placemaking, land use, access and circulation, infrastructure and public services, development and design standards, and administration and implementation.\r\n\r\nBased on the General Plan, existing land uses within the project area include the following: Mixed Use Area, Highest Density Residential, Medium Density Residential, Low Density Residential, Rural Residential, Rural Desert, Rural Mountainous, Commercial Retail, Light Industrial, Open Space - Conservation, Open Space - Rural, and Freeway.\r\n\r\nThe Cabazon Community Plan Land Use Map proposes the following types of land uses: Commercial Retail, High Density Residential, Highest Density Residential, Low Density Residential, Medium Density Residential, Very Low Density Residential, Rural Residential, Rural Desert, Rural Mountainous, Mixed-Use Area, Light Industrial, Heavy Industrial, Public Facilities, Open Space - Conservation, and Freeway.\r\n\r\nThe CIP (ZR6234) would support buildout of the Community Plan by identifying needs and suggesting alternatives for the availability and expansion of infrastructure in the Cabazon Community Plan area. The CIP projects covered under the EIR have been divided into the following categories:\r\n\u2022\tDomestic Water Supply and Distribution\r\n\u2022\tWastewater Collection and Treatment\r\n\u2022\tFlood Control and Drainage Systems\r\n\u2022\tElectric Power Supply\r\n\u2022\tNatural Gas Distribution\r\n\u2022\tTelecommunications and Broadband Services\r\n\u2022\tRoadway Right-of-Way",
+        "document_portal_url": "https://ceqanet.lci.ca.gov/2026030377/2",
+        "document_title": "Cabazon Infrastructure Plan and Cabazon Community Plan Project (GPA No. 01206 and ZR6234)",
+        "document_type": "EIR",
+        "lead_agency_acronym": "",
+        "lead_agency_name": "Riverside County",
+        "lead_agency_title": "",
+        "location_airports": "Banning Municipal Airport",
+        "location_coordinates": "33\u00b054'33\"N 116\u00b045'59\"W",
+        "location_cross_streets": "All streets within the unincorporated community of Cabazon",
+        "location_parcel_number": "Multiple, Community-wide",
+        "location_state_highways": "SR-243",
+        "location_total_acres": "7,769",
+        "location_waterways": "San Gorgonio River, Smith Creek, and various tributaries",
+        "location_zip_code": "92230",
+        "noc_development_type": "Other (Infrastructure Plan and Community Plan; see Draft EIR Section 2)",
+        "noc_has_non_late_comment": "No",
+        "noc_local_action": "Community Plan, General Plan Amendment, Rezone",
+        "noc_project_issues": "Aesthetics, Agriculture and Forestry Resources, Air Quality, Biological Resources, Cultural Resources, Cumulative Effects, Drainage/Absorption, Economics/Jobs, Energy, Flood Plain/Flooding, Geology/Soils, Greenhouse Gas Emissions, Growth Inducement, Hazards & Hazardous Materials, Hydrology/Water Quality, Land Use/Planning, Mandatory Findings of Significance, Mineral Resources, Noise, Population/Housing, Public Services, Recreation, Schools/Universities, Septic System, Sewer Capacity, Solid Waste, Transportation, Tribal Cultural Resources, Utilities/Service Systems, Vegetation, Wetland/Riparian, Wildfire",
+        "noc_public_review_end_date": "8/24/2026",
+        "noc_public_review_start_date": "7/9/2026",
+        "noc_state_review_end_date": "8/24/2026",
+        "noc_state_review_start_date": "7/10/2026",
+        "nod_agency": "",
+        "nod_approved_by_lead_agency": "",
+        "nod_approved_date": "",
+        "nod_environmental_impact_report_prepared": "",
+        "nod_final_eir_available_location": "",
+        "nod_findings_made_pursuant": "",
+        "nod_mitigation_measures": "",
+        "nod_mitigation_reporting_or_monitoring_plan": "",
+        "nod_negative_declaration_prepared": "",
+        "nod_other_document_type": "",
+        "nod_significant_environmental_impact": "",
+        "nod_statement_of_overriding_considerations_adopted": "",
+        "noe_exempt_citation": "",
+        "noe_exempt_status": "",
+        "noe_reasons_for_exemption": "",
+        "posted": "",
+        "project_title": "Cabazon Infrastructure Plan and Cabazon Community Plan Project (GPA No. 01206 and ZR6234)",
+        "received": "7/10/2026",
+        "sch_number": "2026030377"
+      },
+      {
+        "cities": "",
+        "contact_address_1": "4080 Lemon Street",
+        "contact_address_2": "12th Floor",
+        "contact_authority": "County of Riverside",
+        "contact_city": "Riverside",
+        "contact_email_address": "CabazonPlan@rivco.org",
+        "contact_full_name": "Candice Hughes",
+        "contact_job_title": "District 5 Principal Planner",
+        "contact_phone_number": "9519551639",
+        "contact_state": "CA",
+        "contact_zip_code": "92502",
+        "counties": "Riverside",
+        "county_clerks": "",
+        "document_description": "The proposed project would include the implementation of the Cabazon Community Plan and corresponding Cabazon Infrastructure Plan (CIP) in accordance with 6th Cycle Housing Element Action H-27. The goal of the Cabazon Community Plan (GPA No. 01206) is to address the Community of Cabazon\u2019s land use and infrastructure needs to prepare the Cabazon area for significant anticipated growth and development, particularly as the region plans for the possibility of accommodating up to 25,000 new housing units over the next 30 years. Further, the Community Plan is proposed to address topics related to the Cabazon community such as land use, character and design, access and circulation, infrastructure and public services, and design standards. \r\n\r\nThe Cabazon Community Plan Land Use Map proposes the following types of land uses: Commercial Retail, High Density Residential, Highest Density Residential, Low Density Residential, Medium Density Residential, Very Low Density Residential, Rural Residential, Rural Desert, Rural Mountainous, Mixed-Use Area, Light Industrial, Heavy Industrial, Public Facilities, Open Space \u2013 Conservation, and Freeway.\r\n\r\nThe CIP (ZR6234) would support buildout of the Community Plan by identifying needs and suggesting alternatives for the availability and expansion of infrastructure in the Cabazon Community Plan area. The CIP projects covered under the EIR have been divided into the following categories:\r\n\u2022\tDomestic Water Supply and Distribution\r\n\u2022\tWastewater Collection and Treatment\r\n\u2022\tFlood Control and Drainage Systems\r\n\u2022\tElectric Power Supply\r\n\u2022\tNatural Gas Distribution\r\n\u2022\tTelecommunications and Broadband Services\r\n\u2022\tRoadway Right-of-Way",
+        "document_portal_url": "https://ceqanet.lci.ca.gov/2026030377",
+        "document_title": "Cabazon Infrastructure Plan and Cabazon Community Plan Project (GPA No. 01206 and ZR6234)",
+        "document_type": "NOP",
+        "lead_agency_acronym": "",
+        "lead_agency_name": "Riverside County",
+        "lead_agency_title": "",
+        "location_airports": "Banning Municipal Airport",
+        "location_coordinates": "33\u00b054'33\"N 116\u00b045'59\"W",
+        "location_cross_streets": "All streets within the unincorporated community of Cabazon",
+        "location_parcel_number": "Multiple, Community-wide",
+        "location_state_highways": "SR-243",
+        "location_total_acres": "7,768",
+        "location_waterways": "San Gorgonio River, Smith Creek, and various tributaries",
+        "location_zip_code": "92230",
+        "noc_development_type": "Other (Infrastructure Plan and Community Plan; see Document Description)",
+        "noc_has_non_late_comment": "Yes",
+        "noc_local_action": "Community Plan, General Plan Amendment, Rezone",
+        "noc_project_issues": "Aesthetics, Agriculture and Forestry Resources, Air Quality, Biological Resources, Cultural Resources, Cumulative Effects, Drainage/Absorption, Economics/Jobs, Energy, Flood Plain/Flooding, Geology/Soils, Greenhouse Gas Emissions, Growth Inducement, Hazards & Hazardous Materials, Hydrology/Water Quality, Land Use/Planning, Mandatory Findings of Significance, Mineral Resources, Noise, Population/Housing, Public Services, Recreation, Schools/Universities, Septic System, Sewer Capacity, Solid Waste, Transportation, Tribal Cultural Resources, Utilities/Service Systems, Vegetation, Wetland/Riparian, Wildfire",
+        "noc_public_review_end_date": "4/8/2026",
+        "noc_public_review_start_date": "3/9/2026",
+        "noc_state_review_end_date": "4/8/2026",
+        "noc_state_review_start_date": "3/9/2026",
+        "nod_agency": "",
+        "nod_approved_by_lead_agency": "",
+        "nod_approved_date": "",
+        "nod_environmental_impact_report_prepared": "",
+        "nod_final_eir_available_location": "",
+        "nod_findings_made_pursuant": "",
+        "nod_mitigation_measures": "",
+        "nod_mitigation_reporting_or_monitoring_plan": "",
+        "nod_negative_declaration_prepared": "",
+        "nod_other_document_type": "",
+        "nod_significant_environmental_impact": "",
+        "nod_statement_of_overriding_considerations_adopted": "",
+        "noe_exempt_citation": "",
+        "noe_exempt_status": "",
+        "noe_reasons_for_exemption": "",
+        "posted": "",
+        "project_title": "Cabazon Infrastructure Plan and Cabazon Community Plan Project (GPA No. 01206 and ZR6234)",
+        "received": "3/9/2026",
+        "sch_number": "2026030377"
+      }
+    ],
+    "rows_truncated": false,
+    "schema_version": "ceqanet_csv_inspection.v1",
+    "unknown_columns": [
+      "lead_agency_name",
+      "lead_agency_title",
+      "lead_agency_acronym",
+      "document_title",
+      "posted",
+      "document_description",
+      "document_portal_url",
+      "contact_full_name",
+      "contact_authority",
+      "contact_job_title",
+      "contact_email_address",
+      "contact_address_1",
+      "contact_address_2",
+      "contact_city",
+      "contact_state",
+      "contact_zip_code",
+      "contact_phone_number",
+      "location_coordinates",
+      "cities",
+      "counties",
+      "county_clerks",
+      "location_cross_streets",
+      "location_zip_code",
+      "location_total_acres",
+      "location_parcel_number",
+      "location_state_highways",
+      "location_waterways",
+      "location_airports",
+      "noc_has_non_late_comment",
+      "noc_state_review_start_date",
+      "noc_state_review_end_date",
+      "noc_development_type",
+      "noc_local_action",
+      "noc_project_issues",
+      "noc_public_review_start_date",
+      "noc_public_review_end_date",
+      "noe_exempt_status",
+      "noe_exempt_citation",
+      "noe_reasons_for_exemption",
+      "nod_agency",
+      "nod_approved_by_lead_agency",
+      "nod_approved_date",
+      "nod_significant_environmental_impact",
+      "nod_environmental_impact_report_prepared",
+      "nod_negative_declaration_prepared",
+      "nod_other_document_type",
+      "nod_mitigation_measures",
+      "nod_mitigation_reporting_or_monitoring_plan",
+      "nod_statement_of_overriding_considerations_adopted",
+      "nod_findings_made_pursuant",
+      "nod_final_eir_available_location"
+    ],
+    "warnings": [
+      "unknown columns are preserved without inferred meaning",
+      "multiple title columns were preserved; canonical title was assigned by export scope",
+      "source body decoded as Windows-1252 after strict UTF-8 failure"
+    ]
+  },
+  "network_executed": false,
+  "persistence_mutated": false,
+  "replay_digest": "49d3aaf3357f448252ab8133e83bdfdb65175b0fe4646babfc0cc10af27f9b60",
+  "replayed_at": "2026-07-13T20:08:38.199946Z",
+  "schema_version": "ceqanet_csv_encoding_replay.v1",
+  "source_body_byte_length": 7832,
+  "source_body_sha256": "5b1bc503c81d12ed0f00e52539edb437b42ae4c3a539a25e1c82a02b84273163",
+  "source_execution_digest": "9a861dcee42092eb6f2d8f5c86673f4aca4c75cd0d42beddaa930cc093221a95",
+  "source_request_url": "https://ceqanet.lci.ca.gov/Search?OutputFormat=CSV&Sch=2026030377",
+  "source_status_code": 200
+}
