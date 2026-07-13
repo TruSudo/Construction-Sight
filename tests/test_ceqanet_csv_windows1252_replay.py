@@ -62,7 +62,7 @@ def test_valid_utf8_remains_preferred_over_windows1252() -> None:
     content = (
         "SCH Number,Description\r\n"
         "2026030377,Alpha • Beta\r\n"
-    ).encode("utf-8")
+    ).encode()
 
     inspection = inspect_ceqanet_csv_bytes(
         _request(),
