@@ -13,6 +13,7 @@ ConstructionSight has a substantial tested model/service architecture for lawful
 - exact-schema CEQAnet recurring-run definitions, exact-window manifests, digest-bound attempts, stale-evidence checks, and execution verification;
 - browser-reviewed CEQAnet source evidence with an explicit partial-maturity and automated-access boundary;
 - a source-provided CEQAnet CSV URL/body contract with offline inspection and a one-request/no-retry live-proof envelope;
+- digest-bound, report-only CEQAnet maturity proposals that cannot promote or authorize recurring execution;
 - parcel and site reasoning with GeoJSON and WKT/EWKT topology;
 - source-plane area-weighted polygon centroids and conservative CRS boundaries;
 - permit movement, contractor identity, and decision records;
@@ -43,6 +44,7 @@ The active-defect count for a certified tree must be zero. Planned capabilities 
 | CEQAnet guarded tooling | Yes | Yes | Yes | Partial | Yes | Guarded only | Bounded execution, offline parsing, persistence planning/application, export, and archive verification exist, but the canonical source is not execution-authorized. |
 | CEQAnet official CSV contract | Yes | Yes | Yes | Artifact-only | Yes | Guarded proof only | Exact planning, one no-retry GET, strict UTF-8-first/Windows-1252 parsing, and offline replay are canonical. The retained HTTP 200 body replays successfully with 2 rows; no persistence is claimed. |
 | CEQAnet recurring-run governance | Yes | Yes | Yes | Artifact-only | Yes | Guarded only | Exact schemas and canonical digests bind source identity, evidence, query, window, attempts, and retained response envelopes. `partial` maturity fails the verified-only execution gate. |
+| CEQAnet maturity proposal | Yes | Yes | Yes | Artifact-only | Yes | No | Exact registry/execution/body/replay/inspection bindings produce only `keep_partial`; network, persistence, mutation, and recurring authority remain false. |
 | CEQAnet source evidence | Yes | N/A | Yes | File-backed | Yes | No | Browser review preserves official entry/search/detail/policy/CSV surfaces, workflow diagnostics, HTTP 403, robots uncertainty, and no-bypass limitations. |
 | Universal intake | Yes | Yes | Yes | Partial | Yes | No | Source breadth remains limited. |
 | Opportunity transition intake | Yes | Yes | Yes | Partial | Yes | No | Candidate production is not outreach. |
@@ -110,7 +112,7 @@ These are intentionally absent capabilities, not defects in the currently suppor
 | ID | Planned capability | Current guard | Entry condition |
 |---|---|---|---|
 | CS-PLAN-001 | Optional preview archives and nested child tables | Core persisted records remain lossless; report/config layers are explicitly ephemeral. | Add only when replay or query requirements justify schema expansion. |
-| CS-PLAN-002 | Verified recurring live source adapters | CEQAnet is `partial`, one HTTP 200 CSV proof is committed, and the exact body has a verified Windows-1252 replay. HTML automation remains blocked by HTTP 403; no attempt ledger or scheduler exists. | Review a separate controlled source-maturity proposal binding the original execution and replay digests while preserving surface-specific limitations. |
+| CS-PLAN-002 | Verified recurring live source adapters | CEQAnet is `partial`; digest-bound proposal tooling now evaluates the exact proof and replay while preserving a mandatory `keep_partial` decision. HTML automation remains blocked by HTTP 403; no attempt ledger or scheduler exists. | Approve a separate bounded official-CSV access policy and collect a governed multi-run evidence series before promotion. |
 | CS-PLAN-003 | CRS transformation, projection-aware/geodesic calculations, and topology repair | Incompatible CRS is preserved and refused; no survey-grade conclusion is emitted. | Pin a GIS stack and define transformation provenance, axis order, grid behavior, accuracy, failure, and repair doctrine. |
 | CS-PLAN-004 | Domain-specific upstream correction actions | Generic mutation is unavailable. | Define record-family-specific stale-state, correction, supersession, provenance, and audit behavior. |
 | CS-PLAN-005 | Workflow reopen/override | Final states have no outgoing transitions. | Define explicit authority, reason, stale-state, and append-only event rules. |
@@ -124,6 +126,7 @@ These are intentionally absent capabilities, not defects in the currently suppor
 | Canonical source records | One CEQAnet record is `partial`; three records remain unverified. |
 | Readiness/audit/checklist evidence | Report/file-backed workflows exist; CEQAnet has a committed browser-review evidence packet. |
 | Official CSV contract | Deterministic planning, one no-retry HTTP 200 proof, and a verified Windows-1252 offline replay of the exact retained body exist. |
+| Source-maturity proposal | Offline digest-bound build/verify commands preserve `keep_partial` and cannot authorize registry mutation or recurring execution. |
 | Promotion/update planning | Deterministic dry-run plans and approval digests exist. |
 | Controlled registry apply | Evidence-gated status-only apply exists. |
 | Verified usable source | Zero in the canonical registry. |
@@ -166,6 +169,7 @@ Persistence is valid only when mapping is deliberate and preserves reasons, conf
 | CEQAnet official CSV contract | `plan`, `inspect-file`, `execute-live`, and `verify-execution` expose offline planning/inspection, one explicit proof GET, and offline verification. |
 | CEQAnet fixture-to-archive tooling | Present and guarded. |
 | CEQAnet recurring-run artifacts and attempts | Definition, manifest, execute, and digest-aware verify commands exist; `partial` source maturity remains blocked. |
+| CEQAnet maturity proposal | Offline build/verify commands bind current evidence and emit only a non-authorizing `keep_partial` proposal. |
 | Upstream records | Full-payload list/detail only. |
 | Lead records | Consolidated list/detail plus governed workflow transitions. |
 | Result authority | Validated current/history plus explicit exact-state record/correction. |
@@ -183,6 +187,7 @@ Where applicable, the architecture must preserve:
 - lawful-access, browser-versus-automation, policy-review, and source-maturity boundaries;
 - exact CSV request/final URL identity, status, headers, complete response bytes, body length/hash, media type, encoding, canonical roles, unknown columns, row counts, truncation, retained rows, inspection digest, retry count, and live execution digest;
 - source registry/checklist digests, recurring-run definition/manifest/execution identities, exact windows, attempt identity, complete retained execution-envelope digest, and stale-evidence findings;
+- maturity-proposal registry, live execution, response body, replay, inspection, decision, blocker, and authority bindings;
 - HTTP access failures, robots uncertainty, no-bypass decisions, and official export-surface observations;
 - unknown and unmapped fields;
 - raw geometry, format, embedded/supplied CRS, conflicts, coordinate bounds, topology method, rings, holes, validity limitations, centroid limitations, fallback reasons, and non-survey-grade boundaries;
