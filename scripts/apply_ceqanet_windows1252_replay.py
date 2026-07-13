@@ -163,7 +163,7 @@ Replayed at: `{replay.replayed_at.isoformat()}`
 - Rows: `{inspection.row_count}`
 - Retained rows: `{inspection.retained_row_count}`
 - Rows truncated: `{str(inspection.rows_truncated).lower()}`
-- Normalized headers: `{json.dumps(inspection.normalized_headers)}`
+- Normalized headers: `{json.dumps([column.normalized_name for column in inspection.columns])}`
 - Unknown columns: `{json.dumps(inspection.unknown_columns)}`
 - Inspection digest: `{inspection.inspection_digest}`
 - Replay digest: `{replay.replay_digest}`
