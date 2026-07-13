@@ -14,6 +14,7 @@ on:
       - src/constructionsight/ceqanet_csv_service.py
       - src/constructionsight/ceqanet_csv_replay_models.py
       - src/constructionsight/ceqanet_csv_replay_service.py
+      - tests/test_ceqanet_csv_contract.py
       - tests/test_ceqanet_csv_windows1252_replay.py
 
 permissions:
