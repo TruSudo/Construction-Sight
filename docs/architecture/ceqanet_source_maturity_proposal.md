@@ -22,6 +22,12 @@ The current canonical evidence is:
 - `evidence/source_verification/ceqanet_csv_windows1252_replay_2026-07-12.json`; and
 - `evidence/source_verification/ceqanet_csv_windows1252_replay_verification_2026-07-12.json`.
 
+The canonical outputs are:
+
+- `evidence/source_verification/ceqanet_source_maturity_proposal_2026-07-13.json`;
+- `evidence/source_verification/ceqanet_source_maturity_proposal_verification_2026-07-13.json`; and
+- `docs/audits/ceqanet_source_maturity_proposal_2026-07-13.md`.
+
 ## Decision boundary
 
 A valid proposal records that one official CSV response returned HTTP 200 and that the exact retained body independently replays as Windows-1252. It also preserves all current blockers:
