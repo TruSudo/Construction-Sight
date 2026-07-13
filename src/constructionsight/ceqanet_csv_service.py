@@ -8,7 +8,7 @@ import io
 import re
 from collections import Counter
 from collections.abc import Iterable
-from typing import Any
+from typing import Any, Literal
 from urllib.parse import parse_qsl, urlencode, urlparse
 
 from constructionsight.ceqanet_csv_models import (
@@ -173,10 +173,7 @@ def inspect_ceqanet_csv_bytes(
     if max_retained_rows < 0:
         raise ValueError("max_retained_rows cannot be negative")
     normalized_content_type = _validate_content_type(content_type)
-    try:
-        text = content.decode("utf-8-sig")
-    except UnicodeDecodeError as exc:
-        raise ValueError("CEQAnet CSV body must use UTF-8 or UTF-8 with BOM") from exc
+    text, encoding = _decode_csv_body(content)
     if "\x00" in text:
         raise ValueError("CEQAnet CSV body contains a NUL character")
 
@@ -232,9 +229,14 @@ def inspect_ceqanet_csv_bytes(
         warnings.append("content type was not supplied; body validation is CSV-only")
     if unknown_columns:
         warnings.append("unknown columns are preserved without inferred meaning")
+    if encoding == "windows-1252":
+        warnings.append(
+            "source body decoded as Windows-1252 after strict UTF-8 failure"
+        )
     payload: dict[str, Any] = {
         "request": request,
         "content_type": normalized_content_type,
+        "encoding": encoding,
         "byte_length": len(content),
         "body_sha256": hashlib.sha256(content).hexdigest(),
         "column_count": len(columns),
@@ -253,6 +255,21 @@ def inspect_ceqanet_csv_bytes(
     )
     inspection.assert_integrity()
     return inspection
+
+
+def _decode_csv_body(
+    content: bytes,
+) -> tuple[str, Literal["utf-8-sig", "windows-1252"]]:
+    try:
+        return content.decode("utf-8-sig"), "utf-8-sig"
+    except UnicodeDecodeError:
+        pass
+    try:
+        return content.decode("windows-1252"), "windows-1252"
+    except UnicodeDecodeError as exc:
+        raise ValueError(
+            "CEQAnet CSV body must use UTF-8, UTF-8 with BOM, or Windows-1252"
+        ) from exc
 
 
 def _validate_sch_number(value: str) -> None:
