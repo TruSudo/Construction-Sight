@@ -23,7 +23,7 @@ The canonical source registry currently contains:
 
 CEQAnet is classified `partial` because its official entry, advanced search, result-list, project-summary, document-detail, policy, and CSV-export surfaces were reviewed and recorded. Bounded automated HTML collection later received HTTP 403. No bypass was attempted. The existing recurring-run service remains verified-only, so `partial` status does not authorize live recurring execution.
 
-ConstructionSight has an official CSV contract that plans exact project/document export URLs, validates already-obtained CSV bytes, and performs one explicitly authorized bounded GET with no retry. The original HTTP 200 proof failed under the former UTF-8-only parser and remains preserved. An offline replay of the exact retained body now passes as Windows-1252 with 2 source rows and an independently verified replay digest. Source maturity remains `partial`; promotion remains a separate controlled decision supported only by reviewed evidence.
+ConstructionSight has an official CSV contract that plans exact project/document export URLs, validates already-obtained CSV bytes, and performs one explicitly authorized bounded GET with no retry. The original HTTP 200 proof failed under the former UTF-8-only parser and remains preserved. An offline replay of the exact retained body now passes as Windows-1252 with 2 source rows and an independently verified replay digest. A digest-bound maturity proposal independently verifies that evidence and records `keep_partial`; it does not authorize promotion or recurring execution.
 
 See:
 
@@ -37,6 +37,10 @@ See:
 - `evidence/source_verification/ceqanet_csv_windows1252_replay_2026-07-12.json`
 - `evidence/source_verification/ceqanet_csv_windows1252_replay_verification_2026-07-12.json`
 - `docs/audits/ceqanet_csv_windows1252_replay_2026-07-12.md`
+- `evidence/source_verification/ceqanet_source_maturity_proposal_2026-07-13.json`
+- `evidence/source_verification/ceqanet_source_maturity_proposal_verification_2026-07-13.json`
+- `docs/audits/ceqanet_source_maturity_proposal_2026-07-13.md`
+- `docs/architecture/ceqanet_source_maturity_proposal.md`
 - `docs/architecture/current_implementation_status.md`
 - `docs/audits/full_repo_audit_inventory.md`
 
@@ -120,6 +124,7 @@ Planning, local inspection, and execution verification are offline. Live proof r
 - One-request CEQAnet CSV live-proof execution with explicit authorization and no retries
 - Strict UTF-8-first and explicit Windows-1252 fallback for source-provided CSV
 - Offline encoding replay linked to the original execution digest and body hash
+- Digest-bound, report-only CEQAnet maturity proposals with a fixed `keep_partial` decision
 - Complete response-byte, URL, status, header, body-hash, and inspection evidence
 - Independent offline verification of the retained live execution envelope
 - Preservation of original, normalized, canonical-role, and unknown CSV columns
@@ -177,6 +182,7 @@ constructionsight-source-registry-plan
 constructionsight-source-registry-apply
 constructionsight-ceqanet-recurring-run
 constructionsight-ceqanet-csv
+constructionsight-ceqanet-maturity
 constructionsight-upstream
 constructionsight-leads
 constructionsight-results
@@ -211,6 +217,7 @@ No external communication behavior is implied by the existing models or CLI.
 - CEQAnet is `partial`, not `verified`; automated HTML collection received HTTP 403.
 - The original UTF-8 inspection failure remains preserved; the derived Windows-1252 replay passes against the same retained body hash without a second request.
 - One point-in-time CSV success and offline replay do not establish recurring availability, completeness, or broader source coverage.
+- The maturity-proposal workflow binds that evidence but cannot promote the registry or authorize recurring execution.
 - The other three canonical sources remain unverified.
 - Verified usable source coverage remains zero.
 - Most adapter families remain contract-level.

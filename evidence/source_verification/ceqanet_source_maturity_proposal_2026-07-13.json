@@ -1,0 +1,37 @@
+{
+  "blockers": [
+    "one point-in-time response does not establish recurring availability",
+    "retained evidence does not authorize recurring automated access",
+    "the canonical source registry status remains partial"
+  ],
+  "decision": "keep_partial",
+  "generated_at": "2026-07-13T20:24:17.854800Z",
+  "inspection_digest": "e6888864835947ef758b22b5c3f8533fafa848a310e9b54acc94fd45fd5add07",
+  "limitations": [
+    "this proposal is offline, report-only, and does not mutate the registry",
+    "the HTML automated-access barrier remains outside the CSV proof",
+    "no scheduler, cadence, retry policy, or recurring success series is established"
+  ],
+  "live_execution_digest": "9a861dcee42092eb6f2d8f5c86673f4aca4c75cd0d42beddaa930cc093221a95",
+  "network_executed": false,
+  "next_gate": "review a separate bounded CSV recurring-access policy and collect a governed multi-run evidence series before any source promotion",
+  "observed_encoding": "windows-1252",
+  "observed_row_count": 2,
+  "observed_status_code": 200,
+  "persistence_mutated": false,
+  "proposal_digest": "3a8069a5dd72a921f1e4324347d00d3c5a8ee8f7100676bdff3a702d6a424088",
+  "reasons": [
+    "one retained official CSV response returned HTTP 200",
+    "the exact retained response independently replays as Windows-1252",
+    "execution, body, inspection, and replay digests are bound"
+  ],
+  "recurring_execution_authorized": false,
+  "registry_mutation_authorized": false,
+  "registry_status": "partial",
+  "replay_digest": "49d3aaf3357f448252ab8133e83bdfdb65175b0fe4646babfc0cc10af27f9b60",
+  "replay_verification_passed": true,
+  "schema_version": "ceqanet_source_maturity_proposal.v1",
+  "source_body_sha256": "5b1bc503c81d12ed0f00e52539edb437b42ae4c3a539a25e1c82a02b84273163",
+  "source_name": "CEQAnet State Clearinghouse",
+  "source_registry_digest": "a5353548592c4dd55498409139983c7eef38766ef476c17fcd72829fb68da30e"
+}
