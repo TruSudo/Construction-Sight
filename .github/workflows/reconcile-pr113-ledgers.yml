@@ -1,0 +1,117 @@
+name: Reconcile PR113 ledgers
+
+on:
+  push:
+    branches:
+      - agent/implement-arcgis-complete-rehearsal-executor
+
+permissions:
+  contents: write
+
+concurrency:
+  group: reconcile-pr113-ledgers
+  cancel-in-progress: false
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out phase branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/implement-arcgis-complete-rehearsal-executor
+          fetch-depth: 0
+
+      - name: Reconcile README and audit inventory
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_line(path: Path, needle: str, replacement: str) -> None:
+              lines = path.read_text(encoding="utf-8").splitlines()
+              matches = [index for index, line in enumerate(lines) if needle in line]
+              if len(matches) != 1:
+                  raise SystemExit(
+                      f"expected one line containing {needle!r} in {path}, found {len(matches)}"
+                  )
+              lines[matches[0]] = replacement
+              path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+          def insert_after(path: Path, needle: str, addition: str, guard: str) -> None:
+              text = path.read_text(encoding="utf-8")
+              if guard in text:
+                  return
+              lines = text.splitlines()
+              matches = [index for index, line in enumerate(lines) if needle in line]
+              if len(matches) != 1:
+                  raise SystemExit(
+                      f"expected one insertion line containing {needle!r} in {path}, found {len(matches)}"
+                  )
+              lines.insert(matches[0] + 1, addition)
+              path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+          readme = Path("README.md")
+          replace_line(
+              readme,
+              "Structured bulk-rehearsal page, checkpoint, resume, and retry evidence",
+              "- Structured bulk-rehearsal page, checkpoint, resume, and retry evidence that prevents boolean-only proof claims\n"
+              "- Governed complete-rehearsal executor with exact count/page response retention, durable checkpoint reload, resumed-segment fault injection, bounded retry, and count reconciliation",
+          )
+          replace_line(
+              readme,
+              "The parcel-source verification layer binds the official San Bernardino",
+              "The parcel-source verification layer binds the official San Bernardino and Riverside public parcel endpoints and observed schemas to immutable evidence, proposition-specific authority, source-scope county/state constants, and an explicit county coverage-gap report. The additive ArcGIS acquisition layer binds exact capability metadata, safe four-request probe plans, executed observations, complete-rehearsal manifests, and explicit maturity assessments. It now also includes a reusable read-only complete-rehearsal executor that retains exact starting-count, page, and ending-count response bytes, atomically records digest receipts, proves checkpoint save/reload, injects a bounded transient failure only after resume, and enforces global object-ID uniqueness and count stability. The executor is tested offline only; no live county complete rehearsal has been performed. A successful bounded command produces a portable proof bundle that can be independently verified offline and persisted only with an exact expected identity plus explicit authorization; all bundle, receipt, and rehearsal paths remain incapable of bulk authorization. Canonical 2026-07-14 evidence records both official sources as `bounded_query_verified`: San Bernardino reported 839,794 records and Riverside reported 846,251 records, and each exact four-observation bundle independently verifies and passed exact-ID transactional persistence. Neither source is import-ready, bulk-rehearsal-verified, profile-promoted, or bulk-authorized.",
+          )
+
+          audit = Path("docs/audits/full_repo_audit_inventory.md")
+          replace_line(
+              audit,
+              "| Parcel ArcGIS acquisition gates | Yes | Yes | Yes | Yes |",
+              "| Parcel ArcGIS acquisition gates | Yes | Yes | Yes | Yes | Read-only plus explicit bounded probe and guarded proof persistence | Bounded on demand | Retained 2026-07-14 bundles place both county sources at `bounded_query_verified`. A reusable read-only complete-rehearsal executor now retains exact count/page response bytes, atomically records artifact receipts, proves checkpoint reload, injects a bounded resumed-segment retry, and enforces count/order reconciliation. No live county rehearsal, bulk run, or automatic profile promotion is authorized. |",
+          )
+          insert_after(
+              audit,
+              "| CS-AUDIT-028 |",
+              "| CS-AUDIT-029 | P1 | ArcGIS rehearsal response retention | A complete-rehearsal executor could derive response digests from parsed mappings without preserving the exact successful count and page bodies required to substantiate those digests independently. | Count/page response envelopes now retain exact bytes; digest-addressed atomic artifacts cover both counts and every successful page; contiguous receipts are required; and page artifact digests must equal the manifest proof. |",
+              "CS-AUDIT-029",
+          )
+          replace_line(
+              audit,
+              "| CS-PLAN-008 |",
+              "| CS-PLAN-008 | Countywide parcel evidence ingestion | Exact metadata, retained bounded proofs, offline verification, exact-ID persistence receipts, and a reusable exact-response complete-rehearsal executor exist. Both sources remain `bounded_query_verified`; no live county rehearsal or downstream county import has occurred. | Bind the official HTTP transport to the exact response envelopes; execute and independently verify a retained checkpoint/retry/count-reconciled rehearsal separately for each county; then review profile promotion and recurring observation orchestration as later authorized phases. |",
+          )
+          insert_after(
+              audit,
+              "| County parcel ArcGIS bounded proof |",
+              "| County parcel ArcGIS rehearsal executor | Reusable offline executor and filesystem proof stores retain exact starting-count, page, and ending-count bodies, durable checkpoint reload, resumed-segment retry, and count/order reconciliation; neither county has a live rehearsal artifact yet. |",
+              "County parcel ArcGIS rehearsal executor",
+          )
+          replace_line(
+              audit,
+              "| Parcel ArcGIS acquisition gates | Six additive tables",
+              "| Parcel ArcGIS acquisition gates | Six additive tables preserve capability snapshots, bounded plans, one immutable observation per request, complete-rehearsal manifests, assessments, and self-contained bounded proof bundles with dependency-ordered writes and typed digest revalidation. Bulk manifests embed structured page, checkpoint, resume, and retry evidence. The reusable rehearsal executor additionally uses atomic filesystem stores for exact count/page response bytes and checkpoint reload proof; these are offline proof stores, not operational county data or scheduler state. Canonical bounded bundles, verification reports, and persistence receipts remain committed for both counties. |",
+          )
+          replace_line(
+              audit,
+              "| Parcel ArcGIS acquisition | Static capability",
+              "| Parcel ArcGIS acquisition | Static capability/plan/readiness commands, an explicit bounded live probe, offline bundle verification, exact-identity persistence, six read-only upstream record kinds, and storage summaries are present. A reusable offline complete-rehearsal executor now retains exact response artifacts and checkpoint/retry/count-order proof. No live county rehearsal command, profile-promotion command, complete county import, or recurring acquisition exists. |",
+          )
+          replace_line(
+              audit,
+              "- ArcGIS metadata projection and schema digests",
+              "- ArcGIS metadata projection and schema digests, object-ID uniqueness, query primitives, safe request identity, exact bounded-response digests, count/page/replay sequence, exact complete-rehearsal count and page response bytes, artifact receipts and references, count reconciliation, duplicate and failed-page counts, checkpoint save/reload and retry proof, terminal-page evidence, object-ID-set digest, acquisition status, and explicit gaps;",
+          )
+          PY
+
+      - name: Remove temporary machinery and publish ledgers
+        run: |
+          rm .github/workflows/reconcile-pr113-ledgers.yml
+          rm docs/audits/pr113_ledger_trigger.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "Reconcile ArcGIS rehearsal executor ledgers"
+          git push origin HEAD:agent/implement-arcgis-complete-rehearsal-executor
