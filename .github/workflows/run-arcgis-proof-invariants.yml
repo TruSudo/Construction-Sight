@@ -37,47 +37,199 @@ jobs:
           python -m pip install -e ".[dev]"
           python -m pip check
 
-      - name: Execute canonical invariant patch
+      - name: Execute structural invariant patch
         run: |
           python - <<'PY'
           from pathlib import Path
 
-          workflow = Path(".github/workflows/harden-arcgis-proof-invariants.yml")
-          lines = workflow.read_text(encoding="utf-8").splitlines()
-          step = lines.index("      - name: Enforce complete retry and timeline proof")
-          run_line = next(
-              index
-              for index in range(step + 1, len(lines))
-              if lines[index] == "        run: |"
+          def replace_once(path: Path, old: str, new: str) -> None:
+              text = path.read_text(encoding="utf-8")
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(
+                      f"expected one replacement in {path}, found {count}: {old[:100]!r}"
+                  )
+              path.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+          bulk = Path("src/constructionsight/parcel_source_bulk_rehearsal_models.py")
+          checkpoint_marker = (
+              '            raise ValueError("ArcGIS checkpoint object-ID digest '
+              'does not match its prefix")\n'
           )
-          end = next(
-              index
-              for index in range(run_line + 1, len(lines))
-              if lines[index].startswith("      - name:")
+          checkpoint_addition = (
+              checkpoint_marker
+              + '        if completed_pages[-1].observed_at > checkpoint.created_at:\n'
+              + '            raise ValueError(\n'
+              + '                "ArcGIS checkpoint cannot precede its completed page prefix"\n'
+              + '            )\n'
           )
-          script = "\n".join(
-              line[10:] if line.startswith("          ") else line
-              for line in lines[run_line + 1 : end]
+          replace_once(bulk, checkpoint_marker, checkpoint_addition)
+
+          bulk_text = bulk.read_text(encoding="utf-8")
+          retry_start = bulk_text.index(
+              "        if self.resume.resumed_at < checkpoint.created_at:\n"
           )
-          Path("/tmp/harden-arcgis-proof-invariants.sh").write_text(
-              script + "\n",
+          retry_end = bulk_text.index(
+              '        payload = self.model_dump(mode="json", exclude={"evidence_id"})\n',
+              retry_start,
+          )
+          retry_block = '''        if self.resume.resumed_at < checkpoint.created_at:
+            raise ValueError("ArcGIS resume cannot precede checkpoint creation")
+        if first_resumed_page.observed_at < self.resume.resumed_at:
+            raise ValueError("ArcGIS resumed page cannot precede the resume event")
+
+        retry_page_ids = tuple(event.page_evidence_id for event in self.retry_events)
+        expected_retry_page_ids = tuple(
+            sorted(
+                page.page_evidence_id
+                for page in pages
+                if page.attempt_count > 1
+            )
+        )
+        if retry_page_ids != expected_retry_page_ids:
+            raise ValueError(
+                "ArcGIS retry evidence must cover every and only retried page"
+            )
+        pages_by_id = {page.page_evidence_id: page for page in pages}
+        for event in self.retry_events:
+            page = pages_by_id.get(event.page_evidence_id)
+            if page is None:
+                raise ValueError("ArcGIS retry evidence references an unknown page")
+            if page.attempt_count != event.recovered_attempt_number:
+                raise ValueError("ArcGIS retry attempts do not match page evidence")
+            if page.response_digest != event.recovered_response_digest:
+                raise ValueError("ArcGIS retry response digest does not match recovered page")
+            if event.recorded_at > page.observed_at:
+                raise ValueError("ArcGIS retry record cannot follow its recovered page")
+
+        latest_evidence_time = max(
+            self.resume.resumed_at,
+            checkpoint.created_at,
+            *(page.observed_at for page in pages),
+            *(event.recorded_at for event in self.retry_events),
+        )
+        if self.created_at < latest_evidence_time:
+            raise ValueError("ArcGIS rehearsal evidence cannot predate its proof records")
+
+'''
+          bulk.write_text(
+              bulk_text[:retry_start] + retry_block + bulk_text[retry_end:],
               encoding="utf-8",
           )
+
+          checkpoint_count_marker = '''    if retry_page_index < 0 or retry_page_index >= page_count:
+        raise ValueError("ArcGIS retry page index is outside the rehearsal")
+'''
+          checkpoint_count_addition = checkpoint_count_marker + '''    if not 1 <= checkpoint_completed_page_count < page_count:
+        raise ValueError(
+            "ArcGIS checkpoint completed page count must precede a resumed page"
+        )
+'''
+          replace_once(bulk, checkpoint_count_marker, checkpoint_count_addition)
+
+          manifest = Path("src/constructionsight/parcel_source_acquisition_models.py")
+          replace_once(
+              manifest,
+              '''        evidence = self.rehearsal_evidence
+        if (
+''',
+              '''        evidence = self.rehearsal_evidence
+        evidence_times = (
+            evidence.created_at,
+            evidence.checkpoint.created_at,
+            evidence.resume.resumed_at,
+            *(page.observed_at for page in evidence.page_evidence),
+            *(event.recorded_at for event in evidence.retry_events),
+        )
+        if any(
+            timestamp < self.started_at or timestamp > self.completed_at
+            for timestamp in evidence_times
+        ):
+            raise ValueError(
+                "ArcGIS bulk rehearsal evidence falls outside the manifest execution window"
+            )
+        if (
+''',
+          )
+
+          tests = Path("tests/test_parcel_source_bulk_rehearsal_models.py")
+          tests_text = tests.read_text(encoding="utf-8")
+          if "test_rehearsal_evidence_requires_retry_coverage_for_each_retried_page" not in tests_text:
+              tests.write_text(
+                  tests_text
+                  + '''
+
+
+def test_rehearsal_evidence_requires_retry_coverage_for_each_retried_page() -> None:
+    _, evidence = _evidence()
+    payload = evidence.to_dict()
+    page_payload = payload["page_evidence"][2]
+    page_payload["attempt_count"] = 2
+    identity_payload = {
+        key: value
+        for key, value in page_payload.items()
+        if key != "page_evidence_id"
+    }
+    page_payload["page_evidence_id"] = digest_identity(
+        "parcel-arcgis-bulk-page-evidence",
+        identity_payload,
+    )
+
+    with pytest.raises(ValidationError, match="cover every and only retried page"):
+        ParcelArcGISBulkRehearsalEvidence.model_validate(payload)
+
+
+def test_rehearsal_evidence_rejects_impossible_retry_chronology() -> None:
+    _, evidence = _evidence()
+    payload = evidence.to_dict()
+    retry_payload = payload["retry_events"][0]
+    retry_payload["recorded_at"] = (
+        _OBSERVED_AT + timedelta(minutes=1)
+    ).isoformat()
+    identity_payload = {
+        key: value for key, value in retry_payload.items() if key != "retry_id"
+    }
+    retry_payload["retry_id"] = digest_identity(
+        "parcel-arcgis-bulk-retry",
+        identity_payload,
+    )
+
+    with pytest.raises(ValidationError, match="cannot follow its recovered page"):
+        ParcelArcGISBulkRehearsalEvidence.model_validate(payload)
+
+
+def test_manifest_binds_all_evidence_to_its_execution_window() -> None:
+    snapshot, evidence = _evidence()
+
+    with pytest.raises(ValidationError, match="outside the manifest execution window"):
+        build_arcgis_bulk_manifest(
+            snapshot,
+            started_at=_OBSERVED_AT + timedelta(seconds=1),
+            completed_at=_OBSERVED_AT + timedelta(minutes=4),
+            starting_count=6,
+            ending_count=6,
+            rehearsal_evidence=evidence,
+        )
+''',
+                  encoding="utf-8",
+              )
+
+          replace_once(
+              Path("docs/architecture/parcel_arcgis_acquisition.md"),
+              "The manifest can no longer rely on bare success booleans: it must embed a digest-bound `ParcelArcGISBulkRehearsalEvidence` chain containing ordered page IDs, normalized object-ID content, a retained checkpoint prefix, the exact first resumed page, and bounded retry recovery evidence. It requires:\n",
+              "The manifest can no longer rely on bare success booleans: it must embed a digest-bound `ParcelArcGISBulkRehearsalEvidence` chain containing ordered page IDs, normalized object-ID content, a retained checkpoint prefix, the exact first resumed page, complete retry coverage for every retried page, and proof timestamps contained within the manifest execution window. It requires:\n",
+          )
+          replace_once(
+              Path("docs/architecture/current_implementation_status.md"),
+              "Complete-rehearsal manifests now require structured page, checkpoint, resume, and retry evidence instead of unverified booleans.",
+              "Complete-rehearsal manifests now require structured page, checkpoint, resume, and complete retry evidence instead of unverified booleans, and every proof timestamp must fall within the manifest execution window.",
+          )
+          replace_once(
+              Path("docs/audits/full_repo_audit_inventory.md"),
+              "Structured digest-bound page, checkpoint, resume, and retry records are now mandatory; manifest summaries are derived from and revalidated against the complete embedded evidence chain.",
+              "Structured digest-bound page, checkpoint, resume, and retry records are now mandatory; every retried page requires a matching recovery record, all proof timestamps are bound to the manifest execution window, and manifest summaries are derived from and revalidated against the complete embedded evidence chain.",
+          )
           PY
-          set +e
-          bash /tmp/harden-arcgis-proof-invariants.sh > /tmp/arcgis-proof-invariant-patch.log 2>&1
-          status=$?
-          set -e
-          cat /tmp/arcgis-proof-invariant-patch.log
-          if [ "$status" -ne 0 ]; then
-            cp /tmp/arcgis-proof-invariant-patch.log docs/audits/arcgis_proof_invariant_patch_diagnostic.txt
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add docs/audits/arcgis_proof_invariant_patch_diagnostic.txt
-            git commit -m "Record ArcGIS invariant patch diagnostic" || true
-            git push origin HEAD:agent/harden-arcgis-bulk-rehearsal-proof
-            exit "$status"
-          fi
 
       - name: Remove temporary machinery and commit candidate
         run: |
