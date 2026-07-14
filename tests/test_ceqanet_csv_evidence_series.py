@@ -8,6 +8,9 @@ from typing import Any
 
 import pytest
 from pydantic import ValidationError
+from typer.testing import CliRunner
+
+from constructionsight.ceqanet_csv_evidence_series_cli import app
 
 from constructionsight.ceqanet_csv_access_policy_models import (
     CeqanetCsvAccessPolicy,
@@ -42,6 +45,7 @@ ROOT = Path(__file__).resolve().parents[1]
 EVIDENCE_DIR = ROOT / "evidence/source_verification"
 PROJECT_FIXTURE = ROOT / "tests/fixtures/ceqanet/project_export.csv"
 DOCUMENT_FIXTURE = ROOT / "tests/fixtures/ceqanet/document_export.csv"
+runner = CliRunner()
 
 
 def _load_json(path: Path) -> Any:
@@ -350,3 +354,89 @@ def test_evidence_models_reject_unknown_fields() -> None:
 
     with pytest.raises(ValidationError):
         CeqanetCsvEvidenceSeries.model_validate(payload)
+
+
+def _canonical_cli_inputs() -> list[str]:
+    return [
+        str(ROOT / "data/source_registry.seed.json"),
+        str(EVIDENCE_DIR / "ceqanet_csv_live_execution_2026-07-12.json"),
+        str(
+            EVIDENCE_DIR
+            / "ceqanet_csv_windows1252_replay_2026-07-12.json"
+        ),
+        str(
+            EVIDENCE_DIR
+            / "ceqanet_csv_windows1252_replay_verification_2026-07-12.json"
+        ),
+        str(
+            EVIDENCE_DIR
+            / "ceqanet_source_maturity_proposal_2026-07-13.json"
+        ),
+        str(
+            EVIDENCE_DIR
+            / "ceqanet_source_maturity_proposal_verification_2026-07-13.json"
+        ),
+        str(EVIDENCE_DIR / "ceqanet_csv_access_policy_2026-07-14.json"),
+        str(
+            EVIDENCE_DIR
+            / "ceqanet_csv_access_policy_verification_2026-07-14.json"
+        ),
+    ]
+
+
+def test_cli_builds_and_verifies_empty_series_offline(tmp_path: Path) -> None:
+    series_path = tmp_path / "series.json"
+    verification_path = tmp_path / "verification.json"
+    inputs = _canonical_cli_inputs()
+
+    build_result = runner.invoke(
+        app,
+        ["build", *inputs, "--output", str(series_path)],
+    )
+    assert build_result.exit_code == 0, build_result.output
+    assert _load_json(series_path)["status"] == "collecting"
+
+    verify_result = runner.invoke(
+        app,
+        [
+            "verify",
+            *inputs,
+            str(series_path),
+            "--output",
+            str(verification_path),
+        ],
+    )
+    assert verify_result.exit_code == 0, verify_result.output
+    assert _load_json(verification_path)["passed"] is True
+
+
+def test_cli_execute_refuses_missing_explicit_authorization(
+    tmp_path: Path,
+) -> None:
+    series_path = tmp_path / "series.json"
+    build_result = runner.invoke(
+        app,
+        [
+            "build",
+            *_canonical_cli_inputs(),
+            "--output",
+            str(series_path),
+        ],
+    )
+    assert build_result.exit_code == 0, build_result.output
+
+    result = runner.invoke(
+        app,
+        [
+            "execute",
+            *_canonical_cli_inputs(),
+            str(series_path),
+            "--sch-number",
+            "2026030377",
+            "--output",
+            str(tmp_path / "execution.json"),
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "explicit --execute-live authorization is required" in result.output
