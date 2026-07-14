@@ -105,6 +105,12 @@ A digest-bound `ParcelArcGISBulkRehearsalPlan` now binds the capability snapshot
 
 The adapter preserves successful response bytes unchanged and rejects redirects, endpoint changes, terminal statuses, unsupported media types, malformed or empty JSON, oversized bodies, unclassified service errors, page-size disagreement, offset misalignment, and out-of-plan attempts. Transport and explicitly configured HTTP or ArcGIS service failures are the only retry-eligible outcomes. The adapter is tested with mocked HTTP transports and has no live county command or authorization field. See `parcel_arcgis_rehearsal_http.md`.
 
+## Portable complete-rehearsal proof bundle
+
+A successful complete-rehearsal execution can now be converted into a self-contained `ParcelArcGISBulkRehearsalProofBundle`. The artifact embeds the exact starting-count, page, and ending-count bytes in canonical base64 together with each receipt's kind, contiguous sequence, SHA-256 digest, byte size, and safe portable file name. It also binds the capability snapshot, digest-bound HTTP plan, complete manifest, checkpoint-reload proof, limitations, and `bulk_run_authorized=false` into one immutable identity.
+
+Offline verification rebuilds the HTTP plan and manifest, reconstructs the hardened execution receipt contract, reparses every count and page body, compares every object-ID sequence and response digest to the structured manifest evidence, and rebuilds the bundle identity. Atomic save requires the exact expected bundle ID and accepts an existing path only as an identical independently verified replay. See `parcel_arcgis_rehearsal_proof_bundle.md`.
+
 ## Portable verification and explicit persistence
 
 A saved bundle can be checked without network or database access:
@@ -150,7 +156,7 @@ Six additive tables preserve the chain:
 
 Writes are dependency-ordered and immutable. Exact replays are idempotent; conflicting indexed fields, payload changes, missing parents, or a second observation for one request are rejected. One identical request may be shared by multiple bounded plans. Typed loads revalidate every digest and model invariant, and stored assessments are recomputed from their persisted snapshots, plans, observations, and optional manifests.
 
-The read-only upstream operator exposes all six record kinds with applicable source, county, and status filters. The parcel-source CLI exposes canonical metadata snapshots, bounded plans, current assessments, the explicit live bounded probe command, offline bundle verification, and explicitly authorized persistence. The storage-summary CLI reports each new table independently. The complete-rehearsal executor and exact-response HTTP adapter remain service/test boundaries until a separately authorized live proof phase exists.
+The read-only upstream operator exposes all six record kinds with applicable source, county, and status filters. The parcel-source CLI exposes canonical metadata snapshots, bounded plans, current assessments, the explicit live bounded probe command, offline bounded-bundle verification, and explicitly authorized persistence. The complete-rehearsal executor, HTTP adapter, and portable rehearsal proof bundle remain service/test boundaries until a separately authorized live proof phase exists.
 
 ## Current official boundary
 
@@ -161,7 +167,7 @@ The retained 2026-07-14 evidence records one refreshed metadata request and four
 | San Bernardino County parcel FeatureServer layer | 1,000 | 839,794 | `bounded_query_verified` | Live exact-response rehearsal execution and independent verification |
 | Riverside County Assessor MapServer layer | 2,000 | 846,251 | `bounded_query_verified` | Live exact-response rehearsal execution and independent verification |
 
-Both portable bundles independently recompute their metadata, plans, response digests, replay agreement, and assessments. Each exact bundle identity also passed transactional insert-or-exact-replay persistence against an ephemeral database. The reusable complete-rehearsal executor, exact-byte artifact store, digest-bound plan, and official HTTP adapter now exist and pass mocked end-to-end tests, but neither official county source has undergone that live rehearsal. Neither source is bulk-rehearsal-verified, profile-promoted, bulk-authorized, or import-ready.
+Both retained bounded-proof bundles independently recompute their metadata, plans, response digests, replay agreement, and assessments. Each exact bounded identity also passed transactional insert-or-exact-replay persistence against an ephemeral database. The complete-rehearsal executor, exact-byte artifact store, digest-bound HTTP plan/adapter, and portable independently verifiable rehearsal proof bundle now exist and pass deterministic offline tests, but neither official county source has undergone that live rehearsal. Neither source is bulk-rehearsal-verified, profile-promoted, bulk-authorized, or import-ready.
 
 The exact schema reconciliation also removes a stale synthetic `Shape` attribute from the San Bernardino profile and includes Riverside's observed `LAND` and `STRUCTURES` attributes. Geometry remains represented by the verification profile's explicit synthetic `geometry` role rather than an unobserved attribute name.
 
