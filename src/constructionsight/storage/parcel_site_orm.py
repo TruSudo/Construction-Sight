@@ -1,4 +1,4 @@
-"""ORM tables for parcel core and site-resolution records."""
+"""ORM tables for parcel core, longitudinal evidence, assurance, and resolution."""
 
 from __future__ import annotations
 
@@ -78,6 +78,92 @@ class ParcelCoreRecordRow(Base):
         nullable=False,
         default=utc_now,
         onupdate=utc_now,
+        server_default=func.now(),
+    )
+
+
+class ParcelRecordObservationRow(Base):
+    """Persisted append-only observation of one canonical parcel record."""
+
+    __tablename__ = "parcel_record_observations"
+    __table_args__ = (
+        UniqueConstraint("observation_id", name="uq_parcel_record_observations_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    observation_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    parcel_record_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    source_key: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    source_record_id: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+        index=True,
+    )
+    normalized_apn: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    county: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    source_effective_at: Mapped[str | None] = mapped_column(
+        String(64),
+        nullable=True,
+        index=True,
+    )
+    observed_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    record_digest: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    content_digest: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+        server_default=func.now(),
+    )
+
+
+class ParcelCurrentSelectionReportRow(Base):
+    """Persisted immutable report of governed parcel current selection."""
+
+    __tablename__ = "parcel_current_selection_reports"
+    __table_args__ = (
+        UniqueConstraint(
+            "selection_report_id",
+            name="uq_parcel_current_selection_reports_id",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    selection_report_id: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+        index=True,
+    )
+    normalized_apn: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    county: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    requires_human_review: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        index=True,
+    )
+    source_count: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    current_observation_count: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        index=True,
+    )
+    ambiguous_source_count: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        index=True,
+    )
+    observed_generated_at: Mapped[str] = mapped_column(
+        String(64),
+        nullable=False,
+        index=True,
+    )
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
         server_default=func.now(),
     )
 

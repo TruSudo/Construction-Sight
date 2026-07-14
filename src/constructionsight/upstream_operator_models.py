@@ -16,6 +16,8 @@ class UpstreamOperatorRecordKind(StrEnum):
     CONTRACTOR = "contractor"
     DECISION = "decision"
     PARCEL = "parcel"
+    PARCEL_OBSERVATION = "parcel_observation"
+    PARCEL_CURRENT_SELECTION = "parcel_current_selection"
     PARCEL_ASSURANCE = "parcel_assurance"
     SITE_RESOLUTION = "site_resolution"
 

@@ -2,7 +2,7 @@
 
 Parcel row preview validates candidate rows. The parcel core record layer creates the first canonical parcel object ConstructionSight can safely use for site matching and graph linkage.
 
-Field-level comparison of multiple current core records is documented in [parcel fact assurance](parcel_fact_assurance.md).
+Observation retention and current-record derivation are documented in [parcel longitudinal evidence](parcel_longitudinal_evidence.md). Field-level comparison of multiple current core records is documented in [parcel fact assurance](parcel_fact_assurance.md).
 
 ## Core rule
 
@@ -118,12 +118,16 @@ parcel source registry
   -> GeoJSON/WKT topology parsing
   -> topology-aware site resolver enrichment
 
-current parcel core records + explicit source contexts
+parcel core observations
+  -> immutable evidence retention
+  -> conservative current selection and explicit supersession
+
+governed current parcel core records + explicit source contexts
   -> field-level parcel claims
   -> dependency-aware assurance and conflict review
 ```
 
-Parcel assurance is additive. It consumes current canonical records but does not alter geometry normalization, topology, parcel identity, or site-resolution behavior.
+Parcel longitudinal evidence and assurance are additive. They retain and select canonical records without altering geometry normalization, topology, parcel identity, or site-resolution behavior.
 
 ## Next phase
 

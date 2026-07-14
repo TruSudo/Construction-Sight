@@ -17,6 +17,8 @@ from constructionsight.storage.movement_identity_orm import (
 from constructionsight.storage.parcel_site_orm import (
     ParcelAssuranceReportRow,
     ParcelCoreRecordRow,
+    ParcelCurrentSelectionReportRow,
+    ParcelRecordObservationRow,
     SiteResolutionResultRow,
 )
 from constructionsight.upstream_operator_models import (
@@ -42,6 +44,12 @@ _FILTER_SUPPORT: dict[UpstreamOperatorRecordKind, frozenset[str]] = {
     ),
     UpstreamOperatorRecordKind.PARCEL: frozenset(
         {"source_key", "source_record_id", "apn", "county"}
+    ),
+    UpstreamOperatorRecordKind.PARCEL_OBSERVATION: frozenset(
+        {"source_key", "source_record_id", "apn", "county"}
+    ),
+    UpstreamOperatorRecordKind.PARCEL_CURRENT_SELECTION: frozenset(
+        {"status", "apn", "county"}
     ),
     UpstreamOperatorRecordKind.PARCEL_ASSURANCE: frozenset(
         {"status", "apn", "county"}
@@ -180,6 +188,58 @@ def list_upstream_operator_records(
         ).scalars()
         return [_parcel_record(parcel_row) for parcel_row in parcel_rows]
 
+    if record_kind == UpstreamOperatorRecordKind.PARCEL_OBSERVATION:
+        observation_statement = select(ParcelRecordObservationRow)
+        if source_key is not None:
+            observation_statement = observation_statement.where(
+                ParcelRecordObservationRow.source_key == source_key
+            )
+        if source_record_id is not None:
+            observation_statement = observation_statement.where(
+                ParcelRecordObservationRow.source_record_id == source_record_id
+            )
+        if apn is not None:
+            observation_statement = observation_statement.where(
+                ParcelRecordObservationRow.normalized_apn == apn
+            )
+        if county is not None:
+            observation_statement = observation_statement.where(
+                ParcelRecordObservationRow.county == county
+            )
+        observation_rows = session.execute(
+            observation_statement.order_by(ParcelRecordObservationRow.id.desc()).limit(
+                limit
+            )
+        ).scalars()
+        return [
+            _parcel_observation_record(observation_row)
+            for observation_row in observation_rows
+        ]
+
+    if record_kind == UpstreamOperatorRecordKind.PARCEL_CURRENT_SELECTION:
+        selection_statement = select(ParcelCurrentSelectionReportRow)
+        if status is not None:
+            selection_statement = selection_statement.where(
+                ParcelCurrentSelectionReportRow.status == status
+            )
+        if apn is not None:
+            selection_statement = selection_statement.where(
+                ParcelCurrentSelectionReportRow.normalized_apn == apn
+            )
+        if county is not None:
+            selection_statement = selection_statement.where(
+                ParcelCurrentSelectionReportRow.county == county
+            )
+        selection_rows = session.execute(
+            selection_statement.order_by(
+                ParcelCurrentSelectionReportRow.id.desc()
+            ).limit(limit)
+        ).scalars()
+        return [
+            _parcel_current_selection_record(selection_row)
+            for selection_row in selection_rows
+        ]
+
     if record_kind == UpstreamOperatorRecordKind.PARCEL_ASSURANCE:
         assurance_statement = select(ParcelAssuranceReportRow)
         if status is not None:
@@ -274,6 +334,28 @@ def get_upstream_operator_record(
             )
         ).scalar_one_or_none()
         return None if parcel_row is None else _parcel_record(parcel_row)
+    if record_kind == UpstreamOperatorRecordKind.PARCEL_OBSERVATION:
+        observation_row = session.execute(
+            select(ParcelRecordObservationRow).where(
+                ParcelRecordObservationRow.observation_id == record_id
+            )
+        ).scalar_one_or_none()
+        return (
+            None
+            if observation_row is None
+            else _parcel_observation_record(observation_row)
+        )
+    if record_kind == UpstreamOperatorRecordKind.PARCEL_CURRENT_SELECTION:
+        selection_row = session.execute(
+            select(ParcelCurrentSelectionReportRow).where(
+                ParcelCurrentSelectionReportRow.selection_report_id == record_id
+            )
+        ).scalar_one_or_none()
+        return (
+            None
+            if selection_row is None
+            else _parcel_current_selection_record(selection_row)
+        )
     if record_kind == UpstreamOperatorRecordKind.PARCEL_ASSURANCE:
         assurance_row = session.execute(
             select(ParcelAssuranceReportRow).where(
@@ -412,6 +494,43 @@ def _parcel_record(row: ParcelCoreRecordRow) -> UpstreamOperatorRecord:
             row.payload_json,
             UpstreamOperatorRecordKind.PARCEL,
             row.parcel_record_id,
+        ),
+    )
+
+
+def _parcel_observation_record(
+    row: ParcelRecordObservationRow,
+) -> UpstreamOperatorRecord:
+    return UpstreamOperatorRecord(
+        record_kind=UpstreamOperatorRecordKind.PARCEL_OBSERVATION,
+        record_id=row.observation_id,
+        source_key=row.source_key,
+        source_record_id=row.source_record_id,
+        apn=row.normalized_apn,
+        county=row.county,
+        observed_at=row.observed_at,
+        payload=_payload(
+            row.payload_json,
+            UpstreamOperatorRecordKind.PARCEL_OBSERVATION,
+            row.observation_id,
+        ),
+    )
+
+
+def _parcel_current_selection_record(
+    row: ParcelCurrentSelectionReportRow,
+) -> UpstreamOperatorRecord:
+    return UpstreamOperatorRecord(
+        record_kind=UpstreamOperatorRecordKind.PARCEL_CURRENT_SELECTION,
+        record_id=row.selection_report_id,
+        status=row.status,
+        apn=row.normalized_apn,
+        county=row.county,
+        observed_at=row.observed_generated_at,
+        payload=_payload(
+            row.payload_json,
+            UpstreamOperatorRecordKind.PARCEL_CURRENT_SELECTION,
+            row.selection_report_id,
         ),
     )
 

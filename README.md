@@ -82,6 +82,7 @@ lawful public-record intake
   -> readiness, audit, checklist, plan, and controlled apply
   -> source-neutral normalization
   -> parcel/site identity and topology reasoning
+  -> append-only parcel observations and governed current selection
   -> field-level parcel claim assurance
   -> permit transition, contractor, and public-decision signals
   -> opportunity enrichment
@@ -170,6 +171,9 @@ explicitly authorized execute command is network-capable.
 - Source-plane area-weighted centroids
 - Conservative CRS conflict and incompatibility handling
 - Parcel-backed site resolution
+- Immutable parcel observations with complete and content SHA-256 identities
+- Source-effective/observed-time current selection with explicit supersession
+- Assurance withholding for mixed-time or same-time-content ambiguity
 - Field-level parcel claims with explicit authority and source-dependency lineage
 - Explainable agreement, corroboration, conflict, and missing-evidence outcomes
 - Permit snapshots and transition detection
@@ -181,6 +185,7 @@ explicitly authorized execute command is network-capable.
 ### Workflow and persistence
 
 - Dedicated ORM/store coverage for core upstream and post-enrichment records
+- Append-only parcel-observation and immutable current-selection persistence
 - Additive parcel-assurance report persistence with complete claim payloads
 - Read-only upstream list/detail inspection
 - Matrix-constrained lead workflow transitions
@@ -233,7 +238,9 @@ Parcel identity is the land anchor for project convergence.
 
 The current geometry layer recognizes supported GeoJSON and WKT/EWKT Point, Polygon, and MultiPolygon input. It preserves rings, holes, parts, raw geometry, hashes, supplied or embedded CRS, conflicts, bounds, centroid limitations, and fallback reasons.
 
-The parcel-assurance layer consumes existing current parcel records without modifying them. It preserves field-level source claims, dependency lineage, proposition-specific authority, timestamps, conflicts, missing evidence, and limitations. Multiple publications of one upstream dataset do not count as independent corroboration, and no opaque global truth score is emitted.
+The longitudinal parcel layer wraps complete canonical records in immutable digest-bound observations. It selects current evidence per source using source-effective time only when that clock is complete, falls back to observation time only when source-effective time is entirely absent, records supersession explicitly, and withholds assurance when time bases or leading content are ambiguous.
+
+The parcel-assurance layer consumes either a caller-supplied governed current set or the output of longitudinal selection without modifying canonical records. It preserves field-level source claims, dependency lineage, proposition-specific authority, timestamps, conflicts, missing evidence, and limitations. Multiple publications of one upstream dataset do not count as independent corroboration, and no opaque global truth score is emitted.
 
 Projected or conflicting coordinates are not mislabeled or compared as longitude/latitude. CRS transformation, projection-aware or geodesic calculation, topology repair, and survey-grade boundary conclusions are not implemented.
 
@@ -261,7 +268,7 @@ No external communication behavior is implied by the existing models or CLI.
 - The other three canonical sources remain unverified.
 - Verified usable source coverage remains zero.
 - Most adapter families remain contract-level.
-- Parcel assurance evaluates only supplied current records; it does not establish countywide coverage, legal title, source currency, or longitudinal supersession.
+- Parcel longitudinal selection evaluates only supplied observations; it does not acquire countywide data, establish source coverage or freshness, prove legal title, or resolve same-time content conflicts.
 - Optional preview archives and nested child tables remain unimplemented.
 - Generic upstream corrections remain blocked pending record-family-specific doctrine.
 - Lead workflow reopen or override behavior is not implemented.
