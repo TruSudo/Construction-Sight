@@ -248,7 +248,7 @@ No external communication behavior is implied by the existing models or CLI.
 
 - CEQAnet is `partial`, not `verified`; automated HTML collection received HTTP 403.
 - The original UTF-8 inspection failure remains preserved; the derived Windows-1252 replay passes against the same retained body hash without a second request.
-- One point-in-time CSV success and offline replay do not establish recurring availability, completeness, or broader source coverage.
+- Two retained point-in-time CSV successes, including one governed sequence observation, still do not establish recurring availability, completeness, or broader source coverage.
 - The maturity-proposal workflow binds that evidence but cannot promote the registry or authorize recurring execution.
 - The CSV access policy permits only explicit evidence runs and expires on 2026-08-13; it is not production scheduler authority.
 - The independently verified evidence-series head contains one successful project observation; three additional successful observations on later unused UTC dates, including the document export scope, remain required before another maturity review.
