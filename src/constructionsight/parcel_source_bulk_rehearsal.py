@@ -109,6 +109,8 @@ class ParcelArcGISBulkRehearsalExecution:
 
     manifest: ParcelArcGISBulkManifest
     checkpoint_reloaded: bool
+    starting_count_response_digest: str
+    ending_count_response_digest: str
     artifact_receipts: tuple[ParcelArcGISBulkArtifactReceipt, ...]
     bulk_run_authorized: bool = False
 
@@ -125,6 +127,22 @@ class ParcelArcGISBulkRehearsalExecution:
             raise ValueError("ArcGIS rehearsal first artifact must be the starting count")
         if last.kind != ParcelArcGISBulkArtifactKind.ENDING_COUNT:
             raise ValueError("ArcGIS rehearsal last artifact must be the ending count")
+        for label, digest in (
+            ("starting", self.starting_count_response_digest),
+            ("ending", self.ending_count_response_digest),
+        ):
+            if len(digest) != 64 or any(
+                character not in "0123456789abcdef" for character in digest
+            ):
+                raise ValueError(f"ArcGIS rehearsal {label} count digest is malformed")
+        if first.response_digest != self.starting_count_response_digest:
+            raise ValueError(
+                "ArcGIS rehearsal starting-count artifact does not match its response"
+            )
+        if last.response_digest != self.ending_count_response_digest:
+            raise ValueError(
+                "ArcGIS rehearsal ending-count artifact does not match its response"
+            )
         if any(
             receipt.kind != ParcelArcGISBulkArtifactKind.PAGE
             for receipt in page_receipts
@@ -334,6 +352,8 @@ def execute_arcgis_complete_rehearsal(
     return ParcelArcGISBulkRehearsalExecution(
         manifest=manifest,
         checkpoint_reloaded=True,
+        starting_count_response_digest=starting_response.response_digest,
+        ending_count_response_digest=ending_response.response_digest,
         artifact_receipts=tuple(artifact_receipts),
     )
 
