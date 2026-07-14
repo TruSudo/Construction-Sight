@@ -2,6 +2,8 @@
 
 The portable complete-rehearsal proof layer turns a successful rehearsal execution into one self-contained, independently verifiable JSON artifact. It exists to prevent a future county rehearsal from being represented by loose manifests, checkpoint files, and response files whose relationship cannot be recomputed after the original runtime is gone.
 
+The current schema is `parcel-arcgis-bulk-rehearsal-proof-bundle/v1`. Unknown fields and unsupported schema versions are rejected rather than ignored, so later format changes require an explicit compatibility decision.
+
 ## Bundle contents
 
 `ParcelArcGISBulkRehearsalProofBundle` binds:
