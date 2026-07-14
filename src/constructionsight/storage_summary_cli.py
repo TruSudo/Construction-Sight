@@ -44,6 +44,14 @@ STORAGE_TABLES: tuple[tuple[str, str], ...] = (
         "parcel source verification profiles",
     ),
     ("parcel_county_coverage_reports", "county parcel coverage-gap reports"),
+    ("parcel_arcgis_capability_snapshots", "ArcGIS capability snapshots"),
+    ("parcel_arcgis_probe_plans", "bounded ArcGIS probe plans"),
+    ("parcel_arcgis_probe_observations", "ArcGIS probe observations"),
+    ("parcel_arcgis_bulk_manifests", "ArcGIS bulk rehearsal manifests"),
+    (
+        "parcel_arcgis_acquisition_assessments",
+        "ArcGIS acquisition assessments",
+    ),
     ("parcel_record_observations", "append-only parcel observations"),
     (
         "parcel_current_selection_reports",

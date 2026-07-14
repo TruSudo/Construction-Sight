@@ -88,3 +88,43 @@ def test_parcel_source_cli_emits_county_coverage_gaps() -> None:
         "Riverside",
         "San Bernardino",
     }
+
+
+def test_parcel_source_cli_separates_advertised_capabilities_from_proof() -> None:
+    capability_result = runner.invoke(
+        app,
+        ["acquisition-capabilities", "--json-output"],
+    )
+    readiness_result = runner.invoke(
+        app,
+        ["acquisition-readiness", "--json-output"],
+    )
+
+    assert capability_result.exit_code == 0
+    capabilities = json.loads(capability_result.output)
+    assert len(capabilities) == 2
+    assert all(item["supports_pagination"] is True for item in capabilities)
+    assert readiness_result.exit_code == 0
+    assessments = json.loads(readiness_result.output)
+    assert {item["status"] for item in assessments} == {"metadata_only"}
+    assert all(item["bulk_acquisition_verified"] is False for item in assessments)
+
+
+def test_parcel_source_cli_probe_plans_never_authorize_bulk() -> None:
+    result = runner.invoke(app, ["acquisition-plans", "--json-output"])
+
+    assert result.exit_code == 0
+    plans = json.loads(result.output)
+    assert len(plans) == 2
+    assert all(plan["bulk_run_authorized"] is False for plan in plans)
+    assert all(len(plan["requests"]) == 4 for plan in plans)
+
+
+def test_live_acquisition_probe_rejects_unknown_source_before_network() -> None:
+    result = runner.invoke(
+        app,
+        ["acquisition-probe", "--source-key", "not-a-source"],
+    )
+
+    assert result.exit_code != 0
+    assert "Unknown verified ArcGIS source key" in result.output

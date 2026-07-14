@@ -168,6 +168,186 @@ class ParcelCountyCoverageReportRow(Base):
     )
 
 
+class ParcelArcGISCapabilitySnapshotRow(Base):
+    """Persisted immutable ArcGIS layer capability snapshot."""
+
+    __tablename__ = "parcel_arcgis_capability_snapshots"
+    __table_args__ = (
+        UniqueConstraint(
+            "snapshot_id",
+            name="uq_parcel_arcgis_capability_snapshots_id",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    snapshot_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    profile_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    source_key: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    county: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    observed_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    schema_fingerprint: Mapped[str] = mapped_column(
+        String(64),
+        nullable=False,
+        index=True,
+    )
+    advertised_ready: Mapped[bool] = mapped_column(Boolean, nullable=False, index=True)
+    field_count: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    max_record_count: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+        server_default=func.now(),
+    )
+
+
+class ParcelArcGISProbePlanRow(Base):
+    """Persisted immutable bounded ArcGIS probe plan."""
+
+    __tablename__ = "parcel_arcgis_probe_plans"
+    __table_args__ = (
+        UniqueConstraint("plan_id", name="uq_parcel_arcgis_probe_plans_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    plan_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    snapshot_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    profile_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    source_key: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    county: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    request_count: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    observed_generated_at: Mapped[str] = mapped_column(
+        String(64),
+        nullable=False,
+        index=True,
+    )
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+        server_default=func.now(),
+    )
+
+
+class ParcelArcGISProbeObservationRow(Base):
+    """Persisted immutable ArcGIS probe response observation."""
+
+    __tablename__ = "parcel_arcgis_probe_observations"
+    __table_args__ = (
+        UniqueConstraint(
+            "observation_id",
+            name="uq_parcel_arcgis_probe_observations_id",
+        ),
+        UniqueConstraint(
+            "request_id",
+            name="uq_parcel_arcgis_probe_observations_request",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    observation_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    request_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    snapshot_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    profile_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    source_key: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    county: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    probe_kind: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    observed_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    observed_record_count: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        index=True,
+    )
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+        server_default=func.now(),
+    )
+
+
+class ParcelArcGISBulkManifestRow(Base):
+    """Persisted immutable count-reconciled ArcGIS bulk rehearsal manifest."""
+
+    __tablename__ = "parcel_arcgis_bulk_manifests"
+    __table_args__ = (
+        UniqueConstraint("manifest_id", name="uq_parcel_arcgis_bulk_manifests_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    manifest_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    snapshot_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    profile_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    source_key: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    county: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    expected_record_count: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        index=True,
+    )
+    retrieved_record_count: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        index=True,
+    )
+    page_count: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    observed_completed_at: Mapped[str] = mapped_column(
+        String(64),
+        nullable=False,
+        index=True,
+    )
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+        server_default=func.now(),
+    )
+
+
+class ParcelArcGISAcquisitionAssessmentRow(Base):
+    """Persisted immutable ArcGIS acquisition readiness assessment."""
+
+    __tablename__ = "parcel_arcgis_acquisition_assessments"
+    __table_args__ = (
+        UniqueConstraint(
+            "assessment_id",
+            name="uq_parcel_arcgis_acquisition_assessments_id",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    assessment_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    snapshot_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    plan_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    profile_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    source_key: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    county: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    bulk_acquisition_verified: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        index=True,
+    )
+    observation_count: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    gap_count: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    observed_generated_at: Mapped[str] = mapped_column(
+        String(64),
+        nullable=False,
+        index=True,
+    )
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+        server_default=func.now(),
+    )
+
+
 class ParcelRecordObservationRow(Base):
     """Persisted append-only observation of one canonical parcel record."""
 

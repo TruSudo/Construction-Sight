@@ -44,7 +44,9 @@ A `verified_preview` profile requires both public-access proof and schema proof.
 - a surveyed boundary; or
 - authoritative planning, zoning, ownership, tax, or land-use facts.
 
-The two initial profiles remain `ready_for_preview`. `ready_for_import` is model-invalid unless both countywide record coverage and bulk acquisition have been verified.
+The two initial profiles remain `ready_for_preview`. `ready_for_import` is model-invalid unless both countywide record coverage and bulk acquisition have been verified. The [ArcGIS acquisition gates](parcel_arcgis_acquisition.md) now preserve advertised metadata, executed bounded queries, and complete rehearsal evidence as separate maturity stages; they never promote a profile automatically.
+
+The exact schema reconciliation removes a stale synthetic `Shape` attribute from the San Bernardino profile and adds Riverside's observed `LAND` and `STRUCTURES` attributes. The explicit synthetic `geometry` role remains separate from live attribute fields.
 
 ## Proposition-specific authority
 
@@ -83,7 +85,7 @@ The current report is correctly `incomplete`:
 
 ## Persistence and operator inspection
 
-Three additive tables retain the evidence and derived controls:
+Three verification tables retain the evidence and derived controls:
 
 - `parcel_source_evidence` uses exact idempotent replay;
 - `parcel_source_verification_profiles` uses exact idempotent replay; and
@@ -97,10 +99,10 @@ The read-only upstream operator exposes:
 - `parcel_source_verification` with status, source-key, and county filters; and
 - `parcel_county_coverage` with a status filter.
 
-The parcel-source CLI also exposes `evidence`, `verification`, and `coverage` commands. These commands inspect canonical runtime objects; they do not perform network acquisition or mutate source maturity.
+The parcel-source CLI also exposes `evidence`, `verification`, and `coverage` commands. Separate acquisition commands expose metadata, bounded plans, readiness, and one explicit bounded live probe. No command mutates source maturity or authorizes countywide import.
 
 ## Backward compatibility
 
 Existing parcel core records, longitudinal observations, current-selection reports, assurance reports, geometry behavior, and site resolution are unchanged. `constant_fields` defaults to empty for every existing or user-provided source. `arcgis_map_service` is an additive source-format value.
 
-The next safe phase is a bounded ArcGIS verification client that proves service count, pagination, schema fingerprinting, retry/resume behavior, and stated exclusions before any countywide import is authorized.
+The bounded ArcGIS client, immutable observations, assessment state machine, complete-rehearsal manifest, persistence, and read-only operator exposure are implemented. Both sources currently remain `metadata_only`. The next safe phase is to execute and persist the four-request bounded proof for each county, then design a separately controlled complete rehearsal only after those observations pass.

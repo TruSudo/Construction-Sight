@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 from typing import Annotated, cast
 
+import httpx
 import typer
 from rich.console import Console
 from rich.table import Table
@@ -15,6 +16,19 @@ from constructionsight.parcel_schema_preview import (
     load_schema_preview_input,
     preview_schema,
     preview_schema_for_source_key,
+)
+from constructionsight.parcel_source_acquisition import (
+    build_arcgis_acquisition_assessment,
+    build_arcgis_probe_plan,
+    get_official_arcgis_acquisition_assessments,
+    get_official_arcgis_capability_snapshots,
+    get_official_arcgis_probe_plans,
+)
+from constructionsight.parcel_source_acquisition_http import (
+    ParcelArcGISHTTPPolicy,
+    ParcelArcGISProbeExecutionError,
+    execute_arcgis_probe_plan,
+    fetch_arcgis_capability_snapshot,
 )
 from constructionsight.parcel_source_models import ParcelProviderKind
 from constructionsight.parcel_source_registry import (
@@ -218,6 +232,76 @@ def _render_coverage_report(payload: dict[str, object]) -> None:
         console.print(table)
 
 
+def _render_arcgis_capabilities(payload: list[dict[str, object]]) -> None:
+    """Render advertised ArcGIS metadata without implying query proof."""
+
+    table = Table(title="Parcel ArcGIS Capability Snapshots")
+    table.add_column("County")
+    table.add_column("Source")
+    table.add_column("Probe advertised")
+    table.add_column("Fields")
+    table.add_column("Max page")
+    for snapshot in payload:
+        advertised = all(
+            bool(snapshot[field])
+            for field in (
+                "supports_query",
+                "supports_count",
+                "supports_order_by",
+                "supports_pagination",
+                "object_id_is_unique",
+            )
+        )
+        table.add_row(
+            str(snapshot["county"]),
+            str(snapshot["source_key"]),
+            str(advertised),
+            str(len(cast(list[object], snapshot["fields"]))),
+            str(snapshot["max_record_count"]),
+        )
+    console.print(table)
+
+
+def _render_arcgis_plans(payload: list[dict[str, object]]) -> None:
+    """Render bounded probe plans."""
+
+    table = Table(title="Parcel ArcGIS Bounded Probe Plans")
+    table.add_column("County")
+    table.add_column("Source")
+    table.add_column("Requests")
+    table.add_column("Sample")
+    table.add_column("Bulk authorized")
+    for plan in payload:
+        table.add_row(
+            str(plan["county"]),
+            str(plan["source_key"]),
+            str(len(cast(list[object], plan["requests"]))),
+            str(plan["sample_size"]),
+            str(plan["bulk_run_authorized"]),
+        )
+    console.print(table)
+
+
+def _render_arcgis_assessments(payload: list[dict[str, object]]) -> None:
+    """Render conservative ArcGIS acquisition readiness."""
+
+    table = Table(title="Parcel ArcGIS Acquisition Readiness")
+    table.add_column("County")
+    table.add_column("Source")
+    table.add_column("Status")
+    table.add_column("Gaps")
+    table.add_column("Bulk verified")
+    for assessment in payload:
+        table.add_row(
+            str(assessment["county"]),
+            str(assessment["source_key"]),
+            str(assessment["status"]),
+            str(len(cast(list[object], assessment["gaps"]))),
+            str(assessment["bulk_acquisition_verified"]),
+        )
+    console.print(table)
+
+
 @app.command("evidence")
 def source_evidence(
     json_output: Annotated[
@@ -276,6 +360,138 @@ def county_coverage(
         typer.echo(json.dumps(payload, indent=2, sort_keys=True, default=str))
         return
     _render_coverage_report(payload)
+
+
+@app.command("acquisition-capabilities")
+def acquisition_capabilities(
+    json_output: Annotated[
+        bool,
+        typer.Option("--json-output", help="Emit machine-readable capability JSON."),
+    ] = False,
+) -> None:
+    """Show advertised ArcGIS metadata separately from executed query proof."""
+
+    payload = [
+        snapshot.to_dict() for snapshot in get_official_arcgis_capability_snapshots()
+    ]
+    if json_output:
+        typer.echo(json.dumps(payload, indent=2, sort_keys=True, default=str))
+        return
+    _render_arcgis_capabilities(payload)
+
+
+@app.command("acquisition-plans")
+def acquisition_plans(
+    json_output: Annotated[
+        bool,
+        typer.Option("--json-output", help="Emit machine-readable bounded plans."),
+    ] = False,
+) -> None:
+    """Show non-mutating count, adjacent-page, and replay requests."""
+
+    payload = [plan.to_dict() for plan in get_official_arcgis_probe_plans()]
+    if json_output:
+        typer.echo(json.dumps(payload, indent=2, sort_keys=True, default=str))
+        return
+    _render_arcgis_plans(payload)
+
+
+@app.command("acquisition-readiness")
+def acquisition_readiness(
+    json_output: Annotated[
+        bool,
+        typer.Option("--json-output", help="Emit machine-readable readiness JSON."),
+    ] = False,
+) -> None:
+    """Show metadata, probe, and complete-rehearsal acquisition maturity."""
+
+    payload = [
+        assessment.to_dict()
+        for assessment in get_official_arcgis_acquisition_assessments()
+    ]
+    if json_output:
+        typer.echo(json.dumps(payload, indent=2, sort_keys=True, default=str))
+        return
+    _render_arcgis_assessments(payload)
+
+
+@app.command("acquisition-probe")
+def acquisition_probe(
+    source_key: Annotated[
+        str,
+        typer.Option("--source-key", help="Verified county ArcGIS source key."),
+    ],
+    sample_size: Annotated[
+        int,
+        typer.Option("--sample-size", min=1, max=100, help="Bounded page sample size."),
+    ] = 2,
+    timeout_seconds: Annotated[
+        float,
+        typer.Option("--timeout-seconds", min=1.0, max=120.0),
+    ] = 30.0,
+    json_output: Annotated[
+        bool,
+        typer.Option("--json-output", help="Emit machine-readable probe bundle JSON."),
+    ] = False,
+    output_path: Annotated[
+        Path | None,
+        typer.Option(
+            "--output",
+            help="Write probe bundle JSON to a file. Requires --json-output.",
+        ),
+    ] = None,
+) -> None:
+    """Refresh schema and execute four bounded read-only ArcGIS requests."""
+
+    _reject_output_without_json(output_path, json_output)
+    profiles = {
+        profile.source_key: profile for profile in get_verified_parcel_source_profiles()
+    }
+    profile = profiles.get(source_key)
+    if profile is None:
+        typer.echo(f"Unknown verified ArcGIS source key: {source_key}")
+        raise typer.Exit(code=1)
+    policy = ParcelArcGISHTTPPolicy(timeout_seconds=timeout_seconds)
+    try:
+        with httpx.Client(follow_redirects=False) as client:
+            snapshot = fetch_arcgis_capability_snapshot(
+                profile,
+                client,
+                limitations=(
+                    "Advertised capabilities require executed probe proof.",
+                    "This command executes a bounded probe, not a complete acquisition.",
+                ),
+                policy=policy,
+            )
+            plan = build_arcgis_probe_plan(snapshot, sample_size=sample_size)
+            observations = execute_arcgis_probe_plan(
+                snapshot,
+                plan,
+                client,
+                policy=policy,
+            )
+        assessment = build_arcgis_acquisition_assessment(
+            snapshot,
+            plan,
+            observations,
+        )
+    except (ValueError, ParcelArcGISProbeExecutionError) as exc:
+        typer.echo(f"ArcGIS acquisition probe blocked: {exc}")
+        raise typer.Exit(code=1) from exc
+    payload = {
+        "snapshot": snapshot.to_dict(),
+        "plan": plan.to_dict(),
+        "observations": [observation.to_dict() for observation in observations],
+        "assessment": assessment.to_dict(),
+    }
+    if output_path is not None:
+        _write_json_file(output_path, payload)
+        typer.echo(f"Wrote ArcGIS acquisition probe JSON to {output_path}.")
+        return
+    if json_output:
+        typer.echo(json.dumps(payload, indent=2, sort_keys=True, default=str))
+        return
+    _render_arcgis_assessments([assessment.to_dict()])
 
 
 @app.command("matrix")
