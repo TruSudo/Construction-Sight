@@ -1,0 +1,634 @@
+name: Harden ArcGIS bulk rehearsal proof
+
+on:
+  push:
+    branches:
+      - agent/harden-arcgis-bulk-rehearsal-proof
+
+permissions:
+  contents: write
+
+concurrency:
+  group: harden-arcgis-bulk-rehearsal-proof
+  cancel-in-progress: false
+
+jobs:
+  harden:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out phase branch
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install package
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+          python -m pip check
+
+      - name: Harden structured rehearsal proof contract
+        run: |
+          python - <<'PY'
+          from __future__ import annotations
+
+          from pathlib import Path
+
+          def replace_once(path: Path, old: str, new: str) -> None:
+              text = path.read_text(encoding="utf-8")
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(
+                      f"expected one replacement in {path}, found {count}: {old[:100]!r}"
+                  )
+              path.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+          def replace_block(path: Path, start: str, end: str, replacement: str) -> None:
+              text = path.read_text(encoding="utf-8")
+              start_index = text.index(start)
+              end_index = text.index(end, start_index)
+              path.write_text(
+                  text[:start_index] + replacement.rstrip() + "\n\n" + text[end_index:],
+                  encoding="utf-8",
+              )
+
+          bulk_models = Path(
+              "src/constructionsight/parcel_source_bulk_rehearsal_models.py"
+          )
+          bulk_text = bulk_models.read_text(encoding="utf-8")
+          assembly_function = '''
+
+def assemble_arcgis_bulk_rehearsal_evidence(
+    scope: ArcGISBulkScope,
+    *,
+    page_size: int,
+    page_object_ids: Sequence[Sequence[int]],
+    page_response_digests: Sequence[str],
+    page_attempt_counts: Sequence[int],
+    page_observed_at: Sequence[datetime],
+    checkpoint_completed_page_count: int,
+    checkpoint_created_at: datetime,
+    resumed_at: datetime,
+    retry_page_index: int,
+    retry_failure_kind: str,
+    retry_failed_attempt_count: int,
+    retry_fault_injected: bool,
+    retry_recorded_at: datetime,
+    created_at: datetime,
+) -> ParcelArcGISBulkRehearsalEvidence:
+    """Assemble a complete evidence chain from normalized page observations."""
+
+    page_count = len(page_object_ids)
+    if page_count < 2:
+        raise ValueError("ArcGIS bulk rehearsal requires at least two pages")
+    if not (
+        len(page_response_digests)
+        == len(page_attempt_counts)
+        == len(page_observed_at)
+        == page_count
+    ):
+        raise ValueError("ArcGIS bulk rehearsal page evidence lengths must match")
+    if retry_page_index < 0 or retry_page_index >= page_count:
+        raise ValueError("ArcGIS retry page index is outside the rehearsal")
+
+    pages = tuple(
+        build_arcgis_bulk_page_evidence(
+            page_index=index,
+            page_size=page_size,
+            object_ids=page_object_ids[index],
+            response_digest=page_response_digests[index],
+            attempt_count=page_attempt_counts[index],
+            terminal_page=index == page_count - 1,
+            observed_at=page_observed_at[index],
+        )
+        for index in range(page_count)
+    )
+    checkpoint = build_arcgis_bulk_checkpoint_evidence(
+        pages,
+        completed_page_count=checkpoint_completed_page_count,
+        page_size=page_size,
+        created_at=checkpoint_created_at,
+    )
+    resume = build_arcgis_bulk_resume_evidence(
+        checkpoint,
+        pages[checkpoint_completed_page_count],
+        resumed_at=resumed_at,
+    )
+    retry = build_arcgis_bulk_retry_evidence(
+        pages[retry_page_index],
+        failure_kind=retry_failure_kind,
+        failed_attempt_count=retry_failed_attempt_count,
+        fault_injected=retry_fault_injected,
+        recorded_at=retry_recorded_at,
+    )
+    return build_arcgis_bulk_rehearsal_evidence(
+        scope,
+        page_size=page_size,
+        page_evidence=pages,
+        checkpoint=checkpoint,
+        resume=resume,
+        retry_events=(retry,),
+        created_at=created_at,
+    )
+'''
+          marker = "\ndef digest_identity(namespace: str, payload: dict[str, Any]) -> str:\n"
+          if "def assemble_arcgis_bulk_rehearsal_evidence(" not in bulk_text:
+              bulk_text = bulk_text.replace(marker, assembly_function + marker, 1)
+              bulk_models.write_text(bulk_text, encoding="utf-8")
+
+          models = Path("src/constructionsight/parcel_source_acquisition_models.py")
+          replace_once(
+              models,
+              "from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator\n",
+              "from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator\n\n"
+              "from constructionsight.parcel_source_bulk_rehearsal_models import (\n"
+              "    ParcelArcGISBulkRehearsalEvidence,\n"
+              ")\n",
+          )
+          models_text = models.read_text(encoding="utf-8")
+          manifest_start = models_text.index("class ParcelArcGISBulkManifest(BaseModel):")
+          manifest_end = models_text.index("class ParcelArcGISAcquisitionGap(BaseModel):", manifest_start)
+          manifest_block = models_text[manifest_start:manifest_end]
+          manifest_block = manifest_block.replace(
+              "    object_id_set_digest: str = Field(pattern=r\"^[0-9a-f]{64}$\")\n",
+              "    object_id_set_digest: str = Field(pattern=r\"^[0-9a-f]{64}$\")\n"
+              "    rehearsal_evidence: ParcelArcGISBulkRehearsalEvidence\n",
+              1,
+          )
+          manifest_block = manifest_block.replace(
+              "        if len(self.page_response_digests) != self.page_count:\n"
+              "            raise ValueError(\"ArcGIS bulk manifest requires one digest per data page\")\n"
+              "        payload = self.model_dump(mode=\"json\", exclude={\"manifest_id\"})\n",
+              "        if len(self.page_response_digests) != self.page_count:\n"
+              "            raise ValueError(\"ArcGIS bulk manifest requires one digest per data page\")\n"
+              "        evidence = self.rehearsal_evidence\n"
+              "        if (\n"
+              "            evidence.snapshot_id != self.snapshot_id\n"
+              "            or evidence.profile_id != self.profile_id\n"
+              "            or evidence.source_key != self.source_key\n"
+              "            or evidence.county != self.county\n"
+              "            or evidence.schema_fingerprint != self.schema_fingerprint\n"
+              "        ):\n"
+              "            raise ValueError(\"ArcGIS bulk rehearsal evidence scope mismatch\")\n"
+              "        if evidence.page_size != self.page_size:\n"
+              "            raise ValueError(\"ArcGIS bulk rehearsal evidence page size mismatch\")\n"
+              "        if len(evidence.page_evidence) != self.page_count:\n"
+              "            raise ValueError(\"ArcGIS bulk rehearsal evidence page count mismatch\")\n"
+              "        if evidence.retrieved_count != self.retrieved_count:\n"
+              "            raise ValueError(\"ArcGIS bulk rehearsal evidence retrieved count mismatch\")\n"
+              "        if evidence.unique_object_id_count != self.unique_object_id_count:\n"
+              "            raise ValueError(\"ArcGIS bulk rehearsal evidence unique-ID count mismatch\")\n"
+              "        if evidence.duplicate_object_id_count != self.duplicate_object_id_count:\n"
+              "            raise ValueError(\"ArcGIS bulk rehearsal evidence duplicate count mismatch\")\n"
+              "        if evidence.terminal_page_observed != self.terminal_page_observed:\n"
+              "            raise ValueError(\"ArcGIS bulk rehearsal terminal-page proof mismatch\")\n"
+              "        if evidence.checkpoint_resume_verified != self.checkpoint_resume_verified:\n"
+              "            raise ValueError(\"ArcGIS bulk rehearsal checkpoint proof mismatch\")\n"
+              "        if evidence.retry_recovery_verified != self.retry_recovery_verified:\n"
+              "            raise ValueError(\"ArcGIS bulk rehearsal retry proof mismatch\")\n"
+              "        if evidence.page_response_digests != self.page_response_digests:\n"
+              "            raise ValueError(\"ArcGIS bulk rehearsal page digest mismatch\")\n"
+              "        if evidence.object_id_set_digest != self.object_id_set_digest:\n"
+              "            raise ValueError(\"ArcGIS bulk rehearsal object-ID digest mismatch\")\n"
+              "        payload = self.model_dump(mode=\"json\", exclude={\"manifest_id\"})\n",
+              1,
+          )
+          if "rehearsal_evidence: ParcelArcGISBulkRehearsalEvidence" not in manifest_block:
+              raise SystemExit("failed to add structured rehearsal evidence to manifest")
+          models.write_text(
+              models_text[:manifest_start] + manifest_block + models_text[manifest_end:],
+              encoding="utf-8",
+          )
+
+          acquisition = Path("src/constructionsight/parcel_source_acquisition.py")
+          replace_once(
+              acquisition,
+              "from constructionsight.parcel_source_verification import (\n",
+              "from constructionsight.parcel_source_bulk_rehearsal_models import (\n"
+              "    ParcelArcGISBulkRehearsalEvidence,\n"
+              ")\n"
+              "from constructionsight.parcel_source_verification import (\n",
+          )
+          replace_block(
+              acquisition,
+              "def build_arcgis_bulk_manifest(\n",
+              "def build_arcgis_acquisition_assessment(\n",
+              '''def build_arcgis_bulk_manifest(
+    snapshot: ParcelArcGISCapabilitySnapshot,
+    *,
+    started_at: datetime,
+    completed_at: datetime,
+    starting_count: int,
+    ending_count: int,
+    rehearsal_evidence: ParcelArcGISBulkRehearsalEvidence,
+) -> ParcelArcGISBulkManifest:
+    """Build a manifest only from a structured, internally reconciled proof chain."""
+
+    candidate = ParcelArcGISBulkManifest.model_construct(
+        manifest_id="parcel-arcgis-bulk-manifest:" + ("0" * 64),
+        snapshot_id=snapshot.snapshot_id,
+        profile_id=snapshot.profile_id,
+        source_key=snapshot.source_key,
+        county=snapshot.county,
+        schema_fingerprint=snapshot.schema_fingerprint,
+        started_at=started_at,
+        completed_at=completed_at,
+        starting_count=starting_count,
+        ending_count=ending_count,
+        page_size=rehearsal_evidence.page_size,
+        page_count=len(rehearsal_evidence.page_evidence),
+        retrieved_count=rehearsal_evidence.retrieved_count,
+        unique_object_id_count=rehearsal_evidence.unique_object_id_count,
+        duplicate_object_id_count=rehearsal_evidence.duplicate_object_id_count,
+        failed_page_count=0,
+        terminal_page_observed=rehearsal_evidence.terminal_page_observed,
+        checkpoint_resume_verified=rehearsal_evidence.checkpoint_resume_verified,
+        retry_recovery_verified=rehearsal_evidence.retry_recovery_verified,
+        page_response_digests=rehearsal_evidence.page_response_digests,
+        object_id_set_digest=rehearsal_evidence.object_id_set_digest,
+        rehearsal_evidence=rehearsal_evidence,
+    )
+    payload = candidate.model_dump(mode="json", exclude={"manifest_id"})
+    return ParcelArcGISBulkManifest.model_validate(
+        {
+            **payload,
+            "manifest_id": digest_identity("parcel-arcgis-bulk-manifest", payload),
+        }
+    )''',
+          )
+
+          acquisition_test = Path("tests/test_parcel_source_acquisition.py")
+          replace_once(
+              acquisition_test,
+              "from constructionsight.parcel_source_verification import (\n",
+              "from constructionsight.parcel_source_bulk_rehearsal_models import (\n"
+              "    assemble_arcgis_bulk_rehearsal_evidence,\n"
+              ")\n"
+              "from constructionsight.parcel_source_verification import (\n",
+          )
+          replace_once(
+              acquisition_test,
+              '''    page_digests = tuple(digest_json_payload({"page": value}) for value in range(3))
+    manifest = build_arcgis_bulk_manifest(
+        snapshot,
+        started_at=_OBSERVED_AT,
+        completed_at=_OBSERVED_AT + timedelta(minutes=3),
+        starting_count=6,
+        ending_count=6,
+        page_size=2,
+        page_count=3,
+        retrieved_count=6,
+        unique_object_id_count=6,
+        duplicate_object_id_count=0,
+        failed_page_count=0,
+        terminal_page_observed=True,
+        checkpoint_resume_verified=True,
+        retry_recovery_verified=True,
+        page_response_digests=page_digests,
+        object_id_set_digest=digest_json_payload([1, 3, 5, 7, 9, 11]),
+    )''',
+              '''    rehearsal_evidence = _bulk_rehearsal_evidence(snapshot)
+    manifest = build_arcgis_bulk_manifest(
+        snapshot,
+        started_at=_OBSERVED_AT,
+        completed_at=_OBSERVED_AT + timedelta(minutes=3),
+        starting_count=6,
+        ending_count=6,
+        rehearsal_evidence=rehearsal_evidence,
+    )''',
+          )
+          replace_once(
+              acquisition_test,
+              '''        build_arcgis_bulk_manifest(
+            snapshot,
+            started_at=_OBSERVED_AT,
+            completed_at=_OBSERVED_AT + timedelta(minutes=3),
+            starting_count=6,
+            ending_count=7,
+            page_size=2,
+            page_count=3,
+            retrieved_count=6,
+            unique_object_id_count=6,
+            duplicate_object_id_count=0,
+            failed_page_count=0,
+            terminal_page_observed=True,
+            checkpoint_resume_verified=True,
+            retry_recovery_verified=True,
+            page_response_digests=page_digests,
+            object_id_set_digest=digest_json_payload([1, 3, 5, 7, 9, 11]),
+        )''',
+              '''        build_arcgis_bulk_manifest(
+            snapshot,
+            started_at=_OBSERVED_AT,
+            completed_at=_OBSERVED_AT + timedelta(minutes=3),
+            starting_count=6,
+            ending_count=7,
+            rehearsal_evidence=rehearsal_evidence,
+        )''',
+          )
+          replace_once(
+              acquisition_test,
+              "\ndef _bounded_observations(\n",
+              '''
+def _bulk_rehearsal_evidence(snapshot):
+    return assemble_arcgis_bulk_rehearsal_evidence(
+        snapshot,
+        page_size=2,
+        page_object_ids=((1, 3), (5, 7), (9, 11)),
+        page_response_digests=tuple(
+            digest_json_payload({"page": value}) for value in range(3)
+        ),
+        page_attempt_counts=(1, 2, 1),
+        page_observed_at=(
+            _OBSERVED_AT,
+            _OBSERVED_AT + timedelta(seconds=30),
+            _OBSERVED_AT + timedelta(minutes=2),
+        ),
+        checkpoint_completed_page_count=1,
+        checkpoint_created_at=_OBSERVED_AT + timedelta(seconds=10),
+        resumed_at=_OBSERVED_AT + timedelta(seconds=20),
+        retry_page_index=1,
+        retry_failure_kind="injected_pre_request_transient",
+        retry_failed_attempt_count=1,
+        retry_fault_injected=True,
+        retry_recorded_at=_OBSERVED_AT + timedelta(seconds=25),
+        created_at=_OBSERVED_AT + timedelta(minutes=3),
+    )
+
+
+def _bounded_observations(
+''',
+          )
+
+          storage_test = Path("tests/test_parcel_source_acquisition_storage.py")
+          replace_once(
+              storage_test,
+              "from constructionsight.parcel_source_verification import (\n",
+              "from constructionsight.parcel_source_bulk_rehearsal_models import (\n"
+              "    assemble_arcgis_bulk_rehearsal_evidence,\n"
+              ")\n"
+              "from constructionsight.parcel_source_verification import (\n",
+          )
+          replace_once(
+              storage_test,
+              '''    manifest = build_arcgis_bulk_manifest(
+        snapshot,
+        started_at=_OBSERVED_AT,
+        completed_at=_OBSERVED_AT + timedelta(minutes=3),
+        starting_count=6,
+        ending_count=6,
+        page_size=2,
+        page_count=3,
+        retrieved_count=6,
+        unique_object_id_count=6,
+        duplicate_object_id_count=0,
+        failed_page_count=0,
+        terminal_page_observed=True,
+        checkpoint_resume_verified=True,
+        retry_recovery_verified=True,
+        page_response_digests=tuple(
+            digest_json_payload({"page": page}) for page in range(3)
+        ),
+        object_id_set_digest=digest_json_payload([1, 3, 5, 7, 9, 11]),
+    )''',
+              '''    manifest = build_arcgis_bulk_manifest(
+        snapshot,
+        started_at=_OBSERVED_AT,
+        completed_at=_OBSERVED_AT + timedelta(minutes=3),
+        starting_count=6,
+        ending_count=6,
+        rehearsal_evidence=_bulk_rehearsal_evidence(snapshot),
+    )''',
+          )
+          replace_once(
+              storage_test,
+              "\ndef test_database_initializes_arcgis_acquisition_proof_tables() -> None:\n",
+              '''
+def _bulk_rehearsal_evidence(snapshot):
+    return assemble_arcgis_bulk_rehearsal_evidence(
+        snapshot,
+        page_size=2,
+        page_object_ids=((1, 3), (5, 7), (9, 11)),
+        page_response_digests=tuple(
+            digest_json_payload({"page": value}) for value in range(3)
+        ),
+        page_attempt_counts=(1, 2, 1),
+        page_observed_at=(
+            _OBSERVED_AT,
+            _OBSERVED_AT + timedelta(seconds=30),
+            _OBSERVED_AT + timedelta(minutes=2),
+        ),
+        checkpoint_completed_page_count=1,
+        checkpoint_created_at=_OBSERVED_AT + timedelta(seconds=10),
+        resumed_at=_OBSERVED_AT + timedelta(seconds=20),
+        retry_page_index=1,
+        retry_failure_kind="injected_pre_request_transient",
+        retry_failed_attempt_count=1,
+        retry_fault_injected=True,
+        retry_recorded_at=_OBSERVED_AT + timedelta(seconds=25),
+        created_at=_OBSERVED_AT + timedelta(minutes=3),
+    )
+
+
+def test_database_initializes_arcgis_acquisition_proof_tables() -> None:
+''',
+          )
+
+          Path("tests/test_parcel_source_bulk_rehearsal_models.py").write_text(
+              '''from datetime import UTC, datetime, timedelta
+
+import pytest
+from pydantic import ValidationError
+
+from constructionsight.parcel_source_acquisition import build_arcgis_bulk_manifest
+from constructionsight.parcel_source_acquisition_models import (
+    ParcelArcGISBulkManifest,
+    digest_identity,
+    digest_json_payload,
+)
+from constructionsight.parcel_source_bulk_rehearsal_models import (
+    ParcelArcGISBulkRehearsalEvidence,
+    assemble_arcgis_bulk_rehearsal_evidence,
+)
+from constructionsight.parcel_source_acquisition import (
+    get_official_arcgis_capability_snapshots,
+)
+
+_OBSERVED_AT = datetime(2026, 7, 14, 19, 0, tzinfo=UTC)
+
+
+def _evidence():
+    snapshot = get_official_arcgis_capability_snapshots()[0]
+    evidence = assemble_arcgis_bulk_rehearsal_evidence(
+        snapshot,
+        page_size=2,
+        page_object_ids=((1, 3), (5, 7), (9, 11)),
+        page_response_digests=tuple(
+            digest_json_payload({"page": value}) for value in range(3)
+        ),
+        page_attempt_counts=(1, 2, 1),
+        page_observed_at=(
+            _OBSERVED_AT,
+            _OBSERVED_AT + timedelta(seconds=30),
+            _OBSERVED_AT + timedelta(minutes=2),
+        ),
+        checkpoint_completed_page_count=1,
+        checkpoint_created_at=_OBSERVED_AT + timedelta(seconds=10),
+        resumed_at=_OBSERVED_AT + timedelta(seconds=20),
+        retry_page_index=1,
+        retry_failure_kind="injected_pre_request_transient",
+        retry_failed_attempt_count=1,
+        retry_fault_injected=True,
+        retry_recorded_at=_OBSERVED_AT + timedelta(seconds=25),
+        created_at=_OBSERVED_AT + timedelta(minutes=3),
+    )
+    return snapshot, evidence
+
+
+def test_structured_rehearsal_evidence_recomputes_manifest_summaries() -> None:
+    snapshot, evidence = _evidence()
+    manifest = build_arcgis_bulk_manifest(
+        snapshot,
+        started_at=_OBSERVED_AT,
+        completed_at=_OBSERVED_AT + timedelta(minutes=4),
+        starting_count=6,
+        ending_count=6,
+        rehearsal_evidence=evidence,
+    )
+
+    assert manifest.page_count == 3
+    assert manifest.retrieved_count == 6
+    assert manifest.unique_object_id_count == 6
+    assert manifest.duplicate_object_id_count == 0
+    assert manifest.checkpoint_resume_verified is True
+    assert manifest.retry_recovery_verified is True
+    assert manifest.rehearsal_evidence == evidence
+
+
+def test_manifest_rejects_summary_claims_that_disagree_with_evidence() -> None:
+    snapshot, evidence = _evidence()
+    manifest = build_arcgis_bulk_manifest(
+        snapshot,
+        started_at=_OBSERVED_AT,
+        completed_at=_OBSERVED_AT + timedelta(minutes=4),
+        starting_count=6,
+        ending_count=6,
+        rehearsal_evidence=evidence,
+    )
+    payload = manifest.to_dict()
+    payload["retrieved_count"] = 7
+    identity_payload = {key: value for key, value in payload.items() if key != "manifest_id"}
+    payload["manifest_id"] = digest_identity(
+        "parcel-arcgis-bulk-manifest",
+        identity_payload,
+    )
+
+    with pytest.raises(ValidationError, match="retrieved count mismatch|reconcile"):
+        ParcelArcGISBulkManifest.model_validate(payload)
+
+
+def test_legacy_boolean_only_manifest_payload_is_rejected() -> None:
+    snapshot, evidence = _evidence()
+    manifest = build_arcgis_bulk_manifest(
+        snapshot,
+        started_at=_OBSERVED_AT,
+        completed_at=_OBSERVED_AT + timedelta(minutes=4),
+        starting_count=6,
+        ending_count=6,
+        rehearsal_evidence=evidence,
+    )
+    payload = manifest.to_dict()
+    payload.pop("rehearsal_evidence")
+
+    with pytest.raises(ValidationError, match="rehearsal_evidence"):
+        ParcelArcGISBulkManifest.model_validate(payload)
+
+
+def test_rehearsal_evidence_rejects_checkpoint_and_retry_tampering() -> None:
+    _, evidence = _evidence()
+    checkpoint_payload = evidence.checkpoint.to_dict()
+    checkpoint_payload["object_id_count"] = 99
+    evidence_payload = evidence.to_dict()
+    evidence_payload["checkpoint"] = checkpoint_payload
+
+    with pytest.raises(ValidationError, match="checkpoint|object-ID"):
+        ParcelArcGISBulkRehearsalEvidence.model_validate(evidence_payload)
+
+    retry_payload = evidence.retry_events[0].to_dict()
+    retry_payload["recovered_response_digest"] = "0" * 64
+    evidence_payload = evidence.to_dict()
+    evidence_payload["retry_events"] = [retry_payload]
+
+    with pytest.raises(ValidationError, match="retry|response digest"):
+        ParcelArcGISBulkRehearsalEvidence.model_validate(evidence_payload)
+''',
+              encoding="utf-8",
+          )
+
+          replace_once(
+              Path("README.md"),
+              "- Retained portable county bounded-proof bundles with offline verification and exact-ID persistence receipts\n",
+              "- Retained portable county bounded-proof bundles with offline verification and exact-ID persistence receipts\n"
+              "- Structured bulk-rehearsal page, checkpoint, resume, and retry evidence that prevents boolean-only proof claims\n",
+          )
+          replace_once(
+              Path("docs/architecture/parcel_arcgis_acquisition.md"),
+              "A complete bulk rehearsal is represented by `ParcelArcGISBulkManifest`. It requires:\n",
+              "A complete bulk rehearsal is represented by `ParcelArcGISBulkManifest`. The manifest can no longer rely on bare success booleans: it must embed a digest-bound `ParcelArcGISBulkRehearsalEvidence` chain containing ordered page IDs, normalized object-ID content, a retained checkpoint prefix, the exact first resumed page, and bounded retry recovery evidence. It requires:\n",
+          )
+          replace_once(
+              Path("docs/architecture/current_implementation_status.md"),
+              "| Parcel ArcGIS acquisition gates | Yes | Yes | Yes | Yes | Yes | Bounded on demand | Exact capability snapshots, four-request probe plans, immutable response observations, complete-rehearsal manifests, and derived assessments separate advertised from executed proof. Canonical 2026-07-14 bundles for both official county sources are `bounded_query_verified`, independently recompute offline, and passed exact-identity transactional persistence. Reported counts are 839,794 for San Bernardino and 846,251 for Riverside. Bulk rehearsal, profile promotion, and bulk authorization remain absent. |",
+              "| Parcel ArcGIS acquisition gates | Yes | Yes | Yes | Yes | Yes | Bounded on demand | Exact capability snapshots, four-request probe plans, immutable response observations, and derived assessments separate advertised from executed proof. Canonical 2026-07-14 bundles for both official county sources are `bounded_query_verified`, independently recompute offline, and passed exact-identity transactional persistence. Complete-rehearsal manifests now require structured page, checkpoint, resume, and retry evidence instead of unverified booleans. Reported counts are 839,794 for San Bernardino and 846,251 for Riverside. Live bulk rehearsal, profile promotion, and bulk authorization remain absent. |",
+          )
+          replace_once(
+              Path("docs/architecture/current_implementation_status.md"),
+              "| CS-VIAM-021 | P1 | Live evidence proxy transport | The governed executor honored environment SOCKS proxies while the package declared plain `httpx`, so a SOCKS-configured execution environment could fail before client construction and evidence retention. | The runtime dependency now declares `httpx[socks]`; certification imports `socksio`, and the first governed request succeeded with a complete verified artifact after the transport was present. |\n",
+              "| CS-VIAM-021 | P1 | Live evidence proxy transport | The governed executor honored environment SOCKS proxies while the package declared plain `httpx`, so a SOCKS-configured execution environment could fail before client construction and evidence retention. | The runtime dependency now declares `httpx[socks]`; certification imports `socksio`, and the first governed request succeeded with a complete verified artifact after the transport was present. |\n"
+              "| CS-VIAM-022 | P1 | ArcGIS bulk rehearsal evidence | Complete-rehearsal maturity could be asserted from bare checkpoint/retry booleans and opaque page digests without a retained proof chain. | Manifests now embed structured digest-bound page, checkpoint, resume, and retry evidence; all summary counts, flags, and digests are recomputed and disagreement is rejected. |\n",
+          )
+          replace_once(
+              Path("docs/audits/full_repo_audit_inventory.md"),
+              "| CS-AUDIT-027 | P1 | Live evidence proxy transport | The policy executor honored SOCKS proxy environment settings without declaring the required `socksio` transport extra, causing a pre-request client-construction failure. | The dependency is changed to `httpx[socks]`, CI proves the transport is installed, and the diagnostic is preserved alongside the successfully retained first observation. |\n",
+              "| CS-AUDIT-027 | P1 | Live evidence proxy transport | The policy executor honored SOCKS proxy environment settings without declaring the required `socksio` transport extra, causing a pre-request client-construction failure. | The dependency is changed to `httpx[socks]`, CI proves the transport is installed, and the diagnostic is preserved alongside the successfully retained first observation. |\n"
+              "| CS-AUDIT-028 | P1 | ArcGIS bulk rehearsal proof | The implemented bulk manifest accepted bare checkpoint/resume and retry booleans plus opaque digests, so a caller could claim complete-rehearsal maturity without retaining evidence capable of substantiating those assertions. | Structured digest-bound page, checkpoint, resume, and retry records are now mandatory; manifest summaries are derived from and revalidated against the complete embedded evidence chain. |\n",
+          )
+          replace_once(
+              Path("docs/audits/full_repo_audit_inventory.md"),
+              "| Parcel ArcGIS acquisition gates | Six additive tables preserve capability snapshots, bounded plans, one immutable observation per request, complete-rehearsal manifests, assessments, and self-contained bounded proof bundles with dependency-ordered writes and typed digest revalidation. Canonical JSON bundles, independent verification reports, and persistence receipts are committed for both counties; the persistence exercise used an ephemeral database and commits no operational database state. |",
+              "| Parcel ArcGIS acquisition gates | Six additive tables preserve capability snapshots, bounded plans, one immutable observation per request, complete-rehearsal manifests, assessments, and self-contained bounded proof bundles with dependency-ordered writes and typed digest revalidation. Bulk manifests now embed structured page, checkpoint, resume, and retry evidence, and summary fields cannot diverge from that proof chain. Canonical bounded JSON bundles, independent verification reports, and persistence receipts are committed for both counties; the persistence exercise used an ephemeral database and commits no operational database state. |",
+          )
+          PY
+
+      - name: Remove temporary workflow and commit candidate
+        run: |
+          rm .github/workflows/harden-arcgis-bulk-proof.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "Harden ArcGIS bulk rehearsal evidence"
+
+      - name: Validate exact committed candidate
+        run: |
+          python -m pip check
+          python -m ruff check src tests
+          python -m mypy src
+          python -m compileall -q src tests
+          python -m pytest --strict-config --strict-markers -ra -W error
+          constructionsight audit-adapters
+          constructionsight audit-source-coverage data/source_registry.seed.json
+          python -m constructionsight.repository_certification --root . --require-clean-worktree
+          git diff --check
+
+      - name: Push validated candidate
+        run: git push origin HEAD:agent/harden-arcgis-bulk-rehearsal-proof
