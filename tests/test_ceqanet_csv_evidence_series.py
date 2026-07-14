@@ -47,7 +47,7 @@ EVIDENCE_DIR = ROOT / "evidence/source_verification"
 PROJECT_FIXTURE = ROOT / "tests/fixtures/ceqanet/project_export.csv"
 DOCUMENT_FIXTURE = ROOT / "tests/fixtures/ceqanet/document_export.csv"
 runner = CliRunner()
-_ANSI_ESCAPE = re.compile(r"\\x1b\\[[0-9;]*m")
+_ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*m")
 
 
 def _load_json(path: Path) -> Any:
