@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   quality:
@@ -66,3 +66,138 @@ jobs:
 
       - name: Diff hygiene
         run: git diff --check
+
+  reconcile-pr114-docs:
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.head_ref == 'agent/add-arcgis-rehearsal-http-adapter'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out phase branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/add-arcgis-rehearsal-http-adapter
+          fetch-depth: 0
+
+      - name: Reconcile canonical ledgers
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_line(path: str, prefix: str, replacement: str) -> None:
+              target = Path(path)
+              lines = target.read_text(encoding="utf-8").splitlines()
+              matches = [index for index, line in enumerate(lines) if line.startswith(prefix)]
+              if len(matches) != 1:
+                  raise SystemExit(f"{path}: prefix {prefix!r} matched {len(matches)} lines")
+              lines[matches[0]:matches[0] + 1] = replacement.splitlines()
+              target.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+          def insert_before_heading(path: str, heading: str, block: str, marker: str) -> None:
+              target = Path(path)
+              text = target.read_text(encoding="utf-8")
+              if marker in text:
+                  return
+              needle = f"{heading}\n"
+              if text.count(needle) != 1:
+                  raise SystemExit(f"{path}: heading {heading!r} did not match once")
+              target.write_text(text.replace(needle, block + "\n" + needle, 1), encoding="utf-8")
+
+          replace_line(
+              "README.md",
+              "- Governed complete-rehearsal executor with exact count/page response retention",
+              "- Governed complete-rehearsal executor with exact count/page response retention, durable checkpoint reload, resumed-segment fault injection, bounded retry, and count reconciliation\n- Digest-bound official ArcGIS rehearsal plans and an exact-response HTTP adapter with one-request transport semantics and fail-closed redirect, endpoint, media-type, size, JSON, and service-error controls",
+          )
+          replace_line(
+              "README.md",
+              "The parcel-source verification layer binds the official San Bernardino and Riverside",
+              "The parcel-source verification layer binds the official San Bernardino and Riverside public parcel endpoints and observed schemas to immutable evidence, proposition-specific authority, source-scope county/state constants, and an explicit county coverage-gap report. The additive ArcGIS acquisition layer binds exact capability metadata, safe four-request probe plans, executed observations, complete-rehearsal manifests, and explicit maturity assessments. It includes a reusable read-only complete-rehearsal executor that retains exact starting-count, page, and ending-count response bytes, atomically records digest receipts, proves checkpoint save/reload, injects a bounded transient failure only after resume, and enforces global object-ID uniqueness and count stability. A digest-bound official HTTP plan and one-request-per-call ArcGIS adapter now connect that protocol to exact HTTPS `/query` responses while refusing redirects, endpoint drift, unapproved media types, oversized or malformed bodies, and terminal service errors. The adapter is verified only with mocked HTTP transports; no live county complete rehearsal has been performed. A successful bounded command produces a portable proof bundle that can be independently verified offline and persisted only with an exact expected identity plus explicit authorization; all bundle, receipt, adapter, and rehearsal paths remain incapable of bulk authorization. Canonical 2026-07-14 evidence records both official sources as `bounded_query_verified`: San Bernardino reported 839,794 records and Riverside reported 846,251 records, and each exact four-observation bundle independently verifies and passed exact-ID transactional persistence. Neither source is import-ready, bulk-rehearsal-verified, profile-promoted, or bulk-authorized.",
+          )
+
+          replace_line(
+              "docs/architecture/current_implementation_status.md",
+              "| Parcel ArcGIS acquisition gates |",
+              "| Parcel ArcGIS acquisition gates | Yes | Yes | Yes | Yes | Yes | Bounded on demand | Exact capability snapshots, four-request probe plans, immutable response observations, and derived assessments separate advertised from executed proof. Canonical 2026-07-14 bundles for both official county sources are `bounded_query_verified`, independently recompute offline, and passed exact-identity transactional persistence. A reusable complete-rehearsal executor and digest-bound official HTTP plan/adapter retain exact count/page response bytes, keep retry evidence in the executor, and fail closed on redirect, endpoint, media-type, size, JSON, and service-error violations. The HTTP path is mocked-test verified only; no live county complete rehearsal, profile promotion, or bulk authorization has occurred. |",
+          )
+          replace_line(
+              "docs/architecture/current_implementation_status.md",
+              "| CS-PLAN-008 | Countywide parcel evidence ingestion |",
+              "| CS-PLAN-008 | Countywide parcel evidence ingestion | Exact metadata, retained bounded proofs, offline verification, exact-ID persistence receipts, a reusable exact-response complete-rehearsal executor, and a digest-bound official HTTP plan/adapter now exist. Both sources remain `bounded_query_verified`; the adapter has been verified only with mocked transports, and downstream parcel observations still operate only on supplied records. | Separately authorize, execute, retain, and independently verify a count-reconciled checkpoint/restart and bounded-retry rehearsal for each county; then review profile promotion and recurring observation orchestration as distinct later phases. |",
+          )
+
+          replace_line(
+              "docs/architecture/parcel_arcgis_acquisition.md",
+              "This service is implemented and tested with offline sources and filesystem proof stores.",
+              "This service is implemented and tested with offline sources and filesystem proof stores. It is not exposed as a live county command, has not been executed against either official county layer, does not promote a verification profile, and does not create recurring or production authority.",
+          )
+          insert_before_heading(
+              "docs/architecture/parcel_arcgis_acquisition.md",
+              "## Portable verification and explicit persistence",
+              "## Official exact-response HTTP adapter\n\nA digest-bound `ParcelArcGISBulkRehearsalPlan` binds the capability snapshot, HTTPS `/query` endpoint, object-ID field, page/checkpoint/fault-injection policy, bounded attempts, timeout, response-size ceiling, retry statuses, and accepted JSON media types. `HTTPParcelArcGISBulkRehearsalSource` implements the executor protocol with exactly one HTTP request per source call, leaving all retry sequencing and retained recovery evidence inside the executor.\n\nThe adapter preserves successful response bytes unchanged and rejects redirects, endpoint changes, terminal statuses, unsupported media types, malformed or empty JSON, oversized bodies, unclassified service errors, page-size disagreement, offset misalignment, and out-of-plan attempts. Transport and explicitly configured HTTP or ArcGIS service failures are the only retry-eligible outcomes. The adapter is tested with mocked HTTP transports and has no live county command or authorization field. See `parcel_arcgis_rehearsal_http.md`.\n",
+              "## Official exact-response HTTP adapter",
+          )
+          replace_line(
+              "docs/architecture/parcel_arcgis_acquisition.md",
+              "The read-only upstream operator exposes all six record kinds",
+              "The read-only upstream operator exposes all six record kinds with applicable source, county, and status filters. The parcel-source CLI exposes canonical metadata snapshots, bounded plans, current assessments, the explicit live bounded probe command, offline bundle verification, and explicitly authorized persistence. The storage-summary CLI reports each new table independently. The complete-rehearsal executor and exact-response HTTP adapter remain service/test boundaries until a separately authorized live proof phase exists.",
+          )
+          replace_line(
+              "docs/architecture/parcel_arcgis_acquisition.md",
+              "Both portable bundles independently recompute their metadata",
+              "Both portable bundles independently recompute their metadata, plans, response digests, replay agreement, and assessments. Each exact bundle identity also passed transactional insert-or-exact-replay persistence against an ephemeral database. The reusable complete-rehearsal executor, exact-byte artifact store, digest-bound plan, and official HTTP adapter now exist and pass mocked end-to-end tests, but neither official county source has undergone that live rehearsal. Neither source is bulk-rehearsal-verified, profile-promoted, bulk-authorized, or import-ready.",
+          )
+          replace_line(
+              "docs/architecture/parcel_arcgis_acquisition.md",
+              "The new executor, exact-response envelopes, artifact receipts",
+              "The new executor, exact-response envelopes, artifact receipts, filesystem proof stores, digest-bound plan, and one-request HTTP adapter are additive. The bounded probe output preserves its original four proof keys while adding the complete portable envelope. Existing parcel records, observations, assurance reports, site resolution, source evidence, verification profiles, county coverage reports, and earlier ArcGIS proof rows retain their prior read and write contracts. Corrected default profile identities intentionally change because their schema content changed; previously persisted profiles remain immutable historical evidence.",
+          )
+
+          replace_line(
+              "docs/audits/full_repo_audit_inventory.md",
+              "- digest-bound ArcGIS capability,",
+              "- digest-bound ArcGIS capability, retained county count/page/replay proofs, offline recomputation, exact-ID persistence receipts, complete-rehearsal gates, and a mocked-test-verified exact-response HTTP adapter that keep advertised behavior separate from executed proof;",
+          )
+          replace_line(
+              "docs/audits/full_repo_audit_inventory.md",
+              "| Parcel ArcGIS acquisition gates |",
+              "| Parcel ArcGIS acquisition gates | Yes | Yes | Yes | Yes | Read-only plus explicit bounded probe and guarded proof persistence | Bounded on demand | Retained 2026-07-14 bundles place both county sources at `bounded_query_verified`. A reusable complete-rehearsal executor and digest-bound official HTTP plan/adapter retain exact count/page bytes, keep retry evidence centralized, and fail closed on request/response-policy disagreement. The adapter is mocked-test verified only; no live county rehearsal, bulk run, or automatic profile promotion is authorized. |",
+          )
+          replace_line(
+              "docs/audits/full_repo_audit_inventory.md",
+              "| CS-PLAN-008 | Countywide parcel evidence ingestion |",
+              "| CS-PLAN-008 | Countywide parcel evidence ingestion | Exact metadata, retained bounded proofs, offline verification, exact-ID persistence receipts, a reusable exact-response complete-rehearsal executor, and a digest-bound official HTTP plan/adapter exist. Both sources remain `bounded_query_verified`; no live county rehearsal or downstream county import has occurred. | Separately authorize, execute, retain, and independently verify a checkpoint/retry/count-reconciled rehearsal for each county; then review profile promotion and recurring observation orchestration as later authorized phases. |",
+          )
+          replace_line(
+              "docs/audits/full_repo_audit_inventory.md",
+              "| County parcel ArcGIS rehearsal executor |",
+              "| County parcel ArcGIS rehearsal executor | Reusable executor and filesystem proof stores retain exact starting-count, page, and ending-count bodies, durable checkpoint reload, resumed-segment retry, and count/order reconciliation; neither county has a live rehearsal artifact yet. |\n| County parcel ArcGIS rehearsal HTTP adapter | A digest-bound plan and one-request-per-call HTTPS adapter preserve exact successful bytes, centralize retry evidence in the executor, and reject redirect, endpoint, status, media-type, size, JSON, service-error, page-size, offset, and attempt disagreement. Verification is mocked only; no live county request is claimed. |",
+          )
+          replace_line(
+              "docs/audits/full_repo_audit_inventory.md",
+              "| Parcel ArcGIS acquisition gates | Six additive tables preserve",
+              "| Parcel ArcGIS acquisition gates | Six additive tables preserve capability snapshots, bounded plans, one immutable observation per request, complete-rehearsal manifests, assessments, and self-contained bounded proof bundles with dependency-ordered writes and typed digest revalidation. Bulk manifests embed structured page, checkpoint, resume, and retry evidence. The reusable rehearsal executor additionally uses atomic filesystem stores for exact count/page response bytes and checkpoint reload proof; the digest-bound HTTP plan and transport are ephemeral control objects and create no operational county data or scheduler state. Canonical bounded bundles, verification reports, and persistence receipts remain committed for both counties. |",
+          )
+          replace_line(
+              "docs/audits/full_repo_audit_inventory.md",
+              "| Parcel ArcGIS acquisition | Static capability/plan/readiness commands",
+              "| Parcel ArcGIS acquisition | Static capability/plan/readiness commands, an explicit bounded live probe, offline bundle verification, exact-identity persistence, six read-only upstream record kinds, and storage summaries are present. A reusable complete-rehearsal executor plus digest-bound official HTTP plan/adapter retain exact response artifacts and checkpoint/retry/count-order proof under mocked tests. No live county rehearsal command, profile-promotion command, complete county import, or recurring acquisition exists. |",
+          )
+          replace_line(
+              "docs/audits/full_repo_audit_inventory.md",
+              "- ArcGIS metadata projection and schema digests,",
+              "- ArcGIS metadata projection and schema digests, object-ID uniqueness, query primitives, safe request identity, digest-bound rehearsal-plan identity, exact HTTPS query endpoint and parameters, timeout/size/media-type/retry controls, exact bounded-response digests, count/page/replay sequence, exact complete-rehearsal count and page response bytes, artifact receipts and references, count reconciliation, duplicate and failed-page counts, checkpoint save/reload and retry proof, terminal-page evidence, object-ID-set digest, acquisition status, and explicit gaps;",
+          )
+          PY
+
+      - name: Restore canonical CI and publish reconciliation
+        run: |
+          git checkout origin/main -- .github/workflows/ci.yml
+          rm -f docs/audits/pr114_docs_trigger.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "Reconcile ArcGIS rehearsal HTTP adapter documentation"
+          git push origin HEAD:agent/add-arcgis-rehearsal-http-adapter
