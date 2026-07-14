@@ -125,6 +125,10 @@ class ParcelArcGISBulkRehearsalProofBundle(BaseModel):
             raise ValueError("ArcGIS rehearsal proof bundle requires checkpoint reload proof")
         if self.bulk_run_authorized:
             raise ValueError("ArcGIS rehearsal proof bundle cannot authorize a bulk run")
+        if self.created_at < self.manifest.completed_at:
+            raise ValueError(
+                "ArcGIS rehearsal proof bundle created_at cannot precede manifest completion"
+            )
         scope = (self.source_key, self.county)
         if (
             (self.snapshot.source_key, self.snapshot.county) != scope
