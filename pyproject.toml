@@ -54,6 +54,7 @@ constructionsight-ceqanet-recurring-run = "constructionsight.ceqanet_recurring_r
 constructionsight-ceqanet-csv = "constructionsight.ceqanet_csv_cli:app"
 constructionsight-ceqanet-maturity = "constructionsight.ceqanet_maturity_proposal_cli:app"
 constructionsight-ceqanet-access-policy = "constructionsight.ceqanet_csv_access_policy_cli:app"
+constructionsight-ceqanet-evidence-series = "constructionsight.ceqanet_csv_evidence_series_cli:app"
 constructionsight-ceqanet-vocabulary = "constructionsight.ceqanet_vocabulary_export_cli:app"
 constructionsight-ceqanet-results = "constructionsight.ceqanet_result_parse_cli:app"
 constructionsight-ceqanet-detail = "constructionsight.ceqanet_detail_parse_cli:app"
