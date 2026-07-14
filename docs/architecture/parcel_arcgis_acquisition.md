@@ -99,6 +99,12 @@ The executor requires an exact JSON checkpoint to be saved and reloaded before t
 
 This service is implemented and tested with offline sources and filesystem proof stores. It is not exposed as a live county command, has not been executed against either official county layer, does not promote a verification profile, and does not create recurring or production authority.
 
+## Official exact-response HTTP adapter
+
+A digest-bound `ParcelArcGISBulkRehearsalPlan` now binds the capability snapshot, HTTPS `/query` endpoint, object-ID field, page/checkpoint/fault-injection policy, bounded attempts, timeout, response-size ceiling, retry statuses, and accepted JSON media types. `HTTPParcelArcGISBulkRehearsalSource` implements the executor protocol with exactly one HTTP request per source call, leaving all retry sequencing and retained recovery evidence inside the executor.
+
+The adapter preserves successful response bytes unchanged and rejects redirects, endpoint changes, terminal statuses, unsupported media types, malformed or empty JSON, oversized bodies, unclassified service errors, page-size disagreement, offset misalignment, and out-of-plan attempts. Transport and explicitly configured HTTP or ArcGIS service failures are the only retry-eligible outcomes. The adapter is tested with mocked HTTP transports and has no live county command or authorization field. See `parcel_arcgis_rehearsal_http.md`.
+
 ## Portable verification and explicit persistence
 
 A saved bundle can be checked without network or database access:
@@ -144,7 +150,7 @@ Six additive tables preserve the chain:
 
 Writes are dependency-ordered and immutable. Exact replays are idempotent; conflicting indexed fields, payload changes, missing parents, or a second observation for one request are rejected. One identical request may be shared by multiple bounded plans. Typed loads revalidate every digest and model invariant, and stored assessments are recomputed from their persisted snapshots, plans, observations, and optional manifests.
 
-The read-only upstream operator exposes all six record kinds with applicable source, county, and status filters. The parcel-source CLI exposes canonical metadata snapshots, bounded plans, current assessments, the explicit live bounded probe command, offline bundle verification, and explicitly authorized persistence. The storage-summary CLI reports each new table independently. The complete-rehearsal executor remains a service/test boundary until an official exact-response HTTP adapter and a separately authorized live proof phase exist.
+The read-only upstream operator exposes all six record kinds with applicable source, county, and status filters. The parcel-source CLI exposes canonical metadata snapshots, bounded plans, current assessments, the explicit live bounded probe command, offline bundle verification, and explicitly authorized persistence. The storage-summary CLI reports each new table independently. The complete-rehearsal executor and exact-response HTTP adapter remain service/test boundaries until a separately authorized live proof phase exists.
 
 ## Current official boundary
 
@@ -155,7 +161,7 @@ The retained 2026-07-14 evidence records one refreshed metadata request and four
 | San Bernardino County parcel FeatureServer layer | 1,000 | 839,794 | `bounded_query_verified` | Live exact-response rehearsal execution and independent verification |
 | Riverside County Assessor MapServer layer | 2,000 | 846,251 | `bounded_query_verified` | Live exact-response rehearsal execution and independent verification |
 
-Both portable bundles independently recompute their metadata, plans, response digests, replay agreement, and assessments. Each exact bundle identity also passed transactional insert-or-exact-replay persistence against an ephemeral database. The reusable complete-rehearsal executor and exact-byte artifact store now exist and are tested, but neither official county source has undergone that live rehearsal. Neither source is bulk-rehearsal-verified, profile-promoted, bulk-authorized, or import-ready.
+Both portable bundles independently recompute their metadata, plans, response digests, replay agreement, and assessments. Each exact bundle identity also passed transactional insert-or-exact-replay persistence against an ephemeral database. The reusable complete-rehearsal executor, exact-byte artifact store, digest-bound plan, and official HTTP adapter now exist and pass mocked end-to-end tests, but neither official county source has undergone that live rehearsal. Neither source is bulk-rehearsal-verified, profile-promoted, bulk-authorized, or import-ready.
 
 The exact schema reconciliation also removes a stale synthetic `Shape` attribute from the San Bernardino profile and includes Riverside's observed `LAND` and `STRUCTURES` attributes. Geometry remains represented by the verification profile's explicit synthetic `geometry` role rather than an unobserved attribute name.
 
@@ -167,4 +173,4 @@ If offset pagination proves unstable, a later acquisition implementation may use
 
 ## Compatibility
 
-The new executor, exact-response envelopes, artifact receipts, and filesystem proof stores are additive. The bounded probe output preserves its original four proof keys while adding the complete portable envelope. Existing parcel records, observations, assurance reports, site resolution, source evidence, verification profiles, county coverage reports, and earlier ArcGIS proof rows retain their prior read and write contracts. Corrected default profile identities intentionally change because their schema content changed; previously persisted profiles remain immutable historical evidence.
+The new executor, exact-response envelopes, artifact receipts, filesystem proof stores, digest-bound plan, and one-request HTTP adapter are additive. The bounded probe output preserves its original four proof keys while adding the complete portable envelope. Existing parcel records, observations, assurance reports, site resolution, source evidence, verification profiles, county coverage reports, and earlier ArcGIS proof rows retain their prior read and write contracts. Corrected default profile identities intentionally change because their schema content changed; previously persisted profiles remain immutable historical evidence.
