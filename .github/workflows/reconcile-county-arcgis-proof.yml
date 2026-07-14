@@ -119,7 +119,7 @@ Both portable bundles independently recompute their metadata, plans, response di
           )
           replace_line_containing(
               audit,
-              "| Parcel ArcGIS acquisition gates |",
+              "| Parcel ArcGIS acquisition gates | Yes | Yes | Yes | Yes |",
               "| Parcel ArcGIS acquisition gates | Yes | Yes | Yes | Yes | Read-only plus explicit bounded probe and guarded proof persistence | Bounded on demand | Exact metadata snapshots, four-request plans, immutable observations, complete-rehearsal manifests, and derived assessments fail closed. Retained 2026-07-14 bundles place both county sources at `bounded_query_verified`; each independently recomputes offline and passed exact-identity transactional persistence. No complete rehearsal, bulk run, or automatic profile promotion is authorized. |",
           )
           replace_line_containing(
