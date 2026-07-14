@@ -1,0 +1,212 @@
+No broken requirements found.
+invalid-syntax: Expected an indented block after `if` statement
+   --> src/constructionsight/parcel_source_acquisition_models.py:447:11
+    |
+445 |   timestamp < self.started_at or timestamp > self.completed_at
+446 |   for timestamp in evidence_times
+447 |         ):
+    |           ^
+448 |   raise ValueError(
+449 |       "ArcGIS bulk rehearsal evidence falls outside the manifest execution window"
+    |
+
+invalid-syntax: unindent does not match any outer indentation level
+   --> src/constructionsight/parcel_source_acquisition_models.py:448:3
+    |
+446 |   for timestamp in evidence_times
+447 |         ):
+448 |   raise ValueError(
+    |   ^
+449 |       "ArcGIS bulk rehearsal evidence falls outside the manifest execution window"
+450 |   )
+    |
+
+invalid-syntax: Unexpected indentation
+   --> src/constructionsight/parcel_source_acquisition_models.py:451:1
+    |
+449 |       "ArcGIS bulk rehearsal evidence falls outside the manifest execution window"
+450 |   )
+451 |         if (
+    | ^^^^^^^^
+452 |             evidence.snapshot_id != self.snapshot_id
+453 |             or evidence.profile_id != self.profile_id
+    |
+
+invalid-syntax: unindent does not match any outer indentation level
+   --> src/constructionsight/parcel_source_acquisition_models.py:484:1
+    |
+482 |         return self
+483 |
+484 |     def to_dict(self) -> dict[str, Any]:
+    | ^^^^
+485 |         return self.model_dump(mode="json")
+    |
+
+invalid-syntax: Expected dedent, found end of file
+   --> src/constructionsight/parcel_source_acquisition_models.py:646:1
+    |
+644 |     encoded = canonical_json_payload(payload)
+645 |     return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+    |                                                               ^
+    |
+
+invalid-syntax: Expected an indented block after `if` statement
+   --> src/constructionsight/parcel_source_bulk_rehearsal_models.py:277:59
+    |
+275 |         ):
+276 |             raise ValueError("ArcGIS resume evidence must bind the first resumed page")
+277 |         if self.resume.resumed_at < checkpoint.created_at:
+    |                                                           ^
+278 |   raise ValueError("ArcGIS resume cannot precede checkpoint creation")
+279 |         if first_resumed_page.observed_at < self.resume.resumed_at:
+    |
+
+invalid-syntax: unindent does not match any outer indentation level
+   --> src/constructionsight/parcel_source_bulk_rehearsal_models.py:278:3
+    |
+276 |             raise ValueError("ArcGIS resume evidence must bind the first resumed page")
+277 |         if self.resume.resumed_at < checkpoint.created_at:
+278 |   raise ValueError("ArcGIS resume cannot precede checkpoint creation")
+    |   ^
+279 |         if first_resumed_page.observed_at < self.resume.resumed_at:
+280 |   raise ValueError("ArcGIS resumed page cannot precede the resume event")
+    |
+
+invalid-syntax: Unexpected indentation
+   --> src/constructionsight/parcel_source_bulk_rehearsal_models.py:279:1
+    |
+277 |         if self.resume.resumed_at < checkpoint.created_at:
+278 |   raise ValueError("ArcGIS resume cannot precede checkpoint creation")
+279 |         if first_resumed_page.observed_at < self.resume.resumed_at:
+    | ^^^^^^^^
+280 |   raise ValueError("ArcGIS resumed page cannot precede the resume event")
+    |
+
+invalid-syntax: unindent does not match any outer indentation level
+   --> src/constructionsight/parcel_source_bulk_rehearsal_models.py:280:1
+    |
+278 |   raise ValueError("ArcGIS resume cannot precede checkpoint creation")
+279 |         if first_resumed_page.observed_at < self.resume.resumed_at:
+280 |   raise ValueError("ArcGIS resumed page cannot precede the resume event")
+    | ^^
+281 |
+282 |         retry_page_ids = tuple(event.page_evidence_id for event in self.retry_events)
+    |
+
+invalid-syntax: Unexpected indentation
+   --> src/constructionsight/parcel_source_bulk_rehearsal_models.py:282:1
+    |
+280 |   raise ValueError("ArcGIS resumed page cannot precede the resume event")
+281 |
+282 |         retry_page_ids = tuple(event.page_evidence_id for event in self.retry_events)
+    | ^^^^^^^^
+283 |         expected_retry_page_ids = tuple(
+284 |   sorted(
+    |
+
+invalid-syntax: unindent does not match any outer indentation level
+   --> src/constructionsight/parcel_source_bulk_rehearsal_models.py:291:1
+    |
+289 |         )
+290 |         if retry_page_ids != expected_retry_page_ids:
+291 |   raise ValueError(
+    | ^^
+292 |       "ArcGIS retry evidence must cover every and only retried page"
+293 |   )
+    |
+
+invalid-syntax: Unexpected indentation
+   --> src/constructionsight/parcel_source_bulk_rehearsal_models.py:294:1
+    |
+292 |       "ArcGIS retry evidence must cover every and only retried page"
+293 |   )
+294 |         pages_by_id = {page.page_evidence_id: page for page in pages}
+    | ^^^^^^^^
+295 |         for event in self.retry_events:
+296 |   page = pages_by_id.get(event.page_evidence_id)
+    |
+
+invalid-syntax: unindent does not match any outer indentation level
+   --> src/constructionsight/parcel_source_bulk_rehearsal_models.py:296:1
+    |
+294 |         pages_by_id = {page.page_evidence_id: page for page in pages}
+295 |         for event in self.retry_events:
+296 |   page = pages_by_id.get(event.page_evidence_id)
+    | ^^
+297 |   if page is None:
+298 |       raise ValueError("ArcGIS retry evidence references an unknown page")
+    |
+
+invalid-syntax: Unexpected indentation
+   --> src/constructionsight/parcel_source_bulk_rehearsal_models.py:297:1
+    |
+295 |         for event in self.retry_events:
+296 |   page = pages_by_id.get(event.page_evidence_id)
+297 |   if page is None:
+    | ^^
+298 |       raise ValueError("ArcGIS retry evidence references an unknown page")
+299 |   if page.attempt_count != event.recovered_attempt_number:
+    |
+
+invalid-syntax: Unexpected indentation
+   --> src/constructionsight/parcel_source_bulk_rehearsal_models.py:306:1
+    |
+304 |       raise ValueError("ArcGIS retry record cannot follow its recovered page")
+305 |
+306 |         latest_evidence_time = max(
+    | ^^^^^^^^
+307 |   self.resume.resumed_at,
+308 |   checkpoint.created_at,
+    |
+
+invalid-syntax: Expected an indented block after `if` statement
+   --> src/constructionsight/parcel_source_bulk_rehearsal_models.py:312:51
+    |
+310 |   *(event.recorded_at for event in self.retry_events),
+311 |         )
+312 |         if self.created_at < latest_evidence_time:
+    |                                                   ^
+313 |   raise ValueError("ArcGIS rehearsal evidence cannot predate its proof records")
+    |
+
+invalid-syntax: Unexpected indentation
+   --> src/constructionsight/parcel_source_bulk_rehearsal_models.py:315:1
+    |
+313 |   raise ValueError("ArcGIS rehearsal evidence cannot predate its proof records")
+314 |
+315 |         payload = self.model_dump(mode="json", exclude={"evidence_id"})
+    | ^^^^^^^^
+316 |         if self.evidence_id != digest_identity(
+317 |             "parcel-arcgis-bulk-rehearsal-evidence", payload
+    |
+
+invalid-syntax: unindent does not match any outer indentation level
+   --> src/constructionsight/parcel_source_bulk_rehearsal_models.py:322:1
+    |
+320 |         return self
+321 |
+322 |     @property
+    | ^^^^
+323 |     def retrieved_count(self) -> int:
+324 |         return sum(len(page.object_ids) for page in self.page_evidence)
+    |
+
+invalid-syntax: Expected class, function definition or async function definition after decorator
+   --> src/constructionsight/parcel_source_bulk_rehearsal_models.py:323:1
+    |
+322 |     @property
+323 |     def retrieved_count(self) -> int:
+    | ^^^^
+324 |         return sum(len(page.object_ids) for page in self.page_evidence)
+    |
+
+invalid-syntax: Expected a statement
+   --> src/constructionsight/parcel_source_bulk_rehearsal_models.py:359:1
+    |
+359 | def build_arcgis_bulk_page_evidence(
+    | ^
+360 |     *,
+361 |     page_index: int,
+    |
+
+Found 20 errors.
