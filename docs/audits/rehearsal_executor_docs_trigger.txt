@@ -1,1 +1,0 @@
-Temporary branch-only trigger for the registered documentation reconciliation job.
