@@ -33,7 +33,7 @@ from constructionsight.parcel_source_bulk_rehearsal_http import (
     build_arcgis_bulk_rehearsal_plan,
 )
 
-_NOW = datetime(2026, 7, 14, 22, 0, tzinfo=UTC)
+_NOW = datetime(2026, 7, 14, 18, 0, tzinfo=UTC)
 
 
 @dataclass
