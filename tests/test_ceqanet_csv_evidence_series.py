@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+import socksio
 from pydantic import ValidationError
 from typer.testing import CliRunner
 
@@ -54,6 +55,25 @@ SERIES_VERIFICATION_PATH = (
 )
 SERIES_AUDIT_PATH = (
     ROOT / "docs/audits/ceqanet_csv_evidence_series_2026-07-14.md"
+)
+OBSERVATION_EXECUTION_PATH = (
+    EVIDENCE_DIR
+    / "ceqanet_csv_evidence_execution_2026-07-14_project.json"
+)
+SEQUENCE_ONE_SERIES_PATH = (
+    EVIDENCE_DIR
+    / "ceqanet_csv_evidence_series_2026-07-14_sequence_1.json"
+)
+SEQUENCE_ONE_VERIFICATION_PATH = (
+    EVIDENCE_DIR
+    / "ceqanet_csv_evidence_series_verification_2026-07-14_sequence_1.json"
+)
+OBSERVATION_AUDIT_PATH = (
+    ROOT / "docs/audits/ceqanet_csv_evidence_observation_2026-07-14.md"
+)
+OBSERVATION_ARTIFACT_REF = (
+    "evidence/source_verification/"
+    "ceqanet_csv_evidence_execution_2026-07-14_project.json"
 )
 runner = CliRunner()
 _ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*m")
@@ -725,3 +745,67 @@ def test_ready_series_preflight_does_not_call_http_client() -> None:
         )
 
     assert client.calls == []
+
+
+def test_committed_first_observation_recomputes_exactly() -> None:
+    assert OBSERVATION_EXECUTION_PATH.is_file()
+    assert SEQUENCE_ONE_SERIES_PATH.is_file()
+    assert SEQUENCE_ONE_VERIFICATION_PATH.is_file()
+    assert OBSERVATION_AUDIT_PATH.is_file()
+
+    evidence_execution = CeqanetCsvEvidenceExecution.model_validate(
+        _load_json(OBSERVATION_EXECUTION_PATH)
+    )
+    series = CeqanetCsvEvidenceSeries.model_validate(
+        _load_json(SEQUENCE_ONE_SERIES_PATH)
+    )
+    stored_verification = CeqanetCsvEvidenceSeriesVerification.model_validate(
+        _load_json(SEQUENCE_ONE_VERIFICATION_PATH)
+    )
+    recomputed = verify_ceqanet_csv_evidence_series(
+        _sources(),
+        _original_execution(),
+        _replay(),
+        _replay_verification(),
+        _maturity(),
+        _maturity_verification(),
+        _policy(),
+        _policy_verification(),
+        [(OBSERVATION_ARTIFACT_REF, evidence_execution)],
+        series,
+    )
+
+    assert evidence_execution.evidence_execution_digest == (
+        "57c2c3a64f65f6cd7ca8e512c862d02fe92b04fcaa7cc1bb6eaeb7b091857f10"
+    )
+    assert evidence_execution.live_execution.status_code == 200
+    assert evidence_execution.live_execution.retry_count == 0
+    assert evidence_execution.live_execution.retained_body_complete is True
+    assert evidence_execution.live_execution.retained_body_byte_length == 7_832
+    assert evidence_execution.live_execution.body_sha256 == (
+        "5b1bc503c81d12ed0f00e52539edb437b42ae4c3a539a25e1c82a02b84273163"
+    )
+    assert evidence_execution.live_verification.passed is True
+    assert evidence_execution.live_verification.finding_count == 0
+    evidence_execution.assert_integrity()
+
+    assert series.series_sequence == 1
+    assert series.predecessor_series_digest == (
+        "b2a18770ec5ca28dfb907ce74b0b5ba120e6bb028ee35e3acd5188d42c182634"
+    )
+    assert series.series_digest == (
+        "a6f6e548d675ee9716822fef87cc02d8a4d169f16ab151bae0f297321b8c07df"
+    )
+    assert series.status is CeqanetCsvEvidenceSeriesStatus.COLLECTING
+    assert series.observation_count == 1
+    assert series.successful_observation_count == 1
+    assert recomputed == stored_verification
+    assert recomputed.ready_for_maturity_review is False
+    series.assert_integrity()
+
+
+def test_socks_proxy_transport_is_declared_and_installed() -> None:
+    pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+
+    assert '"httpx[socks]>=0.27.0"' in pyproject
+    assert socksio is not None

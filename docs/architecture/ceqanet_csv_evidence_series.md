@@ -107,6 +107,27 @@ The pre-execution baseline is:
 It contains zero observations, is independently verified, and has status
 `collecting`. Creating it made no network request.
 
+## Current series head
+
+Sequence 1 adds the first governed observation:
+
+- project export for SCH `2026030377`;
+- authorized and executed on UTC `2026-07-14`;
+- one HTTP 200 GET with zero retries;
+- complete 7,832-byte Windows-1252 body retained;
+- 2 parsed source rows;
+- evidence-execution digest
+  `57c2c3a64f65f6cd7ca8e512c862d02fe92b04fcaa7cc1bb6eaeb7b091857f10`;
+- predecessor series digest
+  `b2a18770ec5ca28dfb907ce74b0b5ba120e6bb028ee35e3acd5188d42c182634`;
+- current series digest
+  `a6f6e548d675ee9716822fef87cc02d8a4d169f16ab151bae0f297321b8c07df`;
+  and
+- independent live and series verification with 0 findings.
+
+The current status remains `collecting`. No further execution is permitted on
+UTC 2026-07-14.
+
 ## Operator commands
 
 `constructionsight-ceqanet-evidence-series build` builds a series from the
@@ -125,7 +146,11 @@ network-capable command in this module.
 
 ## Next gate
 
-The next action is one separately authorized project or document CSV evidence
-execution on a UTC date with no prior series observation. Its complete artifact
-must be committed, independently verified into the next series snapshot, and
-reviewed before any later day's execution.
+The next action is one separately authorized document CSV evidence execution no
+earlier than UTC 2026-07-15, provided that date has no series observation and the
+policy remains current. Its complete artifact must be committed, independently
+verified into sequence 2, and reviewed before any later day's execution.
+
+Three additional successful observations on later unused UTC dates are still
+required. At least one must cover the document export scope. Source promotion,
+scheduling, and production authority remain false.

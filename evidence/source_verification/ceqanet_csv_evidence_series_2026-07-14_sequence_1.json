@@ -1,0 +1,57 @@
+{
+  "distinct_successful_utc_dates": [
+    "2026-07-14"
+  ],
+  "generated_at": "2026-07-14T05:39:24.939348Z",
+  "halt_status_code": null,
+  "halted_on": null,
+  "minimum_distinct_utc_dates": 3,
+  "minimum_successful_observations": 4,
+  "next_gate": "collect and independently verify at least four bounded observations across three UTC dates and both project and document export scopes",
+  "observation_count": 1,
+  "observations": [
+    {
+      "access_control_halt": false,
+      "body_sha256": "5b1bc503c81d12ed0f00e52539edb437b42ae4c3a539a25e1c82a02b84273163",
+      "document_id": null,
+      "evidence_execution_artifact_ref": "evidence/source_verification/ceqanet_csv_evidence_execution_2026-07-14_project.json",
+      "evidence_execution_digest": "57c2c3a64f65f6cd7ca8e512c862d02fe92b04fcaa7cc1bb6eaeb7b091857f10",
+      "executed_at": "2026-07-14T05:38:57.265593Z",
+      "export_kind": "project",
+      "inspection_digest": "e6888864835947ef758b22b5c3f8533fafa848a310e9b54acc94fd45fd5add07",
+      "live_execution_digest": "ecb1e8cb89ab5909ed9b30ea6d13f995816921d48da7d7a946127e6983ad676e",
+      "observation_digest": "562490071332c4db8b39dae435dad9fc0ce03fa87feb14f356d13bbf64e67f38",
+      "observed_body_byte_length": 7832,
+      "policy_digest": "d84e6b80234a96799593db0601cc92e6480bad15bfd016001b35568c481c1674",
+      "request_url": "https://ceqanet.lci.ca.gov/Search?OutputFormat=CSV&Sch=2026030377",
+      "retained_body_complete": true,
+      "sch_number": "2026030377",
+      "schema_version": "ceqanet_csv_evidence_observation.v1",
+      "status_code": 200,
+      "successful": true,
+      "utc_date": "2026-07-14",
+      "verification_finding_count": 0,
+      "verification_findings": [],
+      "verification_passed": true
+    }
+  ],
+  "observed_successful_export_kinds": [
+    "project"
+  ],
+  "policy_digest": "d84e6b80234a96799593db0601cc92e6480bad15bfd016001b35568c481c1674",
+  "policy_effective_date": "2026-07-14",
+  "policy_expires_on": "2026-08-13",
+  "predecessor_series_digest": "b2a18770ec5ca28dfb907ce74b0b5ba120e6bb028ee35e3acd5188d42c182634",
+  "production_recurring_execution_authorized": false,
+  "required_export_kinds": [
+    "project",
+    "document"
+  ],
+  "schema_version": "ceqanet_csv_evidence_series.v1",
+  "series_digest": "a6f6e548d675ee9716822fef87cc02d8a4d169f16ab151bae0f297321b8c07df",
+  "series_sequence": 1,
+  "source_name": "CEQAnet State Clearinghouse",
+  "source_promotion_authorized": false,
+  "status": "collecting",
+  "successful_observation_count": 1
+}

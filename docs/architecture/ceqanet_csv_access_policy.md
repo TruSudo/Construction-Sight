@@ -90,12 +90,14 @@ All policy commands are offline. They produce or validate governance artifacts a
 
 The separate [CEQAnet evidence-series architecture](ceqanet_csv_evidence_series.md)
 now supplies the policy-bound execution envelope, immutable ledger, independent
-recomputation, daily limit, and access-control halt enforcement. Its canonical
-baseline is valid, empty, and `collecting`; creating it made no network request.
+recomputation, daily limit, and access-control halt enforcement. Its canonical baseline remains the network-free sequence-0 root. The current
+sequence-1 head contains one independently verified project observation from
+UTC 2026-07-14 and remains `collecting`.
 
 ## Next gate
 
-Perform one separately authorized official-CSV evidence execution on an unused
-UTC date, commit its complete policy-bound artifact, and independently rebuild
-the series. The policy and ledger do not promote CEQAnet, authorize a scheduler,
-or establish verified usable coverage.
+Perform one separately authorized document CSV evidence execution no earlier
+than UTC 2026-07-15, commit its complete policy-bound artifact, and independently
+rebuild sequence 2. Three additional successful observations on later unused
+UTC dates remain required. The policy and ledger do not promote CEQAnet,
+authorize a scheduler, or establish verified usable coverage.
