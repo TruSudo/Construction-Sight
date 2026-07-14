@@ -1,0 +1,143 @@
+name: Reconcile county ArcGIS proof evidence
+
+on:
+  push:
+    branches:
+      - agent/record-county-arcgis-bounded-proofs
+
+permissions:
+  contents: write
+
+concurrency:
+  group: reconcile-county-arcgis-proof
+  cancel-in-progress: false
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Check out phase branch
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install package
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+          python -m pip check
+
+      - name: Reconcile canonical documentation
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          replacements: dict[Path, list[tuple[str, str]]] = {
+              Path("README.md"): [
+                  (
+                      "- Parcel-source registry, schema preview, and row preview\n",
+                      "- Parcel-source registry, schema preview, and row preview\n"
+                      "- Official county ArcGIS capability snapshots and four-request bounded probe plans\n"
+                      "- Retained portable county bounded-proof bundles with offline verification and exact-ID persistence receipts\n",
+                  ),
+                  (
+                      "The parcel-source verification layer binds the official San Bernardino and Riverside public parcel endpoints and observed schemas to immutable evidence, proposition-specific authority, source-scope county/state constants, and an explicit county coverage-gap report. The additive ArcGIS acquisition layer now binds exact capability metadata, safe four-request probe plans, executed observations, complete-rehearsal manifests, and explicit maturity assessments. A successful bounded command now produces a portable proof bundle that can be independently verified offline and persisted only with an exact expected identity plus explicit authorization; all bundle and receipt paths remain incapable of bulk authorization. Both sources are preview-ready but remain `metadata_only`; neither is import-ready or bulk-authorized.",
+                      "The parcel-source verification layer binds the official San Bernardino and Riverside public parcel endpoints and observed schemas to immutable evidence, proposition-specific authority, source-scope county/state constants, and an explicit county coverage-gap report. The additive ArcGIS acquisition layer binds exact capability metadata, safe four-request probe plans, executed observations, complete-rehearsal manifests, and explicit maturity assessments. A successful bounded command produces a portable proof bundle that can be independently verified offline and persisted only with an exact expected identity plus explicit authorization; all bundle and receipt paths remain incapable of bulk authorization. Canonical 2026-07-14 evidence now records both official sources as `bounded_query_verified`: San Bernardino reported 839,794 records and Riverside reported 846,251 records, and each exact four-observation bundle independently verifies and passed exact-ID transactional persistence. Neither source is import-ready, bulk-rehearsal-verified, profile-promoted, or bulk-authorized.",
+                  ),
+              ],
+              Path("docs/architecture/current_implementation_status.md"): [
+                  (
+                      "| Parcel ArcGIS acquisition gates | Yes | Yes | Yes | Yes | Yes | Bounded on demand | Exact capability snapshots, four-request probe plans, immutable response observations, complete-rehearsal manifests, and derived assessments separate advertised from executed proof. A self-contained bundle supports offline recomputation and exact-identity/explicit-authorization transactional persistence without bulk authority. Both official sources remain `metadata_only`; bulk authorization and automatic promotion are impossible. |",
+                      "| Parcel ArcGIS acquisition gates | Yes | Yes | Yes | Yes | Yes | Bounded on demand | Exact capability snapshots, four-request probe plans, immutable response observations, complete-rehearsal manifests, and derived assessments separate advertised from executed proof. Canonical 2026-07-14 bundles for both official county sources are `bounded_query_verified`, independently recompute offline, and passed exact-identity transactional persistence. Reported counts are 839,794 for San Bernardino and 846,251 for Riverside. Bulk rehearsal, profile promotion, and bulk authorization remain absent. |",
+                  ),
+                  (
+                      "| CS-PLAN-008 | Countywide parcel evidence ingestion | Exact ArcGIS metadata, portable bounded-proof, offline verification, and guarded persistence controls now exist, while immutable parcel observations, conservative current selection, explicit supersession, and assurance gating operate only on supplied records. Both county sources remain `metadata_only`. | Execute, verify, approve, and persist both bounded proof chains; complete a count-reconciled restart/retry rehearsal; separately promote only verified profiles; retain raw acquisition evidence; and orchestrate recurring county updates through the observation boundary. |",
+                      "| CS-PLAN-008 | Countywide parcel evidence ingestion | Exact ArcGIS metadata, retained portable bounded proofs, offline verification, and exact-ID persistence receipts now exist for both counties. Each source is `bounded_query_verified`, while immutable parcel observations, conservative current selection, explicit supersession, and assurance gating still operate only on supplied records. | Complete a count-reconciled, duplicate-free checkpoint/restart and bounded-retry rehearsal for each source; separately promote only profiles supported by that proof; retain complete raw acquisition evidence; and orchestrate recurring county updates through the observation boundary. |",
+                  ),
+              ],
+              Path("docs/architecture/parcel_arcgis_acquisition.md"): [
+                  (
+                      "## Current official boundary\n\nThe 2026-07-14 canonical snapshot records both official county layers as metadata-ready for a bounded probe:\n\n| Source | Advertised page limit | Canonical state | Missing proof |\n|---|---:|---|---|\n| San Bernardino County parcel FeatureServer layer | 1,000 | `metadata_only` | Count, adjacent pages, replay, complete rehearsal |\n| Riverside County Assessor MapServer layer | 2,000 | `metadata_only` | Count, adjacent pages, replay, complete rehearsal |\n\nNo live probe response or complete rehearsal is fabricated in the default objects. Neither source is bulk-authorized or import-ready.",
+                      "## Current official boundary\n\nThe retained 2026-07-14 evidence records one refreshed metadata request and four bounded, geometry-disabled query requests for each official county layer:\n\n| Source | Advertised page limit | Observed count | Canonical state | Missing proof |\n|---|---:|---:|---|---|\n| San Bernardino County parcel FeatureServer layer | 1,000 | 839,794 | `bounded_query_verified` | Complete count-reconciled checkpoint/retry rehearsal |\n| Riverside County Assessor MapServer layer | 2,000 | 846,251 | `bounded_query_verified` | Complete count-reconciled checkpoint/retry rehearsal |\n\nBoth portable bundles independently recompute their metadata, plans, response digests, replay agreement, and assessments. Each exact bundle identity also passed transactional insert-or-exact-replay persistence against an ephemeral database. Neither source is bulk-rehearsal-verified, profile-promoted, bulk-authorized, or import-ready.",
+                  ),
+              ],
+              Path("docs/architecture/parcel_source_verification.md"): [
+                  (
+                      "The bounded ArcGIS client, portable offline-verifiable proof artifact, immutable observations, assessment state machine, complete-rehearsal manifest, explicit transactional persistence, and read-only operator exposure are implemented. Both sources currently remain `metadata_only`; no live response is fabricated by the repository. The next safe phase is to execute, independently verify, approve by exact identity, and persist the four-request bounded proof for each county, then design a separately controlled complete rehearsal only after those observations pass.",
+                      "The bounded ArcGIS client, portable offline-verifiable proof artifact, immutable observations, assessment state machine, complete-rehearsal manifest, explicit transactional persistence, and read-only operator exposure are implemented. Retained 2026-07-14 bundles now establish `bounded_query_verified` for both county sources: San Bernardino reported 839,794 records and Riverside reported 846,251 records; count, adjacent-page, and exact replay evidence independently verify and both exact identities passed transactional persistence. The next safe phase is a separately controlled, complete count-reconciled rehearsal with checkpoint/resume and bounded retry proof. No profile promotion, countywide import, or recurring acquisition is authorized yet.",
+                  ),
+              ],
+              Path("docs/audits/full_repo_audit_inventory.md"): [
+                  (
+                      "- digest-bound ArcGIS capability, bounded-query, replay, and complete-rehearsal gates that keep advertised behavior separate from executed proof;",
+                      "- digest-bound ArcGIS capability, retained county count/page/replay proofs, offline recomputation, exact-ID persistence receipts, and complete-rehearsal gates that keep advertised behavior separate from executed proof;",
+                  ),
+                  (
+                      "No source is currently `verified`, no production scheduler exists, and no external outreach-sending behavior or GUI/operator application is implemented.",
+                      "Both official county parcel sources now have retained 2026-07-14 bounded proofs: San Bernardino reported 839,794 records and Riverside reported 846,251 records; both four-observation bundles independently verify, passed exact-ID transactional persistence, and remain explicitly non-bulk. No source is currently `verified`, no production scheduler exists, and no external outreach-sending behavior or GUI/operator application is implemented.",
+                  ),
+                  (
+                      "| Parcel ArcGIS acquisition gates | Yes | Yes | Yes | Yes | Read-only plus explicit bounded probe and guarded proof persistence | Bounded on demand | Exact metadata snapshots, four-request plans, immutable observations, complete-rehearsal manifests, and derived assessments fail closed. A portable bundle is independently recomputed offline and requires exact-identity/explicit-authorization transactional persistence. Both county sources remain `metadata_only`; no bulk run or automatic profile promotion is authorized. |",
+                      "| Parcel ArcGIS acquisition gates | Yes | Yes | Yes | Yes | Read-only plus explicit bounded probe and guarded proof persistence | Bounded on demand | Exact metadata snapshots, four-request plans, immutable observations, complete-rehearsal manifests, and derived assessments fail closed. Retained 2026-07-14 bundles place both county sources at `bounded_query_verified`; each independently recomputes offline and passed exact-identity transactional persistence. No complete rehearsal, bulk run, or automatic profile promotion is authorized. |",
+                  ),
+                  (
+                      "| CS-PLAN-008 | Countywide parcel evidence ingestion | Exact ArcGIS metadata and bounded-probe controls exist, but both county assessments remain `metadata_only`; downstream parcel observations and assurance still operate only on supplied records. | Persist successful bounded proof for both sources, complete a count-reconciled restart/retry rehearsal, separately promote verified profiles, retain raw evidence, and orchestrate recurring county updates through the observation boundary. |",
+                      "| CS-PLAN-008 | Countywide parcel evidence ingestion | Exact ArcGIS metadata and retained bounded proof now exist for both county sources at `bounded_query_verified`; offline verification and exact-ID persistence receipts are committed, while downstream parcel observations and assurance still operate only on supplied records. | Complete a count-reconciled, duplicate-free checkpoint/restart and bounded-retry rehearsal, separately promote only supported profiles, retain full raw acquisition evidence, and orchestrate recurring county updates through the observation boundary. |",
+                  ),
+                  (
+                      "| Promotion/update planning | Deterministic dry-run plans and approval digests exist. |",
+                      "| County parcel ArcGIS bounded proof | San Bernardino count 839,794 and Riverside count 846,251 are retained in independently verifiable four-observation bundles; both exact identities passed transactional persistence and remain non-bulk. |\n| Promotion/update planning | Deterministic dry-run plans and approval digests exist. |",
+                  ),
+                  (
+                      "| Parcel ArcGIS acquisition gates | Six additive tables preserve capability snapshots, bounded plans, one immutable observation per request, complete-rehearsal manifests, assessments, and self-contained bounded proof bundles with dependency-ordered writes and typed digest revalidation. |",
+                      "| Parcel ArcGIS acquisition gates | Six additive tables preserve capability snapshots, bounded plans, one immutable observation per request, complete-rehearsal manifests, assessments, and self-contained bounded proof bundles with dependency-ordered writes and typed digest revalidation. Canonical JSON bundles, independent verification reports, and persistence receipts are committed for both counties; the persistence exercise used an ephemeral database and commits no operational database state. |",
+                  ),
+                  (
+                      "| Parcel ArcGIS acquisition | Static capability/plan/readiness commands, an explicit bounded live probe, offline bundle verification, exact-identity/explicit-authorization persistence, six read-only upstream record kinds, and storage summaries are present; no complete downloader or promotion command exists. |",
+                      "| Parcel ArcGIS acquisition | Static capability/plan/readiness commands, an explicit bounded live probe, offline bundle verification, exact-identity/explicit-authorization persistence, six read-only upstream record kinds, and storage summaries are present. Both county bounded proofs are retained and verified; no complete downloader, rehearsal executor, profile-promotion command, or recurring acquisition exists. |",
+                  ),
+              ],
+          }
+
+          for path, changes in replacements.items():
+              text = path.read_text(encoding="utf-8")
+              for old, new in changes:
+                  count = text.count(old)
+                  if count != 1:
+                      raise SystemExit(f"expected one match in {path} but found {count}: {old[:80]!r}")
+                  text = text.replace(old, new)
+              path.write_text(text, encoding="utf-8")
+          PY
+
+      - name: Remove temporary workflow and commit candidate
+        run: |
+          rm .github/workflows/reconcile-county-arcgis-proof.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "Reconcile county ArcGIS bounded proof status"
+
+      - name: Validate exact committed candidate
+        run: |
+          python -m pip check
+          python -m ruff check src tests
+          python -m mypy src
+          python -m compileall -q src tests
+          python -m pytest --strict-config --strict-markers -ra -W error
+          constructionsight audit-adapters
+          constructionsight audit-source-coverage data/source_registry.seed.json
+          python -m constructionsight.repository_certification --root . --require-clean-worktree
+          git diff --check
+
+      - name: Push validated candidate
+        run: git push origin HEAD:agent/record-county-arcgis-bounded-proofs
