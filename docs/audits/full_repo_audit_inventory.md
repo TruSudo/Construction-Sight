@@ -55,7 +55,8 @@ The active-defect count for a certified tree must be zero. Planned capabilities 
 | Universal intake | Yes | Yes | Yes | Partial | Yes | No | Source breadth remains limited. |
 | Opportunity transition intake | Yes | Yes | Yes | Partial | Yes | No | Candidate production is not outreach. |
 | External intelligence/gap spine | Yes | Yes | Yes | N/A | Yes | No | Capability models do not establish vendor parity. |
-| Parcel source/schema/row preview | Yes | Yes | Yes | Config/report-backed | Yes | No | Live import remains absent. |
+| Parcel source/schema/row preview | Yes | Yes | Yes | Config/report-backed | Yes | No | Official county endpoints and exact schemas are preview-ready; verified geographic constants replace fabricated county/state fields. Live import remains absent. |
+| Parcel source verification | Yes | Yes | Yes | Yes | Read-only | No | Digest-bound official evidence, immutable field-specific profiles, and deterministic county coverage-gap reports expose authority, coverage, redundancy, and acquisition shortfalls. |
 | Parcel core records | Yes | Yes | Yes | Yes | Read-only | No | Raw geometry, hash, CRS, and compatible summaries are preserved. |
 | Parcel longitudinal evidence | Yes | Yes | Yes | Yes | Read-only | No | Immutable observations retain complete evidence; conservative per-source current selection records supersession and blocks mixed-time or same-time-content ambiguity. |
 | Parcel fact assurance | Yes | Yes | Yes | Yes | Read-only | No | Governed current canonical records produce retained field claims and explainable lineage-aware outcomes; no live coverage or global truth score is claimed. |
@@ -163,6 +164,7 @@ A prior report-only HTTP observation classified CEQAnet as `cross_host_redirect`
 | Source apply reports | Required JSON audit with digests and row-level outcomes. |
 | CEQAnet recurring-run definitions/manifests/executions | Exact-schema digest-bound JSON artifacts only; no attempt ledger or scheduler state is implied. |
 | Parcel preview layers | Report/config-backed and intentionally ephemeral. |
+| Parcel source verification | Append-only evidence/profile rows and immutable semantic coverage reports preserve official facts, schema snapshots, authority limits, gap explanations, and complete payloads; typed replay rejects malformed, digest-invalid, or index-divergent data. |
 | Parcel core/site resolution | Indexed fields plus full payload, raw geometry, hashes, CRS, and compatible summaries. |
 | Parcel longitudinal evidence | Append-only observation rows preserve complete records and dual digests; immutable selection reports preserve per-source clocks, candidates, supersession, ambiguity, reasons, limitations, and review state; typed replay rejects malformed or index-divergent payloads. |
 | Parcel fact assurance | Additive indexed report rows plus complete field claims, dependency lineages, authority, values, reasons, conflicts, missing evidence, and limitations. |

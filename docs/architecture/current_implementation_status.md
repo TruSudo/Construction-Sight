@@ -35,7 +35,8 @@ A planned capability is not an active defect when the current supported boundary
 | Opportunity transition intake | Yes | Yes | Yes | Partial | Yes | No | Converts intake facts into opportunity candidates without implying outreach. |
 | Shovels/Regrid gap alignment | Yes | Yes | Yes | N/A | Yes | No | Capability planning exists; it is not a parity claim. |
 | Parcel/site resolution | Yes | Yes | Yes | Yes | Yes | No | Hint and parcel-backed resolution preserve confidence, ambiguity, limitations, storage, topology, and read-only inspection. |
-| Parcel source registry | Yes | Yes | Yes | No | Yes | No | Tracks source targets without claiming live parcel coverage. |
+| Parcel source registry | Yes | Yes | Yes | Config | Yes | No | Official San Bernardino and Riverside endpoints and exact preview mappings are registered; county/state scope constants remain distinct from physical fields. |
+| Parcel source verification | Yes | Yes | Yes | Yes | Yes | No | Eight digest-bound official observations support two immutable preview profiles, field-specific assurance contexts, and explicit county coverage gaps. No full acquisition or countywide completeness is claimed. |
 | Parcel schema preview | Yes | Yes | Yes | No | Yes | No | Pre-import schema gate exists. |
 | Parcel row preview | Yes | Yes | Yes | No | Yes | No | Pre-record row gate exists. |
 | Parcel core record | Yes | Yes | Yes | Yes | Yes | No | Raw geometry, hashes, CRS labels, compatible summaries, persistence, and read-only inspection exist. |
