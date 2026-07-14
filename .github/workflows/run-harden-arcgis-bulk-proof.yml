@@ -60,18 +60,18 @@ jobs:
               for line in lines[run_line + 1 : end]
           )
 
-          brittle_start_marker = (
+          acquisition_start_marker = (
               "replace_once(\n"
               "    acquisition_test,\n"
               "    '''        build_arcgis_bulk_manifest("
           )
-          brittle_end_marker = "        )''',\n)\n"
-          brittle_start = script.index(brittle_start_marker)
-          brittle_end = (
-              script.index(brittle_end_marker, brittle_start)
-              + len(brittle_end_marker)
+          call_end_marker = "        )''',\n)\n"
+          acquisition_start = script.index(acquisition_start_marker)
+          acquisition_end = (
+              script.index(call_end_marker, acquisition_start)
+              + len(call_end_marker)
           )
-          structural_replacement = "\n".join(
+          acquisition_replacement = "\n".join(
               [
                   "acquisition_text = acquisition_test.read_text(encoding=\"utf-8\")",
                   "failure_start = acquisition_text.index(",
@@ -101,11 +101,61 @@ jobs:
               ]
           )
           script = (
-              script[:brittle_start]
-              + structural_replacement
+              script[:acquisition_start]
+              + acquisition_replacement
               + "\n"
-              + script[brittle_end:]
+              + script[acquisition_end:]
           )
+
+          storage_start_marker = (
+              "replace_once(\n"
+              "    storage_test,\n"
+              "    '''    manifest = build_arcgis_bulk_manifest("
+          )
+          storage_start = script.index(storage_start_marker)
+          storage_end = (
+              script.index("    )''',\n)\n", storage_start)
+              + len("    )''',\n)\n")
+          )
+          storage_replacement = "\n".join(
+              [
+                  "storage_text = storage_test.read_text(encoding=\"utf-8\")",
+                  "storage_test_start = storage_text.index(",
+                  "    'def test_complete_chain_persists_manifest_and_verified_assessment() -> None:'",
+                  ")",
+                  "storage_manifest_start = storage_text.index(",
+                  "    '    manifest = build_arcgis_bulk_manifest(\\n',",
+                  "    storage_test_start,",
+                  ")",
+                  "storage_manifest_end = storage_text.index(",
+                  "    '\\n    assessment = build_arcgis_acquisition_assessment(',",
+                  "    storage_manifest_start,",
+                  ")",
+                  "storage_manifest_replacement = (",
+                  "    '    manifest = build_arcgis_bulk_manifest(\\n'",
+                  "    '        snapshot,\\n'",
+                  "    '        started_at=_OBSERVED_AT,\\n'",
+                  "    '        completed_at=_OBSERVED_AT + timedelta(minutes=3),\\n'",
+                  "    '        starting_count=6,\\n'",
+                  "    '        ending_count=6,\\n'",
+                  "    '        rehearsal_evidence=_bulk_rehearsal_evidence(snapshot),\\n'",
+                  "    '    )\\n'",
+                  ")",
+                  "storage_test.write_text(",
+                  "    storage_text[:storage_manifest_start]",
+                  "    + storage_manifest_replacement",
+                  "    + storage_text[storage_manifest_end:],",
+                  "    encoding=\"utf-8\",",
+                  ")",
+              ]
+          )
+          script = (
+              script[:storage_start]
+              + storage_replacement
+              + "\n"
+              + script[storage_end:]
+          )
+
           Path("/tmp/harden-arcgis-bulk-proof.sh").write_text(
               script + "\n",
               encoding="utf-8",
