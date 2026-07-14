@@ -184,8 +184,8 @@ def test_policy_current_check_accepts_window_boundaries() -> None:
     assert_ceqanet_csv_access_policy_current(policy, as_of_date=EXPIRES_ON)
 
 
-def test_builder_rejects_authority_longer_than_31_days() -> None:
-    with pytest.raises(ValueError, match="cannot exceed 31 days"):
+def test_builder_rejects_authority_longer_than_31_inclusive_days() -> None:
+    with pytest.raises(ValueError, match="cannot exceed 31 inclusive days"):
         build_ceqanet_csv_access_policy(
             _sources(),
             _execution(),
@@ -194,7 +194,7 @@ def test_builder_rejects_authority_longer_than_31_days() -> None:
             _maturity(),
             _maturity_verification(),
             effective_date=EFFECTIVE_DATE,
-            expires_on=date(2026, 8, 15),
+            expires_on=date(2026, 8, 14),
         )
 
 
