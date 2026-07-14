@@ -6,8 +6,8 @@ import base64
 import binascii
 import hashlib
 from collections.abc import Mapping
-from datetime import UTC, datetime
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Any, Protocol
 
 import httpx
