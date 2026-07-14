@@ -91,6 +91,14 @@ A complete bulk rehearsal is represented by `ParcelArcGISBulkManifest`. The mani
 
 Any failed invariant invalidates the manifest. A valid manifest advances the acquisition assessment only to `bulk_rehearsal_verified`; it still does not prove legal-title accuracy, surveyed geometry, proposition-specific authority, update freshness, parcel-type inclusion, or a production scheduler.
 
+## Governed complete-rehearsal executor
+
+The reusable `execute_arcgis_complete_rehearsal` service is a read-only proof executor, not a county importer. Its source contract returns exact starting-count, page, and ending-count response bytes. A digest-addressed artifact store atomically retains every successful body before the corresponding evidence is accepted. Artifact receipts are contiguous, page receipt digests must equal the manifest page-response digests, and neither the execution object nor any receipt can authorize a bulk run.
+
+The executor requires an exact JSON checkpoint to be saved and reloaded before the resumed segment begins. A deterministic pre-request transient failure is injected only in that resumed segment, retry attempts are bounded, every retried page requires a matching recovery record, object IDs must remain globally unique and ascending, and start/end/retrieved counts must reconcile. Short intermediate pages, response errors, malformed exact bodies, count drift, checkpoint tampering, artifact tampering, retry exhaustion, and ordering disagreement fail closed.
+
+This service is implemented and tested with offline sources and filesystem proof stores. It is not exposed as a live county command, has not been executed against either official county layer, does not promote a verification profile, and does not create recurring or production authority.
+
 ## Portable verification and explicit persistence
 
 A saved bundle can be checked without network or database access:
@@ -136,7 +144,7 @@ Six additive tables preserve the chain:
 
 Writes are dependency-ordered and immutable. Exact replays are idempotent; conflicting indexed fields, payload changes, missing parents, or a second observation for one request are rejected. One identical request may be shared by multiple bounded plans. Typed loads revalidate every digest and model invariant, and stored assessments are recomputed from their persisted snapshots, plans, observations, and optional manifests.
 
-The read-only upstream operator exposes all six record kinds with applicable source, county, and status filters. The parcel-source CLI exposes canonical metadata snapshots, bounded plans, current assessments, the explicit live bounded probe command, offline bundle verification, and explicitly authorized persistence. The storage-summary CLI reports each new table independently.
+The read-only upstream operator exposes all six record kinds with applicable source, county, and status filters. The parcel-source CLI exposes canonical metadata snapshots, bounded plans, current assessments, the explicit live bounded probe command, offline bundle verification, and explicitly authorized persistence. The storage-summary CLI reports each new table independently. The complete-rehearsal executor remains a service/test boundary until an official exact-response HTTP adapter and a separately authorized live proof phase exist.
 
 ## Current official boundary
 
@@ -144,10 +152,10 @@ The retained 2026-07-14 evidence records one refreshed metadata request and four
 
 | Source | Advertised page limit | Observed count | Canonical state | Missing proof |
 |---|---:|---:|---|---|
-| San Bernardino County parcel FeatureServer layer | 1,000 | 839,794 | `bounded_query_verified` | Complete count-reconciled checkpoint/retry rehearsal |
-| Riverside County Assessor MapServer layer | 2,000 | 846,251 | `bounded_query_verified` | Complete count-reconciled checkpoint/retry rehearsal |
+| San Bernardino County parcel FeatureServer layer | 1,000 | 839,794 | `bounded_query_verified` | Live exact-response rehearsal execution and independent verification |
+| Riverside County Assessor MapServer layer | 2,000 | 846,251 | `bounded_query_verified` | Live exact-response rehearsal execution and independent verification |
 
-Both portable bundles independently recompute their metadata, plans, response digests, replay agreement, and assessments. Each exact bundle identity also passed transactional insert-or-exact-replay persistence against an ephemeral database. Neither source is bulk-rehearsal-verified, profile-promoted, bulk-authorized, or import-ready.
+Both portable bundles independently recompute their metadata, plans, response digests, replay agreement, and assessments. Each exact bundle identity also passed transactional insert-or-exact-replay persistence against an ephemeral database. The reusable complete-rehearsal executor and exact-byte artifact store now exist and are tested, but neither official county source has undergone that live rehearsal. Neither source is bulk-rehearsal-verified, profile-promoted, bulk-authorized, or import-ready.
 
 The exact schema reconciliation also removes a stale synthetic `Shape` attribute from the San Bernardino profile and includes Riverside's observed `LAND` and `STRUCTURES` attributes. Geometry remains represented by the verification profile's explicit synthetic `geometry` role rather than an unobserved attribute name.
 
@@ -155,8 +163,8 @@ The exact schema reconciliation also removes a stale synthetic `Shape` attribute
 
 Schema, object-ID, count, or pagination changes create a new metadata snapshot and block reuse of older proof. The operator must inspect the official service, update evidence and mappings if justified, and rerun the bounded chain.
 
-If offset pagination proves unstable, a later acquisition implementation may use an official object-ID list followed by deterministic ID-batched queries, but it must preserve the same count reconciliation, uniqueness, response digests, checkpointing, retry evidence, and terminal-page guarantees. It cannot reinterpret a failed offset test as success.
+If offset pagination proves unstable, a later acquisition implementation may use an official object-ID list followed by deterministic ID-batched queries, but it must preserve the same exact response artifacts, count reconciliation, uniqueness, response digests, checkpointing, retry evidence, and terminal-page guarantees. It cannot reinterpret a failed offset test as success.
 
 ## Compatibility
 
-The new models, table, commands, and operator record kind are additive. The bounded probe output preserves its original four proof keys while adding the complete portable envelope. Existing parcel records, observations, assurance reports, site resolution, source evidence, verification profiles, county coverage reports, and earlier ArcGIS proof rows retain their prior read and write contracts. Corrected default profile identities intentionally change because their schema content changed; previously persisted profiles remain immutable historical evidence.
+The new executor, exact-response envelopes, artifact receipts, and filesystem proof stores are additive. The bounded probe output preserves its original four proof keys while adding the complete portable envelope. Existing parcel records, observations, assurance reports, site resolution, source evidence, verification profiles, county coverage reports, and earlier ArcGIS proof rows retain their prior read and write contracts. Corrected default profile identities intentionally change because their schema content changed; previously persisted profiles remain immutable historical evidence.
