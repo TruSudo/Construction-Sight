@@ -3,9 +3,13 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from pydantic import ValidationError
 
-from constructionsight.parcel_source_acquisition import build_arcgis_bulk_manifest
+from constructionsight.parcel_source_acquisition import (
+    build_arcgis_bulk_manifest,
+    get_official_arcgis_capability_snapshots,
+)
 from constructionsight.parcel_source_acquisition_models import (
     ParcelArcGISBulkManifest,
+    ParcelArcGISCapabilitySnapshot,
     digest_identity,
     digest_json_payload,
 )
@@ -13,27 +17,27 @@ from constructionsight.parcel_source_bulk_rehearsal_models import (
     ParcelArcGISBulkRehearsalEvidence,
     assemble_arcgis_bulk_rehearsal_evidence,
 )
-from constructionsight.parcel_source_acquisition import (
-    get_official_arcgis_capability_snapshots,
-)
 
 _OBSERVED_AT = datetime(2026, 7, 14, 19, 0, tzinfo=UTC)
 
 
-def _evidence():
+def _evidence() -> tuple[
+    ParcelArcGISCapabilitySnapshot,
+    ParcelArcGISBulkRehearsalEvidence,
+]:
     snapshot = get_official_arcgis_capability_snapshots()[0]
     evidence = assemble_arcgis_bulk_rehearsal_evidence(
         snapshot,
         page_size=2,
         page_object_ids=((1, 3), (5, 7), (9, 11)),
         page_response_digests=tuple(
-  digest_json_payload({"page": value}) for value in range(3)
+            digest_json_payload({"page": value}) for value in range(3)
         ),
         page_attempt_counts=(1, 2, 1),
         page_observed_at=(
-  _OBSERVED_AT,
-  _OBSERVED_AT + timedelta(seconds=30),
-  _OBSERVED_AT + timedelta(minutes=2),
+            _OBSERVED_AT,
+            _OBSERVED_AT + timedelta(seconds=30),
+            _OBSERVED_AT + timedelta(minutes=2),
         ),
         checkpoint_completed_page_count=1,
         checkpoint_created_at=_OBSERVED_AT + timedelta(seconds=10),
@@ -80,7 +84,9 @@ def test_manifest_rejects_summary_claims_that_disagree_with_evidence() -> None:
     )
     payload = manifest.to_dict()
     payload["retrieved_count"] = 7
-    identity_payload = {key: value for key, value in payload.items() if key != "manifest_id"}
+    identity_payload = {
+        key: value for key, value in payload.items() if key != "manifest_id"
+    }
     payload["manifest_id"] = digest_identity(
         "parcel-arcgis-bulk-manifest",
         identity_payload,
