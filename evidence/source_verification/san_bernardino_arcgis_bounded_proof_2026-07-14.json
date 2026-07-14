@@ -1,0 +1,577 @@
+{
+  "assessment": {
+    "assessment_id": "parcel-arcgis-acquisition:cef905937877039de23e197c71213e303cd503553bf87d3fea5879915ad561d3",
+    "bulk_acquisition_verified": false,
+    "bulk_manifest_id": null,
+    "county": "San Bernardino",
+    "expected_record_count": 839794,
+    "gaps": [
+      {
+        "code": "bulk_rehearsal_missing",
+        "explanation": "No complete count-reconciled acquisition manifest is present.",
+        "next_action": "run a checkpointed rehearsal only after bounded probes pass"
+      }
+    ],
+    "generated_at": "2026-07-14T18:29:24.079807Z",
+    "observed_unique_sample_count": 4,
+    "plan_id": "parcel-arcgis-probe-plan:c9a547526f36b4ef3aa0c523054eb8b27298d09bd2cd593e94ac1cdeb510904b",
+    "probe_observation_ids": [
+      "parcel-arcgis-probe-observation:027db329142a1857c605141809a8eaf41c4982dfddd7e59f13da1bf3853bd8d4",
+      "parcel-arcgis-probe-observation:0d06f59a979fd0e293a991864e828b6df4095d69ef03407d87c0cf84fc2854e7",
+      "parcel-arcgis-probe-observation:c08756de88f7a9a84b3b097e2a00818fb30b3607cd901acd6ad0a9bd24e21728",
+      "parcel-arcgis-probe-observation:c50b332fc3da55c1aec0cee94015d859ba699701e67b29fdeb4983f9ce336c17"
+    ],
+    "profile_id": "parcel-source-verification:7958a5bb11dd30d2dd64eb072b255bcf5bee57d694d14d51681eeac2a02c1bd5",
+    "snapshot_id": "parcel-arcgis-capability:d63e5a1a12012afe1f42e715ff9a8800e4a98d3c9e08d52bf5a2a0ef4efee8df",
+    "source_key": "san-bernardino:county-gis-parcels",
+    "status": "bounded_query_verified"
+  },
+  "bulk_run_authorized": false,
+  "bundle_id": "parcel-arcgis-bounded-proof-bundle:c3edb797417fef70d4a34672193e53679c811d91e0cab58dd5aa44dd1101d2a1",
+  "county": "San Bernardino",
+  "created_at": "2026-07-14T18:29:24.081244Z",
+  "limitations": [
+    "A bounded proof cannot authorize or establish complete parcel acquisition.",
+    "A subsequent complete rehearsal requires separate checkpoints and authorization.",
+    "The bundle proves only the exact metadata and four response payloads it contains."
+  ],
+  "network_request_count": 5,
+  "observations": [
+    {
+      "county": "San Bernardino",
+      "exceeded_transfer_limit": null,
+      "kind": "count",
+      "object_ids": [],
+      "observation_id": "parcel-arcgis-probe-observation:027db329142a1857c605141809a8eaf41c4982dfddd7e59f13da1bf3853bd8d4",
+      "observed_at": "2026-07-14T18:29:23.903809Z",
+      "profile_id": "parcel-source-verification:7958a5bb11dd30d2dd64eb072b255bcf5bee57d694d14d51681eeac2a02c1bd5",
+      "request_id": "parcel-arcgis-probe-request:7b89e1fd8b993c6bfb139377fb0da3d78a5688e48be65ca2b7a18edf13fb186a",
+      "response_digest": "5da3c9c8cce7400ca07a2b8fec716c8da884825294d0fe9cf9f82bc44376ed73",
+      "response_payload_json": "{\"count\":839794}",
+      "schema_fingerprint": "21289f55514827b2020eb05e547dcd2d0045e409eaaae31bdfa4424e66e9fb7a",
+      "snapshot_id": "parcel-arcgis-capability:d63e5a1a12012afe1f42e715ff9a8800e4a98d3c9e08d52bf5a2a0ef4efee8df",
+      "source_key": "san-bernardino:county-gis-parcels",
+      "total_count": 839794
+    },
+    {
+      "county": "San Bernardino",
+      "exceeded_transfer_limit": true,
+      "kind": "initial_page",
+      "object_ids": [
+        1,
+        2
+      ],
+      "observation_id": "parcel-arcgis-probe-observation:0d06f59a979fd0e293a991864e828b6df4095d69ef03407d87c0cf84fc2854e7",
+      "observed_at": "2026-07-14T18:29:23.979673Z",
+      "profile_id": "parcel-source-verification:7958a5bb11dd30d2dd64eb072b255bcf5bee57d694d14d51681eeac2a02c1bd5",
+      "request_id": "parcel-arcgis-probe-request:ead830168b231f902ee8a7439a807486d5919bd045b1382934d63abea3f68640",
+      "response_digest": "2d04bd741f1b1ea5dfb572fc8aaaa836ee351df7aa591427c517a5d3a6da33b4",
+      "response_payload_json": "{\"exceededTransferLimit\":true,\"features\":[{\"attributes\":{\"OBJECTID\":1}},{\"attributes\":{\"OBJECTID\":2}}],\"fields\":[{\"alias\":\"OBJECTID\",\"defaultValue\":null,\"domain\":null,\"name\":\"OBJECTID\",\"sqlType\":\"sqlTypeOther\",\"type\":\"esriFieldTypeOID\"}],\"geometryType\":\"esriGeometryPolygon\",\"globalIdFieldName\":\"\",\"objectIdFieldName\":\"OBJECTID\",\"spatialReference\":{\"latestWkid\":3857,\"wkid\":102100},\"uniqueIdField\":{\"isSystemMaintained\":true,\"name\":\"OBJECTID\"}}",
+      "schema_fingerprint": "21289f55514827b2020eb05e547dcd2d0045e409eaaae31bdfa4424e66e9fb7a",
+      "snapshot_id": "parcel-arcgis-capability:d63e5a1a12012afe1f42e715ff9a8800e4a98d3c9e08d52bf5a2a0ef4efee8df",
+      "source_key": "san-bernardino:county-gis-parcels",
+      "total_count": null
+    },
+    {
+      "county": "San Bernardino",
+      "exceeded_transfer_limit": true,
+      "kind": "next_page",
+      "object_ids": [
+        3,
+        4
+      ],
+      "observation_id": "parcel-arcgis-probe-observation:c08756de88f7a9a84b3b097e2a00818fb30b3607cd901acd6ad0a9bd24e21728",
+      "observed_at": "2026-07-14T18:29:24.075352Z",
+      "profile_id": "parcel-source-verification:7958a5bb11dd30d2dd64eb072b255bcf5bee57d694d14d51681eeac2a02c1bd5",
+      "request_id": "parcel-arcgis-probe-request:ae97f7b913afda59a65bb074bfb95fa290db7295e4c2d5c676c1f3a7fb606ba0",
+      "response_digest": "22bf76ab47b97648724c73a683a664be39e86e81165f3c2e85e300b2d8797cec",
+      "response_payload_json": "{\"exceededTransferLimit\":true,\"features\":[{\"attributes\":{\"OBJECTID\":3}},{\"attributes\":{\"OBJECTID\":4}}],\"fields\":[{\"alias\":\"OBJECTID\",\"defaultValue\":null,\"domain\":null,\"name\":\"OBJECTID\",\"sqlType\":\"sqlTypeOther\",\"type\":\"esriFieldTypeOID\"}],\"geometryType\":\"esriGeometryPolygon\",\"globalIdFieldName\":\"\",\"objectIdFieldName\":\"OBJECTID\",\"spatialReference\":{\"latestWkid\":3857,\"wkid\":102100},\"uniqueIdField\":{\"isSystemMaintained\":true,\"name\":\"OBJECTID\"}}",
+      "schema_fingerprint": "21289f55514827b2020eb05e547dcd2d0045e409eaaae31bdfa4424e66e9fb7a",
+      "snapshot_id": "parcel-arcgis-capability:d63e5a1a12012afe1f42e715ff9a8800e4a98d3c9e08d52bf5a2a0ef4efee8df",
+      "source_key": "san-bernardino:county-gis-parcels",
+      "total_count": null
+    },
+    {
+      "county": "San Bernardino",
+      "exceeded_transfer_limit": true,
+      "kind": "replay_page",
+      "object_ids": [
+        1,
+        2
+      ],
+      "observation_id": "parcel-arcgis-probe-observation:c50b332fc3da55c1aec0cee94015d859ba699701e67b29fdeb4983f9ce336c17",
+      "observed_at": "2026-07-14T18:29:24.079416Z",
+      "profile_id": "parcel-source-verification:7958a5bb11dd30d2dd64eb072b255bcf5bee57d694d14d51681eeac2a02c1bd5",
+      "request_id": "parcel-arcgis-probe-request:4ab6935427796758f6e2b74b68f52fabd35acc6c22d4bb5fd3a6f51338b3dc3d",
+      "response_digest": "2d04bd741f1b1ea5dfb572fc8aaaa836ee351df7aa591427c517a5d3a6da33b4",
+      "response_payload_json": "{\"exceededTransferLimit\":true,\"features\":[{\"attributes\":{\"OBJECTID\":1}},{\"attributes\":{\"OBJECTID\":2}}],\"fields\":[{\"alias\":\"OBJECTID\",\"defaultValue\":null,\"domain\":null,\"name\":\"OBJECTID\",\"sqlType\":\"sqlTypeOther\",\"type\":\"esriFieldTypeOID\"}],\"geometryType\":\"esriGeometryPolygon\",\"globalIdFieldName\":\"\",\"objectIdFieldName\":\"OBJECTID\",\"spatialReference\":{\"latestWkid\":3857,\"wkid\":102100},\"uniqueIdField\":{\"isSystemMaintained\":true,\"name\":\"OBJECTID\"}}",
+      "schema_fingerprint": "21289f55514827b2020eb05e547dcd2d0045e409eaaae31bdfa4424e66e9fb7a",
+      "snapshot_id": "parcel-arcgis-capability:d63e5a1a12012afe1f42e715ff9a8800e4a98d3c9e08d52bf5a2a0ef4efee8df",
+      "source_key": "san-bernardino:county-gis-parcels",
+      "total_count": null
+    }
+  ],
+  "plan": {
+    "bulk_run_authorized": false,
+    "county": "San Bernardino",
+    "generated_at": "2026-07-14T18:29:23.816277Z",
+    "next_action": "execute the four read-only requests, persist digest-bound responses, and reassess before any complete acquisition rehearsal",
+    "plan_id": "parcel-arcgis-probe-plan:c9a547526f36b4ef3aa0c523054eb8b27298d09bd2cd593e94ac1cdeb510904b",
+    "profile_id": "parcel-source-verification:7958a5bb11dd30d2dd64eb072b255bcf5bee57d694d14d51681eeac2a02c1bd5",
+    "requests": [
+      {
+        "county": "San Bernardino",
+        "kind": "count",
+        "object_id_field": "OBJECTID",
+        "offset": null,
+        "order_by_fields": [],
+        "out_fields": [],
+        "profile_id": "parcel-source-verification:7958a5bb11dd30d2dd64eb072b255bcf5bee57d694d14d51681eeac2a02c1bd5",
+        "record_count": null,
+        "request_id": "parcel-arcgis-probe-request:7b89e1fd8b993c6bfb139377fb0da3d78a5688e48be65ca2b7a18edf13fb186a",
+        "return_count_only": true,
+        "return_geometry": false,
+        "schema_fingerprint": "21289f55514827b2020eb05e547dcd2d0045e409eaaae31bdfa4424e66e9fb7a",
+        "snapshot_id": "parcel-arcgis-capability:d63e5a1a12012afe1f42e715ff9a8800e4a98d3c9e08d52bf5a2a0ef4efee8df",
+        "source_key": "san-bernardino:county-gis-parcels",
+        "where": "1=1"
+      },
+      {
+        "county": "San Bernardino",
+        "kind": "initial_page",
+        "object_id_field": "OBJECTID",
+        "offset": 0,
+        "order_by_fields": [
+          "OBJECTID ASC"
+        ],
+        "out_fields": [
+          "OBJECTID"
+        ],
+        "profile_id": "parcel-source-verification:7958a5bb11dd30d2dd64eb072b255bcf5bee57d694d14d51681eeac2a02c1bd5",
+        "record_count": 2,
+        "request_id": "parcel-arcgis-probe-request:ead830168b231f902ee8a7439a807486d5919bd045b1382934d63abea3f68640",
+        "return_count_only": false,
+        "return_geometry": false,
+        "schema_fingerprint": "21289f55514827b2020eb05e547dcd2d0045e409eaaae31bdfa4424e66e9fb7a",
+        "snapshot_id": "parcel-arcgis-capability:d63e5a1a12012afe1f42e715ff9a8800e4a98d3c9e08d52bf5a2a0ef4efee8df",
+        "source_key": "san-bernardino:county-gis-parcels",
+        "where": "1=1"
+      },
+      {
+        "county": "San Bernardino",
+        "kind": "next_page",
+        "object_id_field": "OBJECTID",
+        "offset": 2,
+        "order_by_fields": [
+          "OBJECTID ASC"
+        ],
+        "out_fields": [
+          "OBJECTID"
+        ],
+        "profile_id": "parcel-source-verification:7958a5bb11dd30d2dd64eb072b255bcf5bee57d694d14d51681eeac2a02c1bd5",
+        "record_count": 2,
+        "request_id": "parcel-arcgis-probe-request:ae97f7b913afda59a65bb074bfb95fa290db7295e4c2d5c676c1f3a7fb606ba0",
+        "return_count_only": false,
+        "return_geometry": false,
+        "schema_fingerprint": "21289f55514827b2020eb05e547dcd2d0045e409eaaae31bdfa4424e66e9fb7a",
+        "snapshot_id": "parcel-arcgis-capability:d63e5a1a12012afe1f42e715ff9a8800e4a98d3c9e08d52bf5a2a0ef4efee8df",
+        "source_key": "san-bernardino:county-gis-parcels",
+        "where": "1=1"
+      },
+      {
+        "county": "San Bernardino",
+        "kind": "replay_page",
+        "object_id_field": "OBJECTID",
+        "offset": 0,
+        "order_by_fields": [
+          "OBJECTID ASC"
+        ],
+        "out_fields": [
+          "OBJECTID"
+        ],
+        "profile_id": "parcel-source-verification:7958a5bb11dd30d2dd64eb072b255bcf5bee57d694d14d51681eeac2a02c1bd5",
+        "record_count": 2,
+        "request_id": "parcel-arcgis-probe-request:4ab6935427796758f6e2b74b68f52fabd35acc6c22d4bb5fd3a6f51338b3dc3d",
+        "return_count_only": false,
+        "return_geometry": false,
+        "schema_fingerprint": "21289f55514827b2020eb05e547dcd2d0045e409eaaae31bdfa4424e66e9fb7a",
+        "snapshot_id": "parcel-arcgis-capability:d63e5a1a12012afe1f42e715ff9a8800e4a98d3c9e08d52bf5a2a0ef4efee8df",
+        "source_key": "san-bernardino:county-gis-parcels",
+        "where": "1=1"
+      }
+    ],
+    "sample_size": 2,
+    "snapshot_id": "parcel-arcgis-capability:d63e5a1a12012afe1f42e715ff9a8800e4a98d3c9e08d52bf5a2a0ef4efee8df",
+    "source_key": "san-bernardino:county-gis-parcels"
+  },
+  "profile": {
+    "access_boundary": "open_public_data",
+    "authoritative_fields": [
+      "apn"
+    ],
+    "bulk_acquisition_verified": false,
+    "constant_fields": [
+      {
+        "evidence_reference": "https://services.arcgis.com/aA3snZwJfFkVyDuP/ArcGIS/rest/services/Parcels_for_San_Bernardino_County/FeatureServer",
+        "field_role": "county",
+        "notes": null,
+        "required": true,
+        "value": "San Bernardino"
+      },
+      {
+        "evidence_reference": "https://services.arcgis.com/aA3snZwJfFkVyDuP/ArcGIS/rest/services/Parcels_for_San_Bernardino_County/FeatureServer",
+        "field_role": "state",
+        "notes": null,
+        "required": true,
+        "value": "CA"
+      }
+    ],
+    "county": "San Bernardino",
+    "county_extent_declared": true,
+    "countywide_record_coverage_verified": false,
+    "coverage_status": "ready_for_preview",
+    "default_authority": "official",
+    "documentation_url": "https://open.sbcounty.gov/datasets/san-bernardino-county-parcel-dataset/about",
+    "evidence_ids": [
+      "parcel-source-evidence:778dea9e8a1b00adc0b64a1beeb175697ca4550c2bb6b488cce7047cfd6484d3",
+      "parcel-source-evidence:79c97679dd3f30d76640b390503cbe38c0798dec6427ee6e06c114214d3f19e9",
+      "parcel-source-evidence:b50d30506c41c83a7888893502e96916e1ab174cc221027db2f3f65f874c591e",
+      "parcel-source-evidence:e7154faa15cef43c6137b1a8b145c79167c36b97186d74e2cd8d959735a6ae3c"
+    ],
+    "field_mappings": [
+      {
+        "field_role": "acreage",
+        "notes": null,
+        "required": false,
+        "source_field": "Acreage"
+      },
+      {
+        "field_role": "apn",
+        "notes": null,
+        "required": true,
+        "source_field": "ParcelNumber"
+      },
+      {
+        "field_role": "geometry",
+        "notes": "ArcGIS/GeoJSON feature geometry member, not an attribute column",
+        "required": false,
+        "source_field": "geometry"
+      },
+      {
+        "field_role": "jurisdiction",
+        "notes": null,
+        "required": false,
+        "source_field": "Jurisdiction"
+      },
+      {
+        "field_role": "owner",
+        "notes": "assessment owner field; not proof of current legal title",
+        "required": false,
+        "source_field": "OwnerName"
+      },
+      {
+        "field_role": "source_record_id",
+        "notes": null,
+        "required": false,
+        "source_field": "OBJECTID"
+      },
+      {
+        "field_role": "zoning",
+        "notes": null,
+        "required": false,
+        "source_field": "Zoning"
+      }
+    ],
+    "limitations": [
+      "APN authority identifies the assessment parcel only; it does not prove legal title or a surveyed boundary.",
+      "Assessor data does not determine current legal ownership.",
+      "Assessor data does not determine permitted property use.",
+      "Countywide record completeness has not been independently verified.",
+      "No bulk acquisition run has yet proven pagination or drift handling.",
+      "The county does not guarantee assessor-data accuracy or completeness.",
+      "maximum service record count is 1000 and bulk pagination is unverified",
+      "owner data is assessment evidence, not proof of current legal title",
+      "parcel geometry is not a surveyed legal boundary",
+      "public service schema was observed on 2026-07-14 and may drift",
+      "the observed schema does not expose a situs-address field"
+    ],
+    "lineage_key": "san-bernardino-county-parcel-administration",
+    "max_record_count": 1000,
+    "next_action": "run bounded schema, count, pagination, and completeness verification before import",
+    "observed_at": "2026-07-14T11:14:49Z",
+    "profile_id": "parcel-source-verification:7958a5bb11dd30d2dd64eb072b255bcf5bee57d694d14d51681eeac2a02c1bd5",
+    "public_access_verified": true,
+    "schema_fields": [
+      "Acreage",
+      "AssessClass",
+      "AssessDescription",
+      "BaseYear",
+      "ExemptionValue",
+      "HomeOwnerExemption",
+      "ImprovementValue",
+      "Jurisdiction",
+      "JurisdictionURL",
+      "LandValue",
+      "OBJECTID",
+      "OwnerName",
+      "PageMap",
+      "ParcelNumber",
+      "PersonalPropertyValue",
+      "Shape__Area",
+      "Shape__Length",
+      "TaxRateArea",
+      "TaxStatus",
+      "Zoning",
+      "ZoningDescription",
+      "geometry"
+    ],
+    "schema_verified": true,
+    "source_format": "arcgis_feature_service",
+    "source_key": "san-bernardino:county-gis-parcels",
+    "source_url": "https://services.arcgis.com/aA3snZwJfFkVyDuP/ArcGIS/rest/services/Parcels_for_San_Bernardino_County/FeatureServer/0",
+    "spatial_reference": "EPSG:3857 (ArcGIS WKID 102100)",
+    "status": "verified_preview"
+  },
+  "schema_version": "parcel-arcgis-bounded-proof-bundle/v1",
+  "snapshot": {
+    "county": "San Bernardino",
+    "fields": [
+      {
+        "field_type": "esriFieldTypeDouble",
+        "length": null,
+        "name": "Acreage",
+        "nullable": true
+      },
+      {
+        "field_type": "esriFieldTypeString",
+        "length": 72,
+        "name": "AssessClass",
+        "nullable": true
+      },
+      {
+        "field_type": "esriFieldTypeString",
+        "length": 72,
+        "name": "AssessDescription",
+        "nullable": true
+      },
+      {
+        "field_type": "esriFieldTypeString",
+        "length": 4,
+        "name": "BaseYear",
+        "nullable": true
+      },
+      {
+        "field_type": "esriFieldTypeString",
+        "length": 14,
+        "name": "ExemptionValue",
+        "nullable": true
+      },
+      {
+        "field_type": "esriFieldTypeString",
+        "length": 1,
+        "name": "HomeOwnerExemption",
+        "nullable": true
+      },
+      {
+        "field_type": "esriFieldTypeString",
+        "length": 14,
+        "name": "ImprovementValue",
+        "nullable": true
+      },
+      {
+        "field_type": "esriFieldTypeString",
+        "length": 54,
+        "name": "Jurisdiction",
+        "nullable": true
+      },
+      {
+        "field_type": "esriFieldTypeString",
+        "length": 80,
+        "name": "JurisdictionURL",
+        "nullable": true
+      },
+      {
+        "field_type": "esriFieldTypeString",
+        "length": 14,
+        "name": "LandValue",
+        "nullable": true
+      },
+      {
+        "field_type": "esriFieldTypeOID",
+        "length": null,
+        "name": "OBJECTID",
+        "nullable": false
+      },
+      {
+        "field_type": "esriFieldTypeString",
+        "length": 36,
+        "name": "OwnerName",
+        "nullable": true
+      },
+      {
+        "field_type": "esriFieldTypeString",
+        "length": 6,
+        "name": "PageMap",
+        "nullable": true
+      },
+      {
+        "field_type": "esriFieldTypeString",
+        "length": 9,
+        "name": "ParcelNumber",
+        "nullable": true
+      },
+      {
+        "field_type": "esriFieldTypeString",
+        "length": 14,
+        "name": "PersonalPropertyValue",
+        "nullable": true
+      },
+      {
+        "field_type": "esriFieldTypeDouble",
+        "length": null,
+        "name": "Shape__Area",
+        "nullable": true
+      },
+      {
+        "field_type": "esriFieldTypeDouble",
+        "length": null,
+        "name": "Shape__Length",
+        "nullable": true
+      },
+      {
+        "field_type": "esriFieldTypeString",
+        "length": 7,
+        "name": "TaxRateArea",
+        "nullable": true
+      },
+      {
+        "field_type": "esriFieldTypeString",
+        "length": 50,
+        "name": "TaxStatus",
+        "nullable": true
+      },
+      {
+        "field_type": "esriFieldTypeString",
+        "length": 54,
+        "name": "Zoning",
+        "nullable": true
+      },
+      {
+        "field_type": "esriFieldTypeString",
+        "length": 128,
+        "name": "ZoningDescription",
+        "nullable": true
+      }
+    ],
+    "geometry_type": "esriGeometryPolygon",
+    "layer_url": "https://services.arcgis.com/aA3snZwJfFkVyDuP/ArcGIS/rest/services/Parcels_for_San_Bernardino_County/FeatureServer/0",
+    "limitations": [
+      "Advertised capabilities require executed probe proof.",
+      "This command executes a bounded probe, not a complete acquisition."
+    ],
+    "max_record_count": 1000,
+    "metadata_projection_digest": "0ca2f2ec9ce4844e357adaad7d73cd13c0d51d87eebfbddf2f55e20207a47312",
+    "object_id_field": "OBJECTID",
+    "object_id_is_unique": true,
+    "observed_at": "2026-07-14T18:29:23.814987Z",
+    "profile_id": "parcel-source-verification:7958a5bb11dd30d2dd64eb072b255bcf5bee57d694d14d51681eeac2a02c1bd5",
+    "schema_fingerprint": "21289f55514827b2020eb05e547dcd2d0045e409eaaae31bdfa4424e66e9fb7a",
+    "service_version": "12",
+    "snapshot_id": "parcel-arcgis-capability:d63e5a1a12012afe1f42e715ff9a8800e4a98d3c9e08d52bf5a2a0ef4efee8df",
+    "source_key": "san-bernardino:county-gis-parcels",
+    "spatial_reference": "EPSG:3857 (ArcGIS WKID 102100)",
+    "supported_query_formats": [
+      "geojson",
+      "json",
+      "pbf"
+    ],
+    "supports_count": true,
+    "supports_order_by": true,
+    "supports_pagination": true,
+    "supports_query": true
+  },
+  "source_evidence": [
+    {
+      "county": "San Bernardino",
+      "evidence_id": "parcel-source-evidence:778dea9e8a1b00adc0b64a1beeb175697ca4550c2bb6b488cce7047cfd6484d3",
+      "evidence_kind": "official_service_schema",
+      "facts": [
+        "The feature layer geometry type is esriGeometryPolygon.",
+        "The layer reports a maximum record count of 1000.",
+        "The layer supports JSON, GeoJSON, and PBF query formats.",
+        "The observed schema exposes ParcelNumber, OwnerName, Acreage, Zoning, Jurisdiction, and OBJECTID.",
+        "The service reports spatial reference 102100, with latest WKID 3857."
+      ],
+      "field_roles": [
+        "acreage",
+        "apn",
+        "geometry",
+        "jurisdiction",
+        "owner",
+        "source_record_id",
+        "zoning"
+      ],
+      "limitations": [],
+      "observed_at": "2026-07-14T11:14:49Z",
+      "public_url": "https://services.arcgis.com/aA3snZwJfFkVyDuP/ArcGIS/rest/services/Parcels_for_San_Bernardino_County/FeatureServer/0",
+      "source_key": "san-bernardino:county-gis-parcels"
+    },
+    {
+      "county": "San Bernardino",
+      "evidence_id": "parcel-source-evidence:79c97679dd3f30d76640b390503cbe38c0798dec6427ee6e06c114214d3f19e9",
+      "evidence_kind": "official_limitation",
+      "facts": [
+        "Assessor information is maintained for property assessment and taxation."
+      ],
+      "field_roles": [
+        "owner",
+        "zoning"
+      ],
+      "limitations": [
+        "Assessor data does not determine current legal ownership.",
+        "Assessor data does not determine permitted property use.",
+        "The county does not guarantee assessor-data accuracy or completeness."
+      ],
+      "observed_at": "2026-07-14T11:14:49Z",
+      "public_url": "https://arcpropertyinfo.sbcounty.gov/",
+      "source_key": "san-bernardino:county-gis-parcels"
+    },
+    {
+      "county": "San Bernardino",
+      "evidence_id": "parcel-source-evidence:b50d30506c41c83a7888893502e96916e1ab174cc221027db2f3f65f874c591e",
+      "evidence_kind": "official_dataset_metadata",
+      "facts": [
+        "The county open-data catalog publishes a San Bernardino County parcel dataset.",
+        "The dataset describes parcel polygons for San Bernardino County."
+      ],
+      "field_roles": [
+        "apn",
+        "geometry"
+      ],
+      "limitations": [],
+      "observed_at": "2026-07-14T11:14:49Z",
+      "public_url": "https://open.sbcounty.gov/datasets/san-bernardino-county-parcel-dataset/about",
+      "source_key": "san-bernardino:county-gis-parcels"
+    },
+    {
+      "county": "San Bernardino",
+      "evidence_id": "parcel-source-evidence:e7154faa15cef43c6137b1a8b145c79167c36b97186d74e2cd8d959735a6ae3c",
+      "evidence_kind": "official_dataset_metadata",
+      "facts": [
+        "The service describes parcel polygons for San Bernardino County.",
+        "The service states that Land Use Services, the Surveyor, and the Assessor maintain the parcel data."
+      ],
+      "field_roles": [
+        "apn",
+        "geometry",
+        "jurisdiction",
+        "zoning"
+      ],
+      "limitations": [],
+      "observed_at": "2026-07-14T11:14:49Z",
+      "public_url": "https://services.arcgis.com/aA3snZwJfFkVyDuP/ArcGIS/rest/services/Parcels_for_San_Bernardino_County/FeatureServer",
+      "source_key": "san-bernardino:county-gis-parcels"
+    }
+  ],
+  "source_key": "san-bernardino:county-gis-parcels"
+}

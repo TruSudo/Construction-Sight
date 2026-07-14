@@ -1,0 +1,665 @@
+{
+  "assessment": {
+    "assessment_id": "parcel-arcgis-acquisition:5087a8b38cefa234dad3dbc5e9a77574e7856015430e055dc98608addd196a21",
+    "bulk_acquisition_verified": false,
+    "bulk_manifest_id": null,
+    "county": "Riverside",
+    "expected_record_count": 846251,
+    "gaps": [
+      {
+        "code": "bulk_rehearsal_missing",
+        "explanation": "No complete count-reconciled acquisition manifest is present.",
+        "next_action": "run a checkpointed rehearsal only after bounded probes pass"
+      }
+    ],
+    "generated_at": "2026-07-14T18:29:25.755645Z",
+    "observed_unique_sample_count": 4,
+    "plan_id": "parcel-arcgis-probe-plan:2bea07bb4815794109d1024ce352b4da4368aa362903e8b539fe66fd14434496",
+    "probe_observation_ids": [
+      "parcel-arcgis-probe-observation:36cd5804518b4f8c8041647b98c194f288e64bc634f200e3f7ecda61fa6db7e2",
+      "parcel-arcgis-probe-observation:afb38b630f405fa16f4f176f83b4335023de0539f4f4c9065d33d1e38142883c",
+      "parcel-arcgis-probe-observation:b400f99d1bbe064850b55a37b1f9eeb6eefead6b937ad2132a930f7b52b16a72",
+      "parcel-arcgis-probe-observation:ddc679713e66862cf0a14134498369efa9daa2dfbac1b4b37427e8a01d87bed7"
+    ],
+    "profile_id": "parcel-source-verification:817f20d7a32dad3c425d370d8d0f67fbb71694dddf8eaad216501afbca66342b",
+    "snapshot_id": "parcel-arcgis-capability:925c67f3b3600cb7a7c8ed8fe2c67f48d19a67ba1f5197353de39dab17e7a9db",
+    "source_key": "riverside:county-gis-parcels",
+    "status": "bounded_query_verified"
+  },
+  "bulk_run_authorized": false,
+  "bundle_id": "parcel-arcgis-bounded-proof-bundle:49c20754f092ac960601ee7d03a4bcc9ef0c1fb4c71deefa295c3863e151f3f5",
+  "county": "Riverside",
+  "created_at": "2026-07-14T18:29:25.757113Z",
+  "limitations": [
+    "A bounded proof cannot authorize or establish complete parcel acquisition.",
+    "A subsequent complete rehearsal requires separate checkpoints and authorization.",
+    "The bundle proves only the exact metadata and four response payloads it contains."
+  ],
+  "network_request_count": 5,
+  "observations": [
+    {
+      "county": "Riverside",
+      "exceeded_transfer_limit": null,
+      "kind": "count",
+      "object_ids": [],
+      "observation_id": "parcel-arcgis-probe-observation:36cd5804518b4f8c8041647b98c194f288e64bc634f200e3f7ecda61fa6db7e2",
+      "observed_at": "2026-07-14T18:29:25.412928Z",
+      "profile_id": "parcel-source-verification:817f20d7a32dad3c425d370d8d0f67fbb71694dddf8eaad216501afbca66342b",
+      "request_id": "parcel-arcgis-probe-request:e6f381bb19a70bbc12ac6c78f9ecd70462bd4500d65477506792954748a1390a",
+      "response_digest": "d6fe9be559062df62478c4ade13d4d4091cd07ba0bf364fa39bbe1e44564d9c1",
+      "response_payload_json": "{\"count\":846251}",
+      "schema_fingerprint": "7b501c06fdfec2ed267db95b4d0142ebabe89759443d6a0874673b47d66072a8",
+      "snapshot_id": "parcel-arcgis-capability:925c67f3b3600cb7a7c8ed8fe2c67f48d19a67ba1f5197353de39dab17e7a9db",
+      "source_key": "riverside:county-gis-parcels",
+      "total_count": 846251
+    },
+    {
+      "county": "Riverside",
+      "exceeded_transfer_limit": true,
+      "kind": "initial_page",
+      "object_ids": [
+        1,
+        2
+      ],
+      "observation_id": "parcel-arcgis-probe-observation:b400f99d1bbe064850b55a37b1f9eeb6eefead6b937ad2132a930f7b52b16a72",
+      "observed_at": "2026-07-14T18:29:25.529668Z",
+      "profile_id": "parcel-source-verification:817f20d7a32dad3c425d370d8d0f67fbb71694dddf8eaad216501afbca66342b",
+      "request_id": "parcel-arcgis-probe-request:41d7d5a70318dee7f2102177b643545832501287524a515427be6e3bdf9e81b4",
+      "response_digest": "1b0528a6afc37069692bb8d8302e709f6e0a76bf2c2d5daa66492c8fadb3c876",
+      "response_payload_json": "{\"displayFieldName\":\"STREET_NAME\",\"exceededTransferLimit\":true,\"features\":[{\"attributes\":{\"OBJECTID\":1}},{\"attributes\":{\"OBJECTID\":2}}],\"fieldAliases\":{\"OBJECTID\":\"OBJECTID\"},\"fields\":[{\"alias\":\"OBJECTID\",\"name\":\"OBJECTID\",\"type\":\"esriFieldTypeOID\"}]}",
+      "schema_fingerprint": "7b501c06fdfec2ed267db95b4d0142ebabe89759443d6a0874673b47d66072a8",
+      "snapshot_id": "parcel-arcgis-capability:925c67f3b3600cb7a7c8ed8fe2c67f48d19a67ba1f5197353de39dab17e7a9db",
+      "source_key": "riverside:county-gis-parcels",
+      "total_count": null
+    },
+    {
+      "county": "Riverside",
+      "exceeded_transfer_limit": true,
+      "kind": "next_page",
+      "object_ids": [
+        3,
+        4
+      ],
+      "observation_id": "parcel-arcgis-probe-observation:afb38b630f405fa16f4f176f83b4335023de0539f4f4c9065d33d1e38142883c",
+      "observed_at": "2026-07-14T18:29:25.645598Z",
+      "profile_id": "parcel-source-verification:817f20d7a32dad3c425d370d8d0f67fbb71694dddf8eaad216501afbca66342b",
+      "request_id": "parcel-arcgis-probe-request:62ad5743fc0dd497659238e17198d764326d7d796df2f0171eb8fd2072270d80",
+      "response_digest": "3e53738bc653a000da464ac281cbc93e3a7ec59db9b02875d52d6178b6ce2641",
+      "response_payload_json": "{\"displayFieldName\":\"STREET_NAME\",\"exceededTransferLimit\":true,\"features\":[{\"attributes\":{\"OBJECTID\":3}},{\"attributes\":{\"OBJECTID\":4}}],\"fieldAliases\":{\"OBJECTID\":\"OBJECTID\"},\"fields\":[{\"alias\":\"OBJECTID\",\"name\":\"OBJECTID\",\"type\":\"esriFieldTypeOID\"}]}",
+      "schema_fingerprint": "7b501c06fdfec2ed267db95b4d0142ebabe89759443d6a0874673b47d66072a8",
+      "snapshot_id": "parcel-arcgis-capability:925c67f3b3600cb7a7c8ed8fe2c67f48d19a67ba1f5197353de39dab17e7a9db",
+      "source_key": "riverside:county-gis-parcels",
+      "total_count": null
+    },
+    {
+      "county": "Riverside",
+      "exceeded_transfer_limit": true,
+      "kind": "replay_page",
+      "object_ids": [
+        1,
+        2
+      ],
+      "observation_id": "parcel-arcgis-probe-observation:ddc679713e66862cf0a14134498369efa9daa2dfbac1b4b37427e8a01d87bed7",
+      "observed_at": "2026-07-14T18:29:25.755110Z",
+      "profile_id": "parcel-source-verification:817f20d7a32dad3c425d370d8d0f67fbb71694dddf8eaad216501afbca66342b",
+      "request_id": "parcel-arcgis-probe-request:28f888d01fedc9cf68c6fbaf54b74d2515a8f567cce72d97d33287c4821afc6e",
+      "response_digest": "1b0528a6afc37069692bb8d8302e709f6e0a76bf2c2d5daa66492c8fadb3c876",
+      "response_payload_json": "{\"displayFieldName\":\"STREET_NAME\",\"exceededTransferLimit\":true,\"features\":[{\"attributes\":{\"OBJECTID\":1}},{\"attributes\":{\"OBJECTID\":2}}],\"fieldAliases\":{\"OBJECTID\":\"OBJECTID\"},\"fields\":[{\"alias\":\"OBJECTID\",\"name\":\"OBJECTID\",\"type\":\"esriFieldTypeOID\"}]}",
+      "schema_fingerprint": "7b501c06fdfec2ed267db95b4d0142ebabe89759443d6a0874673b47d66072a8",
+      "snapshot_id": "parcel-arcgis-capability:925c67f3b3600cb7a7c8ed8fe2c67f48d19a67ba1f5197353de39dab17e7a9db",
+      "source_key": "riverside:county-gis-parcels",
+      "total_count": null
+    }
+  ],
+  "plan": {
+    "bulk_run_authorized": false,
+    "county": "Riverside",
+    "generated_at": "2026-07-14T18:29:25.066346Z",
+    "next_action": "execute the four read-only requests, persist digest-bound responses, and reassess before any complete acquisition rehearsal",
+    "plan_id": "parcel-arcgis-probe-plan:2bea07bb4815794109d1024ce352b4da4368aa362903e8b539fe66fd14434496",
+    "profile_id": "parcel-source-verification:817f20d7a32dad3c425d370d8d0f67fbb71694dddf8eaad216501afbca66342b",
+    "requests": [
+      {
+        "county": "Riverside",
+        "kind": "count",
+        "object_id_field": "OBJECTID",
+        "offset": null,
+        "order_by_fields": [],
+        "out_fields": [],
+        "profile_id": "parcel-source-verification:817f20d7a32dad3c425d370d8d0f67fbb71694dddf8eaad216501afbca66342b",
+        "record_count": null,
+        "request_id": "parcel-arcgis-probe-request:e6f381bb19a70bbc12ac6c78f9ecd70462bd4500d65477506792954748a1390a",
+        "return_count_only": true,
+        "return_geometry": false,
+        "schema_fingerprint": "7b501c06fdfec2ed267db95b4d0142ebabe89759443d6a0874673b47d66072a8",
+        "snapshot_id": "parcel-arcgis-capability:925c67f3b3600cb7a7c8ed8fe2c67f48d19a67ba1f5197353de39dab17e7a9db",
+        "source_key": "riverside:county-gis-parcels",
+        "where": "1=1"
+      },
+      {
+        "county": "Riverside",
+        "kind": "initial_page",
+        "object_id_field": "OBJECTID",
+        "offset": 0,
+        "order_by_fields": [
+          "OBJECTID ASC"
+        ],
+        "out_fields": [
+          "OBJECTID"
+        ],
+        "profile_id": "parcel-source-verification:817f20d7a32dad3c425d370d8d0f67fbb71694dddf8eaad216501afbca66342b",
+        "record_count": 2,
+        "request_id": "parcel-arcgis-probe-request:41d7d5a70318dee7f2102177b643545832501287524a515427be6e3bdf9e81b4",
+        "return_count_only": false,
+        "return_geometry": false,
+        "schema_fingerprint": "7b501c06fdfec2ed267db95b4d0142ebabe89759443d6a0874673b47d66072a8",
+        "snapshot_id": "parcel-arcgis-capability:925c67f3b3600cb7a7c8ed8fe2c67f48d19a67ba1f5197353de39dab17e7a9db",
+        "source_key": "riverside:county-gis-parcels",
+        "where": "1=1"
+      },
+      {
+        "county": "Riverside",
+        "kind": "next_page",
+        "object_id_field": "OBJECTID",
+        "offset": 2,
+        "order_by_fields": [
+          "OBJECTID ASC"
+        ],
+        "out_fields": [
+          "OBJECTID"
+        ],
+        "profile_id": "parcel-source-verification:817f20d7a32dad3c425d370d8d0f67fbb71694dddf8eaad216501afbca66342b",
+        "record_count": 2,
+        "request_id": "parcel-arcgis-probe-request:62ad5743fc0dd497659238e17198d764326d7d796df2f0171eb8fd2072270d80",
+        "return_count_only": false,
+        "return_geometry": false,
+        "schema_fingerprint": "7b501c06fdfec2ed267db95b4d0142ebabe89759443d6a0874673b47d66072a8",
+        "snapshot_id": "parcel-arcgis-capability:925c67f3b3600cb7a7c8ed8fe2c67f48d19a67ba1f5197353de39dab17e7a9db",
+        "source_key": "riverside:county-gis-parcels",
+        "where": "1=1"
+      },
+      {
+        "county": "Riverside",
+        "kind": "replay_page",
+        "object_id_field": "OBJECTID",
+        "offset": 0,
+        "order_by_fields": [
+          "OBJECTID ASC"
+        ],
+        "out_fields": [
+          "OBJECTID"
+        ],
+        "profile_id": "parcel-source-verification:817f20d7a32dad3c425d370d8d0f67fbb71694dddf8eaad216501afbca66342b",
+        "record_count": 2,
+        "request_id": "parcel-arcgis-probe-request:28f888d01fedc9cf68c6fbaf54b74d2515a8f567cce72d97d33287c4821afc6e",
+        "return_count_only": false,
+        "return_geometry": false,
+        "schema_fingerprint": "7b501c06fdfec2ed267db95b4d0142ebabe89759443d6a0874673b47d66072a8",
+        "snapshot_id": "parcel-arcgis-capability:925c67f3b3600cb7a7c8ed8fe2c67f48d19a67ba1f5197353de39dab17e7a9db",
+        "source_key": "riverside:county-gis-parcels",
+        "where": "1=1"
+      }
+    ],
+    "sample_size": 2,
+    "snapshot_id": "parcel-arcgis-capability:925c67f3b3600cb7a7c8ed8fe2c67f48d19a67ba1f5197353de39dab17e7a9db",
+    "source_key": "riverside:county-gis-parcels"
+  },
+  "profile": {
+    "access_boundary": "open_public_data",
+    "authoritative_fields": [
+      "apn"
+    ],
+    "bulk_acquisition_verified": false,
+    "constant_fields": [
+      {
+        "evidence_reference": "https://gis.countyofriverside.us/arcgis_mapping/rest/services/OpenData/Assessor/MapServer/50",
+        "field_role": "county",
+        "notes": null,
+        "required": true,
+        "value": "Riverside"
+      },
+      {
+        "evidence_reference": "https://gis.countyofriverside.us/arcgis_mapping/rest/services/OpenData/Assessor/MapServer/50",
+        "field_role": "state",
+        "notes": null,
+        "required": true,
+        "value": "CA"
+      }
+    ],
+    "county": "Riverside",
+    "county_extent_declared": true,
+    "countywide_record_coverage_verified": false,
+    "coverage_status": "ready_for_preview",
+    "default_authority": "official",
+    "documentation_url": "https://gisopendata-countyofriverside.opendata.arcgis.com/datasets/CountyofRiverside%3A%3Aparcels-crest/about",
+    "evidence_ids": [
+      "parcel-source-evidence:3339a98ab6d21dd7458a36f87745b748c2a304b38e8d712b7c035a0354067524",
+      "parcel-source-evidence:4ab770c507b1e94d41609ec558f8b6a73c60cf2036201b4700207d93e1e67195",
+      "parcel-source-evidence:4ef65be89fe7dff6fe761c1e25d1651f1eda6a4a335cf7f6bc83c1247ab2fc5f",
+      "parcel-source-evidence:7c4c691f206aa23234e043a427ebe79910f6f998fe61bcad8332e75c9000ca94"
+    ],
+    "field_mappings": [
+      {
+        "field_role": "acreage",
+        "notes": null,
+        "required": false,
+        "source_field": "ACREAGE"
+      },
+      {
+        "field_role": "address",
+        "notes": "site street address; completeness requires row sampling",
+        "required": false,
+        "source_field": "SITUS_STREET"
+      },
+      {
+        "field_role": "apn",
+        "notes": null,
+        "required": true,
+        "source_field": "APN"
+      },
+      {
+        "field_role": "geometry",
+        "notes": "ArcGIS/GeoJSON feature geometry member, not an attribute column",
+        "required": false,
+        "source_field": "geometry"
+      },
+      {
+        "field_role": "situs_city",
+        "notes": null,
+        "required": false,
+        "source_field": "SITUS_CITY"
+      },
+      {
+        "field_role": "source_record_id",
+        "notes": null,
+        "required": false,
+        "source_field": "OBJECTID"
+      }
+    ],
+    "limitations": [
+      "APN authority identifies the assessment parcel only; it does not prove legal title or a surveyed boundary.",
+      "Assessment parcel maps are not a substitute for a surveyed legal boundary.",
+      "CLASS_CODE is an assessment class, not a planning land-use designation",
+      "Countywide record completeness has not been independently verified.",
+      "Map features are approximate.",
+      "Map features are not necessarily accurate to surveying standards.",
+      "No bulk acquisition run has yet proven pagination or drift handling.",
+      "SITUS_STREET completeness must be tested before canonical address import",
+      "The live field list does not expose owner-name fields described by older text.",
+      "The source excludes parcel polygons representing right-of-way and river.",
+      "map features are approximate and are not surveyed legal boundaries",
+      "maximum service record count is 2000 and bulk pagination is unverified",
+      "public service schema was observed on 2026-07-14 and may drift",
+      "the current live field list does not expose owner-name fields"
+    ],
+    "lineage_key": "riverside-county-assessor-rcit",
+    "max_record_count": 2000,
+    "next_action": "run bounded schema, count, pagination, and completeness verification before import",
+    "observed_at": "2026-07-14T11:14:49Z",
+    "profile_id": "parcel-source-verification:817f20d7a32dad3c425d370d8d0f67fbb71694dddf8eaad216501afbca66342b",
+    "public_access_verified": true,
+    "schema_fields": [
+      "ACREAGE",
+      "APN",
+      "BLOCK",
+      "BOOK",
+      "CAME_FROM",
+      "CITY",
+      "CLASS_CODE",
+      "COUNTY_CODE",
+      "FLAG",
+      "LAND",
+      "LOT",
+      "LOT_TYPE",
+      "MAIL_CITY",
+      "MAIL_STREET",
+      "MAP_BOOK_PAGE",
+      "MULTIPLE",
+      "OBJECTID",
+      "PAGE",
+      "RECORDER_MAP_TYPE",
+      "SHAPE",
+      "SHAPE.STArea()",
+      "SHAPE.STLength()",
+      "SITUS_CITY",
+      "SITUS_STREET",
+      "STREET_NAME",
+      "STREET_NUMBER",
+      "STREET_PREDIRECTION",
+      "STREET_SUFFIX",
+      "STREET_TYPE",
+      "STRUCTURES",
+      "SUBDIVISION_NAME",
+      "TAX_RATE_AREA",
+      "UNIT_NUMBER",
+      "ZIP_CODE",
+      "geometry"
+    ],
+    "schema_verified": true,
+    "source_format": "arcgis_map_service",
+    "source_key": "riverside:county-gis-parcels",
+    "source_url": "https://gis.countyofriverside.us/arcgis_mapping/rest/services/OpenData/Assessor/MapServer/50",
+    "spatial_reference": "EPSG:2230 (ArcGIS WKID 102646)",
+    "status": "verified_preview"
+  },
+  "schema_version": "parcel-arcgis-bounded-proof-bundle/v1",
+  "snapshot": {
+    "county": "Riverside",
+    "fields": [
+      {
+        "field_type": "esriFieldTypeDouble",
+        "length": null,
+        "name": "ACREAGE",
+        "nullable": null
+      },
+      {
+        "field_type": "esriFieldTypeString",
+        "length": 32,
+        "name": "APN",
+        "nullable": null
+      },
+      {
+        "field_type": "esriFieldTypeString",
+        "length": 64,
+        "name": "BLOCK",
+        "nullable": null
+      },
+      {
+        "field_type": "esriFieldTypeString",
+        "length": 4,
+        "name": "BOOK",
+        "nullable": null
+      },
+      {
+        "field_type": "esriFieldTypeString",
+        "length": 2000,
+        "name": "CAME_FROM",
+        "nullable": null
+      },
+      {
+        "field_type": "esriFieldTypeString",
+        "length": 32,
+        "name": "CITY",
+        "nullable": null
+      },
+      {
+        "field_type": "esriFieldTypeString",
+        "length": 64,
+        "name": "CLASS_CODE",
+        "nullable": null
+      },
+      {
+        "field_type": "esriFieldTypeString",
+        "length": 2,
+        "name": "COUNTY_CODE",
+        "nullable": null
+      },
+      {
+        "field_type": "esriFieldTypeString",
+        "length": 2,
+        "name": "FLAG",
+        "nullable": null
+      },
+      {
+        "field_type": "esriFieldTypeDouble",
+        "length": null,
+        "name": "LAND",
+        "nullable": null
+      },
+      {
+        "field_type": "esriFieldTypeString",
+        "length": 64,
+        "name": "LOT",
+        "nullable": null
+      },
+      {
+        "field_type": "esriFieldTypeString",
+        "length": 16,
+        "name": "LOT_TYPE",
+        "nullable": null
+      },
+      {
+        "field_type": "esriFieldTypeString",
+        "length": 48,
+        "name": "MAIL_CITY",
+        "nullable": null
+      },
+      {
+        "field_type": "esriFieldTypeString",
+        "length": 64,
+        "name": "MAIL_STREET",
+        "nullable": null
+      },
+      {
+        "field_type": "esriFieldTypeString",
+        "length": 16,
+        "name": "MAP_BOOK_PAGE",
+        "nullable": null
+      },
+      {
+        "field_type": "esriFieldTypeString",
+        "length": 64,
+        "name": "MULTIPLE",
+        "nullable": null
+      },
+      {
+        "field_type": "esriFieldTypeOID",
+        "length": null,
+        "name": "OBJECTID",
+        "nullable": null
+      },
+      {
+        "field_type": "esriFieldTypeString",
+        "length": 4,
+        "name": "PAGE",
+        "nullable": null
+      },
+      {
+        "field_type": "esriFieldTypeString",
+        "length": 16,
+        "name": "RECORDER_MAP_TYPE",
+        "nullable": null
+      },
+      {
+        "field_type": "esriFieldTypeGeometry",
+        "length": null,
+        "name": "SHAPE",
+        "nullable": null
+      },
+      {
+        "field_type": "esriFieldTypeDouble",
+        "length": null,
+        "name": "SHAPE.STArea()",
+        "nullable": null
+      },
+      {
+        "field_type": "esriFieldTypeDouble",
+        "length": null,
+        "name": "SHAPE.STLength()",
+        "nullable": null
+      },
+      {
+        "field_type": "esriFieldTypeString",
+        "length": 48,
+        "name": "SITUS_CITY",
+        "nullable": null
+      },
+      {
+        "field_type": "esriFieldTypeString",
+        "length": 64,
+        "name": "SITUS_STREET",
+        "nullable": null
+      },
+      {
+        "field_type": "esriFieldTypeString",
+        "length": 64,
+        "name": "STREET_NAME",
+        "nullable": null
+      },
+      {
+        "field_type": "esriFieldTypeInteger",
+        "length": null,
+        "name": "STREET_NUMBER",
+        "nullable": null
+      },
+      {
+        "field_type": "esriFieldTypeString",
+        "length": 2,
+        "name": "STREET_PREDIRECTION",
+        "nullable": null
+      },
+      {
+        "field_type": "esriFieldTypeString",
+        "length": 16,
+        "name": "STREET_SUFFIX",
+        "nullable": null
+      },
+      {
+        "field_type": "esriFieldTypeString",
+        "length": 8,
+        "name": "STREET_TYPE",
+        "nullable": null
+      },
+      {
+        "field_type": "esriFieldTypeDouble",
+        "length": null,
+        "name": "STRUCTURES",
+        "nullable": null
+      },
+      {
+        "field_type": "esriFieldTypeString",
+        "length": 64,
+        "name": "SUBDIVISION_NAME",
+        "nullable": null
+      },
+      {
+        "field_type": "esriFieldTypeString",
+        "length": 6,
+        "name": "TAX_RATE_AREA",
+        "nullable": null
+      },
+      {
+        "field_type": "esriFieldTypeString",
+        "length": 8,
+        "name": "UNIT_NUMBER",
+        "nullable": null
+      },
+      {
+        "field_type": "esriFieldTypeString",
+        "length": 16,
+        "name": "ZIP_CODE",
+        "nullable": null
+      }
+    ],
+    "geometry_type": "esriGeometryPolygon",
+    "layer_url": "https://gis.countyofriverside.us/arcgis_mapping/rest/services/OpenData/Assessor/MapServer/50",
+    "limitations": [
+      "Advertised capabilities require executed probe proof.",
+      "This command executes a bounded probe, not a complete acquisition."
+    ],
+    "max_record_count": 2000,
+    "metadata_projection_digest": "024e9b9ce93c18165e1561a02ff4a16edeef7cff35309ab0e2f074496e74741e",
+    "object_id_field": "OBJECTID",
+    "object_id_is_unique": true,
+    "observed_at": "2026-07-14T18:29:25.064805Z",
+    "profile_id": "parcel-source-verification:817f20d7a32dad3c425d370d8d0f67fbb71694dddf8eaad216501afbca66342b",
+    "schema_fingerprint": "7b501c06fdfec2ed267db95b4d0142ebabe89759443d6a0874673b47d66072a8",
+    "service_version": "11.5",
+    "snapshot_id": "parcel-arcgis-capability:925c67f3b3600cb7a7c8ed8fe2c67f48d19a67ba1f5197353de39dab17e7a9db",
+    "source_key": "riverside:county-gis-parcels",
+    "spatial_reference": "EPSG:2230 (ArcGIS WKID 102646)",
+    "supported_query_formats": [
+      "geojson",
+      "json",
+      "pbf"
+    ],
+    "supports_count": true,
+    "supports_order_by": true,
+    "supports_pagination": true,
+    "supports_query": true
+  },
+  "source_evidence": [
+    {
+      "county": "Riverside",
+      "evidence_id": "parcel-source-evidence:3339a98ab6d21dd7458a36f87745b748c2a304b38e8d712b7c035a0354067524",
+      "evidence_kind": "official_dataset_metadata",
+      "facts": [
+        "The Riverside County mapping portal publishes PARCELS_CREST.",
+        "The portal describes PARCELS_CREST as parcel data with a simplified schema."
+      ],
+      "field_roles": [
+        "apn",
+        "geometry"
+      ],
+      "limitations": [],
+      "observed_at": "2026-07-14T11:14:49Z",
+      "public_url": "https://gisopendata-countyofriverside.opendata.arcgis.com/datasets/CountyofRiverside%3A%3Aparcels-crest/about",
+      "source_key": "riverside:county-gis-parcels"
+    },
+    {
+      "county": "Riverside",
+      "evidence_id": "parcel-source-evidence:4ab770c507b1e94d41609ec558f8b6a73c60cf2036201b4700207d93e1e67195",
+      "evidence_kind": "official_limitation",
+      "facts": [
+        "Riverside County publishes GIS maps and data for reference purposes."
+      ],
+      "field_roles": [
+        "geometry"
+      ],
+      "limitations": [
+        "Map features are approximate.",
+        "Map features are not necessarily accurate to surveying standards."
+      ],
+      "observed_at": "2026-07-14T11:14:49Z",
+      "public_url": "https://rcitgis-countyofriverside.hub.arcgis.com/pages/data-distribution",
+      "source_key": "riverside:county-gis-parcels"
+    },
+    {
+      "county": "Riverside",
+      "evidence_id": "parcel-source-evidence:4ef65be89fe7dff6fe761c1e25d1651f1eda6a4a335cf7f6bc83c1247ab2fc5f",
+      "evidence_kind": "official_service_schema",
+      "facts": [
+        "The feature layer geometry type is esriGeometryPolygon.",
+        "The layer reports a maximum record count and selection count of 2000.",
+        "The layer supports JSON, GeoJSON, and PBF query formats.",
+        "The observed live schema exposes APN, situs-address components, CLASS_CODE, ACREAGE, OBJECTID, and SHAPE.",
+        "The service reports spatial reference 102646, with latest WKID 2230."
+      ],
+      "field_roles": [
+        "acreage",
+        "address",
+        "apn",
+        "geometry",
+        "situs_city",
+        "source_record_id"
+      ],
+      "limitations": [
+        "The live field list does not expose owner-name fields described by older text.",
+        "The source excludes parcel polygons representing right-of-way and river."
+      ],
+      "observed_at": "2026-07-14T11:14:49Z",
+      "public_url": "https://gis.countyofriverside.us/arcgis_mapping/rest/services/OpenData/Assessor/MapServer/50",
+      "source_key": "riverside:county-gis-parcels"
+    },
+    {
+      "county": "Riverside",
+      "evidence_id": "parcel-source-evidence:7c4c691f206aa23234e043a427ebe79910f6f998fe61bcad8332e75c9000ca94",
+      "evidence_kind": "official_dataset_metadata",
+      "facts": [
+        "The Assessor maintains parcel maps used as the basis for real-property assessment.",
+        "The Assessor states that its parcel maps are continuously updated for new subdivisions and parcels."
+      ],
+      "field_roles": [
+        "apn",
+        "geometry"
+      ],
+      "limitations": [
+        "Assessment parcel maps are not a substitute for a surveyed legal boundary."
+      ],
+      "observed_at": "2026-07-14T11:14:49Z",
+      "public_url": "https://www.rivcoacr.org/AssessorMaps",
+      "source_key": "riverside:county-gis-parcels"
+    }
+  ],
+  "source_key": "riverside:county-gis-parcels"
+}
