@@ -96,10 +96,10 @@ jobs:
 
       - name: Apply targeted Ruff repair
         run: |
-          python -m ruff check --fix \
+          python -m ruff format \
             src/constructionsight/parcel_source_bulk_rehearsal.py \
             tests/test_parcel_source_bulk_rehearsal.py
-          python -m ruff format \
+          python -m ruff check --fix \
             src/constructionsight/parcel_source_bulk_rehearsal.py \
             tests/test_parcel_source_bulk_rehearsal.py
           python -m ruff check \
