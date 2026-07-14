@@ -1,13 +1,20 @@
 import json
+from datetime import timedelta
 
 from sqlalchemy import inspect, select
 
 from constructionsight.domain_types import confidence_band
+from constructionsight.parcel_assurance import build_parcel_assurance_report
+from constructionsight.parcel_assurance_models import (
+    ParcelAssuranceSourceContext,
+    ParcelEvidenceAuthority,
+)
 from constructionsight.parcel_core_models import (
     ParcelCoreRecord,
     ParcelGeometry,
     ParcelGeometryKind,
 )
+from constructionsight.parcel_source_models import ParcelFieldRole
 from constructionsight.site_resolution_models import (
     SiteIdentifier,
     SiteIdentifierKind,
@@ -23,10 +30,12 @@ from constructionsight.storage.database import (
     session_factory,
 )
 from constructionsight.storage.parcel_site_orm import (
+    ParcelAssuranceReportRow,
     ParcelCoreRecordRow,
     SiteResolutionResultRow,
 )
 from constructionsight.storage.parcel_site_store import (
+    store_parcel_assurance_report,
     store_parcel_core_record,
     store_site_resolution_result,
 )
@@ -78,6 +87,23 @@ def _site_resolution() -> SiteResolutionResult:
         evidence_id="evidence:test",
         confidence_score=90,
     )
+
+
+def _assurance_report():
+    parcel = _parcel()
+    context = ParcelAssuranceSourceContext(
+        source_key=parcel.source_key,
+        lineage_key="county-assessor-roll",
+        default_authority=ParcelEvidenceAuthority.OFFICIAL,
+        authoritative_fields=[ParcelFieldRole.APN],
+        limitations=["currency must be checked"],
+    )
+    return build_parcel_assurance_report(
+        records=[parcel],
+        source_contexts=[context],
+        field_roles=[ParcelFieldRole.APN, ParcelFieldRole.OWNER],
+        generated_at=parcel.created_at,
+    )
     candidate = SiteResolutionCandidate(
         site_key="site:test",
         match_strength=SiteMatchStrength.EXACT,
@@ -109,6 +135,7 @@ def test_parcel_site_tables_are_created() -> None:
     table_names = set(inspect(engine).get_table_names())
 
     assert "parcel_core_records" in table_names
+    assert "parcel_assurance_reports" in table_names
     assert "site_resolution_results" in table_names
 
 
@@ -127,6 +154,34 @@ def test_store_parcel_core_record_roundtrip() -> None:
         payload = json.loads(row.payload_json)
         assert payload["geometry"]["limitations"] == ["point geometry only"]
         assert payload["limitations"] == ["owner not enriched"]
+
+
+def test_store_parcel_assurance_report_roundtrip_and_update() -> None:
+    _engine, factory = _session_factory()
+    report = _assurance_report()
+    regenerated = report.model_copy(
+        update={"generated_at": report.generated_at + timedelta(minutes=5)}
+    )
+
+    with managed_session(factory) as session:
+        store_parcel_assurance_report(session, report)
+        store_parcel_assurance_report(session, regenerated)
+        session.flush()
+        row = session.execute(select(ParcelAssuranceReportRow)).scalar_one()
+
+        assert row.report_id == report.report_id
+        assert row.normalized_apn == "12345678"
+        assert row.review_status == "incomplete"
+        assert row.requires_human_review is False
+        assert row.source_count == 1
+        assert row.independent_lineage_count == 1
+        assert row.claim_count == 1
+        assert row.conflict_count == 0
+        assert row.missing_count == 1
+        assert row.observed_created_at == regenerated.generated_at.isoformat()
+        payload = json.loads(row.payload_json)
+        assert payload["claims"][0]["lineage_key"] == "county-assessor-roll"
+        assert payload["field_assurances"][1]["status"] == "missing"
 
 
 def test_store_site_resolution_result_roundtrip() -> None:

@@ -7,12 +7,72 @@ import json
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from constructionsight.parcel_assurance_models import (
+    ParcelAssuranceReport,
+    ParcelAssuranceStatus,
+)
 from constructionsight.parcel_core_models import ParcelCoreRecord
 from constructionsight.site_resolution_models import SiteResolutionResult
 from constructionsight.storage.parcel_site_orm import (
+    ParcelAssuranceReportRow,
     ParcelCoreRecordRow,
     SiteResolutionResultRow,
 )
+
+
+def store_parcel_assurance_report(
+    session: Session,
+    report: ParcelAssuranceReport,
+) -> ParcelAssuranceReportRow:
+    """Insert or update one complete parcel assurance report."""
+
+    session.flush()
+    payload_json = _payload_json(report.to_dict())
+    existing = session.execute(
+        select(ParcelAssuranceReportRow).where(
+            ParcelAssuranceReportRow.report_id == report.report_id
+        )
+    ).scalar_one_or_none()
+    conflict_count = sum(
+        assurance.status == ParcelAssuranceStatus.CONFLICT
+        for assurance in report.field_assurances
+    )
+    missing_count = sum(
+        assurance.status == ParcelAssuranceStatus.MISSING
+        for assurance in report.field_assurances
+    )
+    requires_human_review = any(
+        assurance.requires_human_review for assurance in report.field_assurances
+    )
+    if existing is None:
+        existing = ParcelAssuranceReportRow(
+            report_id=report.report_id,
+            normalized_apn=report.normalized_apn,
+            county=report.county,
+            review_status=report.review_status.value,
+            requires_human_review=requires_human_review,
+            source_count=report.source_count,
+            independent_lineage_count=report.independent_lineage_count,
+            claim_count=len(report.claims),
+            conflict_count=conflict_count,
+            missing_count=missing_count,
+            observed_created_at=report.generated_at.isoformat(),
+            payload_json=payload_json,
+        )
+        session.add(existing)
+        return existing
+    existing.normalized_apn = report.normalized_apn
+    existing.county = report.county
+    existing.review_status = report.review_status.value
+    existing.requires_human_review = requires_human_review
+    existing.source_count = report.source_count
+    existing.independent_lineage_count = report.independent_lineage_count
+    existing.claim_count = len(report.claims)
+    existing.conflict_count = conflict_count
+    existing.missing_count = missing_count
+    existing.observed_created_at = report.generated_at.isoformat()
+    existing.payload_json = payload_json
+    return existing
 
 
 def store_parcel_core_record(

@@ -39,6 +39,7 @@ A planned capability is not an active defect when the current supported boundary
 | Parcel schema preview | Yes | Yes | Yes | No | Yes | No | Pre-import schema gate exists. |
 | Parcel row preview | Yes | Yes | Yes | No | Yes | No | Pre-record row gate exists. |
 | Parcel core record | Yes | Yes | Yes | Yes | Yes | No | Raw geometry, hashes, CRS labels, compatible summaries, persistence, and read-only inspection exist. |
+| Parcel fact assurance | Yes | Yes | Yes | Yes | Yes | No | Existing current parcel records produce field-level claims and explainable authority, lineage, agreement, conflict, and missing-evidence outcomes without a global truth score. |
 | Geometry normalization and topology | Yes | Yes | Yes | Payload | Partial | No | GeoJSON and WKT/EWKT topology, holes, parts, extra dimensions, embedded SRIDs, source-plane area centroids, and conservative CRS refusal exist. |
 | Parcel-backed site resolution | Yes | Yes | Yes | Yes | Yes | No | Point and topology matches are distinguished from explicit limited fallback; incompatible CRS is never directly compared to longitude/latitude. |
 | Permit snapshot transition spine | Yes | Yes | Yes | Yes | Yes | No | Persisted snapshots and transitions have read-only list/detail access. |
@@ -100,6 +101,7 @@ These entries are future product scope, not defects in the current supported imp
 | CS-PLAN-005 | Workflow reopen or override | Final states remain immutable. | Introduce explicit authority, reason, stale-state, and append-only event doctrine. |
 | CS-PLAN-006 | Outreach preview and sending | No external sending behavior exists. | Implement preview, approval, dedupe, compliance, evidence, and delivery audit boundaries first. |
 | CS-PLAN-007 | GUI/operator application | CLI and persisted services remain the supported operator surface. | Build only after underlying workflows and source maturity justify UI exposure. |
+| CS-PLAN-008 | Countywide parcel evidence ingestion and longitudinal claims | Field-level assurance consumes explicitly supplied current records and preserves missing/conflicting evidence without claiming live coverage. | Verify lawful source access and coverage; register proposition-specific authority and dependency lineage; then implement retained acquisition, updates, and supersession. |
 
 ## Forward cleanup rule
 

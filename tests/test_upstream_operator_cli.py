@@ -17,6 +17,7 @@ from constructionsight.storage.movement_identity_orm import (
     PermitTransitionRecord,
 )
 from constructionsight.storage.parcel_site_orm import (
+    ParcelAssuranceReportRow,
     ParcelCoreRecordRow,
     SiteResolutionResultRow,
 )
@@ -131,6 +132,36 @@ def _seed(database_url: str) -> None:
                         }
                     ),
                 ),
+                ParcelAssuranceReportRow(
+                    report_id="parcel-assurance:test",
+                    normalized_apn="012345678",
+                    county="San Bernardino",
+                    review_status="incomplete",
+                    requires_human_review=False,
+                    source_count=1,
+                    independent_lineage_count=1,
+                    claim_count=1,
+                    conflict_count=0,
+                    missing_count=1,
+                    observed_created_at="2026-07-11T02:30:00+00:00",
+                    payload_json=json.dumps(
+                        {
+                            "report_id": "parcel-assurance:test",
+                            "review_status": "incomplete",
+                            "claims": [
+                                {
+                                    "claim_id": "parcel-claim:test",
+                                    "source_key": "parcel-source:test",
+                                    "lineage_key": "county-assessor-roll",
+                                }
+                            ],
+                            "field_assurances": [
+                                {"field_role": "owner", "status": "missing"}
+                            ],
+                            "limitations": ["current supplied records only"],
+                        }
+                    ),
+                ),
                 SiteResolutionResultRow(
                     resolution_id="site-resolution:test",
                     source_name="test source",
@@ -162,6 +193,10 @@ def _seed(database_url: str) -> None:
         (UpstreamOperatorRecordKind.CONTRACTOR, "contractor:test"),
         (UpstreamOperatorRecordKind.DECISION, "decision:test"),
         (UpstreamOperatorRecordKind.PARCEL, "parcel:test"),
+        (
+            UpstreamOperatorRecordKind.PARCEL_ASSURANCE,
+            "parcel-assurance:test",
+        ),
         (UpstreamOperatorRecordKind.SITE_RESOLUTION, "site-resolution:test"),
     ],
 )
@@ -195,6 +230,26 @@ def test_parcel_list_filters_and_preserves_payload(tmp_path) -> None:
     assert len(records) == 1
     assert records[0].record_id == "parcel:test"
     assert records[0].payload["limitations"] == ["geometry unavailable"]
+
+
+def test_parcel_assurance_list_filters_and_preserves_claims(tmp_path) -> None:
+    database_url = _database_url(tmp_path)
+    _seed(database_url)
+    factory = _factory(database_url)
+
+    with managed_session(factory) as session:
+        records = list_upstream_operator_records(
+            session,
+            UpstreamOperatorRecordKind.PARCEL_ASSURANCE,
+            status="incomplete",
+            apn="012345678",
+            county="San Bernardino",
+        )
+
+    assert len(records) == 1
+    assert records[0].record_id == "parcel-assurance:test"
+    assert records[0].status == "incomplete"
+    assert records[0].payload["claims"][0]["lineage_key"] == "county-assessor-roll"
 
 
 def test_list_rejects_unsupported_filter(tmp_path) -> None:
@@ -256,6 +311,32 @@ def test_list_cli_outputs_machine_readable_decision_payload(tmp_path) -> None:
     assert payload[0]["payload"]["limitations"] == [
         "applicant identity requires review"
     ]
+
+
+def test_list_cli_outputs_parcel_assurance_payload(tmp_path) -> None:
+    database_url = _database_url(tmp_path)
+    _seed(database_url)
+    runner = CliRunner()
+
+    result = runner.invoke(
+        app,
+        [
+            "list",
+            "parcel_assurance",
+            "--database-url",
+            database_url,
+            "--status",
+            "incomplete",
+            "--apn",
+            "012345678",
+            "--json-output",
+        ],
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert payload[0]["record_id"] == "parcel-assurance:test"
+    assert payload[0]["payload"]["field_assurances"][0]["status"] == "missing"
 
 
 def test_detail_cli_reports_missing_record(tmp_path) -> None:
