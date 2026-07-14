@@ -1,0 +1,583 @@
+{
+  "authorization_granted_at": "2026-07-14T05:38:57.265593Z",
+  "authorized_utc_date": "2026-07-14",
+  "evidence_execution_digest": "57c2c3a64f65f6cd7ca8e512c862d02fe92b04fcaa7cc1bb6eaeb7b091857f10",
+  "explicit_execution_authorization_confirmed": true,
+  "live_execution": {
+    "body_sha256": "5b1bc503c81d12ed0f00e52539edb437b42ae4c3a539a25e1c82a02b84273163",
+    "content_disposition": "attachment; filename=\"CEQA Documents.csv\"",
+    "content_type": "text/csv",
+    "documents_downloaded": false,
+    "error": null,
+    "executed_at": "2026-07-14T05:38:57.265593Z",
+    "execution_digest": "ecb1e8cb89ab5909ed9b30ea6d13f995816921d48da7d7a946127e6983ad676e",
+    "final_url": "https://ceqanet.lci.ca.gov/Search?OutputFormat=CSV&Sch=2026030377",
+    "inspection": {
+      "body_sha256": "5b1bc503c81d12ed0f00e52539edb437b42ae4c3a539a25e1c82a02b84273163",
+      "byte_length": 7832,
+      "column_count": 55,
+      "columns": [
+        {
+          "canonical_role": "sch_number",
+          "normalized_name": "sch_number",
+          "ordinal": 0,
+          "original_name": "SCH Number"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "lead_agency_name",
+          "ordinal": 1,
+          "original_name": "Lead Agency Name"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "lead_agency_title",
+          "ordinal": 2,
+          "original_name": "Lead Agency Title"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "lead_agency_acronym",
+          "ordinal": 3,
+          "original_name": "Lead Agency Acronym"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "document_title",
+          "ordinal": 4,
+          "original_name": "Document Title"
+        },
+        {
+          "canonical_role": "document_type",
+          "normalized_name": "document_type",
+          "ordinal": 5,
+          "original_name": "Document Type"
+        },
+        {
+          "canonical_role": "received_date",
+          "normalized_name": "received",
+          "ordinal": 6,
+          "original_name": "Received"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "posted",
+          "ordinal": 7,
+          "original_name": "Posted"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "document_description",
+          "ordinal": 8,
+          "original_name": "Document Description"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "document_portal_url",
+          "ordinal": 9,
+          "original_name": "Document Portal URL"
+        },
+        {
+          "canonical_role": "title",
+          "normalized_name": "project_title",
+          "ordinal": 10,
+          "original_name": "Project Title"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "contact_full_name",
+          "ordinal": 11,
+          "original_name": "Contact Full Name"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "contact_authority",
+          "ordinal": 12,
+          "original_name": "Contact Authority"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "contact_job_title",
+          "ordinal": 13,
+          "original_name": "Contact Job Title"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "contact_email_address",
+          "ordinal": 14,
+          "original_name": "Contact Email Address"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "contact_address_1",
+          "ordinal": 15,
+          "original_name": "Contact Address  1"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "contact_address_2",
+          "ordinal": 16,
+          "original_name": "Contact Address  2"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "contact_city",
+          "ordinal": 17,
+          "original_name": "Contact City"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "contact_state",
+          "ordinal": 18,
+          "original_name": "Contact State"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "contact_zip_code",
+          "ordinal": 19,
+          "original_name": "Contact Zip Code"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "contact_phone_number",
+          "ordinal": 20,
+          "original_name": "Contact Phone Number"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "location_coordinates",
+          "ordinal": 21,
+          "original_name": "Location Coordinates"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "cities",
+          "ordinal": 22,
+          "original_name": "Cities"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "counties",
+          "ordinal": 23,
+          "original_name": "Counties"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "county_clerks",
+          "ordinal": 24,
+          "original_name": "County Clerks"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "location_cross_streets",
+          "ordinal": 25,
+          "original_name": "Location Cross Streets"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "location_zip_code",
+          "ordinal": 26,
+          "original_name": "Location Zip Code"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "location_total_acres",
+          "ordinal": 27,
+          "original_name": "Location Total Acres"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "location_parcel_number",
+          "ordinal": 28,
+          "original_name": "Location Parcel Number"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "location_state_highways",
+          "ordinal": 29,
+          "original_name": "Location State Highways"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "location_waterways",
+          "ordinal": 30,
+          "original_name": "Location Waterways"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "location_airports",
+          "ordinal": 31,
+          "original_name": "Location Airports"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "noc_has_non_late_comment",
+          "ordinal": 32,
+          "original_name": "NOC Has Non Late Comment"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "noc_state_review_start_date",
+          "ordinal": 33,
+          "original_name": "NOC State Review Start Date"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "noc_state_review_end_date",
+          "ordinal": 34,
+          "original_name": "NOC State Review End Date"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "noc_development_type",
+          "ordinal": 35,
+          "original_name": "NOC Development Type"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "noc_local_action",
+          "ordinal": 36,
+          "original_name": "NOC Local Action"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "noc_project_issues",
+          "ordinal": 37,
+          "original_name": "NOC Project Issues"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "noc_public_review_start_date",
+          "ordinal": 38,
+          "original_name": "NOC Public Review Start Date"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "noc_public_review_end_date",
+          "ordinal": 39,
+          "original_name": "NOC Public Review End Date"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "noe_exempt_status",
+          "ordinal": 40,
+          "original_name": "NOE Exempt Status"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "noe_exempt_citation",
+          "ordinal": 41,
+          "original_name": "NOE Exempt Citation"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "noe_reasons_for_exemption",
+          "ordinal": 42,
+          "original_name": "NOE Reasons for Exemption"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "nod_agency",
+          "ordinal": 43,
+          "original_name": "NOD Agency"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "nod_approved_by_lead_agency",
+          "ordinal": 44,
+          "original_name": "NOD Approved By Lead Agency"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "nod_approved_date",
+          "ordinal": 45,
+          "original_name": "NOD Approved Date"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "nod_significant_environmental_impact",
+          "ordinal": 46,
+          "original_name": "NOD Significant Environmental Impact"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "nod_environmental_impact_report_prepared",
+          "ordinal": 47,
+          "original_name": "NOD Environmental Impact Report Prepared"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "nod_negative_declaration_prepared",
+          "ordinal": 48,
+          "original_name": "NOD Negative Declaration Prepared"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "nod_other_document_type",
+          "ordinal": 49,
+          "original_name": "NOD Other Document Type"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "nod_mitigation_measures",
+          "ordinal": 50,
+          "original_name": "NOD Mitigation Measures"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "nod_mitigation_reporting_or_monitoring_plan",
+          "ordinal": 51,
+          "original_name": "NOD Mitigation Reporting Or Monitoring Plan"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "nod_statement_of_overriding_considerations_adopted",
+          "ordinal": 52,
+          "original_name": "NOD Statement Of Overriding Considerations Adopted"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "nod_findings_made_pursuant",
+          "ordinal": 53,
+          "original_name": "NOD Findings Made Pursuant"
+        },
+        {
+          "canonical_role": null,
+          "normalized_name": "nod_final_eir_available_location",
+          "ordinal": 54,
+          "original_name": "NOD Final EIR Available Location"
+        }
+      ],
+      "content_type": "text/csv",
+      "delimiter": ",",
+      "encoding": "windows-1252",
+      "inspection_digest": "e6888864835947ef758b22b5c3f8533fafa848a310e9b54acc94fd45fd5add07",
+      "network_executed": false,
+      "persistence_authorized": false,
+      "request": {
+        "document_id": null,
+        "export_kind": "project",
+        "network_authorized": false,
+        "persistence_authorized": false,
+        "sch_number": "2026030377",
+        "schema_version": "ceqanet_csv_export_request.v1",
+        "source_url": "https://ceqanet.lci.ca.gov/Search?OutputFormat=CSV&Sch=2026030377"
+      },
+      "retained_row_count": 2,
+      "row_count": 2,
+      "rows": [
+        {
+          "cities": "",
+          "contact_address_1": "4080 Lemon Street",
+          "contact_address_2": "12th Floor",
+          "contact_authority": "County of Riverside",
+          "contact_city": "Riverside",
+          "contact_email_address": "CabazonPlan@rivco.org",
+          "contact_full_name": "Candice Hughes",
+          "contact_job_title": "District 5 Principal Planner",
+          "contact_phone_number": "9519551639",
+          "contact_state": "CA",
+          "contact_zip_code": "92502",
+          "counties": "Riverside",
+          "county_clerks": "",
+          "document_description": "The proposed project would include the implementation of the Cabazon Community Plan and corresponding Cabazon Infrastructure Plan (CIP) in accordance with 6th Cycle Housing Element Action H-27. The goal of the Cabazon Community Plan (GPA No. 01206) is to address the Community of Cabazon's land use and infrastructure needs to prepare the Cabazon area for significant anticipated growth and development, particularly as the region plans for the possibility of accommodating up to 22,888 new housing units and an additional 49,420,323 square feet of non-residential uses over the next 30 years. Further, the Community Plan addresses  topics related to the Cabazon community such as placemaking, land use, access and circulation, infrastructure and public services, development and design standards, and administration and implementation.\r\n\r\nBased on the General Plan, existing land uses within the project area include the following: Mixed Use Area, Highest Density Residential, Medium Density Residential, Low Density Residential, Rural Residential, Rural Desert, Rural Mountainous, Commercial Retail, Light Industrial, Open Space - Conservation, Open Space - Rural, and Freeway.\r\n\r\nThe Cabazon Community Plan Land Use Map proposes the following types of land uses: Commercial Retail, High Density Residential, Highest Density Residential, Low Density Residential, Medium Density Residential, Very Low Density Residential, Rural Residential, Rural Desert, Rural Mountainous, Mixed-Use Area, Light Industrial, Heavy Industrial, Public Facilities, Open Space - Conservation, and Freeway.\r\n\r\nThe CIP (ZR6234) would support buildout of the Community Plan by identifying needs and suggesting alternatives for the availability and expansion of infrastructure in the Cabazon Community Plan area. The CIP projects covered under the EIR have been divided into the following categories:\r\n\u2022\tDomestic Water Supply and Distribution\r\n\u2022\tWastewater Collection and Treatment\r\n\u2022\tFlood Control and Drainage Systems\r\n\u2022\tElectric Power Supply\r\n\u2022\tNatural Gas Distribution\r\n\u2022\tTelecommunications and Broadband Services\r\n\u2022\tRoadway Right-of-Way",
+          "document_portal_url": "https://ceqanet.lci.ca.gov/2026030377/2",
+          "document_title": "Cabazon Infrastructure Plan and Cabazon Community Plan Project (GPA No. 01206 and ZR6234)",
+          "document_type": "EIR",
+          "lead_agency_acronym": "",
+          "lead_agency_name": "Riverside County",
+          "lead_agency_title": "",
+          "location_airports": "Banning Municipal Airport",
+          "location_coordinates": "33\u00b054'33\"N 116\u00b045'59\"W",
+          "location_cross_streets": "All streets within the unincorporated community of Cabazon",
+          "location_parcel_number": "Multiple, Community-wide",
+          "location_state_highways": "SR-243",
+          "location_total_acres": "7,769",
+          "location_waterways": "San Gorgonio River, Smith Creek, and various tributaries",
+          "location_zip_code": "92230",
+          "noc_development_type": "Other (Infrastructure Plan and Community Plan; see Draft EIR Section 2)",
+          "noc_has_non_late_comment": "No",
+          "noc_local_action": "Community Plan, General Plan Amendment, Rezone",
+          "noc_project_issues": "Aesthetics, Agriculture and Forestry Resources, Air Quality, Biological Resources, Cultural Resources, Cumulative Effects, Drainage/Absorption, Economics/Jobs, Energy, Flood Plain/Flooding, Geology/Soils, Greenhouse Gas Emissions, Growth Inducement, Hazards & Hazardous Materials, Hydrology/Water Quality, Land Use/Planning, Mandatory Findings of Significance, Mineral Resources, Noise, Population/Housing, Public Services, Recreation, Schools/Universities, Septic System, Sewer Capacity, Solid Waste, Transportation, Tribal Cultural Resources, Utilities/Service Systems, Vegetation, Wetland/Riparian, Wildfire",
+          "noc_public_review_end_date": "8/24/2026",
+          "noc_public_review_start_date": "7/9/2026",
+          "noc_state_review_end_date": "8/24/2026",
+          "noc_state_review_start_date": "7/10/2026",
+          "nod_agency": "",
+          "nod_approved_by_lead_agency": "",
+          "nod_approved_date": "",
+          "nod_environmental_impact_report_prepared": "",
+          "nod_final_eir_available_location": "",
+          "nod_findings_made_pursuant": "",
+          "nod_mitigation_measures": "",
+          "nod_mitigation_reporting_or_monitoring_plan": "",
+          "nod_negative_declaration_prepared": "",
+          "nod_other_document_type": "",
+          "nod_significant_environmental_impact": "",
+          "nod_statement_of_overriding_considerations_adopted": "",
+          "noe_exempt_citation": "",
+          "noe_exempt_status": "",
+          "noe_reasons_for_exemption": "",
+          "posted": "",
+          "project_title": "Cabazon Infrastructure Plan and Cabazon Community Plan Project (GPA No. 01206 and ZR6234)",
+          "received": "7/10/2026",
+          "sch_number": "2026030377"
+        },
+        {
+          "cities": "",
+          "contact_address_1": "4080 Lemon Street",
+          "contact_address_2": "12th Floor",
+          "contact_authority": "County of Riverside",
+          "contact_city": "Riverside",
+          "contact_email_address": "CabazonPlan@rivco.org",
+          "contact_full_name": "Candice Hughes",
+          "contact_job_title": "District 5 Principal Planner",
+          "contact_phone_number": "9519551639",
+          "contact_state": "CA",
+          "contact_zip_code": "92502",
+          "counties": "Riverside",
+          "county_clerks": "",
+          "document_description": "The proposed project would include the implementation of the Cabazon Community Plan and corresponding Cabazon Infrastructure Plan (CIP) in accordance with 6th Cycle Housing Element Action H-27. The goal of the Cabazon Community Plan (GPA No. 01206) is to address the Community of Cabazon\u2019s land use and infrastructure needs to prepare the Cabazon area for significant anticipated growth and development, particularly as the region plans for the possibility of accommodating up to 25,000 new housing units over the next 30 years. Further, the Community Plan is proposed to address topics related to the Cabazon community such as land use, character and design, access and circulation, infrastructure and public services, and design standards. \r\n\r\nThe Cabazon Community Plan Land Use Map proposes the following types of land uses: Commercial Retail, High Density Residential, Highest Density Residential, Low Density Residential, Medium Density Residential, Very Low Density Residential, Rural Residential, Rural Desert, Rural Mountainous, Mixed-Use Area, Light Industrial, Heavy Industrial, Public Facilities, Open Space \u2013 Conservation, and Freeway.\r\n\r\nThe CIP (ZR6234) would support buildout of the Community Plan by identifying needs and suggesting alternatives for the availability and expansion of infrastructure in the Cabazon Community Plan area. The CIP projects covered under the EIR have been divided into the following categories:\r\n\u2022\tDomestic Water Supply and Distribution\r\n\u2022\tWastewater Collection and Treatment\r\n\u2022\tFlood Control and Drainage Systems\r\n\u2022\tElectric Power Supply\r\n\u2022\tNatural Gas Distribution\r\n\u2022\tTelecommunications and Broadband Services\r\n\u2022\tRoadway Right-of-Way",
+          "document_portal_url": "https://ceqanet.lci.ca.gov/2026030377",
+          "document_title": "Cabazon Infrastructure Plan and Cabazon Community Plan Project (GPA No. 01206 and ZR6234)",
+          "document_type": "NOP",
+          "lead_agency_acronym": "",
+          "lead_agency_name": "Riverside County",
+          "lead_agency_title": "",
+          "location_airports": "Banning Municipal Airport",
+          "location_coordinates": "33\u00b054'33\"N 116\u00b045'59\"W",
+          "location_cross_streets": "All streets within the unincorporated community of Cabazon",
+          "location_parcel_number": "Multiple, Community-wide",
+          "location_state_highways": "SR-243",
+          "location_total_acres": "7,768",
+          "location_waterways": "San Gorgonio River, Smith Creek, and various tributaries",
+          "location_zip_code": "92230",
+          "noc_development_type": "Other (Infrastructure Plan and Community Plan; see Document Description)",
+          "noc_has_non_late_comment": "Yes",
+          "noc_local_action": "Community Plan, General Plan Amendment, Rezone",
+          "noc_project_issues": "Aesthetics, Agriculture and Forestry Resources, Air Quality, Biological Resources, Cultural Resources, Cumulative Effects, Drainage/Absorption, Economics/Jobs, Energy, Flood Plain/Flooding, Geology/Soils, Greenhouse Gas Emissions, Growth Inducement, Hazards & Hazardous Materials, Hydrology/Water Quality, Land Use/Planning, Mandatory Findings of Significance, Mineral Resources, Noise, Population/Housing, Public Services, Recreation, Schools/Universities, Septic System, Sewer Capacity, Solid Waste, Transportation, Tribal Cultural Resources, Utilities/Service Systems, Vegetation, Wetland/Riparian, Wildfire",
+          "noc_public_review_end_date": "4/8/2026",
+          "noc_public_review_start_date": "3/9/2026",
+          "noc_state_review_end_date": "4/8/2026",
+          "noc_state_review_start_date": "3/9/2026",
+          "nod_agency": "",
+          "nod_approved_by_lead_agency": "",
+          "nod_approved_date": "",
+          "nod_environmental_impact_report_prepared": "",
+          "nod_final_eir_available_location": "",
+          "nod_findings_made_pursuant": "",
+          "nod_mitigation_measures": "",
+          "nod_mitigation_reporting_or_monitoring_plan": "",
+          "nod_negative_declaration_prepared": "",
+          "nod_other_document_type": "",
+          "nod_significant_environmental_impact": "",
+          "nod_statement_of_overriding_considerations_adopted": "",
+          "noe_exempt_citation": "",
+          "noe_exempt_status": "",
+          "noe_reasons_for_exemption": "",
+          "posted": "",
+          "project_title": "Cabazon Infrastructure Plan and Cabazon Community Plan Project (GPA No. 01206 and ZR6234)",
+          "received": "3/9/2026",
+          "sch_number": "2026030377"
+        }
+      ],
+      "rows_truncated": false,
+      "schema_version": "ceqanet_csv_inspection.v1",
+      "unknown_columns": [
+        "lead_agency_name",
+        "lead_agency_title",
+        "lead_agency_acronym",
+        "document_title",
+        "posted",
+        "document_description",
+        "document_portal_url",
+        "contact_full_name",
+        "contact_authority",
+        "contact_job_title",
+        "contact_email_address",
+        "contact_address_1",
+        "contact_address_2",
+        "contact_city",
+        "contact_state",
+        "contact_zip_code",
+        "contact_phone_number",
+        "location_coordinates",
+        "cities",
+        "counties",
+        "county_clerks",
+        "location_cross_streets",
+        "location_zip_code",
+        "location_total_acres",
+        "location_parcel_number",
+        "location_state_highways",
+        "location_waterways",
+        "location_airports",
+        "noc_has_non_late_comment",
+        "noc_state_review_start_date",
+        "noc_state_review_end_date",
+        "noc_development_type",
+        "noc_local_action",
+        "noc_project_issues",
+        "noc_public_review_start_date",
+        "noc_public_review_end_date",
+        "noe_exempt_status",
+        "noe_exempt_citation",
+        "noe_reasons_for_exemption",
+        "nod_agency",
+        "nod_approved_by_lead_agency",
+        "nod_approved_date",
+        "nod_significant_environmental_impact",
+        "nod_environmental_impact_report_prepared",
+        "nod_negative_declaration_prepared",
+        "nod_other_document_type",
+        "nod_mitigation_measures",
+        "nod_mitigation_reporting_or_monitoring_plan",
+        "nod_statement_of_overriding_considerations_adopted",
+        "nod_findings_made_pursuant",
+        "nod_final_eir_available_location"
+      ],
+      "warnings": [
+        "unknown columns are preserved without inferred meaning",
+        "multiple title columns were preserved; canonical title was assigned by export scope",
+        "source body decoded as Windows-1252 after strict UTF-8 failure"
+      ]
+    },
+    "inspection_error": null,
+    "method": "GET",
+    "network_executed": true,
+    "observed_body_byte_length": 7832,
+    "persistence_mutated": false,
+    "request": {
+      "document_id": null,
+      "export_kind": "project",
+      "network_authorized": false,
+      "persistence_authorized": false,
+      "sch_number": "2026030377",
+      "schema_version": "ceqanet_csv_export_request.v1",
+      "source_url": "https://ceqanet.lci.ca.gov/Search?OutputFormat=CSV&Sch=2026030377"
+    },
+    "request_url": "https://ceqanet.lci.ca.gov/Search?OutputFormat=CSV&Sch=2026030377",
+    "retained_body_base64": "U0NIIE51bWJlcixMZWFkIEFnZW5jeSBOYW1lLExlYWQgQWdlbmN5IFRpdGxlLExlYWQgQWdlbmN5IEFjcm9ueW0sRG9jdW1lbnQgVGl0bGUsRG9jdW1lbnQgVHlwZSxSZWNlaXZlZCxQb3N0ZWQsRG9jdW1lbnQgRGVzY3JpcHRpb24sRG9jdW1lbnQgUG9ydGFsIFVSTCxQcm9qZWN0IFRpdGxlLENvbnRhY3QgRnVsbCBOYW1lLENvbnRhY3QgQXV0aG9yaXR5LENvbnRhY3QgSm9iIFRpdGxlLENvbnRhY3QgRW1haWwgQWRkcmVzcyxDb250YWN0IEFkZHJlc3MgIDEsQ29udGFjdCBBZGRyZXNzICAyLENvbnRhY3QgQ2l0eSxDb250YWN0IFN0YXRlLENvbnRhY3QgWmlwIENvZGUsQ29udGFjdCBQaG9uZSBOdW1iZXIsTG9jYXRpb24gQ29vcmRpbmF0ZXMsQ2l0aWVzLENvdW50aWVzLENvdW50eSBDbGVya3MsTG9jYXRpb24gQ3Jvc3MgU3RyZWV0cyxMb2NhdGlvbiBaaXAgQ29kZSxMb2NhdGlvbiBUb3RhbCBBY3JlcyxMb2NhdGlvbiBQYXJjZWwgTnVtYmVyLExvY2F0aW9uIFN0YXRlIEhpZ2h3YXlzLExvY2F0aW9uIFdhdGVyd2F5cyxMb2NhdGlvbiBBaXJwb3J0cyxOT0MgSGFzIE5vbiBMYXRlIENvbW1lbnQsTk9DIFN0YXRlIFJldmlldyBTdGFydCBEYXRlLE5PQyBTdGF0ZSBSZXZpZXcgRW5kIERhdGUsTk9DIERldmVsb3BtZW50IFR5cGUsTk9DIExvY2FsIEFjdGlvbixOT0MgUHJvamVjdCBJc3N1ZXMsTk9DIFB1YmxpYyBSZXZpZXcgU3RhcnQgRGF0ZSxOT0MgUHVibGljIFJldmlldyBFbmQgRGF0ZSxOT0UgRXhlbXB0IFN0YXR1cyxOT0UgRXhlbXB0IENpdGF0aW9uLE5PRSBSZWFzb25zIGZvciBFeGVtcHRpb24sTk9EIEFnZW5jeSxOT0QgQXBwcm92ZWQgQnkgTGVhZCBBZ2VuY3ksTk9EIEFwcHJvdmVkIERhdGUsTk9EIFNpZ25pZmljYW50IEVudmlyb25tZW50YWwgSW1wYWN0LE5PRCBFbnZpcm9ubWVudGFsIEltcGFjdCBSZXBvcnQgUHJlcGFyZWQsTk9EIE5lZ2F0aXZlIERlY2xhcmF0aW9uIFByZXBhcmVkLE5PRCBPdGhlciBEb2N1bWVudCBUeXBlLE5PRCBNaXRpZ2F0aW9uIE1lYXN1cmVzLE5PRCBNaXRpZ2F0aW9uIFJlcG9ydGluZyBPciBNb25pdG9yaW5nIFBsYW4sTk9EIFN0YXRlbWVudCBPZiBPdmVycmlkaW5nIENvbnNpZGVyYXRpb25zIEFkb3B0ZWQsTk9EIEZpbmRpbmdzIE1hZGUgUHVyc3VhbnQsTk9EIEZpbmFsIEVJUiBBdmFpbGFibGUgTG9jYXRpb24NCjIwMjYwMzAzNzcsUml2ZXJzaWRlIENvdW50eSwsLENhYmF6b24gSW5mcmFzdHJ1Y3R1cmUgUGxhbiBhbmQgQ2FiYXpvbiBDb21tdW5pdHkgUGxhbiBQcm9qZWN0IChHUEEgTm8uIDAxMjA2IGFuZCBaUjYyMzQpLEVJUiw3LzEwLzIwMjYsLCJUaGUgcHJvcG9zZWQgcHJvamVjdCB3b3VsZCBpbmNsdWRlIHRoZSBpbXBsZW1lbnRhdGlvbiBvZiB0aGUgQ2FiYXpvbiBDb21tdW5pdHkgUGxhbiBhbmQgY29ycmVzcG9uZGluZyBDYWJhem9uIEluZnJhc3RydWN0dXJlIFBsYW4gKENJUCkgaW4gYWNjb3JkYW5jZSB3aXRoIDZ0aCBDeWNsZSBIb3VzaW5nIEVsZW1lbnQgQWN0aW9uIEgtMjcuIFRoZSBnb2FsIG9mIHRoZSBDYWJhem9uIENvbW11bml0eSBQbGFuIChHUEEgTm8uIDAxMjA2KSBpcyB0byBhZGRyZXNzIHRoZSBDb21tdW5pdHkgb2YgQ2FiYXpvbidzIGxhbmQgdXNlIGFuZCBpbmZyYXN0cnVjdHVyZSBuZWVkcyB0byBwcmVwYXJlIHRoZSBDYWJhem9uIGFyZWEgZm9yIHNpZ25pZmljYW50IGFudGljaXBhdGVkIGdyb3d0aCBhbmQgZGV2ZWxvcG1lbnQsIHBhcnRpY3VsYXJseSBhcyB0aGUgcmVnaW9uIHBsYW5zIGZvciB0aGUgcG9zc2liaWxpdHkgb2YgYWNjb21tb2RhdGluZyB1cCB0byAyMiw4ODggbmV3IGhvdXNpbmcgdW5pdHMgYW5kIGFuIGFkZGl0aW9uYWwgNDksNDIwLDMyMyBzcXVhcmUgZmVldCBvZiBub24tcmVzaWRlbnRpYWwgdXNlcyBvdmVyIHRoZSBuZXh0IDMwIHllYXJzLiBGdXJ0aGVyLCB0aGUgQ29tbXVuaXR5IFBsYW4gYWRkcmVzc2VzICB0b3BpY3MgcmVsYXRlZCB0byB0aGUgQ2FiYXpvbiBjb21tdW5pdHkgc3VjaCBhcyBwbGFjZW1ha2luZywgbGFuZCB1c2UsIGFjY2VzcyBhbmQgY2lyY3VsYXRpb24sIGluZnJhc3RydWN0dXJlIGFuZCBwdWJsaWMgc2VydmljZXMsIGRldmVsb3BtZW50IGFuZCBkZXNpZ24gc3RhbmRhcmRzLCBhbmQgYWRtaW5pc3RyYXRpb24gYW5kIGltcGxlbWVudGF0aW9uLg0KDQpCYXNlZCBvbiB0aGUgR2VuZXJhbCBQbGFuLCBleGlzdGluZyBsYW5kIHVzZXMgd2l0aGluIHRoZSBwcm9qZWN0IGFyZWEgaW5jbHVkZSB0aGUgZm9sbG93aW5nOiBNaXhlZCBVc2UgQXJlYSwgSGlnaGVzdCBEZW5zaXR5IFJlc2lkZW50aWFsLCBNZWRpdW0gRGVuc2l0eSBSZXNpZGVudGlhbCwgTG93IERlbnNpdHkgUmVzaWRlbnRpYWwsIFJ1cmFsIFJlc2lkZW50aWFsLCBSdXJhbCBEZXNlcnQsIFJ1cmFsIE1vdW50YWlub3VzLCBDb21tZXJjaWFsIFJldGFpbCwgTGlnaHQgSW5kdXN0cmlhbCwgT3BlbiBTcGFjZSAtIENvbnNlcnZhdGlvbiwgT3BlbiBTcGFjZSAtIFJ1cmFsLCBhbmQgRnJlZXdheS4NCg0KVGhlIENhYmF6b24gQ29tbXVuaXR5IFBsYW4gTGFuZCBVc2UgTWFwIHByb3Bvc2VzIHRoZSBmb2xsb3dpbmcgdHlwZXMgb2YgbGFuZCB1c2VzOiBDb21tZXJjaWFsIFJldGFpbCwgSGlnaCBEZW5zaXR5IFJlc2lkZW50aWFsLCBIaWdoZXN0IERlbnNpdHkgUmVzaWRlbnRpYWwsIExvdyBEZW5zaXR5IFJlc2lkZW50aWFsLCBNZWRpdW0gRGVuc2l0eSBSZXNpZGVudGlhbCwgVmVyeSBMb3cgRGVuc2l0eSBSZXNpZGVudGlhbCwgUnVyYWwgUmVzaWRlbnRpYWwsIFJ1cmFsIERlc2VydCwgUnVyYWwgTW91bnRhaW5vdXMsIE1peGVkLVVzZSBBcmVhLCBMaWdodCBJbmR1c3RyaWFsLCBIZWF2eSBJbmR1c3RyaWFsLCBQdWJsaWMgRmFjaWxpdGllcywgT3BlbiBTcGFjZSAtIENvbnNlcnZhdGlvbiwgYW5kIEZyZWV3YXkuDQoNClRoZSBDSVAgKFpSNjIzNCkgd291bGQgc3VwcG9ydCBidWlsZG91dCBvZiB0aGUgQ29tbXVuaXR5IFBsYW4gYnkgaWRlbnRpZnlpbmcgbmVlZHMgYW5kIHN1Z2dlc3RpbmcgYWx0ZXJuYXRpdmVzIGZvciB0aGUgYXZhaWxhYmlsaXR5IGFuZCBleHBhbnNpb24gb2YgaW5mcmFzdHJ1Y3R1cmUgaW4gdGhlIENhYmF6b24gQ29tbXVuaXR5IFBsYW4gYXJlYS4gVGhlIENJUCBwcm9qZWN0cyBjb3ZlcmVkIHVuZGVyIHRoZSBFSVIgaGF2ZSBiZWVuIGRpdmlkZWQgaW50byB0aGUgZm9sbG93aW5nIGNhdGVnb3JpZXM6DQqVCURvbWVzdGljIFdhdGVyIFN1cHBseSBhbmQgRGlzdHJpYnV0aW9uDQqVCVdhc3Rld2F0ZXIgQ29sbGVjdGlvbiBhbmQgVHJlYXRtZW50DQqVCUZsb29kIENvbnRyb2wgYW5kIERyYWluYWdlIFN5c3RlbXMNCpUJRWxlY3RyaWMgUG93ZXIgU3VwcGx5DQqVCU5hdHVyYWwgR2FzIERpc3RyaWJ1dGlvbg0KlQlUZWxlY29tbXVuaWNhdGlvbnMgYW5kIEJyb2FkYmFuZCBTZXJ2aWNlcw0KlQlSb2Fkd2F5IFJpZ2h0LW9mLVdheSIsaHR0cHM6Ly9jZXFhbmV0LmxjaS5jYS5nb3YvMjAyNjAzMDM3Ny8yLENhYmF6b24gSW5mcmFzdHJ1Y3R1cmUgUGxhbiBhbmQgQ2FiYXpvbiBDb21tdW5pdHkgUGxhbiBQcm9qZWN0IChHUEEgTm8uIDAxMjA2IGFuZCBaUjYyMzQpLENhbmRpY2UgSHVnaGVzLENvdW50eSBvZiBSaXZlcnNpZGUsIERpc3RyaWN0IDUgUHJpbmNpcGFsIFBsYW5uZXIsQ2FiYXpvblBsYW5Acml2Y28ub3JnLDQwODAgTGVtb24gU3RyZWV0LDEydGggRmxvb3IsUml2ZXJzaWRlLENBLDkyNTAyLDk1MTk1NTE2MzksMzOwNTQnMzMiTiAxMTawNDUnNTkiVywsUml2ZXJzaWRlLCwgQWxsIHN0cmVldHMgd2l0aGluIHRoZSB1bmluY29ycG9yYXRlZCBjb21tdW5pdHkgb2YgQ2FiYXpvbiwgOTIyMzAsIjcsNzY5IiwiTXVsdGlwbGUsIENvbW11bml0eS13aWRlIixTUi0yNDMsIlNhbiBHb3Jnb25pbyBSaXZlciwgU21pdGggQ3JlZWssIGFuZCB2YXJpb3VzIHRyaWJ1dGFyaWVzIixCYW5uaW5nIE11bmljaXBhbCBBaXJwb3J0LE5vLDcvMTAvMjAyNiw4LzI0LzIwMjYsT3RoZXIgKEluZnJhc3RydWN0dXJlIFBsYW4gYW5kIENvbW11bml0eSBQbGFuOyBzZWUgRHJhZnQgRUlSIFNlY3Rpb24gMiksIkNvbW11bml0eSBQbGFuLCBHZW5lcmFsIFBsYW4gQW1lbmRtZW50LCBSZXpvbmUiLCJBZXN0aGV0aWNzLCBBZ3JpY3VsdHVyZSBhbmQgRm9yZXN0cnkgUmVzb3VyY2VzLCBBaXIgUXVhbGl0eSwgQmlvbG9naWNhbCBSZXNvdXJjZXMsIEN1bHR1cmFsIFJlc291cmNlcywgQ3VtdWxhdGl2ZSBFZmZlY3RzLCBEcmFpbmFnZS9BYnNvcnB0aW9uLCBFY29ub21pY3MvSm9icywgRW5lcmd5LCBGbG9vZCBQbGFpbi9GbG9vZGluZywgR2VvbG9neS9Tb2lscywgR3JlZW5ob3VzZSBHYXMgRW1pc3Npb25zLCBHcm93dGggSW5kdWNlbWVudCwgSGF6YXJkcyAmIEhhemFyZG91cyBNYXRlcmlhbHMsIEh5ZHJvbG9neS9XYXRlciBRdWFsaXR5LCBMYW5kIFVzZS9QbGFubmluZywgTWFuZGF0b3J5IEZpbmRpbmdzIG9mIFNpZ25pZmljYW5jZSwgTWluZXJhbCBSZXNvdXJjZXMsIE5vaXNlLCBQb3B1bGF0aW9uL0hvdXNpbmcsIFB1YmxpYyBTZXJ2aWNlcywgUmVjcmVhdGlvbiwgU2Nob29scy9Vbml2ZXJzaXRpZXMsIFNlcHRpYyBTeXN0ZW0sIFNld2VyIENhcGFjaXR5LCBTb2xpZCBXYXN0ZSwgVHJhbnNwb3J0YXRpb24sIFRyaWJhbCBDdWx0dXJhbCBSZXNvdXJjZXMsIFV0aWxpdGllcy9TZXJ2aWNlIFN5c3RlbXMsIFZlZ2V0YXRpb24sIFdldGxhbmQvUmlwYXJpYW4sIFdpbGRmaXJlIiw3LzkvMjAyNiw4LzI0LzIwMjYsLCwsLCwsLCwsLCwsLCwNCjIwMjYwMzAzNzcsUml2ZXJzaWRlIENvdW50eSwsLENhYmF6b24gSW5mcmFzdHJ1Y3R1cmUgUGxhbiBhbmQgQ2FiYXpvbiBDb21tdW5pdHkgUGxhbiBQcm9qZWN0IChHUEEgTm8uIDAxMjA2IGFuZCBaUjYyMzQpICxOT1AsMy85LzIwMjYsLCJUaGUgcHJvcG9zZWQgcHJvamVjdCB3b3VsZCBpbmNsdWRlIHRoZSBpbXBsZW1lbnRhdGlvbiBvZiB0aGUgQ2FiYXpvbiBDb21tdW5pdHkgUGxhbiBhbmQgY29ycmVzcG9uZGluZyBDYWJhem9uIEluZnJhc3RydWN0dXJlIFBsYW4gKENJUCkgaW4gYWNjb3JkYW5jZSB3aXRoIDZ0aCBDeWNsZSBIb3VzaW5nIEVsZW1lbnQgQWN0aW9uIEgtMjcuIFRoZSBnb2FsIG9mIHRoZSBDYWJhem9uIENvbW11bml0eSBQbGFuIChHUEEgTm8uIDAxMjA2KSBpcyB0byBhZGRyZXNzIHRoZSBDb21tdW5pdHkgb2YgQ2FiYXpvbpJzIGxhbmQgdXNlIGFuZCBpbmZyYXN0cnVjdHVyZSBuZWVkcyB0byBwcmVwYXJlIHRoZSBDYWJhem9uIGFyZWEgZm9yIHNpZ25pZmljYW50IGFudGljaXBhdGVkIGdyb3d0aCBhbmQgZGV2ZWxvcG1lbnQsIHBhcnRpY3VsYXJseSBhcyB0aGUgcmVnaW9uIHBsYW5zIGZvciB0aGUgcG9zc2liaWxpdHkgb2YgYWNjb21tb2RhdGluZyB1cCB0byAyNSwwMDAgbmV3IGhvdXNpbmcgdW5pdHMgb3ZlciB0aGUgbmV4dCAzMCB5ZWFycy4gRnVydGhlciwgdGhlIENvbW11bml0eSBQbGFuIGlzIHByb3Bvc2VkIHRvIGFkZHJlc3MgdG9waWNzIHJlbGF0ZWQgdG8gdGhlIENhYmF6b24gY29tbXVuaXR5IHN1Y2ggYXMgbGFuZCB1c2UsIGNoYXJhY3RlciBhbmQgZGVzaWduLCBhY2Nlc3MgYW5kIGNpcmN1bGF0aW9uLCBpbmZyYXN0cnVjdHVyZSBhbmQgcHVibGljIHNlcnZpY2VzLCBhbmQgZGVzaWduIHN0YW5kYXJkcy4gDQoNClRoZSBDYWJhem9uIENvbW11bml0eSBQbGFuIExhbmQgVXNlIE1hcCBwcm9wb3NlcyB0aGUgZm9sbG93aW5nIHR5cGVzIG9mIGxhbmQgdXNlczogQ29tbWVyY2lhbCBSZXRhaWwsIEhpZ2ggRGVuc2l0eSBSZXNpZGVudGlhbCwgSGlnaGVzdCBEZW5zaXR5IFJlc2lkZW50aWFsLCBMb3cgRGVuc2l0eSBSZXNpZGVudGlhbCwgTWVkaXVtIERlbnNpdHkgUmVzaWRlbnRpYWwsIFZlcnkgTG93IERlbnNpdHkgUmVzaWRlbnRpYWwsIFJ1cmFsIFJlc2lkZW50aWFsLCBSdXJhbCBEZXNlcnQsIFJ1cmFsIE1vdW50YWlub3VzLCBNaXhlZC1Vc2UgQXJlYSwgTGlnaHQgSW5kdXN0cmlhbCwgSGVhdnkgSW5kdXN0cmlhbCwgUHVibGljIEZhY2lsaXRpZXMsIE9wZW4gU3BhY2UgliBDb25zZXJ2YXRpb24sIGFuZCBGcmVld2F5Lg0KDQpUaGUgQ0lQIChaUjYyMzQpIHdvdWxkIHN1cHBvcnQgYnVpbGRvdXQgb2YgdGhlIENvbW11bml0eSBQbGFuIGJ5IGlkZW50aWZ5aW5nIG5lZWRzIGFuZCBzdWdnZXN0aW5nIGFsdGVybmF0aXZlcyBmb3IgdGhlIGF2YWlsYWJpbGl0eSBhbmQgZXhwYW5zaW9uIG9mIGluZnJhc3RydWN0dXJlIGluIHRoZSBDYWJhem9uIENvbW11bml0eSBQbGFuIGFyZWEuIFRoZSBDSVAgcHJvamVjdHMgY292ZXJlZCB1bmRlciB0aGUgRUlSIGhhdmUgYmVlbiBkaXZpZGVkIGludG8gdGhlIGZvbGxvd2luZyBjYXRlZ29yaWVzOg0KlQlEb21lc3RpYyBXYXRlciBTdXBwbHkgYW5kIERpc3RyaWJ1dGlvbg0KlQlXYXN0ZXdhdGVyIENvbGxlY3Rpb24gYW5kIFRyZWF0bWVudA0KlQlGbG9vZCBDb250cm9sIGFuZCBEcmFpbmFnZSBTeXN0ZW1zDQqVCUVsZWN0cmljIFBvd2VyIFN1cHBseQ0KlQlOYXR1cmFsIEdhcyBEaXN0cmlidXRpb24NCpUJVGVsZWNvbW11bmljYXRpb25zIGFuZCBCcm9hZGJhbmQgU2VydmljZXMNCpUJUm9hZHdheSBSaWdodC1vZi1XYXkiLGh0dHBzOi8vY2VxYW5ldC5sY2kuY2EuZ292LzIwMjYwMzAzNzcsQ2FiYXpvbiBJbmZyYXN0cnVjdHVyZSBQbGFuIGFuZCBDYWJhem9uIENvbW11bml0eSBQbGFuIFByb2plY3QgKEdQQSBOby4gMDEyMDYgYW5kIFpSNjIzNCksQ2FuZGljZSBIdWdoZXMsQ291bnR5IG9mIFJpdmVyc2lkZSxEaXN0cmljdCA1IFByaW5jaXBhbCBQbGFubmVyLENhYmF6b25QbGFuQHJpdmNvLm9yZyw0MDgwIExlbW9uIFN0cmVldCwxMnRoIEZsb29yLFJpdmVyc2lkZSxDQSw5MjUwMiw5NTE5NTUxNjM5LDMzsDU0JzMzIk4gMTE2sDQ1JzU5IlcsLFJpdmVyc2lkZSwsQWxsIHN0cmVldHMgd2l0aGluIHRoZSB1bmluY29ycG9yYXRlZCBjb21tdW5pdHkgb2YgQ2FiYXpvbiw5MjIzMCwiNyw3NjgiLCJNdWx0aXBsZSwgQ29tbXVuaXR5LXdpZGUiLFNSLTI0MywiU2FuIEdvcmdvbmlvIFJpdmVyLCBTbWl0aCBDcmVlaywgYW5kIHZhcmlvdXMgdHJpYnV0YXJpZXMiLEJhbm5pbmcgTXVuaWNpcGFsIEFpcnBvcnQsWWVzLDMvOS8yMDI2LDQvOC8yMDI2LE90aGVyIChJbmZyYXN0cnVjdHVyZSBQbGFuIGFuZCBDb21tdW5pdHkgUGxhbjsgc2VlIERvY3VtZW50IERlc2NyaXB0aW9uKSwiQ29tbXVuaXR5IFBsYW4sIEdlbmVyYWwgUGxhbiBBbWVuZG1lbnQsIFJlem9uZSIsIkFlc3RoZXRpY3MsIEFncmljdWx0dXJlIGFuZCBGb3Jlc3RyeSBSZXNvdXJjZXMsIEFpciBRdWFsaXR5LCBCaW9sb2dpY2FsIFJlc291cmNlcywgQ3VsdHVyYWwgUmVzb3VyY2VzLCBDdW11bGF0aXZlIEVmZmVjdHMsIERyYWluYWdlL0Fic29ycHRpb24sIEVjb25vbWljcy9Kb2JzLCBFbmVyZ3ksIEZsb29kIFBsYWluL0Zsb29kaW5nLCBHZW9sb2d5L1NvaWxzLCBHcmVlbmhvdXNlIEdhcyBFbWlzc2lvbnMsIEdyb3d0aCBJbmR1Y2VtZW50LCBIYXphcmRzICYgSGF6YXJkb3VzIE1hdGVyaWFscywgSHlkcm9sb2d5L1dhdGVyIFF1YWxpdHksIExhbmQgVXNlL1BsYW5uaW5nLCBNYW5kYXRvcnkgRmluZGluZ3Mgb2YgU2lnbmlmaWNhbmNlLCBNaW5lcmFsIFJlc291cmNlcywgTm9pc2UsIFBvcHVsYXRpb24vSG91c2luZywgUHVibGljIFNlcnZpY2VzLCBSZWNyZWF0aW9uLCBTY2hvb2xzL1VuaXZlcnNpdGllcywgU2VwdGljIFN5c3RlbSwgU2V3ZXIgQ2FwYWNpdHksIFNvbGlkIFdhc3RlLCBUcmFuc3BvcnRhdGlvbiwgVHJpYmFsIEN1bHR1cmFsIFJlc291cmNlcywgVXRpbGl0aWVzL1NlcnZpY2UgU3lzdGVtcywgVmVnZXRhdGlvbiwgV2V0bGFuZC9SaXBhcmlhbiwgV2lsZGZpcmUiLDMvOS8yMDI2LDQvOC8yMDI2LCwsLCwsLCwsLCwsLCwsDQo=",
+    "retained_body_byte_length": 7832,
+    "retained_body_complete": true,
+    "retry_count": 0,
+    "schema_version": "ceqanet_csv_live_execution.v1",
+    "status_code": 200
+  },
+  "live_verification": {
+    "execution_digest": "ecb1e8cb89ab5909ed9b30ea6d13f995816921d48da7d7a946127e6983ad676e",
+    "finding_count": 0,
+    "findings": [],
+    "inspection_digest": "e6888864835947ef758b22b5c3f8533fafa848a310e9b54acc94fd45fd5add07",
+    "passed": true,
+    "request_url": "https://ceqanet.lci.ca.gov/Search?OutputFormat=CSV&Sch=2026030377",
+    "schema_version": "ceqanet_csv_live_verification.v1",
+    "status_code": 200
+  },
+  "max_body_bytes": 10000000,
+  "max_retained_rows": 1000,
+  "policy_digest": "d84e6b80234a96799593db0601cc92e6480bad15bfd016001b35568c481c1674",
+  "request_count": 1,
+  "schema_version": "ceqanet_csv_evidence_execution.v1",
+  "timeout_seconds": 20.0
+}
