@@ -116,6 +116,7 @@ def build_preview_input_from_source(source: ParcelSource) -> ParcelSchemaPreview
         source_name=source.source_name,
         source_format=source.source_format,
         observed_fields=fields,
+        constant_fields=list(source.constant_fields),
         geometry_support=source.coverage.geometry_support,
         source_url=source.source_url,
         limitations=list(source.limitations),
@@ -142,6 +143,9 @@ def preview_schema(preview_input: ParcelSchemaPreviewInput) -> ParcelSchemaPrevi
         if field.source_field not in mapped_field_names
     ]
     matched_roles = {match.field_role for match in matches}
+    matched_roles.update(
+        constant.field_role for constant in preview_input.constant_fields
+    )
     missing_required_roles = sorted(
         _REQUIRED_ROLES - matched_roles,
         key=lambda role: role.value,
@@ -160,6 +164,7 @@ def preview_schema(preview_input: ParcelSchemaPreviewInput) -> ParcelSchemaPrevi
         status=status,
         observed_field_count=len(preview_input.observed_fields),
         mapped_fields=matches,
+        constant_fields=preview_input.constant_fields,
         unmapped_fields=unmapped_fields,
         missing_required_roles=missing_required_roles,
         geometry_support=preview_input.geometry_support,
@@ -269,8 +274,19 @@ def _preview_id(preview_input: ParcelSchemaPreviewInput) -> str:
     field_basis = ",".join(
         sorted(field.source_field.lower() for field in preview_input.observed_fields)
     )
+    constant_basis = ",".join(
+        sorted(
+            f"{constant.field_role.value}={constant.value}"
+            for constant in preview_input.constant_fields
+        )
+    )
     basis = "|".join(
-        [preview_input.source_key, preview_input.source_format.value, field_basis]
+        [
+            preview_input.source_key,
+            preview_input.source_format.value,
+            field_basis,
+            constant_basis,
+        ]
     )
     return f"parcel-schema-preview:{_short_hash(basis)}"
 

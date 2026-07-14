@@ -17,8 +17,11 @@ from constructionsight.storage.movement_identity_orm import (
 from constructionsight.storage.parcel_site_orm import (
     ParcelAssuranceReportRow,
     ParcelCoreRecordRow,
+    ParcelCountyCoverageReportRow,
     ParcelCurrentSelectionReportRow,
     ParcelRecordObservationRow,
+    ParcelSourceEvidenceRow,
+    ParcelSourceVerificationProfileRow,
     SiteResolutionResultRow,
 )
 from constructionsight.upstream_operator_models import (
@@ -45,6 +48,13 @@ _FILTER_SUPPORT: dict[UpstreamOperatorRecordKind, frozenset[str]] = {
     UpstreamOperatorRecordKind.PARCEL: frozenset(
         {"source_key", "source_record_id", "apn", "county"}
     ),
+    UpstreamOperatorRecordKind.PARCEL_SOURCE_EVIDENCE: frozenset(
+        {"source_key", "county"}
+    ),
+    UpstreamOperatorRecordKind.PARCEL_SOURCE_VERIFICATION: frozenset(
+        {"status", "source_key", "county"}
+    ),
+    UpstreamOperatorRecordKind.PARCEL_COUNTY_COVERAGE: frozenset({"status"}),
     UpstreamOperatorRecordKind.PARCEL_OBSERVATION: frozenset(
         {"source_key", "source_record_id", "apn", "county"}
     ),
@@ -216,6 +226,64 @@ def list_upstream_operator_records(
             for observation_row in observation_rows
         ]
 
+    if record_kind == UpstreamOperatorRecordKind.PARCEL_SOURCE_EVIDENCE:
+        evidence_statement = select(ParcelSourceEvidenceRow)
+        if source_key is not None:
+            evidence_statement = evidence_statement.where(
+                ParcelSourceEvidenceRow.source_key == source_key
+            )
+        if county is not None:
+            evidence_statement = evidence_statement.where(
+                ParcelSourceEvidenceRow.county == county
+            )
+        evidence_rows = session.execute(
+            evidence_statement.order_by(ParcelSourceEvidenceRow.id.desc()).limit(limit)
+        ).scalars()
+        return [
+            _parcel_source_evidence_record(evidence_row)
+            for evidence_row in evidence_rows
+        ]
+
+    if record_kind == UpstreamOperatorRecordKind.PARCEL_SOURCE_VERIFICATION:
+        profile_statement = select(ParcelSourceVerificationProfileRow)
+        if status is not None:
+            profile_statement = profile_statement.where(
+                ParcelSourceVerificationProfileRow.status == status
+            )
+        if source_key is not None:
+            profile_statement = profile_statement.where(
+                ParcelSourceVerificationProfileRow.source_key == source_key
+            )
+        if county is not None:
+            profile_statement = profile_statement.where(
+                ParcelSourceVerificationProfileRow.county == county
+            )
+        profile_rows = session.execute(
+            profile_statement.order_by(
+                ParcelSourceVerificationProfileRow.id.desc()
+            ).limit(limit)
+        ).scalars()
+        return [
+            _parcel_source_verification_record(profile_row)
+            for profile_row in profile_rows
+        ]
+
+    if record_kind == UpstreamOperatorRecordKind.PARCEL_COUNTY_COVERAGE:
+        coverage_statement = select(ParcelCountyCoverageReportRow)
+        if status is not None:
+            coverage_statement = coverage_statement.where(
+                ParcelCountyCoverageReportRow.status == status
+            )
+        coverage_rows = session.execute(
+            coverage_statement.order_by(ParcelCountyCoverageReportRow.id.desc()).limit(
+                limit
+            )
+        ).scalars()
+        return [
+            _parcel_county_coverage_record(coverage_row)
+            for coverage_row in coverage_rows
+        ]
+
     if record_kind == UpstreamOperatorRecordKind.PARCEL_CURRENT_SELECTION:
         selection_statement = select(ParcelCurrentSelectionReportRow)
         if status is not None:
@@ -344,6 +412,39 @@ def get_upstream_operator_record(
             None
             if observation_row is None
             else _parcel_observation_record(observation_row)
+        )
+    if record_kind == UpstreamOperatorRecordKind.PARCEL_SOURCE_EVIDENCE:
+        evidence_row = session.execute(
+            select(ParcelSourceEvidenceRow).where(
+                ParcelSourceEvidenceRow.evidence_id == record_id
+            )
+        ).scalar_one_or_none()
+        return (
+            None
+            if evidence_row is None
+            else _parcel_source_evidence_record(evidence_row)
+        )
+    if record_kind == UpstreamOperatorRecordKind.PARCEL_SOURCE_VERIFICATION:
+        profile_row = session.execute(
+            select(ParcelSourceVerificationProfileRow).where(
+                ParcelSourceVerificationProfileRow.profile_id == record_id
+            )
+        ).scalar_one_or_none()
+        return (
+            None
+            if profile_row is None
+            else _parcel_source_verification_record(profile_row)
+        )
+    if record_kind == UpstreamOperatorRecordKind.PARCEL_COUNTY_COVERAGE:
+        coverage_row = session.execute(
+            select(ParcelCountyCoverageReportRow).where(
+                ParcelCountyCoverageReportRow.report_id == record_id
+            )
+        ).scalar_one_or_none()
+        return (
+            None
+            if coverage_row is None
+            else _parcel_county_coverage_record(coverage_row)
         )
     if record_kind == UpstreamOperatorRecordKind.PARCEL_CURRENT_SELECTION:
         selection_row = session.execute(
@@ -531,6 +632,58 @@ def _parcel_current_selection_record(
             row.payload_json,
             UpstreamOperatorRecordKind.PARCEL_CURRENT_SELECTION,
             row.selection_report_id,
+        ),
+    )
+
+
+def _parcel_source_evidence_record(
+    row: ParcelSourceEvidenceRow,
+) -> UpstreamOperatorRecord:
+    return UpstreamOperatorRecord(
+        record_kind=UpstreamOperatorRecordKind.PARCEL_SOURCE_EVIDENCE,
+        record_id=row.evidence_id,
+        status=row.evidence_kind,
+        source_key=row.source_key,
+        county=row.county,
+        observed_at=row.observed_at,
+        payload=_payload(
+            row.payload_json,
+            UpstreamOperatorRecordKind.PARCEL_SOURCE_EVIDENCE,
+            row.evidence_id,
+        ),
+    )
+
+
+def _parcel_source_verification_record(
+    row: ParcelSourceVerificationProfileRow,
+) -> UpstreamOperatorRecord:
+    return UpstreamOperatorRecord(
+        record_kind=UpstreamOperatorRecordKind.PARCEL_SOURCE_VERIFICATION,
+        record_id=row.profile_id,
+        status=row.status,
+        source_key=row.source_key,
+        county=row.county,
+        observed_at=row.observed_at,
+        payload=_payload(
+            row.payload_json,
+            UpstreamOperatorRecordKind.PARCEL_SOURCE_VERIFICATION,
+            row.profile_id,
+        ),
+    )
+
+
+def _parcel_county_coverage_record(
+    row: ParcelCountyCoverageReportRow,
+) -> UpstreamOperatorRecord:
+    return UpstreamOperatorRecord(
+        record_kind=UpstreamOperatorRecordKind.PARCEL_COUNTY_COVERAGE,
+        record_id=row.report_id,
+        status=row.status,
+        observed_at=row.observed_generated_at,
+        payload=_payload(
+            row.payload_json,
+            UpstreamOperatorRecordKind.PARCEL_COUNTY_COVERAGE,
+            row.report_id,
         ),
     )
 

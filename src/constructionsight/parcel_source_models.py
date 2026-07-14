@@ -78,6 +78,7 @@ class ParcelSourceFormat(StrEnum):
     """Supported source delivery formats."""
 
     ARCGIS_FEATURE_SERVICE = "arcgis_feature_service"
+    ARCGIS_MAP_SERVICE = "arcgis_map_service"
     GEOJSON = "geojson"
     SHAPEFILE = "shapefile"
     CSV = "csv"
@@ -102,6 +103,34 @@ class ParcelFieldMapping(BaseModel):
 
         if not value.strip():
             raise ValueError("source_field cannot be blank")
+        return value
+
+
+class ParcelConstantFieldValue(BaseModel):
+    """Verified constant supplied by source scope rather than a physical column."""
+
+    field_role: ParcelFieldRole
+    value: str = Field(min_length=1)
+    required: bool = False
+    evidence_reference: str = Field(min_length=1)
+    notes: str | None = None
+
+    @field_validator("value", "evidence_reference")
+    @classmethod
+    def reject_blank_constant_text(cls, value: str) -> str:
+        """Reject blank constant values and evidence references."""
+
+        if not value.strip():
+            raise ValueError("parcel constant values and evidence references cannot be blank")
+        return value
+
+    @field_validator("field_role")
+    @classmethod
+    def restrict_constant_roles(cls, value: ParcelFieldRole) -> ParcelFieldRole:
+        """Allow constants only for geographic scope facts."""
+
+        if value not in {ParcelFieldRole.COUNTY, ParcelFieldRole.STATE}:
+            raise ValueError("parcel constants are limited to county and state roles")
         return value
 
 
@@ -139,6 +168,7 @@ class ParcelSource(BaseModel):
     documentation_url: str | None = None
     update_frequency: str | None = None
     field_mappings: list[ParcelFieldMapping] = Field(default_factory=list)
+    constant_fields: list[ParcelConstantFieldValue] = Field(default_factory=list)
     priority: int = Field(default=50, ge=0, le=100)
     limitations: list[str] = Field(default_factory=list)
     next_action: str = Field(min_length=1)
@@ -164,6 +194,19 @@ class ParcelSource(BaseModel):
             raise ValueError("field_mappings cannot repeat canonical field roles")
         return values
 
+    @field_validator("constant_fields")
+    @classmethod
+    def require_unique_constant_roles(
+        cls,
+        values: list[ParcelConstantFieldValue],
+    ) -> list[ParcelConstantFieldValue]:
+        """Reject duplicate constant roles."""
+
+        roles = [constant.field_role for constant in values]
+        if len(roles) != len(set(roles)):
+            raise ValueError("constant_fields cannot repeat canonical field roles")
+        return values
+
     @field_validator("limitations")
     @classmethod
     def require_unique_limitations(cls, values: list[str]) -> list[str]:
@@ -183,6 +226,14 @@ class ParcelSource(BaseModel):
             raise ValueError("license-blocked parcel sources must use license boundary")
         if self.access_boundary == ParcelAccessBoundary.OPEN_PUBLIC_DATA and not self.source_url:
             raise ValueError("open public parcel sources require a source_url")
+        mapped_roles = {
+            mapping.field_role
+            for mapping in self.field_mappings
+            if mapping.field_role != ParcelFieldRole.UNKNOWN
+        }
+        constant_roles = {constant.field_role for constant in self.constant_fields}
+        if mapped_roles & constant_roles:
+            raise ValueError("parcel roles cannot be both source-mapped and constant")
         return self
 
     def to_dict(self) -> dict[str, Any]:

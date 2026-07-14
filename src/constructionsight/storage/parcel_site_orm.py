@@ -82,6 +82,92 @@ class ParcelCoreRecordRow(Base):
     )
 
 
+class ParcelSourceEvidenceRow(Base):
+    """Persisted immutable official evidence for one parcel source."""
+
+    __tablename__ = "parcel_source_evidence"
+    __table_args__ = (
+        UniqueConstraint("evidence_id", name="uq_parcel_source_evidence_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    evidence_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    source_key: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    county: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    evidence_kind: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    observed_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    field_role_count: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+        server_default=func.now(),
+    )
+
+
+class ParcelSourceVerificationProfileRow(Base):
+    """Persisted immutable parcel source verification profile."""
+
+    __tablename__ = "parcel_source_verification_profiles"
+    __table_args__ = (
+        UniqueConstraint(
+            "profile_id",
+            name="uq_parcel_source_verification_profiles_id",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    profile_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    source_key: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    county: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    coverage_status: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    observed_at: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    evidence_count: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    schema_field_count: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    authoritative_field_count: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        index=True,
+    )
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+        server_default=func.now(),
+    )
+
+
+class ParcelCountyCoverageReportRow(Base):
+    """Persisted immutable countywide parcel coverage-gap report."""
+
+    __tablename__ = "parcel_county_coverage_reports"
+    __table_args__ = (
+        UniqueConstraint("report_id", name="uq_parcel_county_coverage_reports_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    report_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    county_count: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    profile_count: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    gap_count: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    observed_generated_at: Mapped[str] = mapped_column(
+        String(64),
+        nullable=False,
+        index=True,
+    )
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+        server_default=func.now(),
+    )
+
+
 class ParcelRecordObservationRow(Base):
     """Persisted append-only observation of one canonical parcel record."""
 

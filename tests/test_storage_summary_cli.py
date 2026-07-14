@@ -10,6 +10,9 @@ def test_build_storage_summary_initializes_known_tables() -> None:
     by_table = {summary.table_name: summary for summary in summaries}
 
     assert by_table["parcel_core_records"].exists is True
+    assert by_table["parcel_source_evidence"].exists is True
+    assert by_table["parcel_source_verification_profiles"].exists is True
+    assert by_table["parcel_county_coverage_reports"].exists is True
     assert by_table["parcel_record_observations"].exists is True
     assert by_table["parcel_current_selection_reports"].exists is True
     assert by_table["parcel_assurance_reports"].exists is True
@@ -27,6 +30,9 @@ def test_storage_summary_cli_renders_table() -> None:
     assert result.exit_code == 0
     assert "ConstructionSight Storage Summary" in result.output
     assert "parcel_core_records" in result.output
+    assert "parcel_source_evidence" in result.output
+    assert "parcel_source_verification" in result.output
+    assert "parcel_county_coverage" in result.output
     assert "parcel_record_observations" in result.output
     assert "parcel_current_selection_re" in result.output
     assert "parcel_assurance_reports" in result.output
@@ -45,6 +51,9 @@ def test_storage_summary_cli_outputs_json() -> None:
     payload = json.loads(result.output)
     by_table = {item["table_name"]: item for item in payload}
     assert by_table["parcel_core_records"]["exists"] is True
+    assert by_table["parcel_source_evidence"]["row_count"] == 0
+    assert by_table["parcel_source_verification_profiles"]["row_count"] == 0
+    assert by_table["parcel_county_coverage_reports"]["row_count"] == 0
     assert by_table["parcel_record_observations"]["row_count"] == 0
     assert by_table["parcel_current_selection_reports"]["row_count"] == 0
     assert by_table["parcel_assurance_reports"]["row_count"] == 0

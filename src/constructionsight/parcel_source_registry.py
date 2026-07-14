@@ -6,6 +6,7 @@ from collections.abc import Iterable
 
 from constructionsight.parcel_source_models import (
     ParcelAccessBoundary,
+    ParcelConstantFieldValue,
     ParcelCoverageStatus,
     ParcelFieldMapping,
     ParcelFieldRole,
@@ -116,49 +117,95 @@ def _default_parcel_sources() -> list[ParcelSource]:
     return [
         ParcelSource(
             source_key="san-bernardino:county-gis-parcels",
-            source_name="San Bernardino County parcel GIS target",
+            source_name="San Bernardino County parcel polygons",
             provider_kind=ParcelProviderKind.COUNTY_GIS,
-            access_boundary=ParcelAccessBoundary.PUBLIC_METADATA_ONLY,
-            coverage_status=ParcelCoverageStatus.TARGET,
+            access_boundary=ParcelAccessBoundary.OPEN_PUBLIC_DATA,
+            coverage_status=ParcelCoverageStatus.READY_FOR_PREVIEW,
             source_format=ParcelSourceFormat.ARCGIS_FEATURE_SERVICE,
             coverage=ParcelSourceCoverage(
                 county="San Bernardino",
                 geometry_support=ParcelGeometrySupport.POLYGON,
                 coverage_notes=[
                     "target county for Phase 1 parcel-first project anchoring",
-                    "source URL must be verified before live import is implemented",
+                    "official service describes County of San Bernardino parcel polygons",
+                    "countywide record completeness has not been independently verified",
                 ],
             ),
-            field_mappings=_standard_parcel_field_targets(),
+            source_url=(
+                "https://services.arcgis.com/aA3snZwJfFkVyDuP/ArcGIS/rest/services/"
+                "Parcels_for_San_Bernardino_County/FeatureServer/0"
+            ),
+            documentation_url=(
+                "https://open.sbcounty.gov/datasets/"
+                "san-bernardino-county-parcel-dataset/about"
+            ),
+            field_mappings=_san_bernardino_verified_field_mappings(),
+            constant_fields=_county_constants(
+                "San Bernardino",
+                (
+                    "https://services.arcgis.com/aA3snZwJfFkVyDuP/ArcGIS/rest/services/"
+                    "Parcels_for_San_Bernardino_County/FeatureServer"
+                ),
+            ),
             priority=95,
             limitations=[
-                "source endpoint not yet verified in this registry layer",
-                "schema must be inspected before import preview",
+                "public service schema was observed on 2026-07-14 and may drift",
+                "maximum service record count is 1000 and bulk pagination is unverified",
+                "the observed schema does not expose a situs-address field",
+                "owner data is assessment evidence, not proof of current legal title",
+                "parcel geometry is not a surveyed legal boundary",
             ],
-            next_action="verify lawful public endpoint and capture schema preview",
+            next_action=(
+                "run bounded schema, count, pagination, and completeness verification "
+                "before import"
+            ),
         ),
         ParcelSource(
             source_key="riverside:county-gis-parcels",
-            source_name="Riverside County parcel GIS target",
+            source_name="Riverside County PARCELS_CREST",
             provider_kind=ParcelProviderKind.COUNTY_GIS,
-            access_boundary=ParcelAccessBoundary.PUBLIC_METADATA_ONLY,
-            coverage_status=ParcelCoverageStatus.TARGET,
-            source_format=ParcelSourceFormat.ARCGIS_FEATURE_SERVICE,
+            access_boundary=ParcelAccessBoundary.OPEN_PUBLIC_DATA,
+            coverage_status=ParcelCoverageStatus.READY_FOR_PREVIEW,
+            source_format=ParcelSourceFormat.ARCGIS_MAP_SERVICE,
             coverage=ParcelSourceCoverage(
                 county="Riverside",
                 geometry_support=ParcelGeometrySupport.POLYGON,
                 coverage_notes=[
                     "target county for Phase 1 parcel-first project anchoring",
-                    "source URL must be verified before live import is implemented",
+                    "official service describes parcel polygons within Riverside County",
+                    "right-of-way and river polygons are excluded by the source",
+                    "countywide record completeness has not been independently verified",
                 ],
             ),
-            field_mappings=_standard_parcel_field_targets(),
+            source_url=(
+                "https://gis.countyofriverside.us/arcgis_mapping/rest/services/"
+                "OpenData/Assessor/MapServer/50"
+            ),
+            documentation_url=(
+                "https://gisopendata-countyofriverside.opendata.arcgis.com/"
+                "datasets/CountyofRiverside%3A%3Aparcels-crest/about"
+            ),
+            field_mappings=_riverside_verified_field_mappings(),
+            constant_fields=_county_constants(
+                "Riverside",
+                (
+                    "https://gis.countyofriverside.us/arcgis_mapping/rest/services/"
+                    "OpenData/Assessor/MapServer/50"
+                ),
+            ),
             priority=95,
             limitations=[
-                "source endpoint not yet verified in this registry layer",
-                "schema must be inspected before import preview",
+                "public service schema was observed on 2026-07-14 and may drift",
+                "maximum service record count is 2000 and bulk pagination is unverified",
+                "the current live field list does not expose owner-name fields",
+                "SITUS_STREET completeness must be tested before canonical address import",
+                "CLASS_CODE is an assessment class, not a planning land-use designation",
+                "map features are approximate and are not surveyed legal boundaries",
             ],
-            next_action="verify lawful public endpoint and capture schema preview",
+            next_action=(
+                "run bounded schema, count, pagination, and completeness verification "
+                "before import"
+            ),
         ),
         ParcelSource(
             source_key="regrid:licensed-parcel-provider",
@@ -233,6 +280,91 @@ def _standard_parcel_field_targets() -> list[ParcelFieldMapping]:
         ParcelFieldMapping(source_field="acreage", field_role=ParcelFieldRole.ACREAGE),
         ParcelFieldMapping(source_field="geometry", field_role=ParcelFieldRole.GEOMETRY),
         ParcelFieldMapping(source_field="updated_at", field_role=ParcelFieldRole.UPDATED_AT),
+    ]
+
+
+def _san_bernardino_verified_field_mappings() -> list[ParcelFieldMapping]:
+    """Return fields observed in the official San Bernardino parcel layer."""
+
+    return [
+        ParcelFieldMapping(
+            source_field="ParcelNumber",
+            field_role=ParcelFieldRole.APN,
+            required=True,
+        ),
+        ParcelFieldMapping(
+            source_field="OwnerName",
+            field_role=ParcelFieldRole.OWNER,
+            notes="assessment owner field; not proof of current legal title",
+        ),
+        ParcelFieldMapping(
+            source_field="Jurisdiction",
+            field_role=ParcelFieldRole.JURISDICTION,
+        ),
+        ParcelFieldMapping(source_field="Zoning", field_role=ParcelFieldRole.ZONING),
+        ParcelFieldMapping(source_field="Acreage", field_role=ParcelFieldRole.ACREAGE),
+        ParcelFieldMapping(
+            source_field="geometry",
+            field_role=ParcelFieldRole.GEOMETRY,
+            notes="ArcGIS/GeoJSON feature geometry member, not an attribute column",
+        ),
+        ParcelFieldMapping(
+            source_field="OBJECTID",
+            field_role=ParcelFieldRole.SOURCE_RECORD_ID,
+        ),
+    ]
+
+
+def _riverside_verified_field_mappings() -> list[ParcelFieldMapping]:
+    """Return fields observed in the official Riverside PARCELS_CREST layer."""
+
+    return [
+        ParcelFieldMapping(
+            source_field="APN",
+            field_role=ParcelFieldRole.APN,
+            required=True,
+        ),
+        ParcelFieldMapping(
+            source_field="SITUS_STREET",
+            field_role=ParcelFieldRole.ADDRESS,
+            notes="site street address; completeness requires row sampling",
+        ),
+        ParcelFieldMapping(
+            source_field="SITUS_CITY",
+            field_role=ParcelFieldRole.SITUS_CITY,
+        ),
+        ParcelFieldMapping(source_field="ACREAGE", field_role=ParcelFieldRole.ACREAGE),
+        ParcelFieldMapping(
+            source_field="geometry",
+            field_role=ParcelFieldRole.GEOMETRY,
+            notes="ArcGIS/GeoJSON feature geometry member, not an attribute column",
+        ),
+        ParcelFieldMapping(
+            source_field="OBJECTID",
+            field_role=ParcelFieldRole.SOURCE_RECORD_ID,
+        ),
+    ]
+
+
+def _county_constants(
+    county: str,
+    evidence_reference: str,
+) -> list[ParcelConstantFieldValue]:
+    """Return verified county/state constants for a county-scoped official layer."""
+
+    return [
+        ParcelConstantFieldValue(
+            field_role=ParcelFieldRole.COUNTY,
+            value=county,
+            required=True,
+            evidence_reference=evidence_reference,
+        ),
+        ParcelConstantFieldValue(
+            field_role=ParcelFieldRole.STATE,
+            value="CA",
+            required=True,
+            evidence_reference=evidence_reference,
+        ),
     ]
 
 

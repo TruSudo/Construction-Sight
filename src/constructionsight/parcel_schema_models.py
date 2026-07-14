@@ -9,6 +9,7 @@ from typing import Any
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from constructionsight.parcel_source_models import (
+    ParcelConstantFieldValue,
     ParcelFieldRole,
     ParcelGeometrySupport,
     ParcelSourceFormat,
@@ -84,6 +85,7 @@ class ParcelSchemaPreviewInput(BaseModel):
     source_name: str = Field(min_length=1)
     source_format: ParcelSourceFormat
     observed_fields: list[ParcelSchemaField] = Field(default_factory=list)
+    constant_fields: list[ParcelConstantFieldValue] = Field(default_factory=list)
     geometry_support: ParcelGeometrySupport = ParcelGeometrySupport.UNKNOWN
     spatial_reference: str | None = None
     sample_record_count: int | None = Field(default=None, ge=0)
@@ -101,6 +103,19 @@ class ParcelSchemaPreviewInput(BaseModel):
         field_names = [field.source_field.lower() for field in values]
         if len(field_names) != len(set(field_names)):
             raise ValueError("observed_fields cannot repeat source field names")
+        return values
+
+    @field_validator("constant_fields")
+    @classmethod
+    def require_unique_constant_roles(
+        cls,
+        values: list[ParcelConstantFieldValue],
+    ) -> list[ParcelConstantFieldValue]:
+        """Reject duplicate geographic constants."""
+
+        roles = [constant.field_role for constant in values]
+        if len(roles) != len(set(roles)):
+            raise ValueError("schema preview constants cannot repeat field roles")
         return values
 
     @field_validator("limitations")
@@ -131,6 +146,7 @@ class ParcelSchemaPreviewReport(BaseModel):
     status: ParcelSchemaPreviewStatus
     observed_field_count: int = Field(ge=0)
     mapped_fields: list[ParcelFieldRoleMatch] = Field(default_factory=list)
+    constant_fields: list[ParcelConstantFieldValue] = Field(default_factory=list)
     unmapped_fields: list[str] = Field(default_factory=list)
     missing_required_roles: list[ParcelFieldRole] = Field(default_factory=list)
     geometry_support: ParcelGeometrySupport = ParcelGeometrySupport.UNKNOWN

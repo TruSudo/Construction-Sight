@@ -22,6 +22,11 @@ from constructionsight.parcel_source_registry import (
     get_parcel_sources,
     parcel_source_matrix_rows,
 )
+from constructionsight.parcel_source_verification import (
+    build_parcel_county_coverage_report,
+    get_parcel_source_evidence,
+    get_verified_parcel_source_profiles,
+)
 
 app = typer.Typer(help="Inspect parcel source targets and readiness.")
 console = Console(width=240, color_system=None)
@@ -162,6 +167,115 @@ def _render_row_preview(payload: dict[str, object]) -> None:
                 str(row.get("county") or ""),
             )
         console.print(row_table)
+
+
+def _render_verification_profiles(payload: list[dict[str, object]]) -> None:
+    """Render verified parcel source profiles."""
+
+    table = Table(title="Parcel Source Verification Profiles")
+    table.add_column("County")
+    table.add_column("Source")
+    table.add_column("Status")
+    table.add_column("Schema fields")
+    table.add_column("Authoritative fields")
+    for profile in payload:
+        table.add_row(
+            str(profile["county"]),
+            str(profile["source_key"]),
+            str(profile["status"]),
+            str(len(cast(list[object], profile["schema_fields"]))),
+            ", ".join(cast(list[str], profile["authoritative_fields"])),
+        )
+    console.print(table)
+
+
+def _render_coverage_report(payload: dict[str, object]) -> None:
+    """Render countywide parcel coverage gaps."""
+
+    summary = Table(title="Parcel County Coverage Report")
+    summary.add_column("Field")
+    summary.add_column("Value")
+    summary.add_row("report_id", str(payload["report_id"]))
+    summary.add_row("status", str(payload["status"]))
+    summary.add_row("counties", ", ".join(cast(list[str], payload["counties"])))
+    summary.add_row("gaps", str(len(cast(list[object], payload["gaps"]))))
+    console.print(summary)
+
+    gaps = cast(list[dict[str, object]], payload["gaps"])
+    if gaps:
+        table = Table(title="Unresolved County Coverage Gaps")
+        table.add_column("County")
+        table.add_column("Code")
+        table.add_column("Fields")
+        table.add_column("Next action")
+        for gap in gaps:
+            table.add_row(
+                str(gap["county"]),
+                str(gap["code"]),
+                ", ".join(cast(list[str], gap["field_roles"])),
+                str(gap["next_action"]),
+            )
+        console.print(table)
+
+
+@app.command("evidence")
+def source_evidence(
+    json_output: Annotated[
+        bool,
+        typer.Option("--json-output", help="Emit machine-readable evidence JSON."),
+    ] = False,
+) -> None:
+    """Show digest-bound official evidence for county parcel sources."""
+
+    payload = [evidence.to_dict() for evidence in get_parcel_source_evidence()]
+    if json_output:
+        typer.echo(json.dumps(payload, indent=2, sort_keys=True, default=str))
+        return
+    table = Table(title="Parcel Source Evidence")
+    table.add_column("County")
+    table.add_column("Kind")
+    table.add_column("Source")
+    table.add_column("Observed")
+    for evidence in payload:
+        table.add_row(
+            str(evidence["county"]),
+            str(evidence["evidence_kind"]),
+            str(evidence["source_key"]),
+            str(evidence["observed_at"]),
+        )
+    console.print(table)
+
+
+@app.command("verification")
+def source_verification(
+    json_output: Annotated[
+        bool,
+        typer.Option("--json-output", help="Emit machine-readable profile JSON."),
+    ] = False,
+) -> None:
+    """Show evidence-bound source profiles and authority limits."""
+
+    payload = [profile.to_dict() for profile in get_verified_parcel_source_profiles()]
+    if json_output:
+        typer.echo(json.dumps(payload, indent=2, sort_keys=True, default=str))
+        return
+    _render_verification_profiles(payload)
+
+
+@app.command("coverage")
+def county_coverage(
+    json_output: Annotated[
+        bool,
+        typer.Option("--json-output", help="Emit machine-readable coverage JSON."),
+    ] = False,
+) -> None:
+    """Show exhaustive countywide parcel coverage and corroboration gaps."""
+
+    payload = build_parcel_county_coverage_report().to_dict()
+    if json_output:
+        typer.echo(json.dumps(payload, indent=2, sort_keys=True, default=str))
+        return
+    _render_coverage_report(payload)
 
 
 @app.command("matrix")

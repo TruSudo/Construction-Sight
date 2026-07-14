@@ -3,6 +3,7 @@ from pydantic import ValidationError
 
 from constructionsight.parcel_source_models import (
     ParcelAccessBoundary,
+    ParcelConstantFieldValue,
     ParcelCoverageStatus,
     ParcelFieldMapping,
     ParcelFieldRole,
@@ -60,4 +61,41 @@ def test_license_blocked_source_requires_license_boundary() -> None:
             source_format=ParcelSourceFormat.API_JSON,
             coverage=ParcelSourceCoverage(county="Multi-county"),
             next_action="wait for license",
+        )
+
+
+def test_parcel_source_rejects_non_geographic_constant_roles() -> None:
+    with pytest.raises(ValidationError, match="limited to county and state"):
+        ParcelConstantFieldValue(
+            field_role=ParcelFieldRole.APN,
+            value="123456789",
+            required=True,
+            evidence_reference="test evidence",
+        )
+
+
+def test_parcel_source_rejects_role_as_both_mapping_and_constant() -> None:
+    with pytest.raises(ValidationError, match="both source-mapped and constant"):
+        ParcelSource(
+            source_key="test:duplicate-role-kind",
+            source_name="Test duplicate role kind",
+            provider_kind=ParcelProviderKind.USER_PROVIDED_FILE,
+            access_boundary=ParcelAccessBoundary.USER_PROVIDED_FILE,
+            coverage_status=ParcelCoverageStatus.DESIGNED,
+            source_format=ParcelSourceFormat.CSV,
+            coverage=ParcelSourceCoverage(county="Riverside"),
+            field_mappings=[
+                ParcelFieldMapping(
+                    source_field="county",
+                    field_role=ParcelFieldRole.COUNTY,
+                )
+            ],
+            constant_fields=[
+                ParcelConstantFieldValue(
+                    field_role=ParcelFieldRole.COUNTY,
+                    value="Riverside",
+                    evidence_reference="test evidence",
+                )
+            ],
+            next_action="fix mapping",
         )

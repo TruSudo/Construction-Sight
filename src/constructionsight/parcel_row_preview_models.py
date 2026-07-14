@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 from constructionsight.parcel_schema_models import ParcelFieldRoleMatch
 from constructionsight.parcel_source_models import (
+    ParcelConstantFieldValue,
     ParcelFieldRole,
     ParcelGeometrySupport,
     ParcelSourceFormat,
@@ -32,6 +33,7 @@ class ParcelRowPreviewInput(BaseModel):
     source_name: str = Field(min_length=1)
     source_format: ParcelSourceFormat
     field_role_matches: list[ParcelFieldRoleMatch] = Field(default_factory=list)
+    constant_fields: list[ParcelConstantFieldValue] = Field(default_factory=list)
     rows: list[dict[str, str]] = Field(default_factory=list)
     geometry_support: ParcelGeometrySupport = ParcelGeometrySupport.UNKNOWN
     spatial_reference: str | None = None
@@ -45,6 +47,33 @@ class ParcelRowPreviewInput(BaseModel):
 
         if len(values) != len(set(values)):
             raise ValueError("limitations must contain unique values")
+        return values
+
+    @field_validator("field_role_matches")
+    @classmethod
+    def require_unique_role_matches(
+        cls,
+        values: list[ParcelFieldRoleMatch],
+    ) -> list[ParcelFieldRoleMatch]:
+        """Reject duplicate source fields and canonical roles."""
+
+        source_fields = [match.source_field.casefold() for match in values]
+        roles = [match.field_role for match in values]
+        if len(source_fields) != len(set(source_fields)) or len(roles) != len(set(roles)):
+            raise ValueError("parcel row preview mappings must be unique")
+        return values
+
+    @field_validator("constant_fields")
+    @classmethod
+    def require_unique_constant_roles(
+        cls,
+        values: list[ParcelConstantFieldValue],
+    ) -> list[ParcelConstantFieldValue]:
+        """Reject duplicate geographic constants."""
+
+        roles = [constant.field_role for constant in values]
+        if len(roles) != len(set(roles)):
+            raise ValueError("parcel row preview constants cannot repeat field roles")
         return values
 
     @field_validator("rows")
@@ -64,6 +93,10 @@ class ParcelRowPreviewInput(BaseModel):
 
         if not self.field_role_matches and not self.rows:
             raise ValueError("parcel row preview requires mappings or rows")
+        mapped_roles = {match.field_role for match in self.field_role_matches}
+        constant_roles = {constant.field_role for constant in self.constant_fields}
+        if mapped_roles & constant_roles:
+            raise ValueError("parcel row preview roles cannot be mapped and constant")
         return self
 
 

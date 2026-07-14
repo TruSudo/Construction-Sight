@@ -38,6 +38,12 @@ STORAGE_TABLES: tuple[tuple[str, str], ...] = (
     ("intelligence_runtime_events", "intelligence runtime events"),
     ("intelligence_watchlist_items", "intelligence watchlist items"),
     ("parcel_core_records", "parcel core records"),
+    ("parcel_source_evidence", "official parcel source evidence"),
+    (
+        "parcel_source_verification_profiles",
+        "parcel source verification profiles",
+    ),
+    ("parcel_county_coverage_reports", "county parcel coverage-gap reports"),
     ("parcel_record_observations", "append-only parcel observations"),
     (
         "parcel_current_selection_reports",

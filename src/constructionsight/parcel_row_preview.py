@@ -34,13 +34,25 @@ def preview_rows(preview_input: ParcelRowPreviewInput) -> ParcelRowPreviewReport
     role_to_field = {
         match.field_role: match.source_field for match in preview_input.field_role_matches
     }
-    mapped_roles = sorted(role_to_field, key=lambda role: role.value)
+    constant_values = {
+        constant.field_role: constant.value
+        for constant in preview_input.constant_fields
+    }
+    mapped_roles = sorted(
+        set(role_to_field) | set(constant_values),
+        key=lambda role: role.value,
+    )
     missing_required_roles = sorted(
         _REQUIRED_ROLES - set(mapped_roles),
         key=lambda role: role.value,
     )
     rows = [
-        _preview_row(row_number=index + 1, row=row, role_to_field=role_to_field)
+        _preview_row(
+            row_number=index + 1,
+            row=row,
+            role_to_field=role_to_field,
+            constant_values=constant_values,
+        )
         for index, row in enumerate(preview_input.rows)
     ]
     usable_count = sum(1 for row in rows if row.usable)
@@ -74,14 +86,25 @@ def _preview_row(
     row_number: int,
     row: dict[str, str],
     role_to_field: dict[ParcelFieldRole, str],
+    constant_values: dict[ParcelFieldRole, str],
 ) -> ParcelRowPreview:
     """Preview one candidate parcel row."""
 
-    apn_value = _value_for_role(row, role_to_field, ParcelFieldRole.APN)
-    address_value = _value_for_role(row, role_to_field, ParcelFieldRole.ADDRESS)
-    county_value = _value_for_role(row, role_to_field, ParcelFieldRole.COUNTY)
-    source_record_id = _value_for_role(row, role_to_field, ParcelFieldRole.SOURCE_RECORD_ID)
-    geometry_value = _value_for_role(row, role_to_field, ParcelFieldRole.GEOMETRY)
+    apn_value = _value_for_role(
+        row, role_to_field, constant_values, ParcelFieldRole.APN
+    )
+    address_value = _value_for_role(
+        row, role_to_field, constant_values, ParcelFieldRole.ADDRESS
+    )
+    county_value = _value_for_role(
+        row, role_to_field, constant_values, ParcelFieldRole.COUNTY
+    )
+    source_record_id = _value_for_role(
+        row, role_to_field, constant_values, ParcelFieldRole.SOURCE_RECORD_ID
+    )
+    geometry_value = _value_for_role(
+        row, role_to_field, constant_values, ParcelFieldRole.GEOMETRY
+    )
     limitations: list[str] = []
     normalized_apn = normalize_apn(apn_value) if apn_value else None
     normalized_address = normalize_address(address_value) if address_value else None
@@ -106,13 +129,14 @@ def _preview_row(
 def _value_for_role(
     row: dict[str, str],
     role_to_field: dict[ParcelFieldRole, str],
+    constant_values: dict[ParcelFieldRole, str],
     role: ParcelFieldRole,
 ) -> str | None:
     """Return trimmed row value for a canonical role."""
 
     source_field = role_to_field.get(role)
     if source_field is None:
-        return None
+        return constant_values.get(role)
     value = row.get(source_field)
     if value is None:
         return None
