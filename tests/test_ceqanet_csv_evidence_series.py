@@ -10,12 +10,11 @@ import pytest
 from pydantic import ValidationError
 from typer.testing import CliRunner
 
-from constructionsight.ceqanet_csv_evidence_series_cli import app
-
 from constructionsight.ceqanet_csv_access_policy_models import (
     CeqanetCsvAccessPolicy,
     CeqanetCsvAccessPolicyVerification,
 )
+from constructionsight.ceqanet_csv_evidence_series_cli import app
 from constructionsight.ceqanet_csv_evidence_series_models import (
     CeqanetCsvEvidenceExecution,
     CeqanetCsvEvidenceSeries,
