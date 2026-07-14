@@ -13,6 +13,7 @@ from constructionsight.ceqanet_csv_access_policy_cli import app
 from constructionsight.ceqanet_csv_access_policy_models import (
     CeqanetCsvAccessPolicy,
     CeqanetCsvAccessPolicyStatus,
+    CeqanetCsvAccessPolicyVerification,
 )
 from constructionsight.ceqanet_csv_access_policy_service import (
     assert_ceqanet_csv_access_policy_current,
@@ -44,6 +45,11 @@ MATURITY_VERIFICATION_PATH = (
     EVIDENCE_DIR
     / "ceqanet_source_maturity_proposal_verification_2026-07-13.json"
 )
+POLICY_PATH = EVIDENCE_DIR / "ceqanet_csv_access_policy_2026-07-14.json"
+POLICY_VERIFICATION_PATH = (
+    EVIDENCE_DIR / "ceqanet_csv_access_policy_verification_2026-07-14.json"
+)
+POLICY_REPORT_PATH = ROOT / "docs/audits/ceqanet_csv_access_policy_2026-07-14.md"
 EFFECTIVE_DATE = date(2026, 7, 14)
 EXPIRES_ON = date(2026, 8, 13)
 runner = CliRunner()
@@ -190,6 +196,41 @@ def test_builder_rejects_authority_longer_than_31_days() -> None:
             effective_date=EFFECTIVE_DATE,
             expires_on=date(2026, 8, 15),
         )
+
+
+def test_committed_policy_is_replayable_current_and_nonproduction() -> None:
+    assert POLICY_PATH.is_file()
+    assert POLICY_VERIFICATION_PATH.is_file()
+    assert POLICY_REPORT_PATH.is_file()
+
+    policy = CeqanetCsvAccessPolicy.model_validate(_load_json(POLICY_PATH))
+    stored_verification = CeqanetCsvAccessPolicyVerification.model_validate(
+        _load_json(POLICY_VERIFICATION_PATH)
+    )
+    recomputed = verify_ceqanet_csv_access_policy(
+        _sources(),
+        _execution(),
+        _replay(),
+        _replay_verification(),
+        _maturity(),
+        _maturity_verification(),
+        policy,
+    )
+
+    assert recomputed == stored_verification
+    assert policy.policy_digest == (
+        "d84e6b80234a96799593db0601cc92e6480bad15bfd016001b35568c481c1674"
+    )
+    assert policy.policy_status is (
+        CeqanetCsvAccessPolicyStatus.READY_FOR_EXPLICIT_EVIDENCE_COLLECTION
+    )
+    assert policy.source_promotion_authorized is False
+    assert policy.production_recurring_execution_authorized is False
+    assert_ceqanet_csv_access_policy_current(
+        policy,
+        as_of_date=EFFECTIVE_DATE,
+    )
+    policy.assert_integrity()
 
 
 def test_verification_detects_tampered_policy() -> None:
