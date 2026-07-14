@@ -497,3 +497,63 @@ def test_cli_preflights_output_conflict_before_executor(
     assert output_path.read_text(encoding="utf-8") == (
         "preserve existing evidence\n"
     )
+
+
+def test_evidence_execution_rejects_authorization_after_request() -> None:
+    empty = _build_series([])
+    _, execution, _ = _execute(empty, [], day=14)
+    payload = execution.model_dump(mode="json")
+    payload["authorization_granted_at"] = "2026-07-14T13:00:00Z"
+
+    with pytest.raises(
+        ValidationError,
+        match="authorization cannot postdate",
+    ):
+        CeqanetCsvEvidenceExecution.model_validate(payload)
+
+
+def test_series_rejects_noncanonical_artifact_ref() -> None:
+    empty = _build_series([])
+    _, execution, _ = _execute(empty, [], day=14)
+
+    with pytest.raises(ValueError, match="canonical POSIX form"):
+        _build_series([("evidence//execution.json", execution)])
+
+
+def test_expired_policy_preflight_does_not_call_http_client() -> None:
+    series = _build_series([])
+    request = build_ceqanet_csv_export_request(sch_number="2026030377")
+    client = _Client(
+        _Response(
+            status_code=200,
+            content=PROJECT_FIXTURE.read_bytes(),
+            url=request.source_url,
+            headers={"content-type": "text/csv"},
+        )
+    )
+
+    with pytest.raises(ValueError, match="policy has expired"):
+        execute_ceqanet_csv_evidence_request(
+            _sources(),
+            _original_execution(),
+            _replay(),
+            _replay_verification(),
+            _maturity(),
+            _maturity_verification(),
+            _policy(),
+            _policy_verification(),
+            series,
+            [],
+            request,
+            execute_live=True,
+            client=client,
+            authorization_granted_at=datetime(
+                2026,
+                8,
+                14,
+                12,
+                tzinfo=UTC,
+            ),
+        )
+
+    assert client.calls == []
