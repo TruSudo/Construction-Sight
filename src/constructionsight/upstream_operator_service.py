@@ -15,6 +15,11 @@ from constructionsight.storage.movement_identity_orm import (
     PermitTransitionRecord,
 )
 from constructionsight.storage.parcel_site_orm import (
+    ParcelArcGISAcquisitionAssessmentRow,
+    ParcelArcGISBulkManifestRow,
+    ParcelArcGISCapabilitySnapshotRow,
+    ParcelArcGISProbeObservationRow,
+    ParcelArcGISProbePlanRow,
     ParcelAssuranceReportRow,
     ParcelCoreRecordRow,
     ParcelCountyCoverageReportRow,
@@ -55,6 +60,21 @@ _FILTER_SUPPORT: dict[UpstreamOperatorRecordKind, frozenset[str]] = {
         {"status", "source_key", "county"}
     ),
     UpstreamOperatorRecordKind.PARCEL_COUNTY_COVERAGE: frozenset({"status"}),
+    UpstreamOperatorRecordKind.PARCEL_ARCGIS_CAPABILITY: frozenset(
+        {"source_key", "county"}
+    ),
+    UpstreamOperatorRecordKind.PARCEL_ARCGIS_PROBE_PLAN: frozenset(
+        {"source_key", "county"}
+    ),
+    UpstreamOperatorRecordKind.PARCEL_ARCGIS_PROBE_OBSERVATION: frozenset(
+        {"source_key", "county"}
+    ),
+    UpstreamOperatorRecordKind.PARCEL_ARCGIS_BULK_MANIFEST: frozenset(
+        {"source_key", "county"}
+    ),
+    UpstreamOperatorRecordKind.PARCEL_ARCGIS_ACQUISITION: frozenset(
+        {"status", "source_key", "county"}
+    ),
     UpstreamOperatorRecordKind.PARCEL_OBSERVATION: frozenset(
         {"source_key", "source_record_id", "apn", "county"}
     ),
@@ -284,6 +304,96 @@ def list_upstream_operator_records(
             for coverage_row in coverage_rows
         ]
 
+    if record_kind == UpstreamOperatorRecordKind.PARCEL_ARCGIS_CAPABILITY:
+        capability_statement = select(ParcelArcGISCapabilitySnapshotRow)
+        if source_key is not None:
+            capability_statement = capability_statement.where(
+                ParcelArcGISCapabilitySnapshotRow.source_key == source_key
+            )
+        if county is not None:
+            capability_statement = capability_statement.where(
+                ParcelArcGISCapabilitySnapshotRow.county == county
+            )
+        capability_rows = session.execute(
+            capability_statement.order_by(
+                ParcelArcGISCapabilitySnapshotRow.id.desc()
+            ).limit(limit)
+        ).scalars()
+        return [_parcel_arcgis_capability_record(row) for row in capability_rows]
+
+    if record_kind == UpstreamOperatorRecordKind.PARCEL_ARCGIS_PROBE_PLAN:
+        plan_statement = select(ParcelArcGISProbePlanRow)
+        if source_key is not None:
+            plan_statement = plan_statement.where(
+                ParcelArcGISProbePlanRow.source_key == source_key
+            )
+        if county is not None:
+            plan_statement = plan_statement.where(
+                ParcelArcGISProbePlanRow.county == county
+            )
+        plan_rows = session.execute(
+            plan_statement.order_by(ParcelArcGISProbePlanRow.id.desc()).limit(limit)
+        ).scalars()
+        return [_parcel_arcgis_probe_plan_record(row) for row in plan_rows]
+
+    if record_kind == UpstreamOperatorRecordKind.PARCEL_ARCGIS_PROBE_OBSERVATION:
+        arcgis_observation_statement = select(ParcelArcGISProbeObservationRow)
+        if source_key is not None:
+            arcgis_observation_statement = arcgis_observation_statement.where(
+                ParcelArcGISProbeObservationRow.source_key == source_key
+            )
+        if county is not None:
+            arcgis_observation_statement = arcgis_observation_statement.where(
+                ParcelArcGISProbeObservationRow.county == county
+            )
+        arcgis_observation_rows = session.execute(
+            arcgis_observation_statement.order_by(
+                ParcelArcGISProbeObservationRow.id.desc()
+            ).limit(limit)
+        ).scalars()
+        return [
+            _parcel_arcgis_probe_observation_record(arcgis_row)
+            for arcgis_row in arcgis_observation_rows
+        ]
+
+    if record_kind == UpstreamOperatorRecordKind.PARCEL_ARCGIS_BULK_MANIFEST:
+        manifest_statement = select(ParcelArcGISBulkManifestRow)
+        if source_key is not None:
+            manifest_statement = manifest_statement.where(
+                ParcelArcGISBulkManifestRow.source_key == source_key
+            )
+        if county is not None:
+            manifest_statement = manifest_statement.where(
+                ParcelArcGISBulkManifestRow.county == county
+            )
+        manifest_rows = session.execute(
+            manifest_statement.order_by(ParcelArcGISBulkManifestRow.id.desc()).limit(
+                limit
+            )
+        ).scalars()
+        return [_parcel_arcgis_bulk_manifest_record(row) for row in manifest_rows]
+
+    if record_kind == UpstreamOperatorRecordKind.PARCEL_ARCGIS_ACQUISITION:
+        assessment_statement = select(ParcelArcGISAcquisitionAssessmentRow)
+        if status is not None:
+            assessment_statement = assessment_statement.where(
+                ParcelArcGISAcquisitionAssessmentRow.status == status
+            )
+        if source_key is not None:
+            assessment_statement = assessment_statement.where(
+                ParcelArcGISAcquisitionAssessmentRow.source_key == source_key
+            )
+        if county is not None:
+            assessment_statement = assessment_statement.where(
+                ParcelArcGISAcquisitionAssessmentRow.county == county
+            )
+        assessment_rows = session.execute(
+            assessment_statement.order_by(
+                ParcelArcGISAcquisitionAssessmentRow.id.desc()
+            ).limit(limit)
+        ).scalars()
+        return [_parcel_arcgis_acquisition_record(row) for row in assessment_rows]
+
     if record_kind == UpstreamOperatorRecordKind.PARCEL_CURRENT_SELECTION:
         selection_statement = select(ParcelCurrentSelectionReportRow)
         if status is not None:
@@ -445,6 +555,61 @@ def get_upstream_operator_record(
             None
             if coverage_row is None
             else _parcel_county_coverage_record(coverage_row)
+        )
+    if record_kind == UpstreamOperatorRecordKind.PARCEL_ARCGIS_CAPABILITY:
+        capability_row = session.execute(
+            select(ParcelArcGISCapabilitySnapshotRow).where(
+                ParcelArcGISCapabilitySnapshotRow.snapshot_id == record_id
+            )
+        ).scalar_one_or_none()
+        return (
+            None
+            if capability_row is None
+            else _parcel_arcgis_capability_record(capability_row)
+        )
+    if record_kind == UpstreamOperatorRecordKind.PARCEL_ARCGIS_PROBE_PLAN:
+        arcgis_plan_row = session.execute(
+            select(ParcelArcGISProbePlanRow).where(
+                ParcelArcGISProbePlanRow.plan_id == record_id
+            )
+        ).scalar_one_or_none()
+        return (
+            None
+            if arcgis_plan_row is None
+            else _parcel_arcgis_probe_plan_record(arcgis_plan_row)
+        )
+    if record_kind == UpstreamOperatorRecordKind.PARCEL_ARCGIS_PROBE_OBSERVATION:
+        arcgis_observation_row = session.execute(
+            select(ParcelArcGISProbeObservationRow).where(
+                ParcelArcGISProbeObservationRow.observation_id == record_id
+            )
+        ).scalar_one_or_none()
+        return (
+            None
+            if arcgis_observation_row is None
+            else _parcel_arcgis_probe_observation_record(arcgis_observation_row)
+        )
+    if record_kind == UpstreamOperatorRecordKind.PARCEL_ARCGIS_BULK_MANIFEST:
+        arcgis_manifest_row = session.execute(
+            select(ParcelArcGISBulkManifestRow).where(
+                ParcelArcGISBulkManifestRow.manifest_id == record_id
+            )
+        ).scalar_one_or_none()
+        return (
+            None
+            if arcgis_manifest_row is None
+            else _parcel_arcgis_bulk_manifest_record(arcgis_manifest_row)
+        )
+    if record_kind == UpstreamOperatorRecordKind.PARCEL_ARCGIS_ACQUISITION:
+        arcgis_assessment_row = session.execute(
+            select(ParcelArcGISAcquisitionAssessmentRow).where(
+                ParcelArcGISAcquisitionAssessmentRow.assessment_id == record_id
+            )
+        ).scalar_one_or_none()
+        return (
+            None
+            if arcgis_assessment_row is None
+            else _parcel_arcgis_acquisition_record(arcgis_assessment_row)
         )
     if record_kind == UpstreamOperatorRecordKind.PARCEL_CURRENT_SELECTION:
         selection_row = session.execute(
@@ -684,6 +849,96 @@ def _parcel_county_coverage_record(
             row.payload_json,
             UpstreamOperatorRecordKind.PARCEL_COUNTY_COVERAGE,
             row.report_id,
+        ),
+    )
+
+
+def _parcel_arcgis_capability_record(
+    row: ParcelArcGISCapabilitySnapshotRow,
+) -> UpstreamOperatorRecord:
+    return UpstreamOperatorRecord(
+        record_kind=UpstreamOperatorRecordKind.PARCEL_ARCGIS_CAPABILITY,
+        record_id=row.snapshot_id,
+        status="advertised_ready" if row.advertised_ready else "advertised_incomplete",
+        source_key=row.source_key,
+        county=row.county,
+        observed_at=row.observed_at,
+        payload=_payload(
+            row.payload_json,
+            UpstreamOperatorRecordKind.PARCEL_ARCGIS_CAPABILITY,
+            row.snapshot_id,
+        ),
+    )
+
+
+def _parcel_arcgis_probe_plan_record(
+    row: ParcelArcGISProbePlanRow,
+) -> UpstreamOperatorRecord:
+    return UpstreamOperatorRecord(
+        record_kind=UpstreamOperatorRecordKind.PARCEL_ARCGIS_PROBE_PLAN,
+        record_id=row.plan_id,
+        status="bounded_only",
+        source_key=row.source_key,
+        county=row.county,
+        observed_at=row.observed_generated_at,
+        payload=_payload(
+            row.payload_json,
+            UpstreamOperatorRecordKind.PARCEL_ARCGIS_PROBE_PLAN,
+            row.plan_id,
+        ),
+    )
+
+
+def _parcel_arcgis_probe_observation_record(
+    row: ParcelArcGISProbeObservationRow,
+) -> UpstreamOperatorRecord:
+    return UpstreamOperatorRecord(
+        record_kind=UpstreamOperatorRecordKind.PARCEL_ARCGIS_PROBE_OBSERVATION,
+        record_id=row.observation_id,
+        status=row.probe_kind,
+        source_key=row.source_key,
+        county=row.county,
+        observed_at=row.observed_at,
+        payload=_payload(
+            row.payload_json,
+            UpstreamOperatorRecordKind.PARCEL_ARCGIS_PROBE_OBSERVATION,
+            row.observation_id,
+        ),
+    )
+
+
+def _parcel_arcgis_bulk_manifest_record(
+    row: ParcelArcGISBulkManifestRow,
+) -> UpstreamOperatorRecord:
+    return UpstreamOperatorRecord(
+        record_kind=UpstreamOperatorRecordKind.PARCEL_ARCGIS_BULK_MANIFEST,
+        record_id=row.manifest_id,
+        status="reconciled",
+        source_key=row.source_key,
+        county=row.county,
+        observed_at=row.observed_completed_at,
+        payload=_payload(
+            row.payload_json,
+            UpstreamOperatorRecordKind.PARCEL_ARCGIS_BULK_MANIFEST,
+            row.manifest_id,
+        ),
+    )
+
+
+def _parcel_arcgis_acquisition_record(
+    row: ParcelArcGISAcquisitionAssessmentRow,
+) -> UpstreamOperatorRecord:
+    return UpstreamOperatorRecord(
+        record_kind=UpstreamOperatorRecordKind.PARCEL_ARCGIS_ACQUISITION,
+        record_id=row.assessment_id,
+        status=row.status,
+        source_key=row.source_key,
+        county=row.county,
+        observed_at=row.observed_generated_at,
+        payload=_payload(
+            row.payload_json,
+            UpstreamOperatorRecordKind.PARCEL_ARCGIS_ACQUISITION,
+            row.assessment_id,
         ),
     )
 

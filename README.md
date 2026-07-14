@@ -240,7 +240,7 @@ The current geometry layer recognizes supported GeoJSON and WKT/EWKT Point, Poly
 
 The longitudinal parcel layer wraps complete canonical records in immutable digest-bound observations. It selects current evidence per source using source-effective time only when that clock is complete, falls back to observation time only when source-effective time is entirely absent, records supersession explicitly, and withholds assurance when time bases or leading content are ambiguous.
 
-The parcel-source verification layer binds the official San Bernardino and Riverside public parcel endpoints and observed schemas to immutable evidence, proposition-specific authority, source-scope county/state constants, and an explicit county coverage-gap report. Both sources are preview-ready. Neither is import-ready until count, pagination, completeness, restart, and schema-drift controls are proven.
+The parcel-source verification layer binds the official San Bernardino and Riverside public parcel endpoints and observed schemas to immutable evidence, proposition-specific authority, source-scope county/state constants, and an explicit county coverage-gap report. The additive ArcGIS acquisition layer now binds exact capability metadata, safe four-request probe plans, executed observations, complete-rehearsal manifests, and explicit maturity assessments. Both sources are preview-ready but remain `metadata_only`; neither is import-ready or bulk-authorized.
 
 The parcel-assurance layer consumes either a caller-supplied governed current set or the output of longitudinal selection without modifying canonical records. It preserves field-level source claims, dependency lineage, proposition-specific authority, timestamps, conflicts, missing evidence, and limitations. Multiple publications of one upstream dataset do not count as independent corroboration, and no opaque global truth score is emitted.
 
@@ -271,7 +271,7 @@ No external communication behavior is implied by the existing models or CLI.
 - Verified usable source coverage remains zero.
 - Most adapter families remain contract-level.
 - Parcel longitudinal selection evaluates only supplied observations; it does not acquire countywide data, establish source coverage or freshness, prove legal title, or resolve same-time content conflicts.
-- Verified county parcel profiles establish official endpoints and schema snapshots, not complete countywide acquisition. San Bernardino still lacks address and land-use coverage; Riverside still lacks owner, jurisdiction, zoning, and planning land-use coverage; both lack full authority, two-lineage corroboration, and proven bulk completeness.
+- Verified county parcel profiles and ArcGIS capability snapshots establish official endpoints, exact schemas, and advertised query primitives—not executed page proof or complete countywide acquisition. San Bernardino still lacks address and land-use coverage; Riverside still lacks owner, jurisdiction, zoning, and planning land-use coverage; both remain `metadata_only` and lack full authority, two-lineage corroboration, and proven bulk completeness.
 - Optional preview archives and nested child tables remain unimplemented.
 - Generic upstream corrections remain blocked pending record-family-specific doctrine.
 - Lead workflow reopen or override behavior is not implemented.

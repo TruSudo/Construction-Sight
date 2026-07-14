@@ -8,7 +8,7 @@ Do not pretend parcel coverage exists before the source endpoint and schema are 
 
 The registry deliberately separates source targets from import-ready sources. A county GIS layer can be a high-priority target without being treated as verified coverage. Regrid can be a licensed provider target without becoming a hard dependency. User-provided exports can be supported without knowing their schema until preview.
 
-As of the evidence snapshot observed on 2026-07-14, the official San Bernardino and Riverside county parcel endpoints and live schemas are verified for preview. They are not import-ready: full-count queries, pagination, restart safety, schema-drift handling, exclusions, and countywide completeness remain unproven. The complete evidence, authority limits, and gap computation are documented in [parcel source verification and county coverage](parcel_source_verification.md).
+As of the evidence snapshot observed on 2026-07-14, the official San Bernardino and Riverside county parcel endpoints and live schemas are verified for preview. Both layers advertise the primitives needed for a bounded ArcGIS proof, but their canonical acquisition assessments remain `metadata_only`. They are not import-ready: executed count and page proof, restart safety, exclusions, and countywide completeness remain unproven. The complete evidence, authority limits, and gap computation are documented in [parcel source verification and county coverage](parcel_source_verification.md); the advertised-versus-executed boundary is documented in [parcel ArcGIS acquisition gates](parcel_arcgis_acquisition.md).
 
 ## First-phase source types
 
@@ -87,7 +87,9 @@ The intended next phases are:
 
 ```text
 parcel source registry
-  -> bounded count, pagination, and schema-drift verification
+  -> digest-bound metadata snapshot
+  -> bounded count, adjacent-page, and exact-replay verification
+  -> count-reconciled complete acquisition rehearsal
   -> open county parcel import preview
   -> geometry/centroid normalization
   -> site resolver enrichment from parcel records

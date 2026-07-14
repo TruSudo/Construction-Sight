@@ -19,6 +19,7 @@ ConstructionSight has a substantial tested model/service architecture for lawful
 - parcel and site reasoning with GeoJSON and WKT/EWKT topology;
 - immutable digest-bound parcel observations with conservative bitemporal current selection and explicit supersession;
 - field-level parcel evidence assurance with explicit source dependency, proposition-specific authority, conflict, and missing-evidence preservation;
+- digest-bound ArcGIS capability, bounded-query, replay, and complete-rehearsal gates that keep advertised behavior separate from executed proof;
 - source-plane area-weighted polygon centroids and conservative CRS boundaries;
 - permit movement, contractor identity, and decision records;
 - versioned opportunity enrichment, lead review, and dedupe;
@@ -57,6 +58,7 @@ The active-defect count for a certified tree must be zero. Planned capabilities 
 | External intelligence/gap spine | Yes | Yes | Yes | N/A | Yes | No | Capability models do not establish vendor parity. |
 | Parcel source/schema/row preview | Yes | Yes | Yes | Config/report-backed | Yes | No | Official county endpoints and exact schemas are preview-ready; verified geographic constants replace fabricated county/state fields. Live import remains absent. |
 | Parcel source verification | Yes | Yes | Yes | Yes | Read-only | No | Digest-bound official evidence, immutable field-specific profiles, and deterministic county coverage-gap reports expose authority, coverage, redundancy, and acquisition shortfalls. |
+| Parcel ArcGIS acquisition gates | Yes | Yes | Yes | Yes | Read-only plus explicit bounded probe | Bounded on demand | Exact metadata snapshots, four-request plans, immutable observations, complete-rehearsal manifests, and derived assessments fail closed. Both county sources remain `metadata_only`; no bulk run or automatic profile promotion is authorized. |
 | Parcel core records | Yes | Yes | Yes | Yes | Read-only | No | Raw geometry, hash, CRS, and compatible summaries are preserved. |
 | Parcel longitudinal evidence | Yes | Yes | Yes | Yes | Read-only | No | Immutable observations retain complete evidence; conservative per-source current selection records supersession and blocks mixed-time or same-time-content ambiguity. |
 | Parcel fact assurance | Yes | Yes | Yes | Yes | Read-only | No | Governed current canonical records produce retained field claims and explainable lineage-aware outcomes; no live coverage or global truth score is claimed. |
@@ -128,7 +130,7 @@ These are intentionally absent capabilities, not defects in the currently suppor
 | CS-PLAN-005 | Workflow reopen/override | Final states have no outgoing transitions. | Define explicit authority, reason, stale-state, and append-only event rules. |
 | CS-PLAN-006 | Outreach preview and sending | No sending path exists. | Implement human preview, explicit approval, duplicate suppression, compliance, evidence, and delivery audit first. |
 | CS-PLAN-007 | GUI/operator application | CLI and service boundaries remain authoritative. | Build after source maturity and operator workflows justify exposure. |
-| CS-PLAN-008 | Countywide parcel evidence ingestion | Digest-bound observations, conservative current selection, explicit supersession, and assurance gating operate on supplied records without claiming live coverage. | Verify lawful access and coverage, retain raw acquisition evidence, register field authority and lineage, and orchestrate recurring county updates through the observation boundary. |
+| CS-PLAN-008 | Countywide parcel evidence ingestion | Exact ArcGIS metadata and bounded-probe controls exist, but both county assessments remain `metadata_only`; downstream parcel observations and assurance still operate only on supplied records. | Persist successful bounded proof for both sources, complete a count-reconciled restart/retry rehearsal, separately promote verified profiles, retain raw evidence, and orchestrate recurring county updates through the observation boundary. |
 
 ## Current source maturity
 
@@ -165,6 +167,7 @@ A prior report-only HTTP observation classified CEQAnet as `cross_host_redirect`
 | CEQAnet recurring-run definitions/manifests/executions | Exact-schema digest-bound JSON artifacts only; no attempt ledger or scheduler state is implied. |
 | Parcel preview layers | Report/config-backed and intentionally ephemeral. |
 | Parcel source verification | Append-only evidence/profile rows and immutable semantic coverage reports preserve official facts, schema snapshots, authority limits, gap explanations, and complete payloads; typed replay rejects malformed, digest-invalid, or index-divergent data. |
+| Parcel ArcGIS acquisition gates | Five additive tables preserve capability snapshots, bounded plans, one immutable observation per request, complete-rehearsal manifests, and assessments with dependency-ordered writes and typed digest revalidation. |
 | Parcel core/site resolution | Indexed fields plus full payload, raw geometry, hashes, CRS, and compatible summaries. |
 | Parcel longitudinal evidence | Append-only observation rows preserve complete records and dual digests; immutable selection reports preserve per-source clocks, candidates, supersession, ambiguity, reasons, limitations, and review state; typed replay rejects malformed or index-divergent payloads. |
 | Parcel fact assurance | Additive indexed report rows plus complete field claims, dependency lineages, authority, values, reasons, conflicts, missing evidence, and limitations. |
@@ -192,6 +195,7 @@ Persistence is valid only when mapping is deliberate and preserves reasons, conf
 | CEQAnet CSV access policy | Offline `build`, `verify`, and `check-current` commands enforce exact evidence bindings, the maximum 31-day authority window, expiration, conservative controls, and independent verification. They do not perform network requests. |
 | CEQAnet CSV evidence series | Offline `build`/`verify` commands and one explicitly authorized `execute` command expose full policy/ledger preflight, exact daily limits, complete execution retention, terminal halts, and report-only readiness. Sequence 1 is committed; the daily gate prohibits another UTC 2026-07-14 request. |
 | Upstream records | Full-payload list/detail only, including parcel observations, current-selection review status, parcel assurance, source identity, APN, and county filters. |
+| Parcel ArcGIS acquisition | Static capability/plan/readiness commands, an explicit bounded live probe, five read-only upstream record kinds, and storage summaries are present; no complete downloader or promotion command exists. |
 | Lead records | Consolidated list/detail plus governed workflow transitions. |
 | Result authority | Validated current/history plus explicit exact-state record/correction. |
 | Repository certification | Complete tracked-tree audit command. |
@@ -215,6 +219,7 @@ Where applicable, the architecture must preserve:
 - unknown and unmapped fields;
 - raw geometry, format, embedded/supplied CRS, conflicts, coordinate bounds, topology method, rings, holes, validity limitations, centroid limitations, fallback reasons, and non-survey-grade boundaries;
 - parcel observation and content digests, source and record identity, source-effective/observed time, current candidates, explicit supersession targets, timeline ambiguity, field claims, dependency lineage, proposition-specific authority, claim method, original and normalized values, agreement groups, conflict, missing evidence, and review state;
+- ArcGIS metadata projection and schema digests, object-ID uniqueness, query primitives, safe request identity, exact response digests, count/page/replay sequence, complete-rehearsal count reconciliation, duplicate and failed-page counts, checkpoint/retry proof, terminal-page evidence, object-ID-set digest, acquisition status, and explicit gaps;
 - workflow transitions, event sequence, unique identity, and stale-state expectations;
 - result share uncertainty, immutable revision chain, predecessor, correction reason, authority head, and authority events; and
 - source plan/apply digests and row-level audit outcomes.
