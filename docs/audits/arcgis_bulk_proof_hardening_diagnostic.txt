@@ -1,1 +1,1 @@
-expected one replacement in tests/test_parcel_source_acquisition.py, found 0: '        build_arcgis_bulk_manifest(\n  snapshot,\n  started_at=_OBSERVED_AT,\n  completed_at=_OBSERVED_'
+expected one replacement in tests/test_parcel_source_acquisition_storage.py, found 0: '    manifest = build_arcgis_bulk_manifest(\n        snapshot,\n        started_at=_OBSERVED_AT,\n      '
