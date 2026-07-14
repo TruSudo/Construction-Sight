@@ -1,2 +1,0 @@
-Temporary branch-only trigger for the self-removing PR115 mypy diagnostic.
-Registered branch workflow trigger.
