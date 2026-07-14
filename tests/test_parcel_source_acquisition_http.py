@@ -152,6 +152,21 @@ def test_http_executor_fails_closed_on_nonretryable_status_and_oversize() -> Non
         )
     assert calls == 1
 
+    def partial_content(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(206, json={"count": 2})
+
+    with (
+        httpx.Client(transport=httpx.MockTransport(partial_content)) as client,
+        pytest.raises(ParcelArcGISProbeExecutionError, match="HTTP 206"),
+    ):
+        execute_arcgis_probe_plan(
+            snapshot,
+            plan,
+            client,
+            now=lambda: _NOW,
+            sleep=lambda _delay: None,
+        )
+
     def oversized(_request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, content=b"x" * 20)
 

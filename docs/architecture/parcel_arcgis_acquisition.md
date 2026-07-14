@@ -52,7 +52,7 @@ constructionsight-parcel-sources acquisition-probe \
   --json-output
 ```
 
-The executor refreshes official layer metadata before sending the four planned queries. It requires HTTPS, limits response size, retries only transient transport or HTTP failures under a fixed policy, and rejects service error payloads, malformed JSON, unexpected fields, unordered identifiers, schema drift, replay disagreement, and cross-source scope changes.
+The executor refreshes official layer metadata before sending the four planned queries. It requires HTTPS and exact HTTP 200 responses, refuses redirects, limits response size, retries only transient transport or HTTP failures under a fixed policy, and rejects service error payloads, malformed JSON, unexpected fields, unordered identifiers, schema drift, replay disagreement, and cross-source scope changes.
 
 The bounded command does not write a county parcel dataset and cannot run a full acquisition.
 

@@ -150,12 +150,10 @@ def _get_json_object(
             )
             if response.status_code in policy.retry_status_codes:
                 raise _RetryableStatus(response.status_code)
-            try:
-                response.raise_for_status()
-            except httpx.HTTPStatusError as exc:
+            if response.status_code != 200:
                 raise ParcelArcGISProbeExecutionError(
                     f"ArcGIS request returned HTTP {response.status_code}"
-                ) from exc
+                )
             if len(response.content) > policy.max_response_bytes:
                 raise ParcelArcGISProbeExecutionError(
                     "ArcGIS response exceeded the configured byte limit"
