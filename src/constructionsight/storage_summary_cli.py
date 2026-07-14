@@ -52,6 +52,10 @@ STORAGE_TABLES: tuple[tuple[str, str], ...] = (
         "parcel_arcgis_acquisition_assessments",
         "ArcGIS acquisition assessments",
     ),
+    (
+        "parcel_arcgis_bounded_proof_bundles",
+        "portable bounded ArcGIS proof bundles",
+    ),
     ("parcel_record_observations", "append-only parcel observations"),
     (
         "parcel_current_selection_reports",

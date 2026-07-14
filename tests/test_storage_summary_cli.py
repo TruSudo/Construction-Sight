@@ -18,6 +18,7 @@ def test_build_storage_summary_initializes_known_tables() -> None:
     assert by_table["parcel_arcgis_probe_observations"].exists is True
     assert by_table["parcel_arcgis_bulk_manifests"].exists is True
     assert by_table["parcel_arcgis_acquisition_assessments"].exists is True
+    assert by_table["parcel_arcgis_bounded_proof_bundles"].exists is True
     assert by_table["parcel_record_observations"].exists is True
     assert by_table["parcel_current_selection_reports"].exists is True
     assert by_table["parcel_assurance_reports"].exists is True
@@ -41,6 +42,7 @@ def test_storage_summary_cli_renders_table() -> None:
     assert "parcel_arcgis_capability" in result.output
     assert "parcel_arcgis_probe_plans" in result.output
     assert "parcel_arcgis_acquisition" in result.output
+    assert "parcel_arcgis_bounded" in result.output
     assert "parcel_record_observations" in result.output
     assert "parcel_current_selection_re" in result.output
     assert "parcel_assurance_reports" in result.output
@@ -67,6 +69,7 @@ def test_storage_summary_cli_outputs_json() -> None:
     assert by_table["parcel_arcgis_probe_observations"]["row_count"] == 0
     assert by_table["parcel_arcgis_bulk_manifests"]["row_count"] == 0
     assert by_table["parcel_arcgis_acquisition_assessments"]["row_count"] == 0
+    assert by_table["parcel_arcgis_bounded_proof_bundles"]["row_count"] == 0
     assert by_table["parcel_record_observations"]["row_count"] == 0
     assert by_table["parcel_current_selection_reports"]["row_count"] == 0
     assert by_table["parcel_assurance_reports"]["row_count"] == 0

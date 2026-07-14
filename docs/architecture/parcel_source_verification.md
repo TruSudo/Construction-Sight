@@ -99,10 +99,10 @@ The read-only upstream operator exposes:
 - `parcel_source_verification` with status, source-key, and county filters; and
 - `parcel_county_coverage` with a status filter.
 
-The parcel-source CLI also exposes `evidence`, `verification`, and `coverage` commands. Separate acquisition commands expose metadata, bounded plans, readiness, and one explicit bounded live probe. No command mutates source maturity or authorizes countywide import.
+The parcel-source CLI also exposes `evidence`, `verification`, and `coverage` commands. Separate acquisition commands expose metadata, bounded plans, readiness, one explicit bounded live probe, offline verification of its portable proof bundle, and an exact-identity/explicit-authorization persistence path. No command mutates source maturity or authorizes countywide import.
 
 ## Backward compatibility
 
 Existing parcel core records, longitudinal observations, current-selection reports, assurance reports, geometry behavior, and site resolution are unchanged. `constant_fields` defaults to empty for every existing or user-provided source. `arcgis_map_service` is an additive source-format value.
 
-The bounded ArcGIS client, immutable observations, assessment state machine, complete-rehearsal manifest, persistence, and read-only operator exposure are implemented. Both sources currently remain `metadata_only`. The next safe phase is to execute and persist the four-request bounded proof for each county, then design a separately controlled complete rehearsal only after those observations pass.
+The bounded ArcGIS client, portable offline-verifiable proof artifact, immutable observations, assessment state machine, complete-rehearsal manifest, explicit transactional persistence, and read-only operator exposure are implemented. Both sources currently remain `metadata_only`; no live response is fabricated by the repository. The next safe phase is to execute, independently verify, approve by exact identity, and persist the four-request bounded proof for each county, then design a separately controlled complete rehearsal only after those observations pass.

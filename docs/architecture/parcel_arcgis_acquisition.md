@@ -56,6 +56,14 @@ The executor refreshes official layer metadata before sending the four planned q
 
 The bounded command does not write a county parcel dataset and cannot run a full acquisition.
 
+When all five responses succeed, the command emits a self-contained
+`ParcelArcGISBoundedProofBundle`. The artifact retains the exact official source evidence,
+verification profile, refreshed metadata snapshot, four-request plan, four canonical response
+payloads, and recomputed assessment. Its digest identity excludes only the artifact creation
+time; changing any proof-bearing content changes or invalidates the identity. The historical
+top-level `snapshot`, `plan`, `observations`, and `assessment` keys remain present, so existing
+probe consumers remain compatible.
+
 ## Executed proof
 
 Each `ParcelArcGISProbeObservation` binds the exact planned request, observation time, retained canonical response JSON, independently recomputable response digest, schema fingerprint, and either:
@@ -83,19 +91,52 @@ Partial observations remain `metadata_only`. Contradictory observations become `
 
 Any failed invariant invalidates the manifest. A valid manifest advances the acquisition assessment only to `bulk_rehearsal_verified`; it still does not prove legal-title accuracy, surveyed geometry, proposition-specific authority, update freshness, parcel-type inclusion, or a production scheduler.
 
+## Portable verification and explicit persistence
+
+A saved bundle can be checked without network or database access:
+
+```text
+constructionsight-parcel-sources acquisition-verify-bundle \
+  --input bounded-proof.json \
+  --json-output
+```
+
+Offline verification reparses every typed object, recomputes every retained response digest,
+rebuilds the canonical plan, rebuilds the assessment, and rebuilds the bundle identity. A
+`blocked` bundle is valid failure evidence and remains blocked; verification never converts it
+to success. Neither verification result can authorize a bulk run.
+
+Database persistence is a separate operation and requires both an explicit mutation flag and
+the exact approved bundle identity:
+
+```text
+constructionsight-parcel-sources acquisition-persist-bundle \
+  --input bounded-proof.json \
+  --expected-bundle-id parcel-arcgis-bounded-proof-bundle:<sha256> \
+  --authorize-persistence \
+  --json-output
+```
+
+Authorization is checked before the input file or database is opened. The verified identity is
+checked before database creation or mutation. The evidence, profile, snapshot, plan,
+observations, assessment, and bundle are then written in one caller transaction. Success emits
+a digest-bound persistence receipt with `insert_or_exact_replay`; the receipt explicitly keeps
+`bulk_run_authorized=false`.
+
 ## Persistence and inspection
 
-Five additive tables preserve the chain:
+Six additive tables preserve the chain:
 
 - `parcel_arcgis_capability_snapshots`;
 - `parcel_arcgis_probe_plans`;
 - `parcel_arcgis_probe_observations`;
 - `parcel_arcgis_bulk_manifests`; and
-- `parcel_arcgis_acquisition_assessments`.
+- `parcel_arcgis_acquisition_assessments`; and
+- `parcel_arcgis_bounded_proof_bundles`.
 
 Writes are dependency-ordered and immutable. Exact replays are idempotent; conflicting indexed fields, payload changes, missing parents, or a second observation for one request are rejected. One identical request may be shared by multiple bounded plans. Typed loads revalidate every digest and model invariant, and stored assessments are recomputed from their persisted snapshots, plans, observations, and optional manifests.
 
-The read-only upstream operator exposes all five record kinds with source, county, and status filters. The parcel-source CLI exposes canonical metadata snapshots, bounded plans, current assessments, and the explicit live bounded probe command. The storage-summary CLI reports each new table independently.
+The read-only upstream operator exposes all six record kinds with applicable source, county, and status filters. The parcel-source CLI exposes canonical metadata snapshots, bounded plans, current assessments, the explicit live bounded probe command, offline bundle verification, and explicitly authorized persistence. The storage-summary CLI reports each new table independently.
 
 ## Current official boundary
 
@@ -118,4 +159,4 @@ If offset pagination proves unstable, a later acquisition implementation may use
 
 ## Compatibility
 
-The new models, tables, commands, and operator record kinds are additive. Existing parcel records, observations, assurance reports, site resolution, source evidence, verification profiles, and county coverage reports retain their prior read and write contracts. Corrected default profile identities intentionally change because their schema content changed; previously persisted profiles remain immutable historical evidence.
+The new models, table, commands, and operator record kind are additive. The bounded probe output preserves its original four proof keys while adding the complete portable envelope. Existing parcel records, observations, assurance reports, site resolution, source evidence, verification profiles, county coverage reports, and earlier ArcGIS proof rows retain their prior read and write contracts. Corrected default profile identities intentionally change because their schema content changed; previously persisted profiles remain immutable historical evidence.

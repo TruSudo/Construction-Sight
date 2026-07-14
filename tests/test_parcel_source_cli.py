@@ -1,11 +1,90 @@
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 
 from typer.testing import CliRunner
 
+from constructionsight.parcel_source_acquisition import (
+    build_arcgis_acquisition_assessment,
+    build_arcgis_probe_plan,
+    get_official_arcgis_capability_snapshots,
+    parse_arcgis_probe_observation,
+)
+from constructionsight.parcel_source_acquisition_bundle import (
+    build_arcgis_bounded_proof_bundle,
+)
+from constructionsight.parcel_source_acquisition_models import ParcelArcGISProbeKind
 from constructionsight.parcel_source_cli import app
+from constructionsight.parcel_source_verification import (
+    get_parcel_source_evidence,
+    get_verified_parcel_source_profiles,
+)
 
 runner = CliRunner()
+
+_OBSERVED_AT = datetime(2026, 7, 14, 19, 0, tzinfo=UTC)
+
+
+def _write_bounded_bundle(path: Path):
+    snapshot = get_official_arcgis_capability_snapshots()[0]
+    profile = next(
+        item
+        for item in get_verified_parcel_source_profiles()
+        if item.profile_id == snapshot.profile_id
+    )
+    evidence_by_id = {
+        item.evidence_id: item for item in get_parcel_source_evidence()
+    }
+    plan = build_arcgis_probe_plan(snapshot, generated_at=_OBSERVED_AT)
+    response_by_kind = {
+        ParcelArcGISProbeKind.COUNT: {"count": 6},
+        ParcelArcGISProbeKind.INITIAL_PAGE: {
+            "features": [
+                {"attributes": {"OBJECTID": 1}},
+                {"attributes": {"OBJECTID": 3}},
+            ],
+            "exceededTransferLimit": True,
+        },
+        ParcelArcGISProbeKind.NEXT_PAGE: {
+            "features": [
+                {"attributes": {"OBJECTID": 5}},
+                {"attributes": {"OBJECTID": 7}},
+            ],
+            "exceededTransferLimit": True,
+        },
+        ParcelArcGISProbeKind.REPLAY_PAGE: {
+            "features": [
+                {"attributes": {"OBJECTID": 1}},
+                {"attributes": {"OBJECTID": 3}},
+            ],
+            "exceededTransferLimit": True,
+        },
+    }
+    observations = tuple(
+        parse_arcgis_probe_observation(
+            request,
+            response_by_kind[request.kind],
+            observed_at=_OBSERVED_AT,
+        )
+        for request in plan.requests
+    )
+    assessment = build_arcgis_acquisition_assessment(
+        snapshot,
+        plan,
+        observations,
+        generated_at=_OBSERVED_AT,
+    )
+    bundle = build_arcgis_bounded_proof_bundle(
+        profile,
+        (evidence_by_id[evidence_id] for evidence_id in profile.evidence_ids),
+        snapshot,
+        plan,
+        observations,
+        assessment,
+        created_at=_OBSERVED_AT,
+    )
+    path.write_text(json.dumps(bundle.to_dict()), encoding="utf-8")
+    return bundle
 
 
 def test_parcel_source_cli_renders_matrix() -> None:
@@ -128,3 +207,97 @@ def test_live_acquisition_probe_rejects_unknown_source_before_network() -> None:
 
     assert result.exit_code != 0
     assert "Unknown verified ArcGIS source key" in result.output
+
+
+def test_acquisition_bundle_cli_verifies_offline(tmp_path: Path) -> None:
+    bundle_path = tmp_path / "bounded-proof.json"
+    bundle = _write_bounded_bundle(bundle_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "acquisition-verify-bundle",
+            "--input",
+            str(bundle_path),
+            "--json-output",
+        ],
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.output)
+    assert payload["bundle_id"] == bundle.bundle_id
+    assert payload["valid"] is True
+    assert payload["assessment_recomputed"] is True
+    assert payload["bulk_run_authorized"] is False
+
+
+def test_acquisition_bundle_cli_requires_authorization_before_file_or_database() -> None:
+    result = runner.invoke(
+        app,
+        [
+            "acquisition-persist-bundle",
+            "--input",
+            "does-not-exist.json",
+            "--expected-bundle-id",
+            "parcel-arcgis-bounded-proof-bundle:" + ("0" * 64),
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "requires --authorize-persistence" in result.output
+
+
+def test_acquisition_bundle_cli_rejects_unapproved_identity_before_database(
+    tmp_path: Path,
+) -> None:
+    bundle_path = tmp_path / "bounded-proof.json"
+    _write_bounded_bundle(bundle_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "acquisition-persist-bundle",
+            "--input",
+            str(bundle_path),
+            "--expected-bundle-id",
+            "parcel-arcgis-bounded-proof-bundle:" + ("0" * 64),
+            "--database-url",
+            f"sqlite:///{tmp_path / 'must-not-exist.sqlite3'}",
+            "--authorize-persistence",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "expected bundle ID does not match" in result.output
+    assert not (tmp_path / "must-not-exist.sqlite3").exists()
+
+
+def test_acquisition_bundle_cli_persists_exact_authorized_artifact(
+    tmp_path: Path,
+) -> None:
+    bundle_path = tmp_path / "bounded-proof.json"
+    bundle = _write_bounded_bundle(bundle_path)
+    database_path = tmp_path / "bounded-proof.sqlite3"
+
+    result = runner.invoke(
+        app,
+        [
+            "acquisition-persist-bundle",
+            "--input",
+            str(bundle_path),
+            "--expected-bundle-id",
+            bundle.bundle_id,
+            "--database-url",
+            f"sqlite:///{database_path}",
+            "--authorize-persistence",
+            "--json-output",
+        ],
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.output)
+    assert payload["bundle_id"] == bundle.bundle_id
+    assert payload["mutation_authorized"] is True
+    assert payload["replay_policy"] == "insert_or_exact_replay"
+    assert payload["bulk_run_authorized"] is False
+    assert database_path.exists()
