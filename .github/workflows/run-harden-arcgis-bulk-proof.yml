@@ -206,15 +206,30 @@ jobs:
 
       - name: Validate exact committed candidate
         run: |
-          python -m pip check
-          python -m ruff check src tests
-          python -m mypy src
-          python -m compileall -q src tests
-          python -m pytest --strict-config --strict-markers -ra -W error
-          constructionsight audit-adapters
-          constructionsight audit-source-coverage data/source_registry.seed.json
-          python -m constructionsight.repository_certification --root . --require-clean-worktree
-          git diff --check
+          set +e
+          {
+            python -m pip check &&
+            python -m ruff check src tests &&
+            python -m mypy src &&
+            python -m compileall -q src tests &&
+            python -m pytest --strict-config --strict-markers -ra -W error &&
+            constructionsight audit-adapters &&
+            constructionsight audit-source-coverage data/source_registry.seed.json &&
+            python -m constructionsight.repository_certification --root . --require-clean-worktree &&
+            git diff --check
+          } > /tmp/arcgis-bulk-proof-validation.log 2>&1
+          status=$?
+          set -e
+          cat /tmp/arcgis-bulk-proof-validation.log
+          if [ "$status" -ne 0 ]; then
+            cp /tmp/arcgis-bulk-proof-validation.log docs/audits/arcgis_bulk_proof_validation_diagnostic.txt
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add docs/audits/arcgis_bulk_proof_validation_diagnostic.txt
+            git commit -m "Record ArcGIS proof validation diagnostic"
+            git push origin HEAD:agent/harden-arcgis-bulk-rehearsal-proof
+            exit "$status"
+          fi
 
       - name: Push validated candidate
         run: git push origin HEAD:agent/harden-arcgis-bulk-rehearsal-proof
