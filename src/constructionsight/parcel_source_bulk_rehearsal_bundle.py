@@ -4,10 +4,9 @@ from __future__ import annotations
 
 import base64
 import json
-from collections.abc import Protocol
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 from constructionsight.parcel_source_acquisition import build_arcgis_bulk_manifest
 from constructionsight.parcel_source_acquisition_models import (
@@ -42,6 +41,8 @@ class ParcelArcGISBulkArtifactReader(Protocol):
 
     def read(self, receipt: ParcelArcGISBulkArtifactReceipt) -> bytes:
         """Reload and validate the exact bytes described by one receipt."""
+
+        ...
 
 
 def build_arcgis_bulk_rehearsal_proof_bundle(
@@ -107,6 +108,8 @@ def verify_arcgis_bulk_rehearsal_proof_bundle(
         manifest=rebuilt_manifest,
         checkpoint_reloaded=bundle.checkpoint_reloaded,
         artifact_receipts=receipts,
+        starting_count_response_digest=bundle.artifacts[0].response_digest,
+        ending_count_response_digest=bundle.artifacts[-1].response_digest,
     )
     rebuilt_bundle = _build_bundle_from_portable_artifacts(
         bundle.snapshot,
