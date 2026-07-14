@@ -448,7 +448,7 @@ def execute_evidence(
     ] = False,
     max_retained_rows: Annotated[
         int,
-        typer.Option("--max-retained-rows", min=0),
+        typer.Option("--max-retained-rows", min=0, max=1_000),
     ] = 1_000,
     overwrite: Annotated[bool, typer.Option("--overwrite")] = False,
 ) -> None:
