@@ -63,6 +63,8 @@ def build_arcgis_bulk_rehearsal_authorization(
         checkpoint_after_pages=plan.checkpoint_after_pages,
         injected_retry_page_index=plan.injected_retry_page_index,
         max_attempts=plan.max_attempts,
+        snapshot_observed_at=snapshot.observed_at,
+        plan_generated_at=plan.generated_at,
         execution_nonce=execution_nonce,
         issued_by=issued_by,
         authorization_reason=authorization_reason,
@@ -147,6 +149,8 @@ def _require_plan_scope(
         or plan.page_size > snapshot.max_record_count
     ):
         raise ValueError("ArcGIS rehearsal plan does not match the capability snapshot")
+    if plan.generated_at < snapshot.observed_at:
+        raise ValueError("ArcGIS rehearsal plan cannot predate its capability snapshot")
     if plan.bulk_run_authorized:
         raise ValueError("ArcGIS rehearsal authorization refuses bulk-authorized plans")
 
@@ -168,6 +172,8 @@ def _require_authorization_scope(
         plan.checkpoint_after_pages,
         plan.injected_retry_page_index,
         plan.max_attempts,
+        snapshot.observed_at,
+        plan.generated_at,
     )
     actual = (
         authorization.snapshot_id,
@@ -181,6 +187,8 @@ def _require_authorization_scope(
         authorization.checkpoint_after_pages,
         authorization.injected_retry_page_index,
         authorization.max_attempts,
+        authorization.snapshot_observed_at,
+        authorization.plan_generated_at,
     )
     if actual != expected:
         raise ValueError("ArcGIS rehearsal authorization does not match the exact plan")
