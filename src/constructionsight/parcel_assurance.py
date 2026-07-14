@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
@@ -446,7 +446,7 @@ def _report_id(
     return f"parcel-assurance:{_digest(payload)}"
 
 
-def _digest(payload: dict[str, object]) -> str:
+def _digest(payload: Mapping[str, object]) -> str:
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
