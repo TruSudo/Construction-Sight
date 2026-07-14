@@ -23,7 +23,7 @@ The canonical source registry currently contains:
 
 CEQAnet is classified `partial` because its official entry, advanced search, result-list, project-summary, document-detail, policy, and CSV-export surfaces were reviewed and recorded. Bounded automated HTML collection later received HTTP 403. No bypass was attempted. The existing recurring-run service remains verified-only, so `partial` status does not authorize live recurring execution.
 
-ConstructionSight has an official CSV contract that plans exact project/document export URLs, validates already-obtained CSV bytes, and performs one explicitly authorized bounded GET with no retry. The original HTTP 200 proof failed under the former UTF-8-only parser and remains preserved. An offline replay of the exact retained body now passes as Windows-1252 with 2 source rows and an independently verified replay digest. A digest-bound maturity proposal independently verifies that evidence and records `keep_partial`. A separate expiring official-CSV policy now permits only explicit, one-request, zero-retry evidence collection; it does not authorize production recurring execution or promotion.
+ConstructionSight has an official CSV contract that plans exact project/document export URLs, validates already-obtained CSV bytes, and performs one explicitly authorized bounded GET with no retry. The original HTTP 200 proof failed under the former UTF-8-only parser and remains preserved. An offline replay of the exact retained body now passes as Windows-1252 with 2 source rows and an independently verified replay digest. A digest-bound maturity proposal independently verifies that evidence and records `keep_partial`. A separate expiring official-CSV policy now permits only explicit, one-request, zero-retry evidence collection; it does not authorize production recurring execution or promotion. A governed evidence-series ledger now enforces the policy window, one execution per UTC day, exact execution/body/verification bindings, access-control halt finality, and readiness criteria. Its canonical baseline is empty and made no network request.
 
 See:
 
@@ -45,6 +45,10 @@ See:
 - `evidence/source_verification/ceqanet_csv_access_policy_verification_2026-07-14.json`
 - `docs/audits/ceqanet_csv_access_policy_2026-07-14.md`
 - `docs/architecture/ceqanet_csv_access_policy.md`
+- `evidence/source_verification/ceqanet_csv_evidence_series_2026-07-14.json`
+- `evidence/source_verification/ceqanet_csv_evidence_series_verification_2026-07-14.json`
+- `docs/audits/ceqanet_csv_evidence_series_2026-07-14.md`
+- `docs/architecture/ceqanet_csv_evidence_series.md`
 - `docs/architecture/current_implementation_status.md`
 - `docs/audits/full_repo_audit_inventory.md`
 
@@ -109,6 +113,22 @@ The official CSV boundary has separate offline and one-request proof layers:
 
 Planning, local inspection, and execution verification are offline. Live proof requires explicit authorization for one request and never authorizes attachment download, persistence mutation, retries, or scheduling.
 
+The governed evidence-series boundary is:
+
+```text
+verified current policy + verified current series
+  -> explicit per-execution authorization
+  -> one official CSV GET on an unused UTC date
+  -> complete policy-bound execution artifact
+  -> independent live verification
+  -> immutable compact observation
+  -> collecting, halted, or maturity-review-ready series snapshot
+```
+
+The canonical series currently has zero observations. The build and verify
+commands are offline; only the explicitly authorized execute command is
+network-capable.
+
 ## Implemented capabilities
 
 ### Source governance
@@ -130,6 +150,7 @@ Planning, local inspection, and execution verification are offline. Live proof r
 - Offline encoding replay linked to the original execution digest and body hash
 - Digest-bound, report-only CEQAnet maturity proposals with a fixed `keep_partial` decision
 - Expiring official-CSV evidence policies with one-request, zero-retry authority
+- Immutable official-CSV evidence-series snapshots with policy-bound executions, one-per-UTC-day enforcement, terminal access-control halts, and report-only maturity readiness
 - Complete response-byte, URL, status, header, body-hash, and inspection evidence
 - Independent offline verification of the retained live execution envelope
 - Preservation of original, normalized, canonical-role, and unknown CSV columns
@@ -189,6 +210,7 @@ constructionsight-ceqanet-recurring-run
 constructionsight-ceqanet-csv
 constructionsight-ceqanet-maturity
 constructionsight-ceqanet-access-policy
+constructionsight-ceqanet-evidence-series
 constructionsight-upstream
 constructionsight-leads
 constructionsight-results
@@ -225,6 +247,7 @@ No external communication behavior is implied by the existing models or CLI.
 - One point-in-time CSV success and offline replay do not establish recurring availability, completeness, or broader source coverage.
 - The maturity-proposal workflow binds that evidence but cannot promote the registry or authorize recurring execution.
 - The CSV access policy permits only explicit evidence runs and expires on 2026-08-13; it is not production scheduler authority.
+- The independently verified evidence-series baseline contains zero observations; four separately authorized successful daily observations covering project and document exports remain required before another maturity review.
 - The other three canonical sources remain unverified.
 - Verified usable source coverage remains zero.
 - Most adapter families remain contract-level.
