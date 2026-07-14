@@ -72,59 +72,17 @@ def build_ceqanet_csv_evidence_series(
             item.evidence_execution_digest,
         ),
     )
-    successful = [item for item in observations if item.successful]
-    successful_dates = sorted({item.utc_date for item in successful})
-    successful_kinds = sorted(
-        {item.export_kind for item in successful},
-        key=lambda item: item.value,
+    series = _build_series_snapshot(
+        policy,
+        observations=[],
+        predecessor_series_digest=None,
     )
-    halted = next(
-        (item for item in observations if item.access_control_halt),
-        None,
-    )
-    ready = (
-        halted is None
-        and len(successful) >= policy.minimum_successful_observations
-        and len(successful_dates) >= policy.minimum_distinct_utc_dates
-        and set(successful_kinds) == set(policy.required_evidence_export_kinds)
-    )
-    if halted is not None:
-        status = CeqanetCsvEvidenceSeriesStatus.HALTED
-        next_gate = (
-            "halt evidence collection and review the retained access-control "
-            "response without bypass"
+    for sequence in range(1, len(observations) + 1):
+        series = _build_series_snapshot(
+            policy,
+            observations=observations[:sequence],
+            predecessor_series_digest=series.series_digest,
         )
-    elif ready:
-        status = CeqanetCsvEvidenceSeriesStatus.READY_FOR_MATURITY_REVIEW
-        next_gate = (
-            "perform a separate evidence-bound maturity review; this series "
-            "does not itself authorize promotion or production execution"
-        )
-    else:
-        status = CeqanetCsvEvidenceSeriesStatus.COLLECTING
-        next_gate = policy.next_gate
-
-    draft = CeqanetCsvEvidenceSeries(
-        source_name=policy.source_name,
-        policy_digest=policy.policy_digest,
-        policy_effective_date=policy.effective_date,
-        policy_expires_on=policy.expires_on,
-        observations=observations,
-        observation_count=len(observations),
-        successful_observation_count=len(successful),
-        distinct_successful_utc_dates=successful_dates,
-        observed_successful_export_kinds=successful_kinds,
-        minimum_successful_observations=policy.minimum_successful_observations,
-        minimum_distinct_utc_dates=policy.minimum_distinct_utc_dates,
-        required_export_kinds=policy.required_evidence_export_kinds,
-        status=status,
-        halted_on=halted.utc_date if halted is not None else None,
-        halt_status_code=halted.status_code if halted is not None else None,
-        next_gate=next_gate,
-        series_digest="0" * 64,
-    )
-    series = draft.model_copy(update={"series_digest": draft.computed_digest()})
-    series.assert_integrity()
     return series
 
 
@@ -178,7 +136,8 @@ def verify_ceqanet_csv_evidence_series(
         observation_count=series.observation_count,
         successful_observation_count=series.successful_observation_count,
         ready_for_maturity_review=(
-            series.status
+            not findings
+            and series.status
             is CeqanetCsvEvidenceSeriesStatus.READY_FOR_MATURITY_REVIEW
         ),
     )
@@ -275,6 +234,70 @@ def execute_ceqanet_csv_evidence_request(
     evidence_execution.assert_integrity()
     return evidence_execution
 
+
+
+def _build_series_snapshot(
+    policy: CeqanetCsvAccessPolicy,
+    *,
+    observations: list[CeqanetCsvEvidenceObservation],
+    predecessor_series_digest: str | None,
+) -> CeqanetCsvEvidenceSeries:
+    successful = [item for item in observations if item.successful]
+    successful_dates = sorted({item.utc_date for item in successful})
+    successful_kinds = sorted(
+        {item.export_kind for item in successful},
+        key=lambda item: item.value,
+    )
+    halted = next(
+        (item for item in observations if item.access_control_halt),
+        None,
+    )
+    ready = (
+        halted is None
+        and len(successful) >= policy.minimum_successful_observations
+        and len(successful_dates) >= policy.minimum_distinct_utc_dates
+        and set(successful_kinds) == set(policy.required_evidence_export_kinds)
+    )
+    if halted is not None:
+        status = CeqanetCsvEvidenceSeriesStatus.HALTED
+        next_gate = (
+            "halt evidence collection and review the retained access-control "
+            "response without bypass"
+        )
+    elif ready:
+        status = CeqanetCsvEvidenceSeriesStatus.READY_FOR_MATURITY_REVIEW
+        next_gate = (
+            "perform a separate evidence-bound maturity review; this series "
+            "does not itself authorize promotion or production execution"
+        )
+    else:
+        status = CeqanetCsvEvidenceSeriesStatus.COLLECTING
+        next_gate = policy.next_gate
+
+    draft = CeqanetCsvEvidenceSeries(
+        source_name=policy.source_name,
+        policy_digest=policy.policy_digest,
+        policy_effective_date=policy.effective_date,
+        policy_expires_on=policy.expires_on,
+        observations=observations,
+        series_sequence=len(observations),
+        predecessor_series_digest=predecessor_series_digest,
+        observation_count=len(observations),
+        successful_observation_count=len(successful),
+        distinct_successful_utc_dates=successful_dates,
+        observed_successful_export_kinds=successful_kinds,
+        minimum_successful_observations=policy.minimum_successful_observations,
+        minimum_distinct_utc_dates=policy.minimum_distinct_utc_dates,
+        required_export_kinds=policy.required_evidence_export_kinds,
+        status=status,
+        halted_on=halted.utc_date if halted is not None else None,
+        halt_status_code=halted.status_code if halted is not None else None,
+        next_gate=next_gate,
+        series_digest="0" * 64,
+    )
+    series = draft.model_copy(update={"series_digest": draft.computed_digest()})
+    series.assert_integrity()
+    return series
 
 def _assert_policy_verified(
     sources: list[PublicSource],
