@@ -116,8 +116,8 @@ class CeqanetCsvAccessPolicy(BaseModel):
 
         if self.effective_date > self.expires_on:
             raise ValueError("policy effective_date must be on or before expires_on")
-        if (self.expires_on - self.effective_date).days > 31:
-            raise ValueError("CSV access policy authority cannot exceed 31 days")
+        if (self.expires_on - self.effective_date).days >= 31:
+            raise ValueError("CSV access policy authority cannot exceed 31 inclusive days")
         if set(self.required_evidence_export_kinds) != set(
             self.allowed_export_kinds
         ):
