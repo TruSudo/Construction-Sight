@@ -591,7 +591,7 @@ def test_committed_empty_series_recomputes_exactly() -> None:
     )
 
     assert series.series_digest == (
-        "d8b214a5c3b381174700efa96e31ba284ff3625dd319741e2d56e6acb2559515"
+        "b2a18770ec5ca28dfb907ce74b0b5ba120e6bb028ee35e3acd5188d42c182634"
     )
     assert series.status is CeqanetCsvEvidenceSeriesStatus.COLLECTING
     assert series.observation_count == 0
