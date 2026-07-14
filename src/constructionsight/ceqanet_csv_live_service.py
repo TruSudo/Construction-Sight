@@ -6,6 +6,7 @@ import base64
 import binascii
 import hashlib
 from collections.abc import Mapping
+from datetime import UTC, datetime
 from dataclasses import dataclass
 from typing import Any, Protocol
 
@@ -105,6 +106,7 @@ def execute_ceqanet_csv_live_request(
     timeout_seconds: float = 20.0,
     max_body_bytes: int = 10_000_000,
     max_retained_rows: int = 1_000,
+    executed_at: datetime | None = None,
 ) -> CeqanetCsvLiveExecution:
     """Execute exactly one explicit GET and retain a tamper-evident response envelope."""
 
@@ -127,6 +129,7 @@ def execute_ceqanet_csv_live_request(
             timeout_seconds=timeout_seconds,
             max_body_bytes=max_body_bytes,
             max_retained_rows=max_retained_rows,
+            executed_at=executed_at,
         )
 
     with httpx.Client(
@@ -138,6 +141,7 @@ def execute_ceqanet_csv_live_request(
             timeout_seconds=timeout_seconds,
             max_body_bytes=max_body_bytes,
             max_retained_rows=max_retained_rows,
+            executed_at=executed_at,
         )
 
 
@@ -257,6 +261,7 @@ def _execute_with_client(
     timeout_seconds: float,
     max_body_bytes: int,
     max_retained_rows: int,
+    executed_at: datetime | None,
 ) -> CeqanetCsvLiveExecution:
     try:
         response = client.get(
@@ -276,6 +281,7 @@ def _execute_with_client(
             error=exc.__class__.__name__,
             inspection=None,
             inspection_error=None,
+            executed_at=executed_at,
         )
 
     body = response.content
@@ -308,6 +314,7 @@ def _execute_with_client(
         error=error,
         inspection=inspection,
         inspection_error=inspection_error,
+        executed_at=executed_at,
     )
 
 
@@ -323,6 +330,7 @@ def _build_execution(
     error: str | None,
     inspection: CeqanetCsvInspection | None,
     inspection_error: str | None,
+    executed_at: datetime | None,
 ) -> CeqanetCsvLiveExecution:
     retained = body if retained_complete else b""
     payload: dict[str, Any] = {
@@ -340,6 +348,7 @@ def _build_execution(
         "error": error,
         "inspection": inspection,
         "inspection_error": inspection_error,
+        "executed_at": executed_at or datetime.now(UTC),
     }
     draft = CeqanetCsvLiveExecution(
         **payload,
