@@ -1,0 +1,30 @@
+No broken requirements found.
+I001 [*] Import block is un-sorted or un-formatted
+  --> tests/test_parcel_source_bulk_rehearsal_models.py:1:1
+   |
+ 1 | / from datetime import UTC, datetime, timedelta
+ 2 | |
+ 3 | | import pytest
+ 4 | | from pydantic import ValidationError
+ 5 | |
+ 6 | | from constructionsight.parcel_source_acquisition import build_arcgis_bulk_manifest
+ 7 | | from constructionsight.parcel_source_acquisition_models import (
+ 8 | |     ParcelArcGISBulkManifest,
+ 9 | |     digest_identity,
+10 | |     digest_json_payload,
+11 | | )
+12 | | from constructionsight.parcel_source_bulk_rehearsal_models import (
+13 | |     ParcelArcGISBulkRehearsalEvidence,
+14 | |     assemble_arcgis_bulk_rehearsal_evidence,
+15 | | )
+16 | | from constructionsight.parcel_source_acquisition import (
+17 | |     get_official_arcgis_capability_snapshots,
+18 | | )
+   | |_^
+19 |
+20 |   _OBSERVED_AT = datetime(2026, 7, 14, 19, 0, tzinfo=UTC)
+   |
+help: Organize imports
+
+Found 1 error.
+[*] 1 fixable with the `--fix` option.
