@@ -1,0 +1,26 @@
+{
+  "distinct_successful_utc_dates": [],
+  "generated_at": "2026-07-14T05:22:00Z",
+  "halt_status_code": null,
+  "halted_on": null,
+  "minimum_distinct_utc_dates": 3,
+  "minimum_successful_observations": 4,
+  "next_gate": "collect and independently verify at least four bounded observations across three UTC dates and both project and document export scopes",
+  "observation_count": 0,
+  "observations": [],
+  "observed_successful_export_kinds": [],
+  "policy_digest": "d84e6b80234a96799593db0601cc92e6480bad15bfd016001b35568c481c1674",
+  "policy_effective_date": "2026-07-14",
+  "policy_expires_on": "2026-08-13",
+  "production_recurring_execution_authorized": false,
+  "required_export_kinds": [
+    "project",
+    "document"
+  ],
+  "schema_version": "ceqanet_csv_evidence_series.v1",
+  "series_digest": "d8b214a5c3b381174700efa96e31ba284ff3625dd319741e2d56e6acb2559515",
+  "source_name": "CEQAnet State Clearinghouse",
+  "source_promotion_authorized": false,
+  "status": "collecting",
+  "successful_observation_count": 0
+}
