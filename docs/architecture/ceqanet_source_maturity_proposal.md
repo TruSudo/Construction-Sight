@@ -63,4 +63,4 @@ Both commands are offline. Neither command mutates the source registry.
 
 ## Next gate
 
-A bounded official-CSV evidence policy and an empty governed evidence-series baseline are now committed and independently verified. The remaining gate is four separately authorized, independently passing observations on unused UTC dates, covering both project and document export scopes. Promotion, production scheduling, retries, domain persistence, and broader coverage remain unauthorized.
+A bounded official-CSV evidence policy, the empty governed baseline, and sequence 1 with one independently verified project observation are now committed. The remaining gate is three additional separately authorized passing observations on later unused UTC dates, including the document export scope. Promotion, production scheduling, retries, domain persistence, and broader coverage remain unauthorized.
