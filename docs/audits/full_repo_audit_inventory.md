@@ -19,7 +19,7 @@ ConstructionSight has a substantial tested model/service architecture for lawful
 - parcel and site reasoning with GeoJSON and WKT/EWKT topology;
 - immutable digest-bound parcel observations with conservative bitemporal current selection and explicit supersession;
 - field-level parcel evidence assurance with explicit source dependency, proposition-specific authority, conflict, and missing-evidence preservation;
-- digest-bound ArcGIS capability, retained county count/page/replay proofs, offline recomputation, exact-ID persistence receipts, complete-rehearsal gates, and a mocked-test-verified exact-response HTTP adapter that keep advertised behavior separate from executed proof;
+- digest-bound ArcGIS capability, retained county bounded proofs, exact-response rehearsal execution and HTTP planning, and self-contained complete-rehearsal proof bundles with independent offline plan, manifest, byte, receipt, and object-ID recomputation;
 - source-plane area-weighted polygon centroids and conservative CRS boundaries;
 - permit movement, contractor identity, and decision records;
 - versioned opportunity enrichment, lead review, and dedupe;
@@ -58,7 +58,7 @@ The active-defect count for a certified tree must be zero. Planned capabilities 
 | External intelligence/gap spine | Yes | Yes | Yes | N/A | Yes | No | Capability models do not establish vendor parity. |
 | Parcel source/schema/row preview | Yes | Yes | Yes | Config/report-backed | Yes | No | Official county endpoints and exact schemas are preview-ready; verified geographic constants replace fabricated county/state fields. Live import remains absent. |
 | Parcel source verification | Yes | Yes | Yes | Yes | Read-only | No | Digest-bound official evidence, immutable field-specific profiles, and deterministic county coverage-gap reports expose authority, coverage, redundancy, and acquisition shortfalls. |
-| Parcel ArcGIS acquisition gates | Yes | Yes | Yes | Yes | Read-only plus explicit bounded probe and guarded proof persistence | Bounded on demand | Retained 2026-07-14 bundles place both county sources at `bounded_query_verified`. A reusable complete-rehearsal executor and digest-bound official HTTP plan/adapter retain exact count/page bytes, keep retry evidence centralized, and fail closed on request/response-policy disagreement. The adapter is mocked-test verified only; no live county rehearsal, bulk run, or automatic profile promotion is authorized. |
+| Parcel ArcGIS acquisition gates | Yes | Yes | Yes | Yes | Read-only plus explicit bounded probe and guarded proof persistence | Bounded on demand | Retained county bundles remain `bounded_query_verified`. The complete-rehearsal executor and official HTTP adapter now feed a self-contained portable proof bundle that embeds exact responses and independently rebuilds plan, manifest, receipt, and object-ID proof offline. No live county rehearsal, import, bulk run, or automatic profile promotion is authorized. |
 | Parcel core records | Yes | Yes | Yes | Yes | Read-only | No | Raw geometry, hash, CRS, and compatible summaries are preserved. |
 | Parcel longitudinal evidence | Yes | Yes | Yes | Yes | Read-only | No | Immutable observations retain complete evidence; conservative per-source current selection records supersession and blocks mixed-time or same-time-content ambiguity. |
 | Parcel fact assurance | Yes | Yes | Yes | Yes | Read-only | No | Governed current canonical records produce retained field claims and explainable lineage-aware outcomes; no live coverage or global truth score is claimed. |
@@ -132,7 +132,7 @@ These are intentionally absent capabilities, not defects in the currently suppor
 | CS-PLAN-005 | Workflow reopen/override | Final states have no outgoing transitions. | Define explicit authority, reason, stale-state, and append-only event rules. |
 | CS-PLAN-006 | Outreach preview and sending | No sending path exists. | Implement human preview, explicit approval, duplicate suppression, compliance, evidence, and delivery audit first. |
 | CS-PLAN-007 | GUI/operator application | CLI and service boundaries remain authoritative. | Build after source maturity and operator workflows justify exposure. |
-| CS-PLAN-008 | Countywide parcel evidence ingestion | Exact metadata, retained bounded proofs, offline verification, exact-ID persistence receipts, a reusable exact-response complete-rehearsal executor, and a digest-bound official HTTP plan/adapter exist. Both sources remain `bounded_query_verified`; no live county rehearsal or downstream county import has occurred. | Separately authorize, execute, retain, and independently verify a checkpoint/retry/count-reconciled rehearsal for each county; then review profile promotion and recurring observation orchestration as later authorized phases. |
+| CS-PLAN-008 | Countywide parcel evidence ingestion | Exact metadata, retained bounded proofs, an exact-response executor, official HTTP plan/adapter, and a portable independently verifiable complete-rehearsal proof bundle exist. Both sources remain `bounded_query_verified`; no live complete rehearsal or county import has occurred. | Separately authorize and execute each county rehearsal, save and independently verify its portable bundle, then review profile promotion and recurring observation orchestration as later phases. |
 
 ## Current source maturity
 

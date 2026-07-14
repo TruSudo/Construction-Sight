@@ -1,119 +1,68 @@
 name: CI
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
-      - agent/add-arcgis-rehearsal-proof-bundle
+      - main
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  reconcile-pr115-docs:
+  quality:
+    name: Python ${{ matrix.python-version }} quality gate
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - "3.11"
+          - "3.12"
 
     steps:
-      - name: Check out phase branch
+      - name: Check out repository
         uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
         with:
-          ref: agent/add-arcgis-rehearsal-proof-bundle
-          fetch-depth: 0
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
 
-      - name: Reconcile canonical ledgers
+      - name: Install package with dev dependencies
         run: |
-          python - <<'PY'
-          from pathlib import Path
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
 
-          def replace_line(path: str, prefix: str, replacement: str) -> None:
-              target = Path(path)
-              lines = target.read_text(encoding="utf-8").splitlines()
-              matches = [index for index, line in enumerate(lines) if line.startswith(prefix)]
-              if len(matches) != 1:
-                  raise SystemExit(f"{path}: prefix {prefix!r} matched {len(matches)} lines")
-              lines[matches[0]:matches[0] + 1] = replacement.splitlines()
-              target.write_text("\n".join(lines) + "\n", encoding="utf-8")
+      - name: Dependency integrity
+        run: python -m pip check
 
-          def insert_after_line(path: str, prefix: str, line: str, marker: str) -> None:
-              target = Path(path)
-              lines = target.read_text(encoding="utf-8").splitlines()
-              if any(marker in item for item in lines):
-                  return
-              matches = [index for index, item in enumerate(lines) if item.startswith(prefix)]
-              if len(matches) != 1:
-                  raise SystemExit(f"{path}: prefix {prefix!r} matched {len(matches)} lines")
-              lines.insert(matches[0] + 1, line)
-              target.write_text("\n".join(lines) + "\n", encoding="utf-8")
+      - name: Ruff
+        run: python -m ruff check src tests
 
-          def insert_before_heading(path: str, heading: str, block: str, marker: str) -> None:
-              target = Path(path)
-              text = target.read_text(encoding="utf-8")
-              if marker in text:
-                  return
-              needle = f"{heading}\n"
-              if text.count(needle) != 1:
-                  raise SystemExit(f"{path}: heading {heading!r} did not match once")
-              target.write_text(text.replace(needle, block + "\n" + needle, 1), encoding="utf-8")
+      - name: Mypy
+        run: python -m mypy src
 
-          insert_after_line(
-              "README.md",
-              "- Digest-bound official ArcGIS rehearsal plans and an exact-response HTTP adapter",
-              "- Self-contained complete-rehearsal proof bundles with embedded exact response bytes, atomic exact-ID save/replay, and independent offline plan, manifest, receipt, and object-ID recomputation",
-              "Self-contained complete-rehearsal proof bundles",
-          )
+      - name: Compile source and tests
+        run: python -m compileall -q src tests
 
-          replace_line(
-              "docs/architecture/current_implementation_status.md",
-              "| Parcel ArcGIS acquisition gates |",
-              "| Parcel ArcGIS acquisition gates | Yes | Yes | Yes | Yes | Yes | Bounded on demand | Exact capability snapshots, retained bounded proofs, a complete-rehearsal executor, and a digest-bound official HTTP plan/adapter now exist. A self-contained portable rehearsal proof bundle embeds exact count/page bytes, receipt metadata, snapshot, plan, manifest, checkpoint/retry evidence, and limitations; independent offline verification rebuilds the plan and manifest and reparses every object-ID page. All rehearsal paths remain mocked/offline only; no live county rehearsal, profile promotion, import, recurring authority, or bulk authorization has occurred. |",
-          )
-          replace_line(
-              "docs/architecture/current_implementation_status.md",
-              "| CS-PLAN-008 | Countywide parcel evidence ingestion |",
-              "| CS-PLAN-008 | Countywide parcel evidence ingestion | Exact metadata, retained bounded proofs, exact-ID persistence receipts, a complete-rehearsal executor, an official HTTP plan/adapter, and a self-contained independently verifiable rehearsal proof bundle exist. Both sources remain `bounded_query_verified`; all complete-rehearsal verification remains deterministic and offline. | Separately authorize and execute one live complete rehearsal per county through the governed adapter; save and independently verify the resulting portable proof bundle; then review profile promotion and recurring observation orchestration as distinct later phases. |",
-          )
+      - name: Pytest
+        run: python -m pytest --strict-config --strict-markers -ra -W error
 
-          insert_before_heading(
-              "docs/architecture/parcel_arcgis_acquisition.md",
-              "## Portable verification and explicit persistence",
-              "## Portable complete-rehearsal proof bundle\n\nA successful complete-rehearsal execution can now be converted into a self-contained `ParcelArcGISBulkRehearsalProofBundle`. The artifact embeds the exact starting-count, page, and ending-count bytes in canonical base64 together with each receipt's kind, contiguous sequence, SHA-256 digest, byte size, and safe portable file name. It also binds the capability snapshot, digest-bound HTTP plan, complete manifest, checkpoint-reload proof, limitations, and `bulk_run_authorized=false` into one immutable identity.\n\nOffline verification rebuilds the HTTP plan and manifest, reconstructs the hardened execution receipt contract, reparses every count and page body, compares every object-ID sequence and response digest to the structured manifest evidence, and rebuilds the bundle identity. Atomic save requires the exact expected bundle ID and accepts an existing path only as an identical independently verified replay. See `parcel_arcgis_rehearsal_proof_bundle.md`.\n",
-              "## Portable complete-rehearsal proof bundle",
-          )
-          replace_line(
-              "docs/architecture/parcel_arcgis_acquisition.md",
-              "The read-only upstream operator exposes all six record kinds",
-              "The read-only upstream operator exposes all six record kinds with applicable source, county, and status filters. The parcel-source CLI exposes canonical metadata snapshots, bounded plans, current assessments, the explicit live bounded probe command, offline bounded-bundle verification, and explicitly authorized persistence. The complete-rehearsal executor, HTTP adapter, and portable rehearsal proof bundle remain service/test boundaries until a separately authorized live proof phase exists.",
-          )
-          replace_line(
-              "docs/architecture/parcel_arcgis_acquisition.md",
-              "Both portable bundles independently recompute their metadata",
-              "Both retained bounded-proof bundles independently recompute their metadata, plans, response digests, replay agreement, and assessments. Each exact bounded identity also passed transactional insert-or-exact-replay persistence against an ephemeral database. The complete-rehearsal executor, exact-byte artifact store, digest-bound HTTP plan/adapter, and portable independently verifiable rehearsal proof bundle now exist and pass deterministic offline tests, but neither official county source has undergone that live rehearsal. Neither source is bulk-rehearsal-verified, profile-promoted, bulk-authorized, or import-ready.",
-          )
+      - name: Adapter contract audit
+        run: constructionsight audit-adapters
 
-          replace_line(
-              "docs/audits/full_repo_audit_inventory.md",
-              "- digest-bound ArcGIS capability,",
-              "- digest-bound ArcGIS capability, retained county bounded proofs, exact-response rehearsal execution and HTTP planning, and self-contained complete-rehearsal proof bundles with independent offline plan, manifest, byte, receipt, and object-ID recomputation;",
-          )
-          replace_line(
-              "docs/audits/full_repo_audit_inventory.md",
-              "| Parcel ArcGIS acquisition gates | Yes | Yes |",
-              "| Parcel ArcGIS acquisition gates | Yes | Yes | Yes | Yes | Read-only plus explicit bounded probe and guarded proof persistence | Bounded on demand | Retained county bundles remain `bounded_query_verified`. The complete-rehearsal executor and official HTTP adapter now feed a self-contained portable proof bundle that embeds exact responses and independently rebuilds plan, manifest, receipt, and object-ID proof offline. No live county rehearsal, import, bulk run, or automatic profile promotion is authorized. |",
-          )
-          replace_line(
-              "docs/audits/full_repo_audit_inventory.md",
-              "| CS-PLAN-008 | Countywide parcel evidence ingestion |",
-              "| CS-PLAN-008 | Countywide parcel evidence ingestion | Exact metadata, retained bounded proofs, an exact-response executor, official HTTP plan/adapter, and a portable independently verifiable complete-rehearsal proof bundle exist. Both sources remain `bounded_query_verified`; no live complete rehearsal or county import has occurred. | Separately authorize and execute each county rehearsal, save and independently verify its portable bundle, then review profile promotion and recurring observation orchestration as later phases. |",
-          )
-          PY
+      - name: Source adapter coverage audit
+        run: constructionsight audit-source-coverage data/source_registry.seed.json
 
-      - name: Restore canonical CI and publish reconciliation
-        run: |
-          git checkout origin/main -- .github/workflows/ci.yml
-          rm -f docs/audits/pr115_docs_trigger.txt
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git diff --cached --check
-          git commit -m "Reconcile ArcGIS rehearsal proof bundle documentation"
-          git push origin HEAD:agent/add-arcgis-rehearsal-proof-bundle
+      - name: Repository certification audit
+        run: python -m constructionsight.repository_certification --root . --require-clean-worktree
+
+      - name: Diff hygiene
+        run: git diff --check
