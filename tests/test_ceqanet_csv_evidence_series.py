@@ -629,3 +629,99 @@ def test_verification_detects_forked_predecessor_digest() -> None:
     assert verification.passed is False
     assert verification.ready_for_maturity_review is False
     assert any("does not match" in item for item in verification.findings)
+
+
+def test_row_retention_preflight_does_not_call_http_client() -> None:
+    series = _build_series([])
+    request = build_ceqanet_csv_export_request(sch_number="2026030377")
+    client = _Client(
+        _Response(
+            status_code=200,
+            content=PROJECT_FIXTURE.read_bytes(),
+            url=request.source_url,
+            headers={"content-type": "text/csv"},
+        )
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="max_retained_rows must be between 0 and 1000",
+    ):
+        execute_ceqanet_csv_evidence_request(
+            _sources(),
+            _original_execution(),
+            _replay(),
+            _replay_verification(),
+            _maturity(),
+            _maturity_verification(),
+            _policy(),
+            _policy_verification(),
+            series,
+            [],
+            request,
+            execute_live=True,
+            client=client,
+            authorization_granted_at=datetime(
+                2026,
+                7,
+                14,
+                12,
+                tzinfo=UTC,
+            ),
+            max_retained_rows=1_001,
+        )
+
+    assert client.calls == []
+
+
+def test_ready_series_preflight_does_not_call_http_client() -> None:
+    executions: list[EvidenceExecutionInput] = []
+    series = _build_series(executions)
+    for day, document in [(14, False), (15, True), (16, False), (17, True)]:
+        artifact_ref, execution, _ = _execute(
+            series,
+            executions,
+            day=day,
+            document=document,
+        )
+        executions.append((artifact_ref, execution))
+        series = _build_series(executions)
+    assert (
+        series.status
+        is CeqanetCsvEvidenceSeriesStatus.READY_FOR_MATURITY_REVIEW
+    )
+
+    request = build_ceqanet_csv_export_request(sch_number="2026030377")
+    client = _Client(
+        _Response(
+            status_code=200,
+            content=PROJECT_FIXTURE.read_bytes(),
+            url=request.source_url,
+            headers={"content-type": "text/csv"},
+        )
+    )
+    with pytest.raises(ValueError, match="requires a collecting series"):
+        execute_ceqanet_csv_evidence_request(
+            _sources(),
+            _original_execution(),
+            _replay(),
+            _replay_verification(),
+            _maturity(),
+            _maturity_verification(),
+            _policy(),
+            _policy_verification(),
+            series,
+            executions,
+            request,
+            execute_live=True,
+            client=client,
+            authorization_granted_at=datetime(
+                2026,
+                7,
+                18,
+                12,
+                tzinfo=UTC,
+            ),
+        )
+
+    assert client.calls == []
