@@ -139,9 +139,8 @@ def _input_paths(
     )
 
 
-def _write_json(
+def _require_output_available(
     output: Path,
-    payload: object,
     *,
     inputs: tuple[Path, ...],
     overwrite: bool,
@@ -154,6 +153,20 @@ def _write_json(
             f"output already exists: {output}; pass --overwrite to replace it"
         )
     output.parent.mkdir(parents=True, exist_ok=True)
+
+
+def _write_json(
+    output: Path,
+    payload: object,
+    *,
+    inputs: tuple[Path, ...],
+    overwrite: bool,
+) -> None:
+    _require_output_available(
+        output,
+        inputs=inputs,
+        overwrite=overwrite,
+    )
     rendered = json.dumps(payload, indent=2, sort_keys=True, default=str)
     temporary = output.with_name(f".{output.name}.tmp")
     temporary.write_text(f"{rendered}\n", encoding="utf-8")
@@ -467,6 +480,23 @@ def execute_evidence(
             sch_number=sch_number,
             document_id=document_id,
         )
+        inputs = _input_paths(
+            registry_path,
+            original_execution_path,
+            replay_path,
+            replay_verification_path,
+            maturity_proposal_path,
+            maturity_verification_path,
+            policy_path,
+            policy_verification_path,
+            evidence_execution_paths,
+            series_path,
+        )
+        _require_output_available(
+            output,
+            inputs=inputs,
+            overwrite=overwrite,
+        )
         execution = execute_ceqanet_csv_evidence_request(
             *context,
             series,
@@ -478,18 +508,7 @@ def execute_evidence(
         _write_json(
             output,
             execution.model_dump(mode="json"),
-            inputs=_input_paths(
-                registry_path,
-                original_execution_path,
-                replay_path,
-                replay_verification_path,
-                maturity_proposal_path,
-                maturity_verification_path,
-                policy_path,
-                policy_verification_path,
-                evidence_execution_paths,
-                series_path,
-            ),
+            inputs=inputs,
             overwrite=overwrite,
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
