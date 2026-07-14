@@ -19,17 +19,15 @@ class ParcelArcGISBulkRehearsalAuthorization(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    schema_version: Literal[
-        "parcel-arcgis-bulk-rehearsal-authorization/v1"
-    ] = AUTHORIZATION_SCHEMA_VERSION
+    schema_version: Literal["parcel-arcgis-bulk-rehearsal-authorization/v1"] = (
+        AUTHORIZATION_SCHEMA_VERSION
+    )
     authorization_id: str = Field(
         pattern=r"^parcel-arcgis-bulk-rehearsal-authorization:[0-9a-f]{64}$"
     )
     snapshot_id: str = Field(pattern=r"^parcel-arcgis-capability:[0-9a-f]{64}$")
     profile_id: str = Field(pattern=r"^parcel-source-verification:[0-9a-f]{64}$")
-    plan_id: str = Field(
-        pattern=r"^parcel-arcgis-bulk-rehearsal-plan:[0-9a-f]{64}$"
-    )
+    plan_id: str = Field(pattern=r"^parcel-arcgis-bulk-rehearsal-plan:[0-9a-f]{64}$")
     source_key: str = Field(min_length=1)
     county: str = Field(min_length=1)
     query_url: str = Field(min_length=1)
@@ -41,9 +39,9 @@ class ParcelArcGISBulkRehearsalAuthorization(BaseModel):
     execution_nonce: str = Field(pattern=r"^[0-9a-f]{64}$")
     issued_by: str = Field(min_length=1)
     authorization_reason: str = Field(min_length=1)
-    authorization_statement: Literal[
-        "authorize one complete read-only ArcGIS rehearsal"
-    ] = _AUTHORIZATION_STATEMENT
+    authorization_statement: Literal["authorize one complete read-only ArcGIS rehearsal"] = (
+        _AUTHORIZATION_STATEMENT
+    )
     issued_at: datetime
     not_before: datetime
     expires_at: datetime
@@ -100,9 +98,7 @@ class ParcelArcGISBulkRehearsalAuthorization(BaseModel):
         if any(not value.strip() or value != value.strip() for value in values):
             raise ValueError("ArcGIS rehearsal authorization limitations must be trimmed")
         if values != tuple(sorted(set(values), key=str.casefold)):
-            raise ValueError(
-                "ArcGIS rehearsal authorization limitations must be unique and sorted"
-            )
+            raise ValueError("ArcGIS rehearsal authorization limitations must be unique and sorted")
         return values
 
     @model_validator(mode="after")
@@ -138,20 +134,14 @@ class ParcelArcGISBulkRehearsalPreflight(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    schema_version: Literal[
-        "parcel-arcgis-bulk-rehearsal-preflight/v1"
-    ] = PREFLIGHT_SCHEMA_VERSION
-    preflight_id: str = Field(
-        pattern=r"^parcel-arcgis-bulk-rehearsal-preflight:[0-9a-f]{64}$"
-    )
+    schema_version: Literal["parcel-arcgis-bulk-rehearsal-preflight/v1"] = PREFLIGHT_SCHEMA_VERSION
+    preflight_id: str = Field(pattern=r"^parcel-arcgis-bulk-rehearsal-preflight:[0-9a-f]{64}$")
     authorization_id: str = Field(
         pattern=r"^parcel-arcgis-bulk-rehearsal-authorization:[0-9a-f]{64}$"
     )
     snapshot_id: str = Field(pattern=r"^parcel-arcgis-capability:[0-9a-f]{64}$")
     profile_id: str = Field(pattern=r"^parcel-source-verification:[0-9a-f]{64}$")
-    plan_id: str = Field(
-        pattern=r"^parcel-arcgis-bulk-rehearsal-plan:[0-9a-f]{64}$"
-    )
+    plan_id: str = Field(pattern=r"^parcel-arcgis-bulk-rehearsal-plan:[0-9a-f]{64}$")
     source_key: str = Field(min_length=1)
     county: str = Field(min_length=1)
     checked_at: datetime

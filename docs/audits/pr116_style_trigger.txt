@@ -1,3 +1,0 @@
-Temporary branch-only trigger for the self-removing PR116 style workflow.
-Registered CI normalization trigger.
-Publish formatter output.

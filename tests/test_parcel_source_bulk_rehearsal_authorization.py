@@ -66,9 +66,7 @@ def test_authorization_is_deterministic_exact_plan_and_nonproduction() -> None:
     second = _authorization()
 
     assert first == second
-    assert first.authorization_id.startswith(
-        "parcel-arcgis-bulk-rehearsal-authorization:"
-    )
+    assert first.authorization_id.startswith("parcel-arcgis-bulk-rehearsal-authorization:")
     assert first.snapshot_id == _snapshot().snapshot_id
     assert first.plan_id == _plan().plan_id
     assert first.execution_limit == 1
@@ -101,9 +99,7 @@ def test_preflight_proves_current_unused_exact_authorization() -> None:
         checked_at=checked_at,
     )
 
-    assert preflight.preflight_id.startswith(
-        "parcel-arcgis-bulk-rehearsal-preflight:"
-    )
+    assert preflight.preflight_id.startswith("parcel-arcgis-bulk-rehearsal-preflight:")
     assert preflight.authorization_id == authorization.authorization_id
     assert preflight.checked_at == checked_at
     assert preflight.valid_until == authorization.expires_at
@@ -125,9 +121,7 @@ def test_preflight_rejects_wrong_identity_future_expired_and_consumed() -> None:
             _snapshot(),
             _plan(),
             authorization,
-            expected_authorization_id=(
-                "parcel-arcgis-bulk-rehearsal-authorization:" + ("0" * 64)
-            ),
+            expected_authorization_id=("parcel-arcgis-bulk-rehearsal-authorization:" + ("0" * 64)),
             checked_at=_NOT_BEFORE,
         )
     with pytest.raises(ValueError, match="not effective yet"):
