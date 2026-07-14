@@ -1,1 +1,2 @@
 Temporary branch-only trigger for the self-removing PR114 style repair workflow.
+Registered CI repair trigger.
