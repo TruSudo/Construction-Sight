@@ -24,6 +24,7 @@ class UpstreamOperatorRecordKind(StrEnum):
     PARCEL_ARCGIS_PROBE_OBSERVATION = "parcel_arcgis_probe_observation"
     PARCEL_ARCGIS_BULK_MANIFEST = "parcel_arcgis_bulk_manifest"
     PARCEL_ARCGIS_ACQUISITION = "parcel_arcgis_acquisition"
+    PARCEL_ARCGIS_PROOF_BUNDLE = "parcel_arcgis_proof_bundle"
     PARCEL_OBSERVATION = "parcel_observation"
     PARCEL_CURRENT_SELECTION = "parcel_current_selection"
     PARCEL_ASSURANCE = "parcel_assurance"

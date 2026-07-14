@@ -348,6 +348,42 @@ class ParcelArcGISAcquisitionAssessmentRow(Base):
     )
 
 
+class ParcelArcGISBoundedProofBundleRow(Base):
+    """Persisted self-contained bounded ArcGIS proof artifact."""
+
+    __tablename__ = "parcel_arcgis_bounded_proof_bundles"
+    __table_args__ = (
+        UniqueConstraint(
+            "bundle_id",
+            name="uq_parcel_arcgis_bounded_proof_bundles_id",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    bundle_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    profile_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    snapshot_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    plan_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    assessment_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    source_key: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    county: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    evidence_count: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    observation_count: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    observed_created_at: Mapped[str] = mapped_column(
+        String(64),
+        nullable=False,
+        index=True,
+    )
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+        server_default=func.now(),
+    )
+
+
 class ParcelRecordObservationRow(Base):
     """Persisted append-only observation of one canonical parcel record."""
 

@@ -24,6 +24,12 @@ from constructionsight.parcel_source_acquisition import (
     get_official_arcgis_capability_snapshots,
     get_official_arcgis_probe_plans,
 )
+from constructionsight.parcel_source_acquisition_bundle import (
+    build_arcgis_bounded_proof_bundle,
+    build_arcgis_proof_persistence_receipt,
+    load_arcgis_bounded_proof_bundle,
+    verify_arcgis_bounded_proof_bundle,
+)
 from constructionsight.parcel_source_acquisition_http import (
     ParcelArcGISHTTPPolicy,
     ParcelArcGISProbeExecutionError,
@@ -40,6 +46,15 @@ from constructionsight.parcel_source_verification import (
     build_parcel_county_coverage_report,
     get_parcel_source_evidence,
     get_verified_parcel_source_profiles,
+)
+from constructionsight.storage.database import (
+    create_database_engine,
+    initialize_database,
+    managed_session,
+    session_factory,
+)
+from constructionsight.storage.parcel_source_acquisition_bundle_store import (
+    store_arcgis_bounded_proof_bundle_chain,
 )
 
 app = typer.Typer(help="Inspect parcel source targets and readiness.")
@@ -302,6 +317,34 @@ def _render_arcgis_assessments(payload: list[dict[str, object]]) -> None:
     console.print(table)
 
 
+def _render_arcgis_proof_result(
+    payload: dict[str, object],
+    *,
+    title: str,
+) -> None:
+    """Render a compact offline verification or persistence result."""
+
+    table = Table(title=title)
+    table.add_column("Field")
+    table.add_column("Value")
+    for field_name in (
+        "bundle_id",
+        "source_key",
+        "county",
+        "status",
+        "assessment_id",
+        "evidence_count",
+        "observation_count",
+        "valid",
+        "mutation_authorized",
+        "bulk_run_authorized",
+        "next_action",
+    ):
+        if field_name in payload:
+            table.add_row(field_name, str(payload[field_name]))
+    console.print(table)
+
+
 @app.command("evidence")
 def source_evidence(
     json_output: Annotated[
@@ -475,15 +518,21 @@ def acquisition_probe(
             plan,
             observations,
         )
-    except (ValueError, ParcelArcGISProbeExecutionError) as exc:
+        evidence_by_id = {
+            item.evidence_id: item for item in get_parcel_source_evidence()
+        }
+        bundle = build_arcgis_bounded_proof_bundle(
+            profile,
+            (evidence_by_id[evidence_id] for evidence_id in profile.evidence_ids),
+            snapshot,
+            plan,
+            observations,
+            assessment,
+        )
+    except (KeyError, ValueError, ParcelArcGISProbeExecutionError) as exc:
         typer.echo(f"ArcGIS acquisition probe blocked: {exc}")
         raise typer.Exit(code=1) from exc
-    payload = {
-        "snapshot": snapshot.to_dict(),
-        "plan": plan.to_dict(),
-        "observations": [observation.to_dict() for observation in observations],
-        "assessment": assessment.to_dict(),
-    }
+    payload = bundle.to_dict()
     if output_path is not None:
         _write_json_file(output_path, payload)
         typer.echo(f"Wrote ArcGIS acquisition probe JSON to {output_path}.")
@@ -492,6 +541,94 @@ def acquisition_probe(
         typer.echo(json.dumps(payload, indent=2, sort_keys=True, default=str))
         return
     _render_arcgis_assessments([assessment.to_dict()])
+
+
+@app.command("acquisition-verify-bundle")
+def acquisition_verify_bundle(
+    input_path: Annotated[
+        Path,
+        typer.Option("--input", help="Portable bounded-proof bundle JSON."),
+    ],
+    json_output: Annotated[
+        bool,
+        typer.Option("--json-output", help="Emit machine-readable verification JSON."),
+    ] = False,
+) -> None:
+    """Independently verify a bounded proof bundle without network or database access."""
+
+    try:
+        bundle = load_arcgis_bounded_proof_bundle(input_path)
+        verification = verify_arcgis_bounded_proof_bundle(bundle)
+    except ValueError as exc:
+        typer.echo(f"ArcGIS bounded-proof verification failed: {exc}")
+        raise typer.Exit(code=1) from exc
+    payload = verification.to_dict()
+    if json_output:
+        typer.echo(json.dumps(payload, indent=2, sort_keys=True, default=str))
+        return
+    _render_arcgis_proof_result(payload, title="Parcel ArcGIS Proof Verification")
+
+
+@app.command("acquisition-persist-bundle")
+def acquisition_persist_bundle(
+    input_path: Annotated[
+        Path,
+        typer.Option("--input", help="Portable bounded-proof bundle JSON."),
+    ],
+    expected_bundle_id: Annotated[
+        str,
+        typer.Option(
+            "--expected-bundle-id",
+            help="Exact digest-bound bundle identity approved for persistence.",
+        ),
+    ],
+    database_url: Annotated[
+        str | None,
+        typer.Option("--database-url", help="Optional SQLAlchemy database URL."),
+    ] = None,
+    authorize_persistence: Annotated[
+        bool,
+        typer.Option(
+            "--authorize-persistence",
+            help="Explicitly authorize the local transactional write.",
+        ),
+    ] = False,
+    json_output: Annotated[
+        bool,
+        typer.Option("--json-output", help="Emit machine-readable receipt JSON."),
+    ] = False,
+) -> None:
+    """Persist one exact verified bundle; never authorize bulk acquisition."""
+
+    if not authorize_persistence:
+        typer.echo("ArcGIS bounded-proof persistence requires --authorize-persistence.")
+        raise typer.Exit(code=1)
+    try:
+        bundle = load_arcgis_bounded_proof_bundle(input_path)
+    except ValueError as exc:
+        typer.echo(f"ArcGIS bounded-proof persistence blocked: {exc}")
+        raise typer.Exit(code=1) from exc
+    if bundle.bundle_id != expected_bundle_id:
+        typer.echo(
+            "ArcGIS bounded-proof persistence blocked: expected bundle ID does not "
+            "match the verified artifact."
+        )
+        raise typer.Exit(code=1)
+    try:
+        engine = create_database_engine(database_url)
+        initialize_database(engine)
+        factory = session_factory(engine)
+        with managed_session(factory) as session:
+            store_arcgis_bounded_proof_bundle_chain(session, bundle)
+    except ValueError as exc:
+        typer.echo(f"ArcGIS bounded-proof persistence blocked: {exc}")
+        raise typer.Exit(code=1) from exc
+    receipt = build_arcgis_proof_persistence_receipt(bundle)
+    payload = receipt.to_dict()
+    if json_output:
+        typer.echo(json.dumps(payload, indent=2, sort_keys=True, default=str))
+        return
+    _render_arcgis_proof_result(payload, title="Parcel ArcGIS Proof Persistence")
 
 
 @app.command("matrix")

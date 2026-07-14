@@ -16,6 +16,7 @@ from constructionsight.storage.movement_identity_orm import (
 )
 from constructionsight.storage.parcel_site_orm import (
     ParcelArcGISAcquisitionAssessmentRow,
+    ParcelArcGISBoundedProofBundleRow,
     ParcelArcGISBulkManifestRow,
     ParcelArcGISCapabilitySnapshotRow,
     ParcelArcGISProbeObservationRow,
@@ -73,6 +74,9 @@ _FILTER_SUPPORT: dict[UpstreamOperatorRecordKind, frozenset[str]] = {
         {"source_key", "county"}
     ),
     UpstreamOperatorRecordKind.PARCEL_ARCGIS_ACQUISITION: frozenset(
+        {"status", "source_key", "county"}
+    ),
+    UpstreamOperatorRecordKind.PARCEL_ARCGIS_PROOF_BUNDLE: frozenset(
         {"status", "source_key", "county"}
     ),
     UpstreamOperatorRecordKind.PARCEL_OBSERVATION: frozenset(
@@ -394,6 +398,27 @@ def list_upstream_operator_records(
         ).scalars()
         return [_parcel_arcgis_acquisition_record(row) for row in assessment_rows]
 
+    if record_kind == UpstreamOperatorRecordKind.PARCEL_ARCGIS_PROOF_BUNDLE:
+        bundle_statement = select(ParcelArcGISBoundedProofBundleRow)
+        if status is not None:
+            bundle_statement = bundle_statement.where(
+                ParcelArcGISBoundedProofBundleRow.status == status
+            )
+        if source_key is not None:
+            bundle_statement = bundle_statement.where(
+                ParcelArcGISBoundedProofBundleRow.source_key == source_key
+            )
+        if county is not None:
+            bundle_statement = bundle_statement.where(
+                ParcelArcGISBoundedProofBundleRow.county == county
+            )
+        bundle_rows = session.execute(
+            bundle_statement.order_by(
+                ParcelArcGISBoundedProofBundleRow.id.desc()
+            ).limit(limit)
+        ).scalars()
+        return [_parcel_arcgis_proof_bundle_record(row) for row in bundle_rows]
+
     if record_kind == UpstreamOperatorRecordKind.PARCEL_CURRENT_SELECTION:
         selection_statement = select(ParcelCurrentSelectionReportRow)
         if status is not None:
@@ -610,6 +635,17 @@ def get_upstream_operator_record(
             None
             if arcgis_assessment_row is None
             else _parcel_arcgis_acquisition_record(arcgis_assessment_row)
+        )
+    if record_kind == UpstreamOperatorRecordKind.PARCEL_ARCGIS_PROOF_BUNDLE:
+        arcgis_bundle_row = session.execute(
+            select(ParcelArcGISBoundedProofBundleRow).where(
+                ParcelArcGISBoundedProofBundleRow.bundle_id == record_id
+            )
+        ).scalar_one_or_none()
+        return (
+            None
+            if arcgis_bundle_row is None
+            else _parcel_arcgis_proof_bundle_record(arcgis_bundle_row)
         )
     if record_kind == UpstreamOperatorRecordKind.PARCEL_CURRENT_SELECTION:
         selection_row = session.execute(
@@ -939,6 +975,24 @@ def _parcel_arcgis_acquisition_record(
             row.payload_json,
             UpstreamOperatorRecordKind.PARCEL_ARCGIS_ACQUISITION,
             row.assessment_id,
+        ),
+    )
+
+
+def _parcel_arcgis_proof_bundle_record(
+    row: ParcelArcGISBoundedProofBundleRow,
+) -> UpstreamOperatorRecord:
+    return UpstreamOperatorRecord(
+        record_kind=UpstreamOperatorRecordKind.PARCEL_ARCGIS_PROOF_BUNDLE,
+        record_id=row.bundle_id,
+        status=row.status,
+        source_key=row.source_key,
+        county=row.county,
+        observed_at=row.observed_created_at,
+        payload=_payload(
+            row.payload_json,
+            UpstreamOperatorRecordKind.PARCEL_ARCGIS_PROOF_BUNDLE,
+            row.bundle_id,
         ),
     )
 
