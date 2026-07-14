@@ -78,6 +78,10 @@ def build_ceqanet_csv_evidence_series(
         predecessor_series_digest=None,
     )
     for sequence in range(1, len(observations) + 1):
+        if series.status is not CeqanetCsvEvidenceSeriesStatus.COLLECTING:
+            raise ValueError(
+                "terminal evidence series cannot accept later observations"
+            )
         series = _build_series_snapshot(
             policy,
             observations=observations[:sequence],
@@ -202,6 +206,15 @@ def execute_ceqanet_csv_evidence_request(
         raise ValueError(
             "CEQAnet CSV policy permits at most one execution per UTC day"
         )
+    if (
+        series.observations
+        and authorized_at <= series.observations[-1].executed_at
+    ):
+        raise ValueError(
+            "execution authorization must follow the current series head"
+        )
+    if not 0 <= max_retained_rows <= 1_000:
+        raise ValueError("max_retained_rows must be between 0 and 1000")
     if request.export_kind not in policy.allowed_export_kinds:
         raise ValueError("CEQAnet CSV export kind is not allowed by policy")
 
@@ -233,7 +246,6 @@ def execute_ceqanet_csv_evidence_request(
     )
     evidence_execution.assert_integrity()
     return evidence_execution
-
 
 
 def _build_series_snapshot(
@@ -298,6 +310,7 @@ def _build_series_snapshot(
     series = draft.model_copy(update={"series_digest": draft.computed_digest()})
     series.assert_integrity()
     return series
+
 
 def _assert_policy_verified(
     sources: list[PublicSource],
