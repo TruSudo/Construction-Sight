@@ -31,8 +31,10 @@ response/body identity, inspection digest, verification findings, success
 classification, and access-control halt state.
 
 The `ceqanet_csv_evidence_series.v1` snapshot binds the ordered observations,
-counts, successful dates/scopes, policy criteria, current status, halt metadata,
-next gate, and non-authority assertions.
+append-only sequence and predecessor digest, counts, successful dates/scopes,
+policy criteria, current status, halt metadata, next gate, and non-authority
+assertions. Every nonempty snapshot's predecessor is deterministically
+recomputed from the prior observation prefix, making forks visible.
 
 ## Pre-request gate
 
@@ -96,7 +98,7 @@ The pre-execution baseline is:
 - `evidence/source_verification/ceqanet_csv_evidence_series_verification_2026-07-14.json`;
 - `docs/audits/ceqanet_csv_evidence_series_2026-07-14.md`; and
 - series digest
-  `d8b214a5c3b381174700efa96e31ba284ff3625dd319741e2d56e6acb2559515`.
+  `b2a18770ec5ca28dfb907ce74b0b5ba120e6bb028ee35e3acd5188d42c182634`.
 
 It contains zero observations, is independently verified, and has status
 `collecting`. Creating it made no network request.
