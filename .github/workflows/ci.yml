@@ -102,7 +102,8 @@ jobs:
             > /tmp/pr114-test-diagnostic.txt 2>&1
           status=$?
           set -e
-          cp /tmp/pr114-test-diagnostic.txt docs/audits/pr114_test_diagnostic.txt
+          sed 's/[[:space:]]*$//' /tmp/pr114-test-diagnostic.txt \
+            > docs/audits/pr114_test_diagnostic.txt
           echo "" >> docs/audits/pr114_test_diagnostic.txt
           echo "exit_status=$status" >> docs/audits/pr114_test_diagnostic.txt
 
@@ -113,6 +114,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git diff --cached --check
           git commit -m "Capture PR114 targeted test diagnostic"
           git push origin HEAD:agent/add-arcgis-rehearsal-http-adapter
