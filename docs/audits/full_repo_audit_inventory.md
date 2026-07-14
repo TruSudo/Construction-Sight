@@ -147,6 +147,7 @@ These are intentionally absent capabilities, not defects in the currently suppor
 | County parcel ArcGIS bounded proof | San Bernardino count 839,794 and Riverside count 846,251 are retained in independently verifiable four-observation bundles; both exact identities passed transactional persistence and remain non-bulk. |
 | County parcel ArcGIS rehearsal executor | Reusable executor and filesystem proof stores retain exact starting-count, page, and ending-count bodies, durable checkpoint reload, resumed-segment retry, and count/order reconciliation; neither county has a live rehearsal artifact yet. |
 | County parcel ArcGIS rehearsal HTTP adapter | A digest-bound plan and one-request-per-call HTTPS adapter preserve exact successful bytes, centralize retry evidence in the executor, and reject redirect, endpoint, status, media-type, size, JSON, service-error, page-size, offset, and attempt disagreement. Verification is mocked only; no live county request is claimed. |
+| County parcel ArcGIS rehearsal HTTP adapter | A digest-bound plan and one-request-per-call HTTPS adapter preserve exact successful bytes, centralize retry evidence in the executor, and reject redirect, endpoint, status, media-type, size, JSON, service-error, page-size, offset, and attempt disagreement. Verification is mocked only; no live county request is claimed. |
 | Promotion/update planning | Deterministic dry-run plans and approval digests exist. |
 | Controlled registry apply | Evidence-gated status-only apply exists. |
 | Verified usable source | Zero in the canonical registry. |
