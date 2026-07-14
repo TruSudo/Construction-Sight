@@ -63,4 +63,4 @@ Both commands are offline. Neither command mutates the source registry.
 
 ## Next gate
 
-Before any source promotion or recurring execution, a separate phase must define and approve a bounded official-CSV access policy and collect a governed multi-run evidence series. Promotion, scheduling, retries, persistence, and broader coverage remain unauthorized.
+A bounded official-CSV evidence policy is now committed and independently verified. The remaining gate is a governed multi-run series of at least four passing observations across three UTC dates and both project and document export scopes. Promotion, production scheduling, retries, persistence, and broader coverage remain unauthorized.
