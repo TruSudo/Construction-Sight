@@ -15,6 +15,8 @@ Each source context carries a dependency-lineage key, default evidence class, pr
 
 Existing parcel records, parcel storage, site resolution, geometry behavior, and operator payloads are unchanged. Assurance is a new derived layer above them.
 
+When multiple observations per source exist, [parcel longitudinal evidence and current selection](parcel_longitudinal_evidence.md) is the governed entry point. It withholds assurance until every source has one unambiguous current observation. The direct assurance builder remains compatible for callers that already possess a governed current set.
+
 ## Field-level claims
 
 For every populated requested field, the builder emits a deterministic `parcel-claim:` record that preserves:
@@ -60,14 +62,13 @@ This phase does not add required fields to `ParcelCoreRecord`, alter existing pa
 
 ## Current limits
 
-The assurance engine evaluates only the current records supplied to it. It does not yet:
+The assurance engine evaluates only the current records supplied directly or selected by the longitudinal layer. It does not yet:
 
 - collect countywide parcel, roll, tax, recorder, zoning, planning, permit, or CEQA data;
 - establish that a source is complete, current, legally dispositive, or countywide;
-- keep superseded longitudinal claims or perform bitemporal selection;
 - resolve a conflict automatically;
 - transfer authority from one field to another;
 - count repeated publication of one upstream dataset as independent evidence; or
 - treat tensor, similarity, or other inferred output as canonical truth.
 
-Countywide acquisition, field-authority registration, longitudinal supersession, and broader evidence-family integration remain separate governed phases. Their outputs can feed this layer once lawful access, source identity, evidence retention, and coverage are verified.
+Immutable parcel observations, conservative source-effective/observed-time selection, explicit supersession dispositions, and assurance blocking on timeline ambiguity are implemented. Countywide acquisition, raw source-artifact retention, county-specific field-authority registration, coverage accounting, recurring orchestration, and broader evidence-family integration remain separate governed phases.
