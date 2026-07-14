@@ -99,6 +99,12 @@ def execute_arcgis_probe_plan(
         or plan.county != snapshot.county
     ):
         raise ValueError("ArcGIS HTTP probe plan scope does not match snapshot")
+    if any(
+        request.object_id_field != snapshot.object_id_field
+        or request.schema_fingerprint != snapshot.schema_fingerprint
+        for request in plan.requests
+    ):
+        raise ValueError("ArcGIS HTTP probe requests do not match snapshot schema")
     if plan.bulk_run_authorized:
         raise ValueError("ArcGIS HTTP executor refuses bulk-authorized plans")
     query_url = snapshot.layer_url.rstrip("/") + "/query"

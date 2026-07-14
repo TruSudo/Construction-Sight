@@ -54,8 +54,20 @@ def test_capability_snapshot_rejects_digest_tampering() -> None:
     payload = snapshot.to_dict()
     payload["max_record_count"] += 1
 
-    with pytest.raises(ValidationError, match="ID does not match"):
+    with pytest.raises(ValidationError, match="projection digest|ID does not match"):
         ParcelArcGISCapabilitySnapshot.model_validate(payload)
+
+
+def test_probe_observation_retains_verifiable_canonical_response() -> None:
+    snapshot = get_official_arcgis_capability_snapshots()[0]
+    plan = build_arcgis_probe_plan(snapshot, generated_at=_OBSERVED_AT)
+    observation = _bounded_observations(plan)[0]
+
+    assert observation.response_payload_json == '{"count":6}'
+    payload = observation.to_dict()
+    payload["response_payload_json"] = '{"count":7}'
+    with pytest.raises(ValidationError, match="response digest"):
+        type(observation).model_validate(payload)
 
 
 def test_metadata_parser_rejects_profile_schema_drift() -> None:
@@ -101,6 +113,31 @@ def test_metadata_parser_rejects_profile_schema_drift() -> None:
         parse_arcgis_capability_snapshot(
             drifted_profile,
             metadata,
+            observed_at=_OBSERVED_AT,
+            limitations=("test limitation",),
+        )
+
+    parsed = parse_arcgis_capability_snapshot(
+        profile,
+        metadata,
+        observed_at=_OBSERVED_AT,
+        limitations=("test limitation",),
+    )
+    noisy = parse_arcgis_capability_snapshot(
+        profile,
+        {**metadata, "drawingInfo": {"renderer": "mutable presentation"}},
+        observed_at=_OBSERVED_AT,
+        limitations=("test limitation",),
+    )
+    assert noisy.metadata_projection_digest == parsed.metadata_projection_digest
+    assert noisy.snapshot_id == parsed.snapshot_id
+
+    missing_version = dict(metadata)
+    missing_version.pop("currentVersion")
+    with pytest.raises(ValueError, match="currentVersion"):
+        parse_arcgis_capability_snapshot(
+            profile,
+            missing_version,
             observed_at=_OBSERVED_AT,
             limitations=("test limitation",),
         )
@@ -190,6 +227,27 @@ def test_page_replay_mismatch_blocks_acquisition() -> None:
     }
 
 
+def test_page_replay_requires_exact_canonical_response_payload() -> None:
+    snapshot = get_official_arcgis_capability_snapshots()[0]
+    plan = build_arcgis_probe_plan(snapshot, generated_at=_OBSERVED_AT)
+    observations = _bounded_observations(
+        plan,
+        replay_extra={"sourceTimestamp": 123},
+    )
+
+    assessment = build_arcgis_acquisition_assessment(
+        snapshot,
+        plan,
+        observations,
+        generated_at=_OBSERVED_AT,
+    )
+
+    assert assessment.status == ParcelArcGISAcquisitionStatus.BLOCKED
+    assert ParcelArcGISAcquisitionGapCode.PAGE_SEQUENCE_INVALID in {
+        gap.code for gap in assessment.gaps
+    }
+
+
 def test_complete_manifest_requires_count_unique_ids_terminal_resume_and_retry() -> None:
     snapshot = get_official_arcgis_capability_snapshots()[0]
     plan = build_arcgis_probe_plan(snapshot, generated_at=_OBSERVED_AT)
@@ -251,6 +309,7 @@ def _bounded_observations(
     plan,
     *,
     replay_ids: tuple[int, ...] = (1, 3),
+    replay_extra: dict[str, object] | None = None,
 ):
     response_by_kind = {
         ParcelArcGISProbeKind.COUNT: {"count": 6},
@@ -274,6 +333,7 @@ def _bounded_observations(
                 for object_id in replay_ids
             ],
             "exceededTransferLimit": True,
+            **(replay_extra or {}),
         },
     }
     return [

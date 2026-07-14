@@ -18,7 +18,9 @@ from constructionsight.parcel_source_acquisition_models import (
     ParcelArcGISProbeObservation,
     ParcelArcGISProbePlan,
     ParcelArcGISProbeRequest,
+    arcgis_capability_projection_digest,
     arcgis_schema_fingerprint,
+    canonical_json_payload,
     digest_identity,
     digest_json_payload,
 )
@@ -164,6 +166,28 @@ def parse_arcgis_capability_snapshot(
         spatial_reference=spatial_reference,
     )
     canonical_limitations = tuple(sorted(set(limitations), key=str.casefold))
+    service_version = _service_version(metadata)
+    object_id_is_unique = _object_id_is_unique(metadata, object_id_field)
+    supports_query = "query" in capabilities
+    supports_count = bool(
+        metadata.get("supportsStatistics") or advanced.get("supportsStatistics")
+    )
+    supports_order_by = bool(advanced.get("supportsOrderBy"))
+    supports_pagination = bool(advanced.get("supportsPagination"))
+    metadata_projection_digest = arcgis_capability_projection_digest(
+        service_version=service_version,
+        geometry_type=geometry_type,
+        spatial_reference=spatial_reference,
+        fields=fields,
+        object_id_field=object_id_field,
+        object_id_is_unique=object_id_is_unique,
+        max_record_count=max_record_count,
+        supports_query=supports_query,
+        supports_count=supports_count,
+        supports_order_by=supports_order_by,
+        supports_pagination=supports_pagination,
+        supported_query_formats=supported_formats,
+    )
     candidate = ParcelArcGISCapabilitySnapshot.model_construct(
         snapshot_id="parcel-arcgis-capability:" + ("0" * 64),
         profile_id=profile.profile_id,
@@ -171,21 +195,19 @@ def parse_arcgis_capability_snapshot(
         county=profile.county,
         layer_url=layer_url,
         observed_at=observed_at,
-        service_version=str(metadata.get("currentVersion")),
+        service_version=service_version,
         geometry_type=geometry_type,
         spatial_reference=spatial_reference,
         fields=fields,
         schema_fingerprint=schema_fingerprint,
-        metadata_projection_digest=digest_json_payload(metadata),
+        metadata_projection_digest=metadata_projection_digest,
         object_id_field=object_id_field,
-        object_id_is_unique=_object_id_is_unique(metadata, object_id_field),
+        object_id_is_unique=object_id_is_unique,
         max_record_count=max_record_count,
-        supports_query="query" in capabilities,
-        supports_count=bool(
-            metadata.get("supportsStatistics") or advanced.get("supportsStatistics")
-        ),
-        supports_order_by=bool(advanced.get("supportsOrderBy")),
-        supports_pagination=bool(advanced.get("supportsPagination")),
+        supports_query=supports_query,
+        supports_count=supports_count,
+        supports_order_by=supports_order_by,
+        supports_pagination=supports_pagination,
         supported_query_formats=supported_formats,
         limitations=canonical_limitations,
     )
@@ -274,6 +296,7 @@ def parse_arcgis_probe_observation(
         if transfer_value is not None and not isinstance(transfer_value, bool):
             raise ValueError("ArcGIS exceededTransferLimit must be boolean when present")
         exceeded_transfer_limit = transfer_value
+    response_payload_json = canonical_json_payload(response_payload)
     candidate = ParcelArcGISProbeObservation.model_construct(
         observation_id="parcel-arcgis-probe-observation:" + ("0" * 64),
         request_id=request.request_id,
@@ -284,6 +307,7 @@ def parse_arcgis_probe_observation(
         kind=request.kind,
         observed_at=observed_at,
         response_digest=digest_json_payload(response_payload),
+        response_payload_json=response_payload_json,
         schema_fingerprint=request.schema_fingerprint,
         total_count=total_count,
         object_ids=object_ids,
@@ -597,7 +621,7 @@ def _page_sequence_is_valid(
     replay: ParcelArcGISProbeObservation,
     expected_count: int | None,
 ) -> bool:
-    if initial.object_ids != replay.object_ids:
+    if initial.response_digest != replay.response_digest:
         return False
     if set(initial.object_ids) & set(next_page.object_ids):
         return False
@@ -608,6 +632,16 @@ def _page_sequence_is_valid(
         return False
     expected_initial = min(plan.sample_size, expected_count)
     expected_next = min(plan.sample_size, max(expected_count - plan.sample_size, 0))
+    if (
+        expected_count > plan.sample_size
+        and initial.exceeded_transfer_limit is not True
+    ):
+        return False
+    if (
+        expected_count > plan.sample_size * 2
+        and next_page.exceeded_transfer_limit is not True
+    ):
+        return False
     return (
         len(initial.object_ids) == expected_initial
         and len(next_page.object_ids) == expected_next
@@ -625,6 +659,12 @@ def _require_plan_scope(
         or plan.county != snapshot.county
     ):
         raise ValueError("ArcGIS probe plan scope does not match capability snapshot")
+    if any(
+        request.object_id_field != snapshot.object_id_field
+        or request.schema_fingerprint != snapshot.schema_fingerprint
+        for request in plan.requests
+    ):
+        raise ValueError("ArcGIS probe requests do not match capability schema")
 
 
 def _require_manifest_scope(
@@ -756,6 +796,16 @@ def _required_string(payload: dict[str, Any], key: str) -> str:
     if not isinstance(value, str) or not value:
         raise ValueError(f"ArcGIS metadata requires {key}")
     return value
+
+
+def _service_version(payload: dict[str, Any]) -> str:
+    value = payload.get("currentVersion")
+    if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+        raise ValueError("ArcGIS metadata requires currentVersion")
+    text = str(value).strip()
+    if not text:
+        raise ValueError("ArcGIS metadata requires currentVersion")
+    return text
 
 
 def _required_int(payload: dict[str, Any], key: str, *, minimum: int) -> int:

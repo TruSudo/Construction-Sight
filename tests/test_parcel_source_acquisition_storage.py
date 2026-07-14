@@ -11,7 +11,9 @@ from constructionsight.parcel_source_acquisition import (
     parse_arcgis_probe_observation,
 )
 from constructionsight.parcel_source_acquisition_models import (
+    ParcelArcGISAcquisitionAssessment,
     ParcelArcGISProbeKind,
+    digest_identity,
     digest_json_payload,
 )
 from constructionsight.parcel_source_verification import (
@@ -157,6 +159,37 @@ def test_observation_storage_requires_persisted_plan_and_unique_request() -> Non
     assert loaded[0].kind == ParcelArcGISProbeKind.COUNT
 
 
+def test_shared_count_request_can_be_observed_across_multiple_bounded_plans() -> None:
+    _, factory = _factory()
+    snapshot = get_official_arcgis_capability_snapshots()[0]
+    short_plan = build_arcgis_probe_plan(
+        snapshot,
+        sample_size=2,
+        generated_at=_OBSERVED_AT,
+    )
+    wider_plan = build_arcgis_probe_plan(
+        snapshot,
+        sample_size=3,
+        generated_at=_OBSERVED_AT,
+    )
+    assert short_plan.requests[0] == wider_plan.requests[0]
+    observation = parse_arcgis_probe_observation(
+        short_plan.requests[0],
+        {"count": 6},
+        observed_at=_OBSERVED_AT,
+    )
+
+    with managed_session(factory) as session:
+        _persist_profiles(session)
+        store_arcgis_capability_snapshot(session, snapshot)
+        store_arcgis_probe_plan(session, short_plan)
+        store_arcgis_probe_plan(session, wider_plan)
+        store_arcgis_probe_observation(session, observation)
+
+    with managed_session(factory) as session:
+        assert load_arcgis_probe_observations(session) == [observation]
+
+
 def test_capability_loader_rejects_indexed_payload_drift() -> None:
     _, factory = _factory()
     snapshot = get_official_arcgis_capability_snapshots()[0]
@@ -289,6 +322,36 @@ def test_complete_chain_persists_manifest_and_verified_assessment() -> None:
     assert assessment.bulk_acquisition_verified is True
     assert manifest_record is not None
     assert manifest_record.status == "reconciled"
+
+
+def test_assessment_storage_recomputes_the_persisted_proof_chain() -> None:
+    _, factory = _factory()
+    snapshot = get_official_arcgis_capability_snapshots()[0]
+    plan = build_arcgis_probe_plan(snapshot, generated_at=_OBSERVED_AT)
+    assessment = build_arcgis_acquisition_assessment(
+        snapshot,
+        plan,
+        generated_at=_OBSERVED_AT,
+    )
+    payload = assessment.to_dict()
+    payload["expected_record_count"] = 999
+    identity_payload = {
+        key: value
+        for key, value in payload.items()
+        if key not in {"assessment_id", "generated_at"}
+    }
+    payload["assessment_id"] = digest_identity(
+        "parcel-arcgis-acquisition",
+        identity_payload,
+    )
+    forged = ParcelArcGISAcquisitionAssessment.model_validate(payload)
+
+    with managed_session(factory) as session:
+        _persist_profiles(session)
+        store_arcgis_capability_snapshot(session, snapshot)
+        store_arcgis_probe_plan(session, plan)
+        with pytest.raises(ValueError, match="persisted proof chain"):
+            store_arcgis_acquisition_assessment(session, forged)
 
 
 def test_operator_exposes_capability_plan_and_assessment_read_only() -> None:

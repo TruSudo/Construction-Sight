@@ -58,12 +58,12 @@ The bounded command does not write a county parcel dataset and cannot run a full
 
 ## Executed proof
 
-Each `ParcelArcGISProbeObservation` binds the exact planned request, observation time, response digest, schema fingerprint, and either:
+Each `ParcelArcGISProbeObservation` binds the exact planned request, observation time, retained canonical response JSON, independently recomputable response digest, schema fingerprint, and either:
 
 - the reported total count; or
 - the ordered object identifiers and transfer-limit flag returned by a page.
 
-`bounded_query_verified` requires one observation for every planned request, exact first-page replay, non-overlapping adjacent pages, an increasing combined identifier sequence, and a schema fingerprint matching the metadata snapshot.
+`bounded_query_verified` requires one observation for every planned request, byte-equivalent canonical first-page response replay, non-overlapping adjacent pages, an increasing combined identifier sequence, transfer-limit behavior consistent with the count, and a schema fingerprint matching the metadata snapshot.
 
 Partial observations remain `metadata_only`. Contradictory observations become `blocked`; they are never averaged or silently discarded.
 
@@ -93,7 +93,7 @@ Five additive tables preserve the chain:
 - `parcel_arcgis_bulk_manifests`; and
 - `parcel_arcgis_acquisition_assessments`.
 
-Writes are dependency-ordered and immutable. Exact replays are idempotent; conflicting indexed fields, payload changes, missing parents, or a second observation for one request are rejected. Typed loads revalidate every digest and model invariant.
+Writes are dependency-ordered and immutable. Exact replays are idempotent; conflicting indexed fields, payload changes, missing parents, or a second observation for one request are rejected. One identical request may be shared by multiple bounded plans. Typed loads revalidate every digest and model invariant, and stored assessments are recomputed from their persisted snapshots, plans, observations, and optional manifests.
 
 The read-only upstream operator exposes all five record kinds with source, county, and status filters. The parcel-source CLI exposes canonical metadata snapshots, bounded plans, current assessments, and the explicit live bounded probe command. The storage-summary CLI reports each new table independently.
 

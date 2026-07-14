@@ -10,6 +10,10 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from constructionsight.parcel_source_acquisition import (
+    build_arcgis_acquisition_assessment,
+    build_arcgis_probe_plan,
+)
 from constructionsight.parcel_source_acquisition_models import (
     ParcelArcGISAcquisitionAssessment,
     ParcelArcGISBulkManifest,
@@ -56,7 +60,8 @@ def store_arcgis_capability_snapshot(
     """Append a capability snapshot after validating its verification profile."""
 
     session.flush()
-    _require_profile(session, snapshot)
+    profile = _require_profile(session, snapshot)
+    _require_capability_matches_profile(snapshot, profile)
     payload_json = _payload_json(snapshot.to_dict())
     existing = session.execute(
         select(ParcelArcGISCapabilitySnapshotRow).where(
@@ -95,6 +100,13 @@ def store_arcgis_probe_plan(
     session.flush()
     snapshot = _require_snapshot(session, plan.snapshot_id)
     _require_scope(snapshot, plan, "ArcGIS probe plan")
+    canonical_plan = build_arcgis_probe_plan(
+        snapshot,
+        sample_size=plan.sample_size,
+        generated_at=plan.generated_at,
+    )
+    if canonical_plan != plan:
+        raise ValueError("ArcGIS probe plan does not match its capability snapshot")
     payload_json = _payload_json(plan.to_dict())
     existing = session.execute(
         select(ParcelArcGISProbePlanRow).where(ParcelArcGISProbePlanRow.plan_id == plan.plan_id)
@@ -250,18 +262,21 @@ def store_arcgis_acquisition_assessment(
     plan = _require_plan(session, assessment.plan_id)
     if plan.snapshot_id != assessment.snapshot_id:
         raise ValueError("ArcGIS assessment plan does not match capability snapshot")
-    persisted_observation_ids = {
-        row.observation_id
-        for row in session.execute(
+    observation_rows = list(
+        session.execute(
             select(ParcelArcGISProbeObservationRow).where(
                 ParcelArcGISProbeObservationRow.observation_id.in_(
                     assessment.probe_observation_ids
                 )
             )
         ).scalars()
-    }
-    if persisted_observation_ids != set(assessment.probe_observation_ids):
+    )
+    observations = [_observation_from_row(row) for row in observation_rows]
+    if {item.observation_id for item in observations} != set(
+        assessment.probe_observation_ids
+    ):
         raise ValueError("ArcGIS assessment requires every persisted probe observation")
+    manifest: ParcelArcGISBulkManifest | None = None
     if assessment.bulk_manifest_id is not None:
         manifest_row = session.execute(
             select(ParcelArcGISBulkManifestRow).where(
@@ -273,6 +288,15 @@ def store_arcgis_acquisition_assessment(
         manifest = _manifest_from_row(manifest_row)
         if manifest.snapshot_id != assessment.snapshot_id:
             raise ValueError("ArcGIS assessment manifest scope mismatch")
+    rebuilt = build_arcgis_acquisition_assessment(
+        snapshot,
+        plan,
+        observations,
+        bulk_manifest=manifest,
+        generated_at=assessment.generated_at,
+    )
+    if rebuilt != assessment:
+        raise ValueError("ArcGIS assessment does not match its persisted proof chain")
     payload_json = _payload_json(assessment.to_dict())
     existing = session.execute(
         select(ParcelArcGISAcquisitionAssessmentRow).where(
@@ -400,7 +424,7 @@ def load_arcgis_acquisition_assessments(
 def _require_profile(
     session: Session,
     snapshot: ParcelArcGISCapabilitySnapshot,
-) -> None:
+) -> ParcelSourceVerificationProfile:
     row = session.execute(
         select(ParcelSourceVerificationProfileRow).where(
             ParcelSourceVerificationProfileRow.profile_id == snapshot.profile_id
@@ -416,6 +440,23 @@ def _require_profile(
     )
     if profile.source_key != snapshot.source_key or profile.county != snapshot.county:
         raise ValueError("ArcGIS capability verification profile scope mismatch")
+    return profile
+
+
+def _require_capability_matches_profile(
+    snapshot: ParcelArcGISCapabilitySnapshot,
+    profile: ParcelSourceVerificationProfile,
+) -> None:
+    if snapshot.layer_url != profile.source_url:
+        raise ValueError("ArcGIS capability URL does not match verification profile")
+    if {field.name for field in snapshot.fields} | {"geometry"} != set(
+        profile.schema_fields
+    ):
+        raise ValueError("ArcGIS capability schema does not match verification profile")
+    if snapshot.max_record_count != profile.max_record_count:
+        raise ValueError("ArcGIS capability record limit does not match verification profile")
+    if snapshot.spatial_reference != profile.spatial_reference:
+        raise ValueError("ArcGIS capability spatial reference does not match profile")
 
 
 def _require_snapshot(
@@ -449,8 +490,14 @@ def _require_plan_for_request(session: Session, request_id: str) -> ParcelArcGIS
         for plan in plans
         if request_id in {request.request_id for request in plan.requests}
     ]
-    if len(matches) != 1:
-        raise ValueError("ArcGIS probe observation requires exactly one persisted request")
+    if not matches:
+        raise ValueError("ArcGIS probe observation requires a persisted request")
+    matching_requests = [
+        next(request for request in plan.requests if request.request_id == request_id)
+        for plan in matches
+    ]
+    if any(request != matching_requests[0] for request in matching_requests[1:]):
+        raise ValueError("ArcGIS persisted request identity collision")
     return matches[0]
 
 

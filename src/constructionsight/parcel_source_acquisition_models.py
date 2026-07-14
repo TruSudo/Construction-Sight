@@ -123,6 +123,22 @@ class ParcelArcGISCapabilitySnapshot(BaseModel):
         )
         if self.schema_fingerprint != expected_fingerprint:
             raise ValueError("ArcGIS schema fingerprint does not match field definitions")
+        expected_projection_digest = arcgis_capability_projection_digest(
+            service_version=self.service_version,
+            geometry_type=self.geometry_type,
+            spatial_reference=self.spatial_reference,
+            fields=self.fields,
+            object_id_field=self.object_id_field,
+            object_id_is_unique=self.object_id_is_unique,
+            max_record_count=self.max_record_count,
+            supports_query=self.supports_query,
+            supports_count=self.supports_count,
+            supports_order_by=self.supports_order_by,
+            supports_pagination=self.supports_pagination,
+            supported_query_formats=self.supported_query_formats,
+        )
+        if self.metadata_projection_digest != expected_projection_digest:
+            raise ValueError("ArcGIS metadata projection digest does not match capabilities")
         payload = self.model_dump(mode="json", exclude={"snapshot_id"})
         if self.snapshot_id != _digest_id("parcel-arcgis-capability", payload):
             raise ValueError("ArcGIS capability ID does not match snapshot content")
@@ -289,6 +305,7 @@ class ParcelArcGISProbeObservation(BaseModel):
     kind: ParcelArcGISProbeKind
     observed_at: datetime
     response_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    response_payload_json: str = Field(min_length=2)
     schema_fingerprint: str = Field(pattern=r"^[0-9a-f]{64}$")
     total_count: int | None = Field(default=None, ge=0)
     object_ids: tuple[int, ...] = ()
@@ -303,6 +320,19 @@ class ParcelArcGISProbeObservation(BaseModel):
 
     @model_validator(mode="after")
     def require_observation_consistency(self) -> ParcelArcGISProbeObservation:
+        try:
+            response_payload: Any = json.loads(self.response_payload_json)
+        except json.JSONDecodeError as exc:
+            raise ValueError("ArcGIS probe response payload must be valid JSON") from exc
+        if not isinstance(response_payload, dict):
+            raise ValueError("ArcGIS probe response payload must be a JSON object")
+        canonical_response = canonical_json_payload(response_payload)
+        if self.response_payload_json != canonical_response:
+            raise ValueError("ArcGIS probe response payload must be canonical JSON")
+        if self.response_digest != hashlib.sha256(
+            canonical_response.encode("utf-8")
+        ).hexdigest():
+            raise ValueError("ArcGIS probe response digest does not match its payload")
         if self.kind == ParcelArcGISProbeKind.COUNT:
             if self.total_count is None or self.object_ids:
                 raise ValueError("ArcGIS count observations require only a total count")
@@ -505,6 +535,47 @@ def arcgis_schema_fingerprint(
     return _sha256(payload)
 
 
+def arcgis_capability_projection_digest(
+    *,
+    service_version: str,
+    geometry_type: str,
+    spatial_reference: str,
+    fields: tuple[ParcelArcGISFieldDefinition, ...],
+    object_id_field: str,
+    object_id_is_unique: bool,
+    max_record_count: int,
+    supports_query: bool,
+    supports_count: bool,
+    supports_order_by: bool,
+    supports_pagination: bool,
+    supported_query_formats: tuple[str, ...],
+) -> str:
+    """Return a digest over the normalized capability metadata projection."""
+
+    return _sha256(
+        {
+            "service_version": service_version,
+            "geometry_type": geometry_type,
+            "spatial_reference": spatial_reference,
+            "fields": [field.model_dump(mode="json") for field in fields],
+            "object_id_field": object_id_field,
+            "object_id_is_unique": object_id_is_unique,
+            "max_record_count": max_record_count,
+            "supports_query": supports_query,
+            "supports_count": supports_count,
+            "supports_order_by": supports_order_by,
+            "supports_pagination": supports_pagination,
+            "supported_query_formats": supported_query_formats,
+        }
+    )
+
+
+def canonical_json_payload(payload: Any) -> str:
+    """Return deterministic compact JSON for retained response evidence."""
+
+    return json.dumps(payload, sort_keys=True, separators=(",", ":"))
+
+
 def digest_json_payload(payload: Any) -> str:
     """Return a deterministic SHA-256 for an arbitrary JSON-safe payload."""
 
@@ -522,5 +593,5 @@ def _digest_id(namespace: str, payload: dict[str, Any]) -> str:
 
 
 def _sha256(payload: Any) -> str:
-    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    encoded = canonical_json_payload(payload)
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
