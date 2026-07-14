@@ -78,6 +78,15 @@ def verify_arcgis_bulk_rehearsal_proof_bundle(
 ) -> ParcelArcGISBulkRehearsalProofVerification:
     """Reparse every exact body and rebuild all derived proof without network access."""
 
+    effective_verified_at = verified_at or datetime.now(UTC)
+    if bundle.created_at < bundle.manifest.completed_at:
+        raise ValueError(
+            "ArcGIS rehearsal proof bundle creation cannot precede manifest completion"
+        )
+    if effective_verified_at < bundle.created_at:
+        raise ValueError(
+            "ArcGIS rehearsal proof verification time cannot precede bundle creation"
+        )
     rebuilt_plan = build_arcgis_bulk_rehearsal_plan(
         bundle.snapshot,
         generated_at=bundle.plan.generated_at,
@@ -140,7 +149,7 @@ def verify_arcgis_bulk_rehearsal_proof_bundle(
             "retain the verified rehearsal proof and conduct a separate source-profile "
             "promotion review before any import or recurring collection"
         ),
-        verified_at=verified_at or datetime.now(UTC),
+        verified_at=effective_verified_at,
     )
     payload = candidate.model_dump(
         mode="json",
