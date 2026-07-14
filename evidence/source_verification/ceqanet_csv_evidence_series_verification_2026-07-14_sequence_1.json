@@ -1,0 +1,11 @@
+{
+  "finding_count": 0,
+  "findings": [],
+  "observation_count": 1,
+  "passed": true,
+  "policy_digest": "d84e6b80234a96799593db0601cc92e6480bad15bfd016001b35568c481c1674",
+  "ready_for_maturity_review": false,
+  "schema_version": "ceqanet_csv_evidence_series_verification.v1",
+  "series_digest": "a6f6e548d675ee9716822fef87cc02d8a4d169f16ab151bae0f297321b8c07df",
+  "successful_observation_count": 1
+}
