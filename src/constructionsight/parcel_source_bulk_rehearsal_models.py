@@ -275,42 +275,42 @@ class ParcelArcGISBulkRehearsalEvidence(BaseModel):
         ):
             raise ValueError("ArcGIS resume evidence must bind the first resumed page")
         if self.resume.resumed_at < checkpoint.created_at:
-  raise ValueError("ArcGIS resume cannot precede checkpoint creation")
+            raise ValueError("ArcGIS resume cannot precede checkpoint creation")
         if first_resumed_page.observed_at < self.resume.resumed_at:
-  raise ValueError("ArcGIS resumed page cannot precede the resume event")
+            raise ValueError("ArcGIS resumed page cannot precede the resume event")
 
         retry_page_ids = tuple(event.page_evidence_id for event in self.retry_events)
         expected_retry_page_ids = tuple(
-  sorted(
-      page.page_evidence_id
-      for page in pages
-      if page.attempt_count > 1
-  )
+            sorted(
+                page.page_evidence_id
+                for page in pages
+                if page.attempt_count > 1
+            )
         )
         if retry_page_ids != expected_retry_page_ids:
-  raise ValueError(
-      "ArcGIS retry evidence must cover every and only retried page"
-  )
+            raise ValueError(
+                "ArcGIS retry evidence must cover every and only retried page"
+            )
         pages_by_id = {page.page_evidence_id: page for page in pages}
         for event in self.retry_events:
-  page = pages_by_id.get(event.page_evidence_id)
-  if page is None:
-      raise ValueError("ArcGIS retry evidence references an unknown page")
-  if page.attempt_count != event.recovered_attempt_number:
-      raise ValueError("ArcGIS retry attempts do not match page evidence")
-  if page.response_digest != event.recovered_response_digest:
-      raise ValueError("ArcGIS retry response digest does not match recovered page")
-  if event.recorded_at > page.observed_at:
-      raise ValueError("ArcGIS retry record cannot follow its recovered page")
+            page = pages_by_id.get(event.page_evidence_id)
+            if page is None:
+                raise ValueError("ArcGIS retry evidence references an unknown page")
+            if page.attempt_count != event.recovered_attempt_number:
+                raise ValueError("ArcGIS retry attempts do not match page evidence")
+            if page.response_digest != event.recovered_response_digest:
+                raise ValueError("ArcGIS retry response digest does not match recovered page")
+            if event.recorded_at > page.observed_at:
+                raise ValueError("ArcGIS retry record cannot follow its recovered page")
 
         latest_evidence_time = max(
-  self.resume.resumed_at,
-  checkpoint.created_at,
-  *(page.observed_at for page in pages),
-  *(event.recorded_at for event in self.retry_events),
+            self.resume.resumed_at,
+            checkpoint.created_at,
+            *(page.observed_at for page in pages),
+            *(event.recorded_at for event in self.retry_events),
         )
         if self.created_at < latest_evidence_time:
-  raise ValueError("ArcGIS rehearsal evidence cannot predate its proof records")
+            raise ValueError("ArcGIS rehearsal evidence cannot predate its proof records")
 
         payload = self.model_dump(mode="json", exclude={"evidence_id"})
         if self.evidence_id != digest_identity(
