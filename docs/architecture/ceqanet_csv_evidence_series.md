@@ -47,9 +47,11 @@ The governed executor makes no request until it has:
 3. confirmed that the policy is effective for the current UTC date;
 4. confirmed that the series status is `collecting`;
 5. confirmed that no execution already exists for the current UTC date;
-6. confirmed that the requested export scope is allowed;
-7. received explicit `--execute-live` authorization; and
-8. confirmed that the output path is distinct, available, and writable enough
+6. confirmed that authorization follows the current append-only series head;
+7. confirmed that normalized row retention is between 0 and 1,000;
+8. confirmed that the requested export scope is allowed;
+9. received explicit `--execute-live` authorization; and
+10. confirmed that the output path is distinct, available, and writable enough
    to create its parent directory.
 
 The request then uses the policy's 20-second timeout and 10,000,000-byte maximum
@@ -68,7 +70,9 @@ The ledger rejects:
 - disallowed export scopes;
 - duplicate artifact, policy-execution, live-execution, or observation identity;
 - more than one execution on any UTC date; and
-- any observation recorded after an access-control halt.
+- any observation recorded after an access-control halt or maturity readiness;
+- a nonempty snapshot without its deterministically recomputed predecessor; and
+- a request authorization that does not follow the current series head.
 
 HTTP 401, 403, 407, 429, or 451 produces a terminal `halted` series. Other
 independently verified failures remain in the ledger but do not count as
