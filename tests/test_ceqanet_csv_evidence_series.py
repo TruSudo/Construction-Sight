@@ -234,6 +234,8 @@ def test_empty_series_is_verified_collecting_and_nonproduction() -> None:
 
     assert series.status is CeqanetCsvEvidenceSeriesStatus.COLLECTING
     assert series.observation_count == 0
+    assert series.series_sequence == 0
+    assert series.predecessor_series_digest is None
     assert series.successful_observation_count == 0
     assert series.source_promotion_authorized is False
     assert series.production_recurring_execution_authorized is False
@@ -267,6 +269,7 @@ def test_series_becomes_ready_only_after_all_policy_criteria() -> None:
     executions: list[EvidenceExecutionInput] = []
     series = _build_series(executions)
     for day, document in [(14, False), (15, True), (16, False), (17, True)]:
+        predecessor_digest = series.series_digest
         artifact_ref, execution, _ = _execute(
             series,
             executions,
@@ -275,6 +278,8 @@ def test_series_becomes_ready_only_after_all_policy_criteria() -> None:
         )
         executions.append((artifact_ref, execution))
         series = _build_series(executions)
+        assert series.series_sequence == len(executions)
+        assert series.predecessor_series_digest == predecessor_digest
 
     assert series.observation_count == 4
     assert series.successful_observation_count == 4
@@ -355,6 +360,7 @@ def test_verification_detects_tampered_series() -> None:
     )
 
     assert verification.passed is False
+    assert verification.ready_for_maturity_review is False
     assert "CEQAnet CSV evidence series digest mismatch" in verification.findings
     assert any("does not match" in item for item in verification.findings)
 
@@ -597,3 +603,29 @@ def test_committed_empty_series_recomputes_exactly() -> None:
     assert series.observation_count == 0
     assert recomputed == stored
     series.assert_integrity()
+
+
+def test_verification_detects_forked_predecessor_digest() -> None:
+    empty = _build_series([])
+    artifact_ref, execution, _ = _execute(empty, [], day=14)
+    series = _build_series([(artifact_ref, execution)])
+    forked = series.model_copy(
+        update={"predecessor_series_digest": "0" * 64}
+    )
+
+    verification = verify_ceqanet_csv_evidence_series(
+        _sources(),
+        _original_execution(),
+        _replay(),
+        _replay_verification(),
+        _maturity(),
+        _maturity_verification(),
+        _policy(),
+        _policy_verification(),
+        [(artifact_ref, execution)],
+        forked,
+    )
+
+    assert verification.passed is False
+    assert verification.ready_for_maturity_review is False
+    assert any("does not match" in item for item in verification.findings)
