@@ -21,6 +21,7 @@ from constructionsight.ceqanet_csv_evidence_series_models import (
     CeqanetCsvEvidenceExecution,
     CeqanetCsvEvidenceSeries,
     CeqanetCsvEvidenceSeriesStatus,
+    CeqanetCsvEvidenceSeriesVerification,
 )
 from constructionsight.ceqanet_csv_evidence_series_service import (
     EvidenceExecutionInput,
@@ -46,6 +47,14 @@ ROOT = Path(__file__).resolve().parents[1]
 EVIDENCE_DIR = ROOT / "evidence/source_verification"
 PROJECT_FIXTURE = ROOT / "tests/fixtures/ceqanet/project_export.csv"
 DOCUMENT_FIXTURE = ROOT / "tests/fixtures/ceqanet/document_export.csv"
+SERIES_PATH = EVIDENCE_DIR / "ceqanet_csv_evidence_series_2026-07-14.json"
+SERIES_VERIFICATION_PATH = (
+    EVIDENCE_DIR
+    / "ceqanet_csv_evidence_series_verification_2026-07-14.json"
+)
+SERIES_AUDIT_PATH = (
+    ROOT / "docs/audits/ceqanet_csv_evidence_series_2026-07-14.md"
+)
 runner = CliRunner()
 _ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*m")
 
@@ -557,3 +566,34 @@ def test_expired_policy_preflight_does_not_call_http_client() -> None:
         )
 
     assert client.calls == []
+
+
+def test_committed_empty_series_recomputes_exactly() -> None:
+    assert SERIES_PATH.is_file()
+    assert SERIES_VERIFICATION_PATH.is_file()
+    assert SERIES_AUDIT_PATH.is_file()
+
+    series = CeqanetCsvEvidenceSeries.model_validate(_load_json(SERIES_PATH))
+    stored = CeqanetCsvEvidenceSeriesVerification.model_validate(
+        _load_json(SERIES_VERIFICATION_PATH)
+    )
+    recomputed = verify_ceqanet_csv_evidence_series(
+        _sources(),
+        _original_execution(),
+        _replay(),
+        _replay_verification(),
+        _maturity(),
+        _maturity_verification(),
+        _policy(),
+        _policy_verification(),
+        [],
+        series,
+    )
+
+    assert series.series_digest == (
+        "d8b214a5c3b381174700efa96e31ba284ff3625dd319741e2d56e6acb2559515"
+    )
+    assert series.status is CeqanetCsvEvidenceSeriesStatus.COLLECTING
+    assert series.observation_count == 0
+    assert recomputed == stored
+    series.assert_integrity()
