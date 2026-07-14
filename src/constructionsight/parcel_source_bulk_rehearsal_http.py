@@ -246,9 +246,7 @@ class HTTPParcelArcGISBulkRehearsalSource:
         payload = _decode_service_payload(response_body, self._http_policy)
         count = payload.get("count")
         if isinstance(count, bool) or not isinstance(count, int) or count < 1:
-            raise ParcelArcGISBulkHTTPError(
-                "ArcGIS count response must contain a positive integer"
-            )
+            raise ParcelArcGISBulkHTTPError("ArcGIS count response must contain a positive integer")
         return ParcelArcGISBulkCountResponse(count=count, response_body=response_body)
 
     def fetch_object_id_page(
@@ -293,26 +291,18 @@ class HTTPParcelArcGISBulkRehearsalSource:
                 headers={"Accept": "application/json"},
             ) as response:
                 if response.history:
-                    raise ParcelArcGISBulkHTTPError(
-                        "ArcGIS rehearsal HTTP redirects are forbidden"
-                    )
+                    raise ParcelArcGISBulkHTTPError("ArcGIS rehearsal HTTP redirects are forbidden")
                 final_url = response.request.url
                 if (
                     final_url.scheme != expected_endpoint.scheme
                     or final_url.host != expected_endpoint.hostname
                     or final_url.path != expected_endpoint.path
                 ):
-                    raise ParcelArcGISBulkHTTPError(
-                        "ArcGIS rehearsal response endpoint changed"
-                    )
+                    raise ParcelArcGISBulkHTTPError("ArcGIS rehearsal response endpoint changed")
                 if 300 <= response.status_code < 400:
-                    raise ParcelArcGISBulkHTTPError(
-                        "ArcGIS rehearsal HTTP redirects are forbidden"
-                    )
+                    raise ParcelArcGISBulkHTTPError("ArcGIS rehearsal HTTP redirects are forbidden")
                 if response.status_code in self._http_policy.retry_status_codes:
-                    raise ParcelArcGISBulkTransientError(
-                        f"http_{response.status_code}"
-                    )
+                    raise ParcelArcGISBulkTransientError(f"http_{response.status_code}")
                 if response.status_code != 200:
                     raise ParcelArcGISBulkHTTPError(
                         f"ArcGIS rehearsal request returned HTTP {response.status_code}"
@@ -389,9 +379,7 @@ def _decode_service_payload(
     try:
         payload = decode_json_object(response_body)
     except ValueError as exc:
-        raise ParcelArcGISBulkHTTPError(
-            "ArcGIS response was not strict UTF-8 JSON"
-        ) from exc
+        raise ParcelArcGISBulkHTTPError("ArcGIS response was not strict UTF-8 JSON") from exc
     service_error = payload.get("error")
     if service_error is not None:
         if not isinstance(service_error, dict):
@@ -400,9 +388,7 @@ def _decode_service_payload(
         if isinstance(code, int) and not isinstance(code, bool):
             if code in policy.retry_status_codes:
                 raise ParcelArcGISBulkTransientError(f"arcgis_{code}")
-            raise ParcelArcGISBulkHTTPError(
-                f"ArcGIS service returned terminal error {code}"
-            )
+            raise ParcelArcGISBulkHTTPError(f"ArcGIS service returned terminal error {code}")
         raise ParcelArcGISBulkHTTPError("ArcGIS service returned an unclassified error")
     return {str(key): value for key, value in payload.items()}
 

@@ -272,7 +272,9 @@ def test_http_source_rejects_terminal_status_media_type_and_oversize() -> None:
 
 
 def test_http_source_rejects_invalid_page_scope_and_plan_mismatch() -> None:
-    with httpx.Client(transport=httpx.MockTransport(lambda _request: httpx.Response(500))) as client:
+    with httpx.Client(
+        transport=httpx.MockTransport(lambda _request: httpx.Response(500))
+    ) as client:
         source = HTTPParcelArcGISBulkRehearsalSource(_snapshot(), _plan(), client)
         with pytest.raises(ValueError, match="page size does not match"):
             source.fetch_object_id_page(
