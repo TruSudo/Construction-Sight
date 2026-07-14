@@ -86,9 +86,7 @@ class ParcelArcGISBulkRehearsalPolicy:
         if self.checkpoint_after_pages < 1:
             raise ValueError("ArcGIS rehearsal checkpoint must follow at least one page")
         if self.injected_retry_page_index < self.checkpoint_after_pages:
-            raise ValueError(
-                "ArcGIS injected retry must occur in the resumed execution segment"
-            )
+            raise ValueError("ArcGIS injected retry must occur in the resumed execution segment")
         if self.max_attempts < 2 or self.max_attempts > 5:
             raise ValueError("ArcGIS rehearsal max attempts must be between 2 and 5")
         if len(self.retry_delays_seconds) < self.max_attempts - 1:
@@ -130,11 +128,14 @@ class JSONFileParcelArcGISCheckpointStore:
     def save(self, checkpoint: ParcelArcGISBulkCheckpointEvidence) -> None:
         self._directory.mkdir(parents=True, exist_ok=True)
         path = self.path_for(checkpoint.checkpoint_id)
-        canonical = json.dumps(
-            checkpoint.to_dict(),
-            sort_keys=True,
-            separators=(",", ":"),
-        ) + "\n"
+        canonical = (
+            json.dumps(
+                checkpoint.to_dict(),
+                sort_keys=True,
+                separators=(",", ":"),
+            )
+            + "\n"
+        )
         if path.exists():
             existing = ParcelArcGISBulkCheckpointEvidence.model_validate_json(
                 path.read_text(encoding="utf-8")
@@ -293,18 +294,12 @@ def parse_arcgis_object_id_page(
         raise ParcelArcGISBulkRehearsalError("ArcGIS page response contains an error")
     direct_ids = payload.get("objectIds")
     if direct_ids is not None:
-        if not isinstance(direct_ids, Sequence) or isinstance(
-            direct_ids, (str, bytes, bytearray)
-        ):
-            raise ParcelArcGISBulkRehearsalError(
-                "ArcGIS objectIds response must be an array"
-            )
+        if not isinstance(direct_ids, Sequence) or isinstance(direct_ids, (str, bytes, bytearray)):
+            raise ParcelArcGISBulkRehearsalError("ArcGIS objectIds response must be an array")
         return _normalize_object_ids(direct_ids)
 
     features = payload.get("features")
-    if not isinstance(features, Sequence) or isinstance(
-        features, (str, bytes, bytearray)
-    ):
+    if not isinstance(features, Sequence) or isinstance(features, (str, bytes, bytearray)):
         raise ParcelArcGISBulkRehearsalError(
             "ArcGIS page response must contain objectIds or features"
         )
@@ -314,9 +309,7 @@ def parse_arcgis_object_id_page(
             raise ParcelArcGISBulkRehearsalError("ArcGIS feature must be an object")
         attributes = feature.get("attributes")
         if not isinstance(attributes, Mapping) or object_id_field not in attributes:
-            raise ParcelArcGISBulkRehearsalError(
-                "ArcGIS feature is missing the object-ID field"
-            )
+            raise ParcelArcGISBulkRehearsalError("ArcGIS feature is missing the object-ID field")
         values.append(attributes[object_id_field])
     return _normalize_object_ids(values)
 
@@ -342,10 +335,7 @@ def _fetch_page_with_retry(
     for attempt_number in range(1, policy.max_attempts + 1):
         attempt_count = attempt_number
         try:
-            if (
-                page_index == policy.injected_retry_page_index
-                and attempt_number == 1
-            ):
+            if page_index == policy.injected_retry_page_index and attempt_number == 1:
                 raise ParcelArcGISBulkTransientError(
                     "injected_pre_request_transient",
                     fault_injected=True,
@@ -418,9 +408,7 @@ def _fetch_page_with_retry(
     retry: ParcelArcGISBulkRetryEvidence | None = None
     if attempt_count > 1:
         if failure_kind is None or retry_recorded_at is None:
-            raise ParcelArcGISBulkRehearsalError(
-                "ArcGIS retried page is missing failure evidence"
-            )
+            raise ParcelArcGISBulkRehearsalError("ArcGIS retried page is missing failure evidence")
         retry = build_arcgis_bulk_retry_evidence(
             page,
             failure_kind=failure_kind,
@@ -435,22 +423,16 @@ def _normalize_object_ids(values: Sequence[Any]) -> tuple[int, ...]:
     normalized: list[int] = []
     for value in values:
         if isinstance(value, bool) or not isinstance(value, int):
-            raise ParcelArcGISBulkRehearsalError(
-                "ArcGIS object IDs must be JSON integers"
-            )
+            raise ParcelArcGISBulkRehearsalError("ArcGIS object IDs must be JSON integers")
         if value < 0:
-            raise ParcelArcGISBulkRehearsalError(
-                "ArcGIS object IDs cannot be negative"
-            )
+            raise ParcelArcGISBulkRehearsalError("ArcGIS object IDs cannot be negative")
         normalized.append(value)
     return tuple(normalized)
 
 
 def _require_positive_count(value: int, label: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int) or value < 1:
-        raise ParcelArcGISBulkRehearsalError(
-            f"ArcGIS {label} count must be a positive integer"
-        )
+        raise ParcelArcGISBulkRehearsalError(f"ArcGIS {label} count must be a positive integer")
     return value
 
 

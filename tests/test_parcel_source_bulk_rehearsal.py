@@ -57,10 +57,7 @@ class _Source:
         object_ids = self.pages[offset]
         if self.feature_mode:
             return {
-                "features": [
-                    {"attributes": {"OBJECTID": object_id}}
-                    for object_id in object_ids
-                ]
+                "features": [{"attributes": {"OBJECTID": object_id}} for object_id in object_ids]
             }
         return {"objectIds": list(object_ids)}
 
@@ -259,7 +256,10 @@ def test_checkpoint_store_rejects_tampered_retained_content(tmp_path: Path) -> N
     )
     checkpoint = result.manifest.rehearsal_evidence.checkpoint
     path = store.path_for(checkpoint.checkpoint_id)
-    path.write_text(path.read_text(encoding="utf-8").replace('"object_id_count":2', '"object_id_count":9'), encoding="utf-8")
+    path.write_text(
+        path.read_text(encoding="utf-8").replace('"object_id_count":2', '"object_id_count":9'),
+        encoding="utf-8",
+    )
 
     with pytest.raises(ValueError, match="checkpoint|object-ID|identity"):
         store.load(checkpoint.checkpoint_id)
