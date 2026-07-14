@@ -1,0 +1,63 @@
+{
+  "access_control_bypass_authorized": false,
+  "allowed_export_kinds": [
+    "project",
+    "document"
+  ],
+  "attachment_download_authorized": false,
+  "captcha_handling_authorized": false,
+  "credential_use_authorized": false,
+  "effective_date": "2026-07-14",
+  "expires_on": "2026-08-13",
+  "explicit_execution_authorization_required": true,
+  "generated_at": "2026-07-14T04:59:43.656079Z",
+  "halt_status_codes": [
+    401,
+    403,
+    407,
+    429,
+    451
+  ],
+  "html_automation_authorized": false,
+  "limitations": [
+    "policy authority is limited to explicit evidence collection",
+    "each execution permits one official CSV GET and zero retries",
+    "any access-control response halts the evidence series without bypass",
+    "policy expiry requires a new evidence-bound policy digest"
+  ],
+  "live_execution_digest": "9a861dcee42092eb6f2d8f5c86673f4aca4c75cd0d42beddaa930cc093221a95",
+  "maturity_proposal_digest": "3a8069a5dd72a921f1e4324347d00d3c5a8ee8f7100676bdff3a702d6a424088",
+  "max_body_bytes": 10000000,
+  "max_executions_per_utc_day": 1,
+  "max_requests_per_execution": 1,
+  "method": "GET",
+  "minimum_distinct_utc_dates": 3,
+  "minimum_successful_observations": 4,
+  "next_gate": "collect and independently verify at least four bounded observations across three UTC dates and both project and document export scopes",
+  "official_host": "ceqanet.lci.ca.gov",
+  "official_path": "/Search",
+  "persistence_mutation_authorized": false,
+  "policy_digest": "d84e6b80234a96799593db0601cc92e6480bad15bfd016001b35568c481c1674",
+  "policy_status": "ready_for_explicit_evidence_collection",
+  "production_blockers": [
+    "the canonical source registry remains partial",
+    "a governed multi-run CSV evidence series is not yet complete",
+    "no persistent attempt ledger or production scheduler exists"
+  ],
+  "production_recurring_execution_authorized": false,
+  "registry_mutation_authorized": false,
+  "registry_status": "partial",
+  "replay_digest": "49d3aaf3357f448252ab8133e83bdfdb65175b0fe4646babfc0cc10af27f9b60",
+  "require_independent_verification": true,
+  "required_evidence_export_kinds": [
+    "project",
+    "document"
+  ],
+  "retain_complete_body": true,
+  "retry_count": 0,
+  "schema_version": "ceqanet_csv_access_policy.v1",
+  "source_name": "CEQAnet State Clearinghouse",
+  "source_promotion_authorized": false,
+  "source_registry_digest": "a5353548592c4dd55498409139983c7eef38766ef476c17fcd72829fb68da30e",
+  "timeout_seconds": 20.0
+}
