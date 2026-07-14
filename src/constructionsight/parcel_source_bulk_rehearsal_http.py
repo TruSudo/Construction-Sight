@@ -91,8 +91,8 @@ class ParcelArcGISBulkRehearsalPlan:
             raise ValueError("ArcGIS rehearsal plan object-ID field must be trimmed")
         if self.bulk_run_authorized:
             raise ValueError("ArcGIS rehearsal plans cannot authorize a bulk run")
-        self.rehearsal_policy
-        self.http_policy
+        _ = self.rehearsal_policy
+        _ = self.http_policy
         expected_id = _plan_identity(self.to_dict(include_plan_id=False))
         if self.plan_id != expected_id:
             raise ValueError("ArcGIS rehearsal plan identity does not match its content")
