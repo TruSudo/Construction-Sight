@@ -130,3 +130,56 @@ def test_rehearsal_evidence_rejects_checkpoint_and_retry_tampering() -> None:
 
     with pytest.raises(ValidationError, match="retry|response digest"):
         ParcelArcGISBulkRehearsalEvidence.model_validate(evidence_payload)
+
+
+
+def test_rehearsal_evidence_requires_retry_coverage_for_each_retried_page() -> None:
+    _, evidence = _evidence()
+    payload = evidence.to_dict()
+    page_payload = payload["page_evidence"][2]
+    page_payload["attempt_count"] = 2
+    identity_payload = {
+        key: value
+        for key, value in page_payload.items()
+        if key != "page_evidence_id"
+    }
+    page_payload["page_evidence_id"] = digest_identity(
+        "parcel-arcgis-bulk-page-evidence",
+        identity_payload,
+    )
+
+    with pytest.raises(ValidationError, match="cover every and only retried page"):
+        ParcelArcGISBulkRehearsalEvidence.model_validate(payload)
+
+
+def test_rehearsal_evidence_rejects_impossible_retry_chronology() -> None:
+    _, evidence = _evidence()
+    payload = evidence.to_dict()
+    retry_payload = payload["retry_events"][0]
+    retry_payload["recorded_at"] = (
+        _OBSERVED_AT + timedelta(minutes=1)
+    ).isoformat()
+    identity_payload = {
+        key: value for key, value in retry_payload.items() if key != "retry_id"
+    }
+    retry_payload["retry_id"] = digest_identity(
+        "parcel-arcgis-bulk-retry",
+        identity_payload,
+    )
+
+    with pytest.raises(ValidationError, match="cannot follow its recovered page"):
+        ParcelArcGISBulkRehearsalEvidence.model_validate(payload)
+
+
+def test_manifest_binds_all_evidence_to_its_execution_window() -> None:
+    snapshot, evidence = _evidence()
+
+    with pytest.raises(ValidationError, match="outside the manifest execution window"):
+        build_arcgis_bulk_manifest(
+  snapshot,
+  started_at=_OBSERVED_AT + timedelta(seconds=1),
+  completed_at=_OBSERVED_AT + timedelta(minutes=4),
+  starting_count=6,
+  ending_count=6,
+  rehearsal_evidence=evidence,
+        )

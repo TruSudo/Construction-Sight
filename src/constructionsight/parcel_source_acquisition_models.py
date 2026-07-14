@@ -434,6 +434,20 @@ class ParcelArcGISBulkManifest(BaseModel):
         if len(self.page_response_digests) != self.page_count:
             raise ValueError("ArcGIS bulk manifest requires one digest per data page")
         evidence = self.rehearsal_evidence
+        evidence_times = (
+  evidence.created_at,
+  evidence.checkpoint.created_at,
+  evidence.resume.resumed_at,
+  *(page.observed_at for page in evidence.page_evidence),
+  *(event.recorded_at for event in evidence.retry_events),
+        )
+        if any(
+  timestamp < self.started_at or timestamp > self.completed_at
+  for timestamp in evidence_times
+        ):
+  raise ValueError(
+      "ArcGIS bulk rehearsal evidence falls outside the manifest execution window"
+  )
         if (
             evidence.snapshot_id != self.snapshot_id
             or evidence.profile_id != self.profile_id
