@@ -156,6 +156,22 @@ jobs:
               + script[storage_end:]
           )
 
+          stale_architecture_needle = (
+              '"A complete bulk rehearsal is represented by `ParcelArcGISBulkManifest`. '
+              'It requires:\\n",'
+          )
+          exact_architecture_needle = (
+              '"`ParcelArcGISBulkManifest` is evidence for a separate controlled '
+              'rehearsal, not a downloader. A valid manifest requires:\\n",'
+          )
+          if script.count(stale_architecture_needle) != 1:
+              raise SystemExit("expected one stale architecture replacement needle")
+          script = script.replace(
+              stale_architecture_needle,
+              exact_architecture_needle,
+              1,
+          )
+
           Path("/tmp/harden-arcgis-bulk-proof.sh").write_text(
               script + "\n",
               encoding="utf-8",
