@@ -44,8 +44,8 @@ MATURITY_VERIFICATION_PATH = (
     EVIDENCE_DIR
     / "ceqanet_source_maturity_proposal_verification_2026-07-13.json"
 )
-EFFECTIVE_DATE = date(2026, 7, 13)
-EXPIRES_ON = date(2026, 8, 12)
+EFFECTIVE_DATE = date(2026, 7, 14)
+EXPIRES_ON = date(2026, 8, 13)
 runner = CliRunner()
 
 
@@ -156,8 +156,8 @@ def test_independent_policy_verification_passes() -> None:
 @pytest.mark.parametrize(
     ("as_of_date", "message"),
     [
-        (date(2026, 7, 12), "not yet effective"),
-        (date(2026, 8, 13), "expired"),
+        (date(2026, 7, 13), "not yet effective"),
+        (date(2026, 8, 14), "expired"),
     ],
 )
 def test_policy_current_check_rejects_outside_window(
@@ -188,7 +188,7 @@ def test_builder_rejects_authority_longer_than_31_days() -> None:
             _maturity(),
             _maturity_verification(),
             effective_date=EFFECTIVE_DATE,
-            expires_on=date(2026, 8, 14),
+            expires_on=date(2026, 8, 15),
         )
 
 
