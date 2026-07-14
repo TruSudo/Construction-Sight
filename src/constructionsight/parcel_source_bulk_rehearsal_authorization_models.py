@@ -42,6 +42,8 @@ class ParcelArcGISBulkRehearsalAuthorization(BaseModel):
     checkpoint_after_pages: int = Field(ge=1)
     injected_retry_page_index: int = Field(ge=1)
     max_attempts: int = Field(ge=2, le=5)
+    snapshot_observed_at: datetime
+    plan_generated_at: datetime
     execution_nonce: str = Field(pattern=r"^[0-9a-f]{64}$")
     issued_by: str = Field(min_length=1)
     authorization_reason: str = Field(min_length=1)
@@ -69,7 +71,13 @@ class ParcelArcGISBulkRehearsalAuthorization(BaseModel):
     production_bulk_run_authorized: Literal[False] = False
     limitations: tuple[str, ...] = Field(min_length=1)
 
-    @field_validator("issued_at", "not_before", "expires_at")
+    @field_validator(
+        "snapshot_observed_at",
+        "plan_generated_at",
+        "issued_at",
+        "not_before",
+        "expires_at",
+    )
     @classmethod
     def require_aware_time(cls, value: datetime) -> datetime:
         if value.tzinfo is None or value.utcoffset() is None:
@@ -113,6 +121,10 @@ class ParcelArcGISBulkRehearsalAuthorization(BaseModel):
     def require_bounded_single_use_authority(
         self,
     ) -> ParcelArcGISBulkRehearsalAuthorization:
+        if self.plan_generated_at < self.snapshot_observed_at:
+            raise ValueError("authorization plan cannot predate its capability snapshot")
+        if self.issued_at < self.plan_generated_at:
+            raise ValueError("authorization issuance cannot predate plan generation")
         if self.issued_at > self.not_before:
             raise ValueError("authorization issued_at cannot follow not_before")
         if self.not_before >= self.expires_at:
