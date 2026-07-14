@@ -1,7 +1,0 @@
-src/constructionsight/parcel_source_bulk_rehearsal_bundle.py:7: error: Module "collections.abc" has no attribute "Protocol"  [attr-defined]
-src/constructionsight/parcel_source_bulk_rehearsal_bundle.py:40: error: Class cannot subclass "Protocol" (has type "Any")  [misc]
-src/constructionsight/parcel_source_bulk_rehearsal_bundle.py:43: error: Missing return statement  [empty-body]
-src/constructionsight/parcel_source_bulk_rehearsal_bundle.py:106: error: Missing positional arguments "starting_count_response_digest", "ending_count_response_digest" in call to "ParcelArcGISBulkRehearsalExecution"  [call-arg]
-Found 4 errors in 1 file (checked 205 source files)
-
-exit_status=1
