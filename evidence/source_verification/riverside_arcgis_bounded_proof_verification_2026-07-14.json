@@ -1,0 +1,17 @@
+{
+  "assessment_id": "parcel-arcgis-acquisition:5087a8b38cefa234dad3dbc5e9a77574e7856015430e055dc98608addd196a21",
+  "assessment_recomputed": true,
+  "bulk_run_authorized": false,
+  "bundle_id": "parcel-arcgis-bounded-proof-bundle:49c20754f092ac960601ee7d03a4bcc9ef0c1fb4c71deefa295c3863e151f3f5",
+  "county": "Riverside",
+  "evidence_count": 4,
+  "network_request_count": 5,
+  "next_action": "persist the verified bounded proof and design a separately controlled complete rehearsal",
+  "observation_count": 4,
+  "response_digests_recomputed": true,
+  "source_key": "riverside:county-gis-parcels",
+  "status": "bounded_query_verified",
+  "valid": true,
+  "verification_id": "parcel-arcgis-bounded-proof-verification:b678bb4bcd4ef514c19ff032e7589c841f072aeb18ab26fd6e8e5ff2977deb06",
+  "verified_at": "2026-07-14T18:29:27.090512Z"
+}

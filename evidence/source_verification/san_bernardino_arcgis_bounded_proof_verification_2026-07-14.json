@@ -1,0 +1,17 @@
+{
+  "assessment_id": "parcel-arcgis-acquisition:cef905937877039de23e197c71213e303cd503553bf87d3fea5879915ad561d3",
+  "assessment_recomputed": true,
+  "bulk_run_authorized": false,
+  "bundle_id": "parcel-arcgis-bounded-proof-bundle:c3edb797417fef70d4a34672193e53679c811d91e0cab58dd5aa44dd1101d2a1",
+  "county": "San Bernardino",
+  "evidence_count": 4,
+  "network_request_count": 5,
+  "next_action": "persist the verified bounded proof and design a separately controlled complete rehearsal",
+  "observation_count": 4,
+  "response_digests_recomputed": true,
+  "source_key": "san-bernardino:county-gis-parcels",
+  "status": "bounded_query_verified",
+  "valid": true,
+  "verification_id": "parcel-arcgis-bounded-proof-verification:a2c9ac1e5b85ba9989d294344e3a954c9d09aead67e1f11145f9f78006b36e21",
+  "verified_at": "2026-07-14T18:29:26.438145Z"
+}

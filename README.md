@@ -166,6 +166,8 @@ explicitly authorized execute command is network-capable.
 - Source-neutral lawful intake
 - Opportunity transition candidates
 - Parcel-source registry, schema preview, and row preview
+- Official county ArcGIS capability snapshots and four-request bounded probe plans
+- Retained portable county bounded-proof bundles with offline verification and exact-ID persistence receipts
 - Parcel core records with GeoJSON and WKT/EWKT support
 - Polygon and multipolygon topology with holes and separate parts
 - Source-plane area-weighted centroids
@@ -241,7 +243,7 @@ The current geometry layer recognizes supported GeoJSON and WKT/EWKT Point, Poly
 
 The longitudinal parcel layer wraps complete canonical records in immutable digest-bound observations. It selects current evidence per source using source-effective time only when that clock is complete, falls back to observation time only when source-effective time is entirely absent, records supersession explicitly, and withholds assurance when time bases or leading content are ambiguous.
 
-The parcel-source verification layer binds the official San Bernardino and Riverside public parcel endpoints and observed schemas to immutable evidence, proposition-specific authority, source-scope county/state constants, and an explicit county coverage-gap report. The additive ArcGIS acquisition layer now binds exact capability metadata, safe four-request probe plans, executed observations, complete-rehearsal manifests, and explicit maturity assessments. A successful bounded command now produces a portable proof bundle that can be independently verified offline and persisted only with an exact expected identity plus explicit authorization; all bundle and receipt paths remain incapable of bulk authorization. Both sources are preview-ready but remain `metadata_only`; neither is import-ready or bulk-authorized.
+The parcel-source verification layer binds the official San Bernardino and Riverside public parcel endpoints and observed schemas to immutable evidence, proposition-specific authority, source-scope county/state constants, and an explicit county coverage-gap report. The additive ArcGIS acquisition layer binds exact capability metadata, safe four-request probe plans, executed observations, complete-rehearsal manifests, and explicit maturity assessments. A successful bounded command produces a portable proof bundle that can be independently verified offline and persisted only with an exact expected identity plus explicit authorization; all bundle and receipt paths remain incapable of bulk authorization. Canonical 2026-07-14 evidence now records both official sources as `bounded_query_verified`: San Bernardino reported 839,794 records and Riverside reported 846,251 records, and each exact four-observation bundle independently verifies and passed exact-ID transactional persistence. Neither source is import-ready, bulk-rehearsal-verified, profile-promoted, or bulk-authorized.
 
 The parcel-assurance layer consumes either a caller-supplied governed current set or the output of longitudinal selection without modifying canonical records. It preserves field-level source claims, dependency lineage, proposition-specific authority, timestamps, conflicts, missing evidence, and limitations. Multiple publications of one upstream dataset do not count as independent corroboration, and no opaque global truth score is emitted.
 

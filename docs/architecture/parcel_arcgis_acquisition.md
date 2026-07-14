@@ -140,14 +140,14 @@ The read-only upstream operator exposes all six record kinds with applicable sou
 
 ## Current official boundary
 
-The 2026-07-14 canonical snapshot records both official county layers as metadata-ready for a bounded probe:
+The retained 2026-07-14 evidence records one refreshed metadata request and four bounded, geometry-disabled query requests for each official county layer:
 
-| Source | Advertised page limit | Canonical state | Missing proof |
-|---|---:|---|---|
-| San Bernardino County parcel FeatureServer layer | 1,000 | `metadata_only` | Count, adjacent pages, replay, complete rehearsal |
-| Riverside County Assessor MapServer layer | 2,000 | `metadata_only` | Count, adjacent pages, replay, complete rehearsal |
+| Source | Advertised page limit | Observed count | Canonical state | Missing proof |
+|---|---:|---:|---|---|
+| San Bernardino County parcel FeatureServer layer | 1,000 | 839,794 | `bounded_query_verified` | Complete count-reconciled checkpoint/retry rehearsal |
+| Riverside County Assessor MapServer layer | 2,000 | 846,251 | `bounded_query_verified` | Complete count-reconciled checkpoint/retry rehearsal |
 
-No live probe response or complete rehearsal is fabricated in the default objects. Neither source is bulk-authorized or import-ready.
+Both portable bundles independently recompute their metadata, plans, response digests, replay agreement, and assessments. Each exact bundle identity also passed transactional insert-or-exact-replay persistence against an ephemeral database. Neither source is bulk-rehearsal-verified, profile-promoted, bulk-authorized, or import-ready.
 
 The exact schema reconciliation also removes a stale synthetic `Shape` attribute from the San Bernardino profile and includes Riverside's observed `LAND` and `STRUCTURES` attributes. Geometry remains represented by the verification profile's explicit synthetic `geometry` role rather than an unobserved attribute name.
 

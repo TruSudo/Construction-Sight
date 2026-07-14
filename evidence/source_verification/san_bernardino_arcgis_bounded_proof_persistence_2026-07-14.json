@@ -1,0 +1,21 @@
+{
+  "assessment_id": "parcel-arcgis-acquisition:cef905937877039de23e197c71213e303cd503553bf87d3fea5879915ad561d3",
+  "bulk_run_authorized": false,
+  "bundle_id": "parcel-arcgis-bounded-proof-bundle:c3edb797417fef70d4a34672193e53679c811d91e0cab58dd5aa44dd1101d2a1",
+  "county": "San Bernardino",
+  "evidence_count": 4,
+  "mutation_authorized": true,
+  "observation_ids": [
+    "parcel-arcgis-probe-observation:027db329142a1857c605141809a8eaf41c4982dfddd7e59f13da1bf3853bd8d4",
+    "parcel-arcgis-probe-observation:0d06f59a979fd0e293a991864e828b6df4095d69ef03407d87c0cf84fc2854e7",
+    "parcel-arcgis-probe-observation:c08756de88f7a9a84b3b097e2a00818fb30b3607cd901acd6ad0a9bd24e21728",
+    "parcel-arcgis-probe-observation:c50b332fc3da55c1aec0cee94015d859ba699701e67b29fdeb4983f9ce336c17"
+  ],
+  "persisted_at": "2026-07-14T18:29:28.594140Z",
+  "plan_id": "parcel-arcgis-probe-plan:c9a547526f36b4ef3aa0c523054eb8b27298d09bd2cd593e94ac1cdeb510904b",
+  "profile_id": "parcel-source-verification:7958a5bb11dd30d2dd64eb072b255bcf5bee57d694d14d51681eeac2a02c1bd5",
+  "receipt_id": "parcel-arcgis-proof-persistence:dd6cd58b1298b638c39ce74e3e2e29cc68c4dd12e345b1ea76d35cf65e299b93",
+  "replay_policy": "insert_or_exact_replay",
+  "snapshot_id": "parcel-arcgis-capability:d63e5a1a12012afe1f42e715ff9a8800e4a98d3c9e08d52bf5a2a0ef4efee8df",
+  "source_key": "san-bernardino:county-gis-parcels"
+}

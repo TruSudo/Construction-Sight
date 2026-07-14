@@ -1,0 +1,21 @@
+{
+  "assessment_id": "parcel-arcgis-acquisition:5087a8b38cefa234dad3dbc5e9a77574e7856015430e055dc98608addd196a21",
+  "bulk_run_authorized": false,
+  "bundle_id": "parcel-arcgis-bounded-proof-bundle:49c20754f092ac960601ee7d03a4bcc9ef0c1fb4c71deefa295c3863e151f3f5",
+  "county": "Riverside",
+  "evidence_count": 4,
+  "mutation_authorized": true,
+  "observation_ids": [
+    "parcel-arcgis-probe-observation:36cd5804518b4f8c8041647b98c194f288e64bc634f200e3f7ecda61fa6db7e2",
+    "parcel-arcgis-probe-observation:afb38b630f405fa16f4f176f83b4335023de0539f4f4c9065d33d1e38142883c",
+    "parcel-arcgis-probe-observation:b400f99d1bbe064850b55a37b1f9eeb6eefead6b937ad2132a930f7b52b16a72",
+    "parcel-arcgis-probe-observation:ddc679713e66862cf0a14134498369efa9daa2dfbac1b4b37427e8a01d87bed7"
+  ],
+  "persisted_at": "2026-07-14T18:29:29.467092Z",
+  "plan_id": "parcel-arcgis-probe-plan:2bea07bb4815794109d1024ce352b4da4368aa362903e8b539fe66fd14434496",
+  "profile_id": "parcel-source-verification:817f20d7a32dad3c425d370d8d0f67fbb71694dddf8eaad216501afbca66342b",
+  "receipt_id": "parcel-arcgis-proof-persistence:ae53bd552efdb707e2bf5dffffa3fea71fa77232aead588136c57e94562a5f31",
+  "replay_policy": "insert_or_exact_replay",
+  "snapshot_id": "parcel-arcgis-capability:925c67f3b3600cb7a7c8ed8fe2c67f48d19a67ba1f5197353de39dab17e7a9db",
+  "source_key": "riverside:county-gis-parcels"
+}
