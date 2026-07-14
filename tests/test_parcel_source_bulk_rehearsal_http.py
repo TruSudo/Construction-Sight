@@ -254,7 +254,11 @@ def test_http_source_rejects_terminal_status_media_type_and_oversize() -> None:
         HTTPParcelArcGISBulkRehearsalSource(_snapshot(), _plan(), client).fetch_count()
 
     def oversized(_request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, content=b'{"objectIds":[1,2]}')
+        return httpx.Response(
+            200,
+            content=b'{"objectIds":[1,2]}',
+            headers={"Content-Type": "application/json"},
+        )
 
     with (
         httpx.Client(transport=httpx.MockTransport(oversized)) as client,
