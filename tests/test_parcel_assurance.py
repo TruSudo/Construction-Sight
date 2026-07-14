@@ -16,7 +16,6 @@ from constructionsight.parcel_assurance_models import (
 from constructionsight.parcel_core_models import ParcelCoreRecord
 from constructionsight.parcel_source_models import ParcelFieldRole
 
-
 OBSERVED_AT = datetime(2026, 7, 14, 12, 0, tzinfo=UTC)
 
 

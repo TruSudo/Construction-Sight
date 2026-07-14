@@ -87,23 +87,6 @@ def _site_resolution() -> SiteResolutionResult:
         evidence_id="evidence:test",
         confidence_score=90,
     )
-
-
-def _assurance_report():
-    parcel = _parcel()
-    context = ParcelAssuranceSourceContext(
-        source_key=parcel.source_key,
-        lineage_key="county-assessor-roll",
-        default_authority=ParcelEvidenceAuthority.OFFICIAL,
-        authoritative_fields=[ParcelFieldRole.APN],
-        limitations=["currency must be checked"],
-    )
-    return build_parcel_assurance_report(
-        records=[parcel],
-        source_contexts=[context],
-        field_roles=[ParcelFieldRole.APN, ParcelFieldRole.OWNER],
-        generated_at=parcel.created_at,
-    )
     candidate = SiteResolutionCandidate(
         site_key="site:test",
         match_strength=SiteMatchStrength.EXACT,
@@ -126,6 +109,23 @@ def _assurance_report():
         primary_site_key="site:test",
         candidates=[candidate],
         limitations=["parcel geometry is not survey-grade"],
+    )
+
+
+def _assurance_report():
+    parcel = _parcel()
+    context = ParcelAssuranceSourceContext(
+        source_key=parcel.source_key,
+        lineage_key="county-assessor-roll",
+        default_authority=ParcelEvidenceAuthority.OFFICIAL,
+        authoritative_fields=[ParcelFieldRole.APN],
+        limitations=["currency must be checked"],
+    )
+    return build_parcel_assurance_report(
+        records=[parcel],
+        source_contexts=[context],
+        field_roles=[ParcelFieldRole.APN, ParcelFieldRole.OWNER],
+        generated_at=parcel.created_at,
     )
 
 
