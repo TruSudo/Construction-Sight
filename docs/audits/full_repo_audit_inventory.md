@@ -108,6 +108,7 @@ The CEQAnet HTTP 403 is preserved as an external access limitation and verified-
 | CS-AUDIT-024 | P1 | CEQAnet observation logic | Brittle text markers and a robots media-type assumption rejected valid source behavior and obscured the true access boundary. | Official page shapes and policies were reviewed, diagnostic failures are preserved, HTTP 403 is treated as a blocker, and no bypass is permitted. |
 | CS-AUDIT-025 | P1 | CEQAnet CSV encoding | The first live CSV proof returned valid source bytes containing Windows-1252 data that the UTF-8-only parser rejected. | Strict UTF-8 remains preferred; explicit Windows-1252 fallback is digest-visible, tested, and used to derive a separately verified replay from the original retained body without network access. |
 | CS-AUDIT-026 | P1 | Replay final-tree integrity | PR #100 left two write-enabled replay workflows and two patch scripts in the production tree after their runtime changes had already landed. | PR #101 deletes all temporary replay machinery, tests complete absence, restores canonical CI-only validation, and certifies the exact cleaned tree. |
+| CS-AUDIT-027 | P1 | Live evidence proxy transport | The policy executor honored SOCKS proxy environment settings without declaring the required `socksio` transport extra, causing a pre-request client-construction failure. | The dependency is changed to `httpx[socks]`, CI proves the transport is installed, and the diagnostic is preserved alongside the successfully retained first observation. |
 
 ## Planned capability ledger
 
