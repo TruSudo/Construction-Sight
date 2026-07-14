@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+import socksio
 from pydantic import ValidationError
 from typer.testing import CliRunner
 
@@ -801,3 +802,10 @@ def test_committed_first_observation_recomputes_exactly() -> None:
     assert recomputed == stored_verification
     assert recomputed.ready_for_maturity_review is False
     series.assert_integrity()
+
+
+def test_socks_proxy_transport_is_declared_and_installed() -> None:
+    pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+
+    assert '"httpx[socks]>=0.27.0"' in pyproject
+    assert socksio is not None
