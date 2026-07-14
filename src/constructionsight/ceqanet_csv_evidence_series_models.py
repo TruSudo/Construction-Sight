@@ -53,7 +53,7 @@ class CeqanetCsvEvidenceExecution(BaseModel):
     request_count: Literal[1] = 1
     timeout_seconds: float = Field(gt=0, le=30.0)
     max_body_bytes: int = Field(ge=1, le=10_000_000)
-    max_retained_rows: int = Field(ge=0)
+    max_retained_rows: int = Field(ge=0, le=1_000)
     live_execution: CeqanetCsvLiveExecution
     live_verification: CeqanetCsvLiveVerification
     evidence_execution_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
