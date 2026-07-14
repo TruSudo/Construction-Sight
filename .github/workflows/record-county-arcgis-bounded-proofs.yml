@@ -1,0 +1,181 @@
+name: Record county ArcGIS bounded proofs
+
+on:
+  push:
+    branches:
+      - agent/record-county-arcgis-bounded-proofs
+
+permissions:
+  contents: write
+
+concurrency:
+  group: record-county-arcgis-bounded-proofs
+  cancel-in-progress: false
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out phase branch
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install package
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+          python -m pip check
+
+      - name: Execute, verify, and transactionally persist bounded proofs
+        shell: bash
+        run: |
+          set -euo pipefail
+          evidence_date="$(date -u +%F)"
+          evidence_dir="evidence/source_verification"
+          audit_dir="docs/audits"
+          mkdir -p "$evidence_dir" "$audit_dir"
+
+          sb_bundle="$evidence_dir/san_bernardino_arcgis_bounded_proof_${evidence_date}.json"
+          rv_bundle="$evidence_dir/riverside_arcgis_bounded_proof_${evidence_date}.json"
+          sb_verification="$evidence_dir/san_bernardino_arcgis_bounded_proof_verification_${evidence_date}.json"
+          rv_verification="$evidence_dir/riverside_arcgis_bounded_proof_verification_${evidence_date}.json"
+          sb_receipt="$evidence_dir/san_bernardino_arcgis_bounded_proof_persistence_${evidence_date}.json"
+          rv_receipt="$evidence_dir/riverside_arcgis_bounded_proof_persistence_${evidence_date}.json"
+
+          constructionsight-parcel-sources acquisition-probe \
+            --source-key san-bernardino:county-gis-parcels \
+            --sample-size 2 \
+            --timeout-seconds 60 \
+            --json-output \
+            --output "$sb_bundle"
+
+          constructionsight-parcel-sources acquisition-probe \
+            --source-key riverside:county-gis-parcels \
+            --sample-size 2 \
+            --timeout-seconds 60 \
+            --json-output \
+            --output "$rv_bundle"
+
+          constructionsight-parcel-sources acquisition-verify-bundle \
+            --input "$sb_bundle" \
+            --json-output > "$sb_verification"
+
+          constructionsight-parcel-sources acquisition-verify-bundle \
+            --input "$rv_bundle" \
+            --json-output > "$rv_verification"
+
+          sb_bundle_id="$(python -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["bundle_id"])' "$sb_bundle")"
+          rv_bundle_id="$(python -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["bundle_id"])' "$rv_bundle")"
+          database_url="sqlite:///$RUNNER_TEMP/arcgis-bounded-proof.sqlite3"
+
+          constructionsight-parcel-sources acquisition-persist-bundle \
+            --input "$sb_bundle" \
+            --expected-bundle-id "$sb_bundle_id" \
+            --database-url "$database_url" \
+            --authorize-persistence \
+            --json-output > "$sb_receipt"
+
+          constructionsight-parcel-sources acquisition-persist-bundle \
+            --input "$rv_bundle" \
+            --expected-bundle-id "$rv_bundle_id" \
+            --database-url "$database_url" \
+            --authorize-persistence \
+            --json-output > "$rv_receipt"
+
+          python - "$evidence_date" "$sb_bundle" "$rv_bundle" "$sb_verification" "$rv_verification" "$sb_receipt" "$rv_receipt" <<'PY'
+          from __future__ import annotations
+
+          import json
+          import sys
+          from pathlib import Path
+          from typing import Any
+
+          evidence_date, *paths = sys.argv[1:]
+          sb_bundle_path, rv_bundle_path, sb_verify_path, rv_verify_path, sb_receipt_path, rv_receipt_path = map(Path, paths)
+
+          def load(path: Path) -> dict[str, Any]:
+              return json.loads(path.read_text(encoding="utf-8"))
+
+          records = [
+              ("San Bernardino", load(sb_bundle_path), load(sb_verify_path), load(sb_receipt_path)),
+              ("Riverside", load(rv_bundle_path), load(rv_verify_path), load(rv_receipt_path)),
+          ]
+
+          lines = [
+              f"# County ArcGIS Bounded Proof Evidence — {evidence_date}",
+              "",
+              "## Scope",
+              "",
+              "This phase executed one explicitly bounded four-request, geometry-disabled ArcGIS probe for each official county parcel source. It retained portable proof bundles, independently verified each bundle offline, and exercised exact-identity transactional persistence against an ephemeral SQLite database.",
+              "",
+              "No countywide parcel download, verification-profile promotion, production scheduling, recurring authority, or bulk authorization was performed.",
+              "",
+              "## Results",
+              "",
+              "| County | Source key | Assessment | Observations | Offline verification | Persistence authorized | Bulk authorized | Bundle ID |",
+              "|---|---|---|---:|---:|---:|---:|---|",
+          ]
+          for county, bundle, verification, receipt in records:
+              assessment = bundle.get("assessment", {})
+              lines.append(
+                  "| "
+                  + " | ".join(
+                      [
+                          county,
+                          str(bundle.get("source_key", "")),
+                          str(assessment.get("status", "")),
+                          str(len(bundle.get("observations", []))),
+                          str(verification.get("valid", False)).lower(),
+                          str(receipt.get("mutation_authorized", False)).lower(),
+                          str(receipt.get("bulk_run_authorized", False)).lower(),
+                          f"`{bundle.get('bundle_id', '')}`",
+                      ]
+                  )
+                  + " |"
+              )
+
+          lines.extend(
+              [
+                  "",
+                  "## Retained artifacts",
+                  "",
+              ]
+          )
+          for path in map(Path, paths):
+              lines.append(f"- `{path.as_posix()}`")
+          lines.extend(
+              [
+                  "",
+                  "## Governing boundary",
+                  "",
+                  "A successful bounded proof establishes only the observed count/page/replay behavior against the refreshed schema snapshot. It does not establish legal-title accuracy, surveyed geometry, countywide completeness, stable long-term pagination, import readiness, or authority to run a complete acquisition.",
+                  "",
+              ]
+          )
+          output = Path("docs/audits") / f"county_arcgis_bounded_proof_{evidence_date}.md"
+          output.write_text("\n".join(lines), encoding="utf-8")
+          PY
+
+          rm -f "$RUNNER_TEMP/arcgis-bounded-proof.sqlite3"
+
+      - name: Remove temporary workflow and commit retained evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/record-county-arcgis-bounded-proofs.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "Record county ArcGIS bounded proof evidence"
+          git push origin HEAD:agent/record-county-arcgis-bounded-proofs
