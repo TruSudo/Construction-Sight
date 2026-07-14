@@ -132,7 +132,7 @@ These are intentionally absent capabilities, not defects in the currently suppor
 | Official CSV contract | Deterministic planning, one no-retry HTTP 200 proof, and a verified Windows-1252 offline replay of the exact retained body exist. |
 | Source-maturity proposal | Offline digest-bound build/verify commands preserve `keep_partial` and cannot authorize registry mutation or recurring execution. |
 | Official-CSV access policy | Canonical policy digest `d84e6b80234a96799593db0601cc92e6480bad15bfd016001b35568c481c1674` is effective 2026-07-14 through 2026-08-13; policy verification passes, while production authority and source promotion remain false. |
-| Official-CSV evidence series | Canonical empty-series digest `d8b214a5c3b381174700efa96e31ba284ff3625dd319741e2d56e6acb2559515` independently verifies with status `collecting`, zero observations, and no network activity. |
+| Official-CSV evidence series | Canonical empty-series digest `b2a18770ec5ca28dfb907ce74b0b5ba120e6bb028ee35e3acd5188d42c182634` independently verifies with status `collecting`, zero observations, and no network activity. |
 | Promotion/update planning | Deterministic dry-run plans and approval digests exist. |
 | Controlled registry apply | Evidence-gated status-only apply exists. |
 | Verified usable source | Zero in the canonical registry. |
