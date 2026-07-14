@@ -121,6 +121,30 @@ def test_bundle_requires_exact_profile_evidence_and_canonical_plan_order() -> No
             }
         )
 
+    with pytest.raises(ValueError, match="one observation per request"):
+        build_arcgis_bounded_proof_bundle(
+            bundle.profile,
+            bundle.source_evidence,
+            bundle.snapshot,
+            bundle.plan,
+            (*bundle.observations, bundle.observations[0]),
+            bundle.assessment,
+        )
+
+    with pytest.raises(ValueError, match="duplicate request observations"):
+        build_arcgis_bounded_proof_bundle(
+            bundle.profile,
+            bundle.source_evidence,
+            bundle.snapshot,
+            bundle.plan,
+            (
+                bundle.observations[0],
+                bundle.observations[0],
+                *bundle.observations[2:],
+            ),
+            bundle.assessment,
+        )
+
     reversed_observations = list(reversed(bundle.to_dict()["observations"]))
     with pytest.raises(ValidationError, match="follow the plan order"):
         ParcelArcGISBoundedProofBundle.model_validate(

@@ -53,11 +53,14 @@ def build_arcgis_bounded_proof_bundle(
     canonical_evidence = tuple(
         sorted(source_evidence, key=lambda item: item.evidence_id)
     )
-    observation_by_request = {
-        observation.request_id: observation for observation in observations
-    }
-    if len(observation_by_request) != len(plan.requests):
+    reviewed_observations = tuple(observations)
+    if len(reviewed_observations) != len(plan.requests):
         raise ValueError("ArcGIS bounded proof requires one observation per request")
+    observation_by_request = {
+        observation.request_id: observation for observation in reviewed_observations
+    }
+    if len(observation_by_request) != len(reviewed_observations):
+        raise ValueError("ArcGIS bounded proof rejects duplicate request observations")
     try:
         canonical_observations = tuple(
             observation_by_request[request.request_id] for request in plan.requests
@@ -196,6 +199,7 @@ def build_arcgis_proof_persistence_receipt(
 ) -> ParcelArcGISProofPersistenceReceipt:
     """Build a receipt after an authorized transactional bundle write."""
 
+    verify_arcgis_bounded_proof_bundle(bundle)
     candidate = ParcelArcGISProofPersistenceReceipt.model_construct(
         receipt_id="parcel-arcgis-proof-persistence:" + ("0" * 64),
         bundle_id=bundle.bundle_id,
