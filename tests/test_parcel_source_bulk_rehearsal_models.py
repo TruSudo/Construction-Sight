@@ -16,6 +16,7 @@ from constructionsight.parcel_source_acquisition_models import (
 from constructionsight.parcel_source_bulk_rehearsal_models import (
     ParcelArcGISBulkRehearsalEvidence,
     assemble_arcgis_bulk_rehearsal_evidence,
+    build_arcgis_bulk_retry_evidence,
 )
 
 _OBSERVED_AT = datetime(2026, 7, 14, 19, 0, tzinfo=UTC)
@@ -132,7 +133,6 @@ def test_rehearsal_evidence_rejects_checkpoint_and_retry_tampering() -> None:
         ParcelArcGISBulkRehearsalEvidence.model_validate(evidence_payload)
 
 
-
 def test_rehearsal_evidence_requires_retry_coverage_for_each_retried_page() -> None:
     _, evidence = _evidence()
     payload = evidence.to_dict()
@@ -154,18 +154,16 @@ def test_rehearsal_evidence_requires_retry_coverage_for_each_retried_page() -> N
 
 def test_rehearsal_evidence_rejects_impossible_retry_chronology() -> None:
     _, evidence = _evidence()
-    payload = evidence.to_dict()
-    retry_payload = payload["retry_events"][0]
-    retry_payload["recorded_at"] = (
-        _OBSERVED_AT + timedelta(minutes=1)
-    ).isoformat()
-    identity_payload = {
-        key: value for key, value in retry_payload.items() if key != "retry_id"
-    }
-    retry_payload["retry_id"] = digest_identity(
-        "parcel-arcgis-bulk-retry",
-        identity_payload,
+    retried_page = evidence.page_evidence[1]
+    impossible_retry = build_arcgis_bulk_retry_evidence(
+        retried_page,
+        failure_kind=evidence.retry_events[0].failure_kind,
+        failed_attempt_count=evidence.retry_events[0].failed_attempt_count,
+        fault_injected=evidence.retry_events[0].fault_injected,
+        recorded_at=retried_page.observed_at + timedelta(seconds=1),
     )
+    payload = evidence.to_dict()
+    payload["retry_events"] = [impossible_retry.to_dict()]
 
     with pytest.raises(ValidationError, match="cannot follow its recovered page"):
         ParcelArcGISBulkRehearsalEvidence.model_validate(payload)
@@ -176,10 +174,10 @@ def test_manifest_binds_all_evidence_to_its_execution_window() -> None:
 
     with pytest.raises(ValidationError, match="outside the manifest execution window"):
         build_arcgis_bulk_manifest(
-  snapshot,
-  started_at=_OBSERVED_AT + timedelta(seconds=1),
-  completed_at=_OBSERVED_AT + timedelta(minutes=4),
-  starting_count=6,
-  ending_count=6,
-  rehearsal_evidence=evidence,
+            snapshot,
+            started_at=_OBSERVED_AT + timedelta(seconds=1),
+            completed_at=_OBSERVED_AT + timedelta(minutes=4),
+            starting_count=6,
+            ending_count=6,
+            rehearsal_evidence=evidence,
         )
