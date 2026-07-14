@@ -1,4 +1,4 @@
-"""Governed complete ArcGIS object-ID rehearsal with durable checkpoint proof."""
+"""Governed complete ArcGIS object-ID rehearsal with durable proof boundaries."""
 
 from __future__ import annotations
 
@@ -16,6 +16,13 @@ from constructionsight.parcel_source_acquisition_models import (
     ParcelArcGISBulkManifest,
     ParcelArcGISCapabilitySnapshot,
 )
+from constructionsight.parcel_source_bulk_rehearsal_artifacts import (
+    ParcelArcGISBulkArtifactKind,
+    ParcelArcGISBulkArtifactReceipt,
+    ParcelArcGISBulkArtifactStore,
+    ParcelArcGISBulkCountResponse,
+    ParcelArcGISBulkPageResponse,
+)
 from constructionsight.parcel_source_bulk_rehearsal_models import (
     ParcelArcGISBulkCheckpointEvidence,
     ParcelArcGISBulkPageEvidence,
@@ -25,7 +32,6 @@ from constructionsight.parcel_source_bulk_rehearsal_models import (
     build_arcgis_bulk_rehearsal_evidence,
     build_arcgis_bulk_resume_evidence,
     build_arcgis_bulk_retry_evidence,
-    digest_json_payload,
 )
 
 
@@ -45,10 +51,10 @@ class ParcelArcGISBulkTransientError(RuntimeError):
 
 
 class ParcelArcGISBulkRehearsalSource(Protocol):
-    """Read-only source contract for count and ordered object-ID page observations."""
+    """Read-only source contract returning exact count and page response bodies."""
 
-    def fetch_count(self) -> int:
-        """Return the source count observed at one point in the rehearsal."""
+    def fetch_count(self) -> ParcelArcGISBulkCountResponse:
+        """Return one exact source count response."""
 
     def fetch_object_id_page(
         self,
@@ -56,8 +62,8 @@ class ParcelArcGISBulkRehearsalSource(Protocol):
         offset: int,
         record_count: int,
         attempt_number: int,
-    ) -> Mapping[str, Any]:
-        """Return one raw ArcGIS-compatible object-ID page response."""
+    ) -> ParcelArcGISBulkPageResponse:
+        """Return one exact ArcGIS-compatible object-ID page response."""
 
 
 class ParcelArcGISBulkCheckpointStore(Protocol):
@@ -86,7 +92,9 @@ class ParcelArcGISBulkRehearsalPolicy:
         if self.checkpoint_after_pages < 1:
             raise ValueError("ArcGIS rehearsal checkpoint must follow at least one page")
         if self.injected_retry_page_index < self.checkpoint_after_pages:
-            raise ValueError("ArcGIS injected retry must occur in the resumed execution segment")
+            raise ValueError(
+                "ArcGIS injected retry must occur in the resumed execution segment"
+            )
         if self.max_attempts < 2 or self.max_attempts > 5:
             raise ValueError("ArcGIS rehearsal max attempts must be between 2 and 5")
         if len(self.retry_delays_seconds) < self.max_attempts - 1:
@@ -101,6 +109,7 @@ class ParcelArcGISBulkRehearsalExecution:
 
     manifest: ParcelArcGISBulkManifest
     checkpoint_reloaded: bool
+    artifact_receipts: tuple[ParcelArcGISBulkArtifactReceipt, ...]
     bulk_run_authorized: bool = False
 
     def __post_init__(self) -> None:
@@ -108,6 +117,26 @@ class ParcelArcGISBulkRehearsalExecution:
             raise ValueError("ArcGIS rehearsal execution requires checkpoint reload proof")
         if self.bulk_run_authorized:
             raise ValueError("ArcGIS rehearsal execution cannot authorize a bulk run")
+        expected_receipt_count = self.manifest.page_count + 2
+        if len(self.artifact_receipts) != expected_receipt_count:
+            raise ValueError("ArcGIS rehearsal must retain both counts and every data page")
+        first, *page_receipts, last = self.artifact_receipts
+        if first.kind != ParcelArcGISBulkArtifactKind.STARTING_COUNT:
+            raise ValueError("ArcGIS rehearsal first artifact must be the starting count")
+        if last.kind != ParcelArcGISBulkArtifactKind.ENDING_COUNT:
+            raise ValueError("ArcGIS rehearsal last artifact must be the ending count")
+        if any(
+            receipt.kind != ParcelArcGISBulkArtifactKind.PAGE
+            for receipt in page_receipts
+        ):
+            raise ValueError("ArcGIS rehearsal middle artifacts must be data pages")
+        receipt_digests = tuple(receipt.response_digest for receipt in page_receipts)
+        if receipt_digests != self.manifest.page_response_digests:
+            raise ValueError("ArcGIS rehearsal page artifacts do not match the manifest")
+        if tuple(receipt.sequence_index for receipt in self.artifact_receipts) != tuple(
+            range(expected_receipt_count)
+        ):
+            raise ValueError("ArcGIS rehearsal artifact sequence is not contiguous")
 
 
 class JSONFileParcelArcGISCheckpointStore:
@@ -121,7 +150,9 @@ class JSONFileParcelArcGISCheckpointStore:
         if not checkpoint_id.startswith(prefix):
             raise ValueError("ArcGIS checkpoint identity is malformed")
         digest = checkpoint_id.removeprefix(prefix)
-        if len(digest) != 64 or any(character not in "0123456789abcdef" for character in digest):
+        if len(digest) != 64 or any(
+            character not in "0123456789abcdef" for character in digest
+        ):
             raise ValueError("ArcGIS checkpoint identity digest is malformed")
         return self._directory / f"{digest}.json"
 
@@ -167,22 +198,33 @@ def execute_arcgis_complete_rehearsal(
     snapshot: ParcelArcGISCapabilitySnapshot,
     source: ParcelArcGISBulkRehearsalSource,
     checkpoint_store: ParcelArcGISBulkCheckpointStore,
+    artifact_store: ParcelArcGISBulkArtifactStore,
     *,
     policy: ParcelArcGISBulkRehearsalPolicy,
     now: Callable[[], datetime] | None = None,
     sleep: Callable[[float], None] = time.sleep,
 ) -> ParcelArcGISBulkRehearsalExecution:
-    """Execute a count-reconciled rehearsal with real save/reload and retry proof.
+    """Execute a count-reconciled rehearsal with durable response and resume proof.
 
-    The executor reads only counts and ordered object IDs. It has no persistence,
-    profile-promotion, scheduling, parcel-import, or bulk-run authorization path.
+    The executor reads only counts and ordered object IDs. It has no profile-promotion,
+    scheduling, parcel-import, operational persistence, or bulk-run authorization path.
     """
 
     if policy.page_size > snapshot.max_record_count:
         raise ValueError("ArcGIS rehearsal page size exceeds the capability snapshot")
     clock = now or _utc_now
     started_at = clock()
-    starting_count = _require_positive_count(source.fetch_count(), "starting")
+    artifact_receipts: list[ParcelArcGISBulkArtifactReceipt] = []
+
+    starting_response = source.fetch_count()
+    starting_count = _require_positive_count(starting_response.count, "starting")
+    artifact_receipts.append(
+        artifact_store.retain(
+            kind=ParcelArcGISBulkArtifactKind.STARTING_COUNT,
+            sequence_index=0,
+            response_body=starting_response.response_body,
+        )
+    )
     expected_page_count = math.ceil(starting_count / policy.page_size)
     if expected_page_count < 2:
         raise ParcelArcGISBulkRehearsalError(
@@ -199,8 +241,9 @@ def execute_arcgis_complete_rehearsal(
     observed_ids: list[int] = []
 
     for page_index in range(policy.checkpoint_after_pages):
-        page, retry = _fetch_page_with_retry(
+        page, retry, receipt = _fetch_page_with_retry(
             source,
+            artifact_store=artifact_store,
             query_field=query_field,
             page_index=page_index,
             page_size=policy.page_size,
@@ -211,6 +254,7 @@ def execute_arcgis_complete_rehearsal(
             sleep=sleep,
         )
         page_evidence.append(page)
+        artifact_receipts.append(receipt)
         if retry is not None:
             retry_evidence.append(retry)
 
@@ -229,8 +273,9 @@ def execute_arcgis_complete_rehearsal(
     resumed_at = clock()
 
     for page_index in range(policy.checkpoint_after_pages, expected_page_count):
-        page, retry = _fetch_page_with_retry(
+        page, retry, receipt = _fetch_page_with_retry(
             source,
+            artifact_store=artifact_store,
             query_field=query_field,
             page_index=page_index,
             page_size=policy.page_size,
@@ -241,6 +286,7 @@ def execute_arcgis_complete_rehearsal(
             sleep=sleep,
         )
         page_evidence.append(page)
+        artifact_receipts.append(receipt)
         if retry is not None:
             retry_evidence.append(retry)
 
@@ -248,7 +294,15 @@ def execute_arcgis_complete_rehearsal(
         raise ParcelArcGISBulkRehearsalError(
             "ArcGIS rehearsal retrieved count does not match the starting count"
         )
-    ending_count = _require_positive_count(source.fetch_count(), "ending")
+    ending_response = source.fetch_count()
+    ending_count = _require_positive_count(ending_response.count, "ending")
+    artifact_receipts.append(
+        artifact_store.retain(
+            kind=ParcelArcGISBulkArtifactKind.ENDING_COUNT,
+            sequence_index=expected_page_count + 1,
+            response_body=ending_response.response_body,
+        )
+    )
     if ending_count != starting_count:
         raise ParcelArcGISBulkRehearsalError(
             "ArcGIS rehearsal source count changed during execution"
@@ -280,6 +334,7 @@ def execute_arcgis_complete_rehearsal(
     return ParcelArcGISBulkRehearsalExecution(
         manifest=manifest,
         checkpoint_reloaded=True,
+        artifact_receipts=tuple(artifact_receipts),
     )
 
 
@@ -294,12 +349,18 @@ def parse_arcgis_object_id_page(
         raise ParcelArcGISBulkRehearsalError("ArcGIS page response contains an error")
     direct_ids = payload.get("objectIds")
     if direct_ids is not None:
-        if not isinstance(direct_ids, Sequence) or isinstance(direct_ids, (str, bytes, bytearray)):
-            raise ParcelArcGISBulkRehearsalError("ArcGIS objectIds response must be an array")
+        if not isinstance(direct_ids, Sequence) or isinstance(
+            direct_ids, (str, bytes, bytearray)
+        ):
+            raise ParcelArcGISBulkRehearsalError(
+                "ArcGIS objectIds response must be an array"
+            )
         return _normalize_object_ids(direct_ids)
 
     features = payload.get("features")
-    if not isinstance(features, Sequence) or isinstance(features, (str, bytes, bytearray)):
+    if not isinstance(features, Sequence) or isinstance(
+        features, (str, bytes, bytearray)
+    ):
         raise ParcelArcGISBulkRehearsalError(
             "ArcGIS page response must contain objectIds or features"
         )
@@ -309,7 +370,9 @@ def parse_arcgis_object_id_page(
             raise ParcelArcGISBulkRehearsalError("ArcGIS feature must be an object")
         attributes = feature.get("attributes")
         if not isinstance(attributes, Mapping) or object_id_field not in attributes:
-            raise ParcelArcGISBulkRehearsalError("ArcGIS feature is missing the object-ID field")
+            raise ParcelArcGISBulkRehearsalError(
+                "ArcGIS feature is missing the object-ID field"
+            )
         values.append(attributes[object_id_field])
     return _normalize_object_ids(values)
 
@@ -317,6 +380,7 @@ def parse_arcgis_object_id_page(
 def _fetch_page_with_retry(
     source: ParcelArcGISBulkRehearsalSource,
     *,
+    artifact_store: ParcelArcGISBulkArtifactStore,
     query_field: str,
     page_index: int,
     page_size: int,
@@ -325,22 +389,29 @@ def _fetch_page_with_retry(
     policy: ParcelArcGISBulkRehearsalPolicy,
     clock: Callable[[], datetime],
     sleep: Callable[[float], None],
-) -> tuple[ParcelArcGISBulkPageEvidence, ParcelArcGISBulkRetryEvidence | None]:
+) -> tuple[
+    ParcelArcGISBulkPageEvidence,
+    ParcelArcGISBulkRetryEvidence | None,
+    ParcelArcGISBulkArtifactReceipt,
+]:
     failure_kind: str | None = None
     fault_injected = False
     retry_recorded_at: datetime | None = None
-    payload: Mapping[str, Any] | None = None
+    response: ParcelArcGISBulkPageResponse | None = None
     attempt_count = 0
 
     for attempt_number in range(1, policy.max_attempts + 1):
         attempt_count = attempt_number
         try:
-            if page_index == policy.injected_retry_page_index and attempt_number == 1:
+            if (
+                page_index == policy.injected_retry_page_index
+                and attempt_number == 1
+            ):
                 raise ParcelArcGISBulkTransientError(
                     "injected_pre_request_transient",
                     fault_injected=True,
                 )
-            payload = source.fetch_object_id_page(
+            response = source.fetch_object_id_page(
                 offset=page_index * page_size,
                 record_count=page_size,
                 attempt_number=attempt_number,
@@ -361,8 +432,9 @@ def _fetch_page_with_retry(
                 ) from exc
             sleep(policy.retry_delays_seconds[attempt_number - 1])
 
-    if payload is None:
-        raise ParcelArcGISBulkRehearsalError("ArcGIS page returned no payload")
+    if response is None:
+        raise ParcelArcGISBulkRehearsalError("ArcGIS page returned no response")
+    payload = response.payload()
     object_ids = parse_arcgis_object_id_page(
         payload,
         object_id_field=query_field,
@@ -393,12 +465,21 @@ def _fetch_page_with_retry(
         raise ParcelArcGISBulkRehearsalError(
             "ArcGIS rehearsal reached a short page before count reconciliation"
         )
+    receipt = artifact_store.retain(
+        kind=ParcelArcGISBulkArtifactKind.PAGE,
+        sequence_index=page_index + 1,
+        response_body=response.response_body,
+    )
+    if receipt.response_digest != response.response_digest:
+        raise ParcelArcGISBulkRehearsalError(
+            "ArcGIS retained page artifact digest does not match its response"
+        )
     observed_at = clock()
     page = build_arcgis_bulk_page_evidence(
         page_index=page_index,
         page_size=page_size,
         object_ids=object_ids,
-        response_digest=digest_json_payload(dict(payload)),
+        response_digest=response.response_digest,
         attempt_count=attempt_count,
         terminal_page=terminal_page,
         observed_at=observed_at,
@@ -408,7 +489,9 @@ def _fetch_page_with_retry(
     retry: ParcelArcGISBulkRetryEvidence | None = None
     if attempt_count > 1:
         if failure_kind is None or retry_recorded_at is None:
-            raise ParcelArcGISBulkRehearsalError("ArcGIS retried page is missing failure evidence")
+            raise ParcelArcGISBulkRehearsalError(
+                "ArcGIS retried page is missing failure evidence"
+            )
         retry = build_arcgis_bulk_retry_evidence(
             page,
             failure_kind=failure_kind,
@@ -416,23 +499,29 @@ def _fetch_page_with_retry(
             fault_injected=fault_injected,
             recorded_at=retry_recorded_at,
         )
-    return page, retry
+    return page, retry, receipt
 
 
 def _normalize_object_ids(values: Sequence[Any]) -> tuple[int, ...]:
     normalized: list[int] = []
     for value in values:
         if isinstance(value, bool) or not isinstance(value, int):
-            raise ParcelArcGISBulkRehearsalError("ArcGIS object IDs must be JSON integers")
+            raise ParcelArcGISBulkRehearsalError(
+                "ArcGIS object IDs must be JSON integers"
+            )
         if value < 0:
-            raise ParcelArcGISBulkRehearsalError("ArcGIS object IDs cannot be negative")
+            raise ParcelArcGISBulkRehearsalError(
+                "ArcGIS object IDs cannot be negative"
+            )
         normalized.append(value)
     return tuple(normalized)
 
 
 def _require_positive_count(value: int, label: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int) or value < 1:
-        raise ParcelArcGISBulkRehearsalError(f"ArcGIS {label} count must be a positive integer")
+        raise ParcelArcGISBulkRehearsalError(
+            f"ArcGIS {label} count must be a positive integer"
+        )
     return value
 
 
