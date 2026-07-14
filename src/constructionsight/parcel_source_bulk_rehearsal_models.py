@@ -498,6 +498,80 @@ def build_arcgis_bulk_rehearsal_evidence(
     )
 
 
+
+def assemble_arcgis_bulk_rehearsal_evidence(
+    scope: ArcGISBulkScope,
+    *,
+    page_size: int,
+    page_object_ids: Sequence[Sequence[int]],
+    page_response_digests: Sequence[str],
+    page_attempt_counts: Sequence[int],
+    page_observed_at: Sequence[datetime],
+    checkpoint_completed_page_count: int,
+    checkpoint_created_at: datetime,
+    resumed_at: datetime,
+    retry_page_index: int,
+    retry_failure_kind: str,
+    retry_failed_attempt_count: int,
+    retry_fault_injected: bool,
+    retry_recorded_at: datetime,
+    created_at: datetime,
+) -> ParcelArcGISBulkRehearsalEvidence:
+    """Assemble a complete evidence chain from normalized page observations."""
+
+    page_count = len(page_object_ids)
+    if page_count < 2:
+        raise ValueError("ArcGIS bulk rehearsal requires at least two pages")
+    if not (
+        len(page_response_digests)
+        == len(page_attempt_counts)
+        == len(page_observed_at)
+        == page_count
+    ):
+        raise ValueError("ArcGIS bulk rehearsal page evidence lengths must match")
+    if retry_page_index < 0 or retry_page_index >= page_count:
+        raise ValueError("ArcGIS retry page index is outside the rehearsal")
+
+    pages = tuple(
+        build_arcgis_bulk_page_evidence(
+  page_index=index,
+  page_size=page_size,
+  object_ids=page_object_ids[index],
+  response_digest=page_response_digests[index],
+  attempt_count=page_attempt_counts[index],
+  terminal_page=index == page_count - 1,
+  observed_at=page_observed_at[index],
+        )
+        for index in range(page_count)
+    )
+    checkpoint = build_arcgis_bulk_checkpoint_evidence(
+        pages,
+        completed_page_count=checkpoint_completed_page_count,
+        page_size=page_size,
+        created_at=checkpoint_created_at,
+    )
+    resume = build_arcgis_bulk_resume_evidence(
+        checkpoint,
+        pages[checkpoint_completed_page_count],
+        resumed_at=resumed_at,
+    )
+    retry = build_arcgis_bulk_retry_evidence(
+        pages[retry_page_index],
+        failure_kind=retry_failure_kind,
+        failed_attempt_count=retry_failed_attempt_count,
+        fault_injected=retry_fault_injected,
+        recorded_at=retry_recorded_at,
+    )
+    return build_arcgis_bulk_rehearsal_evidence(
+        scope,
+        page_size=page_size,
+        page_evidence=pages,
+        checkpoint=checkpoint,
+        resume=resume,
+        retry_events=(retry,),
+        created_at=created_at,
+    )
+
 def digest_identity(namespace: str, payload: dict[str, Any]) -> str:
     """Return a namespaced SHA-256 identity for one canonical payload."""
 

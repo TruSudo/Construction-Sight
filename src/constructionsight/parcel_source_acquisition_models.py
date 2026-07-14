@@ -10,6 +10,10 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from constructionsight.parcel_source_bulk_rehearsal_models import (
+    ParcelArcGISBulkRehearsalEvidence,
+)
+
 
 class ParcelArcGISProbeKind(StrEnum):
     """Bounded query operations required before a bulk rehearsal."""
@@ -380,6 +384,7 @@ class ParcelArcGISBulkManifest(BaseModel):
     retry_recovery_verified: bool
     page_response_digests: tuple[str, ...]
     object_id_set_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    rehearsal_evidence: ParcelArcGISBulkRehearsalEvidence
 
     @field_validator("started_at", "completed_at")
     @classmethod
@@ -428,6 +433,35 @@ class ParcelArcGISBulkManifest(BaseModel):
             raise ValueError("ArcGIS bulk page count does not match count and page size")
         if len(self.page_response_digests) != self.page_count:
             raise ValueError("ArcGIS bulk manifest requires one digest per data page")
+        evidence = self.rehearsal_evidence
+        if (
+            evidence.snapshot_id != self.snapshot_id
+            or evidence.profile_id != self.profile_id
+            or evidence.source_key != self.source_key
+            or evidence.county != self.county
+            or evidence.schema_fingerprint != self.schema_fingerprint
+        ):
+            raise ValueError("ArcGIS bulk rehearsal evidence scope mismatch")
+        if evidence.page_size != self.page_size:
+            raise ValueError("ArcGIS bulk rehearsal evidence page size mismatch")
+        if len(evidence.page_evidence) != self.page_count:
+            raise ValueError("ArcGIS bulk rehearsal evidence page count mismatch")
+        if evidence.retrieved_count != self.retrieved_count:
+            raise ValueError("ArcGIS bulk rehearsal evidence retrieved count mismatch")
+        if evidence.unique_object_id_count != self.unique_object_id_count:
+            raise ValueError("ArcGIS bulk rehearsal evidence unique-ID count mismatch")
+        if evidence.duplicate_object_id_count != self.duplicate_object_id_count:
+            raise ValueError("ArcGIS bulk rehearsal evidence duplicate count mismatch")
+        if evidence.terminal_page_observed != self.terminal_page_observed:
+            raise ValueError("ArcGIS bulk rehearsal terminal-page proof mismatch")
+        if evidence.checkpoint_resume_verified != self.checkpoint_resume_verified:
+            raise ValueError("ArcGIS bulk rehearsal checkpoint proof mismatch")
+        if evidence.retry_recovery_verified != self.retry_recovery_verified:
+            raise ValueError("ArcGIS bulk rehearsal retry proof mismatch")
+        if evidence.page_response_digests != self.page_response_digests:
+            raise ValueError("ArcGIS bulk rehearsal page digest mismatch")
+        if evidence.object_id_set_digest != self.object_id_set_digest:
+            raise ValueError("ArcGIS bulk rehearsal object-ID digest mismatch")
         payload = self.model_dump(mode="json", exclude={"manifest_id"})
         if self.manifest_id != _digest_id("parcel-arcgis-bulk-manifest", payload):
             raise ValueError("ArcGIS bulk manifest ID does not match manifest content")

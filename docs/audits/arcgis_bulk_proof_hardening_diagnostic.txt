@@ -1,1 +1,0 @@
-expected one replacement in docs/architecture/parcel_arcgis_acquisition.md, found 0: 'A complete bulk rehearsal is represented by `ParcelArcGISBulkManifest`. It requires:\n'

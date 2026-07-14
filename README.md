@@ -168,6 +168,7 @@ explicitly authorized execute command is network-capable.
 - Parcel-source registry, schema preview, and row preview
 - Official county ArcGIS capability snapshots and four-request bounded probe plans
 - Retained portable county bounded-proof bundles with offline verification and exact-ID persistence receipts
+- Structured bulk-rehearsal page, checkpoint, resume, and retry evidence that prevents boolean-only proof claims
 - Parcel core records with GeoJSON and WKT/EWKT support
 - Polygon and multipolygon topology with holes and separate parts
 - Source-plane area-weighted centroids

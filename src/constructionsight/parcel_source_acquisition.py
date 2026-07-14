@@ -24,6 +24,9 @@ from constructionsight.parcel_source_acquisition_models import (
     digest_identity,
     digest_json_payload,
 )
+from constructionsight.parcel_source_bulk_rehearsal_models import (
+    ParcelArcGISBulkRehearsalEvidence,
+)
 from constructionsight.parcel_source_verification import (
     get_verified_parcel_source_profiles,
 )
@@ -331,19 +334,9 @@ def build_arcgis_bulk_manifest(
     completed_at: datetime,
     starting_count: int,
     ending_count: int,
-    page_size: int,
-    page_count: int,
-    retrieved_count: int,
-    unique_object_id_count: int,
-    duplicate_object_id_count: int,
-    failed_page_count: int,
-    terminal_page_observed: bool,
-    checkpoint_resume_verified: bool,
-    retry_recovery_verified: bool,
-    page_response_digests: tuple[str, ...],
-    object_id_set_digest: str,
+    rehearsal_evidence: ParcelArcGISBulkRehearsalEvidence,
 ) -> ParcelArcGISBulkManifest:
-    """Build a digest-bound complete-run manifest after a real rehearsal."""
+    """Build a manifest only from a structured, internally reconciled proof chain."""
 
     candidate = ParcelArcGISBulkManifest.model_construct(
         manifest_id="parcel-arcgis-bulk-manifest:" + ("0" * 64),
@@ -356,26 +349,26 @@ def build_arcgis_bulk_manifest(
         completed_at=completed_at,
         starting_count=starting_count,
         ending_count=ending_count,
-        page_size=page_size,
-        page_count=page_count,
-        retrieved_count=retrieved_count,
-        unique_object_id_count=unique_object_id_count,
-        duplicate_object_id_count=duplicate_object_id_count,
-        failed_page_count=failed_page_count,
-        terminal_page_observed=terminal_page_observed,
-        checkpoint_resume_verified=checkpoint_resume_verified,
-        retry_recovery_verified=retry_recovery_verified,
-        page_response_digests=page_response_digests,
-        object_id_set_digest=object_id_set_digest,
+        page_size=rehearsal_evidence.page_size,
+        page_count=len(rehearsal_evidence.page_evidence),
+        retrieved_count=rehearsal_evidence.retrieved_count,
+        unique_object_id_count=rehearsal_evidence.unique_object_id_count,
+        duplicate_object_id_count=rehearsal_evidence.duplicate_object_id_count,
+        failed_page_count=0,
+        terminal_page_observed=rehearsal_evidence.terminal_page_observed,
+        checkpoint_resume_verified=rehearsal_evidence.checkpoint_resume_verified,
+        retry_recovery_verified=rehearsal_evidence.retry_recovery_verified,
+        page_response_digests=rehearsal_evidence.page_response_digests,
+        object_id_set_digest=rehearsal_evidence.object_id_set_digest,
+        rehearsal_evidence=rehearsal_evidence,
     )
     payload = candidate.model_dump(mode="json", exclude={"manifest_id"})
     return ParcelArcGISBulkManifest.model_validate(
         {
-            **payload,
-            "manifest_id": digest_identity("parcel-arcgis-bulk-manifest", payload),
+  **payload,
+  "manifest_id": digest_identity("parcel-arcgis-bulk-manifest", payload),
         }
     )
-
 
 def build_arcgis_acquisition_assessment(
     snapshot: ParcelArcGISCapabilitySnapshot,

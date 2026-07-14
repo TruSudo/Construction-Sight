@@ -77,7 +77,7 @@ Partial observations remain `metadata_only`. Contradictory observations become `
 
 ## Complete rehearsal manifest
 
-`ParcelArcGISBulkManifest` is evidence for a separate controlled rehearsal, not a downloader. A valid manifest requires:
+A complete bulk rehearsal is represented by `ParcelArcGISBulkManifest`. The manifest can no longer rely on bare success booleans: it must embed a digest-bound `ParcelArcGISBulkRehearsalEvidence` chain containing ordered page IDs, normalized object-ID content, a retained checkpoint prefix, the exact first resumed page, and bounded retry recovery evidence. It requires:
 
 - identical start and end counts;
 - retrieved, unique-ID, and reported counts to reconcile exactly;
