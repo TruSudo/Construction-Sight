@@ -1,0 +1,130 @@
+name: Patch PR115 chronology
+
+on:
+  push:
+    branches:
+      - agent/add-arcgis-rehearsal-proof-bundle
+
+permissions:
+  contents: write
+
+concurrency:
+  group: patch-pr115-chronology
+  cancel-in-progress: false
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out phase branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/add-arcgis-rehearsal-proof-bundle
+          fetch-depth: 0
+
+      - name: Bind proof chronology and add regression
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          models = Path("src/constructionsight/parcel_source_bulk_rehearsal_bundle_models.py")
+          text = models.read_text(encoding="utf-8")
+          old = '''        if self.bulk_run_authorized:
+            raise ValueError("ArcGIS rehearsal proof bundle cannot authorize a bulk run")
+        scope = (self.source_key, self.county)
+'''
+          new = '''        if self.bulk_run_authorized:
+            raise ValueError("ArcGIS rehearsal proof bundle cannot authorize a bulk run")
+        if self.created_at < self.manifest.completed_at:
+            raise ValueError(
+                "ArcGIS rehearsal proof bundle created_at cannot precede manifest completion"
+            )
+        scope = (self.source_key, self.county)
+'''
+          if old in text:
+              text = text.replace(old, new, 1)
+          elif "created_at cannot precede manifest completion" not in text:
+              raise SystemExit("bundle chronology insertion point was not found")
+          models.write_text(text, encoding="utf-8")
+
+          service = Path("src/constructionsight/parcel_source_bulk_rehearsal_bundle.py")
+          text = service.read_text(encoding="utf-8")
+          old = '''    """Reparse every exact body and rebuild all derived proof without network access."""
+
+    rebuilt_plan = build_arcgis_bulk_rehearsal_plan(
+'''
+          new = '''    """Reparse every exact body and rebuild all derived proof without network access."""
+
+    effective_verified_at = verified_at or datetime.now(UTC)
+    if bundle.created_at < bundle.manifest.completed_at:
+        raise ValueError(
+            "ArcGIS rehearsal proof bundle creation cannot precede manifest completion"
+        )
+    if effective_verified_at < bundle.created_at:
+        raise ValueError(
+            "ArcGIS rehearsal proof verification time cannot precede bundle creation"
+        )
+    rebuilt_plan = build_arcgis_bulk_rehearsal_plan(
+'''
+          if old in text:
+              text = text.replace(old, new, 1)
+          elif "verification time cannot precede bundle creation" not in text:
+              raise SystemExit("verification chronology insertion point was not found")
+          old_assignment = "        verified_at=verified_at or datetime.now(UTC),\n"
+          if old_assignment in text:
+              text = text.replace(
+                  old_assignment,
+                  "        verified_at=effective_verified_at,\n",
+                  1,
+              )
+          elif "        verified_at=effective_verified_at,\n" not in text:
+              raise SystemExit("verification timestamp assignment was not found")
+          service.write_text(text, encoding="utf-8")
+
+          tests = Path("tests/test_parcel_source_bulk_rehearsal_bundle.py")
+          text = tests.read_text(encoding="utf-8")
+          marker = "def test_bundle_binds_creation_and_verification_chronology"
+          if marker not in text:
+              text += '''
+
+
+def test_bundle_binds_creation_and_verification_chronology(tmp_path: Path) -> None:
+    snapshot, plan, execution, artifact_store = _completed_rehearsal(tmp_path)
+
+    with pytest.raises(ValueError, match="created_at cannot precede"):
+        build_arcgis_bulk_rehearsal_proof_bundle(
+            snapshot,
+            plan,
+            execution,
+            artifact_store,
+            created_at=execution.manifest.completed_at - timedelta(seconds=1),
+        )
+
+    bundle = build_arcgis_bulk_rehearsal_proof_bundle(
+        snapshot,
+        plan,
+        execution,
+        artifact_store,
+        created_at=execution.manifest.completed_at + timedelta(seconds=1),
+    )
+    with pytest.raises(ValueError, match="verification time cannot precede"):
+        verify_arcgis_bulk_rehearsal_proof_bundle(
+            bundle,
+            verified_at=bundle.created_at - timedelta(seconds=1),
+        )
+'''
+          tests.write_text(text, encoding="utf-8")
+          PY
+
+      - name: Remove temporary machinery and publish patch
+        run: |
+          rm -f .github/workflows/pr115-chronology.yml
+          rm -f docs/audits/pr115_chronology_trigger.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "Bind ArcGIS rehearsal proof chronology"
+          git push origin HEAD:agent/add-arcgis-rehearsal-proof-bundle
