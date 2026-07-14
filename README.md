@@ -171,7 +171,6 @@ explicitly authorized execute command is network-capable.
 - Structured bulk-rehearsal page, checkpoint, resume, and retry evidence that prevents boolean-only proof claims
 - Governed complete-rehearsal executor with exact count/page response retention, durable checkpoint reload, resumed-segment fault injection, bounded retry, and count reconciliation
 - Digest-bound official ArcGIS rehearsal plans and an exact-response HTTP adapter with one-request transport semantics and fail-closed redirect, endpoint, media-type, size, JSON, and service-error controls
-- Digest-bound official ArcGIS rehearsal plans and an exact-response HTTP adapter with one-request transport semantics and fail-closed redirect, endpoint, media-type, size, JSON, and service-error controls
 - Parcel core records with GeoJSON and WKT/EWKT support
 - Polygon and multipolygon topology with holes and separate parts
 - Source-plane area-weighted centroids
