@@ -261,6 +261,11 @@ class CeqanetCsvEvidenceSeries(BaseModel):
     policy_effective_date: date
     policy_expires_on: date
     observations: list[CeqanetCsvEvidenceObservation]
+    series_sequence: int = Field(ge=0)
+    predecessor_series_digest: str | None = Field(
+        default=None,
+        pattern=r"^[0-9a-f]{64}$",
+    )
     observation_count: int = Field(ge=0)
     successful_observation_count: int = Field(ge=0)
     distinct_successful_utc_dates: list[date]
@@ -308,6 +313,19 @@ class CeqanetCsvEvidenceSeries(BaseModel):
             raise ValueError("series policy dates are invalid")
         if self.observation_count != len(self.observations):
             raise ValueError("observation_count must equal observations length")
+        if self.series_sequence != self.observation_count:
+            raise ValueError(
+                "series_sequence must equal the append-only observation count"
+            )
+        if self.series_sequence == 0:
+            if self.predecessor_series_digest is not None:
+                raise ValueError(
+                    "empty evidence-series baseline cannot have a predecessor"
+                )
+        elif self.predecessor_series_digest is None:
+            raise ValueError(
+                "nonempty evidence series must bind its predecessor digest"
+            )
         ordered = sorted(
             self.observations,
             key=lambda item: (
@@ -445,4 +463,8 @@ class CeqanetCsvEvidenceSeriesVerification(BaseModel):
             raise ValueError("finding_count must equal findings length")
         if self.passed != (self.finding_count == 0):
             raise ValueError("passed must agree with finding_count")
+        if self.ready_for_maturity_review and not self.passed:
+            raise ValueError(
+                "failed series verification cannot claim maturity readiness"
+            )
         return self
