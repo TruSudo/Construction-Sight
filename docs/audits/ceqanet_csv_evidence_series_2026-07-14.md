@@ -6,9 +6,11 @@ The canonical official-CSV evidence series is valid and empty.
 
 - Status: `collecting`
 - Observation count: `0`
+- Series sequence: `0`
+- Predecessor series digest: `null`
 - Successful observation count: `0`
 - Ready for maturity review: `false`
-- Series digest: `d8b214a5c3b381174700efa96e31ba284ff3625dd319741e2d56e6acb2559515`
+- Series digest: `b2a18770ec5ca28dfb907ce74b0b5ba120e6bb028ee35e3acd5188d42c182634`
 - Policy digest: `d84e6b80234a96799593db0601cc92e6480bad15bfd016001b35568c481c1674`
 - Independent verification: passed with 0 findings
 
