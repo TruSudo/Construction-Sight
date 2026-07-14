@@ -74,9 +74,14 @@ class CeqanetCsvEvidenceExecution(BaseModel):
         executed_at = self.live_execution.executed_at
         if executed_at.tzinfo is None or executed_at.utcoffset() is None:
             raise ValueError("live execution timestamp must be timezone-aware")
-        if executed_at.astimezone(UTC).date() != self.authorized_utc_date:
+        executed_at_utc = executed_at.astimezone(UTC)
+        if executed_at_utc.date() != self.authorized_utc_date:
             raise ValueError(
                 "authorized_utc_date must equal the live execution UTC date"
+            )
+        if self.authorization_granted_at > executed_at_utc:
+            raise ValueError(
+                "execution authorization cannot postdate the live request"
             )
         if self.authorization_granted_at.date() != self.authorized_utc_date:
             raise ValueError(
@@ -157,6 +162,10 @@ class CeqanetCsvEvidenceObservation(BaseModel):
         if any(part in {"", ".", ".."} for part in path.parts):
             raise ValueError(
                 "evidence execution artifact ref cannot contain traversal segments"
+            )
+        if path.as_posix() != value:
+            raise ValueError(
+                "evidence execution artifact ref must use canonical POSIX form"
             )
         return value
 
