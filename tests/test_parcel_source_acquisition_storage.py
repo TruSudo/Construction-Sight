@@ -16,6 +16,9 @@ from constructionsight.parcel_source_acquisition_models import (
     digest_identity,
     digest_json_payload,
 )
+from constructionsight.parcel_source_bulk_rehearsal_models import (
+    assemble_arcgis_bulk_rehearsal_evidence,
+)
 from constructionsight.parcel_source_verification import (
     get_parcel_source_evidence,
     get_verified_parcel_source_profiles,
@@ -65,6 +68,32 @@ def _persist_profiles(session) -> None:
         store_parcel_source_evidence(session, evidence)
     for profile in get_verified_parcel_source_profiles():
         store_parcel_source_verification_profile(session, profile)
+
+
+def _bulk_rehearsal_evidence(snapshot):
+    return assemble_arcgis_bulk_rehearsal_evidence(
+        snapshot,
+        page_size=2,
+        page_object_ids=((1, 3), (5, 7), (9, 11)),
+        page_response_digests=tuple(
+  digest_json_payload({"page": value}) for value in range(3)
+        ),
+        page_attempt_counts=(1, 2, 1),
+        page_observed_at=(
+  _OBSERVED_AT,
+  _OBSERVED_AT + timedelta(seconds=30),
+  _OBSERVED_AT + timedelta(minutes=2),
+        ),
+        checkpoint_completed_page_count=1,
+        checkpoint_created_at=_OBSERVED_AT + timedelta(seconds=10),
+        resumed_at=_OBSERVED_AT + timedelta(seconds=20),
+        retry_page_index=1,
+        retry_failure_kind="injected_pre_request_transient",
+        retry_failed_attempt_count=1,
+        retry_fault_injected=True,
+        retry_recorded_at=_OBSERVED_AT + timedelta(seconds=25),
+        created_at=_OBSERVED_AT + timedelta(minutes=3),
+    )
 
 
 def test_database_initializes_arcgis_acquisition_proof_tables() -> None:
@@ -268,20 +297,9 @@ def test_complete_chain_persists_manifest_and_verified_assessment() -> None:
         completed_at=_OBSERVED_AT + timedelta(minutes=3),
         starting_count=6,
         ending_count=6,
-        page_size=2,
-        page_count=3,
-        retrieved_count=6,
-        unique_object_id_count=6,
-        duplicate_object_id_count=0,
-        failed_page_count=0,
-        terminal_page_observed=True,
-        checkpoint_resume_verified=True,
-        retry_recovery_verified=True,
-        page_response_digests=tuple(
-            digest_json_payload({"page": page}) for page in range(3)
-        ),
-        object_id_set_digest=digest_json_payload([1, 3, 5, 7, 9, 11]),
+        rehearsal_evidence=_bulk_rehearsal_evidence(snapshot),
     )
+
     assessment = build_arcgis_acquisition_assessment(
         snapshot,
         plan,
