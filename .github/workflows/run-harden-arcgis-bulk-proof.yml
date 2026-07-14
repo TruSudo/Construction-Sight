@@ -64,13 +64,27 @@ jobs:
               encoding="utf-8",
           )
           PY
-          bash /tmp/harden-arcgis-bulk-proof.sh
+          set +e
+          bash /tmp/harden-arcgis-bulk-proof.sh > /tmp/harden-arcgis-bulk-proof.log 2>&1
+          status=$?
+          set -e
+          cat /tmp/harden-arcgis-bulk-proof.log
+          if [ "$status" -ne 0 ]; then
+            cp /tmp/harden-arcgis-bulk-proof.log docs/audits/arcgis_bulk_proof_hardening_diagnostic.txt
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add docs/audits/arcgis_bulk_proof_hardening_diagnostic.txt
+            git commit -m "Record ArcGIS hardening diagnostic" || true
+            git push origin HEAD:agent/harden-arcgis-bulk-rehearsal-proof
+            exit "$status"
+          fi
 
       - name: Remove temporary phase machinery and commit candidate
         run: |
           rm .github/workflows/harden-arcgis-bulk-proof.yml
           rm .github/workflows/run-harden-arcgis-bulk-proof.yml
           rm docs/audits/arcgis_bulk_proof_hardening_trigger.txt
+          rm -f docs/audits/arcgis_bulk_proof_hardening_diagnostic.txt
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
