@@ -9,9 +9,15 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from constructionsight.parcel_source_acquisition_models import digest_identity
 
-AUTHORIZATION_SCHEMA_VERSION: Final = "parcel-arcgis-bulk-rehearsal-authorization/v1"
-PREFLIGHT_SCHEMA_VERSION: Final = "parcel-arcgis-bulk-rehearsal-preflight/v1"
-_AUTHORIZATION_STATEMENT = "authorize one complete read-only ArcGIS rehearsal"
+AUTHORIZATION_SCHEMA_VERSION: Final[
+    Literal["parcel-arcgis-bulk-rehearsal-authorization/v1"]
+] = "parcel-arcgis-bulk-rehearsal-authorization/v1"
+PREFLIGHT_SCHEMA_VERSION: Final[
+    Literal["parcel-arcgis-bulk-rehearsal-preflight/v1"]
+] = "parcel-arcgis-bulk-rehearsal-preflight/v1"
+_AUTHORIZATION_STATEMENT: Final[
+    Literal["authorize one complete read-only ArcGIS rehearsal"]
+] = "authorize one complete read-only ArcGIS rehearsal"
 
 
 class ParcelArcGISBulkRehearsalAuthorization(BaseModel):
@@ -39,9 +45,9 @@ class ParcelArcGISBulkRehearsalAuthorization(BaseModel):
     execution_nonce: str = Field(pattern=r"^[0-9a-f]{64}$")
     issued_by: str = Field(min_length=1)
     authorization_reason: str = Field(min_length=1)
-    authorization_statement: Literal["authorize one complete read-only ArcGIS rehearsal"] = (
-        _AUTHORIZATION_STATEMENT
-    )
+    authorization_statement: Literal[
+        "authorize one complete read-only ArcGIS rehearsal"
+    ] = _AUTHORIZATION_STATEMENT
     issued_at: datetime
     not_before: datetime
     expires_at: datetime
@@ -98,7 +104,9 @@ class ParcelArcGISBulkRehearsalAuthorization(BaseModel):
         if any(not value.strip() or value != value.strip() for value in values):
             raise ValueError("ArcGIS rehearsal authorization limitations must be trimmed")
         if values != tuple(sorted(set(values), key=str.casefold)):
-            raise ValueError("ArcGIS rehearsal authorization limitations must be unique and sorted")
+            raise ValueError(
+                "ArcGIS rehearsal authorization limitations must be unique and sorted"
+            )
         return values
 
     @model_validator(mode="after")
@@ -134,8 +142,12 @@ class ParcelArcGISBulkRehearsalPreflight(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    schema_version: Literal["parcel-arcgis-bulk-rehearsal-preflight/v1"] = PREFLIGHT_SCHEMA_VERSION
-    preflight_id: str = Field(pattern=r"^parcel-arcgis-bulk-rehearsal-preflight:[0-9a-f]{64}$")
+    schema_version: Literal["parcel-arcgis-bulk-rehearsal-preflight/v1"] = (
+        PREFLIGHT_SCHEMA_VERSION
+    )
+    preflight_id: str = Field(
+        pattern=r"^parcel-arcgis-bulk-rehearsal-preflight:[0-9a-f]{64}$"
+    )
     authorization_id: str = Field(
         pattern=r"^parcel-arcgis-bulk-rehearsal-authorization:[0-9a-f]{64}$"
     )
