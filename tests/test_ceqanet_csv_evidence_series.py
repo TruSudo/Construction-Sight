@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -10,6 +11,7 @@ import pytest
 from pydantic import ValidationError
 from typer.testing import CliRunner
 
+from constructionsight import ceqanet_csv_evidence_series_cli as series_cli
 from constructionsight.ceqanet_csv_access_policy_models import (
     CeqanetCsvAccessPolicy,
     CeqanetCsvAccessPolicyVerification,
@@ -45,6 +47,7 @@ EVIDENCE_DIR = ROOT / "evidence/source_verification"
 PROJECT_FIXTURE = ROOT / "tests/fixtures/ceqanet/project_export.csv"
 DOCUMENT_FIXTURE = ROOT / "tests/fixtures/ceqanet/document_export.csv"
 runner = CliRunner()
+_ANSI_ESCAPE = re.compile(r"\\x1b\\[[0-9;]*m")
 
 
 def _load_json(path: Path) -> Any:
@@ -438,4 +441,59 @@ def test_cli_execute_refuses_missing_explicit_authorization(
     )
 
     assert result.exit_code != 0
-    assert "explicit --execute-live authorization is required" in result.output
+    assert (
+        "explicit --execute-live authorization is required"
+        in _ANSI_ESCAPE.sub("", result.output)
+    )
+
+
+def test_cli_preflights_output_conflict_before_executor(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    series_path = tmp_path / "series.json"
+    build_result = runner.invoke(
+        app,
+        [
+            "build",
+            *_canonical_cli_inputs(),
+            "--output",
+            str(series_path),
+        ],
+    )
+    assert build_result.exit_code == 0, build_result.output
+
+    output_path = tmp_path / "execution.json"
+    output_path.write_text("preserve existing evidence\n", encoding="utf-8")
+    called = False
+
+    def _unexpected_executor(*args: object, **kwargs: object) -> None:
+        nonlocal called
+        called = True
+        raise AssertionError("executor must not run after output conflict")
+
+    monkeypatch.setattr(
+        series_cli,
+        "execute_ceqanet_csv_evidence_request",
+        _unexpected_executor,
+    )
+    result = runner.invoke(
+        app,
+        [
+            "execute",
+            *_canonical_cli_inputs(),
+            str(series_path),
+            "--sch-number",
+            "2026030377",
+            "--output",
+            str(output_path),
+            "--execute-live",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "output already exists" in _ANSI_ESCAPE.sub("", result.output)
+    assert called is False
+    assert output_path.read_text(encoding="utf-8") == (
+        "preserve existing evidence\n"
+    )
