@@ -200,7 +200,7 @@ Where applicable, the architecture must preserve:
 - source registry/checklist digests, recurring-run definition/manifest/execution identities, exact windows, attempt identity, complete retained execution-envelope digest, and stale-evidence findings;
 - maturity-proposal registry, live execution, response body, replay, inspection, decision, blocker, and authority bindings;
 - CSV access-policy digest, effective and expiry dates, official host/path, export scopes, method, request/day/retry/timeout/size limits, complete-body retention, independent verification, per-execution authorization, halt statuses, evidence-series requirements, forbidden behaviors, and production blockers;
-- evidence-execution authorization time/date, request count, policy controls, complete live envelope and verification, artifact reference, execution/observation/series digests, successful dates/scopes, status, halt finality, readiness criteria, and non-authority fields;
+- evidence-execution authorization time/date, request count, policy controls, complete live envelope and verification, artifact reference, execution/observation/series digests, series sequence/predecessor, successful dates/scopes, status, halt/readiness finality, row-retention bound, and non-authority fields;
 - HTTP access failures, robots uncertainty, no-bypass decisions, and official export-surface observations;
 - unknown and unmapped fields;
 - raw geometry, format, embedded/supplied CRS, conflicts, coordinate bounds, topology method, rings, holes, validity limitations, centroid limitations, fallback reasons, and non-survey-grade boundaries;
