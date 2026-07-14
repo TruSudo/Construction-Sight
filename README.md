@@ -82,6 +82,7 @@ lawful public-record intake
   -> readiness, audit, checklist, plan, and controlled apply
   -> source-neutral normalization
   -> parcel/site identity and topology reasoning
+  -> field-level parcel claim assurance
   -> permit transition, contractor, and public-decision signals
   -> opportunity enrichment
   -> lead review and duplicate suppression
@@ -169,6 +170,8 @@ explicitly authorized execute command is network-capable.
 - Source-plane area-weighted centroids
 - Conservative CRS conflict and incompatibility handling
 - Parcel-backed site resolution
+- Field-level parcel claims with explicit authority and source-dependency lineage
+- Explainable agreement, corroboration, conflict, and missing-evidence outcomes
 - Permit snapshots and transition detection
 - Contractor identity
 - Public-decision records
@@ -178,6 +181,7 @@ explicitly authorized execute command is network-capable.
 ### Workflow and persistence
 
 - Dedicated ORM/store coverage for core upstream and post-enrichment records
+- Additive parcel-assurance report persistence with complete claim payloads
 - Read-only upstream list/detail inspection
 - Matrix-constrained lead workflow transitions
 - Append-only workflow events
@@ -229,6 +233,8 @@ Parcel identity is the land anchor for project convergence.
 
 The current geometry layer recognizes supported GeoJSON and WKT/EWKT Point, Polygon, and MultiPolygon input. It preserves rings, holes, parts, raw geometry, hashes, supplied or embedded CRS, conflicts, bounds, centroid limitations, and fallback reasons.
 
+The parcel-assurance layer consumes existing current parcel records without modifying them. It preserves field-level source claims, dependency lineage, proposition-specific authority, timestamps, conflicts, missing evidence, and limitations. Multiple publications of one upstream dataset do not count as independent corroboration, and no opaque global truth score is emitted.
+
 Projected or conflicting coordinates are not mislabeled or compared as longitude/latitude. CRS transformation, projection-aware or geodesic calculation, topology repair, and survey-grade boundary conclusions are not implemented.
 
 ## Commercial workflow boundary
@@ -255,6 +261,7 @@ No external communication behavior is implied by the existing models or CLI.
 - The other three canonical sources remain unverified.
 - Verified usable source coverage remains zero.
 - Most adapter families remain contract-level.
+- Parcel assurance evaluates only supplied current records; it does not establish countywide coverage, legal title, source currency, or longitudinal supersession.
 - Optional preview archives and nested child tables remain unimplemented.
 - Generic upstream corrections remain blocked pending record-family-specific doctrine.
 - Lead workflow reopen or override behavior is not implemented.

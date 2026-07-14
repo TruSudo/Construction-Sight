@@ -17,6 +17,7 @@ ConstructionSight has a substantial tested model/service architecture for lawful
 - an offline, digest-bound, 31-day-maximum CEQAnet official-CSV access policy with explicit per-execution authorization, daily request limits, complete-body retention, independent verification, and no production authority;
 - policy-bound CEQAnet evidence executions and immutable series snapshots with exact artifact references, independent recomputation, daily uniqueness, terminal access-control halts, and report-only maturity readiness;
 - parcel and site reasoning with GeoJSON and WKT/EWKT topology;
+- field-level parcel evidence assurance with explicit source dependency, proposition-specific authority, conflict, and missing-evidence preservation;
 - source-plane area-weighted polygon centroids and conservative CRS boundaries;
 - permit movement, contractor identity, and decision records;
 - versioned opportunity enrichment, lead review, and dedupe;
@@ -55,6 +56,7 @@ The active-defect count for a certified tree must be zero. Planned capabilities 
 | External intelligence/gap spine | Yes | Yes | Yes | N/A | Yes | No | Capability models do not establish vendor parity. |
 | Parcel source/schema/row preview | Yes | Yes | Yes | Config/report-backed | Yes | No | Live import remains absent. |
 | Parcel core records | Yes | Yes | Yes | Yes | Read-only | No | Raw geometry, hash, CRS, and compatible summaries are preserved. |
+| Parcel fact assurance | Yes | Yes | Yes | Yes | Read-only | No | Current canonical records produce retained field claims and explainable lineage-aware outcomes; no live coverage or global truth score is claimed. |
 | Geometry normalization/topology | Yes | Yes | Yes | Payload | Internal | No | Supported GeoJSON/WKT topology and conservative CRS refusal exist; no survey-grade claim is made. |
 | Parcel-backed site resolution | Yes | Yes | Yes | Yes | Read-only | No | Exact point/topology signals are separated from explicit limited fallback. |
 | Permit snapshots/transitions | Yes | Yes | Yes | Yes | Read-only | No | Recurring live polling is planned capability. |
@@ -123,6 +125,7 @@ These are intentionally absent capabilities, not defects in the currently suppor
 | CS-PLAN-005 | Workflow reopen/override | Final states have no outgoing transitions. | Define explicit authority, reason, stale-state, and append-only event rules. |
 | CS-PLAN-006 | Outreach preview and sending | No sending path exists. | Implement human preview, explicit approval, duplicate suppression, compliance, evidence, and delivery audit first. |
 | CS-PLAN-007 | GUI/operator application | CLI and service boundaries remain authoritative. | Build after source maturity and operator workflows justify exposure. |
+| CS-PLAN-008 | Countywide parcel evidence ingestion and longitudinal claims | Assurance accepts explicit current records and source contexts while preserving conflicts, missing fields, and dependency lineage. | Verify lawful access and coverage, register field authority and lineage, and implement retained acquisition plus bitemporal supersession. |
 
 ## Current source maturity
 
@@ -159,6 +162,7 @@ A prior report-only HTTP observation classified CEQAnet as `cross_host_redirect`
 | CEQAnet recurring-run definitions/manifests/executions | Exact-schema digest-bound JSON artifacts only; no attempt ledger or scheduler state is implied. |
 | Parcel preview layers | Report/config-backed and intentionally ephemeral. |
 | Parcel core/site resolution | Indexed fields plus full payload, raw geometry, hashes, CRS, and compatible summaries. |
+| Parcel fact assurance | Additive indexed report rows plus complete field claims, dependency lineages, authority, values, reasons, conflicts, missing evidence, and limitations. |
 | Permit snapshots/transitions | Indexed fields plus full payload. |
 | Contractor identities | Indexed fields plus full payload. |
 | Decision records | Indexed fields plus full payload. |
@@ -182,7 +186,7 @@ Persistence is valid only when mapping is deliberate and preserves reasons, conf
 | CEQAnet maturity proposal | Offline build/verify commands bind current evidence and emit only a non-authorizing `keep_partial` proposal. |
 | CEQAnet CSV access policy | Offline `build`, `verify`, and `check-current` commands enforce exact evidence bindings, the maximum 31-day authority window, expiration, conservative controls, and independent verification. They do not perform network requests. |
 | CEQAnet CSV evidence series | Offline `build`/`verify` commands and one explicitly authorized `execute` command expose full policy/ledger preflight, exact daily limits, complete execution retention, terminal halts, and report-only readiness. Sequence 1 is committed; the daily gate prohibits another UTC 2026-07-14 request. |
-| Upstream records | Full-payload list/detail only. |
+| Upstream records | Full-payload list/detail only, including parcel-assurance review status, APN, and county filters. |
 | Lead records | Consolidated list/detail plus governed workflow transitions. |
 | Result authority | Validated current/history plus explicit exact-state record/correction. |
 | Repository certification | Complete tracked-tree audit command. |
@@ -205,6 +209,7 @@ Where applicable, the architecture must preserve:
 - HTTP access failures, robots uncertainty, no-bypass decisions, and official export-surface observations;
 - unknown and unmapped fields;
 - raw geometry, format, embedded/supplied CRS, conflicts, coordinate bounds, topology method, rings, holes, validity limitations, centroid limitations, fallback reasons, and non-survey-grade boundaries;
+- parcel field claims, source and record identity, dependency lineage, proposition-specific authority, claim method, original and normalized values, source-effective/observed time, agreement groups, conflict, missing evidence, and review state;
 - workflow transitions, event sequence, unique identity, and stale-state expectations;
 - result share uncertainty, immutable revision chain, predecessor, correction reason, authority head, and authority events; and
 - source plan/apply digests and row-level audit outcomes.

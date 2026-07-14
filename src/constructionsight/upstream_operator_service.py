@@ -15,6 +15,7 @@ from constructionsight.storage.movement_identity_orm import (
     PermitTransitionRecord,
 )
 from constructionsight.storage.parcel_site_orm import (
+    ParcelAssuranceReportRow,
     ParcelCoreRecordRow,
     SiteResolutionResultRow,
 )
@@ -41,6 +42,9 @@ _FILTER_SUPPORT: dict[UpstreamOperatorRecordKind, frozenset[str]] = {
     ),
     UpstreamOperatorRecordKind.PARCEL: frozenset(
         {"source_key", "source_record_id", "apn", "county"}
+    ),
+    UpstreamOperatorRecordKind.PARCEL_ASSURANCE: frozenset(
+        {"status", "apn", "county"}
     ),
     UpstreamOperatorRecordKind.SITE_RESOLUTION: frozenset({"status", "site_key"}),
 }
@@ -176,6 +180,30 @@ def list_upstream_operator_records(
         ).scalars()
         return [_parcel_record(parcel_row) for parcel_row in parcel_rows]
 
+    if record_kind == UpstreamOperatorRecordKind.PARCEL_ASSURANCE:
+        assurance_statement = select(ParcelAssuranceReportRow)
+        if status is not None:
+            assurance_statement = assurance_statement.where(
+                ParcelAssuranceReportRow.review_status == status
+            )
+        if apn is not None:
+            assurance_statement = assurance_statement.where(
+                ParcelAssuranceReportRow.normalized_apn == apn
+            )
+        if county is not None:
+            assurance_statement = assurance_statement.where(
+                ParcelAssuranceReportRow.county == county
+            )
+        assurance_rows = session.execute(
+            assurance_statement.order_by(ParcelAssuranceReportRow.id.desc()).limit(
+                limit
+            )
+        ).scalars()
+        return [
+            _parcel_assurance_record(assurance_row)
+            for assurance_row in assurance_rows
+        ]
+
     resolution_statement = select(SiteResolutionResultRow)
     if status is not None:
         resolution_statement = resolution_statement.where(
@@ -246,6 +274,17 @@ def get_upstream_operator_record(
             )
         ).scalar_one_or_none()
         return None if parcel_row is None else _parcel_record(parcel_row)
+    if record_kind == UpstreamOperatorRecordKind.PARCEL_ASSURANCE:
+        assurance_row = session.execute(
+            select(ParcelAssuranceReportRow).where(
+                ParcelAssuranceReportRow.report_id == record_id
+            )
+        ).scalar_one_or_none()
+        return (
+            None
+            if assurance_row is None
+            else _parcel_assurance_record(assurance_row)
+        )
     resolution_row = session.execute(
         select(SiteResolutionResultRow).where(
             SiteResolutionResultRow.resolution_id == record_id
@@ -373,6 +412,24 @@ def _parcel_record(row: ParcelCoreRecordRow) -> UpstreamOperatorRecord:
             row.payload_json,
             UpstreamOperatorRecordKind.PARCEL,
             row.parcel_record_id,
+        ),
+    )
+
+
+def _parcel_assurance_record(
+    row: ParcelAssuranceReportRow,
+) -> UpstreamOperatorRecord:
+    return UpstreamOperatorRecord(
+        record_kind=UpstreamOperatorRecordKind.PARCEL_ASSURANCE,
+        record_id=row.report_id,
+        status=row.review_status,
+        apn=row.normalized_apn,
+        county=row.county,
+        observed_at=row.observed_created_at,
+        payload=_payload(
+            row.payload_json,
+            UpstreamOperatorRecordKind.PARCEL_ASSURANCE,
+            row.report_id,
         ),
     )
 
