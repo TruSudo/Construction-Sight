@@ -59,6 +59,53 @@ jobs:
               line[10:] if line.startswith("          ") else line
               for line in lines[run_line + 1 : end]
           )
+
+          brittle_start_marker = (
+              "replace_once(\n"
+              "    acquisition_test,\n"
+              "    '''        build_arcgis_bulk_manifest("
+          )
+          brittle_end_marker = "        )''',\n)\n"
+          brittle_start = script.index(brittle_start_marker)
+          brittle_end = (
+              script.index(brittle_end_marker, brittle_start)
+              + len(brittle_end_marker)
+          )
+          structural_replacement = "\n".join(
+              [
+                  "acquisition_text = acquisition_test.read_text(encoding=\"utf-8\")",
+                  "failure_start = acquisition_text.index(",
+                  "    '    with pytest.raises(ValidationError, match=\"stable start and end count\"):\\n'",
+                  ")",
+                  "failure_end = acquisition_text.index(",
+                  "    '\\n\\n\\ndef _bounded_observations(',",
+                  "    failure_start,",
+                  ")",
+                  "failure_replacement = (",
+                  "    '    with pytest.raises(ValidationError, match=\"stable start and end count\"):\\n'",
+                  "    '        build_arcgis_bulk_manifest(\\n'",
+                  "    '            snapshot,\\n'",
+                  "    '            started_at=_OBSERVED_AT,\\n'",
+                  "    '            completed_at=_OBSERVED_AT + timedelta(minutes=3),\\n'",
+                  "    '            starting_count=6,\\n'",
+                  "    '            ending_count=7,\\n'",
+                  "    '            rehearsal_evidence=rehearsal_evidence,\\n'",
+                  "    '        )'",
+                  ")",
+                  "acquisition_test.write_text(",
+                  "    acquisition_text[:failure_start]",
+                  "    + failure_replacement",
+                  "    + acquisition_text[failure_end:],",
+                  "    encoding=\"utf-8\",",
+                  ")",
+              ]
+          )
+          script = (
+              script[:brittle_start]
+              + structural_replacement
+              + "\n"
+              + script[brittle_end:]
+          )
           Path("/tmp/harden-arcgis-bulk-proof.sh").write_text(
               script + "\n",
               encoding="utf-8",
