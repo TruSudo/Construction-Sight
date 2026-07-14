@@ -1,1 +1,2 @@
 Temporary branch-only trigger for the self-removing PR114 oversized fixture patch.
+Registered patch trigger.
