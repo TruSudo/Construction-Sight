@@ -94,8 +94,14 @@ class ParcelArcGISBulkArtifactReceipt:
             raise ValueError("ArcGIS artifact response digest is malformed")
         if self.response_size < 1:
             raise ValueError("ArcGIS artifact response body cannot be empty")
-        if not self.artifact_reference or self.artifact_reference != self.artifact_reference.strip():
+        if (
+            not self.artifact_reference
+            or self.artifact_reference != self.artifact_reference.strip()
+        ):
             raise ValueError("ArcGIS artifact reference must be nonempty and trimmed")
+        reference_path = Path(self.artifact_reference)
+        if reference_path.name != self.artifact_reference or reference_path.is_absolute():
+            raise ValueError("ArcGIS artifact reference must be one safe file name")
 
 
 class ParcelArcGISBulkArtifactStore(Protocol):
