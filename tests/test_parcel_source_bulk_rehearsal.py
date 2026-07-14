@@ -10,6 +10,9 @@ import pytest
 from constructionsight.parcel_source_acquisition import (
     get_official_arcgis_capability_snapshots,
 )
+from constructionsight.parcel_source_acquisition_models import (
+    ParcelArcGISCapabilitySnapshot,
+)
 from constructionsight.parcel_source_bulk_rehearsal import (
     JSONFileParcelArcGISCheckpointStore,
     ParcelArcGISBulkRehearsalError,
@@ -17,6 +20,14 @@ from constructionsight.parcel_source_bulk_rehearsal import (
     ParcelArcGISBulkTransientError,
     execute_arcgis_complete_rehearsal,
     parse_arcgis_object_id_page,
+)
+from constructionsight.parcel_source_bulk_rehearsal_artifacts import (
+    JSONFileParcelArcGISBulkArtifactStore,
+    ParcelArcGISBulkArtifactError,
+    ParcelArcGISBulkArtifactKind,
+    ParcelArcGISBulkArtifactReceipt,
+    ParcelArcGISBulkCountResponse,
+    ParcelArcGISBulkPageResponse,
 )
 
 
@@ -35,13 +46,13 @@ class _Source:
     counts: list[int]
     pages: dict[int, tuple[int, ...]]
     transient_failures: dict[tuple[int, int], str] = field(default_factory=dict)
-    feature_mode: bool = False
+    raw_page_bodies: dict[int, bytes] = field(default_factory=dict)
     calls: list[tuple[int, int, int]] = field(default_factory=list)
 
-    def fetch_count(self) -> int:
+    def fetch_count(self) -> ParcelArcGISBulkCountResponse:
         if not self.counts:
             raise AssertionError("unexpected count request")
-        return self.counts.pop(0)
+        return ParcelArcGISBulkCountResponse.from_count(self.counts.pop(0))
 
     def fetch_object_id_page(
         self,
@@ -49,20 +60,21 @@ class _Source:
         offset: int,
         record_count: int,
         attempt_number: int,
-    ) -> dict[str, Any]:
+    ) -> ParcelArcGISBulkPageResponse:
         self.calls.append((offset, record_count, attempt_number))
         failure_kind = self.transient_failures.get((offset, attempt_number))
         if failure_kind is not None:
             raise ParcelArcGISBulkTransientError(failure_kind)
-        object_ids = self.pages[offset]
-        if self.feature_mode:
-            return {
-                "features": [{"attributes": {"OBJECTID": object_id}} for object_id in object_ids]
-            }
-        return {"objectIds": list(object_ids)}
+        if offset in self.raw_page_bodies:
+            return ParcelArcGISBulkPageResponse(
+                response_body=self.raw_page_bodies[offset]
+            )
+        return ParcelArcGISBulkPageResponse.from_payload(
+            {"objectIds": list(self.pages[offset])}
+        )
 
 
-def _snapshot():
+def _snapshot() -> ParcelArcGISCapabilitySnapshot:
     return get_official_arcgis_capability_snapshots()[0]
 
 
@@ -78,19 +90,25 @@ def _policy(**overrides: Any) -> ParcelArcGISBulkRehearsalPolicy:
     return ParcelArcGISBulkRehearsalPolicy(**values)
 
 
-def test_complete_rehearsal_persists_reloads_retries_and_reconciles(
+def test_complete_rehearsal_retains_exact_bodies_and_reconciles(
     tmp_path: Path,
 ) -> None:
+    exact_first_page = b'{ "objectIds" : [1, 2] }'
     source = _Source(
         counts=[6, 6],
         pages={0: (1, 2), 2: (3, 4), 4: (5, 6)},
+        raw_page_bodies={0: exact_first_page},
     )
-    store = JSONFileParcelArcGISCheckpointStore(tmp_path / "checkpoints")
+    checkpoint_store = JSONFileParcelArcGISCheckpointStore(
+        tmp_path / "checkpoints"
+    )
+    artifact_store = JSONFileParcelArcGISBulkArtifactStore(tmp_path / "artifacts")
 
     result = execute_arcgis_complete_rehearsal(
         _snapshot(),
         source,
-        store,
+        checkpoint_store,
+        artifact_store,
         policy=_policy(),
         now=_Clock(),
         sleep=lambda _: None,
@@ -119,18 +137,26 @@ def test_complete_rehearsal_persists_reloads_retries_and_reconciles(
     assert evidence.page_evidence[1].attempt_count == 2
     assert source.calls == [(0, 2, 1), (2, 2, 2), (4, 2, 1)]
 
-    checkpoint_path = store.path_for(evidence.checkpoint.checkpoint_id)
+    kinds = tuple(receipt.kind for receipt in result.artifact_receipts)
+    assert kinds == (
+        ParcelArcGISBulkArtifactKind.STARTING_COUNT,
+        ParcelArcGISBulkArtifactKind.PAGE,
+        ParcelArcGISBulkArtifactKind.PAGE,
+        ParcelArcGISBulkArtifactKind.PAGE,
+        ParcelArcGISBulkArtifactKind.ENDING_COUNT,
+    )
+    assert artifact_store.read(result.artifact_receipts[1]) == exact_first_page
+    assert tuple(
+        receipt.response_digest for receipt in result.artifact_receipts[1:-1]
+    ) == manifest.page_response_digests
+
+    checkpoint_path = checkpoint_store.path_for(evidence.checkpoint.checkpoint_id)
     assert checkpoint_path.is_file()
-    assert store.load(evidence.checkpoint.checkpoint_id) == evidence.checkpoint
+    assert checkpoint_store.load(evidence.checkpoint.checkpoint_id) == evidence.checkpoint
 
 
 def test_complete_rehearsal_accepts_feature_attribute_pages(tmp_path: Path) -> None:
     snapshot = _snapshot()
-    source = _Source(
-        counts=[5, 5],
-        pages={0: (10, 11), 2: (12, 13), 4: (14,)},
-        feature_mode=True,
-    )
 
     class _FieldMappedSource(_Source):
         def fetch_object_id_page(
@@ -139,24 +165,26 @@ def test_complete_rehearsal_accepts_feature_attribute_pages(tmp_path: Path) -> N
             offset: int,
             record_count: int,
             attempt_number: int,
-        ) -> dict[str, Any]:
+        ) -> ParcelArcGISBulkPageResponse:
             self.calls.append((offset, record_count, attempt_number))
-            return {
-                "features": [
-                    {"attributes": {snapshot.object_id_field: object_id}}
-                    for object_id in self.pages[offset]
-                ]
-            }
+            return ParcelArcGISBulkPageResponse.from_payload(
+                {
+                    "features": [
+                        {"attributes": {snapshot.object_id_field: object_id}}
+                        for object_id in self.pages[offset]
+                    ]
+                }
+            )
 
-    mapped_source = _FieldMappedSource(
-        counts=source.counts,
-        pages=source.pages,
-        feature_mode=True,
+    source = _FieldMappedSource(
+        counts=[5, 5],
+        pages={0: (10, 11), 2: (12, 13), 4: (14,)},
     )
     result = execute_arcgis_complete_rehearsal(
         snapshot,
-        mapped_source,
-        JSONFileParcelArcGISCheckpointStore(tmp_path),
+        source,
+        JSONFileParcelArcGISCheckpointStore(tmp_path / "checkpoints"),
+        JSONFileParcelArcGISBulkArtifactStore(tmp_path / "artifacts"),
         policy=_policy(),
         now=_Clock(),
         sleep=lambda _: None,
@@ -177,7 +205,8 @@ def test_complete_rehearsal_rejects_count_drift(tmp_path: Path) -> None:
         execute_arcgis_complete_rehearsal(
             _snapshot(),
             source,
-            JSONFileParcelArcGISCheckpointStore(tmp_path),
+            JSONFileParcelArcGISCheckpointStore(tmp_path / "checkpoints"),
+            JSONFileParcelArcGISBulkArtifactStore(tmp_path / "artifacts"),
             policy=_policy(),
             now=_Clock(),
             sleep=lambda _: None,
@@ -194,7 +223,8 @@ def test_complete_rehearsal_rejects_short_page_before_count(tmp_path: Path) -> N
         execute_arcgis_complete_rehearsal(
             _snapshot(),
             source,
-            JSONFileParcelArcGISCheckpointStore(tmp_path),
+            JSONFileParcelArcGISCheckpointStore(tmp_path / "checkpoints"),
+            JSONFileParcelArcGISBulkArtifactStore(tmp_path / "artifacts"),
             policy=_policy(),
             now=_Clock(),
             sleep=lambda _: None,
@@ -213,7 +243,8 @@ def test_complete_rehearsal_rejects_global_duplicate_or_reordering(
         execute_arcgis_complete_rehearsal(
             _snapshot(),
             source,
-            JSONFileParcelArcGISCheckpointStore(tmp_path),
+            JSONFileParcelArcGISCheckpointStore(tmp_path / "checkpoints"),
+            JSONFileParcelArcGISBulkArtifactStore(tmp_path / "artifacts"),
             policy=_policy(),
             now=_Clock(),
             sleep=lambda _: None,
@@ -226,14 +257,19 @@ def test_complete_rehearsal_fails_closed_after_bounded_retry_exhaustion(
     source = _Source(
         counts=[8],
         pages={0: (1, 2), 2: (3, 4), 4: (5, 6), 6: (7, 8)},
-        transient_failures={(4, 1): "transport", (4, 2): "transport", (4, 3): "transport"},
+        transient_failures={
+            (4, 1): "transport",
+            (4, 2): "transport",
+            (4, 3): "transport",
+        },
     )
 
     with pytest.raises(ParcelArcGISBulkRehearsalError, match="exhausted bounded retries"):
         execute_arcgis_complete_rehearsal(
             _snapshot(),
             source,
-            JSONFileParcelArcGISCheckpointStore(tmp_path),
+            JSONFileParcelArcGISCheckpointStore(tmp_path / "checkpoints"),
+            JSONFileParcelArcGISBulkArtifactStore(tmp_path / "artifacts"),
             policy=_policy(),
             now=_Clock(),
             sleep=lambda _: None,
@@ -245,24 +281,72 @@ def test_checkpoint_store_rejects_tampered_retained_content(tmp_path: Path) -> N
         counts=[6, 6],
         pages={0: (1, 2), 2: (3, 4), 4: (5, 6)},
     )
-    store = JSONFileParcelArcGISCheckpointStore(tmp_path)
+    checkpoint_store = JSONFileParcelArcGISCheckpointStore(
+        tmp_path / "checkpoints"
+    )
     result = execute_arcgis_complete_rehearsal(
         _snapshot(),
         source,
-        store,
+        checkpoint_store,
+        JSONFileParcelArcGISBulkArtifactStore(tmp_path / "artifacts"),
         policy=_policy(),
         now=_Clock(),
         sleep=lambda _: None,
     )
     checkpoint = result.manifest.rehearsal_evidence.checkpoint
-    path = store.path_for(checkpoint.checkpoint_id)
+    path = checkpoint_store.path_for(checkpoint.checkpoint_id)
     path.write_text(
-        path.read_text(encoding="utf-8").replace('"object_id_count":2', '"object_id_count":9'),
+        path.read_text(encoding="utf-8").replace(
+            '"object_id_count":2',
+            '"object_id_count":9',
+        ),
         encoding="utf-8",
     )
 
     with pytest.raises(ValueError, match="checkpoint|object-ID|identity"):
-        store.load(checkpoint.checkpoint_id)
+        checkpoint_store.load(checkpoint.checkpoint_id)
+
+
+def test_artifact_store_rejects_tampered_retained_bytes(tmp_path: Path) -> None:
+    source = _Source(
+        counts=[6, 6],
+        pages={0: (1, 2), 2: (3, 4), 4: (5, 6)},
+    )
+    artifact_directory = tmp_path / "artifacts"
+    artifact_store = JSONFileParcelArcGISBulkArtifactStore(artifact_directory)
+    result = execute_arcgis_complete_rehearsal(
+        _snapshot(),
+        source,
+        JSONFileParcelArcGISCheckpointStore(tmp_path / "checkpoints"),
+        artifact_store,
+        policy=_policy(),
+        now=_Clock(),
+        sleep=lambda _: None,
+    )
+    receipt = result.artifact_receipts[1]
+    path = artifact_directory / receipt.artifact_reference
+    path.write_bytes(path.read_bytes() + b" ")
+
+    with pytest.raises(ParcelArcGISBulkArtifactError, match="size changed"):
+        artifact_store.read(receipt)
+
+
+def test_response_and_receipt_contracts_fail_closed() -> None:
+    with pytest.raises(ValueError, match="does not match"):
+        ParcelArcGISBulkCountResponse(
+            count=2,
+            response_body=b'{"count":3}',
+        )
+    with pytest.raises(ValueError, match="strict UTF-8 JSON"):
+        ParcelArcGISBulkPageResponse(response_body=b"\xff")
+    with pytest.raises(ValueError, match="safe file name"):
+        ParcelArcGISBulkArtifactReceipt(
+            kind=ParcelArcGISBulkArtifactKind.PAGE,
+            sequence_index=1,
+            response_digest="0" * 64,
+            response_size=1,
+            artifact_reference="../outside.json",
+        )
 
 
 def test_policy_and_snapshot_refuse_invalid_rehearsal_scope(tmp_path: Path) -> None:
@@ -275,7 +359,8 @@ def test_policy_and_snapshot_refuse_invalid_rehearsal_scope(tmp_path: Path) -> N
         execute_arcgis_complete_rehearsal(
             snapshot,
             source,
-            JSONFileParcelArcGISCheckpointStore(tmp_path),
+            JSONFileParcelArcGISCheckpointStore(tmp_path / "checkpoints"),
+            JSONFileParcelArcGISBulkArtifactStore(tmp_path / "artifacts"),
             policy=_policy(page_size=snapshot.max_record_count + 1),
             now=_Clock(),
             sleep=lambda _: None,
