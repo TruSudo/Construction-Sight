@@ -15,6 +15,7 @@ ConstructionSight has a substantial tested model/service architecture for lawful
 - a source-provided CEQAnet CSV URL/body contract with offline inspection and a one-request/no-retry live-proof envelope;
 - digest-bound, report-only CEQAnet maturity proposals that cannot promote or authorize recurring execution;
 - an offline, digest-bound, 31-day-maximum CEQAnet official-CSV access policy with explicit per-execution authorization, daily request limits, complete-body retention, independent verification, and no production authority;
+- policy-bound CEQAnet evidence executions and immutable series snapshots with exact artifact references, independent recomputation, daily uniqueness, terminal access-control halts, and report-only maturity readiness;
 - parcel and site reasoning with GeoJSON and WKT/EWKT topology;
 - source-plane area-weighted polygon centroids and conservative CRS boundaries;
 - permit movement, contractor identity, and decision records;
@@ -25,7 +26,7 @@ ConstructionSight has a substantial tested model/service architecture for lawful
 - read-only upstream inspection and governed lead/result actions; and
 - an executable complete tracked-tree certification gate.
 
-ConstructionSight is not yet a production recurring live-source platform. Most adapter families are contracts or planned integrations. CEQAnet is canonically `partial`: HTML automation returned HTTP 403 without bypass, while the source-provided CSV endpoint returned one retained HTTP 200 response. The original UTF-8 failure remains preserved, and an offline Windows-1252 replay of the exact body now passes with 2 rows. The other three canonical sources remain unverified. A bounded official-CSV evidence policy exists, but it neither performs a request nor promotes the source. No source is currently `verified`, no production scheduler exists, and no external outreach-sending behavior or GUI/operator application is implemented.
+ConstructionSight is not yet a production recurring live-source platform. Most adapter families are contracts or planned integrations. CEQAnet is canonically `partial`: HTML automation returned HTTP 403 without bypass, while the source-provided CSV endpoint returned one retained HTTP 200 response. The original UTF-8 failure remains preserved, and an offline Windows-1252 replay of the exact body now passes with 2 rows. The other three canonical sources remain unverified. A bounded official-CSV evidence policy and an independently verified empty series ledger exist, but they neither perform a request nor promote the source. No source is currently `verified`, no production scheduler exists, and no external outreach-sending behavior or GUI/operator application is implemented.
 
 ## Certification status model
 
@@ -47,6 +48,7 @@ The active-defect count for a certified tree must be zero. Planned capabilities 
 | CEQAnet recurring-run governance | Yes | Yes | Yes | Artifact-only | Yes | Guarded only | Exact schemas and canonical digests bind source identity, evidence, query, window, attempts, and retained response envelopes. `partial` maturity fails the verified-only execution gate. |
 | CEQAnet maturity proposal | Yes | Yes | Yes | Artifact-only | Yes | No | Exact registry/execution/body/replay/inspection bindings produce only `keep_partial`; network, persistence, mutation, and recurring authority remain false. |
 | CEQAnet CSV access policy | Yes | Yes | Yes | Artifact-only | Yes | No | The policy is effective 2026-07-14 through 2026-08-13, requires explicit authorization for each evidence execution, and permits at most one official `/Search` CSV GET per UTC day with zero retries. It does not itself perform a request or authorize production use. |
+| CEQAnet CSV evidence series | Yes | Yes | Yes | Artifact-only | Yes | Governed evidence only | Complete policy-bound execution artifacts and compact immutable observations enforce full-chain verification, one execution per UTC day, exact response/body identity, and terminal access-control halts. The canonical baseline is empty and collecting. |
 | CEQAnet source evidence | Yes | N/A | Yes | File-backed | Yes | No | Browser review preserves official entry/search/detail/policy/CSV surfaces, workflow diagnostics, HTTP 403, robots uncertainty, and no-bypass limitations. |
 | Universal intake | Yes | Yes | Yes | Partial | Yes | No | Source breadth remains limited. |
 | Opportunity transition intake | Yes | Yes | Yes | Partial | Yes | No | Candidate production is not outreach. |
@@ -114,7 +116,7 @@ These are intentionally absent capabilities, not defects in the currently suppor
 | ID | Planned capability | Current guard | Entry condition |
 |---|---|---|---|
 | CS-PLAN-001 | Optional preview archives and nested child tables | Core persisted records remain lossless; report/config layers are explicitly ephemeral. | Add only when replay or query requirements justify schema expansion. |
-| CS-PLAN-002 | Verified recurring live source adapters | CEQAnet is `partial`; a digest-bound official-CSV access policy is approved only for bounded evidence collection through 2026-08-13. It requires explicit authorization per execution, at most one GET per UTC day, zero retries, complete-body retention, and independent verification. HTML automation remains blocked by HTTP 403; no evidence-series ledger or scheduler exists. | Collect and independently verify at least four successful official-CSV observations across at least three UTC dates, covering both project and document exports, before any promotion decision. |
+| CS-PLAN-002 | Verified recurring live source adapters | CEQAnet is `partial`; a digest-bound official-CSV access policy and independently verified empty series ledger govern bounded evidence collection through 2026-08-13. Each execution requires explicit authorization, one GET on an unused UTC date, zero retries, complete-body retention, full-chain recomputation, and independent verification. HTML automation remains blocked by HTTP 403; no production scheduler exists. | Collect and independently verify four successful official-CSV observations on unused UTC dates, covering both project and document exports, before a separate promotion review. |
 | CS-PLAN-003 | CRS transformation, projection-aware/geodesic calculations, and topology repair | Incompatible CRS is preserved and refused; no survey-grade conclusion is emitted. | Pin a GIS stack and define transformation provenance, axis order, grid behavior, accuracy, failure, and repair doctrine. |
 | CS-PLAN-004 | Domain-specific upstream correction actions | Generic mutation is unavailable. | Define record-family-specific stale-state, correction, supersession, provenance, and audit behavior. |
 | CS-PLAN-005 | Workflow reopen/override | Final states have no outgoing transitions. | Define explicit authority, reason, stale-state, and append-only event rules. |
@@ -130,6 +132,7 @@ These are intentionally absent capabilities, not defects in the currently suppor
 | Official CSV contract | Deterministic planning, one no-retry HTTP 200 proof, and a verified Windows-1252 offline replay of the exact retained body exist. |
 | Source-maturity proposal | Offline digest-bound build/verify commands preserve `keep_partial` and cannot authorize registry mutation or recurring execution. |
 | Official-CSV access policy | Canonical policy digest `d84e6b80234a96799593db0601cc92e6480bad15bfd016001b35568c481c1674` is effective 2026-07-14 through 2026-08-13; policy verification passes, while production authority and source promotion remain false. |
+| Official-CSV evidence series | Canonical empty-series digest `d8b214a5c3b381174700efa96e31ba284ff3625dd319741e2d56e6acb2559515` independently verifies with status `collecting`, zero observations, and no network activity. |
 | Promotion/update planning | Deterministic dry-run plans and approval digests exist. |
 | Controlled registry apply | Evidence-gated status-only apply exists. |
 | Verified usable source | Zero in the canonical registry. |
@@ -150,6 +153,7 @@ A prior report-only HTTP observation classified CEQAnet as `cross_host_redirect`
 | CEQAnet CSV inspections/executions/replays | Schema-versioned offline inspections, live-proof envelopes, and derived encoding replays may be written by the operator CLI; no database write, attachment download, retry, or schedule is authorized. |
 | CEQAnet maturity proposals | Schema-versioned proposal and verification JSON plus a Markdown audit are artifact-only; the fixed decision is `keep_partial`, and all mutation/recurring authority remains false. |
 | CEQAnet CSV access policy | Schema-versioned policy and independent verification JSON plus a Markdown audit are artifact-only. They bind the exact registry, proposal, original execution, and replay digests; no response body, database state, scheduler state, or production authority is created by policy issuance. |
+| CEQAnet CSV evidence series | Schema-versioned policy-bound execution artifacts retain complete live envelopes; compact immutable series and independent verification JSON plus Markdown audits bind their repo-relative references and digests. The baseline contains zero observations; no database or scheduler state is implied. |
 | Source apply reports | Required JSON audit with digests and row-level outcomes. |
 | CEQAnet recurring-run definitions/manifests/executions | Exact-schema digest-bound JSON artifacts only; no attempt ledger or scheduler state is implied. |
 | Parcel preview layers | Report/config-backed and intentionally ephemeral. |
@@ -176,6 +180,7 @@ Persistence is valid only when mapping is deliberate and preserves reasons, conf
 | CEQAnet recurring-run artifacts and attempts | Definition, manifest, execute, and digest-aware verify commands exist; `partial` source maturity remains blocked. |
 | CEQAnet maturity proposal | Offline build/verify commands bind current evidence and emit only a non-authorizing `keep_partial` proposal. |
 | CEQAnet CSV access policy | Offline `build`, `verify`, and `check-current` commands enforce exact evidence bindings, the maximum 31-day authority window, expiration, conservative controls, and independent verification. They do not perform network requests. |
+| CEQAnet CSV evidence series | Offline `build`/`verify` commands and one explicitly authorized `execute` command expose full policy/ledger preflight, exact daily limits, complete execution retention, terminal halts, and report-only readiness. The output path is preflighted before any request. |
 | Upstream records | Full-payload list/detail only. |
 | Lead records | Consolidated list/detail plus governed workflow transitions. |
 | Result authority | Validated current/history plus explicit exact-state record/correction. |
@@ -195,6 +200,7 @@ Where applicable, the architecture must preserve:
 - source registry/checklist digests, recurring-run definition/manifest/execution identities, exact windows, attempt identity, complete retained execution-envelope digest, and stale-evidence findings;
 - maturity-proposal registry, live execution, response body, replay, inspection, decision, blocker, and authority bindings;
 - CSV access-policy digest, effective and expiry dates, official host/path, export scopes, method, request/day/retry/timeout/size limits, complete-body retention, independent verification, per-execution authorization, halt statuses, evidence-series requirements, forbidden behaviors, and production blockers;
+- evidence-execution authorization time/date, request count, policy controls, complete live envelope and verification, artifact reference, execution/observation/series digests, successful dates/scopes, status, halt finality, readiness criteria, and non-authority fields;
 - HTTP access failures, robots uncertainty, no-bypass decisions, and official export-surface observations;
 - unknown and unmapped fields;
 - raw geometry, format, embedded/supplied CRS, conflicts, coordinate bounds, topology method, rings, holes, validity limitations, centroid limitations, fallback reasons, and non-survey-grade boundaries;
