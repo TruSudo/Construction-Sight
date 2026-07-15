@@ -43,7 +43,7 @@ jobs:
           set -euo pipefail
           tag="$(printf '%s' '${{ matrix.python-version }}' | tr -d '.')"
           lock="requirements/py${tag}.lock"
-          python -m pip install --disable-pip-version-check "pip==25.1.1"
+          python -m pip install --disable-pip-version-check "pip==26.1.2"
           python -m pip install --disable-pip-version-check --no-deps -r "${lock}"
           python -m pip install --disable-pip-version-check --no-deps --no-build-isolation -e .
 
