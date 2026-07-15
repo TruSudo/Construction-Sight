@@ -64,7 +64,7 @@ name = "transport"
 responsibility = "Approved bounded external transport only; no workflow or persistence authority."
 path_patterns = [
   "src/constructionsight/adapters/ceqanet_listing_executor\\.py",
-  "src/constructionsight/(?:ceqanet_detail_http|ceqanet_discovery_http|public_source_http)\\.py",
+  "src/constructionsight/(?:ceqanet_detail_http|ceqanet_discovery_http|http_transport|source_readiness_http|source_verification_http)\\.py",
   "src/constructionsight/.*(?:_http|_live_service)\\.py",
 ]
 default = false
@@ -96,7 +96,7 @@ name = "domain"
 responsibility = "Pure evidence, identity, state, rule, value, and deterministic core-service contracts with no transport, persistence, operator, or governance authority."
 path_patterns = [
   "src/constructionsight/(?!storage/)(?!adapters/)(?!parcel_source_bulk_rehearsal_bundle_models\\.py$).*(?:_models|models)\\.py",
-  "src/constructionsight/(?:domain_types|legal|provenance|parcel_geometry|parcel_topology|parcel_topology_parse|.*_rules|opportunity_scoring_profile)\\.py",
+  "src/constructionsight/(?:domain_types|legal|provenance|parcel_geometry|parcel_topology|parcel_topology_parse|.*_rules|opportunity_scoring_profile|ceqanet_endpoints)\\.py",
   "src/constructionsight/(?:site_resolution_service|ceqanet_csv_service|parcel_source_acquisition|parcel_source_bulk_rehearsal|parcel_source_bulk_rehearsal_artifacts|source_registry_integrity|source_registry_update_plan_service|result_ledger_service|parcel_source_acquisition_bundle)\\.py",
   "src/constructionsight/intelligence/(?:__init__|schemas|artifact_identity)\\.py",
 ]
@@ -123,3 +123,15 @@ filesystem_write = true
 subprocess = false
 operator = false
 authority_bearing = true
+
+[[exceptions]]
+source_module = "constructionsight.adapters.ceqanet"
+target_module = "constructionsight.ceqanet_discovery_http"
+reason = "Temporary public API compatibility re-export after live discovery moved into approved transport."
+risk = "A transport type remains visible through the adapter namespace and could encourage coupling."
+compensating_control = "Adapter methods never execute transport; exact typed discovery behavior is regression-tested; all other adapter-to-transport edges remain prohibited."
+owner = "ConstructionSight maintainers"
+issued_on = "2026-07-15"
+expires_on = "2026-10-15"
+test = "tests/test_ceqanet_adapter.py"
+adr = "docs/adr/ADR-0006-ceqanet-compatibility-reexport.md"
