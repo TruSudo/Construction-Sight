@@ -18,18 +18,27 @@ from constructionsight.dependency_certification import (
 )
 from constructionsight.governance_certification_core import (
     SCHEMA_VERSION,
+    _ACTIVE_DEFECT_SCHEMA,
     _ARCHITECTURE_SCHEMA,
     _AUTHORIZATION_SCHEMA,
     _CAPABILITY_SCHEMA,
     _DEPENDENCY_SCHEMA,
     _NETWORK_SCHEMA,
+    _RESOLVED_DEFECT_SCHEMA,
     _TEST_SCHEMA,
     GovernanceFinding,
     GovernanceMetrics,
     GovernanceReport,
     _read_toml,
 )
+from constructionsight.governance_contract_schema import (
+    audit_governance_contract_shapes,
+)
 from constructionsight.traceability_certification import _audit_capabilities
+
+_MUTATION_SCHEMA = "constructionsight.mutation-contract/v1"
+_OPEN_WORK_SCHEMA = "constructionsight.open-work/v1"
+_VULNERABILITY_EXCEPTION_SCHEMA = "constructionsight.vulnerability-exceptions/v1"
 
 
 def audit_governance(root: Path, tracked_files: Sequence[Path]) -> GovernanceReport:
@@ -74,6 +83,50 @@ def audit_governance(root: Path, tracked_files: Sequence[Path]) -> GovernanceRep
         _TEST_SCHEMA,
         findings,
     )
+    mutation = _read_toml(
+        repository_root,
+        "governance/mutation_contract.toml",
+        _MUTATION_SCHEMA,
+        findings,
+    )
+    active_defects = _read_toml(
+        repository_root,
+        "governance/active_defects.toml",
+        _ACTIVE_DEFECT_SCHEMA,
+        findings,
+    )
+    resolved_defects = _read_toml(
+        repository_root,
+        "governance/resolved_defects.toml",
+        _RESOLVED_DEFECT_SCHEMA,
+        findings,
+    )
+    open_work = _read_toml(
+        repository_root,
+        "governance/open_work.toml",
+        _OPEN_WORK_SCHEMA,
+        findings,
+    )
+    vulnerability_exceptions = _read_toml(
+        repository_root,
+        "governance/vulnerability_exceptions.toml",
+        _VULNERABILITY_EXCEPTION_SCHEMA,
+        findings,
+    )
+    contracts = {
+        "governance/architecture_contract.toml": architecture,
+        "governance/capability_contract.toml": capability,
+        "governance/dependency_contract.toml": dependency,
+        "governance/network_contract.toml": network,
+        "governance/authorization_contract.toml": authorization,
+        "governance/adversarial_test_contract.toml": tests,
+        "governance/mutation_contract.toml": mutation,
+        "governance/active_defects.toml": active_defects,
+        "governance/resolved_defects.toml": resolved_defects,
+        "governance/open_work.toml": open_work,
+        "governance/vulnerability_exceptions.toml": vulnerability_exceptions,
+    }
+    audit_governance_contract_shapes(repository_root, contracts, findings)
 
     layer_by_module, _graph, mutation_map, metrics = _audit_architecture(
         repository_root,
