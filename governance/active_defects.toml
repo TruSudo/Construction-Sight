@@ -1,0 +1,58 @@
+schema_version = "constructionsight.active-defects/v1"
+certification_requires_zero = true
+
+[[defects]]
+id = "CS-SR-001"
+severity = "P1"
+area = "architecture"
+root_cause = "No strict machine-readable layer and capability-acquisition contract is enforced across the tracked production tree."
+discovered_against = "679f15fa6d39f222c16b8c5c3e99db7662465909"
+required_resolution = "Add exact module classification, AST import graph, capability permissions, exceptions, cycle checks, and regression fixtures."
+
+[[defects]]
+id = "CS-SR-002"
+severity = "P1"
+area = "capability-traceability"
+root_cause = "Implemented, guarded, planned, and deprecated capabilities are documented but not cross-checked against production modules, tests, doctrine, authority, and future entry conditions."
+discovered_against = "679f15fa6d39f222c16b8c5c3e99db7662465909"
+required_resolution = "Add a strict capability registry and fail-closed tree reconciliation."
+
+[[defects]]
+id = "CS-SR-003"
+severity = "P1"
+area = "supply-chain"
+root_cause = "Direct dependencies use open-ended minimum versions, CI installs with resolver-selected upgrades, and third-party Actions use mutable major tags."
+discovered_against = "679f15fa6d39f222c16b8c5c3e99db7662465909"
+required_resolution = "Pin declarations, add governed locks and inventory, pin Actions to immutable SHAs, and add vulnerability/SBOM gates."
+
+[[defects]]
+id = "CS-SR-004"
+severity = "P1"
+area = "network-resilience"
+root_cause = "Network boundaries are individually hardened but no complete inventory mechanically rejects unapproved clients or requests without a declared policy."
+discovered_against = "679f15fa6d39f222c16b8c5c3e99db7662465909"
+required_resolution = "Add a network contract, approved transport classification, AST enforcement, policy completeness checks, and adversarial fixtures."
+
+[[defects]]
+id = "CS-SR-005"
+severity = "P1"
+area = "authorization"
+root_cause = "Strong feature-specific authorization exists, including PR #116, but no repository-wide decision contract and mutation inventory mechanically prevents boolean-only or scope-free authority."
+discovered_against = "679f15fa6d39f222c16b8c5c3e99db7662465909"
+required_resolution = "Add a general scope-bound authorization decision contract and classify every authority-bearing capability."
+
+[[defects]]
+id = "CS-SR-006"
+severity = "P1"
+area = "certification"
+root_cause = "The canonical certifier does not yet enforce architecture, capability, dependency, network, authorization, adversarial-test, ADR, action-pin, or review doctrine."
+discovered_against = "679f15fa6d39f222c16b8c5c3e99db7662465909"
+required_resolution = "Expand deterministic certification and CI with stable finding codes and fail-closed governance parsing."
+
+[[defects]]
+id = "CS-SR-007"
+severity = "P2"
+area = "independent-review"
+root_cause = "High-risk changes lack a mandatory structured independent adversarial review artifact tied to the exact head."
+discovered_against = "679f15fa6d39f222c16b8c5c3e99db7662465909"
+required_resolution = "Add high-risk classification, review schema, exact-head binding, and unresolved-finding gate."
