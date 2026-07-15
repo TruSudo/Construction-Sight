@@ -7,7 +7,7 @@ ConstructionSight distinguishes six control classes that must not be conflated:
 3. **Semantic correctness** tests business rules, exact identity, stale-state rejection, replay, negative authority, and failure distinctions.
 4. **Architecture integrity** constrains which module families may depend on one another and which capabilities they may acquire.
 5. **Authorization and resilience** bind high-impact effects and network execution to exact scope, current state, bounded policy, audit identity, and fail-closed behavior.
-6. **Supply-chain trust** binds direct declarations, supported-environment locks, installed versions, vulnerability results, Action identities, and the SBOM.
+6. **Supply-chain trust** binds direct declarations, supported-environment artifact hashes, installed versions, vulnerability results, Action identities, and the SBOM.
 
 Passing one class does not imply passing another.
 
@@ -21,6 +21,7 @@ The canonical contracts are:
 - `governance/network_contract.toml`
 - `governance/authorization_contract.toml`
 - `governance/adversarial_test_contract.toml`
+- `governance/mutation_contract.toml`
 
 Unknown schema versions, malformed fields, unclassified modules, multiply classified modules, missing artifacts, and code/contract disagreement block certification.
 
@@ -36,6 +37,12 @@ Every production module has exactly one stable capability owner. Implemented and
 
 The capability registry does not claim that source adapters are operational merely because code exists. Source maturity, lawful access, live validation, and operational coverage remain separate evidence.
 
+## Supply-chain doctrine
+
+Direct, development, and build dependencies are exact declarations governed by the dependency registry. Each supported Python environment has a platform-specific lock whose logical rows bind exact versions to reviewed SHA-256 wheel identities. CI rejects resolver-selected versions, source-distribution fallback, unreviewed alternate artifacts, and unhashed lock entries. Installed-version verification, `pip check`, vulnerability scanning, immutable Action pins, and deterministic SBOM generation are independent required gates.
+
+The current locks certify GitHub-hosted Ubuntu x86_64 environments only. Support for another operating system, architecture, Python implementation, or wheel-tag set requires a separate reviewed lock and CI job.
+
 ## Authorization doctrine
 
 A high-impact operation is never authorized by a bare Boolean. Caller confirmation may be an additional gate, but the operative decision binds actor/operator, action, resource, exact scope, current state, granted and denied authority, issuance and validity, reuse, revocation, reason, expected identity, stale-state rule, audit identity, audit event, and failure posture.
@@ -44,7 +51,7 @@ The current product is a local CLI. An explicit operator identifier is sufficien
 
 ## Defect invalidation
 
-Every discovered certification defect enters `governance/active_defects.toml`. Active defects are executable blockers. A defect moves to `governance/resolved_defects.toml` only after the correction, regression evidence, and exact-tree certification are complete. Findings are never suppressed to preserve a zero-defect statement.
+Every discovered certification defect enters `governance/active_defects.toml`. Active defects are executable blockers. A defect moves to `governance/resolved_defects.toml` only after the correction, regression evidence, independent review, and exact-tree certification are complete. Findings are never suppressed to preserve a zero-defect statement.
 
 ## High-risk review
 
