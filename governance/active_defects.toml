@@ -112,3 +112,19 @@ area = "dependency-policy-traceability"
 root_cause = "Dependency registry and top-level policy validation could silently collapse duplicate canonical identities, discard non-table entries, accept stale hash-policy statements, permit unsafe lock paths, and omit checks that CI actually enforces the declared installation and mutation gates."
 discovered_against = "459ec451bc75d0cf3395d61f3613fd4fd972822f"
 required_resolution = "Fail closed on unknown/missing top-level fields, canonical and duplicate registry identities, non-table entries, required policy values, safe artifact paths, bootstrap and cross-lock agreement, authoritative source URLs, and mandatory CI commands."
+
+[[defects]]
+id = "CS-SR-015"
+severity = "P1"
+area = "governance-schema"
+root_cause = "Schema versions were checked, but unknown or misspelled top-level fields across architecture, capability, network, authorization, adversarial-test, mutation, defect, overlap, and vulnerability-exception contracts could remain inert without a finding. Mutation, overlap, and vulnerability-exception contracts were not loaded by canonical repository certification."
+discovered_against = "d6e6209de1bc5f6cd0eb139db6e96f1b894744de"
+required_resolution = "Load every machine-readable governance surface in the canonical certifier; enforce exact top-level fields and nonexpansion boundaries; validate active-defect, overlap, and vulnerability-exception identities; add negative fixtures."
+
+[[defects]]
+id = "CS-SR-016"
+severity = "P1"
+area = "cross-contract-traceability"
+root_cause = "Capability, network-policy, authorization-operation, dependency, and adversarial-matrix references were independently parsed but not bidirectionally reconciled. Invented references, orphaned policies, and capabilities omitted from adversarial matrices could therefore survive certification."
+discovered_against = "02720edb7b475011f536aa5a0b33990887f8476e"
+required_resolution = "Build a bidirectional governance reference graph; require exact policy and operation ownership, valid dependency capability references, and adversarial matrix coverage for every registered capability; add orphan and invented-reference fixtures."
