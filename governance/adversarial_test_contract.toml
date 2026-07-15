@@ -1,0 +1,50 @@
+schema_version = "constructionsight.adversarial-test-contract/v1"
+contract_id = "construction-sight-adversarial-tests-2026-07-15"
+required_categories = [
+  "empty-absent-null-unknown-extra",
+  "malformed-identity-schema",
+  "boundary-overflow-excessive-size",
+  "unicode-normalization",
+  "duplicates-ordering",
+  "conflicting-same-time-evidence",
+  "stale-future-naive-time",
+  "partial-interrupted-write-cleanup",
+  "replay-conflicting-replay-idempotency",
+  "retry-exhaustion-cancellation",
+  "stale-concurrent-writers",
+  "tampering-hash-mismatch",
+  "dependency-source-drift",
+  "authority-expansion-reuse-expiry",
+  "traversal-symlink",
+  "oversized-malformed-terminal-access-control",
+  "audit-failure-rollback",
+]
+
+[[matrices]]
+id = "CS-TEST-001"
+capability_ids = ["CS-CAP-002", "CS-CAP-003", "CS-CAP-004", "CS-CAP-005", "CS-CAP-007", "CS-CAP-008"]
+tests = ["tests/test_governance_certification.py", "tests/test_repository_certification.py"]
+categories = [
+  "empty-absent-null-unknown-extra",
+  "malformed-identity-schema",
+  "boundary-overflow-excessive-size",
+  "unicode-normalization",
+  "duplicates-ordering",
+  "conflicting-same-time-evidence",
+  "stale-future-naive-time",
+  "partial-interrupted-write-cleanup",
+  "replay-conflicting-replay-idempotency",
+  "retry-exhaustion-cancellation",
+  "stale-concurrent-writers",
+  "tampering-hash-mismatch",
+  "dependency-source-drift",
+  "authority-expansion-reuse-expiry",
+  "traversal-symlink",
+  "oversized-malformed-terminal-access-control",
+  "audit-failure-rollback",
+]
+exclusions = []
+branch_testing = "required for authorization, identity, transport, persistence, and certification decisions"
+mutation_testing = "focused PR subset plus scheduled/manual full high-risk suite"
+property_testing = "deterministic generative loops for serialization, ordering, graph constraints, time, uniqueness, and replay"
+concurrency_testing = "stale writers, authorization reuse, duplicate consumers, interrupted persistence, audit failure, and rollback"
