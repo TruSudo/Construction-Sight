@@ -1,4 +1,4 @@
-"""Exact declaration, registry, and lock agreement checks."""
+"""Exact declaration, registry, and hashed-lock agreement checks."""
 
 from __future__ import annotations
 
@@ -9,9 +9,11 @@ from pathlib import Path
 from typing import Any
 
 from constructionsight.governance_certification_core import GovernanceFinding, _finding
+from constructionsight.supply_chain import load_lock_entries
 
 _EXACT_REQUIREMENT = re.compile(
-    r"^(?P<name>[A-Za-z0-9_.-]+)(?:\[(?P<extras>[A-Za-z0-9_,.-]+)\])?==(?P<version>[^;\s]+)$"
+    r"^(?P<name>[A-Za-z0-9_.-]+)(?:\[(?P<extras>[A-Za-z0-9_,.-]+)\])?"
+    r"==(?P<version>[^;\s]+)$"
 )
 
 
@@ -24,7 +26,11 @@ def _parse_exact(value: str) -> tuple[str, tuple[str, ...], str] | None:
     if match is None:
         return None
     raw_extras = match.group("extras")
-    extras = tuple(sorted(raw_extras.split(","))) if raw_extras else ()
+    extras = (
+        tuple(sorted({_canonical_name(value) for value in raw_extras.split(",")}))
+        if raw_extras
+        else ()
+    )
     return _canonical_name(match.group("name")), extras, match.group("version")
 
 
@@ -51,7 +57,7 @@ def audit_dependency_agreement(
     contract: Mapping[str, Any],
     findings: list[GovernanceFinding],
 ) -> None:
-    """Reject version or extras disagreement among declaration, registry, and locks."""
+    """Reject disagreement among declarations, registry, and artifact-hashed locks."""
 
     path = "governance/dependency_contract.toml"
     direct = _direct_requirements(root)
@@ -65,7 +71,11 @@ def audit_dependency_agreement(
         name = _canonical_name(str(entry.get("name", "")))
         raw_extras = entry.get("extras")
         extras = (
-            tuple(sorted(str(value) for value in raw_extras))
+            tuple(
+                sorted(
+                    {_canonical_name(str(value)) for value in raw_extras}
+                )
+            )
             if isinstance(raw_extras, list)
             else ()
         )
@@ -91,27 +101,22 @@ def audit_dependency_agreement(
         absolute = root / lock_path
         if not absolute.is_file():
             continue
-        locked: dict[str, tuple[tuple[str, ...], str]] = {}
-        for number, line in enumerate(
-            absolute.read_text(encoding="utf-8").splitlines(), start=1
-        ):
-            stripped = line.strip()
-            if not stripped or stripped.startswith("#"):
-                continue
-            exact = _parse_exact(stripped)
-            if exact is None:
-                continue
-            name, extras, version = exact
-            if name in locked:
-                findings.append(
-                    _finding(
-                        "DEP-LOCK-005",
-                        lock_path,
-                        f"duplicate canonical lock identity: {name}",
-                        number,
-                    )
+        try:
+            lock_entries = load_lock_entries(absolute)
+        except (OSError, UnicodeError, ValueError) as exc:
+            code = "DEP-LOCK-005" if "duplicate lock entry" in str(exc) else "DEP-LOCK-007"
+            findings.append(
+                _finding(
+                    code,
+                    lock_path,
+                    f"lock cannot be certified: {exc}",
                 )
-            locked[name] = (extras, version)
+            )
+            continue
+        locked = {
+            entry.name: (entry.extras, entry.version)
+            for entry in lock_entries
+        }
         for name, declaration in sorted(direct.items()):
             lock_value = locked.get(name)
             if lock_value is not None and lock_value != declaration:
