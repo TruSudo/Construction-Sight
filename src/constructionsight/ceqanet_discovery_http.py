@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from pydantic import HttpUrl, TypeAdapter
 
+from constructionsight.ceqanet_endpoints import CEQANET_ADVANCED_SEARCH_URL
 from constructionsight.http_transport import execute_bounded_http
 from constructionsight.http_transport_models import (
     BoundedHttpPolicy,
@@ -14,7 +15,6 @@ from constructionsight.http_transport_models import (
 )
 from constructionsight.models import PlatformFamily, SourceVerificationResult
 
-CEQANET_ADVANCED_SEARCH_URL = "https://ceqanet.lci.ca.gov/Search/Advanced"
 CEQANET_DISCOVERY_POLICY = BoundedHttpPolicy(
     policy_id="CS-NET-001",
     allowed_methods=("GET",),
@@ -119,11 +119,9 @@ class CeqanetLiveDiscovery:
         timeout_seconds: float = 20.0,
     ) -> None:
         self.executor = executor or execute_bounded_http
-        self.policy = BoundedHttpPolicy(
-            **{
-                **CEQANET_DISCOVERY_POLICY.__dict__,
-                "read_timeout_seconds": timeout_seconds,
-            }
+        self.policy = replace(
+            CEQANET_DISCOVERY_POLICY,
+            read_timeout_seconds=timeout_seconds,
         )
 
     def discover(self) -> CeqanetDiscoveryResult:
