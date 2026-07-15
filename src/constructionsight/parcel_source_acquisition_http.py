@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
@@ -51,6 +52,14 @@ class ParcelArcGISHTTPPolicy:
             raise ValueError("ArcGIS retry policy requires a delay per retry")
         if any(delay < 0 for delay in self.retry_delays_seconds):
             raise ValueError("ArcGIS retry delays cannot be negative")
+
+
+@contextmanager
+def open_arcgis_http_client() -> Iterator[httpx.Client]:
+    """Yield the approved redirect-denying client used by bounded ArcGIS probes."""
+
+    with httpx.Client(follow_redirects=False) as client:
+        yield client
 
 
 def fetch_arcgis_capability_snapshot(
