@@ -6,14 +6,16 @@
 
 ## Decision
 
-`pyproject.toml` remains the direct declaration. Every direct, development, and build dependency uses an exact version and appears in `governance/dependency_contract.toml`. Python 3.11 and 3.12 have separate exact environment locks. CI installs the selected lock without dependency resolution, installs the project without dependencies or build isolation, verifies installed versions, runs `pip check`, performs a fatal vulnerability audit, and emits a deterministic SBOM.
+`pyproject.toml` remains the direct declaration. Every direct, development, and build dependency uses an exact version and appears in `governance/dependency_contract.toml`. Python 3.11 and 3.12 have separate supported-environment locks for the GitHub-hosted Ubuntu x86_64 runner. Each logical lock entry binds the exact distribution version to one or more reviewed SHA-256 wheel identities.
 
-Every third-party GitHub Action is pinned to an immutable commit SHA with an inline release or review comment. Dependency, lock, build, Action, or install changes require explicit review evidence.
+CI installs the selected lock with `--require-hashes`, `--only-binary=:all:`, and `--no-deps`; it then installs the project without dependency resolution or build isolation. The supply-chain certifier rejects unhashed, nonexact, duplicate, malformed, or dangling lock entries, verifies installed versions, runs `pip check`, performs a fatal vulnerability audit, and emits a deterministic SBOM.
 
-## Hash boundary
+Every third-party GitHub Action is pinned to an immutable commit SHA with an inline release or review comment. Dependency, lock, build, Action, or installation changes require explicit review evidence.
 
-The first supported-environment locks enforce exact versions but do not yet enforce artifact hashes for every ABI/platform wheel. This is deliberately classified as partial enforcement, not full hash reproducibility. Hash enforcement becomes mandatory when reviewed lock generation covers every supported runner artifact without excluding required native wheels.
+## Artifact boundary
+
+The checked-in locks certify the exact binary artifacts supported by the current GitHub-hosted Linux CI environments for CPython 3.11 and 3.12. They do not claim reproducibility for macOS, Windows, alternative architectures, alternative Python implementations, source distributions, or local environments whose wheel-selection tags differ from those runners. Adding another supported environment requires a separately reviewed lock and CI job; broadening a lock by admitting unreviewed alternate hashes is prohibited.
 
 ## Consequences
 
-Resolver-selected upgrades and mutable Action tags are prohibited. A scanner failure is a failed audit, not a reason to continue. Vulnerability exceptions must be narrow, owned, justified, and expiring.
+Resolver-selected upgrades, source-build fallback, unhashed installation, mutable Action tags, and silent package substitution are prohibited. A scanner failure is a failed audit, not a reason to continue. Vulnerability exceptions must be narrow, owned, justified, and expiring. Hashes establish artifact identity; they do not independently establish that a package is secure, maintained, correctly licensed, or semantically suitable, so the dependency registry and vulnerability review remain mandatory.
