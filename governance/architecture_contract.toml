@@ -33,11 +33,11 @@ authority_bearing = false
 
 [[layers]]
 name = "cli"
-responsibility = "Local operator composition root and presentation; it may construct governed stores and services but cannot acquire network authority or implement canonical business decisions."
+responsibility = "Local operator composition root and presentation; it may construct governed stores and services but cannot import transport or implement canonical business decisions."
 path_patterns = ["src/constructionsight/(?:cli|.*_cli)\\.py"]
 default = false
-allowed_internal_layers = ["application", "domain", "persistence", "transport", "adapter", "governance", "package"]
-forbidden_internal_layers = []
+allowed_internal_layers = ["application", "domain", "persistence", "adapter", "governance", "package"]
+forbidden_internal_layers = ["transport"]
 network = false
 persistence = true
 filesystem_write = true
