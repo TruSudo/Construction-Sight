@@ -1,0 +1,182 @@
+schema_version = "constructionsight.dependency-contract/v1"
+contract_id = "construction-sight-dependencies-2026-07-15"
+supported_python = ["3.11", "3.12"]
+lock_files = ["requirements/py311.lock", "requirements/py312.lock"]
+install_policy = "Install the exact environment lock, then install ConstructionSight editable with --no-deps and --no-build-isolation."
+hash_policy = "Exact versions are mandatory. Artifact hashes are required for future lock regeneration once platform wheel coverage is generated and reviewed for every supported runner."
+vulnerability_tool = "pypa/gh-action-pip-audit pinned to an immutable reviewed commit"
+vulnerability_failure_policy = "Fail on every known vulnerability unless a narrow owned expiring exception is present. Scanner or advisory failure is itself fatal."
+vulnerability_exceptions = "governance/vulnerability_exceptions.toml"
+sbom_format = "CycloneDX 1.5 JSON"
+sbom_output = "reports/sbom-py${PYTHON_VERSION}.json"
+review_evidence = "docs/adr/ADR-0002-dependency-governance.md"
+
+[[dependencies]]
+name = "hatchling"
+canonical_project = "hatchling"
+extras = []
+version = "1.27.0"
+classification = "build"
+purpose = "PEP 517 build backend for the ConstructionSight package."
+capabilities = ["CS-CAP-002"]
+authoritative_registry = "https://pypi.org/project/hatchling/1.27.0/"
+authoritative_project_source = "https://github.com/pypa/hatch"
+license = "MIT"
+security_review = "Canonical PyPI identity and upstream source verified; exact version selected for Python 3.11 and 3.12 support."
+maintenance_review = "Active PyPA project with a documented build-backend scope."
+reviewed_on = "2026-07-15"
+review_process = "Verify PyPI project identity, upstream ownership, release metadata, license, supported Python, and vulnerability result before changing."
+replacement_considerations = "stdlib packaging is unavailable; replacement requires a separate reproducibility and migration review."
+
+[[dependencies]]
+name = "httpx"
+canonical_project = "httpx"
+extras = ["socks"]
+version = "0.28.1"
+classification = "runtime"
+purpose = "Bounded HTTP transport behind approved policy modules."
+capabilities = ["CS-CAP-005"]
+authoritative_registry = "https://pypi.org/project/httpx/0.28.1/"
+authoritative_project_source = "https://github.com/encode/httpx"
+license = "BSD-3-Clause"
+security_review = "Canonical Encode project identity verified; only approved transport modules may import it."
+maintenance_review = "Maintained upstream; version and transitive graph are locked."
+reviewed_on = "2026-07-15"
+review_process = "Verify project identity, release provenance, transport behavior, advisories, and compatibility with complete network policies."
+replacement_considerations = "urllib is a possible narrower replacement but would require equivalent timeout, redirect, byte-retention, and SOCKS doctrine."
+
+[[dependencies]]
+name = "pydantic"
+canonical_project = "pydantic"
+extras = []
+version = "2.11.7"
+classification = "runtime"
+purpose = "Strict immutable schemas, validators, and exact serialization contracts."
+capabilities = ["CS-CAP-007", "CS-CAP-008"]
+authoritative_registry = "https://pypi.org/project/pydantic/2.11.7/"
+authoritative_project_source = "https://github.com/pydantic/pydantic"
+license = "MIT"
+security_review = "Canonical identity verified; native pydantic-core is explicitly locked."
+maintenance_review = "Actively maintained; compatibility changes require schema and replay review."
+reviewed_on = "2026-07-15"
+review_process = "Review release notes, pydantic-core identity, serialization changes, validation behavior, advisories, and historical-payload compatibility."
+replacement_considerations = "Dataclasses plus handwritten validation would reduce dependencies but materially increase validation and compatibility risk."
+
+[[dependencies]]
+name = "typer"
+canonical_project = "typer"
+extras = []
+version = "0.16.0"
+classification = "runtime"
+purpose = "Typed local CLI argument collection and command routing."
+capabilities = ["CS-CAP-003"]
+authoritative_registry = "https://pypi.org/project/typer/0.16.0/"
+authoritative_project_source = "https://github.com/fastapi/typer"
+license = "MIT"
+security_review = "Canonical FastAPI organization project verified; CLI remains presentation-only."
+maintenance_review = "Actively maintained; Click and Rich dependencies are separately locked."
+reviewed_on = "2026-07-15"
+review_process = "Review parser behavior, dependency graph, advisories, command compatibility, and absence of authority bypass."
+replacement_considerations = "argparse is viable for future simplification but requires migration of every command and regression fixture."
+
+[[dependencies]]
+name = "rich"
+canonical_project = "rich"
+extras = []
+version = "14.0.0"
+classification = "runtime"
+purpose = "Local operator rendering without business authority."
+capabilities = ["CS-CAP-003"]
+authoritative_registry = "https://pypi.org/project/rich/14.0.0/"
+authoritative_project_source = "https://github.com/Textualize/rich"
+license = "MIT"
+security_review = "Canonical Textualize project verified; rendering cannot alter canonical service outcomes."
+maintenance_review = "Actively maintained; Markdown and syntax dependencies are locked."
+reviewed_on = "2026-07-15"
+review_process = "Review release identity, advisories, rendering behavior, transitive graph, and terminal-output compatibility."
+replacement_considerations = "Plain text output is feasible if rendering complexity becomes a supply-chain burden."
+
+[[dependencies]]
+name = "sqlalchemy"
+canonical_project = "SQLAlchemy"
+extras = []
+version = "2.0.41"
+classification = "runtime"
+purpose = "Typed transactional persistence mappings and compare-and-swap state."
+capabilities = ["CS-CAP-004"]
+authoritative_registry = "https://pypi.org/project/SQLAlchemy/2.0.41/"
+authoritative_project_source = "https://github.com/sqlalchemy/sqlalchemy"
+license = "MIT"
+security_review = "Canonical SQLAlchemy project verified; imports are restricted to persistence boundaries."
+maintenance_review = "Mature actively maintained project; greenlet is separately locked."
+reviewed_on = "2026-07-15"
+review_process = "Review advisories, transaction semantics, dialect compatibility, native wheels, migration effects, and stale-write behavior."
+replacement_considerations = "Direct sqlite3 would reduce dependencies but require replacement of typed mapping and transaction doctrine."
+
+[[dependencies]]
+name = "python-dateutil"
+canonical_project = "python-dateutil"
+extras = []
+version = "2.9.0.post0"
+classification = "runtime"
+purpose = "Conservative external date parsing where the standard library is insufficient."
+capabilities = ["CS-CAP-007", "CS-CAP-008"]
+authoritative_registry = "https://pypi.org/project/python-dateutil/2.9.0.post0/"
+authoritative_project_source = "https://github.com/dateutil/dateutil"
+license = "Apache-2.0 OR BSD-3-Clause"
+security_review = "Canonical project verified; parsing remains bounded by explicit time and timezone doctrine."
+maintenance_review = "Mature project with a small locked dependency graph."
+reviewed_on = "2026-07-15"
+review_process = "Review advisories, parser ambiguity, timezone behavior, dependency graph, and replay compatibility."
+replacement_considerations = "Prefer datetime.fromisoformat for canonical internal formats; remove when external inputs no longer require it."
+
+[[dependencies]]
+name = "pytest"
+canonical_project = "pytest"
+extras = []
+version = "8.4.1"
+classification = "development"
+purpose = "Warning-strict unit, integration, adversarial, concurrency, and failure testing."
+capabilities = ["CS-CAP-002"]
+authoritative_registry = "https://pypi.org/project/pytest/8.4.1/"
+authoritative_project_source = "https://github.com/pytest-dev/pytest"
+license = "MIT"
+security_review = "Canonical pytest-dev project verified; skips and xfails are prohibited by certification."
+maintenance_review = "Actively maintained; plugin surface is intentionally minimal."
+reviewed_on = "2026-07-15"
+review_process = "Review advisories, collection behavior, warning semantics, transitive graph, and compatibility with both supported Python versions."
+replacement_considerations = "unittest is possible but would require broad fixture and failure-injection migration."
+
+[[dependencies]]
+name = "ruff"
+canonical_project = "ruff"
+extras = []
+version = "0.12.4"
+classification = "development"
+purpose = "Deterministic lint and import-order enforcement with no ignored rules."
+capabilities = ["CS-CAP-002"]
+authoritative_registry = "https://pypi.org/project/ruff/0.12.4/"
+authoritative_project_source = "https://github.com/astral-sh/ruff"
+license = "MIT"
+security_review = "Canonical Astral project verified; exact binary wheel version is locked."
+maintenance_review = "Actively maintained; rule changes require explicit review."
+reviewed_on = "2026-07-15"
+review_process = "Review release identity, binary artifacts, advisories, rule changes, and Python-target compatibility."
+replacement_considerations = "A multi-tool flake8/isort stack would increase dependency and configuration surface."
+
+[[dependencies]]
+name = "mypy"
+canonical_project = "mypy"
+extras = []
+version = "1.17.0"
+classification = "development"
+purpose = "Strict static typing and unreachable/unused-ignore detection."
+capabilities = ["CS-CAP-002"]
+authoritative_registry = "https://pypi.org/project/mypy/1.17.0/"
+authoritative_project_source = "https://github.com/python/mypy"
+license = "MIT"
+security_review = "Canonical Python organization project verified; native wheels and dependencies are locked."
+maintenance_review = "Actively maintained; strict mode remains mandatory."
+reviewed_on = "2026-07-15"
+review_process = "Review release identity, advisories, type-system behavior, native artifacts, and compatibility with both supported Python versions."
+replacement_considerations = "Alternative type checkers require an explicit doctrine and finding-equivalence review."
