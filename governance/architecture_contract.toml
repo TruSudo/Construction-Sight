@@ -1,0 +1,124 @@
+schema_version = "constructionsight.architecture-contract/v1"
+contract_id = "construction-sight-architecture-2026-07-15"
+production_root = "src/constructionsight"
+prohibit_module_cycles = true
+
+[[layers]]
+name = "package"
+responsibility = "Root package identity only; no runtime authority or side effects."
+path_patterns = ["src/constructionsight/__init__\\.py"]
+default = false
+allowed_internal_layers = ["package"]
+forbidden_internal_layers = ["cli", "governance", "persistence", "transport"]
+network = false
+persistence = false
+filesystem_write = false
+subprocess = false
+operator = false
+authority_bearing = false
+
+[[layers]]
+name = "governance"
+responsibility = "Repository certification, supply-chain inventory, and fail-closed governance evaluation."
+path_patterns = ["src/constructionsight/(?:repository_certification|governance_certification|supply_chain)\\.py"]
+default = false
+allowed_internal_layers = ["governance", "package"]
+forbidden_internal_layers = ["cli", "persistence", "transport", "adapter", "application"]
+network = false
+persistence = false
+filesystem_write = true
+subprocess = true
+operator = true
+authority_bearing = false
+
+[[layers]]
+name = "cli"
+responsibility = "Operator presentation and argument collection; canonical services remain authoritative."
+path_patterns = ["src/constructionsight/(?:cli|.*_cli)\\.py"]
+default = false
+allowed_internal_layers = ["application", "domain", "transport", "adapter", "governance", "package"]
+forbidden_internal_layers = ["persistence"]
+network = false
+persistence = false
+filesystem_write = true
+subprocess = false
+operator = true
+authority_bearing = true
+
+[[layers]]
+name = "persistence"
+responsibility = "Database and durable-state mapping behind typed service boundaries."
+path_patterns = ["src/constructionsight/storage/.*\\.py", "src/constructionsight/(?:source_registry_apply_service|ceqanet_persistence_execute)\\.py"]
+default = false
+allowed_internal_layers = ["persistence", "domain", "package"]
+forbidden_internal_layers = ["cli", "transport", "adapter", "governance"]
+network = false
+persistence = true
+filesystem_write = true
+subprocess = false
+operator = false
+authority_bearing = true
+
+[[layers]]
+name = "transport"
+responsibility = "Approved bounded external transport only; no workflow or persistence authority."
+path_patterns = [
+  "src/constructionsight/adapters/ceqanet\\.py",
+  "src/constructionsight/adapters/ceqanet_listing_executor\\.py",
+  "src/constructionsight/.*(?:_http|_live_service)\\.py",
+]
+default = false
+allowed_internal_layers = ["transport", "domain", "adapter", "package"]
+forbidden_internal_layers = ["cli", "persistence", "governance"]
+network = true
+persistence = false
+filesystem_write = false
+subprocess = false
+operator = false
+authority_bearing = true
+
+[[layers]]
+name = "adapter"
+responsibility = "Source-specific parsing and normalization without unauthorized persistence or transport acquisition."
+path_patterns = ["src/constructionsight/adapters/(?!ceqanet\\.py$)(?!ceqanet_listing_executor\\.py$).*\\.py"]
+default = false
+allowed_internal_layers = ["adapter", "domain", "package"]
+forbidden_internal_layers = ["cli", "persistence", "governance", "application"]
+network = false
+persistence = false
+filesystem_write = false
+subprocess = false
+operator = false
+authority_bearing = false
+
+[[layers]]
+name = "domain"
+responsibility = "Pure evidence, identity, state, rule, and value contracts."
+path_patterns = [
+  "src/constructionsight/(?!storage/)(?!adapters/).*(?:_models|models)\\.py",
+  "src/constructionsight/(?:domain_types|legal|provenance|parcel_geometry|parcel_topology|parcel_topology_parse|.*_rules|opportunity_scoring_profile)\\.py",
+  "src/constructionsight/intelligence/(?:schemas|artifact_identity)\\.py",
+]
+default = false
+allowed_internal_layers = ["domain", "package"]
+forbidden_internal_layers = ["cli", "persistence", "transport", "adapter", "application", "governance"]
+network = false
+persistence = false
+filesystem_write = false
+subprocess = false
+operator = false
+authority_bearing = false
+
+[[layers]]
+name = "application"
+responsibility = "Canonical use cases, orchestration, verification, and report construction."
+path_patterns = ["a^"]
+default = true
+allowed_internal_layers = ["application", "domain", "persistence", "transport", "adapter", "package"]
+forbidden_internal_layers = ["cli", "governance"]
+network = false
+persistence = true
+filesystem_write = true
+subprocess = false
+operator = false
+authority_bearing = true
