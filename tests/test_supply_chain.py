@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -15,8 +16,26 @@ class _Distribution:
     version: str
 
 
+@dataclass(frozen=True)
+class _InventoryDistribution:
+    name: str | None
+    version: str
+
+    @property
+    def metadata(self) -> dict[str, Any]:
+        return {} if self.name is None else {"Name": self.name}
+
+
 def _locked(requirement: str, *, digest: str = _HASH) -> str:
     return f"{requirement} --hash=sha256:{digest}\n"
+
+
+def _with_project(
+    values: dict[str, _Distribution],
+    *,
+    version: str = "0.1.0",
+) -> dict[str, _Distribution]:
+    return {**values, "constructionsight": _Distribution(version)}
 
 
 def test_canonical_name_normalizes_python_distribution_identity() -> None:
@@ -81,6 +100,35 @@ def test_load_lock_rejects_dangling_continuation(tmp_path: Path) -> None:
         supply_chain.load_lock(lock)
 
 
+def test_installed_inventory_rejects_duplicate_distribution_identity(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        supply_chain.importlib.metadata,
+        "distributions",
+        lambda: (
+            _InventoryDistribution("Example", "1.0"),
+            _InventoryDistribution("example", "1.0"),
+        ),
+    )
+
+    with pytest.raises(RuntimeError, match="multiple installed distributions"):
+        supply_chain.installed_inventory()
+
+
+def test_installed_inventory_rejects_missing_name_metadata(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        supply_chain.importlib.metadata,
+        "distributions",
+        lambda: (_InventoryDistribution(None, "1.0"),),
+    )
+
+    with pytest.raises(RuntimeError, match="missing canonical Name"):
+        supply_chain.installed_inventory()
+
+
 def test_verify_lock_reports_missing_and_mismatched_versions(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -95,10 +143,12 @@ def test_verify_lock_reports_missing_and_mismatched_versions(
     monkeypatch.setattr(
         supply_chain,
         "installed_inventory",
-        lambda: {
-            "alpha": _Distribution("1.0"),
-            "beta": _Distribution("9.0"),
-        },
+        lambda: _with_project(
+            {
+                "alpha": _Distribution("1.0"),
+                "beta": _Distribution("9.0"),
+            }
+        ),
     )
 
     report = supply_chain.verify_lock(lock)
@@ -120,10 +170,12 @@ def test_verify_lock_rejects_unexpected_distribution(
     monkeypatch.setattr(
         supply_chain,
         "installed_inventory",
-        lambda: {
-            "alpha": _Distribution("1.0"),
-            "rogue-package": _Distribution("9.9"),
-        },
+        lambda: _with_project(
+            {
+                "alpha": _Distribution("1.0"),
+                "rogue-package": _Distribution("9.9"),
+            }
+        ),
     )
 
     report = supply_chain.verify_lock(lock)
@@ -139,7 +191,7 @@ def test_verify_lock_rejects_unexpected_distribution(
     ]
 
 
-def test_verify_lock_allows_only_the_project_outside_the_lock(
+def test_verify_lock_rejects_project_version_mismatch(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -148,16 +200,47 @@ def test_verify_lock_allows_only_the_project_outside_the_lock(
     monkeypatch.setattr(
         supply_chain,
         "installed_inventory",
-        lambda: {
-            "alpha": _Distribution("1.0"),
-            "constructionsight": _Distribution("0.1.0"),
-        },
+        lambda: _with_project(
+            {"alpha": _Distribution("1.0")},
+            version="9.9.9",
+        ),
     )
 
     report = supply_chain.verify_lock(lock)
 
-    assert report["passed"] is True
-    assert report["finding_count"] == 0
+    assert report["passed"] is False
+    assert report["findings"] == [
+        {
+            "code": "SUPPLY-PROJECT-VERSION-001",
+            "package": "constructionsight",
+            "expected": "0.1.0",
+            "actual": "9.9.9",
+        }
+    ]
+
+
+def test_verify_lock_requires_project_distribution(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    lock = tmp_path / "environment.lock"
+    lock.write_text(_locked("alpha==1.0"), encoding="utf-8")
+    monkeypatch.setattr(
+        supply_chain,
+        "installed_inventory",
+        lambda: {"alpha": _Distribution("1.0")},
+    )
+
+    report = supply_chain.verify_lock(lock)
+
+    assert report["passed"] is False
+    assert report["findings"] == [
+        {
+            "code": "SUPPLY-PROJECT-MISSING-001",
+            "package": "constructionsight",
+            "expected": "0.1.0",
+        }
+    ]
 
 
 def test_verify_lock_accepts_exact_environment(
@@ -172,10 +255,12 @@ def test_verify_lock_accepts_exact_environment(
     monkeypatch.setattr(
         supply_chain,
         "installed_inventory",
-        lambda: {
-            "alpha": _Distribution("1.0"),
-            "beta": _Distribution("2.0"),
-        },
+        lambda: _with_project(
+            {
+                "alpha": _Distribution("1.0"),
+                "beta": _Distribution("2.0"),
+            }
+        ),
     )
 
     report = supply_chain.verify_lock(lock)
