@@ -20,7 +20,7 @@ authority_bearing = false
 [[layers]]
 name = "governance"
 responsibility = "Repository certification, supply-chain inventory, and fail-closed governance evaluation."
-path_patterns = ["src/constructionsight/(?:.*certification.*|supply_chain)\\.py"]
+path_patterns = ["src/constructionsight/(?:.*certification.*|governance_contract_schema|supply_chain)\\.py"]
 default = false
 allowed_internal_layers = ["governance", "package"]
 forbidden_internal_layers = ["cli", "persistence", "transport", "adapter", "application"]
