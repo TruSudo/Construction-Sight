@@ -48,6 +48,8 @@ jobs:
           python -m pip install --disable-pip-version-check --no-deps --no-build-isolation -e .
 
       - name: Verify exact lock
+        id: lock-verification
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
@@ -55,10 +57,18 @@ jobs:
           tag="$(printf '%s' '${{ matrix.python-version }}' | tr -d '.')"
           python -m constructionsight.supply_chain verify-lock \
             --lock "requirements/py${tag}.lock" \
-            --output "reports/lock-verification-py${tag}.json"
+            --output "reports/lock-verification-py${tag}.json" \
+            2>&1 | tee "reports/lock-verification-py${tag}.txt"
 
       - name: Dependency integrity
-        run: python -m pip check
+        id: pip-check
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p reports
+          tag="$(printf '%s' '${{ matrix.python-version }}' | tr -d '.')"
+          python -m pip check 2>&1 | tee "reports/pip-check-py${tag}.txt"
 
       - name: Vulnerability audit
         id: vulnerability-audit
@@ -85,56 +95,133 @@ jobs:
             printf '%s\n' 'pip-audit produced no report output' > "reports/pip-audit-py${tag}.txt"
           fi
 
-      - name: Enforce vulnerability result
-        if: always()
-        shell: bash
-        run: |
-          if [ '${{ steps.vulnerability-audit.outcome }}' != 'success' ]; then
-            echo 'Exact-environment vulnerability audit failed or found a vulnerability.' >&2
-            exit 1
-          fi
-
       - name: Generate deterministic SBOM
+        id: sbom
+        continue-on-error: true
         shell: bash
         run: |
-          set -euo pipefail
+          set -o pipefail
           mkdir -p reports
           tag="$(printf '%s' '${{ matrix.python-version }}' | tr -d '.')"
           python -m constructionsight.supply_chain sbom \
             --lock "requirements/py${tag}.lock" \
-            --output "reports/sbom-py${tag}.json"
+            --output "reports/sbom-py${tag}.json" \
+            2>&1 | tee "reports/sbom-py${tag}.txt"
 
       - name: Ruff
-        run: python -m ruff check src tests
-
-      - name: Mypy
-        run: python -m mypy src
-
-      - name: Compile source and tests
-        run: python -m compileall -q src tests
-
-      - name: Pytest
-        run: python -m pytest --strict-config --strict-markers -ra -W error
-
-      - name: Adapter contract audit
-        run: constructionsight audit-adapters
-
-      - name: Source adapter coverage audit
-        run: constructionsight audit-source-coverage data/source_registry.seed.json
-
-      - name: Repository and semantic certification audit
+        id: ruff
+        continue-on-error: true
         shell: bash
         run: |
-          set -euo pipefail
+          set -o pipefail
+          mkdir -p reports
+          tag="$(printf '%s' '${{ matrix.python-version }}' | tr -d '.')"
+          python -m ruff check src tests 2>&1 | tee "reports/ruff-py${tag}.txt"
+
+      - name: Mypy
+        id: mypy
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p reports
+          tag="$(printf '%s' '${{ matrix.python-version }}' | tr -d '.')"
+          python -m mypy src 2>&1 | tee "reports/mypy-py${tag}.txt"
+
+      - name: Compile source and tests
+        id: compile
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p reports
+          tag="$(printf '%s' '${{ matrix.python-version }}' | tr -d '.')"
+          python -m compileall -q src tests 2>&1 | tee "reports/compile-py${tag}.txt"
+
+      - name: Pytest
+        id: pytest
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p reports
+          tag="$(printf '%s' '${{ matrix.python-version }}' | tr -d '.')"
+          python -m pytest --strict-config --strict-markers -ra -W error \
+            2>&1 | tee "reports/pytest-py${tag}.txt"
+
+      - name: Adapter contract audit
+        id: adapter-audit
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p reports
+          tag="$(printf '%s' '${{ matrix.python-version }}' | tr -d '.')"
+          constructionsight audit-adapters 2>&1 | tee "reports/adapter-audit-py${tag}.txt"
+
+      - name: Source adapter coverage audit
+        id: source-audit
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p reports
+          tag="$(printf '%s' '${{ matrix.python-version }}' | tr -d '.')"
+          constructionsight audit-source-coverage data/source_registry.seed.json \
+            2>&1 | tee "reports/source-audit-py${tag}.txt"
+
+      - name: Repository and semantic certification audit
+        id: repository-certification
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
           mkdir -p reports
           tag="$(printf '%s' '${{ matrix.python-version }}' | tr -d '.')"
           python -m constructionsight.repository_certification_v2 \
             --root . \
             --require-clean-worktree \
-            --output "reports/repository-certification-py${tag}.json"
+            --output "reports/repository-certification-py${tag}.json" \
+            2>&1 | tee "reports/repository-certification-py${tag}.txt"
 
       - name: Diff hygiene
-        run: git diff --check
+        id: diff-hygiene
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p reports
+          tag="$(printf '%s' '${{ matrix.python-version }}' | tr -d '.')"
+          git diff --check 2>&1 | tee "reports/diff-hygiene-py${tag}.txt"
+
+      - name: Enforce all quality gates
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          failed=0
+          for gate in \
+            '${{ steps.lock-verification.outcome }}' \
+            '${{ steps.pip-check.outcome }}' \
+            '${{ steps.vulnerability-audit.outcome }}' \
+            '${{ steps.sbom.outcome }}' \
+            '${{ steps.ruff.outcome }}' \
+            '${{ steps.mypy.outcome }}' \
+            '${{ steps.compile.outcome }}' \
+            '${{ steps.pytest.outcome }}' \
+            '${{ steps.adapter-audit.outcome }}' \
+            '${{ steps.source-audit.outcome }}' \
+            '${{ steps.repository-certification.outcome }}' \
+            '${{ steps.diff-hygiene.outcome }}'
+          do
+            if [ "${gate}" != 'success' ]; then
+              failed=1
+            fi
+          done
+          if [ "${failed}" -ne 0 ]; then
+            echo 'One or more mandatory quality gates failed. Inspect retained reports.' >&2
+            exit 1
+          fi
 
       - name: Retain certification evidence
         if: always()
