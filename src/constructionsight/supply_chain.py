@@ -21,6 +21,7 @@ _REQUIREMENT_PATTERN: Final = re.compile(
     r"(?P<options>(?:\s+--hash=sha256:[0-9a-f]{64})+)$"
 )
 _HASH_TOKEN_PATTERN: Final = re.compile(r"--hash=sha256:([0-9a-f]{64})")
+_ALLOWED_UNLOCKED_DISTRIBUTIONS: Final = frozenset({"constructionsight"})
 
 
 @dataclass(frozen=True)
@@ -146,7 +147,7 @@ def installed_inventory() -> dict[str, importlib.metadata.Distribution]:
 
 
 def verify_lock(path: Path) -> dict[str, Any]:
-    """Verify every locked distribution is installed at the exact version."""
+    """Verify exact versions and reject every undeclared installed distribution."""
 
     expected = load_lock(path)
     installed = installed_inventory()
@@ -166,11 +167,25 @@ def verify_lock(path: Path) -> dict[str, Any]:
                     "actual": distribution.version,
                 }
             )
+    unexpected = sorted(
+        set(installed) - set(expected) - _ALLOWED_UNLOCKED_DISTRIBUTIONS
+    )
+    for name in unexpected:
+        findings.append(
+            {
+                "code": "SUPPLY-UNEXPECTED-001",
+                "package": name,
+                "expected": "absent",
+                "actual": installed[name].version,
+            }
+        )
     findings.sort(key=lambda item: (item["code"], item["package"]))
     return {
         "schema_version": SCHEMA_VERSION,
         "lock": path.as_posix(),
         "expected_distribution_count": len(expected),
+        "installed_distribution_count": len(installed),
+        "allowed_unlocked_distributions": sorted(_ALLOWED_UNLOCKED_DISTRIBUTIONS),
         "finding_count": len(findings),
         "passed": not findings,
         "findings": findings,
