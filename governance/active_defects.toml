@@ -56,3 +56,11 @@ area = "independent-review"
 root_cause = "High-risk changes lack a mandatory structured independent adversarial review artifact tied to the exact head."
 discovered_against = "679f15fa6d39f222c16b8c5c3e99db7662465909"
 required_resolution = "Add high-risk classification, review schema, exact-head binding, and unresolved-finding gate."
+
+[[defects]]
+id = "CS-SR-008"
+severity = "P0"
+area = "supply-chain-vulnerability"
+root_cause = "The first exact supported-environment audit found known vulnerabilities in Click 8.2.1, IDNA 3.10, pip 25.1.1, Pygments 2.19.2, and pytest 8.4.1."
+discovered_against = "c0cefeb61ff6e23d527c4d56918c26b70865b560"
+required_resolution = "Upgrade only the affected exact identities to reviewed fixed releases, update declarations and registry evidence, rerun both Python audits, and retain zero-vulnerability reports."
