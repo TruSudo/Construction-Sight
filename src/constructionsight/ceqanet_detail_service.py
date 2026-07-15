@@ -106,18 +106,32 @@ def execute_authorized_ceqanet_detail(
         )
     if not operator_id.strip() or operator_id != operator_id.strip():
         raise ValueError("operator_id must be nonblank and trimmed")
-    if not authorization_reason.strip() or authorization_reason != authorization_reason.strip():
+    if (
+        not authorization_reason.strip()
+        or authorization_reason != authorization_reason.strip()
+    ):
         raise ValueError("authorization_reason must be nonblank and trimmed")
-    if timeout_seconds <= 0 or timeout_seconds > 120:
-        raise ValueError("timeout_seconds must be greater than 0 and at most 120")
-    if max_body_bytes < 1 or max_body_bytes > 2_000_000:
-        raise ValueError("max_body_bytes must be between 1 and 2000000")
+    if (
+        timeout_seconds <= 0
+        or timeout_seconds > CEQANET_DETAIL_POLICY.read_timeout_seconds
+    ):
+        raise ValueError(
+            "timeout_seconds cannot exceed the declared CS-NET-006 ceiling"
+        )
+    if (
+        max_body_bytes < 1
+        or max_body_bytes > CEQANET_DETAIL_POLICY.max_response_bytes
+    ):
+        raise ValueError(
+            "max_body_bytes cannot exceed the declared CS-NET-006 ceiling"
+        )
 
     resolved_url = _validated_detail_url(detail_url)
     access = evaluate_access(access_profile)
     if access.decision is not AccessDecision.ALLOWED:
         raise AuthorizationDeniedError(
-            f"lawful access preflight denied execution: {access.decision.value}: {access.reason}"
+            "lawful access preflight denied execution: "
+            f"{access.decision.value}: {access.reason}"
         )
 
     checked_at = (now or (lambda: datetime.now(UTC)))()
@@ -180,7 +194,10 @@ def execute_authorized_ceqanet_detail(
         limitations=_canonical_tuple(
             "local operator identity is not authentication",
             "no credential use or access-control bypass is authorized",
-            "no persistence, source promotion, recurrence, or concurrent execution is authorized",
+            (
+                "no persistence, source promotion, recurrence, or concurrent "
+                "execution is authorized"
+            ),
             "single local-process use only",
         ),
     )
@@ -216,7 +233,10 @@ def execute_authorized_ceqanet_detail(
         "metadata": {
             "schema_version": "ceqanet_detail_execution.v2",
             "allowed": True,
-            "reason": "CEQAnet detail executor completed one authorized bounded read-only GET request.",
+            "reason": (
+                "CEQAnet detail executor completed one authorized bounded "
+                "read-only GET request."
+            ),
             "planned_request_count": 1,
             "executed_request_count": 1,
             "successful_response_count": int(reachable),
