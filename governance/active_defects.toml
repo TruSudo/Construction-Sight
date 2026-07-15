@@ -23,7 +23,7 @@ severity = "P1"
 area = "supply-chain"
 root_cause = "Direct dependencies use open-ended minimum versions, CI installs with resolver-selected upgrades, and third-party Actions use mutable major tags."
 discovered_against = "679f15fa6d39f222c16b8c5c3e99db7662465909"
-required_resolution = "Pin declarations, add governed locks and inventory, pin Actions to immutable SHAs, and add vulnerability/SBOM gates."
+required_resolution = "Pin declarations, add governed artifact-hashed locks and inventory, pin Actions to immutable SHAs, and add vulnerability/SBOM gates."
 
 [[defects]]
 id = "CS-SR-004"
@@ -64,3 +64,19 @@ area = "supply-chain-vulnerability"
 root_cause = "The first exact supported-environment audit found known vulnerabilities in Click 8.2.1, IDNA 3.10, pip 25.1.1, Pygments 2.19.2, and pytest 8.4.1."
 discovered_against = "c0cefeb61ff6e23d527c4d56918c26b70865b560"
 required_resolution = "Upgrade only the affected exact identities to reviewed fixed releases, update declarations and registry evidence, rerun both Python audits, and retain zero-vulnerability reports."
+
+[[defects]]
+id = "CS-SR-009"
+severity = "P1"
+area = "dependency-certification"
+root_cause = "The canonical dependency audit parsed lock files one physical line at a time, so secure backslash-continued artifact hashes would be misclassified or omitted from direct-dependency reconciliation."
+discovered_against = "671169400e83136756335905cadf9bddeb33d1d1"
+required_resolution = "Use one fail-closed logical-row parser for installation verification, SBOM generation, dependency agreement, and canonical certification; add multiline and unhashed regression fixtures."
+
+[[defects]]
+id = "CS-SR-010"
+severity = "P1"
+area = "adversarial-testing"
+root_cause = "A focused mutation certifier and mutation contract existed in production code, but the Python CI matrix did not execute or enforce its result."
+discovered_against = "c43f460eedef8f3e51b6cc4fe62b9e9ee903b915"
+required_resolution = "Execute focused mutation certification in both supported Python CI jobs, retain its deterministic report, and include its outcome in the aggregate fail-closed quality gate."
