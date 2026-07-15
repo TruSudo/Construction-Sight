@@ -12,19 +12,19 @@ from constructionsight.authorization_decision import (
     authorize_and_claim,
     build_authorization_decision,
 )
-from constructionsight.authorization_decision_models import AuthorizationReusePolicy
+from constructionsight.authorization_decision_models import (
+    AuthorizationDecision,
+    AuthorizationReusePolicy,
+    authorization_digest,
+)
 
 
 def _decision(
     *,
     reuse_policy: AuthorizationReusePolicy = AuthorizationReusePolicy.SINGLE_USE,
-):
+) -> AuthorizationDecision:
     issued_at = datetime(2026, 7, 15, 12, 0, tzinfo=UTC)
-    grants = (
-        "apply exact status transition",
-        if False
-        else "apply exact status transition",
-    )
+    grants = ("apply exact status transition",)
     if reuse_policy is AuthorizationReusePolicy.EXACT_REPLAY:
         grants = (
             "apply exact status transition",
@@ -59,7 +59,12 @@ def _decision(
     )
 
 
-def _claim(decision, ledger: AuthorizationUseLedger, *, replay_identity: str = "result:1"):
+def _claim(
+    decision: AuthorizationDecision,
+    ledger: AuthorizationUseLedger,
+    *,
+    replay_identity: str = "result:1",
+):
     return authorize_and_claim(
         decision,
         actor_id="operator:tyler",
@@ -73,6 +78,26 @@ def _claim(decision, ledger: AuthorizationUseLedger, *, replay_identity: str = "
         checked_at=datetime(2026, 7, 15, 12, 5, tzinfo=UTC),
         ledger=ledger,
     )
+
+
+def test_builder_constructs_digest_bound_decision_without_placeholder_validation() -> None:
+    decision = _decision()
+
+    assert decision.decision_id == authorization_digest(
+        "authorization-decision",
+        decision.identity_payload(),
+    )
+    assert decision.decision_id != "authorization-decision:" + "0" * 64
+
+
+def test_preflight_constructs_digest_bound_identity_without_placeholder_validation() -> None:
+    preflight = _claim(_decision(), AuthorizationUseLedger())
+
+    assert preflight.preflight_id == authorization_digest(
+        "authorization-preflight",
+        preflight.identity_payload(),
+    )
+    assert preflight.preflight_id != "authorization-preflight:" + "0" * 64
 
 
 def test_decision_identity_binds_caller_confirmation_but_boolean_is_not_authority() -> None:
