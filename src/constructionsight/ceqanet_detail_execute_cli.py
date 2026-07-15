@@ -1,23 +1,22 @@
 """Guarded CLI for fetching one CEQAnet detail/project page snapshot.
 
-This command requires explicit operator consent before live network execution.
-It fetches one public CEQAnet HTML page into deterministic execution JSON. It
-does not download documents, parse records, or mutate persistence.
+This command requires explicit operator consent before live network execution. It
+delegates the request to a policy-bound transport module, does not follow redirects,
+and does not download documents, parse records, or mutate persistence.
 """
 
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping
 from pathlib import Path
 from typing import Annotated
 from urllib.parse import urlparse
 
-import httpx
 import typer
 from rich.console import Console
 from rich.table import Table
 
+from constructionsight.ceqanet_detail_http import execute_ceqanet_detail_request
 from constructionsight.legal import AccessDecision, SourceAccessProfile, evaluate_access
 
 app = typer.Typer(help="Execute guarded CEQAnet detail/project page fetches.")
@@ -38,64 +37,20 @@ def _reject_output_without_json(output_path: Path | None, json_output: bool) -> 
 
 
 def _validate_ceqanet_url(url: str) -> str:
-    """Validate that a URL targets the public CEQAnet host."""
+    """Validate one exact public HTTPS CEQAnet detail URL."""
 
     parsed = urlparse(url)
-    if parsed.scheme not in {"http", "https"}:
-        raise ValueError("--url must be an HTTP(S) URL.")
-    if parsed.netloc.lower() != "ceqanet.lci.ca.gov":
+    if parsed.scheme != "https":
+        raise ValueError("--url must be an HTTPS URL.")
+    if parsed.username is not None or parsed.password is not None:
+        raise ValueError("--url cannot contain credentials.")
+    if parsed.hostname is None or parsed.hostname.casefold() != "ceqanet.lci.ca.gov":
         raise ValueError("--url must target ceqanet.lci.ca.gov.")
+    if parsed.port not in {None, 443}:
+        raise ValueError("--url cannot use a nonstandard port.")
     if not parsed.path or parsed.path == "/":
         raise ValueError("--url must identify a CEQAnet detail/project path.")
     return url
-
-
-def _execute_detail_request(
-    url: str,
-    *,
-    timeout_seconds: float,
-    max_body_chars: int,
-) -> dict[str, object]:
-    """Fetch one public CEQAnet URL and return a bounded response snapshot."""
-
-    try:
-        response = httpx.get(
-            url,
-            follow_redirects=True,
-            timeout=timeout_seconds,
-            headers={"User-Agent": "ConstructionSight/0.1"},
-        )
-    except httpx.HTTPError as exc:
-        return {
-            "method": "GET",
-            "request_url": url,
-            "final_url": url,
-            "status_code": None,
-            "content_type": None,
-            "body_text": "",
-            "body_length": 0,
-            "body_truncated": False,
-            "executed": True,
-            "error": exc.__class__.__name__,
-            "reachable": False,
-        }
-
-    body_text = response.text
-    body_length = len(body_text)
-    headers: Mapping[str, str] = response.headers
-    return {
-        "method": "GET",
-        "request_url": url,
-        "final_url": str(response.url),
-        "status_code": response.status_code,
-        "content_type": headers.get("content-type"),
-        "body_text": body_text[:max_body_chars],
-        "body_length": body_length,
-        "body_truncated": body_length > max_body_chars,
-        "executed": True,
-        "error": None,
-        "reachable": 200 <= response.status_code < 400,
-    }
 
 
 def _report_to_dict(
@@ -110,10 +65,10 @@ def _report_to_dict(
     successful_count = sum(1 for snapshot in snapshots if snapshot.get("reachable") is True)
     return {
         "metadata": {
-            "schema_version": "ceqanet_detail_execution.v1",
+            "schema_version": "ceqanet_detail_execution.v2",
             "allowed": access_decision is AccessDecision.ALLOWED,
             "reason": (
-                "CEQAnet detail executor completed bounded read-only GET request."
+                "CEQAnet detail executor completed one policy-bound read-only GET attempt."
                 if snapshots
                 else access_reason
             ),
@@ -173,14 +128,16 @@ def _render_report(payload: dict[str, object]) -> None:
     assert isinstance(snapshots, list)
     table = Table(title="Bounded Detail Snapshot")
     table.add_column("Status")
+    table.add_column("Failure Kind")
     table.add_column("Reachable")
     table.add_column("Truncated")
-    table.add_column("Body Length")
+    table.add_column("Body Bytes")
     table.add_column("Final URL")
     for snapshot in snapshots:
         assert isinstance(snapshot, dict)
         table.add_row(
             str(snapshot.get("status_code")),
+            str(snapshot.get("failure_kind")),
             str(snapshot.get("reachable")),
             str(snapshot.get("body_truncated")),
             str(snapshot.get("body_length")),
@@ -219,10 +176,15 @@ def execute_ceqanet_detail(
         bool,
         typer.Option(help="Mark source as paywalled for access-policy preview."),
     ] = False,
-    timeout_seconds: Annotated[float, typer.Option(help="HTTP timeout in seconds.")] = 20.0,
+    timeout_seconds: Annotated[float, typer.Option(help="HTTP read timeout in seconds.")] = 20.0,
     max_body_chars: Annotated[
         int,
-        typer.Option(help="Maximum response body characters retained in the snapshot."),
+        typer.Option(
+            help=(
+                "Maximum retained response bytes. The historical option name is retained "
+                "for CLI compatibility."
+            )
+        ),
     ] = 50_000,
     execute_live: Annotated[
         bool,
@@ -237,7 +199,7 @@ def execute_ceqanet_detail(
         typer.Option("--output", help="Write JSON output to a file. Requires --json-output."),
     ] = None,
 ) -> None:
-    """Execute one bounded CEQAnet detail/project GET request after explicit consent."""
+    """Execute one bounded CEQAnet detail GET attempt after explicit consent."""
 
     _reject_output_without_json(output_path, json_output)
     if timeout_seconds <= 0:
@@ -268,10 +230,10 @@ def execute_ceqanet_detail(
     snapshots: list[dict[str, object]] = []
     if access_result.decision is AccessDecision.ALLOWED:
         snapshots.append(
-            _execute_detail_request(
+            execute_ceqanet_detail_request(
                 resolved_url,
                 timeout_seconds=timeout_seconds,
-                max_body_chars=max_body_chars,
+                max_body_bytes=max_body_chars,
             )
         )
 
