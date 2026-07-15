@@ -8,10 +8,12 @@ import importlib.metadata
 import json
 import re
 import sys
+import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Final
+from urllib.parse import urlsplit
 
 from constructionsight import __version__
 
@@ -78,7 +80,7 @@ def _logical_lock_rows(path: Path) -> tuple[tuple[int, str], ...]:
 
 
 def load_lock_entries(path: Path) -> tuple[LockedRequirement, ...]:
-    """Load exact hashed requirements and reject ambiguity or duplicate identity."""
+    """Load canonical hashed requirements and reject ambiguity or hidden drift."""
 
     entries: list[LockedRequirement] = []
     seen: set[str] = set()
@@ -88,17 +90,22 @@ def load_lock_entries(path: Path) -> tuple[LockedRequirement, ...]:
             raise ValueError(
                 f"{path}:{number}: lock entry must be exact and SHA-256 hashed: {row}"
             )
-        name = canonical_name(match.group("name"))
+        raw_name = match.group("name")
+        name = canonical_name(raw_name)
+        if raw_name != name:
+            raise ValueError(
+                f"{path}:{number}: distribution name must be canonical: {raw_name}"
+            )
         raw_extras = match.group("extras")
         extras = (
-            tuple(
-                sorted(
-                    {canonical_name(value) for value in raw_extras.split(",")}
-                )
-            )
+            tuple(canonical_name(value) for value in raw_extras.split(","))
             if raw_extras
             else ()
         )
+        if extras != tuple(sorted(set(extras))):
+            raise ValueError(
+                f"{path}:{number}: extras must be canonical, unique, and sorted"
+            )
         hashes = tuple(_HASH_TOKEN_PATTERN.findall(match.group("options")))
         if not hashes:
             raise ValueError(f"{path}:{number}: lock entry has no SHA-256 artifact hash")
@@ -120,7 +127,10 @@ def load_lock_entries(path: Path) -> tuple[LockedRequirement, ...]:
         )
     if not entries:
         raise ValueError(f"{path}: lock is empty")
-    return tuple(sorted(entries, key=lambda item: item.name))
+    names = tuple(entry.name for entry in entries)
+    if names != tuple(sorted(names)):
+        raise ValueError(f"{path}: lock entries must be sorted by canonical name")
+    return tuple(entries)
 
 
 def load_lock(path: Path) -> dict[str, str]:
@@ -148,11 +158,11 @@ def installed_inventory() -> dict[str, importlib.metadata.Distribution]:
     return inventory
 
 
-def verify_lock(path: Path) -> dict[str, Any]:
-    """Verify exact versions and reject every undeclared installed distribution."""
-
-    expected = load_lock(path)
-    installed = installed_inventory()
+def _verification_report(
+    path: Path,
+    expected: dict[str, str],
+    installed: dict[str, importlib.metadata.Distribution],
+) -> dict[str, Any]:
     findings: list[dict[str, str]] = []
     for name, version in expected.items():
         distribution = installed.get(name)
@@ -213,6 +223,12 @@ def verify_lock(path: Path) -> dict[str, Any]:
     }
 
 
+def verify_lock(path: Path) -> dict[str, Any]:
+    """Verify exact versions and reject every undeclared installed distribution."""
+
+    return _verification_report(path, load_lock(path), installed_inventory())
+
+
 def _license_expression(distribution: importlib.metadata.Distribution) -> str:
     license_value = distribution.metadata.get("License")
     if license_value and license_value.strip() and license_value.strip() != "UNKNOWN":
@@ -226,28 +242,52 @@ def _license_expression(distribution: importlib.metadata.Distribution) -> str:
     return " OR ".join(sorted(set(licenses))) if licenses else "NOASSERTION"
 
 
+def _authoritative_project_url(
+    distribution: importlib.metadata.Distribution,
+) -> str | None:
+    candidates: list[str] = []
+    for raw in distribution.metadata.get_all("Project-URL") or []:
+        _, separator, value = raw.partition(",")
+        candidates.append(value.strip() if separator else raw.strip())
+    homepage = distribution.metadata.get("Home-page")
+    if homepage:
+        candidates.append(homepage.strip())
+    for candidate in candidates:
+        parsed = urlsplit(candidate)
+        if parsed.scheme in {"http", "https"} and parsed.netloc:
+            return candidate
+    return None
+
+
 def _component(
     distribution: importlib.metadata.Distribution,
     *,
     name: str,
     version: str,
     component_type: str,
+    purl_type: str,
+    hashes: tuple[str, ...] = (),
 ) -> dict[str, Any]:
-    metadata = distribution.metadata
-    homepage = metadata.get("Project-URL") or metadata.get("Home-page")
+    purl = f"pkg:{purl_type}/{name}@{version}"
     component: dict[str, Any] = {
         "type": component_type,
-        "bom-ref": f"pkg:pypi/{name}@{version}",
+        "bom-ref": purl,
         "name": name,
         "version": version,
-        "purl": f"pkg:pypi/{name}@{version}",
+        "purl": purl,
         "licenses": [{"expression": _license_expression(distribution)}],
     }
-    if homepage:
+    if hashes:
+        component["hashes"] = [
+            {"alg": "SHA-256", "content": digest}
+            for digest in hashes
+        ]
+    homepage = _authoritative_project_url(distribution)
+    if homepage is not None:
         component["externalReferences"] = [
             {
                 "type": "website",
-                "url": str(homepage).split(",", 1)[0].strip(),
+                "url": homepage,
             }
         ]
     return component
@@ -256,9 +296,10 @@ def _component(
 def build_sbom(lock_path: Path) -> dict[str, Any]:
     """Build a deterministic CycloneDX 1.5 inventory for the exact environment."""
 
-    expected = load_lock(lock_path)
+    entries = load_lock_entries(lock_path)
+    expected = {entry.name: entry.version for entry in entries}
     installed = installed_inventory()
-    verification = verify_lock(lock_path)
+    verification = _verification_report(lock_path, expected, installed)
     if not verification["passed"]:
         raise RuntimeError(
             "cannot generate an exact-environment SBOM from a mismatched lock"
@@ -271,29 +312,30 @@ def build_sbom(lock_path: Path) -> dict[str, Any]:
         name=project_name,
         version=project_version,
         component_type="application",
+        purl_type="generic",
     )
     components = [
         _component(
-            installed[name],
-            name=name,
-            version=version,
+            installed[entry.name],
+            name=entry.name,
+            version=entry.version,
             component_type="library",
+            purl_type="pypi",
+            hashes=entry.hashes,
         )
-        for name, version in expected.items()
+        for entry in entries
     ]
     serial_material = json.dumps(
         {"project": project_component, "components": components},
         sort_keys=True,
         separators=(",", ":"),
     )
-    serial = hashlib.sha256(serial_material.encode("utf-8")).hexdigest()
+    serial_digest = hashlib.sha256(serial_material.encode("utf-8")).hexdigest()
+    serial = uuid.UUID(hex=serial_digest[:32], version=5)
     return {
         "bomFormat": "CycloneDX",
         "specVersion": "1.5",
-        "serialNumber": (
-            f"urn:uuid:{serial[:8]}-{serial[8:12]}-{serial[12:16]}-"
-            f"{serial[16:20]}-{serial[20:32]}"
-        ),
+        "serialNumber": f"urn:uuid:{serial}",
         "version": 1,
         "metadata": {
             "component": project_component,
