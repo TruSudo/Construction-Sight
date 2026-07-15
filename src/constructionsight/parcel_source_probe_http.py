@@ -1,18 +1,17 @@
 """Approved ArcGIS probe transport composition.
 
-This module is the only owner of the temporary HTTP client used to execute the
-four-request bounded ArcGIS probe. The CLI receives typed proof objects only.
+The CLI receives typed proof objects only. Client creation and every HTTP request
+remain owned by ``parcel_source_acquisition_http``.
 """
 
 from __future__ import annotations
-
-import httpx
 
 from constructionsight.parcel_source_acquisition import build_arcgis_probe_plan
 from constructionsight.parcel_source_acquisition_http import (
     ParcelArcGISHTTPPolicy,
     execute_arcgis_probe_plan,
     fetch_arcgis_capability_snapshot,
+    open_arcgis_http_client,
 )
 from constructionsight.parcel_source_acquisition_models import (
     ParcelArcGISCapabilitySnapshot,
@@ -35,7 +34,7 @@ def execute_arcgis_bounded_probe(
     """Execute the exact metadata/count/page/replay probe with redirects denied."""
 
     policy = ParcelArcGISHTTPPolicy(timeout_seconds=timeout_seconds)
-    with httpx.Client(follow_redirects=False) as client:
+    with open_arcgis_http_client() as client:
         snapshot = fetch_arcgis_capability_snapshot(
             profile,
             client,
@@ -52,4 +51,4 @@ def execute_arcgis_bounded_probe(
             client,
             policy=policy,
         )
-    return snapshot, plan, observations
+    return snapshot, plan, tuple(observations)
