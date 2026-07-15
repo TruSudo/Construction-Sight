@@ -1,9 +1,16 @@
 schema_version = "constructionsight.dependency-contract/v1"
 contract_id = "construction-sight-dependencies-2026-07-15"
 supported_python = ["3.11", "3.12"]
+supported_runner = "github-hosted-ubuntu-x86_64"
 lock_files = ["requirements/py311.lock", "requirements/py312.lock"]
-install_policy = "Install the exact environment lock, then install ConstructionSight editable with --no-deps and --no-build-isolation."
-hash_policy = "Exact versions are mandatory. Artifact hashes are required for future lock regeneration once platform wheel coverage is generated and reviewed for every supported runner."
+lock_format = "pip-requirements-sha256-v1"
+require_hashes = true
+binary_only = true
+reject_unexpected_installed_distributions = true
+expected_project_distribution = "constructionsight==0.1.0"
+bootstrap_distributions = ["pip==26.1.2", "setuptools==83.0.0", "wheel==0.47.0"]
+install_policy = "Install the exact artifact-hashed environment lock with --require-hashes, --only-binary=:all:, and --no-deps; then install ConstructionSight editable with --no-deps and --no-build-isolation."
+hash_policy = "Every logical lock row must bind one exact version to reviewed SHA-256 wheel identities for the declared Python and runner environment. Unhashed, source, alternate, malformed, duplicate, or noncanonical rows fail certification."
 vulnerability_tool = "pypa/gh-action-pip-audit pinned to an immutable reviewed commit"
 vulnerability_failure_policy = "Fail on every known vulnerability unless a narrow owned expiring exception is present. Scanner or advisory failure is itself fatal."
 vulnerability_exceptions = "governance/vulnerability_exceptions.toml"
