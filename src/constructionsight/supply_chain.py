@@ -13,6 +13,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Final
 
+from constructionsight import __version__
+
 SCHEMA_VERSION: Final = "constructionsight.supply-chain-report/v1"
 _REQUIREMENT_PATTERN: Final = re.compile(
     r"^(?P<name>[A-Za-z0-9_.-]+)"
@@ -21,7 +23,7 @@ _REQUIREMENT_PATTERN: Final = re.compile(
     r"(?P<options>(?:\s+--hash=sha256:[0-9a-f]{64})+)$"
 )
 _HASH_TOKEN_PATTERN: Final = re.compile(r"--hash=sha256:([0-9a-f]{64})")
-_ALLOWED_UNLOCKED_DISTRIBUTIONS: Final = frozenset({"constructionsight"})
+_EXPECTED_UNLOCKED_DISTRIBUTIONS: Final = {"constructionsight": __version__}
 
 
 @dataclass(frozen=True)
@@ -128,18 +130,18 @@ def load_lock(path: Path) -> dict[str, str]:
 
 
 def installed_inventory() -> dict[str, importlib.metadata.Distribution]:
-    """Return one deterministic installed distribution per canonical identity."""
+    """Return exactly one installed distribution per canonical identity."""
 
     inventory: dict[str, importlib.metadata.Distribution] = {}
     for distribution in importlib.metadata.distributions():
         raw_name = distribution.metadata.get("Name")
         if not raw_name:
-            continue
+            raise RuntimeError("installed distribution is missing canonical Name metadata")
         name = canonical_name(raw_name)
         prior = inventory.get(name)
-        if prior is not None and prior.version != distribution.version:
+        if prior is not None:
             raise RuntimeError(
-                f"multiple installed versions for {name}: "
+                f"multiple installed distributions for {name}: "
                 f"{prior.version}, {distribution.version}"
             )
         inventory[name] = distribution
@@ -167,8 +169,27 @@ def verify_lock(path: Path) -> dict[str, Any]:
                     "actual": distribution.version,
                 }
             )
+    for name, version in _EXPECTED_UNLOCKED_DISTRIBUTIONS.items():
+        distribution = installed.get(name)
+        if distribution is None:
+            findings.append(
+                {
+                    "code": "SUPPLY-PROJECT-MISSING-001",
+                    "package": name,
+                    "expected": version,
+                }
+            )
+        elif distribution.version != version:
+            findings.append(
+                {
+                    "code": "SUPPLY-PROJECT-VERSION-001",
+                    "package": name,
+                    "expected": version,
+                    "actual": distribution.version,
+                }
+            )
     unexpected = sorted(
-        set(installed) - set(expected) - _ALLOWED_UNLOCKED_DISTRIBUTIONS
+        set(installed) - set(expected) - set(_EXPECTED_UNLOCKED_DISTRIBUTIONS)
     )
     for name in unexpected:
         findings.append(
@@ -183,9 +204,9 @@ def verify_lock(path: Path) -> dict[str, Any]:
     return {
         "schema_version": SCHEMA_VERSION,
         "lock": path.as_posix(),
-        "expected_distribution_count": len(expected),
+        "locked_distribution_count": len(expected),
+        "expected_project_distributions": dict(_EXPECTED_UNLOCKED_DISTRIBUTIONS),
         "installed_distribution_count": len(installed),
-        "allowed_unlocked_distributions": sorted(_ALLOWED_UNLOCKED_DISTRIBUTIONS),
         "finding_count": len(findings),
         "passed": not findings,
         "findings": findings,
@@ -205,8 +226,35 @@ def _license_expression(distribution: importlib.metadata.Distribution) -> str:
     return " OR ".join(sorted(set(licenses))) if licenses else "NOASSERTION"
 
 
+def _component(
+    distribution: importlib.metadata.Distribution,
+    *,
+    name: str,
+    version: str,
+    component_type: str,
+) -> dict[str, Any]:
+    metadata = distribution.metadata
+    homepage = metadata.get("Project-URL") or metadata.get("Home-page")
+    component: dict[str, Any] = {
+        "type": component_type,
+        "bom-ref": f"pkg:pypi/{name}@{version}",
+        "name": name,
+        "version": version,
+        "purl": f"pkg:pypi/{name}@{version}",
+        "licenses": [{"expression": _license_expression(distribution)}],
+    }
+    if homepage:
+        component["externalReferences"] = [
+            {
+                "type": "website",
+                "url": str(homepage).split(",", 1)[0].strip(),
+            }
+        ]
+    return component
+
+
 def build_sbom(lock_path: Path) -> dict[str, Any]:
-    """Build a deterministic CycloneDX 1.5 inventory for the exact lock."""
+    """Build a deterministic CycloneDX 1.5 inventory for the exact environment."""
 
     expected = load_lock(lock_path)
     installed = installed_inventory()
@@ -215,29 +263,28 @@ def build_sbom(lock_path: Path) -> dict[str, Any]:
         raise RuntimeError(
             "cannot generate an exact-environment SBOM from a mismatched lock"
         )
-    components: list[dict[str, Any]] = []
-    for name, version in expected.items():
-        distribution = installed[name]
-        metadata = distribution.metadata
-        homepage = metadata.get("Project-URL") or metadata.get("Home-page")
-        component: dict[str, Any] = {
-            "type": "library",
-            "bom-ref": f"pkg:pypi/{name}@{version}",
-            "name": name,
-            "version": version,
-            "purl": f"pkg:pypi/{name}@{version}",
-            "licenses": [{"expression": _license_expression(distribution)}],
-        }
-        if homepage:
-            component["externalReferences"] = [
-                {
-                    "type": "website",
-                    "url": str(homepage).split(",", 1)[0].strip(),
-                }
-            ]
-        components.append(component)
+    project_name, project_version = next(
+        iter(_EXPECTED_UNLOCKED_DISTRIBUTIONS.items())
+    )
+    project_component = _component(
+        installed[project_name],
+        name=project_name,
+        version=project_version,
+        component_type="application",
+    )
+    components = [
+        _component(
+            installed[name],
+            name=name,
+            version=version,
+            component_type="library",
+        )
+        for name, version in expected.items()
+    ]
     serial_material = json.dumps(
-        components, sort_keys=True, separators=(",", ":")
+        {"project": project_component, "components": components},
+        sort_keys=True,
+        separators=(",", ":"),
     )
     serial = hashlib.sha256(serial_material.encode("utf-8")).hexdigest()
     return {
@@ -249,6 +296,7 @@ def build_sbom(lock_path: Path) -> dict[str, Any]:
         ),
         "version": 1,
         "metadata": {
+            "component": project_component,
             "tools": {
                 "components": [
                     {
