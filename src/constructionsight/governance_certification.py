@@ -12,6 +12,7 @@ from constructionsight.authority_certification import (
     _audit_network,
     _audit_test_obligations,
 )
+from constructionsight.dependency_certification import audit_dependency_agreement
 from constructionsight.governance_certification_core import (
     SCHEMA_VERSION,
     _ARCHITECTURE_SCHEMA,
@@ -89,6 +90,7 @@ def audit_governance(root: Path, tracked_files: Sequence[Path]) -> GovernanceRep
         findings,
     )
     dependency_count = _audit_dependencies(repository_root, dependency, findings)
+    audit_dependency_agreement(repository_root, dependency, findings)
     network_count = _audit_network(network, findings)
     authorization_count = _audit_authorization(
         authorization,
