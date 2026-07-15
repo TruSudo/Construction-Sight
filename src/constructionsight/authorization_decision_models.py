@@ -25,11 +25,23 @@ class AuthorizationReusePolicy(StrEnum):
     EXACT_REPLAY = "exact_replay"
 
 
+def _json_value(value: Any) -> Any:
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, StrEnum):
+        return value.value
+    if isinstance(value, dict):
+        return {str(key): _json_value(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_value(item) for item in value]
+    return value
+
+
 def authorization_digest(prefix: str, payload: dict[str, Any]) -> str:
     """Return a deterministic content identity for authority-significant data."""
 
     canonical = json.dumps(
-        payload,
+        _json_value(payload),
         sort_keys=True,
         separators=(",", ":"),
         ensure_ascii=False,
@@ -45,9 +57,7 @@ class AuthorizationDecision(BaseModel):
     schema_version: Literal["constructionsight.authorization-decision/v1"] = (
         AUTHORIZATION_DECISION_SCHEMA_VERSION
     )
-    decision_id: str = Field(
-        pattern=r"^authorization-decision:[0-9a-f]{64}$"
-    )
+    decision_id: str = Field(pattern=r"^authorization-decision:[0-9a-f]{64}$")
     actor_id: str = Field(min_length=1)
     action: str = Field(min_length=1)
     resource_type: str = Field(min_length=1)
@@ -62,7 +72,7 @@ class AuthorizationDecision(BaseModel):
     not_before: datetime
     expires_at: datetime
     reuse_policy: AuthorizationReusePolicy
-    max_uses: int = Field(ge=1, le=1)
+    max_uses: Literal[1] = 1
     revocation_identity: str = Field(min_length=1)
     audit_identity: str = Field(min_length=1)
     failure_posture: Literal["fail_closed"] = "fail_closed"
@@ -119,8 +129,6 @@ class AuthorizationDecision(BaseModel):
             raise ValueError("authorization not_before must precede expires_at")
         if (self.expires_at - self.not_before).total_seconds() > 86_400:
             raise ValueError("authorization validity cannot exceed 24 hours")
-        if self.granted_authority == self.denied_authority:
-            raise ValueError("granted and denied authority cannot be identical")
         overlap = set(self.granted_authority) & set(self.denied_authority)
         if overlap:
             raise ValueError(
@@ -160,12 +168,8 @@ class AuthorizationPreflight(BaseModel):
     schema_version: Literal["constructionsight.authorization-preflight/v1"] = (
         AUTHORIZATION_PREFLIGHT_SCHEMA_VERSION
     )
-    preflight_id: str = Field(
-        pattern=r"^authorization-preflight:[0-9a-f]{64}$"
-    )
-    decision_id: str = Field(
-        pattern=r"^authorization-decision:[0-9a-f]{64}$"
-    )
+    preflight_id: str = Field(pattern=r"^authorization-preflight:[0-9a-f]{64}$")
+    decision_id: str = Field(pattern=r"^authorization-decision:[0-9a-f]{64}$")
     actor_id: str = Field(min_length=1)
     action: str = Field(min_length=1)
     resource_type: str = Field(min_length=1)
