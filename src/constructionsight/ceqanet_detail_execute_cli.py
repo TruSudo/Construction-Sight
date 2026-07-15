@@ -142,14 +142,14 @@ def execute_ceqanet_detail(
     ] = False,
     timeout_seconds: Annotated[
         float,
-        typer.Option(min=0.001, max=120.0, help="Read timeout in seconds."),
+        typer.Option(min=0.001, max=20.0, help="Read timeout in seconds."),
     ] = 20.0,
     max_body_bytes: Annotated[
         int,
         typer.Option(
             min=1,
-            max=2_000_000,
-            help="Maximum response bytes retained by the transport policy.",
+            max=50_000,
+            help="Maximum response bytes retained by CS-NET-006.",
         ),
     ] = 50_000,
     execute_live: Annotated[
