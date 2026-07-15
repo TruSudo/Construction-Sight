@@ -46,9 +46,17 @@ jobs:
           set -euo pipefail
           tag="$(printf '%s' '${{ matrix.python-version }}' | tr -d '.')"
           lock="requirements/py${tag}.lock"
-          python -m pip install --disable-pip-version-check "pip==26.1.2"
-          python -m pip install --disable-pip-version-check --no-deps -r "${lock}"
-          python -m pip install --disable-pip-version-check --no-deps --no-build-isolation -e .
+          python -m pip install \
+            --disable-pip-version-check \
+            --require-hashes \
+            --only-binary=:all: \
+            --no-deps \
+            -r "${lock}"
+          python -m pip install \
+            --disable-pip-version-check \
+            --no-deps \
+            --no-build-isolation \
+            -e .
 
       - name: Verify exact lock
         id: lock-verification
@@ -152,6 +160,19 @@ jobs:
           python -m pytest --strict-config --strict-markers -ra -W error \
             2>&1 | tee "${REPORT_DIR}/pytest-py${tag}.txt"
 
+      - name: Focused mutation certification
+        id: mutation-certification
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p "${REPORT_DIR}"
+          tag="$(printf '%s' '${{ matrix.python-version }}' | tr -d '.')"
+          python -m constructionsight.mutation_certification \
+            --root . \
+            --output "${REPORT_DIR}/mutation-certification-py${tag}.json" \
+            2>&1 | tee "${REPORT_DIR}/mutation-certification-py${tag}.txt"
+
       - name: Adapter contract audit
         id: adapter-audit
         continue-on-error: true
@@ -214,6 +235,7 @@ jobs:
             '${{ steps.mypy.outcome }}' \
             '${{ steps.compile.outcome }}' \
             '${{ steps.pytest.outcome }}' \
+            '${{ steps.mutation-certification.outcome }}' \
             '${{ steps.adapter-audit.outcome }}' \
             '${{ steps.source-audit.outcome }}' \
             '${{ steps.repository-certification.outcome }}' \
