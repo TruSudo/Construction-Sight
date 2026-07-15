@@ -6,10 +6,9 @@ import hashlib
 from collections import Counter
 from collections.abc import Callable
 
-import httpx
-
 from constructionsight.adapters.specs import AdapterFamilySpec, AdapterImplementationStatus
 from constructionsight.models import PlatformFamily, PublicSource, VerificationStatus
+from constructionsight.source_readiness_http import check_source_http_reachability
 from constructionsight.source_readiness_models import (
     HttpReachabilityResult,
     SourceReadinessReport,
@@ -46,29 +45,9 @@ def build_source_readiness_report(
 
 
 def check_http_reachability(source: PublicSource) -> HttpReachabilityResult:
-    """Perform a lightweight lawful public HTTP reachability check."""
+    """Delegate lawful reachability to the exact-host bounded transport."""
 
-    url = str(source.public_url)
-    try:
-        with httpx.Client(follow_redirects=True, timeout=10.0) as client:
-            response = client.head(url)
-            method = "HEAD"
-            if response.status_code == 405:
-                response = client.get(url)
-                method = "GET"
-        return HttpReachabilityResult(
-            checked=True,
-            reachable=200 <= response.status_code < 400,
-            status_code=response.status_code,
-            method=method,
-            final_url=str(response.url),
-        )
-    except httpx.HTTPError as exc:
-        return HttpReachabilityResult(
-            checked=True,
-            reachable=False,
-            error=exc.__class__.__name__,
-        )
+    return check_source_http_reachability(source)
 
 
 def _build_row(
