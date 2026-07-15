@@ -1,0 +1,5 @@
+schema_version = "constructionsight.resolved-defects/v1"
+
+# Defects move here only after correction, regression evidence, independent review,
+# and exact-tree certification. Active defects remain in active_defects.toml.
+defects = []
