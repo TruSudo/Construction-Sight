@@ -41,6 +41,22 @@ _FILESYSTEM_MUTATION_CALLS: Final = {
     "write_bytes",
     "write_text",
 }
+_FILESYSTEM_RECEIVER_HINTS: Final = {
+    "artifact",
+    "checkpoint",
+    "destination",
+    "directory",
+    "dir",
+    "file",
+    "folder",
+    "output",
+    "path",
+    "root",
+    "target",
+    "temp",
+    "tmp",
+}
+_PATH_CONSTRUCTORS: Final = {"Path", "PurePath", "PurePosixPath", "PureWindowsPath"}
 _DATABASE_MUTATION_CALLS: Final = {"add", "commit", "delete", "execute", "flush", "merge"}
 _DATABASE_RECEIVER_HINTS: Final = {"connection", "conn", "db", "repository", "session", "store"}
 
@@ -207,6 +223,36 @@ def _external_matches(imports: Iterable[str], candidates: set[str]) -> bool:
     return False
 
 
+def _expression_names(node: ast.AST) -> tuple[str, ...]:
+    names: set[str] = set()
+    for child in ast.walk(node):
+        if isinstance(child, ast.Name):
+            names.add(child.id)
+        elif isinstance(child, ast.Attribute):
+            names.add(child.attr)
+    return tuple(sorted(names))
+
+
+def _looks_like_filesystem_receiver(node: ast.AST) -> bool:
+    if isinstance(node, ast.Call):
+        function = node.func
+        if isinstance(function, ast.Name) and function.id in _PATH_CONSTRUCTORS:
+            return True
+        if isinstance(function, ast.Attribute) and function.attr in {
+            "absolute",
+            "expanduser",
+            "resolve",
+            "with_name",
+            "with_suffix",
+        }:
+            return _looks_like_filesystem_receiver(function.value)
+    return any(
+        hint in name.casefold()
+        for name in _expression_names(node)
+        for hint in _FILESYSTEM_RECEIVER_HINTS
+    )
+
+
 def _mutation_lines(tree: ast.Module) -> tuple[int, ...]:
     lines: set[int] = set()
     for node in ast.walk(tree):
@@ -217,7 +263,11 @@ def _mutation_lines(tree: ast.Module) -> tuple[int, ...]:
             name = node.func.id
         elif isinstance(node.func, ast.Attribute):
             name = node.func.attr
-        if name in _FILESYSTEM_MUTATION_CALLS:
+        if (
+            name in _FILESYSTEM_MUTATION_CALLS
+            and isinstance(node.func, ast.Attribute)
+            and _looks_like_filesystem_receiver(node.func.value)
+        ):
             lines.add(node.lineno)
         if name in _DATABASE_MUTATION_CALLS and isinstance(node.func, ast.Attribute):
             receiver = node.func.value
