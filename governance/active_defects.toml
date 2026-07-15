@@ -128,3 +128,27 @@ area = "cross-contract-traceability"
 root_cause = "Capability, network-policy, authorization-operation, dependency, and adversarial-matrix references were independently parsed but not bidirectionally reconciled. Invented references, orphaned policies, and capabilities omitted from adversarial matrices could therefore survive certification."
 discovered_against = "02720edb7b475011f536aa5a0b33990887f8476e"
 required_resolution = "Build a bidirectional governance reference graph; require exact policy and operation ownership, valid dependency capability references, and adversarial matrix coverage for every registered capability; add orphan and invented-reference fixtures."
+
+[[defects]]
+id = "CS-SR-017"
+severity = "P1"
+area = "adversarial-contract-doctrine"
+root_cause = "Adversarial matrices could accept unknown fields, category contraction or invention, unsafe or missing test references, malformed exclusions, and empty prose obligations while still appearing to cover all required risk classes."
+discovered_against = "35f23048b2d9bc2f9b16e5440ba74d589c70dc99"
+required_resolution = "Enforce the exact mandatory category set, exact matrix and exclusion fields, canonical lists, safe existing test paths, complete category coverage or justified exclusion, and nonblank branch/mutation/property/concurrency doctrine; add negative fixtures."
+
+[[defects]]
+id = "CS-SR-018"
+severity = "P0"
+area = "network-authorization-architecture"
+root_cause = "Multiple live CLI paths import approved transport modules directly and use bare Boolean flags such as --execute-live as the operative network grant, bypassing canonical application services and the general scope-bound authorization decision contract."
+discovered_against = "857ec7527317fca93eacb956c9e79d7d067522b5"
+required_resolution = "Prohibit CLI-to-transport imports; inventory every live CLI path; move each operation behind an application service that requires exact actor, action, resource, scope, current state, validity, denied authority, audit identity, and single-use preflight; retain Boolean confirmation only as an additional gate."
+
+[[defects]]
+id = "CS-SR-019"
+severity = "P0"
+area = "authorization-construction"
+root_cause = "The general authorization builders validated placeholder all-zero decision and preflight IDs before computing the content digest, so valid scope-bound decisions and preflights could not be constructed."
+discovered_against = "857ec7527317fca93eacb956c9e79d7d067522b5"
+required_resolution = "Construct canonical identity payloads without running final digest validators, compute the real digest, validate the completed model, and add direct decision/preflight identity regression coverage."
