@@ -9,11 +9,11 @@ from constructionsight.authority_certification import (
     _audit_defects_and_review,
     _audit_network,
 )
+from constructionsight.dependency_certification import audit_dependencies
 from constructionsight.governance_certification_core import GovernanceFinding
-from constructionsight.traceability_certification import (
-    _audit_capabilities,
-    _audit_dependencies,
-)
+from constructionsight.traceability_certification import _audit_capabilities
+
+_HASH = "a" * 64
 
 
 def _write(root: Path, relative: str, content: str) -> Path:
@@ -61,6 +61,10 @@ def _architecture(*layers: dict[str, Any]) -> dict[str, Any]:
 
 def _codes(findings: list[GovernanceFinding]) -> set[str]:
     return {finding.code for finding in findings}
+
+
+def _hashed_lock(requirement: str) -> str:
+    return f"{requirement} --hash=sha256:{_HASH}\n"
 
 
 def test_architecture_rejects_forbidden_reverse_dependency(tmp_path: Path) -> None:
@@ -238,7 +242,7 @@ def test_dependency_audit_rejects_mutable_action_tag(tmp_path: Path) -> None:
         "[build-system]\nrequires = []\nbuild-backend = 'x'\n"
         "[project]\nname = 'x'\nversion = '1'\ndependencies = ['example==1.0.0']\n",
     )
-    _write(tmp_path, "requirements/test.lock", "example==1.0.0\n")
+    _write(tmp_path, "requirements/test.lock", _hashed_lock("example==1.0.0"))
     _write(
         tmp_path,
         ".github/workflows/ci.yml",
@@ -246,7 +250,7 @@ def test_dependency_audit_rejects_mutable_action_tag(tmp_path: Path) -> None:
     )
     findings: list[GovernanceFinding] = []
 
-    _audit_dependencies(
+    audit_dependencies(
         tmp_path,
         {
             "dependencies": [_dependency_entry()],
@@ -265,10 +269,10 @@ def test_dependency_audit_rejects_nonexact_direct_pin(tmp_path: Path) -> None:
         "[build-system]\nrequires = []\nbuild-backend = 'x'\n"
         "[project]\nname = 'x'\nversion = '1'\ndependencies = ['example>=1.0.0']\n",
     )
-    _write(tmp_path, "requirements/test.lock", "example==1.0.0\n")
+    _write(tmp_path, "requirements/test.lock", _hashed_lock("example==1.0.0"))
     findings: list[GovernanceFinding] = []
 
-    _audit_dependencies(
+    audit_dependencies(
         tmp_path,
         {
             "dependencies": [_dependency_entry()],
