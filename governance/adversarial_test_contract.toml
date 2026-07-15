@@ -1,23 +1,23 @@
 schema_version = "constructionsight.adversarial-test-contract/v1"
 contract_id = "construction-sight-adversarial-tests-2026-07-15"
 required_categories = [
+  "audit-failure-rollback",
+  "authority-expansion-reuse-expiry",
+  "boundary-overflow-excessive-size",
+  "conflicting-same-time-evidence",
+  "dependency-source-drift",
+  "duplicates-ordering",
   "empty-absent-null-unknown-extra",
   "malformed-identity-schema",
-  "boundary-overflow-excessive-size",
-  "unicode-normalization",
-  "duplicates-ordering",
-  "conflicting-same-time-evidence",
-  "stale-future-naive-time",
+  "oversized-malformed-terminal-access-control",
   "partial-interrupted-write-cleanup",
   "replay-conflicting-replay-idempotency",
   "retry-exhaustion-cancellation",
   "stale-concurrent-writers",
+  "stale-future-naive-time",
   "tampering-hash-mismatch",
-  "dependency-source-drift",
-  "authority-expansion-reuse-expiry",
   "traversal-symlink",
-  "oversized-malformed-terminal-access-control",
-  "audit-failure-rollback",
+  "unicode-normalization",
 ]
 
 [[matrices]]
@@ -34,23 +34,23 @@ tests = [
   "tests/test_supply_chain.py",
 ]
 categories = [
+  "audit-failure-rollback",
+  "authority-expansion-reuse-expiry",
+  "boundary-overflow-excessive-size",
+  "conflicting-same-time-evidence",
+  "dependency-source-drift",
+  "duplicates-ordering",
   "empty-absent-null-unknown-extra",
   "malformed-identity-schema",
-  "boundary-overflow-excessive-size",
-  "unicode-normalization",
-  "duplicates-ordering",
-  "conflicting-same-time-evidence",
-  "stale-future-naive-time",
+  "oversized-malformed-terminal-access-control",
   "partial-interrupted-write-cleanup",
   "replay-conflicting-replay-idempotency",
   "retry-exhaustion-cancellation",
   "stale-concurrent-writers",
+  "stale-future-naive-time",
   "tampering-hash-mismatch",
-  "dependency-source-drift",
-  "authority-expansion-reuse-expiry",
   "traversal-symlink",
-  "oversized-malformed-terminal-access-control",
-  "audit-failure-rollback",
+  "unicode-normalization",
 ]
 exclusions = []
 branch_testing = "required for authorization, identity, transport, persistence, and certification decisions"
