@@ -111,6 +111,55 @@ def test_verify_lock_reports_missing_and_mismatched_versions(
     ]
 
 
+def test_verify_lock_rejects_unexpected_distribution(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    lock = tmp_path / "environment.lock"
+    lock.write_text(_locked("alpha==1.0"), encoding="utf-8")
+    monkeypatch.setattr(
+        supply_chain,
+        "installed_inventory",
+        lambda: {
+            "alpha": _Distribution("1.0"),
+            "rogue-package": _Distribution("9.9"),
+        },
+    )
+
+    report = supply_chain.verify_lock(lock)
+
+    assert report["passed"] is False
+    assert report["findings"] == [
+        {
+            "code": "SUPPLY-UNEXPECTED-001",
+            "package": "rogue-package",
+            "expected": "absent",
+            "actual": "9.9",
+        }
+    ]
+
+
+def test_verify_lock_allows_only_the_project_outside_the_lock(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    lock = tmp_path / "environment.lock"
+    lock.write_text(_locked("alpha==1.0"), encoding="utf-8")
+    monkeypatch.setattr(
+        supply_chain,
+        "installed_inventory",
+        lambda: {
+            "alpha": _Distribution("1.0"),
+            "constructionsight": _Distribution("0.1.0"),
+        },
+    )
+
+    report = supply_chain.verify_lock(lock)
+
+    assert report["passed"] is True
+    assert report["finding_count"] == 0
+
+
 def test_verify_lock_accepts_exact_environment(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
