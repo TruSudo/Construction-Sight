@@ -1,4 +1,4 @@
-"""Deterministic installed-environment verification and SBOM generation."""
+"""Deterministic hashed-lock verification and SBOM generation."""
 
 from __future__ import annotations
 
@@ -9,40 +9,121 @@ import json
 import re
 import sys
 from collections.abc import Sequence
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Final
 
 SCHEMA_VERSION: Final = "constructionsight.supply-chain-report/v1"
-_LOCK_PATTERN: Final = re.compile(r"^([A-Za-z0-9_.-]+)(?:\[[^]]+\])?==([^;\s]+)$")
+_REQUIREMENT_PATTERN: Final = re.compile(
+    r"^(?P<name>[A-Za-z0-9_.-]+)"
+    r"(?:\[(?P<extras>[A-Za-z0-9_,.-]+)\])?"
+    r"==(?P<version>[^;\\\s]+)"
+    r"(?P<options>(?:\s+--hash=sha256:[0-9a-f]{64})+)$"
+)
+_HASH_TOKEN_PATTERN: Final = re.compile(r"--hash=sha256:([0-9a-f]{64})")
+
+
+@dataclass(frozen=True)
+class LockedRequirement:
+    """One canonical exact requirement bound to approved SHA-256 artifacts."""
+
+    name: str
+    extras: tuple[str, ...]
+    version: str
+    hashes: tuple[str, ...]
+    line: int
 
 
 def canonical_name(value: str) -> str:
-    """Return the canonical distribution identity used by Python packaging."""
+    """Return the canonical distribution or extra identity used by packaging."""
 
     return re.sub(r"[-_.]+", "-", value).lower()
 
 
-def load_lock(path: Path) -> dict[str, str]:
-    """Load an exact requirements lock and reject duplicate or nonexact rows."""
+def _logical_lock_rows(path: Path) -> tuple[tuple[int, str], ...]:
+    """Join backslash-continued requirement rows without accepting hidden content."""
 
-    entries: dict[str, str] = {}
+    rows: list[tuple[int, str]] = []
+    parts: list[str] = []
+    first_line: int | None = None
     for number, line in enumerate(
         path.read_text(encoding="utf-8").splitlines(), start=1
     ):
         stripped = line.strip()
         if not stripped or stripped.startswith("#"):
+            if parts:
+                raise ValueError(
+                    f"{path}:{number}: comments or blank lines cannot interrupt a lock entry"
+                )
             continue
-        match = _LOCK_PATTERN.fullmatch(stripped)
+        if first_line is None:
+            first_line = number
+        continued = stripped.endswith("\\")
+        segment = stripped[:-1].rstrip() if continued else stripped
+        if not segment:
+            raise ValueError(f"{path}:{number}: empty lock continuation")
+        parts.append(segment)
+        if continued:
+            continue
+        rows.append((first_line, " ".join(parts)))
+        parts = []
+        first_line = None
+    if parts:
+        assert first_line is not None
+        raise ValueError(f"{path}:{first_line}: dangling lock continuation")
+    return tuple(rows)
+
+
+def load_lock_entries(path: Path) -> tuple[LockedRequirement, ...]:
+    """Load exact hashed requirements and reject ambiguity or duplicate identity."""
+
+    entries: list[LockedRequirement] = []
+    seen: set[str] = set()
+    for number, row in _logical_lock_rows(path):
+        match = _REQUIREMENT_PATTERN.fullmatch(row)
         if match is None:
-            raise ValueError(f"{path}:{number}: lock entry is not exact: {stripped}")
-        name = canonical_name(match.group(1))
-        version = match.group(2)
-        if name in entries:
+            raise ValueError(
+                f"{path}:{number}: lock entry must be exact and SHA-256 hashed: {row}"
+            )
+        name = canonical_name(match.group("name"))
+        raw_extras = match.group("extras")
+        extras = (
+            tuple(
+                sorted(
+                    {canonical_name(value) for value in raw_extras.split(",")}
+                )
+            )
+            if raw_extras
+            else ()
+        )
+        hashes = tuple(_HASH_TOKEN_PATTERN.findall(match.group("options")))
+        if not hashes:
+            raise ValueError(f"{path}:{number}: lock entry has no SHA-256 artifact hash")
+        if hashes != tuple(sorted(set(hashes))):
+            raise ValueError(
+                f"{path}:{number}: artifact hashes must be unique and sorted"
+            )
+        if name in seen:
             raise ValueError(f"{path}:{number}: duplicate lock entry: {name}")
-        entries[name] = version
+        seen.add(name)
+        entries.append(
+            LockedRequirement(
+                name=name,
+                extras=extras,
+                version=match.group("version"),
+                hashes=hashes,
+                line=number,
+            )
+        )
     if not entries:
         raise ValueError(f"{path}: lock is empty")
-    return dict(sorted(entries.items()))
+    return tuple(sorted(entries, key=lambda item: item.name))
+
+
+def load_lock(path: Path) -> dict[str, str]:
+    """Return canonical exact versions after validating every artifact hash."""
+
+    return {entry.name: entry.version for entry in load_lock_entries(path)}
 
 
 def installed_inventory() -> dict[str, importlib.metadata.Distribution]:
@@ -65,7 +146,7 @@ def installed_inventory() -> dict[str, importlib.metadata.Distribution]:
 
 
 def verify_lock(path: Path) -> dict[str, Any]:
-    """Verify that every locked distribution is installed at the exact version."""
+    """Verify every locked distribution is installed at the exact version."""
 
     expected = load_lock(path)
     installed = installed_inventory()
@@ -184,7 +265,7 @@ def _write_json(path: Path, payload: dict[str, Any]) -> None:
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Verify locked dependencies and emit an SBOM."
+        description="Verify hashed locked dependencies and emit an SBOM."
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
     verify = subparsers.add_parser("verify-lock")
@@ -197,7 +278,7 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Run the supply-chain command and fail visibly on disagreement."""
+    """Run supply-chain commands and fail visibly on disagreement."""
 
     arguments = _parser().parse_args(argv)
     try:
