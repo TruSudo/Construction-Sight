@@ -6,7 +6,6 @@ import json
 from pathlib import Path
 from typing import Annotated, cast
 
-import httpx
 import typer
 from rich.console import Console
 from rich.table import Table
@@ -19,7 +18,6 @@ from constructionsight.parcel_schema_preview import (
 )
 from constructionsight.parcel_source_acquisition import (
     build_arcgis_acquisition_assessment,
-    build_arcgis_probe_plan,
     get_official_arcgis_acquisition_assessments,
     get_official_arcgis_capability_snapshots,
     get_official_arcgis_probe_plans,
@@ -30,13 +28,9 @@ from constructionsight.parcel_source_acquisition_bundle import (
     load_arcgis_bounded_proof_bundle,
     verify_arcgis_bounded_proof_bundle,
 )
-from constructionsight.parcel_source_acquisition_http import (
-    ParcelArcGISHTTPPolicy,
-    ParcelArcGISProbeExecutionError,
-    execute_arcgis_probe_plan,
-    fetch_arcgis_capability_snapshot,
-)
+from constructionsight.parcel_source_acquisition_http import ParcelArcGISProbeExecutionError
 from constructionsight.parcel_source_models import ParcelProviderKind
+from constructionsight.parcel_source_probe_http import execute_arcgis_bounded_probe
 from constructionsight.parcel_source_registry import (
     build_parcel_source_report,
     get_parcel_sources,
@@ -494,25 +488,12 @@ def acquisition_probe(
     if profile is None:
         typer.echo(f"Unknown verified ArcGIS source key: {source_key}")
         raise typer.Exit(code=1)
-    policy = ParcelArcGISHTTPPolicy(timeout_seconds=timeout_seconds)
     try:
-        with httpx.Client(follow_redirects=False) as client:
-            snapshot = fetch_arcgis_capability_snapshot(
-                profile,
-                client,
-                limitations=(
-                    "Advertised capabilities require executed probe proof.",
-                    "This command executes a bounded probe, not a complete acquisition.",
-                ),
-                policy=policy,
-            )
-            plan = build_arcgis_probe_plan(snapshot, sample_size=sample_size)
-            observations = execute_arcgis_probe_plan(
-                snapshot,
-                plan,
-                client,
-                policy=policy,
-            )
+        snapshot, plan, observations = execute_arcgis_bounded_probe(
+            profile,
+            sample_size=sample_size,
+            timeout_seconds=timeout_seconds,
+        )
         assessment = build_arcgis_acquisition_assessment(
             snapshot,
             plan,
