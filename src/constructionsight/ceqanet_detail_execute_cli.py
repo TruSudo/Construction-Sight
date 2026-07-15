@@ -1,94 +1,34 @@
-"""Guarded CLI for fetching one CEQAnet detail/project page snapshot.
-
-This command requires explicit operator consent before live network execution. It
-delegates the request to a policy-bound transport module, does not follow redirects,
-and does not download documents, parse records, or mutate persistence.
-"""
+"""Guarded CLI for one scope-bound CEQAnet detail-page read."""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
 from typing import Annotated
-from urllib.parse import urlparse
 
 import typer
 from rich.console import Console
 from rich.table import Table
 
-from constructionsight.ceqanet_detail_http import execute_ceqanet_detail_request
-from constructionsight.legal import AccessDecision, SourceAccessProfile, evaluate_access
+from constructionsight.authorization_decision import AuthorizationDeniedError
+from constructionsight.ceqanet_detail_service import execute_authorized_ceqanet_detail
+from constructionsight.legal import SourceAccessProfile
 
-app = typer.Typer(help="Execute guarded CEQAnet detail/project page fetches.")
+app = typer.Typer(help="Execute governed CEQAnet detail/project page reads.")
 console = Console(width=240, color_system=None)
 
 
 @app.callback()
 def main() -> None:
-    """Execute guarded CEQAnet detail/project page fetches."""
+    """Execute governed CEQAnet detail/project page reads."""
 
 
 def _reject_output_without_json(output_path: Path | None, json_output: bool) -> None:
-    """Reject file output without machine-readable JSON output."""
-
     if output_path is not None and not json_output:
-        typer.echo("--output requires --json-output.")
-        raise typer.Exit(code=1)
-
-
-def _validate_ceqanet_url(url: str) -> str:
-    """Validate one exact public HTTPS CEQAnet detail URL."""
-
-    parsed = urlparse(url)
-    if parsed.scheme != "https":
-        raise ValueError("--url must be an HTTPS URL.")
-    if parsed.username is not None or parsed.password is not None:
-        raise ValueError("--url cannot contain credentials.")
-    if parsed.hostname is None or parsed.hostname.casefold() != "ceqanet.lci.ca.gov":
-        raise ValueError("--url must target ceqanet.lci.ca.gov.")
-    if parsed.port not in {None, 443}:
-        raise ValueError("--url cannot use a nonstandard port.")
-    if not parsed.path or parsed.path == "/":
-        raise ValueError("--url must identify a CEQAnet detail/project path.")
-    return url
-
-
-def _report_to_dict(
-    *,
-    url: str,
-    access_decision: AccessDecision,
-    access_reason: str,
-    snapshots: list[dict[str, object]],
-) -> dict[str, object]:
-    """Build deterministic CEQAnet detail execution JSON."""
-
-    successful_count = sum(1 for snapshot in snapshots if snapshot.get("reachable") is True)
-    return {
-        "metadata": {
-            "schema_version": "ceqanet_detail_execution.v2",
-            "allowed": access_decision is AccessDecision.ALLOWED,
-            "reason": (
-                "CEQAnet detail executor completed one policy-bound read-only GET attempt."
-                if snapshots
-                else access_reason
-            ),
-            "planned_request_count": 1,
-            "executed_request_count": len(snapshots),
-            "successful_response_count": successful_count,
-            "failed_response_count": len(snapshots) - successful_count,
-            "access": {
-                "decision": access_decision.value,
-                "reason": access_reason,
-            },
-            "requested_url": url,
-        },
-        "snapshots": snapshots,
-    }
+        raise typer.BadParameter("--output requires --json-output")
 
 
 def _write_json_file(output_path: Path, payload: dict[str, object]) -> None:
-    """Write deterministic UTF-8 JSON output."""
-
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(
         json.dumps(payload, indent=2, sort_keys=True, default=str) + "\n",
@@ -96,9 +36,10 @@ def _write_json_file(output_path: Path, payload: dict[str, object]) -> None:
     )
 
 
-def _write_or_print_json(payload: dict[str, object], output_path: Path | None) -> None:
-    """Write JSON to a file or print it to stdout."""
-
+def _write_or_print_json(
+    payload: dict[str, object],
+    output_path: Path | None,
+) -> None:
     if output_path is not None:
         _write_json_file(output_path, payload)
         typer.echo(f"Wrote CEQAnet detail execution JSON to {output_path}.")
@@ -107,40 +48,49 @@ def _write_or_print_json(payload: dict[str, object], output_path: Path | None) -
 
 
 def _render_report(payload: dict[str, object]) -> None:
-    """Render a CEQAnet detail execution report as Rich tables."""
-
     metadata = payload["metadata"]
     assert isinstance(metadata, dict)
+    authorization = metadata.get("authorization")
+    assert isinstance(authorization, dict)
 
     summary = Table(title="CEQAnet Detail Execution")
     summary.add_column("Field")
     summary.add_column("Value")
-    summary.add_row("Schema", str(metadata["schema_version"]))
-    summary.add_row("Allowed", str(metadata["allowed"]))
-    summary.add_row("Reason", str(metadata["reason"]))
-    summary.add_row("Requested URL", str(metadata["requested_url"]))
-    summary.add_row("Executed requests", str(metadata["executed_request_count"]))
-    summary.add_row("Successful responses", str(metadata["successful_response_count"]))
-    summary.add_row("Failed responses", str(metadata["failed_response_count"]))
+    for field_name in (
+        "schema_version",
+        "allowed",
+        "reason",
+        "requested_url",
+        "executed_request_count",
+        "successful_response_count",
+        "failed_response_count",
+    ):
+        summary.add_row(field_name, str(metadata.get(field_name)))
+    summary.add_row("operator", str(authorization.get("actor_id")))
+    summary.add_row("decision", str(authorization.get("decision_id")))
+    summary.add_row("preflight", str(authorization.get("preflight_id")))
+    summary.add_row("valid until", str(authorization.get("valid_until")))
     console.print(summary)
 
     snapshots = payload["snapshots"]
     assert isinstance(snapshots, list)
     table = Table(title="Bounded Detail Snapshot")
     table.add_column("Status")
-    table.add_column("Failure Kind")
     table.add_column("Reachable")
+    table.add_column("Failure")
     table.add_column("Truncated")
-    table.add_column("Body Bytes")
+    table.add_column("Body Length")
+    table.add_column("Attempts")
     table.add_column("Final URL")
     for snapshot in snapshots:
         assert isinstance(snapshot, dict)
         table.add_row(
             str(snapshot.get("status_code")),
-            str(snapshot.get("failure_kind")),
             str(snapshot.get("reachable")),
+            str(snapshot.get("failure_kind")),
             str(snapshot.get("body_truncated")),
             str(snapshot.get("body_length")),
+            str(snapshot.get("attempt_count")),
             str(snapshot.get("final_url")),
         )
     console.print(table)
@@ -150,23 +100,37 @@ def _render_report(payload: dict[str, object]) -> None:
 def execute_ceqanet_detail(
     detail_url: Annotated[
         str,
-        typer.Option("--url", help="Public CEQAnet detail/project URL to fetch."),
+        typer.Option("--url", help="Exact public CEQAnet detail/project HTTPS URL."),
+    ],
+    operator_id: Annotated[
+        str,
+        typer.Option(
+            "--operator-id",
+            help="Explicit local operator audit identity; this is not authentication.",
+        ),
+    ],
+    authorization_reason: Annotated[
+        str,
+        typer.Option(
+            "--authorization-reason",
+            help="Nonblank reason for this exact one-request authorization.",
+        ),
     ],
     public_url: Annotated[
         str,
-        typer.Option(help="Public CEQAnet URL evaluated by access policy."),
+        typer.Option(help="Public source URL evaluated by lawful-access policy."),
     ] = "https://ceqanet.lci.ca.gov/",
     requires_login: Annotated[
         bool,
-        typer.Option(help="Mark source as requiring login for access-policy preview."),
+        typer.Option(help="Mark the source as requiring login."),
     ] = False,
     has_captcha: Annotated[
         bool,
-        typer.Option(help="Mark source as presenting captcha for access-policy preview."),
+        typer.Option(help="Mark the source as presenting captcha."),
     ] = False,
     robots_disallows_collection: Annotated[
         bool,
-        typer.Option(help="Mark source as robots-disallowed for access-policy preview."),
+        typer.Option(help="Mark the intended path as robots-disallowed."),
     ] = False,
     terms_disallow_collection: Annotated[
         bool,
@@ -174,75 +138,63 @@ def execute_ceqanet_detail(
     ] = False,
     paywalled: Annotated[
         bool,
-        typer.Option(help="Mark source as paywalled for access-policy preview."),
+        typer.Option(help="Mark the source as paywalled."),
     ] = False,
-    timeout_seconds: Annotated[float, typer.Option(help="HTTP read timeout in seconds.")] = 20.0,
-    max_body_chars: Annotated[
+    timeout_seconds: Annotated[
+        float,
+        typer.Option(min=0.001, max=120.0, help="Read timeout in seconds."),
+    ] = 20.0,
+    max_body_bytes: Annotated[
         int,
         typer.Option(
-            help=(
-                "Maximum retained response bytes. The historical option name is retained "
-                "for CLI compatibility."
-            )
+            min=1,
+            max=2_000_000,
+            help="Maximum response bytes retained by the transport policy.",
         ),
     ] = 50_000,
     execute_live: Annotated[
         bool,
-        typer.Option("--execute-live", help="Required explicit consent for network execution."),
+        typer.Option(
+            "--execute-live",
+            help=(
+                "Additional caller confirmation. This Boolean is not the operative "
+                "authorization decision."
+            ),
+        ),
     ] = False,
     json_output: Annotated[
         bool,
-        typer.Option("--json-output", help="Emit machine-readable JSON instead of Rich tables."),
+        typer.Option("--json-output", help="Emit machine-readable JSON."),
     ] = False,
     output_path: Annotated[
         Path | None,
-        typer.Option("--output", help="Write JSON output to a file. Requires --json-output."),
+        typer.Option("--output", help="Write JSON to a file; requires --json-output."),
     ] = None,
 ) -> None:
-    """Execute one bounded CEQAnet detail GET attempt after explicit consent."""
+    """Authorize and execute one exact bounded CEQAnet GET request."""
 
     _reject_output_without_json(output_path, json_output)
-    if timeout_seconds <= 0:
-        raise typer.BadParameter("timeout-seconds must be greater than 0.")
-    if max_body_chars < 1:
-        raise typer.BadParameter("max-body-chars must be at least 1.")
-    if not execute_live:
-        typer.echo("Refusing live execution without --execute-live.")
-        raise typer.Exit(code=1)
-
+    profile = SourceAccessProfile(
+        public_url=public_url,
+        requires_login=requires_login,
+        has_captcha=has_captcha,
+        robots_disallows_collection=robots_disallows_collection,
+        terms_disallow_collection=terms_disallow_collection,
+        paywalled=paywalled,
+    )
     try:
-        resolved_url = _validate_ceqanet_url(detail_url)
-    except ValueError as exc:
-        typer.echo(str(exc))
+        payload = execute_authorized_ceqanet_detail(
+            detail_url=detail_url,
+            access_profile=profile,
+            operator_id=operator_id,
+            authorization_reason=authorization_reason,
+            caller_confirmation=execute_live,
+            timeout_seconds=timeout_seconds,
+            max_body_bytes=max_body_bytes,
+        )
+    except (AuthorizationDeniedError, ValueError) as exc:
+        typer.echo(f"CEQAnet detail execution blocked: {exc}", err=True)
         raise typer.Exit(code=1) from exc
-
-    access_result = evaluate_access(
-        SourceAccessProfile(
-            public_url=public_url,
-            requires_login=requires_login,
-            has_captcha=has_captcha,
-            robots_disallows_collection=robots_disallows_collection,
-            terms_disallow_collection=terms_disallow_collection,
-            paywalled=paywalled,
-        )
-    )
-
-    snapshots: list[dict[str, object]] = []
-    if access_result.decision is AccessDecision.ALLOWED:
-        snapshots.append(
-            execute_ceqanet_detail_request(
-                resolved_url,
-                timeout_seconds=timeout_seconds,
-                max_body_bytes=max_body_chars,
-            )
-        )
-
-    payload = _report_to_dict(
-        url=resolved_url,
-        access_decision=access_result.decision,
-        access_reason=access_result.reason,
-        snapshots=snapshots,
-    )
 
     if json_output:
         _write_or_print_json(payload, output_path)
