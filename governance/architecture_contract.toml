@@ -33,13 +33,13 @@ authority_bearing = false
 
 [[layers]]
 name = "cli"
-responsibility = "Operator presentation and argument collection; canonical services remain authoritative."
+responsibility = "Local operator composition root and presentation; it may construct governed stores and services but cannot acquire network authority or implement canonical business decisions."
 path_patterns = ["src/constructionsight/(?:cli|.*_cli)\\.py"]
 default = false
-allowed_internal_layers = ["application", "domain", "transport", "adapter", "governance", "package"]
-forbidden_internal_layers = ["persistence"]
+allowed_internal_layers = ["application", "domain", "persistence", "transport", "adapter", "governance", "package"]
+forbidden_internal_layers = []
 network = false
-persistence = false
+persistence = true
 filesystem_write = true
 subprocess = false
 operator = true
@@ -47,11 +47,11 @@ authority_bearing = true
 
 [[layers]]
 name = "persistence"
-responsibility = "Database and durable-state mapping behind typed service boundaries."
-path_patterns = ["src/constructionsight/storage/.*\\.py", "src/constructionsight/(?:source_registry_apply_service|ceqanet_persistence_execute)\\.py"]
+responsibility = "Database and durable-state mapping behind typed service boundaries; never imports CLI, transport, adapter, or governance code."
+path_patterns = ["src/constructionsight/storage/.*\\.py"]
 default = false
 allowed_internal_layers = ["persistence", "domain", "package"]
-forbidden_internal_layers = ["cli", "transport", "adapter", "governance"]
+forbidden_internal_layers = ["cli", "transport", "adapter", "governance", "application"]
 network = false
 persistence = true
 filesystem_write = true
@@ -63,13 +63,13 @@ authority_bearing = true
 name = "transport"
 responsibility = "Approved bounded external transport only; no workflow or persistence authority."
 path_patterns = [
-  "src/constructionsight/adapters/ceqanet\\.py",
   "src/constructionsight/adapters/ceqanet_listing_executor\\.py",
+  "src/constructionsight/(?:ceqanet_detail_http|ceqanet_discovery_http|public_source_http)\\.py",
   "src/constructionsight/.*(?:_http|_live_service)\\.py",
 ]
 default = false
 allowed_internal_layers = ["transport", "domain", "adapter", "package"]
-forbidden_internal_layers = ["cli", "persistence", "governance"]
+forbidden_internal_layers = ["cli", "persistence", "governance", "application"]
 network = true
 persistence = false
 filesystem_write = false
@@ -80,10 +80,10 @@ authority_bearing = true
 [[layers]]
 name = "adapter"
 responsibility = "Source-specific parsing and normalization without unauthorized persistence or transport acquisition."
-path_patterns = ["src/constructionsight/adapters/(?!ceqanet\\.py$)(?!ceqanet_listing_executor\\.py$).*\\.py"]
+path_patterns = ["src/constructionsight/adapters/(?!ceqanet_listing_executor\\.py$).*\\.py"]
 default = false
 allowed_internal_layers = ["adapter", "domain", "package"]
-forbidden_internal_layers = ["cli", "persistence", "governance", "application"]
+forbidden_internal_layers = ["cli", "persistence", "governance", "application", "transport"]
 network = false
 persistence = false
 filesystem_write = false
@@ -93,11 +93,12 @@ authority_bearing = false
 
 [[layers]]
 name = "domain"
-responsibility = "Pure evidence, identity, state, rule, and value contracts."
+responsibility = "Pure evidence, identity, state, rule, value, and deterministic core-service contracts with no transport, persistence, operator, or governance authority."
 path_patterns = [
-  "src/constructionsight/(?!storage/)(?!adapters/).*(?:_models|models)\\.py",
+  "src/constructionsight/(?!storage/)(?!adapters/)(?!parcel_source_bulk_rehearsal_bundle_models\\.py$).*(?:_models|models)\\.py",
   "src/constructionsight/(?:domain_types|legal|provenance|parcel_geometry|parcel_topology|parcel_topology_parse|.*_rules|opportunity_scoring_profile)\\.py",
-  "src/constructionsight/intelligence/(?:schemas|artifact_identity)\\.py",
+  "src/constructionsight/(?:site_resolution_service|ceqanet_csv_service|parcel_source_acquisition|parcel_source_bulk_rehearsal|parcel_source_bulk_rehearsal_artifacts|source_registry_integrity|source_registry_update_plan_service|result_ledger_service|parcel_source_acquisition_bundle)\\.py",
+  "src/constructionsight/intelligence/(?:__init__|schemas|artifact_identity)\\.py",
 ]
 default = false
 allowed_internal_layers = ["domain", "package"]
@@ -111,7 +112,7 @@ authority_bearing = false
 
 [[layers]]
 name = "application"
-responsibility = "Canonical use cases, orchestration, verification, and report construction."
+responsibility = "Canonical use cases, orchestration, authorization preflight, verification, and report construction."
 path_patterns = ["a^"]
 default = true
 allowed_internal_layers = ["application", "domain", "persistence", "transport", "adapter", "package"]
