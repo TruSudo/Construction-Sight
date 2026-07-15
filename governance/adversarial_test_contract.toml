@@ -22,8 +22,17 @@ required_categories = [
 
 [[matrices]]
 id = "CS-TEST-001"
-capability_ids = ["CS-CAP-002", "CS-CAP-003", "CS-CAP-004", "CS-CAP-005", "CS-CAP-007", "CS-CAP-008"]
-tests = ["tests/test_governance_certification.py", "tests/test_repository_certification.py"]
+capability_ids = ["CS-CAP-001", "CS-CAP-002", "CS-CAP-003", "CS-CAP-004", "CS-CAP-005", "CS-CAP-006", "CS-CAP-007", "CS-CAP-008", "CS-CAP-009", "CS-CAP-010"]
+tests = [
+  "tests/test_authorization_decision.py",
+  "tests/test_ceqanet_adapter.py",
+  "tests/test_dependency_certification.py",
+  "tests/test_governance_certification.py",
+  "tests/test_governance_contract_schema.py",
+  "tests/test_http_transport.py",
+  "tests/test_repository_certification.py",
+  "tests/test_supply_chain.py",
+]
 categories = [
   "empty-absent-null-unknown-extra",
   "malformed-identity-schema",
