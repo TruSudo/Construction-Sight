@@ -1,0 +1,49 @@
+schema_version = "constructionsight.mutation-contract/v1"
+contract_id = "construction-sight-focused-mutations-2026-07-15"
+execution = "Every case runs in a temporary full source overlay. The tracked tree is never modified."
+timeout_seconds = 120
+
+[[cases]]
+id = "CS-MUT-AUTH-EXPIRY-001"
+path = "src/constructionsight/authorization_decision.py"
+search = "if checked_at >= decision.expires_at:"
+replacement = "if checked_at > decision.expires_at:"
+tests = ["tests/test_authorization_decision.py::test_preflight_rejects_expiry_revocation_scope_and_stale_state"]
+expected_output = "test_preflight_rejects_expiry_revocation_scope_and_stale_state"
+risk = "An authorization valid exactly at its exclusive expiry boundary could execute."
+
+[[cases]]
+id = "CS-MUT-AUTH-REUSE-001"
+path = "src/constructionsight/authorization_decision.py"
+search = "raise AuthorizationDeniedError(\"single-use authorization was already consumed\")"
+replacement = "return \"exact_replay\""
+tests = ["tests/test_authorization_decision.py::test_single_use_claim_allows_only_one_concurrent_caller"]
+expected_output = "test_single_use_claim_allows_only_one_concurrent_caller"
+risk = "Concurrent callers could reuse a single-use high-impact authorization."
+
+[[cases]]
+id = "CS-MUT-NET-REDIRECT-001"
+path = "src/constructionsight/http_transport.py"
+search = "if 300 <= response.status_code < 400:"
+replacement = "if 300 <= response.status_code < 302:"
+tests = ["tests/test_http_transport.py::test_bounded_http_denies_redirect_without_following_location"]
+expected_output = "test_bounded_http_denies_redirect_without_following_location"
+risk = "A redirect status could escape the terminal redirect classification."
+
+[[cases]]
+id = "CS-MUT-NET-SIZE-001"
+path = "src/constructionsight/http_transport.py"
+search = "if declared_length > policy.max_response_bytes:"
+replacement = "if declared_length < policy.max_response_bytes:"
+tests = ["tests/test_http_transport.py::test_bounded_http_rejects_declared_oversized_response_without_body_read"]
+expected_output = "test_bounded_http_rejects_declared_oversized_response_without_body_read"
+risk = "An oversized response could be read despite the declared byte ceiling."
+
+[[cases]]
+id = "CS-MUT-ARCH-BYPASS-001"
+path = "src/constructionsight/architecture_boundary_certification.py"
+search = "if source_layer != \"transport\":"
+replacement = "if source_layer == \"transport\":"
+tests = ["tests/test_architecture_boundary_certification.py::test_low_level_http_engine_cannot_be_imported_by_application"]
+expected_output = "test_low_level_http_engine_cannot_be_imported_by_application"
+risk = "Application code could reacquire the low-level HTTP engine through a generic utility bypass."
