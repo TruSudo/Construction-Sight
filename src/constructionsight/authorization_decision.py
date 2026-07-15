@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from threading import Lock
-from typing import Any
+from typing import Any, Literal
 
 from constructionsight.authorization_decision_models import (
     AuthorizationDecision,
@@ -16,6 +16,9 @@ from constructionsight.authorization_decision_models import (
 
 class AuthorizationDeniedError(RuntimeError):
     """Raised when exact authority is absent, stale, expired, revoked, or consumed."""
+
+
+AuthorizationClaimResult = Literal["claimed", "exact_replay"]
 
 
 class AuthorizationUseLedger:
@@ -35,7 +38,7 @@ class AuthorizationUseLedger:
         decision: AuthorizationDecision,
         *,
         replay_identity: str,
-    ) -> LiteralClaimResult:
+    ) -> AuthorizationClaimResult:
         """Atomically claim one decision or recognize its exact idempotent replay."""
 
         if not replay_identity.strip() or replay_identity != replay_identity.strip():
@@ -63,7 +66,24 @@ class AuthorizationUseLedger:
             return decision_id in self._claims
 
 
-LiteralClaimResult = str
+def _decision_identity_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    """Render fields exactly as the validated decision will hash them."""
+
+    candidate = AuthorizationDecision.model_construct(
+        decision_id="authorization-decision:" + "0" * 64,
+        **payload,
+    )
+    return candidate.model_dump(mode="json", exclude={"decision_id"})
+
+
+def _preflight_identity_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    """Render fields exactly as the validated preflight will hash them."""
+
+    candidate = AuthorizationPreflight.model_construct(
+        preflight_id="authorization-preflight:" + "0" * 64,
+        **payload,
+    )
+    return candidate.model_dump(mode="json", exclude={"preflight_id"})
 
 
 def build_authorization_decision(
@@ -112,15 +132,9 @@ def build_authorization_decision(
         "caller_confirmation": caller_confirmation,
         "limitations": limitations,
     }
-    json_payload = AuthorizationDecision.model_validate(
-        {
-            **payload,
-            "decision_id": "authorization-decision:" + "0" * 64,
-        }
-    ).model_dump(mode="json", exclude={"decision_id"})
     payload["decision_id"] = authorization_digest(
         "authorization-decision",
-        json_payload,
+        _decision_identity_payload(payload),
     )
     return AuthorizationDecision.model_validate(payload)
 
@@ -205,14 +219,8 @@ def authorize_and_claim(
             else "execute only the exact granted operation and persist its audit event"
         ),
     }
-    identity_payload = AuthorizationPreflight.model_validate(
-        {
-            **payload,
-            "preflight_id": "authorization-preflight:" + "0" * 64,
-        }
-    ).model_dump(mode="json", exclude={"preflight_id"})
     payload["preflight_id"] = authorization_digest(
         "authorization-preflight",
-        identity_payload,
+        _preflight_identity_payload(payload),
     )
     return AuthorizationPreflight.model_validate(payload)
