@@ -65,6 +65,48 @@ def execute(execute_live: bool) -> None:
     assert findings == []
 
 
+def test_registry_apply_confirmation_is_high_impact(tmp_path: Path) -> None:
+    findings = _audit(
+        tmp_path,
+        """
+def apply(apply_changes: bool) -> None:
+    if apply_changes:
+        write_registry()
+""",
+    )
+
+    assert "AUTH-BOOLEAN-002" in _codes(findings)
+
+
+def test_direct_registry_apply_is_rejected(tmp_path: Path) -> None:
+    findings = _audit(
+        tmp_path,
+        """
+def apply(apply_changes: bool) -> None:
+    apply_source_registry_update_plan(sources, plan, approved_plan_digest=digest)
+""",
+    )
+
+    assert "AUTH-BYPASS-001" in _codes(findings)
+    assert "AUTH-BOOLEAN-002" in _codes(findings)
+
+
+def test_authorized_registry_apply_service_is_accepted(tmp_path: Path) -> None:
+    findings = _audit(
+        tmp_path,
+        """
+def apply(apply_changes: bool) -> None:
+    apply_authorized_source_registry_update_plan(
+        sources,
+        plan,
+        caller_confirmation=apply_changes,
+    )
+""",
+    )
+
+    assert findings == []
+
+
 def test_governed_evidence_series_service_name_is_accepted(tmp_path: Path) -> None:
     findings = _audit(
         tmp_path,
