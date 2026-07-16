@@ -62,6 +62,9 @@ jobs:
           python -m ruff format src tests scripts
           python -m ruff check src tests scripts --output-format=concise \
             > static-ruff.txt 2>&1
+          if [ ! -s static-ruff.txt ]; then
+            printf '%s\n' 'Ruff passed with no findings.' > static-ruff.txt
+          fi
 
       - name: Retain Ruff diagnostic
         if: always()
