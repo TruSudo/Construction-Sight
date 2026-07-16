@@ -224,7 +224,7 @@ def authorize_local_operator_operation(
         current_revocation_identity=revocation_identity,
         replay_identity=replay_identity,
         checked_at=checked_at,
-        ledger=ledger or AuthorizationUseLedger(),
+        ledger=ledger if ledger is not None else AuthorizationUseLedger(),
     )
     result = LocalAuthorizationResult(decision=decision, preflight=preflight)
     _emit_audit_event(
