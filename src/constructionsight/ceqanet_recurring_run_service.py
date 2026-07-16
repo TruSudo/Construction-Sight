@@ -64,7 +64,9 @@ def build_ceqanet_recurring_run_definition(
     assumptions = access_assumptions or CeqanetAccessAssumptions()
     blockers = _definition_blockers(source, source_row, assumptions)
     readiness = (
-        CeqanetRunReadiness.BLOCKED if blockers else CeqanetRunReadiness.READY_FOR_MANUAL_EXECUTION
+        CeqanetRunReadiness.BLOCKED
+        if blockers
+        else CeqanetRunReadiness.READY_FOR_MANUAL_EXECUTION
     )
     limitations = [
         "definition creation performs no network execution or persistence mutation",
@@ -242,8 +244,12 @@ def execute_ceqanet_recurring_run(
             public_url=manifest.execution_base_url,
             requires_login=manifest.access_assumptions.requires_login,
             has_captcha=manifest.access_assumptions.has_captcha,
-            robots_disallows_collection=(manifest.access_assumptions.robots_disallows_collection),
-            terms_disallow_collection=(manifest.access_assumptions.terms_disallow_collection),
+            robots_disallows_collection=(
+                manifest.access_assumptions.robots_disallows_collection
+            ),
+            terms_disallow_collection=(
+                manifest.access_assumptions.terms_disallow_collection
+            ),
             paywalled=manifest.access_assumptions.paywalled,
         )
     )

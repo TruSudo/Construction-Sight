@@ -48,9 +48,13 @@ def test_retained_county_arcgis_bounded_proof_is_exact_and_offline_verifiable(
 ) -> None:
     bundle_path = _EVIDENCE / f"{file_prefix}_arcgis_bounded_proof_2026-07-14.json"
     verification_path = (
-        _EVIDENCE / f"{file_prefix}_arcgis_bounded_proof_verification_2026-07-14.json"
+        _EVIDENCE
+        / f"{file_prefix}_arcgis_bounded_proof_verification_2026-07-14.json"
     )
-    receipt_path = _EVIDENCE / f"{file_prefix}_arcgis_bounded_proof_persistence_2026-07-14.json"
+    receipt_path = (
+        _EVIDENCE
+        / f"{file_prefix}_arcgis_bounded_proof_persistence_2026-07-14.json"
+    )
 
     bundle = load_arcgis_bounded_proof_bundle(bundle_path)
     recomputed = verify_arcgis_bounded_proof_bundle(bundle)

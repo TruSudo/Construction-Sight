@@ -37,7 +37,9 @@ def get_external_capabilities(
             capability for capability in capabilities if capability.platform == platform
         ]
     if domain is not None:
-        capabilities = [capability for capability in capabilities if capability.domain == domain]
+        capabilities = [
+            capability for capability in capabilities if capability.domain == domain
+        ]
     return capabilities
 
 
@@ -442,7 +444,8 @@ def _shovels_capabilities() -> list[ExternalCapability]:
                 "first, then CLI, API, desktop/mobile UI, exports, and GIS layers."
             ),
             improvement_strategy=(
-                "Keep all access modes explainable and audit-backed instead of presentation-only."
+                "Keep all access modes explainable and audit-backed instead of "
+                "presentation-only."
             ),
             normalized_output_contracts=["UniversalIntakeRecord", "OpportunityCandidate"],
             implementation_status=ImplementationStatus.IN_PROGRESS,
@@ -625,7 +628,8 @@ def _regrid_capabilities() -> list[ExternalCapability]:
                 _public_reference(
                     "Regrid parcel schema",
                     REGRID_SCHEMA_URL,
-                    "Parcel schema documentation is the public schema target for field mapping.",
+                    "Parcel schema documentation is the public schema target for "
+                    "field mapping.",
                 ),
             ],
             construction_sight_target=(

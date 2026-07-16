@@ -110,7 +110,8 @@ def test_load_lock_rejects_noncanonical_name(tmp_path: Path) -> None:
 def test_load_lock_rejects_duplicate_identity(tmp_path: Path) -> None:
     lock = tmp_path / "duplicate.lock"
     lock.write_text(
-        _locked("python-dateutil==2.9.0.post0") + _locked("python-dateutil==2.9.0.post0"),
+        _locked("python-dateutil==2.9.0.post0")
+        + _locked("python-dateutil==2.9.0.post0"),
         encoding="utf-8",
     )
 
@@ -123,7 +124,8 @@ def test_load_lock_accepts_continued_hashed_entry_and_canonical_extras(
 ) -> None:
     lock = tmp_path / "continued.lock"
     lock.write_text(
-        f"example[a,b]==2.0 \\\n  --hash=sha256:{_HASH}\n",
+        "example[a,b]==2.0 \\\n"
+        f"  --hash=sha256:{_HASH}\n",
         encoding="utf-8",
     )
 
@@ -197,7 +199,9 @@ def test_verify_lock_reports_missing_and_mismatched_versions(
 ) -> None:
     lock = tmp_path / "environment.lock"
     lock.write_text(
-        _locked("alpha==1.0") + _locked("beta==2.0") + _locked("gamma==3.0"),
+        _locked("alpha==1.0")
+        + _locked("beta==2.0")
+        + _locked("gamma==3.0"),
         encoding="utf-8",
     )
     monkeypatch.setattr(
@@ -353,7 +357,9 @@ def test_sbom_binds_project_and_artifact_hashes(
 
     serial = uuid.UUID(sbom["serialNumber"].removeprefix("urn:uuid:"))
     assert serial.version == 5
-    assert sbom["metadata"]["component"]["purl"] == ("pkg:generic/constructionsight@0.1.0")
+    assert sbom["metadata"]["component"]["purl"] == (
+        "pkg:generic/constructionsight@0.1.0"
+    )
     assert sbom["components"] == [
         {
             "type": "library",
@@ -363,6 +369,8 @@ def test_sbom_binds_project_and_artifact_hashes(
             "purl": "pkg:pypi/alpha@1.0",
             "licenses": [{"expression": "MIT"}],
             "hashes": [{"alg": "SHA-256", "content": _HASH}],
-            "externalReferences": [{"type": "website", "url": "https://example.test/alpha"}],
+            "externalReferences": [
+                {"type": "website", "url": "https://example.test/alpha"}
+            ],
         }
     ]

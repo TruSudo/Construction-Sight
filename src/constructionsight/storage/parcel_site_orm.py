@@ -29,7 +29,9 @@ class ParcelCoreRecordRow(Base):
     """Persisted canonical parcel core record."""
 
     __tablename__ = "parcel_core_records"
-    __table_args__ = (UniqueConstraint("parcel_record_id", name="uq_parcel_core_records_id"),)
+    __table_args__ = (
+        UniqueConstraint("parcel_record_id", name="uq_parcel_core_records_id"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     parcel_record_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
@@ -84,7 +86,9 @@ class ParcelSourceEvidenceRow(Base):
     """Persisted immutable official evidence for one parcel source."""
 
     __tablename__ = "parcel_source_evidence"
-    __table_args__ = (UniqueConstraint("evidence_id", name="uq_parcel_source_evidence_id"),)
+    __table_args__ = (
+        UniqueConstraint("evidence_id", name="uq_parcel_source_evidence_id"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     evidence_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
@@ -140,7 +144,9 @@ class ParcelCountyCoverageReportRow(Base):
     """Persisted immutable countywide parcel coverage-gap report."""
 
     __tablename__ = "parcel_county_coverage_reports"
-    __table_args__ = (UniqueConstraint("report_id", name="uq_parcel_county_coverage_reports_id"),)
+    __table_args__ = (
+        UniqueConstraint("report_id", name="uq_parcel_county_coverage_reports_id"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     report_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
@@ -200,7 +206,9 @@ class ParcelArcGISProbePlanRow(Base):
     """Persisted immutable bounded ArcGIS probe plan."""
 
     __tablename__ = "parcel_arcgis_probe_plans"
-    __table_args__ = (UniqueConstraint("plan_id", name="uq_parcel_arcgis_probe_plans_id"),)
+    __table_args__ = (
+        UniqueConstraint("plan_id", name="uq_parcel_arcgis_probe_plans_id"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     plan_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
@@ -265,7 +273,9 @@ class ParcelArcGISBulkManifestRow(Base):
     """Persisted immutable count-reconciled ArcGIS bulk rehearsal manifest."""
 
     __tablename__ = "parcel_arcgis_bulk_manifests"
-    __table_args__ = (UniqueConstraint("manifest_id", name="uq_parcel_arcgis_bulk_manifests_id"),)
+    __table_args__ = (
+        UniqueConstraint("manifest_id", name="uq_parcel_arcgis_bulk_manifests_id"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     manifest_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
@@ -378,7 +388,9 @@ class ParcelRecordObservationRow(Base):
     """Persisted append-only observation of one canonical parcel record."""
 
     __tablename__ = "parcel_record_observations"
-    __table_args__ = (UniqueConstraint("observation_id", name="uq_parcel_record_observations_id"),)
+    __table_args__ = (
+        UniqueConstraint("observation_id", name="uq_parcel_record_observations_id"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     observation_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
@@ -462,7 +474,9 @@ class ParcelAssuranceReportRow(Base):
     """Persisted field-level parcel assurance report."""
 
     __tablename__ = "parcel_assurance_reports"
-    __table_args__ = (UniqueConstraint("report_id", name="uq_parcel_assurance_reports_id"),)
+    __table_args__ = (
+        UniqueConstraint("report_id", name="uq_parcel_assurance_reports_id"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     report_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
@@ -504,7 +518,9 @@ class SiteResolutionResultRow(Base):
     """Persisted source-neutral site-resolution result."""
 
     __tablename__ = "site_resolution_results"
-    __table_args__ = (UniqueConstraint("resolution_id", name="uq_site_resolution_results_id"),)
+    __table_args__ = (
+        UniqueConstraint("resolution_id", name="uq_site_resolution_results_id"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     resolution_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)

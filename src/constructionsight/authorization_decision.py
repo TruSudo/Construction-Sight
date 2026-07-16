@@ -177,10 +177,13 @@ def authorize_and_claim(
             decision.revocation_identity,
         ),
     }
-    mismatches = [name for name, (actual, expected) in comparisons.items() if actual != expected]
+    mismatches = [
+        name for name, (actual, expected) in comparisons.items() if actual != expected
+    ]
     if mismatches:
         raise AuthorizationDeniedError(
-            "authorization exact-scope or current-state mismatch: " + ", ".join(sorted(mismatches))
+            "authorization exact-scope or current-state mismatch: "
+            + ", ".join(sorted(mismatches))
         )
     if checked_at < decision.not_before:
         raise AuthorizationDeniedError("authorization is not yet valid")

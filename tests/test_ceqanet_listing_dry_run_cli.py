@@ -55,7 +55,9 @@ def test_ceqanet_listing_dry_run_cli_rejects_unsupported_text_filter() -> None:
     )
 
     assert result.exit_code != 0
-    assert "text_terms are unsupported by the verified search contract" in _plain(result.output)
+    assert "text_terms are unsupported by the verified search contract" in _plain(
+        result.output
+    )
 
 
 def test_ceqanet_listing_dry_run_cli_emits_json_request_evidence() -> None:

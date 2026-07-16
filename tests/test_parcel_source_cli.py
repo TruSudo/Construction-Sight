@@ -32,7 +32,9 @@ def _write_bounded_bundle(path: Path):
         for item in get_verified_parcel_source_profiles()
         if item.profile_id == snapshot.profile_id
     )
-    evidence_by_id = {item.evidence_id: item for item in get_parcel_source_evidence()}
+    evidence_by_id = {
+        item.evidence_id: item for item in get_parcel_source_evidence()
+    }
     plan = build_arcgis_probe_plan(snapshot, generated_at=_OBSERVED_AT)
     response_by_kind = {
         ParcelArcGISProbeKind.COUNT: {"count": 6},

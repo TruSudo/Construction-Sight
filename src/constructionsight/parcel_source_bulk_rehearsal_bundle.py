@@ -84,7 +84,9 @@ def verify_arcgis_bulk_rehearsal_proof_bundle(
             "ArcGIS rehearsal proof bundle creation cannot precede manifest completion"
         )
     if effective_verified_at < bundle.created_at:
-        raise ValueError("ArcGIS rehearsal proof verification time cannot precede bundle creation")
+        raise ValueError(
+            "ArcGIS rehearsal proof verification time cannot precede bundle creation"
+        )
     rebuilt_plan = build_arcgis_bulk_rehearsal_plan(
         bundle.snapshot,
         generated_at=bundle.plan.generated_at,
@@ -129,7 +131,9 @@ def verify_arcgis_bulk_rehearsal_proof_bundle(
     if rebuilt_bundle != bundle:
         raise ValueError("ArcGIS rehearsal proof bundle failed independent recomputation")
     candidate = ParcelArcGISBulkRehearsalProofVerification.model_construct(
-        verification_id=("parcel-arcgis-bulk-rehearsal-proof-verification:" + ("0" * 64)),
+        verification_id=(
+            "parcel-arcgis-bulk-rehearsal-proof-verification:" + ("0" * 64)
+        ),
         bundle_id=bundle.bundle_id,
         source_key=bundle.source_key,
         county=bundle.county,
@@ -174,14 +178,11 @@ def save_arcgis_bulk_rehearsal_proof_bundle(
         raise ValueError("ArcGIS rehearsal proof expected bundle identity does not match")
     verify_arcgis_bulk_rehearsal_proof_bundle(bundle)
     path.parent.mkdir(parents=True, exist_ok=True)
-    serialized = (
-        json.dumps(
-            bundle.to_dict(),
-            sort_keys=True,
-            separators=(",", ":"),
-        )
-        + "\n"
-    )
+    serialized = json.dumps(
+        bundle.to_dict(),
+        sort_keys=True,
+        separators=(",", ":"),
+    ) + "\n"
     if path.exists():
         existing = load_arcgis_bulk_rehearsal_proof_bundle(path)
         if existing != bundle:

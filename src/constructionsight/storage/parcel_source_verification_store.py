@@ -127,7 +127,9 @@ def store_parcel_county_coverage_report(
         if _report_semantic_payload(existing.payload_json) != _report_semantic_payload(
             payload_json
         ):
-            raise ValueError(f"parcel county coverage identity collision: {report.report_id}")
+            raise ValueError(
+                f"parcel county coverage identity collision: {report.report_id}"
+            )
         return existing
     row = ParcelCountyCoverageReportRow(
         report_id=report.report_id,
@@ -148,7 +150,9 @@ def load_parcel_source_evidence(
     """Load one evidence record and reject indexed/payload drift."""
 
     row = session.execute(
-        select(ParcelSourceEvidenceRow).where(ParcelSourceEvidenceRow.evidence_id == evidence_id)
+        select(ParcelSourceEvidenceRow).where(
+            ParcelSourceEvidenceRow.evidence_id == evidence_id
+        )
     ).scalar_one_or_none()
     if row is None:
         return None
@@ -188,10 +192,14 @@ def load_parcel_source_verification_profiles(
 
     statement = select(ParcelSourceVerificationProfileRow)
     if source_key is not None:
-        statement = statement.where(ParcelSourceVerificationProfileRow.source_key == source_key)
+        statement = statement.where(
+            ParcelSourceVerificationProfileRow.source_key == source_key
+        )
     if county is not None:
         statement = statement.where(ParcelSourceVerificationProfileRow.county == county)
-    rows = session.execute(statement.order_by(ParcelSourceVerificationProfileRow.id)).scalars()
+    rows = session.execute(
+        statement.order_by(ParcelSourceVerificationProfileRow.id)
+    ).scalars()
     return [_profile_from_row(row) for row in rows]
 
 
@@ -285,8 +293,12 @@ def _require_persisted_evidence(
             )
         ).scalars()
     )
-    evidence = [load_parcel_source_evidence(session, row.evidence_id) for row in rows]
-    persisted_ids = {item.evidence_id for item in evidence if item is not None}
+    evidence = [
+        load_parcel_source_evidence(session, row.evidence_id) for row in rows
+    ]
+    persisted_ids = {
+        item.evidence_id for item in evidence if item is not None
+    }
     if persisted_ids != set(profile.evidence_ids):
         raise ValueError(
             f"parcel source verification requires persisted evidence: {profile.profile_id}"
@@ -314,7 +326,9 @@ def _require_persisted_profiles(
     )
     profiles = [_profile_from_row(row) for row in rows]
     if {profile.profile_id for profile in profiles} != set(report.profile_ids):
-        raise ValueError(f"parcel county coverage requires persisted profiles: {report.report_id}")
+        raise ValueError(
+            f"parcel county coverage requires persisted profiles: {report.report_id}"
+        )
 
 
 def _insert(

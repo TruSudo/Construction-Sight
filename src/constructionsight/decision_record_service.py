@@ -183,7 +183,9 @@ def _decision_key(
 ) -> str:
     """Build deterministic decision key."""
 
-    basis = "|".join([source_key, source_record_id or "", normalized_title, case_number or ""])
+    basis = "|".join(
+        [source_key, source_record_id or "", normalized_title, case_number or ""]
+    )
     return f"decision:{_short_hash(basis)}"
 
 

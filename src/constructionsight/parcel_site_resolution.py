@@ -51,7 +51,9 @@ def resolve_site_with_parcels(
         for parcel, score, reasons, match_limitations in top_matches
     ]
     status = (
-        SiteResolutionStatus.RESOLVED if len(candidates) == 1 else SiteResolutionStatus.AMBIGUOUS
+        SiteResolutionStatus.RESOLVED
+        if len(candidates) == 1
+        else SiteResolutionStatus.AMBIGUOUS
     )
     limitations = [] if len(candidates) == 1 else ["multiple parcel records matched equally"]
     primary_site_key = candidates[0].site_key if len(candidates) == 1 else None

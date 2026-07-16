@@ -77,7 +77,9 @@ def _row_for_source(
     """Build one source status row."""
 
     spec = adapter_specs.get(source.platform_family)
-    adapter_status = spec.status if spec is not None else AdapterImplementationStatus.PLACEHOLDER
+    adapter_status = (
+        spec.status if spec is not None else AdapterImplementationStatus.PLACEHOLDER
+    )
     status_level, reason = _status_level(source.verification_status, adapter_status)
     can_use_as_verified_source = (
         source.verification_status == VerificationStatus.VERIFIED

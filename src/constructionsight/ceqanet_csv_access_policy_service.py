@@ -46,7 +46,9 @@ def build_ceqanet_csv_access_policy(
         maturity_proposal,
     )
     if maturity_verification != recomputed_maturity_verification:
-        raise ValueError("stored maturity verification does not match current evidence")
+        raise ValueError(
+            "stored maturity verification does not match current evidence"
+        )
     if not maturity_verification.passed:
         raise ValueError("CSV access policy requires a passing maturity verification")
     if maturity_proposal.decision is not CeqanetMaturityDecision.KEEP_PARTIAL:
@@ -125,7 +127,9 @@ def verify_ceqanet_csv_access_policy(
         findings.append(f"CSV access policy recomputation failed: {exc}")
     else:
         if policy.evidence_payload() != recomputed.evidence_payload():
-            findings.append("CSV access policy does not match current evidence and governance")
+            findings.append(
+                "CSV access policy does not match current evidence and governance"
+            )
 
     return CeqanetCsvAccessPolicyVerification(
         passed=not findings,

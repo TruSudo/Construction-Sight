@@ -75,7 +75,9 @@ def _plan_identity(plan: CeqanetListingPlan) -> str:
                     else None
                 ),
                 "posted_to": (
-                    plan.query.posted_to.isoformat() if plan.query.posted_to is not None else None
+                    plan.query.posted_to.isoformat()
+                    if plan.query.posted_to is not None
+                    else None
                 ),
                 "high_signal_only": plan.query.high_signal_only,
                 "page_size": plan.query.page_size,

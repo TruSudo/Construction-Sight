@@ -41,7 +41,9 @@ def _report(
 
 
 def test_build_lead_review_package_ready() -> None:
-    package = build_lead_review_package(_report(lead_score=80, signals=[_signal(score_delta=80)]))
+    package = build_lead_review_package(
+        _report(lead_score=80, signals=[_signal(score_delta=80)])
+    )
 
     assert package.status == LeadReviewStatus.READY
     assert package.items
@@ -64,7 +66,9 @@ def test_build_lead_review_package_review_required() -> None:
 
 
 def test_build_lead_review_package_monitor() -> None:
-    package = build_lead_review_package(_report(lead_score=20, signals=[_signal(score_delta=20)]))
+    package = build_lead_review_package(
+        _report(lead_score=20, signals=[_signal(score_delta=20)])
+    )
 
     assert package.status == LeadReviewStatus.MONITOR
     assert package.items[0].label == "monitor for stronger signals"
@@ -79,6 +83,8 @@ def test_build_lead_review_package_hold() -> None:
 
 
 def test_build_lead_review_package_preserves_evidence_notes() -> None:
-    package = build_lead_review_package(_report(lead_score=80, signals=[_signal(score_delta=80)]))
+    package = build_lead_review_package(
+        _report(lead_score=80, signals=[_signal(score_delta=80)])
+    )
 
     assert package.evidence_notes == ["permit_transition: permit status changed"]

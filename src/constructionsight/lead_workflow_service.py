@@ -88,7 +88,8 @@ def _initial_status(
     """Return initial workflow status."""
 
     duplicate = (
-        duplicate_result is not None and duplicate_result.status == LeadDuplicateStatus.DUPLICATE
+        duplicate_result is not None
+        and duplicate_result.status == LeadDuplicateStatus.DUPLICATE
     )
     if duplicate:
         return LeadWorkflowStatus.HOLD

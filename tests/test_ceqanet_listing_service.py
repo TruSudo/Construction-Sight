@@ -39,7 +39,9 @@ class _Executor:
         *,
         policy: CeqanetListingExecutionPolicy,
     ) -> CeqanetListingExecutionReport:
-        self.calls.append((len(plan.pages), policy.max_attempts, policy.max_response_bytes))
+        self.calls.append(
+            (len(plan.pages), policy.max_attempts, policy.max_response_bytes)
+        )
         if self.fail:
             raise CeqanetListingExecutionError("synthetic terminal failure")
         snapshot = CeqanetListingResponseSnapshot(

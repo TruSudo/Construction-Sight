@@ -271,7 +271,7 @@ def _audit_python(
     if not path.as_posix().startswith("src/"):
         return
     for node in ast.walk(tree):
-        if not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef) or _is_abstract(node):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) or _is_abstract(node):
             continue
         for child in ast.walk(node):
             if not isinstance(child, ast.Raise):
@@ -356,7 +356,7 @@ def _audit_markdown_links(
 def _defined_module_names(tree: ast.Module) -> set[str]:
     names: set[str] = set()
     for node in tree.body:
-        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
             names.add(node.name)
         elif isinstance(node, ast.Assign):
             names.update(target.id for target in node.targets if isinstance(target, ast.Name))

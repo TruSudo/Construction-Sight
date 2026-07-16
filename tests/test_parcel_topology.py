@@ -55,7 +55,9 @@ def test_concave_polygon_rejects_envelope_false_positive() -> None:
     geometry = _geometry(
         {
             "type": "Polygon",
-            "coordinates": [[[0, 0], [4, 0], [4, 1], [1, 1], [1, 4], [0, 4], [0, 0]]],
+            "coordinates": [
+                [[0, 0], [4, 0], [4, 1], [1, 1], [1, 4], [0, 4], [0, 0]]
+            ],
         }
     )
 
@@ -136,7 +138,9 @@ def test_site_resolution_uses_topology_and_rejects_envelope_only_match() -> None
     geometry = _geometry(
         {
             "type": "Polygon",
-            "coordinates": [[[0, 0], [4, 0], [4, 1], [1, 1], [1, 4], [0, 4], [0, 0]]],
+            "coordinates": [
+                [[0, 0], [4, 0], [4, 1], [1, 1], [1, 4], [0, 4], [0, 0]]
+            ],
         }
     )
     parcel = ParcelCoreRecord(
@@ -176,7 +180,9 @@ def test_site_resolution_uses_topology_and_rejects_envelope_only_match() -> None
 
     assert "no parcel core record matched site signals" in rejected.limitations
     assert matched.candidates[0].apn == "12345678"
-    assert "coordinate hint falls within parcel polygon topology" in (matched.candidates[0].reasons)
+    assert "coordinate hint falls within parcel polygon topology" in (
+        matched.candidates[0].reasons
+    )
     assert "coordinate containment uses parcel envelope only" not in (
         matched.candidates[0].limitations
     )

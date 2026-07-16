@@ -82,7 +82,9 @@ def _validate_operator_package(operator_package: dict[str, Any]) -> None:
     metadata = _metadata_object(operator_package, field_name="operator_package")
     schema_version = metadata.get("schema_version")
     if schema_version != "ceqanet_operator_package.v1":
-        raise ValueError("Operator package schema_version must be ceqanet_operator_package.v1.")
+        raise ValueError(
+            "Operator package schema_version must be ceqanet_operator_package.v1."
+        )
     _object_field(operator_package, "persistence_preview")
     _object_field(operator_package, "write_plan")
 

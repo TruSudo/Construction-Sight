@@ -365,7 +365,9 @@ def _knowledge_gaps() -> list[KnowledgeGap]:
             lawful_path_to_answer=(
                 "Start with explainable deterministic scoring; tune only after real sales feedback."
             ),
-            construction_sight_dependency=("parcel, permit, contractor, and decision primitives"),
+            construction_sight_dependency=(
+                "parcel, permit, contractor, and decision primitives"
+            ),
             priority=GapPriority.CRITICAL,
             suggested_pr="PR 57: opportunity enrichment from parcel, permit, contractor, decision",
             acceptance_criteria=[
@@ -385,7 +387,9 @@ def _implementation_steps() -> list[ImplementationStep]:
             step_key="parcel-source-schema-preview",
             sequence=1,
             title="Parcel source schema preview",
-            goal=("Inspect a parcel source's expected or observed schema before import."),
+            goal=(
+                "Inspect a parcel source's expected or observed schema before import."
+            ),
             likely_files=[
                 "src/constructionsight/parcel_schema_models.py",
                 "src/constructionsight/parcel_schema_preview.py",

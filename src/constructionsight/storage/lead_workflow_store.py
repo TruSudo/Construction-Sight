@@ -177,7 +177,9 @@ def store_lead_workflow_event(
     session.flush()
     payload_json = _payload_json(event.model_dump(mode="json"))
     existing = session.execute(
-        select(LeadWorkflowEventRecord).where(LeadWorkflowEventRecord.event_id == event.event_id)
+        select(LeadWorkflowEventRecord).where(
+            LeadWorkflowEventRecord.event_id == event.event_id
+        )
     ).scalar_one_or_none()
     previous_status = event.previous_status.value if event.previous_status else None
     if existing is None:

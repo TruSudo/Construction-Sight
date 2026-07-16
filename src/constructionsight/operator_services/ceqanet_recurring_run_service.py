@@ -135,7 +135,9 @@ def execute_authorized_ceqanet_recurring_run(
         exact_scope=exact_scope,
         current_state_identity=current_state_identity,
         expected_identity=current_state_identity,
-        granted_authority=("execute one exact foreground CEQAnet manifest attempt",),
+        granted_authority=(
+            "execute one exact foreground CEQAnet manifest attempt",
+        ),
         denied_authority=tuple(
             sorted(
                 {
@@ -158,8 +160,7 @@ def execute_authorized_ceqanet_recurring_run(
         limitations=tuple(
             sorted(
                 {
-                    "attempt uniqueness is local-process only until a durable "
-                    "attempt ledger exists",
+                    "attempt uniqueness is local-process only until a durable attempt ledger exists",
                     "local operator identity is not authentication",
                     "manual execution does not authorize scheduling or recurrence",
                     "single local-process use only",

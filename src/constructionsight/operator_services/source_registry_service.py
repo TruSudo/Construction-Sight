@@ -69,7 +69,8 @@ def build_authorized_source_registry_update_plan(
                 )
             ],
             "observations": [
-                observation.model_dump(mode="json") for observation in normalized_observations
+                observation.model_dump(mode="json")
+                for observation in normalized_observations
             ],
             "network_policy": "CS-NET-008",
         },

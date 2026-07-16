@@ -105,7 +105,6 @@ def test_enrich_ceqanet_result_records_serializes_report() -> None:
     assert payload["records"][0]["title"] == "San Bernardino Countywide Plan"
     assert payload["records"][0]["field_sources"]["title"] == "detail_page"
 
-
 def test_enrich_ceqanet_result_record_preserves_result_only_detail_fields() -> None:
     result = _sch_only_result()
     result["project_location"] = "Redlands, California"
@@ -121,3 +120,4 @@ def test_enrich_ceqanet_result_record_preserves_result_only_detail_fields() -> N
     assert record.field_sources["project_location"] == "result_page"
     assert record.field_sources["project_description"] == "result_page"
     assert record.field_sources["contact"] == "result_page"
+

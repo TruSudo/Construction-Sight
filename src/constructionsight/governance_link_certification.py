@@ -39,10 +39,14 @@ def audit_governance_links(
     matrices = _tables(contracts[test_path].get("matrices"))
 
     capability_by_id = {
-        str(entry["id"]): entry for entry in capabilities if isinstance(entry.get("id"), str)
+        str(entry["id"]): entry
+        for entry in capabilities
+        if isinstance(entry.get("id"), str)
     }
     network_by_id = {
-        str(entry["id"]): entry for entry in network_policies if isinstance(entry.get("id"), str)
+        str(entry["id"]): entry
+        for entry in network_policies
+        if isinstance(entry.get("id"), str)
     }
     authorization_by_id = {
         str(entry["id"]): entry
@@ -99,7 +103,9 @@ def audit_governance_links(
                 )
             )
 
-        declared_authorization = _string_set(capability.get("authorization_operation_ids"))
+        declared_authorization = _string_set(
+            capability.get("authorization_operation_ids")
+        )
         declared_authorization_ids.update(declared_authorization)
         unknown_authorization = declared_authorization - authorization_ids
         if unknown_authorization:

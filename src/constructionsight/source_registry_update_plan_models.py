@@ -85,7 +85,10 @@ def compute_source_registry_update_plan_digest(
 
     canonical_payload = {
         "registry_digest": registry_digest,
-        "rows": [row.model_dump(mode="json", exclude={"generated_at"}) for row in rows],
+        "rows": [
+            row.model_dump(mode="json", exclude={"generated_at"})
+            for row in rows
+        ],
     }
     encoded = json.dumps(
         canonical_payload,

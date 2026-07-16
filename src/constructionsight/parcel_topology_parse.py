@@ -88,10 +88,12 @@ def summarize_parcel_topology(
     if total_area <= 1e-15:
         return None
     centroid_longitude = (
-        sum(area * longitude for area, longitude, _latitude in polygon_summaries) / total_area
+        sum(area * longitude for area, longitude, _latitude in polygon_summaries)
+        / total_area
     )
     centroid_latitude = (
-        sum(area * latitude for area, _longitude, latitude in polygon_summaries) / total_area
+        sum(area * latitude for area, _longitude, latitude in polygon_summaries)
+        / total_area
     )
     longitudes = [point[0] for point in all_points]
     latitudes = [point[1] for point in all_points]
@@ -221,14 +223,18 @@ def _parse_wkt_topology(raw_geometry: str) -> ParsedParcelTopology | None:
     parser = _WktParser(tokens)
     kind = match.group("kind").upper()
     polygons = (
-        parser.parse_polygon_body() if kind == "POLYGON" else parser.parse_multipolygon_body()
+        parser.parse_polygon_body()
+        if kind == "POLYGON"
+        else parser.parse_multipolygon_body()
     )
     if polygons is None or not parser.at_end:
         return None
     srid = match.group("srid")
     return ParsedParcelTopology(
         geometry_kind=(
-            ParcelGeometryKind.POLYGON if kind == "POLYGON" else ParcelGeometryKind.MULTIPOLYGON
+            ParcelGeometryKind.POLYGON
+            if kind == "POLYGON"
+            else ParcelGeometryKind.MULTIPOLYGON
         ),
         polygons=polygons,
         source_format="wkt",

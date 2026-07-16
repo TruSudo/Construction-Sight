@@ -42,10 +42,13 @@ REPLAY_VERIFICATION_PATH = (
 )
 MATURITY_PATH = EVIDENCE_DIR / "ceqanet_source_maturity_proposal_2026-07-13.json"
 MATURITY_VERIFICATION_PATH = (
-    EVIDENCE_DIR / "ceqanet_source_maturity_proposal_verification_2026-07-13.json"
+    EVIDENCE_DIR
+    / "ceqanet_source_maturity_proposal_verification_2026-07-13.json"
 )
 POLICY_PATH = EVIDENCE_DIR / "ceqanet_csv_access_policy_2026-07-14.json"
-POLICY_VERIFICATION_PATH = EVIDENCE_DIR / "ceqanet_csv_access_policy_verification_2026-07-14.json"
+POLICY_VERIFICATION_PATH = (
+    EVIDENCE_DIR / "ceqanet_csv_access_policy_verification_2026-07-14.json"
+)
 POLICY_REPORT_PATH = ROOT / "docs/audits/ceqanet_csv_access_policy_2026-07-14.md"
 EFFECTIVE_DATE = date(2026, 7, 14)
 EXPIRES_ON = date(2026, 8, 13)
@@ -71,7 +74,9 @@ def _replay() -> CeqanetCsvEncodingReplay:
 
 
 def _replay_verification() -> CeqanetCsvEncodingReplayVerification:
-    return CeqanetCsvEncodingReplayVerification.model_validate(_load_json(REPLAY_VERIFICATION_PATH))
+    return CeqanetCsvEncodingReplayVerification.model_validate(
+        _load_json(REPLAY_VERIFICATION_PATH)
+    )
 
 
 def _maturity() -> CeqanetSourceMaturityProposal:
@@ -101,7 +106,8 @@ def test_policy_binds_evidence_and_allows_only_bounded_collection() -> None:
     policy = _policy()
 
     assert (
-        policy.policy_status is CeqanetCsvAccessPolicyStatus.READY_FOR_EXPLICIT_EVIDENCE_COLLECTION
+        policy.policy_status
+        is CeqanetCsvAccessPolicyStatus.READY_FOR_EXPLICIT_EVIDENCE_COLLECTION
     )
     assert policy.registry_status == "partial"
     assert policy.allowed_export_kinds == [
@@ -244,12 +250,15 @@ def test_verification_detects_tampered_policy() -> None:
     assert verification.passed is False
     assert "CEQAnet CSV access policy digest mismatch" in verification.findings
     assert (
-        "CSV access policy does not match current evidence and governance" in verification.findings
+        "CSV access policy does not match current evidence and governance"
+        in verification.findings
     )
 
 
 def test_builder_rejects_mismatched_maturity_verification() -> None:
-    changed = _maturity_verification().model_copy(update={"proposal_digest": "0" * 64})
+    changed = _maturity_verification().model_copy(
+        update={"proposal_digest": "0" * 64}
+    )
 
     with pytest.raises(ValueError, match="stored maturity verification does not match"):
         build_ceqanet_csv_access_policy(

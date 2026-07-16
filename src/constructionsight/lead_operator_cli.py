@@ -63,7 +63,9 @@ def list_records(
     ] = 100,
     status: Annotated[
         str | None,
-        typer.Option(help="Exact indexed status filter when supported by the record kind."),
+        typer.Option(
+            help="Exact indexed status filter when supported by the record kind."
+        ),
     ] = None,
     base_candidate_id: Annotated[
         str | None,
@@ -190,7 +192,9 @@ def allowed_transitions(
             workflow = load_persisted_lead_workflow(session, workflow_id)
     except ValueError as exc:
         _fail(str(exc))
-    allowed = sorted(status.value for status in LEAD_WORKFLOW_TRANSITION_RULES[workflow.status])
+    allowed = sorted(
+        status.value for status in LEAD_WORKFLOW_TRANSITION_RULES[workflow.status]
+    )
     payload = {
         "workflow_id": workflow.workflow_id,
         "current_status": workflow.status.value,
@@ -226,7 +230,10 @@ def transition_workflow(
         LeadWorkflowStatus,
         typer.Option(
             "--expected-current-status",
-            help=("Required stale-state guard matching the currently reviewed workflow status."),
+            help=(
+                "Required stale-state guard matching the currently reviewed "
+                "workflow status."
+            ),
         ),
     ],
     reason: Annotated[

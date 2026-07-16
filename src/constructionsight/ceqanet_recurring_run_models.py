@@ -127,7 +127,10 @@ class CeqanetRecurringRunDefinition(BaseModel):
 
         if self.readiness is CeqanetRunReadiness.BLOCKED and not self.blockers:
             raise ValueError("blocked run definitions must contain blockers")
-        if self.readiness is CeqanetRunReadiness.READY_FOR_MANUAL_EXECUTION and self.blockers:
+        if (
+            self.readiness is CeqanetRunReadiness.READY_FOR_MANUAL_EXECUTION
+            and self.blockers
+        ):
             raise ValueError("ready run definitions cannot contain blockers")
         return self
 
@@ -196,7 +199,10 @@ class CeqanetRecurringRunManifest(BaseModel):
             raise ValueError("recurring-run manifests cannot authorize persistence")
         if self.readiness is CeqanetRunReadiness.BLOCKED and not self.blockers:
             raise ValueError("blocked manifests must contain blockers")
-        if self.readiness is CeqanetRunReadiness.READY_FOR_MANUAL_EXECUTION and self.blockers:
+        if (
+            self.readiness is CeqanetRunReadiness.READY_FOR_MANUAL_EXECUTION
+            and self.blockers
+        ):
             raise ValueError("ready manifests cannot contain blockers")
         return self
 
@@ -271,7 +277,9 @@ class CeqanetRecurringRunExecution(BaseModel):
 class CeqanetRecurringRunVerification(BaseModel):
     """Verification result for definition, manifest, and execution agreement."""
 
-    schema_version: Literal["ceqanet_recurring_run_verification.v1"] = VERIFICATION_SCHEMA_VERSION
+    schema_version: Literal["ceqanet_recurring_run_verification.v1"] = (
+        VERIFICATION_SCHEMA_VERSION
+    )
     passed: bool
     finding_count: int = Field(ge=0)
     findings: list[str] = Field(default_factory=list)

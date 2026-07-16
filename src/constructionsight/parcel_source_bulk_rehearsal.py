@@ -92,7 +92,9 @@ class ParcelArcGISBulkRehearsalPolicy:
         if self.checkpoint_after_pages < 1:
             raise ValueError("ArcGIS rehearsal checkpoint must follow at least one page")
         if self.injected_retry_page_index < self.checkpoint_after_pages:
-            raise ValueError("ArcGIS injected retry must occur in the resumed execution segment")
+            raise ValueError(
+                "ArcGIS injected retry must occur in the resumed execution segment"
+            )
         if self.max_attempts < 2 or self.max_attempts > 5:
             raise ValueError("ArcGIS rehearsal max attempts must be between 2 and 5")
         if len(self.retry_delays_seconds) < self.max_attempts - 1:
@@ -134,10 +136,17 @@ class ParcelArcGISBulkRehearsalExecution:
             ):
                 raise ValueError(f"ArcGIS rehearsal {label} count digest is malformed")
         if first.response_digest != self.starting_count_response_digest:
-            raise ValueError("ArcGIS rehearsal starting-count artifact does not match its response")
+            raise ValueError(
+                "ArcGIS rehearsal starting-count artifact does not match its response"
+            )
         if last.response_digest != self.ending_count_response_digest:
-            raise ValueError("ArcGIS rehearsal ending-count artifact does not match its response")
-        if any(receipt.kind != ParcelArcGISBulkArtifactKind.PAGE for receipt in page_receipts):
+            raise ValueError(
+                "ArcGIS rehearsal ending-count artifact does not match its response"
+            )
+        if any(
+            receipt.kind != ParcelArcGISBulkArtifactKind.PAGE
+            for receipt in page_receipts
+        ):
             raise ValueError("ArcGIS rehearsal middle artifacts must be data pages")
         receipt_digests = tuple(receipt.response_digest for receipt in page_receipts)
         if receipt_digests != self.manifest.page_response_digests:
@@ -159,7 +168,9 @@ class JSONFileParcelArcGISCheckpointStore:
         if not checkpoint_id.startswith(prefix):
             raise ValueError("ArcGIS checkpoint identity is malformed")
         digest = checkpoint_id.removeprefix(prefix)
-        if len(digest) != 64 or any(character not in "0123456789abcdef" for character in digest):
+        if len(digest) != 64 or any(
+            character not in "0123456789abcdef" for character in digest
+        ):
             raise ValueError("ArcGIS checkpoint identity digest is malformed")
         return self._directory / f"{digest}.json"
 
@@ -358,12 +369,18 @@ def parse_arcgis_object_id_page(
         raise ParcelArcGISBulkRehearsalError("ArcGIS page response contains an error")
     direct_ids = payload.get("objectIds")
     if direct_ids is not None:
-        if not isinstance(direct_ids, Sequence) or isinstance(direct_ids, str | bytes | bytearray):
-            raise ParcelArcGISBulkRehearsalError("ArcGIS objectIds response must be an array")
+        if not isinstance(direct_ids, Sequence) or isinstance(
+            direct_ids, (str, bytes, bytearray)
+        ):
+            raise ParcelArcGISBulkRehearsalError(
+                "ArcGIS objectIds response must be an array"
+            )
         return _normalize_object_ids(direct_ids)
 
     features = payload.get("features")
-    if not isinstance(features, Sequence) or isinstance(features, str | bytes | bytearray):
+    if not isinstance(features, Sequence) or isinstance(
+        features, (str, bytes, bytearray)
+    ):
         raise ParcelArcGISBulkRehearsalError(
             "ArcGIS page response must contain objectIds or features"
         )
@@ -373,7 +390,9 @@ def parse_arcgis_object_id_page(
             raise ParcelArcGISBulkRehearsalError("ArcGIS feature must be an object")
         attributes = feature.get("attributes")
         if not isinstance(attributes, Mapping) or object_id_field not in attributes:
-            raise ParcelArcGISBulkRehearsalError("ArcGIS feature is missing the object-ID field")
+            raise ParcelArcGISBulkRehearsalError(
+                "ArcGIS feature is missing the object-ID field"
+            )
         values.append(attributes[object_id_field])
     return _normalize_object_ids(values)
 
@@ -404,7 +423,10 @@ def _fetch_page_with_retry(
     for attempt_number in range(1, policy.max_attempts + 1):
         attempt_count = attempt_number
         try:
-            if page_index == policy.injected_retry_page_index and attempt_number == 1:
+            if (
+                page_index == policy.injected_retry_page_index
+                and attempt_number == 1
+            ):
                 raise ParcelArcGISBulkTransientError(
                     "injected_pre_request_transient",
                     fault_injected=True,
@@ -487,7 +509,9 @@ def _fetch_page_with_retry(
     retry: ParcelArcGISBulkRetryEvidence | None = None
     if attempt_count > 1:
         if failure_kind is None or retry_recorded_at is None:
-            raise ParcelArcGISBulkRehearsalError("ArcGIS retried page is missing failure evidence")
+            raise ParcelArcGISBulkRehearsalError(
+                "ArcGIS retried page is missing failure evidence"
+            )
         retry = build_arcgis_bulk_retry_evidence(
             page,
             failure_kind=failure_kind,
@@ -502,16 +526,22 @@ def _normalize_object_ids(values: Sequence[Any]) -> tuple[int, ...]:
     normalized: list[int] = []
     for value in values:
         if isinstance(value, bool) or not isinstance(value, int):
-            raise ParcelArcGISBulkRehearsalError("ArcGIS object IDs must be JSON integers")
+            raise ParcelArcGISBulkRehearsalError(
+                "ArcGIS object IDs must be JSON integers"
+            )
         if value < 0:
-            raise ParcelArcGISBulkRehearsalError("ArcGIS object IDs cannot be negative")
+            raise ParcelArcGISBulkRehearsalError(
+                "ArcGIS object IDs cannot be negative"
+            )
         normalized.append(value)
     return tuple(normalized)
 
 
 def _require_positive_count(value: int, label: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int) or value < 1:
-        raise ParcelArcGISBulkRehearsalError(f"ArcGIS {label} count must be a positive integer")
+        raise ParcelArcGISBulkRehearsalError(
+            f"ArcGIS {label} count must be a positive integer"
+        )
     return value
 
 

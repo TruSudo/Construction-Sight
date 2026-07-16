@@ -20,7 +20,9 @@ class OpportunityEnrichmentReportRecord(Base):
     """Persisted opportunity enrichment report."""
 
     __tablename__ = "opportunity_enrichment_reports"
-    __table_args__ = (UniqueConstraint("report_id", name="uq_opportunity_enrichment_reports_id"),)
+    __table_args__ = (
+        UniqueConstraint("report_id", name="uq_opportunity_enrichment_reports_id"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     report_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
@@ -52,7 +54,9 @@ class LeadReviewPackageRecord(Base):
     """Persisted lead review package."""
 
     __tablename__ = "lead_review_packages"
-    __table_args__ = (UniqueConstraint("package_id", name="uq_lead_review_packages_id"),)
+    __table_args__ = (
+        UniqueConstraint("package_id", name="uq_lead_review_packages_id"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     package_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
@@ -80,7 +84,9 @@ class LeadFingerprintRecord(Base):
     """Persisted lead duplicate-detection fingerprint."""
 
     __tablename__ = "lead_fingerprints"
-    __table_args__ = (UniqueConstraint("fingerprint_key", name="uq_lead_fingerprints_key"),)
+    __table_args__ = (
+        UniqueConstraint("fingerprint_key", name="uq_lead_fingerprints_key"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     fingerprint_key: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
@@ -119,7 +125,9 @@ class LeadDuplicateResultRecord(Base):
     """Persisted lead duplicate check result."""
 
     __tablename__ = "lead_duplicate_results"
-    __table_args__ = (UniqueConstraint("result_id", name="uq_lead_duplicate_results_id"),)
+    __table_args__ = (
+        UniqueConstraint("result_id", name="uq_lead_duplicate_results_id"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     result_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
@@ -151,7 +159,9 @@ class LeadWorkflowRecordRow(Base):
     """Persisted lead workflow record."""
 
     __tablename__ = "lead_workflows"
-    __table_args__ = (UniqueConstraint("workflow_id", name="uq_lead_workflows_id"),)
+    __table_args__ = (
+        UniqueConstraint("workflow_id", name="uq_lead_workflows_id"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     workflow_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
@@ -182,7 +192,9 @@ class LeadWorkflowEventRecord(Base):
     """Persisted lead workflow event."""
 
     __tablename__ = "lead_workflow_events"
-    __table_args__ = (UniqueConstraint("event_id", name="uq_lead_workflow_events_id"),)
+    __table_args__ = (
+        UniqueConstraint("event_id", name="uq_lead_workflow_events_id"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     event_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
@@ -211,7 +223,9 @@ class ResultLedgerRecordRow(Base):
     """Persisted result ledger row."""
 
     __tablename__ = "result_ledgers"
-    __table_args__ = (UniqueConstraint("ledger_id", name="uq_result_ledgers_id"),)
+    __table_args__ = (
+        UniqueConstraint("ledger_id", name="uq_result_ledgers_id"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     ledger_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
@@ -243,7 +257,9 @@ class ResultShareRecordRow(Base):
     """Persisted calculated result-share record."""
 
     __tablename__ = "result_share_records"
-    __table_args__ = (UniqueConstraint("share_record_id", name="uq_result_share_records_id"),)
+    __table_args__ = (
+        UniqueConstraint("share_record_id", name="uq_result_share_records_id"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     share_record_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)

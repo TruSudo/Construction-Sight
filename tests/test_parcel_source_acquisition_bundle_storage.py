@@ -50,7 +50,9 @@ def _bounded_bundle(*, created_at: datetime = _OBSERVED_AT):
         for item in get_verified_parcel_source_profiles()
         if item.profile_id == snapshot.profile_id
     )
-    evidence_by_id = {item.evidence_id: item for item in get_parcel_source_evidence()}
+    evidence_by_id = {
+        item.evidence_id: item for item in get_parcel_source_evidence()
+    }
     plan = build_arcgis_probe_plan(snapshot, generated_at=_OBSERVED_AT)
     response_by_kind = {
         ParcelArcGISProbeKind.COUNT: {"count": 6},
@@ -121,7 +123,9 @@ def test_bundle_storage_requires_every_persisted_dependency() -> None:
 def test_bundle_chain_persists_replays_loads_and_serves_operator_records() -> None:
     _, factory = _factory()
     bundle = _bounded_bundle()
-    semantic_replay = _bounded_bundle(created_at=_OBSERVED_AT + timedelta(minutes=10))
+    semantic_replay = _bounded_bundle(
+        created_at=_OBSERVED_AT + timedelta(minutes=10)
+    )
     assert semantic_replay.bundle_id == bundle.bundle_id
 
     with managed_session(factory) as session:

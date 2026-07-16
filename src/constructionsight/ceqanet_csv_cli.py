@@ -304,7 +304,9 @@ def verify_csv_replay(
     """Verify a derived replay against the original retained live response."""
 
     try:
-        execution_payload: Any = json.loads(execution_path.read_text(encoding="utf-8"))
+        execution_payload: Any = json.loads(
+            execution_path.read_text(encoding="utf-8")
+        )
         replay_payload: Any = json.loads(replay_path.read_text(encoding="utf-8"))
         execution = CeqanetCsvLiveExecution.model_validate(execution_payload)
         replay = CeqanetCsvEncodingReplay.model_validate(replay_payload)
@@ -318,7 +320,9 @@ def verify_csv_replay(
 
 def _write_json_file(path: Path, payload: object, *, overwrite: bool) -> None:
     if path.exists() and not overwrite:
-        raise typer.BadParameter(f"output already exists: {path}; pass --overwrite to replace it")
+        raise typer.BadParameter(
+            f"output already exists: {path}; pass --overwrite to replace it"
+        )
     rendered = json.dumps(payload, indent=2, sort_keys=True)
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(f".{path.name}.tmp")

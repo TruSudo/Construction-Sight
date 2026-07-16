@@ -26,7 +26,9 @@ class ParcelArcGISBulkPageEvidence(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    page_evidence_id: str = Field(pattern=r"^parcel-arcgis-bulk-page-evidence:[0-9a-f]{64}$")
+    page_evidence_id: str = Field(
+        pattern=r"^parcel-arcgis-bulk-page-evidence:[0-9a-f]{64}$"
+    )
     page_index: int = Field(ge=0)
     offset: int = Field(ge=0)
     requested_record_count: int = Field(ge=1)
@@ -63,7 +65,9 @@ class ParcelArcGISBulkPageEvidence(BaseModel):
         if self.page_content_digest != expected_content_digest:
             raise ValueError("ArcGIS bulk page content digest does not match normalized data")
         payload = self.model_dump(mode="json", exclude={"page_evidence_id"})
-        if self.page_evidence_id != digest_identity("parcel-arcgis-bulk-page-evidence", payload):
+        if self.page_evidence_id != digest_identity(
+            "parcel-arcgis-bulk-page-evidence", payload
+        ):
             raise ValueError("ArcGIS bulk page evidence ID does not match content")
         return self
 
@@ -76,7 +80,9 @@ class ParcelArcGISBulkCheckpointEvidence(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    checkpoint_id: str = Field(pattern=r"^parcel-arcgis-bulk-checkpoint:[0-9a-f]{64}$")
+    checkpoint_id: str = Field(
+        pattern=r"^parcel-arcgis-bulk-checkpoint:[0-9a-f]{64}$"
+    )
     completed_page_count: int = Field(ge=1)
     page_size: int = Field(ge=1)
     next_offset: int = Field(ge=1)
@@ -94,7 +100,10 @@ class ParcelArcGISBulkCheckpointEvidence(BaseModel):
     @field_validator("completed_page_evidence_ids")
     @classmethod
     def require_canonical_page_ids(cls, values: tuple[str, ...]) -> tuple[str, ...]:
-        if any(not value.startswith("parcel-arcgis-bulk-page-evidence:") for value in values):
+        if any(
+            not value.startswith("parcel-arcgis-bulk-page-evidence:")
+            for value in values
+        ):
             raise ValueError("ArcGIS checkpoint page evidence IDs are malformed")
         if len(values) != len(set(values)):
             raise ValueError("ArcGIS checkpoint page evidence IDs must be unique")
@@ -107,7 +116,9 @@ class ParcelArcGISBulkCheckpointEvidence(BaseModel):
         if self.next_offset != self.completed_page_count * self.page_size:
             raise ValueError("ArcGIS checkpoint next offset must follow its completed prefix")
         payload = self.model_dump(mode="json", exclude={"checkpoint_id"})
-        if self.checkpoint_id != digest_identity("parcel-arcgis-bulk-checkpoint", payload):
+        if self.checkpoint_id != digest_identity(
+            "parcel-arcgis-bulk-checkpoint", payload
+        ):
             raise ValueError("ArcGIS bulk checkpoint ID does not match content")
         return self
 
@@ -121,7 +132,9 @@ class ParcelArcGISBulkResumeEvidence(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     resume_id: str = Field(pattern=r"^parcel-arcgis-bulk-resume:[0-9a-f]{64}$")
-    checkpoint_id: str = Field(pattern=r"^parcel-arcgis-bulk-checkpoint:[0-9a-f]{64}$")
+    checkpoint_id: str = Field(
+        pattern=r"^parcel-arcgis-bulk-checkpoint:[0-9a-f]{64}$"
+    )
     first_resumed_page_evidence_id: str = Field(
         pattern=r"^parcel-arcgis-bulk-page-evidence:[0-9a-f]{64}$"
     )
@@ -150,7 +163,9 @@ class ParcelArcGISBulkRetryEvidence(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     retry_id: str = Field(pattern=r"^parcel-arcgis-bulk-retry:[0-9a-f]{64}$")
-    page_evidence_id: str = Field(pattern=r"^parcel-arcgis-bulk-page-evidence:[0-9a-f]{64}$")
+    page_evidence_id: str = Field(
+        pattern=r"^parcel-arcgis-bulk-page-evidence:[0-9a-f]{64}$"
+    )
     failure_kind: str = Field(min_length=1)
     failed_attempt_count: int = Field(ge=1, le=4)
     recovered_attempt_number: int = Field(ge=2, le=5)
@@ -189,7 +204,9 @@ class ParcelArcGISBulkRehearsalEvidence(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    evidence_id: str = Field(pattern=r"^parcel-arcgis-bulk-rehearsal-evidence:[0-9a-f]{64}$")
+    evidence_id: str = Field(
+        pattern=r"^parcel-arcgis-bulk-rehearsal-evidence:[0-9a-f]{64}$"
+    )
     snapshot_id: str = Field(pattern=r"^parcel-arcgis-capability:[0-9a-f]{64}$")
     profile_id: str = Field(pattern=r"^parcel-source-verification:[0-9a-f]{64}$")
     source_key: str = Field(min_length=1)
@@ -240,15 +257,22 @@ class ParcelArcGISBulkRehearsalEvidence(BaseModel):
         )
         if checkpoint.object_id_count != len(checkpoint_object_ids):
             raise ValueError("ArcGIS checkpoint object-ID count does not match its prefix")
-        if checkpoint.object_id_set_digest != digest_json_payload(list(checkpoint_object_ids)):
+        if checkpoint.object_id_set_digest != digest_json_payload(
+            list(checkpoint_object_ids)
+        ):
             raise ValueError("ArcGIS checkpoint object-ID digest does not match its prefix")
         if completed_pages[-1].observed_at > checkpoint.created_at:
-            raise ValueError("ArcGIS checkpoint cannot precede its completed page prefix")
+            raise ValueError(
+                "ArcGIS checkpoint cannot precede its completed page prefix"
+            )
 
         first_resumed_page = pages[checkpoint.completed_page_count]
         if self.resume.checkpoint_id != checkpoint.checkpoint_id:
             raise ValueError("ArcGIS resume evidence must reference the retained checkpoint")
-        if self.resume.first_resumed_page_evidence_id != first_resumed_page.page_evidence_id:
+        if (
+            self.resume.first_resumed_page_evidence_id
+            != first_resumed_page.page_evidence_id
+        ):
             raise ValueError("ArcGIS resume evidence must bind the first resumed page")
         if self.resume.resumed_at < checkpoint.created_at:
             raise ValueError("ArcGIS resume cannot precede checkpoint creation")
@@ -257,10 +281,16 @@ class ParcelArcGISBulkRehearsalEvidence(BaseModel):
 
         retry_page_ids = tuple(event.page_evidence_id for event in self.retry_events)
         expected_retry_page_ids = tuple(
-            sorted(page.page_evidence_id for page in pages if page.attempt_count > 1)
+            sorted(
+                page.page_evidence_id
+                for page in pages
+                if page.attempt_count > 1
+            )
         )
         if retry_page_ids != expected_retry_page_ids:
-            raise ValueError("ArcGIS retry evidence must cover every and only retried page")
+            raise ValueError(
+                "ArcGIS retry evidence must cover every and only retried page"
+            )
         pages_by_id = {page.page_evidence_id: page for page in pages}
         for event in self.retry_events:
             page = pages_by_id.get(event.page_evidence_id)
@@ -283,7 +313,9 @@ class ParcelArcGISBulkRehearsalEvidence(BaseModel):
             raise ValueError("ArcGIS rehearsal evidence cannot predate its proof records")
 
         payload = self.model_dump(mode="json", exclude={"evidence_id"})
-        if self.evidence_id != digest_identity("parcel-arcgis-bulk-rehearsal-evidence", payload):
+        if self.evidence_id != digest_identity(
+            "parcel-arcgis-bulk-rehearsal-evidence", payload
+        ):
             raise ValueError("ArcGIS bulk rehearsal evidence ID does not match content")
         return self
 
@@ -360,7 +392,9 @@ def build_arcgis_bulk_page_evidence(
     return ParcelArcGISBulkPageEvidence.model_validate(
         {
             **payload,
-            "page_evidence_id": digest_identity("parcel-arcgis-bulk-page-evidence", payload),
+            "page_evidence_id": digest_identity(
+                "parcel-arcgis-bulk-page-evidence", payload
+            ),
         }
     )
 
@@ -381,7 +415,9 @@ def build_arcgis_bulk_checkpoint_evidence(
         completed_page_count=completed_page_count,
         page_size=page_size,
         next_offset=completed_page_count * page_size,
-        completed_page_evidence_ids=tuple(page.page_evidence_id for page in completed_pages),
+        completed_page_evidence_ids=tuple(
+            page.page_evidence_id for page in completed_pages
+        ),
         object_id_count=len(object_ids),
         object_id_set_digest=digest_json_payload(object_ids),
         created_at=created_at,
@@ -390,7 +426,9 @@ def build_arcgis_bulk_checkpoint_evidence(
     return ParcelArcGISBulkCheckpointEvidence.model_validate(
         {
             **payload,
-            "checkpoint_id": digest_identity("parcel-arcgis-bulk-checkpoint", payload),
+            "checkpoint_id": digest_identity(
+                "parcel-arcgis-bulk-checkpoint", payload
+            ),
         }
     )
 
@@ -479,9 +517,12 @@ def build_arcgis_bulk_rehearsal_evidence(
     return ParcelArcGISBulkRehearsalEvidence.model_validate(
         {
             **payload,
-            "evidence_id": digest_identity("parcel-arcgis-bulk-rehearsal-evidence", payload),
+            "evidence_id": digest_identity(
+                "parcel-arcgis-bulk-rehearsal-evidence", payload
+            ),
         }
     )
+
 
 
 def assemble_arcgis_bulk_rehearsal_evidence(
@@ -517,17 +558,19 @@ def assemble_arcgis_bulk_rehearsal_evidence(
     if retry_page_index < 0 or retry_page_index >= page_count:
         raise ValueError("ArcGIS retry page index is outside the rehearsal")
     if not 1 <= checkpoint_completed_page_count < page_count:
-        raise ValueError("ArcGIS checkpoint completed page count must precede a resumed page")
+        raise ValueError(
+  "ArcGIS checkpoint completed page count must precede a resumed page"
+        )
 
     pages = tuple(
         build_arcgis_bulk_page_evidence(
-            page_index=index,
-            page_size=page_size,
-            object_ids=page_object_ids[index],
-            response_digest=page_response_digests[index],
-            attempt_count=page_attempt_counts[index],
-            terminal_page=index == page_count - 1,
-            observed_at=page_observed_at[index],
+  page_index=index,
+  page_size=page_size,
+  object_ids=page_object_ids[index],
+  response_digest=page_response_digests[index],
+  attempt_count=page_attempt_counts[index],
+  terminal_page=index == page_count - 1,
+  observed_at=page_observed_at[index],
         )
         for index in range(page_count)
     )
@@ -558,7 +601,6 @@ def assemble_arcgis_bulk_rehearsal_evidence(
         retry_events=(retry,),
         created_at=created_at,
     )
-
 
 def digest_identity(namespace: str, payload: dict[str, Any]) -> str:
     """Return a namespaced SHA-256 identity for one canonical payload."""

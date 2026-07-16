@@ -96,7 +96,9 @@ def _extract_html_from_execution_json(
         raise typer.BadParameter("Execution JSON must contain a non-empty snapshots list.")
 
     if snapshot_index < 0 or snapshot_index >= len(snapshots):
-        raise typer.BadParameter(f"snapshot-index must be between 0 and {len(snapshots) - 1}.")
+        raise typer.BadParameter(
+            f"snapshot-index must be between 0 and {len(snapshots) - 1}."
+        )
 
     snapshot = snapshots[snapshot_index]
     if not isinstance(snapshot, dict):
@@ -152,7 +154,11 @@ def _option_to_dict(
     """Convert one vocabulary option into deterministic JSON-safe output."""
 
     payload = option.to_dict()
-    if include_agency_types and option.field_name == CEQANET_FIELD_LEAD_AGENCY and option.value:
+    if (
+        include_agency_types
+        and option.field_name == CEQANET_FIELD_LEAD_AGENCY
+        and option.value
+    ):
         payload["agency_type"] = classify_ceqanet_lead_agency(option.label)
     return payload
 

@@ -46,7 +46,9 @@ class _Source:
     ) -> ParcelArcGISBulkPageResponse:
         assert record_count == 2
         assert attempt_number in {1, 2}
-        return ParcelArcGISBulkPageResponse.from_payload({"objectIds": list(self._pages[offset])})
+        return ParcelArcGISBulkPageResponse.from_payload(
+            {"objectIds": list(self._pages[offset])}
+        )
 
 
 def test_execution_binds_count_response_digests_to_retained_receipts(
@@ -68,9 +70,13 @@ def test_execution_binds_count_response_digests_to_retained_receipts(
     )
 
     assert (
-        execution.starting_count_response_digest == execution.artifact_receipts[0].response_digest
+        execution.starting_count_response_digest
+        == execution.artifact_receipts[0].response_digest
     )
-    assert execution.ending_count_response_digest == execution.artifact_receipts[-1].response_digest
+    assert (
+        execution.ending_count_response_digest
+        == execution.artifact_receipts[-1].response_digest
+    )
 
     with pytest.raises(ValueError, match="starting-count artifact"):
         replace(execution, starting_count_response_digest="0" * 64)

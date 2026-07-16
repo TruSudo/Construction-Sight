@@ -100,8 +100,12 @@ def _build_from_paths(
         _load_sources(registry_path),
         CeqanetCsvLiveExecution.model_validate(_load_json(execution_path)),
         CeqanetCsvEncodingReplay.model_validate(_load_json(replay_path)),
-        CeqanetCsvEncodingReplayVerification.model_validate(_load_json(replay_verification_path)),
-        CeqanetSourceMaturityProposal.model_validate(_load_json(maturity_proposal_path)),
+        CeqanetCsvEncodingReplayVerification.model_validate(
+            _load_json(replay_verification_path)
+        ),
+        CeqanetSourceMaturityProposal.model_validate(
+            _load_json(maturity_proposal_path)
+        ),
         CeqanetSourceMaturityProposalVerification.model_validate(
             _load_json(maturity_verification_path)
         ),
@@ -216,7 +220,9 @@ def verify_policy(
             CeqanetCsvEncodingReplayVerification.model_validate(
                 _load_json(replay_verification_path)
             ),
-            CeqanetSourceMaturityProposal.model_validate(_load_json(maturity_proposal_path)),
+            CeqanetSourceMaturityProposal.model_validate(
+                _load_json(maturity_proposal_path)
+            ),
             CeqanetSourceMaturityProposalVerification.model_validate(
                 _load_json(maturity_verification_path)
             ),

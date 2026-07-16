@@ -106,7 +106,10 @@ def _raw_direct_requirements(root: Path) -> list[str]:
     raw.extend(str(value) for value in project.get("dependencies", []))
     for values in project.get("optional-dependencies", {}).values():
         raw.extend(str(value) for value in values)
-    raw.extend(str(value) for value in pyproject.get("build-system", {}).get("requires", []))
+    raw.extend(
+        str(value)
+        for value in pyproject.get("build-system", {}).get("requires", [])
+    )
     return raw
 
 
@@ -225,7 +228,9 @@ def _audit_registry_entry(
         )
     raw_name = entry.get("name")
     if not isinstance(raw_name, str) or not raw_name.strip():
-        findings.append(_finding("DEP-CONTRACT-004", path, "dependency name must be nonblank text"))
+        findings.append(
+            _finding("DEP-CONTRACT-004", path, "dependency name must be nonblank text")
+        )
         return None
     name = _canonical_name(raw_name)
     if raw_name != name:
@@ -265,7 +270,9 @@ def _audit_registry_entry(
         )
     extras = entry.get("extras")
     if not isinstance(extras, list) or not all(isinstance(value, str) for value in extras):
-        findings.append(_finding("DEP-CONTRACT-007", path, f"invalid extras for {raw_name}"))
+        findings.append(
+            _finding("DEP-CONTRACT-007", path, f"invalid extras for {raw_name}")
+        )
     else:
         canonical_extras = [_canonical_name(value) for value in extras]
         if extras != sorted(set(canonical_extras)):
@@ -367,7 +374,11 @@ def audit_dependencies(
                 )
             )
         seen_direct.add(name)
-    direct_names = {parsed[0] for parsed in parsed_direct if parsed is not None}
+    direct_names = {
+        parsed[0]
+        for parsed in parsed_direct
+        if parsed is not None
+    }
 
     registry = contract.get("dependencies")
     if not isinstance(registry, list):
@@ -390,19 +401,19 @@ def audit_dependencies(
         )
     by_name: dict[str, Mapping[str, Any]] = {}
     for entry in entries:
-        registry_name = _audit_registry_entry(entry, path=path, findings=findings)
-        if registry_name is None:
+        name = _audit_registry_entry(entry, path=path, findings=findings)
+        if name is None:
             continue
-        if registry_name in by_name:
+        if name in by_name:
             findings.append(
                 _finding(
                     "DEP-REGISTRY-003",
                     path,
-                    f"duplicate canonical dependency registry identity: {registry_name}",
+                    f"duplicate canonical dependency registry identity: {name}",
                 )
             )
             continue
-        by_name[registry_name] = entry
+        by_name[name] = entry
     if set(by_name) != direct_names:
         findings.append(
             _finding(
@@ -417,7 +428,9 @@ def audit_dependencies(
     lock_paths = contract.get("lock_files")
     lock_versions: list[tuple[Path, dict[str, str]]] = []
     if not isinstance(lock_paths, list) or not lock_paths:
-        findings.append(_finding("DEP-LOCK-001", path, "at least one lock file is required"))
+        findings.append(
+            _finding("DEP-LOCK-001", path, "at least one lock file is required")
+        )
     else:
         for raw_path in lock_paths:
             lock_path = _safe_relative_path(raw_path)
@@ -487,7 +500,10 @@ def audit_dependencies(
                     )
 
     workflow_paths = sorted((root / ".github/workflows").glob("*.y*ml"))
-    workflow_text = "\n".join(workflow.read_text(encoding="utf-8") for workflow in workflow_paths)
+    workflow_text = "\n".join(
+        workflow.read_text(encoding="utf-8")
+        for workflow in workflow_paths
+    )
     for snippet in sorted(_REQUIRED_CI_SNIPPETS):
         if snippet not in workflow_text:
             findings.append(
@@ -498,12 +514,14 @@ def audit_dependencies(
                 )
             )
     action_pattern = re.compile(
-        r"^(?P<indent>\s*)(?:-\s*)?uses:\s*(?P<action>[^@\s]+)@"
+        r"^(?P<indent>\s*)uses:\s*(?P<action>[^@\s]+)@"
         r"(?P<ref>[^\s#]+)(?P<comment>.*)$"
     )
     for workflow in workflow_paths:
         relative = workflow.relative_to(root)
-        for number, line in enumerate(workflow.read_text(encoding="utf-8").splitlines(), start=1):
+        for number, line in enumerate(
+            workflow.read_text(encoding="utf-8").splitlines(), start=1
+        ):
             match = action_pattern.match(line)
             if not match:
                 continue
@@ -517,7 +535,8 @@ def audit_dependencies(
                     _finding(
                         "DEP-ACTION-001",
                         relative,
-                        f"third-party Action is not pinned to an immutable SHA: {action}@{ref}",
+                        "third-party Action is not pinned to an immutable SHA: "
+                        f"{action}@{ref}",
                         number,
                     )
                 )
@@ -552,7 +571,11 @@ def audit_dependency_agreement(
         name = _canonical_name(str(entry.get("name", "")))
         raw_extras = entry.get("extras")
         extras = (
-            tuple(sorted({_canonical_name(str(value)) for value in raw_extras}))
+            tuple(
+                sorted(
+                    {_canonical_name(str(value)) for value in raw_extras}
+                )
+            )
             if isinstance(raw_extras, list)
             else ()
         )
@@ -584,7 +607,11 @@ def audit_dependency_agreement(
         try:
             lock_entries = load_lock_entries(absolute)
         except (OSError, UnicodeError, ValueError) as exc:
-            code = "DEP-LOCK-005" if "duplicate lock entry" in str(exc) else "DEP-LOCK-007"
+            code = (
+                "DEP-LOCK-005"
+                if "duplicate lock entry" in str(exc)
+                else "DEP-LOCK-007"
+            )
             findings.append(
                 _finding(
                     code,
@@ -593,7 +620,10 @@ def audit_dependency_agreement(
                 )
             )
             continue
-        locked = {entry.name: (entry.extras, entry.version) for entry in lock_entries}
+        locked = {
+            entry.name: (entry.extras, entry.version)
+            for entry in lock_entries
+        }
         for name, declaration in sorted(direct.items()):
             lock_value = locked.get(name)
             if lock_value is not None and lock_value != declaration:

@@ -70,7 +70,9 @@ def store_arcgis_bounded_proof_bundle(
     try:
         session.flush()
     except IntegrityError as exc:
-        raise ValueError(f"ArcGIS bounded-proof bundle already exists: {bundle.bundle_id}") from exc
+        raise ValueError(
+            f"ArcGIS bounded-proof bundle already exists: {bundle.bundle_id}"
+        ) from exc
     return row
 
 
@@ -107,10 +109,14 @@ def load_arcgis_bounded_proof_bundles(
     if status is not None:
         statement = statement.where(ParcelArcGISBoundedProofBundleRow.status == status)
     if source_key is not None:
-        statement = statement.where(ParcelArcGISBoundedProofBundleRow.source_key == source_key)
+        statement = statement.where(
+            ParcelArcGISBoundedProofBundleRow.source_key == source_key
+        )
     if county is not None:
         statement = statement.where(ParcelArcGISBoundedProofBundleRow.county == county)
-    rows = session.execute(statement.order_by(ParcelArcGISBoundedProofBundleRow.id)).scalars()
+    rows = session.execute(
+        statement.order_by(ParcelArcGISBoundedProofBundleRow.id)
+    ).scalars()
     bundles = [_bundle_from_row(row) for row in rows]
     for bundle in bundles:
         _require_persisted_chain(session, bundle)
@@ -124,7 +130,9 @@ def _bundle_from_row(
     try:
         bundle = ParcelArcGISBoundedProofBundle.model_validate(payload)
     except ValueError as exc:
-        raise ValueError(f"invalid ArcGIS bounded-proof payload: {row.bundle_id}") from exc
+        raise ValueError(
+            f"invalid ArcGIS bounded-proof payload: {row.bundle_id}"
+        ) from exc
     indexed = (
         row.bundle_id,
         row.profile_id,
@@ -153,7 +161,8 @@ def _bundle_from_row(
     )
     if indexed != nested:
         raise ValueError(
-            f"ArcGIS bounded-proof indexed fields disagree with payload: {row.bundle_id}"
+            "ArcGIS bounded-proof indexed fields disagree with payload: "
+            f"{row.bundle_id}"
         )
     verify_arcgis_bounded_proof_bundle(bundle)
     return bundle
@@ -207,9 +216,13 @@ def _decode_object(payload_json: str, bundle_id: str) -> dict[str, Any]:
     try:
         payload: Any = json.loads(payload_json)
     except json.JSONDecodeError as exc:
-        raise ValueError(f"malformed ArcGIS bounded-proof payload JSON: {bundle_id}") from exc
+        raise ValueError(
+            f"malformed ArcGIS bounded-proof payload JSON: {bundle_id}"
+        ) from exc
     if not isinstance(payload, dict):
-        raise ValueError(f"ArcGIS bounded-proof payload must be a JSON object: {bundle_id}")
+        raise ValueError(
+            f"ArcGIS bounded-proof payload must be a JSON object: {bundle_id}"
+        )
     return {str(key): value for key, value in payload.items()}
 
 

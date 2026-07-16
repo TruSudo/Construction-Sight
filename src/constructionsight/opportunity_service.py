@@ -366,13 +366,16 @@ _RATIONALES = {
         "approval pipeline."
     ),
     OpportunityTransitionKind.PERMIT_ISSUED: (
-        "Issued-permit movement is a high-value outreach trigger because work may mobilize soon."
+        "Issued-permit movement is a high-value outreach trigger because work may "
+        "mobilize soon."
     ),
     OpportunityTransitionKind.CONTRACTOR_IDENTIFIED: (
-        "A contractor/license signal identifies a party that can be enriched and contacted."
+        "A contractor/license signal identifies a party that can be enriched and "
+        "contacted."
     ),
     OpportunityTransitionKind.VALUATION_CHANGED: (
-        "Valuation or budget data helps estimate project size and security-service potential."
+        "Valuation or budget data helps estimate project size and security-service "
+        "potential."
     ),
     OpportunityTransitionKind.INSPECTION_MOVEMENT: (
         "Inspection movement indicates active project progress after approval or "
@@ -383,13 +386,15 @@ _RATIONALES = {
         "or post-project relationship timing."
     ),
     OpportunityTransitionKind.SITE_ANCHOR: (
-        "A parcel, APN, or address allows cross-source matching and geographic deduplication."
+        "A parcel, APN, or address allows cross-source matching and geographic "
+        "deduplication."
     ),
     OpportunityTransitionKind.CONTACT_CHANNEL: (
         "A contact channel reduces enrichment friction for outreach preparation."
     ),
     OpportunityTransitionKind.AGENCY_ANCHOR: (
-        "An agency hint helps route the candidate to the correct jurisdiction/source family."
+        "An agency hint helps route the candidate to the correct jurisdiction/source "
+        "family."
     ),
     OpportunityTransitionKind.CONSTRUCTION_SCOPE: (
         "Construction-scope language helps distinguish relevant project records "

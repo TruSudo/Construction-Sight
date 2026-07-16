@@ -66,7 +66,9 @@ def test_storage_replays_exact_evidence_and_profiles_idempotently() -> None:
             ) is store_parcel_source_verification_profile(session, profile)
         assert session.scalar(select(func.count()).select_from(ParcelSourceEvidenceRow)) == 8
         assert (
-            session.scalar(select(func.count()).select_from(ParcelSourceVerificationProfileRow))
+            session.scalar(
+                select(func.count()).select_from(ParcelSourceVerificationProfileRow)
+            )
             == 2
         )
 
@@ -122,7 +124,9 @@ def test_coverage_report_storage_is_semantically_idempotent() -> None:
             store_parcel_source_verification_profile(session, profile)
         first_row = store_parcel_county_coverage_report(session, first)
         replay_row = store_parcel_county_coverage_report(session, replay)
-        count = session.scalar(select(func.count()).select_from(ParcelCountyCoverageReportRow))
+        count = session.scalar(
+            select(func.count()).select_from(ParcelCountyCoverageReportRow)
+        )
 
     assert first_row is replay_row
     assert count == 1
@@ -134,7 +138,9 @@ def test_coverage_report_storage_is_semantically_idempotent() -> None:
 def test_profile_loader_rejects_indexed_payload_drift() -> None:
     _, factory = _factory()
     profile = get_verified_parcel_source_profiles()[0]
-    evidence_by_id = {item.evidence_id: item for item in get_parcel_source_evidence()}
+    evidence_by_id = {
+        item.evidence_id: item for item in get_parcel_source_evidence()
+    }
 
     with managed_session(factory) as session:
         for evidence_id in profile.evidence_ids:

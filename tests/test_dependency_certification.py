@@ -115,7 +115,9 @@ def test_registry_version_must_equal_direct_declaration(tmp_path: Path) -> None:
     audit_dependency_agreement(
         tmp_path,
         {
-            "dependencies": [{"name": "example", "extras": [], "version": "1.0"}],
+            "dependencies": [
+                {"name": "example", "extras": [], "version": "1.0"}
+            ],
             "lock_files": [],
         },
         findings,
@@ -132,7 +134,9 @@ def test_lock_version_must_equal_direct_declaration(tmp_path: Path) -> None:
     audit_dependency_agreement(
         tmp_path,
         {
-            "dependencies": [{"name": "example", "extras": [], "version": "2.0"}],
+            "dependencies": [
+                {"name": "example", "extras": [], "version": "2.0"}
+            ],
             "lock_files": ["requirements/test.lock"],
         },
         findings,
@@ -149,7 +153,9 @@ def test_lock_extras_are_canonicalized_and_compared(tmp_path: Path) -> None:
     audit_dependency_agreement(
         tmp_path,
         {
-            "dependencies": [{"name": "example", "extras": ["a", "b"], "version": "2.0"}],
+            "dependencies": [
+                {"name": "example", "extras": ["a", "b"], "version": "2.0"}
+            ],
             "lock_files": ["requirements/test.lock"],
         },
         findings,
@@ -166,7 +172,9 @@ def test_unhashed_lock_is_a_certification_finding(tmp_path: Path) -> None:
     audit_dependency_agreement(
         tmp_path,
         {
-            "dependencies": [{"name": "example", "extras": [], "version": "2.0"}],
+            "dependencies": [
+                {"name": "example", "extras": [], "version": "2.0"}
+            ],
             "lock_files": ["requirements/test.lock"],
         },
         findings,

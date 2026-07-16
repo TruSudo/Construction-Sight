@@ -116,7 +116,9 @@ def source_readiness_check(
     for row in report.rows:
         http_status = "not_checked"
         if row.http_reachability.checked:
-            http_status = str(row.http_reachability.status_code or row.http_reachability.error)
+            http_status = str(
+                row.http_reachability.status_code or row.http_reachability.error
+            )
         rows.add_row(
             row.source_name,
             row.platform_family,

@@ -67,9 +67,13 @@ def test_official_county_sources_are_preview_ready_with_exact_schema_mappings() 
         "SITUS_STREET",
         "geometry",
     }
-    assert ParcelFieldRole.OWNER not in {mapping.field_role for mapping in riverside.field_mappings}
+    assert ParcelFieldRole.OWNER not in {
+        mapping.field_role for mapping in riverside.field_mappings
+    }
     for source in (san_bernardino, riverside):
-        constants = {constant.field_role: constant.value for constant in source.constant_fields}
+        constants = {
+            constant.field_role: constant.value for constant in source.constant_fields
+        }
         assert constants == {
             ParcelFieldRole.COUNTY: source.coverage.county,
             ParcelFieldRole.STATE: "CA",
@@ -77,7 +81,9 @@ def test_official_county_sources_are_preview_ready_with_exact_schema_mappings() 
 
 
 def test_county_constants_satisfy_preview_without_fabricated_schema_columns() -> None:
-    san_bernardino = preview_schema_for_source_key("san-bernardino:county-gis-parcels")
+    san_bernardino = preview_schema_for_source_key(
+        "san-bernardino:county-gis-parcels"
+    )
     riverside = preview_schema_for_source_key("riverside:county-gis-parcels")
 
     assert ParcelFieldRole.COUNTY not in san_bernardino.missing_required_roles
@@ -163,7 +169,9 @@ def test_profile_rejects_mapping_absent_from_schema_snapshot() -> None:
     profile = get_verified_parcel_source_profiles()[0]
     payload = profile.to_dict()
     payload["field_mappings"][0]["source_field"] = "NOT_IN_SCHEMA"
-    identity_payload = {key: value for key, value in payload.items() if key != "profile_id"}
+    identity_payload = {
+        key: value for key, value in payload.items() if key != "profile_id"
+    }
     payload["profile_id"] = parcel_source_verification_profile_id(identity_payload)
 
     with pytest.raises(ValidationError, match="must exist in the schema snapshot"):
@@ -174,7 +182,9 @@ def test_profile_rejects_import_ready_without_bulk_and_countywide_proof() -> Non
     profile = get_verified_parcel_source_profiles()[0]
     payload = profile.to_dict()
     payload["coverage_status"] = "ready_for_import"
-    identity_payload = {key: value for key, value in payload.items() if key != "profile_id"}
+    identity_payload = {
+        key: value for key, value in payload.items() if key != "profile_id"
+    }
     payload["profile_id"] = parcel_source_verification_profile_id(identity_payload)
 
     with pytest.raises(ValidationError, match="import-ready coverage requires"):
@@ -186,7 +196,8 @@ def test_profiles_convert_to_assurance_contexts_without_global_authority() -> No
 
     assert len(contexts) == 2
     assert all(
-        context.default_authority == ParcelEvidenceAuthority.OFFICIAL for context in contexts
+        context.default_authority == ParcelEvidenceAuthority.OFFICIAL
+        for context in contexts
     )
     assert all(context.authoritative_fields == [ParcelFieldRole.APN] for context in contexts)
     assert all(context.limitations for context in contexts)
@@ -242,4 +253,6 @@ def test_coverage_report_id_excludes_only_generation_time() -> None:
 
     assert first.report_id == replay.report_id
     assert first.generated_at != replay.generated_at
-    assert first.to_dict() | {"generated_at": None} == replay.to_dict() | {"generated_at": None}
+    assert first.to_dict() | {"generated_at": None} == replay.to_dict() | {
+        "generated_at": None
+    }

@@ -113,11 +113,14 @@ def test_project_fixture_inspection_preserves_unknown_columns_and_integrity() ->
     assert inspection.rows[0]["project_acres"] == "145.2"
     assert inspection.network_executed is False
     assert inspection.persistence_authorized is False
-    roles = {column.canonical_role for column in inspection.columns if column.canonical_role}
+    roles = {
+        column.canonical_role for column in inspection.columns if column.canonical_role
+    }
     assert CeqanetCsvCanonicalRole.SCH_NUMBER in roles
     assert CeqanetCsvCanonicalRole.LEAD_AGENCY in roles
     assert CeqanetCsvCanonicalRole.DESCRIPTION in roles
     inspection.assert_integrity()
+
 
 
 @pytest.mark.parametrize(
@@ -137,7 +140,8 @@ def test_scope_selects_one_canonical_title_without_discarding_columns(
         document_id=document_id,
     )
     content = (
-        b"SCH Number,Document Title,Project Title\r\n2026030377,Document value,Project value\r\n"
+        b"SCH Number,Document Title,Project Title\r\n"
+        b"2026030377,Document value,Project value\r\n"
     )
 
     inspection = inspect_ceqanet_csv_bytes(
@@ -146,16 +150,19 @@ def test_scope_selects_one_canonical_title_without_discarding_columns(
         content_type="text/csv",
     )
 
-    roles = {column.normalized_name: column.canonical_role for column in inspection.columns}
+    roles = {
+        column.normalized_name: column.canonical_role
+        for column in inspection.columns
+    }
     assert roles[canonical_title] is CeqanetCsvCanonicalRole.TITLE
     assert roles[unassigned_title] is None
     assert inspection.unknown_columns == [unassigned_title]
     assert inspection.rows[0]["document_title"] == "Document value"
     assert inspection.rows[0]["project_title"] == "Project value"
     assert (
-        "multiple title columns were preserved; canonical title was assigned by export scope"
+        "multiple title columns were preserved; canonical title was assigned "
+        "by export scope"
     ) in inspection.warnings
-
 
 def test_document_fixture_inspection_maps_high_value_roles() -> None:
     request = build_ceqanet_csv_export_request(
@@ -169,7 +176,9 @@ def test_document_fixture_inspection_maps_high_value_roles() -> None:
         content_type="application/vnd.ms-excel",
     )
 
-    roles = {column.canonical_role for column in inspection.columns if column.canonical_role}
+    roles = {
+        column.canonical_role for column in inspection.columns if column.canonical_role
+    }
     assert inspection.row_count == 1
     assert inspection.unknown_columns == []
     assert CeqanetCsvCanonicalRole.DOCUMENT_ID in roles

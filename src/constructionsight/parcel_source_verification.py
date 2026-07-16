@@ -43,7 +43,8 @@ def get_parcel_source_evidence() -> list[ParcelSourceEvidence]:
             county="San Bernardino",
             evidence_kind=ParcelSourceEvidenceKind.OFFICIAL_DATASET_METADATA,
             public_url=(
-                "https://open.sbcounty.gov/datasets/san-bernardino-county-parcel-dataset/about"
+                "https://open.sbcounty.gov/datasets/"
+                "san-bernardino-county-parcel-dataset/about"
             ),
             facts=(
                 "The county open-data catalog publishes a San Bernardino County parcel dataset.",
@@ -102,7 +103,9 @@ def get_parcel_source_evidence() -> list[ParcelSourceEvidence]:
             county="San Bernardino",
             evidence_kind=ParcelSourceEvidenceKind.OFFICIAL_LIMITATION,
             public_url="https://arcpropertyinfo.sbcounty.gov/",
-            facts=("Assessor information is maintained for property assessment and taxation.",),
+            facts=(
+                "Assessor information is maintained for property assessment and taxation.",
+            ),
             field_roles=(ParcelFieldRole.OWNER, ParcelFieldRole.ZONING),
             limitations=(
                 "Assessor data does not determine current legal ownership.",
@@ -157,8 +160,13 @@ def get_parcel_source_evidence() -> list[ParcelSourceEvidence]:
             source_key=_RIVERSIDE_KEY,
             county="Riverside",
             evidence_kind=ParcelSourceEvidenceKind.OFFICIAL_LIMITATION,
-            public_url=("https://rcitgis-countyofriverside.hub.arcgis.com/pages/data-distribution"),
-            facts=("Riverside County publishes GIS maps and data for reference purposes.",),
+            public_url=(
+                "https://rcitgis-countyofriverside.hub.arcgis.com/pages/"
+                "data-distribution"
+            ),
+            facts=(
+                "Riverside County publishes GIS maps and data for reference purposes.",
+            ),
             field_roles=(ParcelFieldRole.GEOMETRY,),
             limitations=(
                 "Map features are approximate.",
@@ -242,7 +250,10 @@ def get_verified_parcel_source_profiles() -> list[ParcelSourceVerificationProfil
                 {
                     sources[_RIVERSIDE_KEY].source_url,
                     sources[_RIVERSIDE_KEY].documentation_url,
-                    ("https://rcitgis-countyofriverside.hub.arcgis.com/pages/data-distribution"),
+                    (
+                        "https://rcitgis-countyofriverside.hub.arcgis.com/pages/"
+                        "data-distribution"
+                    ),
                     "https://www.rivcoacr.org/AssessorMaps",
                 },
             ),
@@ -297,14 +308,18 @@ def assurance_contexts_from_verified_profiles(
 ) -> list[ParcelAssuranceSourceContext]:
     """Convert verified profiles into field-specific parcel assurance contexts."""
 
-    reviewed = list(profiles if profiles is not None else get_verified_parcel_source_profiles())
+    reviewed = list(
+        profiles if profiles is not None else get_verified_parcel_source_profiles()
+    )
     source_keys = [profile.source_key for profile in reviewed]
     if len(source_keys) != len(set(source_keys)):
         raise ValueError("parcel source verification profiles must have unique source keys")
     contexts: list[ParcelAssuranceSourceContext] = []
     for profile in reviewed:
         if profile.status != ParcelSourceVerificationStatus.VERIFIED_PREVIEW:
-            raise ValueError("parcel assurance contexts require verified-preview source profiles")
+            raise ValueError(
+                "parcel assurance contexts require verified-preview source profiles"
+            )
         contexts.append(
             ParcelAssuranceSourceContext(
                 source_key=profile.source_key,
@@ -361,7 +376,11 @@ def build_parcel_county_coverage_report(
         profiles if profiles is not None else get_verified_parcel_source_profiles()
     )
     reviewed_requirements = sorted(
-        list(requirements if requirements is not None else default_county_coverage_requirements()),
+        list(
+            requirements
+            if requirements is not None
+            else default_county_coverage_requirements()
+        ),
         key=lambda requirement: requirement.county,
     )
     _validate_unique_profiles(reviewed_profiles)
@@ -379,7 +398,8 @@ def build_parcel_county_coverage_report(
         "counties": list(counties),
         "profile_ids": list(profile_ids),
         "requirements": [
-            requirement.model_dump(mode="json") for requirement in reviewed_requirements
+            requirement.model_dump(mode="json")
+            for requirement in reviewed_requirements
         ],
         "gaps": [gap.model_dump(mode="json") for gap in gaps],
     }
@@ -579,7 +599,9 @@ def _coverage_gaps(
             )
         )
     available_fields = {
-        field_role for profile in verified_profiles for field_role in profile.available_fields
+        field_role
+        for profile in verified_profiles
+        for field_role in profile.available_fields
     }
     missing_fields = tuple(
         sorted(
@@ -599,7 +621,9 @@ def _coverage_gaps(
             )
         )
     authoritative_fields = {
-        field_role for profile in verified_profiles for field_role in profile.authoritative_fields
+        field_role
+        for profile in verified_profiles
+        for field_role in profile.authoritative_fields
     }
     missing_authority = tuple(
         sorted(
@@ -614,7 +638,9 @@ def _coverage_gaps(
                 county=requirement.county,
                 source_keys=source_keys,
                 field_roles=missing_authority,
-                explanation=("Required fields lack proposition-specific authoritative support."),
+                explanation=(
+                    "Required fields lack proposition-specific authoritative support."
+                ),
                 next_action=(
                     "verify assessor, recorder, surveyor, planning, zoning, and tax sources "
                     "by proposition"
@@ -626,7 +652,9 @@ def _coverage_gaps(
     ):
         gaps.append(
             ParcelCountyCoverageGap(
-                code=(ParcelCountyCoverageGapCode.COUNTYWIDE_RECORD_COVERAGE_UNVERIFIED),
+                code=(
+                    ParcelCountyCoverageGapCode.COUNTYWIDE_RECORD_COVERAGE_UNVERIFIED
+                ),
                 county=requirement.county,
                 source_keys=source_keys,
                 explanation="No source has proven complete countywide record coverage.",

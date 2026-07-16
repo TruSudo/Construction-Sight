@@ -43,7 +43,10 @@ def test_regrid_capabilities_capture_parcel_geometry_and_resolution() -> None:
     assert "APN" in targets
     assert "geometry" in targets
     assert "parcel-first project graph" in strategies
-    assert any(capability.domain == CapabilityDomain.PARCEL_GEOMETRY for capability in capabilities)
+    assert any(
+        capability.domain == CapabilityDomain.PARCEL_GEOMETRY
+        for capability in capabilities
+    )
 
 
 def test_capability_matrix_rows_are_filterable() -> None:
@@ -61,8 +64,10 @@ def test_gap_report_separates_outperform_and_license_blocked_targets() -> None:
     assert report.outperform_targets
     assert report.blocked_by_license
     assert all(
-        gap.status == ImplementationStatus.OUTPERFORM_TARGET for gap in report.outperform_targets
+        gap.status == ImplementationStatus.OUTPERFORM_TARGET
+        for gap in report.outperform_targets
     )
     assert all(
-        gap.status == ImplementationStatus.BLOCKED_BY_LICENSE for gap in report.blocked_by_license
+        gap.status == ImplementationStatus.BLOCKED_BY_LICENSE
+        for gap in report.blocked_by_license
     )

@@ -35,7 +35,9 @@ def _write_row_preview_input(path: Path) -> None:
             _match("County", ParcelFieldRole.COUNTY),
             _match("Address", ParcelFieldRole.ADDRESS),
         ],
-        rows=[{"APN": "123-456-78", "County": "Riverside", "Address": "1 Main St"}],
+        rows=[
+            {"APN": "123-456-78", "County": "Riverside", "Address": "1 Main St"}
+        ],
         geometry_support=ParcelGeometrySupport.CENTROID,
         spatial_reference="EPSG:4326",
     )

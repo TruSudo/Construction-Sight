@@ -44,7 +44,9 @@ def store_parcel_record_observation(
     ).scalar_one_or_none()
     if existing is not None:
         if existing.payload_json != payload_json:
-            raise ValueError(f"parcel observation identity collision: {observation.observation_id}")
+            raise ValueError(
+                f"parcel observation identity collision: {observation.observation_id}"
+            )
         return existing
     record = observation.record
     row = ParcelRecordObservationRow(
@@ -55,7 +57,9 @@ def store_parcel_record_observation(
         normalized_apn=record.normalized_apn,
         county=record.county,
         source_effective_at=(
-            record.source_updated_at.isoformat() if record.source_updated_at is not None else None
+            record.source_updated_at.isoformat()
+            if record.source_updated_at is not None
+            else None
         ),
         observed_at=record.created_at.isoformat(),
         record_digest=observation.record_digest,
@@ -82,7 +86,8 @@ def store_parcel_current_selection_report(
     payload_json = _payload_json(report.to_dict())
     existing = session.execute(
         select(ParcelCurrentSelectionReportRow).where(
-            ParcelCurrentSelectionReportRow.selection_report_id == report.selection_report_id
+            ParcelCurrentSelectionReportRow.selection_report_id
+            == report.selection_report_id
         )
     ).scalar_one_or_none()
     if existing is not None:
@@ -90,11 +95,13 @@ def store_parcel_current_selection_report(
             _selection_semantic_payload(payload_json)
         ):
             raise ValueError(
-                f"parcel current-selection identity collision: {report.selection_report_id}"
+                "parcel current-selection identity collision: "
+                f"{report.selection_report_id}"
             )
         return existing
     ambiguous_source_count = sum(
-        item.status is ParcelSourceSelectionStatus.AMBIGUOUS for item in report.source_selections
+        item.status is ParcelSourceSelectionStatus.AMBIGUOUS
+        for item in report.source_selections
     )
     row = ParcelCurrentSelectionReportRow(
         selection_report_id=report.selection_report_id,
@@ -113,7 +120,8 @@ def store_parcel_current_selection_report(
         session.flush()
     except IntegrityError as exc:
         raise ValueError(
-            f"parcel current-selection report already exists: {report.selection_report_id}"
+            "parcel current-selection report already exists: "
+            f"{report.selection_report_id}"
         ) from exc
     return row
 
@@ -133,7 +141,9 @@ def load_parcel_record_observations(
     )
     if source_key is not None:
         statement = statement.where(ParcelRecordObservationRow.source_key == source_key)
-    rows = session.execute(statement.order_by(ParcelRecordObservationRow.id)).scalars()
+    rows = session.execute(
+        statement.order_by(ParcelRecordObservationRow.id)
+    ).scalars()
     return [_parcel_observation_from_row(row) for row in rows]
 
 
@@ -145,7 +155,8 @@ def load_parcel_current_selection_report(
 
     row = session.execute(
         select(ParcelCurrentSelectionReportRow).where(
-            ParcelCurrentSelectionReportRow.selection_report_id == selection_report_id
+            ParcelCurrentSelectionReportRow.selection_report_id
+            == selection_report_id
         )
     ).scalar_one_or_none()
     if row is None:
@@ -188,7 +199,8 @@ def load_parcel_current_selection_report(
     )
     if indexed != payload_values:
         raise ValueError(
-            f"parcel current-selection indexed fields disagree with payload: {selection_report_id}"
+            "parcel current-selection indexed fields disagree with payload: "
+            f"{selection_report_id}"
         )
     return report
 
@@ -207,10 +219,12 @@ def store_parcel_assurance_report(
         )
     ).scalar_one_or_none()
     conflict_count = sum(
-        assurance.status == ParcelAssuranceStatus.CONFLICT for assurance in report.field_assurances
+        assurance.status == ParcelAssuranceStatus.CONFLICT
+        for assurance in report.field_assurances
     )
     missing_count = sum(
-        assurance.status == ParcelAssuranceStatus.MISSING for assurance in report.field_assurances
+        assurance.status == ParcelAssuranceStatus.MISSING
+        for assurance in report.field_assurances
     )
     requires_human_review = any(
         assurance.requires_human_review for assurance in report.field_assurances
@@ -378,7 +392,9 @@ def _parcel_observation_from_row(
     try:
         observation = ParcelRecordObservation.model_validate(payload)
     except ValueError as exc:
-        raise ValueError(f"invalid parcel observation payload: {row.observation_id}") from exc
+        raise ValueError(
+            f"invalid parcel observation payload: {row.observation_id}"
+        ) from exc
     record = observation.record
     indexed = (
         row.observation_id,
@@ -399,14 +415,17 @@ def _parcel_observation_from_row(
         record.source_record_id,
         record.normalized_apn,
         record.county,
-        record.source_updated_at.isoformat() if record.source_updated_at is not None else None,
+        record.source_updated_at.isoformat()
+        if record.source_updated_at is not None
+        else None,
         record.created_at.isoformat(),
         observation.record_digest,
         observation.content_digest,
     )
     if indexed != payload_values:
         raise ValueError(
-            f"parcel observation indexed fields disagree with payload: {row.observation_id}"
+            "parcel observation indexed fields disagree with payload: "
+            f"{row.observation_id}"
         )
     return observation
 
@@ -420,7 +439,9 @@ def _decode_object(
     try:
         payload: Any = json.loads(payload_json)
     except json.JSONDecodeError as exc:
-        raise ValueError(f"malformed {record_label} payload JSON: {record_id}") from exc
+        raise ValueError(
+            f"malformed {record_label} payload JSON: {record_id}"
+        ) from exc
     if not isinstance(payload, dict):
         raise ValueError(f"{record_label} payload must be a JSON object: {record_id}")
     return {str(key): value for key, value in payload.items()}

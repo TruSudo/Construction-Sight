@@ -28,7 +28,9 @@ def test_live_csv_evidence_is_replayable_and_does_not_promote_source() -> None:
     assert REPORT_PATH.is_file()
 
     execution = CeqanetCsvLiveExecution.model_validate(_load_json(EXECUTION_PATH))
-    stored_verification = CeqanetCsvLiveVerification.model_validate(_load_json(VERIFICATION_PATH))
+    stored_verification = CeqanetCsvLiveVerification.model_validate(
+        _load_json(VERIFICATION_PATH)
+    )
     recomputed = verify_ceqanet_csv_live_execution(execution)
 
     assert execution.request.sch_number == "2026030377"
@@ -44,13 +46,16 @@ def test_live_csv_evidence_is_replayable_and_does_not_promote_source() -> None:
     execution.assert_integrity()
     assert stored_verification.passed is False
     assert stored_verification.findings == [
-        "live CSV offline inspection failed: CEQAnet CSV body must use UTF-8 or UTF-8 with BOM",
-        "live CSV inspection recorded error: CEQAnet CSV body must use UTF-8 or UTF-8 with BOM",
+        "live CSV offline inspection failed: "
+        "CEQAnet CSV body must use UTF-8 or UTF-8 with BOM",
+        "live CSV inspection recorded error: "
+        "CEQAnet CSV body must use UTF-8 or UTF-8 with BOM",
     ]
     assert recomputed.passed is False
     assert recomputed.findings == [
         "live CSV execution lacks the successful offline inspection",
-        "live CSV inspection recorded error: CEQAnet CSV body must use UTF-8 or UTF-8 with BOM",
+        "live CSV inspection recorded error: "
+        "CEQAnet CSV body must use UTF-8 or UTF-8 with BOM",
     ]
 
     if stored_verification.passed:

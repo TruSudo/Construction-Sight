@@ -142,9 +142,13 @@ def execute_authorized_arcgis_probe(
     """Authorize and execute one exact metadata/count/page/replay probe."""
 
     if profile.status is not ParcelSourceVerificationStatus.VERIFIED_PREVIEW:
-        raise AuthorizationDeniedError("ArcGIS probe requires a verified-preview source profile")
+        raise AuthorizationDeniedError(
+            "ArcGIS probe requires a verified-preview source profile"
+        )
     if not profile.public_access_verified:
-        raise AuthorizationDeniedError("ArcGIS probe requires independently verified public access")
+        raise AuthorizationDeniedError(
+            "ArcGIS probe requires independently verified public access"
+        )
     if sample_size < 1 or sample_size > _MAX_SAMPLE_SIZE:
         raise ValueError("sample_size must be between 1 and 100")
     if timeout_seconds <= 0 or timeout_seconds > _MAX_TIMEOUT_SECONDS:
@@ -179,7 +183,9 @@ def execute_authorized_arcgis_probe(
         exact_scope=exact_scope,
         current_state_identity=state_identity,
         expected_identity=state_identity,
-        granted_authority=("execute one exact metadata plus four-request read-only ArcGIS proof",),
+        granted_authority=(
+            "execute one exact metadata plus four-request read-only ArcGIS proof",
+        ),
         denied_authority=_canonical_tuple(
             "access-control bypass",
             "bulk acquisition",
@@ -280,7 +286,9 @@ def persist_authorized_arcgis_bundle(
         exact_scope=exact_scope,
         current_state_identity=state_identity,
         expected_identity=state_identity,
-        granted_authority=("persist one exact verified bundle chain or identical replay",),
+        granted_authority=(
+            "persist one exact verified bundle chain or identical replay",
+        ),
         denied_authority=_canonical_tuple(
             "bulk acquisition",
             "destructive overwrite",

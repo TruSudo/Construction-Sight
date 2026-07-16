@@ -73,7 +73,11 @@ class CeqanetBundleVerification:
     def passed(self) -> bool:
         """Return whether all manifest-listed artifacts verified."""
 
-        return self.missing_count == 0 and self.mismatch_count == 0 and not self.malformed_artifacts
+        return (
+            self.missing_count == 0
+            and self.mismatch_count == 0
+            and not self.malformed_artifacts
+        )
 
     def to_dict(self) -> dict[str, object]:
         """Return deterministic JSON-safe bundle verification payload."""
@@ -151,7 +155,9 @@ def _load_manifest(manifest_path: Path) -> dict[str, Any]:
     if not isinstance(metadata, dict):
         raise ValueError("Bundle manifest must contain metadata.")
     if metadata.get("schema_version") != "ceqanet_operator_bundle.v1":
-        raise ValueError("Bundle manifest schema_version must be ceqanet_operator_bundle.v1.")
+        raise ValueError(
+            "Bundle manifest schema_version must be ceqanet_operator_bundle.v1."
+        )
     return cast(dict[str, Any], payload)
 
 

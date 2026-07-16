@@ -11,13 +11,17 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from constructionsight.ceqanet_csv_models import CeqanetCsvExportKind, canonical_digest
 
 CSV_ACCESS_POLICY_SCHEMA_VERSION: Final = "ceqanet_csv_access_policy.v1"
-CSV_ACCESS_POLICY_VERIFICATION_SCHEMA_VERSION: Final = "ceqanet_csv_access_policy_verification.v1"
+CSV_ACCESS_POLICY_VERIFICATION_SCHEMA_VERSION: Final = (
+    "ceqanet_csv_access_policy_verification.v1"
+)
 
 
 class CeqanetCsvAccessPolicyStatus(StrEnum):
     """Authority state for one bounded official-CSV evidence policy."""
 
-    READY_FOR_EXPLICIT_EVIDENCE_COLLECTION = "ready_for_explicit_evidence_collection"
+    READY_FOR_EXPLICIT_EVIDENCE_COLLECTION = (
+        "ready_for_explicit_evidence_collection"
+    )
 
 
 class CeqanetCsvAccessPolicy(BaseModel):
@@ -25,7 +29,9 @@ class CeqanetCsvAccessPolicy(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    schema_version: Literal["ceqanet_csv_access_policy.v1"] = CSV_ACCESS_POLICY_SCHEMA_VERSION
+    schema_version: Literal["ceqanet_csv_access_policy.v1"] = (
+        CSV_ACCESS_POLICY_SCHEMA_VERSION
+    )
     source_name: str = Field(min_length=1)
     registry_status: Literal["partial"] = "partial"
     source_registry_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
@@ -58,7 +64,9 @@ class CeqanetCsvAccessPolicy(BaseModel):
     expires_on: date
     minimum_successful_observations: int = Field(ge=2)
     minimum_distinct_utc_dates: int = Field(ge=2)
-    required_evidence_export_kinds: list[CeqanetCsvExportKind] = Field(min_length=1)
+    required_evidence_export_kinds: list[CeqanetCsvExportKind] = Field(
+        min_length=1
+    )
     policy_status: CeqanetCsvAccessPolicyStatus = (
         CeqanetCsvAccessPolicyStatus.READY_FOR_EXPLICIT_EVIDENCE_COLLECTION
     )
@@ -110,10 +118,16 @@ class CeqanetCsvAccessPolicy(BaseModel):
             raise ValueError("policy effective_date must be on or before expires_on")
         if (self.expires_on - self.effective_date).days >= 31:
             raise ValueError("CSV access policy authority cannot exceed 31 inclusive days")
-        if set(self.required_evidence_export_kinds) != set(self.allowed_export_kinds):
-            raise ValueError("required evidence export kinds must equal allowed export kinds")
+        if set(self.required_evidence_export_kinds) != set(
+            self.allowed_export_kinds
+        ):
+            raise ValueError(
+                "required evidence export kinds must equal allowed export kinds"
+            )
         if self.minimum_distinct_utc_dates > self.minimum_successful_observations:
-            raise ValueError("distinct evidence dates cannot exceed successful observations")
+            raise ValueError(
+                "distinct evidence dates cannot exceed successful observations"
+            )
         if not self.production_blockers:
             raise ValueError("evidence policies must preserve production blockers")
         return self
@@ -143,9 +157,9 @@ class CeqanetCsvAccessPolicyVerification(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    schema_version: Literal["ceqanet_csv_access_policy_verification.v1"] = (
-        CSV_ACCESS_POLICY_VERIFICATION_SCHEMA_VERSION
-    )
+    schema_version: Literal[
+        "ceqanet_csv_access_policy_verification.v1"
+    ] = CSV_ACCESS_POLICY_VERIFICATION_SCHEMA_VERSION
     passed: bool
     finding_count: int = Field(ge=0)
     findings: list[str]

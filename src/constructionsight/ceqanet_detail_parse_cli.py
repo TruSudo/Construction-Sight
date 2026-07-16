@@ -88,7 +88,9 @@ def _extract_html_from_execution_json(
         raise typer.BadParameter("Execution JSON must contain a non-empty snapshots list.")
 
     if snapshot_index < 0 or snapshot_index >= len(snapshots):
-        raise typer.BadParameter(f"snapshot-index must be between 0 and {len(snapshots) - 1}.")
+        raise typer.BadParameter(
+            f"snapshot-index must be between 0 and {len(snapshots) - 1}."
+        )
 
     snapshot = snapshots[snapshot_index]
     if not isinstance(snapshot, dict):
@@ -132,15 +134,11 @@ def _extract_html(
     if resolved_format == "execution-json":
         return _extract_html_from_execution_json(input_path, snapshot_index=snapshot_index)
 
-    return (
-        input_path.read_text(encoding="utf-8"),
-        None,
-        {
-            "input_format": "html",
-            "snapshot_index": None,
-            "snapshot": None,
-        },
-    )
+    return input_path.read_text(encoding="utf-8"), None, {
+        "input_format": "html",
+        "snapshot_index": None,
+        "snapshot": None,
+    }
 
 
 def _write_json_file(output_path: Path, payload: dict[str, object]) -> None:

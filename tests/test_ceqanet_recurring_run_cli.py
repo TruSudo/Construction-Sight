@@ -71,7 +71,9 @@ def _checklist() -> SourceVerificationChecklistReport:
                 registry_status="verified",
                 adapter_status="contract_ready",
                 readiness_status="reachable",
-                checklist_status=(SourceVerificationChecklistStatus.DETAIL_BEHAVIOR_OBSERVED),
+                checklist_status=(
+                    SourceVerificationChecklistStatus.DETAIL_BEHAVIOR_OBSERVED
+                ),
                 public_entry_page=observed,
                 query_behavior=observed,
                 result_list=observed,
@@ -168,7 +170,9 @@ def test_cli_builds_ready_definition_and_exact_window_manifest(tmp_path: Path) -
 
 
 def test_cli_execute_refuses_without_explicit_live_authorization(tmp_path: Path) -> None:
-    registry_path, checklist_path, definition_path, manifest_path = _build_cli_artifacts(tmp_path)
+    registry_path, checklist_path, definition_path, manifest_path = _build_cli_artifacts(
+        tmp_path
+    )
     execution_path = tmp_path / "execution.json"
 
     result = runner.invoke(

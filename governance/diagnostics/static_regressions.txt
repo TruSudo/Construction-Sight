@@ -1,0 +1,27 @@
+......................F...........................                       [100%]
+=================================== FAILURES ===================================
+__________ test_canonical_dependency_audit_rejects_mutable_action_tag __________
+
+tmp_path = PosixPath('/tmp/pytest-of-runner/pytest-0/test_canonical_dependency_audi1')
+
+    def test_canonical_dependency_audit_rejects_mutable_action_tag(tmp_path: Path) -> None:
+        _project(tmp_path)
+        _write(tmp_path, "requirements/test.lock", _lock())
+        _write(
+            tmp_path,
+            ".github/workflows/ci.yml",
+            _REQUIRED_CI + "  - uses: actions/setup-python@v6\n",
+        )
+        findings: list[GovernanceFinding] = []
+    
+        audit_dependencies(tmp_path, _contract(), findings)
+    
+>       assert "DEP-ACTION-001" in _codes(findings)
+E       AssertionError: assert 'DEP-ACTION-001' in set()
+E        +  where set() = _codes([])
+
+tests/test_dependency_certification.py:200: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_dependency_certification.py::test_canonical_dependency_audit_rejects_mutable_action_tag - AssertionError: assert 'DEP-ACTION-001' in set()
+ +  where set() = _codes([])
+1 failed, 49 passed in 0.60s

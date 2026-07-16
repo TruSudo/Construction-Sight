@@ -67,7 +67,8 @@ def compare_and_swap_result_authority_head(
     ).scalar_one_or_none()
     if updated_id is None:
         raise ValueError(
-            f"result authority changed after operator review for workflow: {head.workflow_id}"
+            "result authority changed after operator review for workflow: "
+            f"{head.workflow_id}"
         )
     return session.execute(
         select(ResultAuthorityHeadRow).where(ResultAuthorityHeadRow.id == updated_id)
@@ -82,11 +83,17 @@ def store_result_authority_event(
 
     payload_json = _payload_json(event.to_dict())
     existing = session.execute(
-        select(ResultAuthorityEventRow).where(ResultAuthorityEventRow.event_id == event.event_id)
+        select(ResultAuthorityEventRow).where(
+            ResultAuthorityEventRow.event_id == event.event_id
+        )
     ).scalar_one_or_none()
     if existing is not None:
-        if _semantic_event_payload(existing.payload_json) != _semantic_event_payload(payload_json):
-            raise ValueError(f"result authority event identity collision: {event.event_id}")
+        if _semantic_event_payload(existing.payload_json) != _semantic_event_payload(
+            payload_json
+        ):
+            raise ValueError(
+                f"result authority event identity collision: {event.event_id}"
+            )
         return existing
     row = ResultAuthorityEventRow(
         event_id=event.event_id,

@@ -12,10 +12,10 @@ runner = CliRunner()
 def _write_export_dir(export_dir: Path) -> None:
     export_dir.mkdir(parents=True, exist_ok=True)
     files = {
-        "operator-package.json": '{"package": true}\n',
-        "persistence-preview.json": '{"preview": true}\n',
-        "write-plan.json": '{"plan": true}\n',
-        "operator-report.json": '{"report": true}\n',
+        "operator-package.json": "{\"package\": true}\n",
+        "persistence-preview.json": "{\"preview\": true}\n",
+        "write-plan.json": "{\"plan\": true}\n",
+        "operator-report.json": "{\"report\": true}\n",
         "operator-report.md": "# CEQAnet Operator Report\n",
     }
     artifacts = []

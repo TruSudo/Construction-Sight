@@ -141,20 +141,17 @@ def execute_bounded_http(
     active_client = client or httpx.Client(follow_redirects=False)
     context = active_client if owned_client else nullcontext(active_client)
     try:
-        with (
-            context as session,
-            session.stream(
-                canonical_method,
-                url,
-                follow_redirects=False,
-                timeout=timeout,
-                headers={
-                    "Accept": ", ".join(policy.accepted_media_types),
-                    "Accept-Encoding": "identity",
-                    "User-Agent": policy.user_agent,
-                },
-            ) as response,
-        ):
+        with context as session, session.stream(
+            canonical_method,
+            url,
+            follow_redirects=False,
+            timeout=timeout,
+            headers={
+                "Accept": ", ".join(policy.accepted_media_types),
+                "Accept-Encoding": "identity",
+                "User-Agent": policy.user_agent,
+            },
+        ) as response:
             final_url = str(response.url)
             raw_content_type = response.headers.get("content-type")
             content_type = _media_type(raw_content_type)

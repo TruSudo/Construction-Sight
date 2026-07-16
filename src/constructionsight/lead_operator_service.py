@@ -37,7 +37,9 @@ _FILTER_SUPPORT: dict[LeadOperatorRecordKind, frozenset[str]] = {
     LeadOperatorRecordKind.REVIEW: frozenset({"status", "base_candidate_id"}),
     LeadOperatorRecordKind.FINGERPRINT: frozenset({"base_candidate_id"}),
     LeadOperatorRecordKind.DUPLICATE: frozenset({"status", "base_candidate_id"}),
-    LeadOperatorRecordKind.WORKFLOW: frozenset({"status", "base_candidate_id", "workflow_id"}),
+    LeadOperatorRecordKind.WORKFLOW: frozenset(
+        {"status", "base_candidate_id", "workflow_id"}
+    ),
     LeadOperatorRecordKind.EVENT: frozenset({"status", "workflow_id"}),
     LeadOperatorRecordKind.LEDGER: frozenset({"status", "workflow_id"}),
     LeadOperatorRecordKind.SHARE: frozenset({"workflow_id"}),
@@ -68,17 +70,22 @@ def list_lead_operator_records(
         enrichment_statement = select(OpportunityEnrichmentReportRecord)
         if base_candidate_id is not None:
             enrichment_statement = enrichment_statement.where(
-                OpportunityEnrichmentReportRecord.base_candidate_id == base_candidate_id
+                OpportunityEnrichmentReportRecord.base_candidate_id
+                == base_candidate_id
             )
         enrichment_rows = session.execute(
-            enrichment_statement.order_by(OpportunityEnrichmentReportRecord.id.desc()).limit(limit)
+            enrichment_statement.order_by(
+                OpportunityEnrichmentReportRecord.id.desc()
+            ).limit(limit)
         ).scalars()
         return [_enrichment_record(enrichment_row) for enrichment_row in enrichment_rows]
 
     if record_kind == LeadOperatorRecordKind.REVIEW:
         review_statement = select(LeadReviewPackageRecord)
         if status is not None:
-            review_statement = review_statement.where(LeadReviewPackageRecord.status == status)
+            review_statement = review_statement.where(
+                LeadReviewPackageRecord.status == status
+            )
         if base_candidate_id is not None:
             review_statement = review_statement.where(
                 LeadReviewPackageRecord.base_candidate_id == base_candidate_id
@@ -95,9 +102,14 @@ def list_lead_operator_records(
                 LeadFingerprintRecord.base_candidate_id == base_candidate_id
             )
         fingerprint_rows = session.execute(
-            fingerprint_statement.order_by(LeadFingerprintRecord.id.desc()).limit(limit)
+            fingerprint_statement.order_by(LeadFingerprintRecord.id.desc()).limit(
+                limit
+            )
         ).scalars()
-        return [_fingerprint_record(fingerprint_row) for fingerprint_row in fingerprint_rows]
+        return [
+            _fingerprint_record(fingerprint_row)
+            for fingerprint_row in fingerprint_rows
+        ]
 
     if record_kind == LeadOperatorRecordKind.DUPLICATE:
         duplicate_statement = select(LeadDuplicateResultRecord)
@@ -110,14 +122,18 @@ def list_lead_operator_records(
                 LeadDuplicateResultRecord.base_candidate_id == base_candidate_id
             )
         duplicate_rows = session.execute(
-            duplicate_statement.order_by(LeadDuplicateResultRecord.id.desc()).limit(limit)
+            duplicate_statement.order_by(LeadDuplicateResultRecord.id.desc()).limit(
+                limit
+            )
         ).scalars()
         return [_duplicate_record(duplicate_row) for duplicate_row in duplicate_rows]
 
     if record_kind == LeadOperatorRecordKind.WORKFLOW:
         workflow_statement = select(LeadWorkflowRecordRow)
         if status is not None:
-            workflow_statement = workflow_statement.where(LeadWorkflowRecordRow.status == status)
+            workflow_statement = workflow_statement.where(
+                LeadWorkflowRecordRow.status == status
+            )
         if base_candidate_id is not None:
             workflow_statement = workflow_statement.where(
                 LeadWorkflowRecordRow.base_candidate_id == base_candidate_id
@@ -149,7 +165,9 @@ def list_lead_operator_records(
     if record_kind == LeadOperatorRecordKind.LEDGER:
         ledger_statement = select(ResultLedgerRecordRow)
         if status is not None:
-            ledger_statement = ledger_statement.where(ResultLedgerRecordRow.status == status)
+            ledger_statement = ledger_statement.where(
+                ResultLedgerRecordRow.status == status
+            )
         if workflow_id is not None:
             ledger_statement = ledger_statement.where(
                 ResultLedgerRecordRow.workflow_id == workflow_id
@@ -161,7 +179,9 @@ def list_lead_operator_records(
 
     share_statement = select(ResultShareRecordRow)
     if workflow_id is not None:
-        share_statement = share_statement.where(ResultShareRecordRow.workflow_id == workflow_id)
+        share_statement = share_statement.where(
+            ResultShareRecordRow.workflow_id == workflow_id
+        )
     share_rows = session.execute(
         share_statement.order_by(ResultShareRecordRow.id.desc()).limit(limit)
     ).scalars()
@@ -181,17 +201,29 @@ def get_lead_operator_record(
                 OpportunityEnrichmentReportRecord.report_id == record_id
             )
         ).scalar_one_or_none()
-        return None if enrichment_row is None else _enrichment_record(enrichment_row)
+        return (
+            None
+            if enrichment_row is None
+            else _enrichment_record(enrichment_row)
+        )
     if record_kind == LeadOperatorRecordKind.REVIEW:
         review_row = session.execute(
-            select(LeadReviewPackageRecord).where(LeadReviewPackageRecord.package_id == record_id)
+            select(LeadReviewPackageRecord).where(
+                LeadReviewPackageRecord.package_id == record_id
+            )
         ).scalar_one_or_none()
         return None if review_row is None else _review_record(review_row)
     if record_kind == LeadOperatorRecordKind.FINGERPRINT:
         fingerprint_row = session.execute(
-            select(LeadFingerprintRecord).where(LeadFingerprintRecord.fingerprint_key == record_id)
+            select(LeadFingerprintRecord).where(
+                LeadFingerprintRecord.fingerprint_key == record_id
+            )
         ).scalar_one_or_none()
-        return None if fingerprint_row is None else _fingerprint_record(fingerprint_row)
+        return (
+            None
+            if fingerprint_row is None
+            else _fingerprint_record(fingerprint_row)
+        )
     if record_kind == LeadOperatorRecordKind.DUPLICATE:
         duplicate_row = session.execute(
             select(LeadDuplicateResultRecord).where(
@@ -204,16 +236,22 @@ def get_lead_operator_record(
         return None if workflow_row is None else _workflow_record(workflow_row)
     if record_kind == LeadOperatorRecordKind.EVENT:
         event_row = session.execute(
-            select(LeadWorkflowEventRecord).where(LeadWorkflowEventRecord.event_id == record_id)
+            select(LeadWorkflowEventRecord).where(
+                LeadWorkflowEventRecord.event_id == record_id
+            )
         ).scalar_one_or_none()
         return None if event_row is None else _event_record(event_row)
     if record_kind == LeadOperatorRecordKind.LEDGER:
         ledger_row = session.execute(
-            select(ResultLedgerRecordRow).where(ResultLedgerRecordRow.ledger_id == record_id)
+            select(ResultLedgerRecordRow).where(
+                ResultLedgerRecordRow.ledger_id == record_id
+            )
         ).scalar_one_or_none()
         return None if ledger_row is None else _ledger_record(ledger_row)
     share_row = session.execute(
-        select(ResultShareRecordRow).where(ResultShareRecordRow.share_record_id == record_id)
+        select(ResultShareRecordRow).where(
+            ResultShareRecordRow.share_record_id == record_id
+        )
     ).scalar_one_or_none()
     return None if share_row is None else _share_record(share_row)
 
@@ -257,11 +295,14 @@ def load_persisted_lead_workflow(
     if drifted_fields:
         fields = ", ".join(sorted(drifted_fields))
         raise LeadOperatorError(
-            f"lead workflow indexed fields disagree with payload for {workflow_id}: {fields}"
+            "lead workflow indexed fields disagree with payload for "
+            f"{workflow_id}: {fields}"
         )
     event_ids = [event.event_id for event in record.events]
     if len(event_ids) != len(set(event_ids)):
-        raise LeadOperatorError(f"lead workflow contains duplicate event ids: {workflow_id}")
+        raise LeadOperatorError(
+            f"lead workflow contains duplicate event ids: {workflow_id}"
+        )
     return record
 
 
@@ -324,7 +365,9 @@ def _validate_filters(
     ]
     if unsupported:
         names = ", ".join(sorted(unsupported))
-        raise LeadOperatorError(f"unsupported filter(s) for {record_kind.value} records: {names}")
+        raise LeadOperatorError(
+            f"unsupported filter(s) for {record_kind.value} records: {names}"
+        )
 
 
 def _workflow_row(
@@ -332,7 +375,9 @@ def _workflow_row(
     workflow_id: str,
 ) -> LeadWorkflowRecordRow | None:
     return session.execute(
-        select(LeadWorkflowRecordRow).where(LeadWorkflowRecordRow.workflow_id == workflow_id)
+        select(LeadWorkflowRecordRow).where(
+            LeadWorkflowRecordRow.workflow_id == workflow_id
+        )
     ).scalar_one_or_none()
 
 
@@ -349,7 +394,8 @@ def _decode_payload(
         ) from exc
     if not isinstance(data, dict):
         raise LeadOperatorError(
-            f"{record_kind.value} payload must be a JSON object for record: {record_id}"
+            f"{record_kind.value} payload must be a JSON object for record: "
+            f"{record_id}"
         )
     return {str(key): value for key, value in data.items()}
 

@@ -175,7 +175,9 @@ def _audit_capabilities(
                     f"deprecated {capability_id} requires replacement/removal doctrine",
                 )
             )
-        if entry.get("network_authority") is True and not entry.get("network_policy_ids"):
+        if entry.get("network_authority") is True and not entry.get(
+            "network_policy_ids"
+        ):
             findings.append(
                 _finding(
                     "CAP-POLICY-001",
@@ -183,7 +185,9 @@ def _audit_capabilities(
                     f"network capability {capability_id} lacks network policy IDs",
                 )
             )
-        if entry.get("mutation_authority") is True and not entry.get("authorization_operation_ids"):
+        if entry.get("mutation_authority") is True and not entry.get(
+            "authorization_operation_ids"
+        ):
             findings.append(
                 _finding(
                     "CAP-POLICY-002",
@@ -211,7 +215,8 @@ def _audit_capabilities(
     module_paths = tuple(
         candidate
         for candidate in tracked
-        if candidate.as_posix().startswith("src/constructionsight/") and candidate.suffix == ".py"
+        if candidate.as_posix().startswith("src/constructionsight/")
+        and candidate.suffix == ".py"
     )
     matched_counts: defaultdict[str, int] = defaultdict(int)
     for module_path in module_paths:
@@ -257,7 +262,9 @@ def _audit_capabilities(
             )
     for entry in entries:
         capability_id = str(entry.get("id"))
-        if entry.get("status") in {"implemented", "guarded"} and not matched_counts[capability_id]:
+        if entry.get("status") in {"implemented", "guarded"} and not matched_counts[
+            capability_id
+        ]:
             findings.append(
                 _finding(
                     "CAP-OWNER-003",
@@ -295,7 +302,9 @@ def _audit_dependencies(
     direct_raw.extend(str(value) for value in project.get("dependencies", []))
     for values in project.get("optional-dependencies", {}).values():
         direct_raw.extend(str(value) for value in values)
-    direct_raw.extend(str(value) for value in pyproject.get("build-system", {}).get("requires", []))
+    direct_raw.extend(
+        str(value) for value in pyproject.get("build-system", {}).get("requires", [])
+    )
     parsed = [_canonical_distribution(value) for value in direct_raw]
     for raw, (_, _, version) in zip(direct_raw, parsed, strict=True):
         if version is None:
@@ -391,7 +400,9 @@ def _audit_dependencies(
                 )
                 continue
             lock_names: set[str] = set()
-            for number, line in enumerate(lock.read_text(encoding="utf-8").splitlines(), start=1):
+            for number, line in enumerate(
+                lock.read_text(encoding="utf-8").splitlines(), start=1
+            ):
                 stripped = line.strip()
                 if not stripped or stripped.startswith("#"):
                     continue
@@ -423,7 +434,9 @@ def _audit_dependencies(
     )
     for workflow in workflow_paths:
         relative = workflow.relative_to(root)
-        for number, line in enumerate(workflow.read_text(encoding="utf-8").splitlines(), start=1):
+        for number, line in enumerate(
+            workflow.read_text(encoding="utf-8").splitlines(), start=1
+        ):
             match = action_pattern.match(line)
             if not match:
                 continue

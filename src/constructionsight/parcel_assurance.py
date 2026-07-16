@@ -73,7 +73,9 @@ def build_parcel_assurance_report(
     review_status = ParcelAssuranceReviewStatus.EVALUATED
     if any(assurance.requires_human_review for assurance in assurances):
         review_status = ParcelAssuranceReviewStatus.REVIEW_REQUIRED
-    elif any(assurance.status == ParcelAssuranceStatus.MISSING for assurance in assurances):
+    elif any(
+        assurance.status == ParcelAssuranceStatus.MISSING for assurance in assurances
+    ):
         review_status = ParcelAssuranceReviewStatus.INCOMPLETE
 
     first_record = current_records[0]
@@ -82,7 +84,11 @@ def build_parcel_assurance_report(
             "Assurance applies only to the supplied current parcel records.",
             "Agreement does not establish countywide source coverage or legal title.",
             "Source currency is preserved but not evaluated by this report.",
-            *(limitation for context in contexts.values() for limitation in context.limitations),
+            *(
+                limitation
+                for context in contexts.values()
+                for limitation in context.limitations
+            ),
         ]
     )
     return ParcelAssuranceReport(
@@ -154,7 +160,9 @@ def _validate_current_records(
         if record_subject != subject:
             raise ValueError("parcel assurance records must identify the same parcel")
         if record.source_key not in contexts:
-            raise ValueError(f"missing parcel assurance source context: {record.source_key}")
+            raise ValueError(
+                f"missing parcel assurance source context: {record.source_key}"
+            )
 
 
 def _claims_from_record(
@@ -210,10 +218,14 @@ def _claims_from_record(
 
 def _record_values(
     record: ParcelCoreRecord,
-) -> list[tuple[ParcelFieldRole, str, str, ParcelClaimMethod, list[str]]]:
+) -> list[
+    tuple[ParcelFieldRole, str, str, ParcelClaimMethod, list[str]]
+]:
     direct = ParcelClaimMethod.DIRECT_OBSERVATION
     derived = ParcelClaimMethod.DETERMINISTIC_DERIVATION
-    values: list[tuple[ParcelFieldRole, str, str, ParcelClaimMethod, list[str]]] = [
+    values: list[
+        tuple[ParcelFieldRole, str, str, ParcelClaimMethod, list[str]]
+    ] = [
         (ParcelFieldRole.APN, record.apn, record.normalized_apn, direct, []),
         (
             ParcelFieldRole.COUNTY,
@@ -255,7 +267,9 @@ def _record_values(
         geometry_limitations = list(geometry.limitations)
         geometry_value = geometry.geometry_hash
         if geometry_value is None and geometry.raw_geometry is not None:
-            geometry_value = hashlib.sha256(geometry.raw_geometry.encode("utf-8")).hexdigest()
+            geometry_value = hashlib.sha256(
+                geometry.raw_geometry.encode("utf-8")
+            ).hexdigest()
         if geometry_value is not None:
             values.append(
                 (
@@ -310,7 +324,8 @@ def _evaluate_field(
     claim_ids = sorted(claim.claim_id for claim in field_claims)
     lineage_count = len({claim.lineage_key for claim in field_claims})
     authoritative_count = sum(
-        claim.authority == ParcelEvidenceAuthority.AUTHORITATIVE for claim in field_claims
+        claim.authority == ParcelEvidenceAuthority.AUTHORITATIVE
+        for claim in field_claims
     )
     limitations = _unique_sorted(
         limitation for claim in field_claims for limitation in claim.limitations
@@ -324,7 +339,9 @@ def _evaluate_field(
             independent_lineage_count=lineage_count,
             authoritative_claim_count=authoritative_count,
             requires_human_review=True,
-            reasons=["Supplied current records disagree on the normalized field value."],
+            reasons=[
+                "Supplied current records disagree on the normalized field value."
+            ],
             limitations=limitations,
         )
 
@@ -400,7 +417,9 @@ def _claim_id(
         "source_key": record.source_key,
         "source_record_id": record.source_record_id,
         "source_effective_at": (
-            record.source_updated_at.isoformat() if record.source_updated_at is not None else None
+            record.source_updated_at.isoformat()
+            if record.source_updated_at is not None
+            else None
         ),
     }
     return f"parcel-claim:{_digest(payload)}"

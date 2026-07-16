@@ -20,6 +20,7 @@ from constructionsight.dependency_certification import (
     audit_dependency_agreement,
 )
 from constructionsight.governance_certification_core import (
+    SCHEMA_VERSION,
     _ACTIVE_DEFECT_SCHEMA,
     _ARCHITECTURE_SCHEMA,
     _AUTHORIZATION_SCHEMA,
@@ -28,7 +29,6 @@ from constructionsight.governance_certification_core import (
     _NETWORK_SCHEMA,
     _RESOLVED_DEFECT_SCHEMA,
     _TEST_SCHEMA,
-    SCHEMA_VERSION,
     GovernanceFinding,
     GovernanceMetrics,
     GovernanceReport,

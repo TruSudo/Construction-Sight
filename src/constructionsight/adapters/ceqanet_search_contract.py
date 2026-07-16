@@ -122,7 +122,9 @@ def build_ceqanet_advanced_search_params(
         (form_contract.document_type_field, document_type)
         for document_type in selected_document_types
     )
-    params.extend((form_contract.lead_agency_field, lead_agency) for lead_agency in lead_agencies)
+    params.extend(
+        (form_contract.lead_agency_field, lead_agency) for lead_agency in lead_agencies
+    )
     params.extend((form_contract.county_field, county) for county in counties)
     if state_review_period_end:
         review_end = state_review_period_end.isoformat()

@@ -46,8 +46,12 @@ def test_conflicting_ceqa_sch_example_is_valid_preview_input() -> None:
     assert payload["candidate_id"] == "fixture-conflicting-ceqa-sch"
     assert payload["recommended_decision"] == "reject_match"
     assert payload["has_near_unique_conflict"] is True
-    assert {match["artifact_type"] for match in payload["supporting_matches"]} == {"project_title"}
-    assert {conflict["artifact_type"] for conflict in payload["conflicts"]} == {"ceqa_sch_number"}
+    assert {match["artifact_type"] for match in payload["supporting_matches"]} == {
+        "project_title"
+    }
+    assert {conflict["artifact_type"] for conflict in payload["conflicts"]} == {
+        "ceqa_sch_number"
+    }
 
 
 def test_artifact_resolution_examples_are_valid_json_objects() -> None:

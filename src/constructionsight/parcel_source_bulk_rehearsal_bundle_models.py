@@ -87,7 +87,9 @@ class ParcelArcGISBulkRehearsalProofBundle(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, arbitrary_types_allowed=True)
 
     schema_version: str = _BUNDLE_SCHEMA_VERSION
-    bundle_id: str = Field(pattern=r"^parcel-arcgis-bulk-rehearsal-proof-bundle:[0-9a-f]{64}$")
+    bundle_id: str = Field(
+        pattern=r"^parcel-arcgis-bulk-rehearsal-proof-bundle:[0-9a-f]{64}$"
+    )
     source_key: str = Field(min_length=1)
     county: str = Field(min_length=1)
     snapshot: ParcelArcGISCapabilitySnapshot
@@ -160,7 +162,10 @@ class ParcelArcGISBulkRehearsalProofBundle(BaseModel):
             raise ValueError("ArcGIS rehearsal proof first artifact must be starting count")
         if last.kind != ParcelArcGISBulkArtifactKind.ENDING_COUNT:
             raise ValueError("ArcGIS rehearsal proof last artifact must be ending count")
-        if any(artifact.kind != ParcelArcGISBulkArtifactKind.PAGE for artifact in page_artifacts):
+        if any(
+            artifact.kind != ParcelArcGISBulkArtifactKind.PAGE
+            for artifact in page_artifacts
+        ):
             raise ValueError("ArcGIS rehearsal proof middle artifacts must be pages")
         if tuple(artifact.response_digest for artifact in page_artifacts) != (
             self.manifest.page_response_digests
@@ -192,7 +197,9 @@ class ParcelArcGISBulkRehearsalProofBundle(BaseModel):
             raise ValueError("ArcGIS rehearsal proof count artifacts do not match manifest")
         page_evidence = self.manifest.rehearsal_evidence.page_evidence
         for artifact, evidence in zip(page_artifacts, page_evidence, strict=True):
-            page_response = ParcelArcGISBulkPageResponse(response_body=artifact.response_body())
+            page_response = ParcelArcGISBulkPageResponse(
+                response_body=artifact.response_body()
+            )
             object_ids = parse_arcgis_object_id_page(
                 page_response.payload(),
                 object_id_field=self.snapshot.object_id_field,
@@ -238,7 +245,9 @@ class ParcelArcGISBulkRehearsalProofVerification(BaseModel):
     verification_id: str = Field(
         pattern=r"^parcel-arcgis-bulk-rehearsal-proof-verification:[0-9a-f]{64}$"
     )
-    bundle_id: str = Field(pattern=r"^parcel-arcgis-bulk-rehearsal-proof-bundle:[0-9a-f]{64}$")
+    bundle_id: str = Field(
+        pattern=r"^parcel-arcgis-bulk-rehearsal-proof-bundle:[0-9a-f]{64}$"
+    )
     source_key: str = Field(min_length=1)
     county: str = Field(min_length=1)
     manifest_id: str = Field(pattern=r"^parcel-arcgis-bulk-manifest:[0-9a-f]{64}$")

@@ -31,7 +31,9 @@ def _evidence() -> tuple[
         snapshot,
         page_size=2,
         page_object_ids=((1, 3), (5, 7), (9, 11)),
-        page_response_digests=tuple(digest_json_payload({"page": value}) for value in range(3)),
+        page_response_digests=tuple(
+            digest_json_payload({"page": value}) for value in range(3)
+        ),
         page_attempt_counts=(1, 2, 1),
         page_observed_at=(
             _OBSERVED_AT,
@@ -83,7 +85,9 @@ def test_manifest_rejects_summary_claims_that_disagree_with_evidence() -> None:
     )
     payload = manifest.to_dict()
     payload["retrieved_count"] = 7
-    identity_payload = {key: value for key, value in payload.items() if key != "manifest_id"}
+    identity_payload = {
+        key: value for key, value in payload.items() if key != "manifest_id"
+    }
     payload["manifest_id"] = digest_identity(
         "parcel-arcgis-bulk-manifest",
         identity_payload,
@@ -135,7 +139,9 @@ def test_rehearsal_evidence_requires_retry_coverage_for_each_retried_page() -> N
     page_payload = payload["page_evidence"][2]
     page_payload["attempt_count"] = 2
     identity_payload = {
-        key: value for key, value in page_payload.items() if key != "page_evidence_id"
+        key: value
+        for key, value in page_payload.items()
+        if key != "page_evidence_id"
     }
     page_payload["page_evidence_id"] = digest_identity(
         "parcel-arcgis-bulk-page-evidence",

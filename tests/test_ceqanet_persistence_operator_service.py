@@ -94,7 +94,9 @@ def test_persistence_facade_binds_plan_destination_and_atomicity() -> None:
     assert "partial commit" in authorization["denied_authority"]
     assert "network execution" in authorization["denied_authority"]
     assert result.execution.applied_count == 1
-    assert executor.calls == [("sites:site:ceqanet:2017101033", "sqlite+pysqlite:///:memory:")]
+    assert executor.calls == [
+        ("sites:site:ceqanet:2017101033", "sqlite+pysqlite:///:memory:")
+    ]
 
 
 def test_boolean_confirmation_cannot_authorize_persistence() -> None:

@@ -17,7 +17,9 @@ from constructionsight.source_verification_checklist_models import (
 
 ROOT = Path(__file__).resolve().parents[1]
 REGISTRY_PATH = ROOT / "data/source_registry.seed.json"
-EVIDENCE_PATH = ROOT / "evidence/source_verification/ceqanet_public_access_2026-07-12.json"
+EVIDENCE_PATH = (
+    ROOT / "evidence/source_verification/ceqanet_public_access_2026-07-12.json"
+)
 CHECKLIST_PATH = ROOT / "evidence/source_verification/ceqanet_checklist_2026-07-12.json"
 
 
@@ -28,16 +30,31 @@ def _load_sources() -> list[PublicSource]:
 
 def test_canonical_registry_preserves_ceqanet_partial_maturity() -> None:
     sources = _load_sources()
-    ceqanet_sources = [source for source in sources if source.platform_family.value == "ceqanet"]
+    ceqanet_sources = [
+        source for source in sources if source.platform_family.value == "ceqanet"
+    ]
 
     assert len(ceqanet_sources) == 1
     assert ceqanet_sources[0].verification_status is VerificationStatus.PARTIAL
     assert ceqanet_sources[0].last_checked_date is not None
-    assert sum(source.verification_status is VerificationStatus.PARTIAL for source in sources) == 1
     assert (
-        sum(source.verification_status is VerificationStatus.UNVERIFIED for source in sources) == 3
+        sum(
+            source.verification_status is VerificationStatus.PARTIAL
+            for source in sources
+        )
+        == 1
     )
-    assert all(source.verification_status is not VerificationStatus.VERIFIED for source in sources)
+    assert (
+        sum(
+            source.verification_status is VerificationStatus.UNVERIFIED
+            for source in sources
+        )
+        == 3
+    )
+    assert all(
+        source.verification_status is not VerificationStatus.VERIFIED
+        for source in sources
+    )
 
 
 def test_ceqanet_evidence_and_checklist_match_partial_boundary() -> None:

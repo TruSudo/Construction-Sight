@@ -50,9 +50,13 @@ def _contracts() -> dict[str, dict[str, Any]]:
                 }
             ]
         },
-        "governance/authorization_contract.toml": {"operations": [{"id": "CS-AUTH-001"}]},
+        "governance/authorization_contract.toml": {
+            "operations": [{"id": "CS-AUTH-001"}]
+        },
         "governance/dependency_contract.toml": {
-            "dependencies": [{"name": "example", "capabilities": ["CS-CAP-001"]}]
+            "dependencies": [
+                {"name": "example", "capabilities": ["CS-CAP-001"]}
+            ]
         },
         "governance/adversarial_test_contract.toml": {
             "matrices": [

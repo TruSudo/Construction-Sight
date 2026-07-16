@@ -32,7 +32,9 @@ _OBSERVED_AT = datetime(2026, 7, 14, 16, 0, tzinfo=UTC)
 
 def test_official_capabilities_bind_exact_live_field_projections() -> None:
     snapshots = get_official_arcgis_capability_snapshots()
-    profiles = {profile.source_key: profile for profile in get_verified_parcel_source_profiles()}
+    profiles = {
+        profile.source_key: profile for profile in get_verified_parcel_source_profiles()
+    }
 
     assert len(snapshots) == 2
     assert all(snapshot.advertised_ready_for_probe for snapshot in snapshots)
@@ -167,7 +169,9 @@ def test_probe_plan_is_bounded_ordered_and_never_authorizes_bulk() -> None:
 
 
 def test_default_assessment_preserves_unexecuted_probe_boundary() -> None:
-    assessments = get_official_arcgis_acquisition_assessments(generated_at=_OBSERVED_AT)
+    assessments = get_official_arcgis_acquisition_assessments(
+        generated_at=_OBSERVED_AT
+    )
 
     assert len(assessments) == 2
     assert all(
@@ -289,12 +293,14 @@ def _bulk_rehearsal_evidence(snapshot):
         snapshot,
         page_size=2,
         page_object_ids=((1, 3), (5, 7), (9, 11)),
-        page_response_digests=tuple(digest_json_payload({"page": value}) for value in range(3)),
+        page_response_digests=tuple(
+  digest_json_payload({"page": value}) for value in range(3)
+        ),
         page_attempt_counts=(1, 2, 1),
         page_observed_at=(
-            _OBSERVED_AT,
-            _OBSERVED_AT + timedelta(seconds=30),
-            _OBSERVED_AT + timedelta(minutes=2),
+  _OBSERVED_AT,
+  _OBSERVED_AT + timedelta(seconds=30),
+  _OBSERVED_AT + timedelta(minutes=2),
         ),
         checkpoint_completed_page_count=1,
         checkpoint_created_at=_OBSERVED_AT + timedelta(seconds=10),
@@ -331,7 +337,10 @@ def _bounded_observations(
             "exceededTransferLimit": True,
         },
         ParcelArcGISProbeKind.REPLAY_PAGE: {
-            "features": [{"attributes": {"OBJECTID": object_id}} for object_id in replay_ids],
+            "features": [
+                {"attributes": {"OBJECTID": object_id}}
+                for object_id in replay_ids
+            ],
             "exceededTransferLimit": True,
             **(replay_extra or {}),
         },

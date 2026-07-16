@@ -44,7 +44,8 @@ class IntelligenceGraphService:
             else RuntimeEventType.SOURCE_RECORD_DISCOVERED,
             severity=RuntimeEventSeverity.LOW,
             message=(
-                f"Evidence {'updated' if was_existing else 'recorded'} from {evidence.source_name}."
+                f"Evidence {'updated' if was_existing else 'recorded'} from "
+                f"{evidence.source_name}."
             ),
             source_record_refs=[evidence.evidence_id],
             payload={

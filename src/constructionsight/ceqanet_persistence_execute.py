@@ -153,7 +153,9 @@ def _prepare_operations(write_plan_payload: dict[str, Any]) -> tuple[_PreparedOp
             raise ValueError(f"duplicate write-plan operation_id: {operation_id}")
         identifiers.add(operation_id)
         if operation.get("action") != "upsert_preview":
-            raise ValueError(f"write-plan operation {operation_id} has unsupported action")
+            raise ValueError(
+                f"write-plan operation {operation_id} has unsupported action"
+            )
         target = operation.get("target_collection")
         if target not in {"ceqa_records", "sites", "entities"}:
             raise ValueError(
@@ -161,7 +163,9 @@ def _prepare_operations(write_plan_payload: dict[str, Any]) -> tuple[_PreparedOp
             )
         payload = operation.get("payload")
         if not isinstance(payload, dict):
-            raise ValueError(f"write-plan operation {operation_id} payload must be an object")
+            raise ValueError(
+                f"write-plan operation {operation_id} payload must be an object"
+            )
         try:
             model = _validate_target_payload(
                 cast(SupportedTarget, target),
@@ -169,7 +173,8 @@ def _prepare_operations(write_plan_payload: dict[str, Any]) -> tuple[_PreparedOp
             )
         except ValueError as exc:
             raise ValueError(
-                f"write-plan operation {operation_id} payload is invalid: {exc.__class__.__name__}"
+                f"write-plan operation {operation_id} payload is invalid: "
+                f"{exc.__class__.__name__}"
             ) from exc
         prepared.append(
             _PreparedOperation(

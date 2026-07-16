@@ -46,7 +46,8 @@ def test_http_executor_fetches_metadata_then_runs_only_bounded_plan() -> None:
                 200,
                 json={
                     "features": [
-                        {"attributes": {"OBJECTID": object_id}} for object_id in object_ids
+                        {"attributes": {"OBJECTID": object_id}}
+                        for object_id in object_ids
                     ],
                     "exceededTransferLimit": True,
                 },

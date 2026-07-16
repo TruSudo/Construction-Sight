@@ -32,7 +32,7 @@ def _json_value(value: Any) -> Any:
         return value.value
     if isinstance(value, dict):
         return {str(key): _json_value(item) for key, item in value.items()}
-    if isinstance(value, list | tuple):
+    if isinstance(value, (list, tuple)):
         return [_json_value(item) for item in value]
     return value
 
@@ -131,7 +131,9 @@ class AuthorizationDecision(BaseModel):
             raise ValueError("authorization validity cannot exceed 24 hours")
         overlap = set(self.granted_authority) & set(self.denied_authority)
         if overlap:
-            raise ValueError(f"authority cannot be both granted and denied: {sorted(overlap)}")
+            raise ValueError(
+                f"authority cannot be both granted and denied: {sorted(overlap)}"
+            )
         if self.current_state_identity != self.expected_identity:
             raise ValueError(
                 "authorization cannot issue against a stale or unexpected current state"
@@ -139,7 +141,9 @@ class AuthorizationDecision(BaseModel):
         if self.reuse_policy is AuthorizationReusePolicy.EXACT_REPLAY:
             replay_marker = f"exact replay of {self.action}"
             if replay_marker not in self.granted_authority:
-                raise ValueError("exact-replay authorization requires an explicit replay grant")
+                raise ValueError(
+                    "exact-replay authorization requires an explicit replay grant"
+                )
         if self.decision_id != authorization_digest(
             "authorization-decision",
             self.identity_payload(),

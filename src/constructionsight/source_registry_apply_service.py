@@ -80,7 +80,10 @@ def apply_source_registry_update_plan(
             )
         )
 
-    updated_sources = [updates.get(source_registry_key(source), source) for source in sources]
+    updated_sources = [
+        updates.get(source_registry_key(source), source)
+        for source in sources
+    ]
     original_digest = source_registry_digest(sources)
     updated_digest = source_registry_digest(updated_sources)
     report = SourceRegistryApplyReport.from_rows(
@@ -153,7 +156,9 @@ def _validated_update(
             f"registry source changed after plan generation: {row.source_key}"
         )
     if row.current_verification_status != source.verification_status.value:
-        raise SourceRegistryApplyError(f"plan current status is stale for source: {row.source_key}")
+        raise SourceRegistryApplyError(
+            f"plan current status is stale for source: {row.source_key}"
+        )
     if not row.evidence_refs:
         raise SourceRegistryApplyError(
             f"registry status change requires evidence references: {row.source_key}"
@@ -206,7 +211,9 @@ def _changed_fields(
     proposed: dict[str, Any],
 ) -> set[str]:
     return {
-        key for key in original.keys() | proposed.keys() if original.get(key) != proposed.get(key)
+        key
+        for key in original.keys() | proposed.keys()
+        if original.get(key) != proposed.get(key)
     }
 
 
@@ -216,7 +223,9 @@ def _apply_limitations(
     applied: bool,
 ) -> list[str]:
     limitations = [
-        limitation for limitation in row.limitations if limitation not in _DRY_RUN_LIMITATIONS
+        limitation
+        for limitation in row.limitations
+        if limitation not in _DRY_RUN_LIMITATIONS
     ]
     if applied:
         limitations.append(

@@ -72,7 +72,9 @@ def resolve_local_operator_id(explicit_operator_id: str | None = None) -> str:
     """Resolve the local audit identity; this is never treated as authentication."""
 
     candidate = (
-        explicit_operator_id or os.environ.get("CONSTRUCTIONSIGHT_OPERATOR_ID") or getpass.getuser()
+        explicit_operator_id
+        or os.environ.get("CONSTRUCTIONSIGHT_OPERATOR_ID")
+        or getpass.getuser()
     )
     return _normalized_text(candidate, field="operator_id")
 

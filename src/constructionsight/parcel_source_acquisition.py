@@ -42,7 +42,9 @@ _RIVERSIDE_KEY = "riverside:county-gis-parcels"
 def get_official_arcgis_capability_snapshots() -> list[ParcelArcGISCapabilitySnapshot]:
     """Return metadata-bound advertised capabilities for both official layers."""
 
-    profiles = {profile.source_key: profile for profile in get_verified_parcel_source_profiles()}
+    profiles = {
+        profile.source_key: profile for profile in get_verified_parcel_source_profiles()
+    }
     snapshots = [
         parse_arcgis_capability_snapshot(
             profiles[_SAN_BERNARDINO_KEY],
@@ -170,7 +172,9 @@ def parse_arcgis_capability_snapshot(
     service_version = _service_version(metadata)
     object_id_is_unique = _object_id_is_unique(metadata, object_id_field)
     supports_query = "query" in capabilities
-    supports_count = bool(metadata.get("supportsStatistics") or advanced.get("supportsStatistics"))
+    supports_count = bool(
+        metadata.get("supportsStatistics") or advanced.get("supportsStatistics")
+    )
     supports_order_by = bool(advanced.get("supportsOrderBy"))
     supports_pagination = bool(advanced.get("supportsPagination"))
     metadata_projection_digest = arcgis_capability_projection_digest(
@@ -253,10 +257,9 @@ def build_arcgis_probe_plan(
         exclude={"plan_id", "generated_at"},
     )
     return ParcelArcGISProbePlan.model_validate(
-        {
-            **candidate.model_dump(mode="json"),
-            "plan_id": digest_identity("parcel-arcgis-probe-plan", payload),
-        }
+        {**candidate.model_dump(mode="json"), "plan_id": digest_identity(
+            "parcel-arcgis-probe-plan", payload
+        )}
     )
 
 
@@ -317,7 +320,9 @@ def parse_arcgis_probe_observation(
     return ParcelArcGISProbeObservation.model_validate(
         {
             **payload,
-            "observation_id": digest_identity("parcel-arcgis-probe-observation", payload),
+            "observation_id": digest_identity(
+                "parcel-arcgis-probe-observation", payload
+            ),
         }
     )
 
@@ -360,11 +365,10 @@ def build_arcgis_bulk_manifest(
     payload = candidate.model_dump(mode="json", exclude={"manifest_id"})
     return ParcelArcGISBulkManifest.model_validate(
         {
-            **payload,
-            "manifest_id": digest_identity("parcel-arcgis-bulk-manifest", payload),
+  **payload,
+  "manifest_id": digest_identity("parcel-arcgis-bulk-manifest", payload),
         }
     )
-
 
 def build_arcgis_acquisition_assessment(
     snapshot: ParcelArcGISCapabilitySnapshot,
@@ -439,7 +443,8 @@ def build_arcgis_acquisition_assessment(
             )
         )
     if any(
-        observation.schema_fingerprint != snapshot.schema_fingerprint for observation in reviewed
+        observation.schema_fingerprint != snapshot.schema_fingerprint
+        for observation in reviewed
     ):
         gaps.append(
             _gap(
@@ -500,7 +505,9 @@ def build_arcgis_acquisition_assessment(
         bulk_manifest_id=None if bulk_manifest is None else bulk_manifest.manifest_id,
         expected_record_count=expected_count,
         observed_unique_sample_count=len(sample_ids),
-        bulk_acquisition_verified=(status == ParcelArcGISAcquisitionStatus.BULK_REHEARSAL_VERIFIED),
+        bulk_acquisition_verified=(
+            status == ParcelArcGISAcquisitionStatus.BULK_REHEARSAL_VERIFIED
+        ),
         gaps=canonical_gaps,
         generated_at=generated_at or datetime.now(UTC),
     )
@@ -541,7 +548,9 @@ def _probe_request(
         object_id_field=snapshot.object_id_field,
         schema_fingerprint=snapshot.schema_fingerprint,
         out_fields=() if is_count else (snapshot.object_id_field,),
-        order_by_fields=() if is_count else (f"{snapshot.object_id_field} ASC",),
+        order_by_fields=()
+        if is_count
+        else (f"{snapshot.object_id_field} ASC",),
         return_geometry=False,
         return_count_only=is_count,
         offset=offset,
@@ -616,12 +625,19 @@ def _page_sequence_is_valid(
         return False
     expected_initial = min(plan.sample_size, expected_count)
     expected_next = min(plan.sample_size, max(expected_count - plan.sample_size, 0))
-    if expected_count > plan.sample_size and initial.exceeded_transfer_limit is not True:
+    if (
+        expected_count > plan.sample_size
+        and initial.exceeded_transfer_limit is not True
+    ):
         return False
-    if expected_count > plan.sample_size * 2 and next_page.exceeded_transfer_limit is not True:
+    if (
+        expected_count > plan.sample_size * 2
+        and next_page.exceeded_transfer_limit is not True
+    ):
         return False
     return (
-        len(initial.object_ids) == expected_initial and len(next_page.object_ids) == expected_next
+        len(initial.object_ids) == expected_initial
+        and len(next_page.object_ids) == expected_next
     )
 
 
@@ -727,7 +743,9 @@ def _object_id_field(
     explicit = metadata.get("objectIdField")
     if isinstance(explicit, str) and explicit:
         return explicit
-    candidates = [field.name for field in fields if field.field_type == "esriFieldTypeOID"]
+    candidates = [
+        field.name for field in fields if field.field_type == "esriFieldTypeOID"
+    ]
     if len(candidates) != 1:
         raise ValueError("ArcGIS metadata must identify exactly one object ID field")
     return candidates[0]
@@ -746,7 +764,8 @@ def _object_id_is_unique(metadata: dict[str, Any], object_id_field: str) -> bool
         return False
     return any(
         isinstance(index, dict)
-        and str(index.get("fields", "")).strip().casefold() == object_id_field.casefold()
+        and str(index.get("fields", "")).strip().casefold()
+        == object_id_field.casefold()
         and index.get("isUnique") is True
         for index in indexes
     )
@@ -774,7 +793,7 @@ def _required_string(payload: dict[str, Any], key: str) -> str:
 
 def _service_version(payload: dict[str, Any]) -> str:
     value = payload.get("currentVersion")
-    if isinstance(value, bool) or not isinstance(value, int | float | str):
+    if isinstance(value, bool) or not isinstance(value, (int, float, str)):
         raise ValueError("ArcGIS metadata requires currentVersion")
     text = str(value).strip()
     if not text:

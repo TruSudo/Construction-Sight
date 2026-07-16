@@ -50,7 +50,8 @@ def build_authorized_source_promotion_plan(
                 )
             ],
             "observations": [
-                observation.model_dump(mode="json") for observation in normalized_observations
+                observation.model_dump(mode="json")
+                for observation in normalized_observations
             ],
             "network_policy": "CS-NET-008",
         },
@@ -82,8 +83,7 @@ def build_authorized_source_promotion_plan(
         current_state_identity=state_identity,
         expected_identity=state_identity,
         granted_authority=(
-            "perform one bounded verification GET per source and build a "
-            "report-only promotion plan",
+            "perform one bounded verification GET per source and build a report-only promotion plan",
         ),
         denied_authority=tuple(
             sorted(

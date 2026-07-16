@@ -101,7 +101,8 @@ def test_normalize_wkt_polygon_area_weighted_centroid() -> None:
 def test_normalize_wkt_polygon_subtracts_hole_area() -> None:
     geometry = normalize_parcel_geometry(
         raw_geometry=(
-            "POLYGON ((0 0, 4 0, 4 4, 0 4, 0 0), (0.5 0.5, 1.5 0.5, 1.5 1.5, 0.5 1.5, 0.5 0.5))"
+            "POLYGON ((0 0, 4 0, 4 4, 0 4, 0 0), "
+            "(0.5 0.5, 1.5 0.5, 1.5 1.5, 0.5 1.5, 0.5 0.5))"
         ),
         spatial_reference="EPSG:4326",
     )
@@ -113,7 +114,8 @@ def test_normalize_wkt_polygon_subtracts_hole_area() -> None:
 def test_normalize_ewkt_multipolygon_uses_embedded_srid() -> None:
     geometry = normalize_parcel_geometry(
         raw_geometry=(
-            "SRID=4326;MULTIPOLYGON (((0 0, 2 0, 2 2, 0 2, 0 0)), ((4 0, 6 0, 6 2, 4 2, 4 0)))"
+            "SRID=4326;MULTIPOLYGON (((0 0, 2 0, 2 2, 0 2, 0 0)), "
+            "((4 0, 6 0, 6 2, 4 2, 4 0)))"
         ),
     )
 

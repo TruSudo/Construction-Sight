@@ -145,7 +145,8 @@ def execute_authorized_ceqanet_csv(
     access = evaluate_access(access_profile)
     if access.decision is not AccessDecision.ALLOWED:
         raise AuthorizationDeniedError(
-            f"lawful access preflight denied execution: {access.decision.value}: {access.reason}"
+            "lawful access preflight denied execution: "
+            f"{access.decision.value}: {access.reason}"
         )
 
     state_identity = _access_state(
@@ -179,7 +180,9 @@ def execute_authorized_ceqanet_csv(
         exact_scope=exact_scope,
         current_state_identity=state_identity,
         expected_identity=state_identity,
-        granted_authority=("execute one exact read-only CEQAnet CSV evidence GET",),
+        granted_authority=(
+            "execute one exact read-only CEQAnet CSV evidence GET",
+        ),
         denied_authority=_canonical_tuple(
             "access-control bypass",
             "attachment download",

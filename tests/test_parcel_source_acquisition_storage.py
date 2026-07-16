@@ -75,12 +75,14 @@ def _bulk_rehearsal_evidence(snapshot):
         snapshot,
         page_size=2,
         page_object_ids=((1, 3), (5, 7), (9, 11)),
-        page_response_digests=tuple(digest_json_payload({"page": value}) for value in range(3)),
+        page_response_digests=tuple(
+  digest_json_payload({"page": value}) for value in range(3)
+        ),
         page_attempt_counts=(1, 2, 1),
         page_observed_at=(
-            _OBSERVED_AT,
-            _OBSERVED_AT + timedelta(seconds=30),
-            _OBSERVED_AT + timedelta(minutes=2),
+  _OBSERVED_AT,
+  _OBSERVED_AT + timedelta(seconds=30),
+  _OBSERVED_AT + timedelta(minutes=2),
         ),
         checkpoint_completed_page_count=1,
         checkpoint_created_at=_OBSERVED_AT + timedelta(seconds=10),
@@ -352,7 +354,9 @@ def test_assessment_storage_recomputes_the_persisted_proof_chain() -> None:
     payload = assessment.to_dict()
     payload["expected_record_count"] = 999
     identity_payload = {
-        key: value for key, value in payload.items() if key not in {"assessment_id", "generated_at"}
+        key: value
+        for key, value in payload.items()
+        if key not in {"assessment_id", "generated_at"}
     }
     payload["assessment_id"] = digest_identity(
         "parcel-arcgis-acquisition",

@@ -33,11 +33,16 @@ REPLAY_PATH = EVIDENCE_DIR / "ceqanet_csv_windows1252_replay_2026-07-12.json"
 REPLAY_VERIFICATION_PATH = (
     EVIDENCE_DIR / "ceqanet_csv_windows1252_replay_verification_2026-07-12.json"
 )
-PROPOSAL_PATH = EVIDENCE_DIR / "ceqanet_source_maturity_proposal_2026-07-13.json"
-PROPOSAL_VERIFICATION_PATH = (
-    EVIDENCE_DIR / "ceqanet_source_maturity_proposal_verification_2026-07-13.json"
+PROPOSAL_PATH = (
+    EVIDENCE_DIR / "ceqanet_source_maturity_proposal_2026-07-13.json"
 )
-PROPOSAL_REPORT_PATH = ROOT / "docs/audits/ceqanet_source_maturity_proposal_2026-07-13.md"
+PROPOSAL_VERIFICATION_PATH = (
+    EVIDENCE_DIR
+    / "ceqanet_source_maturity_proposal_verification_2026-07-13.json"
+)
+PROPOSAL_REPORT_PATH = (
+    ROOT / "docs/audits/ceqanet_source_maturity_proposal_2026-07-13.md"
+)
 runner = CliRunner()
 
 
@@ -60,7 +65,9 @@ def _replay() -> CeqanetCsvEncodingReplay:
 
 
 def _replay_verification() -> CeqanetCsvEncodingReplayVerification:
-    return CeqanetCsvEncodingReplayVerification.model_validate(_load_json(REPLAY_VERIFICATION_PATH))
+    return CeqanetCsvEncodingReplayVerification.model_validate(
+        _load_json(REPLAY_VERIFICATION_PATH)
+    )
 
 
 def _proposal() -> CeqanetSourceMaturityProposal:
@@ -148,7 +155,9 @@ def test_committed_proposal_is_replayable_and_non_authorizing() -> None:
 
 def test_verification_detects_tampered_proposal() -> None:
     proposal = _proposal()
-    tampered = proposal.model_copy(update={"observed_row_count": proposal.observed_row_count + 1})
+    tampered = proposal.model_copy(
+        update={"observed_row_count": proposal.observed_row_count + 1}
+    )
 
     verification = verify_ceqanet_source_maturity_proposal(
         _sources(),
@@ -160,12 +169,17 @@ def test_verification_detects_tampered_proposal() -> None:
 
     assert verification.passed is False
     assert "CEQAnet source-maturity proposal digest mismatch" in verification.findings
-    assert "maturity proposal does not match current evidence and registry" in verification.findings
+    assert (
+        "maturity proposal does not match current evidence and registry"
+        in verification.findings
+    )
 
 
 def test_builder_rejects_nonpartial_registry_status() -> None:
     sources = _sources()
-    sources[0] = sources[0].model_copy(update={"verification_status": VerificationStatus.VERIFIED})
+    sources[0] = sources[0].model_copy(
+        update={"verification_status": VerificationStatus.VERIFIED}
+    )
 
     with pytest.raises(ValueError, match="requires registry status partial"):
         build_ceqanet_source_maturity_proposal(
