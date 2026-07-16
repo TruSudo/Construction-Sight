@@ -7,7 +7,10 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
 
-from constructionsight.authorization_decision import AuthorizationUseLedger
+from constructionsight.authorization_decision import (
+    AuthorizationDeniedError,
+    AuthorizationUseLedger,
+)
 from constructionsight.authorization_decision_models import authorization_digest
 from constructionsight.ceqanet_csv_live_models import (
     CeqanetCsvLiveExecution,
@@ -104,6 +107,14 @@ def _access_state(
     )
 
 
+def verify_retained_ceqanet_csv(
+    execution: CeqanetCsvLiveExecution,
+) -> CeqanetCsvLiveVerification:
+    """Verify retained CSV evidence through the application boundary."""
+
+    return verify_ceqanet_csv_live_execution(execution)
+
+
 def execute_authorized_ceqanet_csv(
     *,
     request: CeqanetCsvExportRequest,
@@ -133,8 +144,6 @@ def execute_authorized_ceqanet_csv(
 
     access = evaluate_access(access_profile)
     if access.decision is not AccessDecision.ALLOWED:
-        from constructionsight.authorization_decision import AuthorizationDeniedError
-
         raise AuthorizationDeniedError(
             "lawful access preflight denied execution: "
             f"{access.decision.value}: {access.reason}"
@@ -199,7 +208,9 @@ def execute_authorized_ceqanet_csv(
         now=now,
         ledger=ledger,
     )
-    execution = (executor or execute_ceqanet_csv_live_request)(
+    active_executor: CeqanetCsvExecutor = executor or execute_ceqanet_csv_live_request
+    active_verifier: CeqanetCsvVerifier = verifier or verify_ceqanet_csv_live_execution
+    execution = active_executor(
         request,
         execute_live=True,
         timeout_seconds=timeout_seconds,
@@ -207,7 +218,7 @@ def execute_authorized_ceqanet_csv(
         max_retained_rows=max_retained_rows,
         executed_at=(now() if now is not None else None),
     )
-    verification = (verifier or verify_ceqanet_csv_live_execution)(execution)
+    verification = active_verifier(execution)
     return AuthorizedCeqanetCsvExecution(
         execution=execution,
         verification=verification,
