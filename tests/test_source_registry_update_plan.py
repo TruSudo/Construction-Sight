@@ -352,6 +352,10 @@ def test_source_registry_apply_cli_writes_separate_registry_and_audit(tmp_path) 
             "--output",
             str(updated_path),
             "--apply",
+            "--operator-id",
+            "operator:test",
+            "--authorization-reason",
+            "Apply one reviewed test registry plan.",
         ],
     )
 
@@ -445,4 +449,4 @@ def test_source_registry_apply_cli_requires_explicit_apply_flag(tmp_path) -> Non
     )
 
     assert result.exit_code != 0
-    assert "Explicit --apply authorization is required" in result.stderr
+    assert "Explicit --apply caller confirmation is required" in result.stderr
