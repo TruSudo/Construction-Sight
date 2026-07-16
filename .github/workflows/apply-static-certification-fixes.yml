@@ -52,13 +52,40 @@ jobs:
           set -euo pipefail
           python scripts/apply_static_certification_fixes.py
 
-      - name: Apply and enforce Ruff corrections
+      - name: Apply Ruff corrections
+        id: ruff
+        continue-on-error: true
+        shell: bash
+        run: |
+          set +e
+          python -m ruff check src tests --fix --unsafe-fixes
+          python -m ruff format src tests
+          python -m ruff check src tests --output-format=concise \
+            > /tmp/static-ruff.txt 2>&1
+          status=$?
+          if [ ! -s /tmp/static-ruff.txt ]; then
+            printf '%s\n' 'Ruff passed with no findings.' > /tmp/static-ruff.txt
+          fi
+          exit "${status}"
+
+      - name: Publish Ruff diagnostic without source edits
+        if: steps.ruff.outcome != 'success'
         shell: bash
         run: |
           set -euo pipefail
-          python -m ruff check src tests --fix --unsafe-fixes
-          python -m ruff format src tests
-          python -m ruff check src tests
+          git reset --hard HEAD
+          mkdir -p governance/diagnostics
+          cp /tmp/static-ruff.txt governance/diagnostics/static_ruff.txt
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add governance/diagnostics/static_ruff.txt
+          git commit -m 'Retain static Ruff diagnostic'
+          git push origin HEAD:agent/silent-risk-certification
+          exit 1
+
+      - name: Enforce Ruff result
+        shell: bash
+        run: test '${{ steps.ruff.outcome }}' = 'success'
 
       - name: Enforce mypy
         shell: bash
