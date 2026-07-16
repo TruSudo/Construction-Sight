@@ -20,25 +20,6 @@ def replace_once(relative: str, old: str, new: str) -> None:
     path.write_text(content.replace(old, new, 1), encoding="utf-8")
 
 
-def reorder_ci_sbom_before_audit() -> None:
-    path = ROOT / ".github/workflows/ci.yml"
-    content = path.read_text(encoding="utf-8")
-    vulnerability_start = content.index("      - name: Vulnerability audit\n")
-    sbom_start = content.index("      - name: Generate deterministic SBOM\n")
-    ruff_start = content.index("      - name: Ruff\n")
-    if not vulnerability_start < sbom_start < ruff_start:
-        raise RuntimeError("CI vulnerability/SBOM step ordering is unexpected")
-    vulnerability_block = content[vulnerability_start:sbom_start]
-    sbom_block = content[sbom_start:ruff_start]
-    content = (
-        content[:vulnerability_start]
-        + sbom_block
-        + vulnerability_block
-        + content[ruff_start:]
-    )
-    path.write_text(content, encoding="utf-8")
-
-
 def main() -> None:
     replace_once(
         "src/constructionsight/supply_chain.py",
@@ -210,14 +191,6 @@ def main() -> None:
         '    assert \'"httpx[socks]>=0.27.0"\' in pyproject\n',
         '    assert \'"httpx[socks]==0.28.1"\' in pyproject\n',
     )
-
-    replace_once(
-        ".github/workflows/ci.yml",
-        "          python -m constructionsight.repository_certification_v2 \\\n",
-        "          # Legacy v1 scanner compatibility: python -m constructionsight.repository_certification --root . --require-clean-worktree\n"
-        "          python -m constructionsight.repository_certification_v2 \\\n",
-    )
-    reorder_ci_sbom_before_audit()
 
 
 if __name__ == "__main__":
