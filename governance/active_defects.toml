@@ -152,3 +152,19 @@ area = "authorization-construction"
 root_cause = "The general authorization builders validated placeholder all-zero decision and preflight IDs before computing the content digest, so valid scope-bound decisions and preflights could not be constructed."
 discovered_against = "857ec7527317fca93eacb956c9e79d7d067522b5"
 required_resolution = "Construct canonical identity payloads without running final digest validators, compute the real digest, validate the completed model, and add direct decision/preflight identity regression coverage."
+
+[[defects]]
+id = "CS-SR-020"
+severity = "P0"
+area = "bounded-response-enforcement"
+root_cause = "CEQAnet listing and CSV paths followed redirects or materialized complete response bodies before enforcing declared size ceilings, so untrusted response bytes could exceed policy before rejection."
+discovered_against = "e47e33514ef906244d1f5959af49cc193b271305"
+required_resolution = "Route production listing and CSV requests through the streamed bounded HTTP engine, deny redirects before following Location, stop reading at the byte ceiling, classify terminal responses, discard incomplete body evidence, and add redirect and oversize regressions."
+
+[[defects]]
+id = "CS-SR-021"
+severity = "P0"
+area = "intent-implementation-divergence"
+root_cause = "The CEQAnet listing application service imported a nonexistent model generation while the live CLI bypassed that service and constructed the legacy executor directly, allowing documented architecture and executable behavior to diverge."
+discovered_against = "e47e33514ef906244d1f5959af49cc193b271305"
+required_resolution = "Reconcile the listing plan, executor, service, CLI, and tests around one canonical model; enforce one-attempt retry doctrine; prohibit direct CLI transport construction; and add an import/runtime branch obligation that detects nonexistent service dependencies."
