@@ -321,6 +321,7 @@ def execute_ceqanet_csv_evidence_request(
         max_body_bytes=policy.max_body_bytes,
         max_retained_rows=max_retained_rows,
         executed_at=authorized_at,
+        injected_client_follow_redirects=client is not None,
     )
     live_verification = verify_ceqanet_csv_live_execution(live_execution)
     draft = CeqanetCsvEvidenceExecution(
