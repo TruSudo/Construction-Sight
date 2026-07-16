@@ -1,19 +1,20 @@
 from __future__ import annotations
 
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 
 import pytest
 
+from constructionsight.adapters.ceqanet_listing import (
+    CeqanetListingPlan,
+    CeqanetListingQuery,
+    CeqanetReadOnlyListingPlanner,
+)
 from constructionsight.adapters.ceqanet_listing_executor import (
     CeqanetListingExecutionError,
     CeqanetListingExecutionPolicy,
+    CeqanetListingExecutionReport,
+    CeqanetListingResponseSnapshot,
 )
-from constructionsight.adapters.ceqanet_listing_models import (
-    CeqanetListingExecutionResult,
-    CeqanetListingPageExecutionResult,
-    CeqanetListingPlan,
-)
-from constructionsight.adapters.ceqanet_listing_planner import build_ceqanet_listing_plan
 from constructionsight.authorization_decision import (
     AuthorizationDeniedError,
     AuthorizationUseLedger,
@@ -22,7 +23,7 @@ from constructionsight.ceqanet_listing_service import (
     CeqanetListingServiceError,
     execute_authorized_ceqanet_listing,
 )
-from constructionsight.legal import SourceAccessProfile
+from constructionsight.legal import SourceAccessProfile, evaluate_access
 
 _NOW = datetime(2026, 7, 15, 12, 0, tzinfo=UTC)
 
@@ -30,50 +31,39 @@ _NOW = datetime(2026, 7, 15, 12, 0, tzinfo=UTC)
 class _Executor:
     def __init__(self, *, fail: bool = False) -> None:
         self.fail = fail
-        self.calls: list[tuple[str, int, int]] = []
+        self.calls: list[tuple[int, int, int]] = []
 
     def __call__(
         self,
         plan: CeqanetListingPlan,
         *,
         policy: CeqanetListingExecutionPolicy,
-    ) -> CeqanetListingExecutionResult:
+    ) -> CeqanetListingExecutionReport:
         self.calls.append(
-            (plan.plan_id, policy.max_attempts, policy.max_response_bytes)
+            (len(plan.pages), policy.max_attempts, policy.max_response_bytes)
         )
         if self.fail:
             raise CeqanetListingExecutionError("synthetic terminal failure")
-        request = plan.requests[0]
-        page = CeqanetListingPageExecutionResult(
-            request_id=request.request_id,
-            page_number=request.page_number,
-            request_url=request.request_url,
-            final_url=request.request_url,
+        snapshot = CeqanetListingResponseSnapshot(
+            page_number=1,
+            method="GET",
+            request_url="https://ceqanet.lci.ca.gov/Search?County=San+Bernardino",
+            final_url="https://ceqanet.lci.ca.gov/Search?County=San+Bernardino",
             status_code=200,
-            response_headers={"content-type": "text/html"},
             content_type="text/html",
-            response_encoding="utf-8",
-            response_body="<html>page</html>",
-            response_size_bytes=17,
+            body_text="<html>page</html>",
+            body_length=17,
             body_truncated=False,
-            attempt_count=1,
-            attempts=(),
-            failure_kind="none",
-            error_type=None,
-            error_message=None,
-            retry_exhausted=False,
-            access_control_terminal=False,
-            has_next_page=False,
-            end_of_results=True,
+            executed=True,
         )
-        return CeqanetListingExecutionResult(
-            plan_id=plan.plan_id,
-            county=plan.county,
-            requested_max_pages=plan.max_pages,
-            planned_request_count=plan.request_count,
-            access_allowed=True,
-            execution_started=True,
-            page_results=(page,),
+        return CeqanetListingExecutionReport(
+            allowed=True,
+            reason="synthetic success",
+            planned_request_count=len(plan.pages),
+            executed_request_count=1,
+            successful_response_count=1,
+            maximum_records=plan.maximum_records,
+            snapshots=(snapshot,),
         )
 
 
@@ -85,13 +75,16 @@ def _profile(**changes: object) -> SourceAccessProfile:
 
 
 def _plan(profile: SourceAccessProfile | None = None) -> CeqanetListingPlan:
-    return build_ceqanet_listing_plan(
-        county="San Bernardino",
-        document_type="EIR",
-        start_date=date(2026, 1, 1),
-        end_date=date(2026, 7, 15),
+    active_profile = profile or _profile()
+    query = CeqanetListingQuery(
+        counties=("San Bernardino",),
+        document_types=("EIR",),
+        page_size=25,
         max_pages=1,
-        profile=profile or _profile(),
+    )
+    return CeqanetReadOnlyListingPlanner().build_plan(
+        query,
+        evaluate_access(active_profile),
     )
 
 
@@ -110,28 +103,36 @@ def _execute(
         operator_id="operator:tyler",
         authorization_reason="Execute one reviewed CEQAnet listing plan.",
         caller_confirmation=confirmation,
+        timeout_seconds=20.0,
+        max_response_bytes=50_000,
         now=lambda: _NOW,
         ledger=ledger,
         executor=executor,
     )
 
 
+def _metadata(payload: dict[str, object]) -> dict[str, object]:
+    value = payload["metadata"]
+    assert isinstance(value, dict)
+    return value
+
+
 def test_listing_service_binds_exact_plan_policy_and_denied_authority() -> None:
     executor = _Executor()
-    plan = _plan()
 
-    payload = _execute(executor, plan=plan)
+    payload = _execute(executor)
 
-    authorization = payload["authorization"]
+    metadata = _metadata(payload)
+    authorization = metadata["authorization"]
     assert isinstance(authorization, dict)
-    assert authorization["resource_id"] == plan.plan_id
     assert authorization["action"] == "execute-ceqanet-listing-plan"
     assert str(authorization["decision_id"]).startswith("authorization-decision:")
     assert str(authorization["preflight_id"]).startswith("authorization-preflight:")
     assert "page-count expansion" in authorization["denied_authority"]
     assert "query mutation" in authorization["denied_authority"]
-    assert payload["executed_request_count"] == 1
-    assert executor.calls == [(plan.plan_id, 3, 50_000)]
+    assert "retry" in authorization["denied_authority"]
+    assert metadata["executed_request_count"] == 1
+    assert executor.calls == [(1, 1, 50_000)]
 
 
 def test_boolean_confirmation_cannot_authorize_listing_execution() -> None:
@@ -163,11 +164,11 @@ def test_shared_ledger_rejects_repeated_listing_execution() -> None:
     plan = _plan()
 
     first = _execute(executor, plan=plan, ledger=ledger)
-    assert first["authorization"]
+    assert _metadata(first)["authorization"]
     with pytest.raises(AuthorizationDeniedError, match="already consumed"):
         _execute(executor, plan=plan, ledger=ledger)
 
-    assert executor.calls == [(plan.plan_id, 3, 50_000)]
+    assert executor.calls == [(1, 1, 50_000)]
 
 
 def test_transport_failure_remains_distinct_and_visible() -> None:
@@ -177,3 +178,11 @@ def test_transport_failure_remains_distinct_and_visible() -> None:
         _execute(executor)
 
     assert len(executor.calls) == 1
+
+
+def test_listing_service_rejects_retry_expansion() -> None:
+    with pytest.raises(ValueError, match="exactly one attempt"):
+        CeqanetListingExecutionPolicy(
+            max_attempts=3,
+            retry_delays_seconds=(0.25, 1.0),
+        )
