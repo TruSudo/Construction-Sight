@@ -46,16 +46,32 @@ jobs:
             --no-build-isolation \
             -e .
 
-      - name: Apply assertion-bound corrections
+      - name: Apply assertion-bound source corrections
         shell: bash
         run: |
           set -euo pipefail
           python scripts/apply_static_certification_fixes.py
+
+      - name: Apply and enforce Ruff corrections
+        shell: bash
+        run: |
+          set -euo pipefail
           python -m ruff check src tests scripts --fix --unsafe-fixes
           python -m ruff format src tests scripts
           python -m ruff check src tests scripts
-          python -m mypy src
-          python -m compileall -q src tests scripts
+
+      - name: Enforce mypy
+        shell: bash
+        run: python -m mypy src
+
+      - name: Compile corrected tree
+        shell: bash
+        run: python -m compileall -q src tests scripts
+
+      - name: Run focused static regressions
+        shell: bash
+        run: |
+          set -euo pipefail
           python -m pytest --strict-config --strict-markers -W error -q \
             tests/test_supply_chain.py \
             tests/test_dependency_certification.py \
