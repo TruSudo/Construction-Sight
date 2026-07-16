@@ -40,6 +40,7 @@ tests = [
   "tests/test_local_operator_authorization.py",
   "tests/test_parcel_arcgis_operator_service.py",
   "tests/test_repository_certification.py",
+  "tests/test_semantic_authorization_certification.py",
   "tests/test_source_readiness_authorization.py",
   "tests/test_supply_chain.py",
 ]
