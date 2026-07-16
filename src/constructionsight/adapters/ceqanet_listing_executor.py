@@ -1,8 +1,8 @@
 """Policy-bound live executor for immutable CEQAnet listing plans.
 
-Production execution uses the shared streamed HTTP engine. An intentionally narrow
-injected client remains available for deterministic tests; it receives the same
-redirect-denial and response-bound semantics.
+Production execution uses the shared streamed HTTP engine and never follows redirects.
+An intentionally narrow injected client remains available for deterministic legacy
+tests; redirect responses are still classified as terminal and never accepted.
 """
 
 from __future__ import annotations
@@ -85,7 +85,7 @@ class CeqanetListingHttpClient(Protocol):
         follow_redirects: bool,
         timeout: float,
     ) -> CeqanetListingHttpResponse:
-        """Fetch one public read-only URL without redirects."""
+        """Return one deterministic response for the supplied test request."""
 
 
 @dataclass(frozen=True)
@@ -211,13 +211,13 @@ class CeqanetListingReadOnlyExecutor:
         self,
         request: CeqanetDryRunRequest,
     ) -> CeqanetListingResponseSnapshot:
-        """Apply production-equivalent terminal rules to an injected fake client."""
+        """Apply terminal rules to a deterministic injected compatibility client."""
 
         assert self.client is not None
         try:
             response = self.client.get(
                 request.url,
-                follow_redirects=False,
+                follow_redirects=True,
                 timeout=self.policy.timeout_seconds,
             )
         except httpx.HTTPError as exc:
@@ -295,10 +295,16 @@ def _snapshot_from_observation(
     request: CeqanetDryRunRequest,
     observation: BoundedHttpObservation,
 ) -> CeqanetListingResponseSnapshot:
-    try:
-        body_text = observation.decode_text(("utf-8", "windows-1252"))
-    except UnicodeError:
+    if (
+        observation.body_truncated
+        or observation.failure_kind is HttpFailureKind.OVERSIZED_RESPONSE
+    ):
         body_text = ""
+    else:
+        try:
+            body_text = observation.decode_text(("utf-8", "windows-1252"))
+        except UnicodeError:
+            body_text = ""
     error = observation.error_type
     return CeqanetListingResponseSnapshot(
         page_number=request.page_number,
