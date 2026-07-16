@@ -14,7 +14,7 @@ permissions:
   contents: read
 
 env:
-  REPORT_DIR: ${{ runner.temp }}/constructionsight-reports
+  REPORT_DIR: /tmp/constructionsight-reports
 
 jobs:
   quality:
