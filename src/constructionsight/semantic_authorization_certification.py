@@ -14,6 +14,7 @@ from constructionsight.governance_certification_core import (
 
 _HIGH_IMPACT_CONFIRMATIONS = frozenset(
     {
+        "apply_changes",
         "authorize_persistence",
         "check_http",
         "execute_live",
@@ -21,6 +22,7 @@ _HIGH_IMPACT_CONFIRMATIONS = frozenset(
     }
 )
 _AUTHORIZED_SERVICE_PREFIXES = (
+    "apply_authorized_",
     "build_authorized_",
     "execute_authorized_",
     "persist_authorized_",
@@ -32,6 +34,7 @@ _AUTHORIZED_SERVICE_NAMES = frozenset(
 )
 _DIRECT_EFFECT_CALLS = frozenset(
     {
+        "apply_source_registry_update_plan",
         "check_source_http_reachability",
         "create_database_engine",
         "execute_arcgis_bounded_probe",
