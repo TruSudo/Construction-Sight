@@ -45,8 +45,9 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          go run ./.tools/actionlint/cmd/actionlint .github/workflows/ci.yml \
-            > actionlint.txt 2>&1
+          cd .tools/actionlint
+          go run ./cmd/actionlint ../../.github/workflows/ci.yml \
+            > ../../actionlint.txt 2>&1
 
       - name: Retain actionlint diagnostic
         if: always()
