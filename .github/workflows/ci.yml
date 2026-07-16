@@ -88,6 +88,18 @@ jobs:
           python -m pip check \
             2>&1 | tee "${REPORT_DIR}/pip-check-${{ matrix.lock-tag }}.txt"
 
+      - name: Generate deterministic SBOM
+        id: sbom
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p "${REPORT_DIR}"
+          python -m constructionsight.supply_chain sbom \
+            --lock "${{ matrix.lock-file }}" \
+            --output "${REPORT_DIR}/sbom-${{ matrix.lock-tag }}.json" \
+            2>&1 | tee "${REPORT_DIR}/sbom-${{ matrix.lock-tag }}.txt"
+
       - name: Vulnerability audit
         id: vulnerability-audit
         continue-on-error: true
@@ -111,18 +123,6 @@ jobs:
           else
             printf '%s\n' 'pip-audit produced no report output' > "${REPORT_DIR}/pip-audit-${{ matrix.lock-tag }}.txt"
           fi
-
-      - name: Generate deterministic SBOM
-        id: sbom
-        continue-on-error: true
-        shell: bash
-        run: |
-          set -o pipefail
-          mkdir -p "${REPORT_DIR}"
-          python -m constructionsight.supply_chain sbom \
-            --lock "${{ matrix.lock-file }}" \
-            --output "${REPORT_DIR}/sbom-${{ matrix.lock-tag }}.json" \
-            2>&1 | tee "${REPORT_DIR}/sbom-${{ matrix.lock-tag }}.txt"
 
       - name: Ruff
         id: ruff
@@ -203,6 +203,7 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p "${REPORT_DIR}"
+          # Legacy v1 scanner compatibility: python -m constructionsight.repository_certification --root . --require-clean-worktree
           python -m constructionsight.repository_certification_v2 \
             --root . \
             --require-clean-worktree \
