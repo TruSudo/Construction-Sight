@@ -118,9 +118,7 @@ def list_records(
     table.add_column("Confidence")
     table.add_column("Observed")
     for record in records:
-        confidence = (
-            "" if record.confidence_score is None else str(record.confidence_score)
-        )
+        confidence = "" if record.confidence_score is None else str(record.confidence_score)
         table.add_row(
             record.record_id,
             record.status or "",

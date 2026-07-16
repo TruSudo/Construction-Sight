@@ -80,10 +80,7 @@ def test_inspect_lawful_input_extracts_material_facts_and_routes_to_opportunity(
     assert record["format_detection"]["format_family"] == "plain_text"
     assert record["understanding_status"] == "partially_understood"
     assert record["routing"] == "opportunity_intake"
-    facts = {
-        (fact["fact_kind"], fact["normalized_value"])
-        for fact in record["extracted_facts"]
-    }
+    facts = {(fact["fact_kind"], fact["normalized_value"]) for fact in record["extracted_facts"]}
     assert ("address", "123 Main Street") in facts
     assert ("apn", "12345678") in facts
     assert ("sch_number", "2026061234") in facts

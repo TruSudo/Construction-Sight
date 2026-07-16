@@ -66,12 +66,8 @@ class _Source:
         if failure_kind is not None:
             raise ParcelArcGISBulkTransientError(failure_kind)
         if offset in self.raw_page_bodies:
-            return ParcelArcGISBulkPageResponse(
-                response_body=self.raw_page_bodies[offset]
-            )
-        return ParcelArcGISBulkPageResponse.from_payload(
-            {"objectIds": list(self.pages[offset])}
-        )
+            return ParcelArcGISBulkPageResponse(response_body=self.raw_page_bodies[offset])
+        return ParcelArcGISBulkPageResponse.from_payload({"objectIds": list(self.pages[offset])})
 
 
 def _snapshot() -> ParcelArcGISCapabilitySnapshot:
@@ -99,9 +95,7 @@ def test_complete_rehearsal_retains_exact_bodies_and_reconciles(
         pages={0: (1, 2), 2: (3, 4), 4: (5, 6)},
         raw_page_bodies={0: exact_first_page},
     )
-    checkpoint_store = JSONFileParcelArcGISCheckpointStore(
-        tmp_path / "checkpoints"
-    )
+    checkpoint_store = JSONFileParcelArcGISCheckpointStore(tmp_path / "checkpoints")
     artifact_store = JSONFileParcelArcGISBulkArtifactStore(tmp_path / "artifacts")
 
     result = execute_arcgis_complete_rehearsal(
@@ -146,9 +140,10 @@ def test_complete_rehearsal_retains_exact_bodies_and_reconciles(
         ParcelArcGISBulkArtifactKind.ENDING_COUNT,
     )
     assert artifact_store.read(result.artifact_receipts[1]) == exact_first_page
-    assert tuple(
-        receipt.response_digest for receipt in result.artifact_receipts[1:-1]
-    ) == manifest.page_response_digests
+    assert (
+        tuple(receipt.response_digest for receipt in result.artifact_receipts[1:-1])
+        == manifest.page_response_digests
+    )
 
     checkpoint_path = checkpoint_store.path_for(evidence.checkpoint.checkpoint_id)
     assert checkpoint_path.is_file()
@@ -281,9 +276,7 @@ def test_checkpoint_store_rejects_tampered_retained_content(tmp_path: Path) -> N
         counts=[6, 6],
         pages={0: (1, 2), 2: (3, 4), 4: (5, 6)},
     )
-    checkpoint_store = JSONFileParcelArcGISCheckpointStore(
-        tmp_path / "checkpoints"
-    )
+    checkpoint_store = JSONFileParcelArcGISCheckpointStore(tmp_path / "checkpoints")
     result = execute_arcgis_complete_rehearsal(
         _snapshot(),
         source,

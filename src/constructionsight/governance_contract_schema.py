@@ -157,9 +157,7 @@ def _audit_top_level(
     for path, (required, optional) in _CONTRACT_FIELDS.items():
         payload = contracts.get(path)
         if payload is None:
-            findings.append(
-                _finding("GOV-SHAPE-001", path, "governance payload was not loaded")
-            )
+            findings.append(_finding("GOV-SHAPE-001", path, "governance payload was not loaded"))
             continue
         missing = required - set(payload)
         unknown = set(payload) - required - optional
@@ -265,9 +263,7 @@ def _audit_active_defects(
     ids: set[str] = set()
     for defect in defects:
         if not isinstance(defect, dict):
-            findings.append(
-                _finding("GOV-LEDGER-002", path, "every active defect must be a table")
-            )
+            findings.append(_finding("GOV-LEDGER-002", path, "every active defect must be a table"))
             continue
         _exact_fields(
             defect,
@@ -328,9 +324,7 @@ def _audit_open_work(
     identities: set[tuple[str, int]] = set()
     for overlap in overlaps:
         if not isinstance(overlap, dict):
-            findings.append(
-                _finding("GOV-OVERLAP-002", path, "every overlap must be a table")
-            )
+            findings.append(_finding("GOV-OVERLAP-002", path, "every overlap must be a table"))
             continue
         _exact_fields(
             overlap,
@@ -342,9 +336,12 @@ def _audit_open_work(
         )
         repository = overlap.get("repository")
         pull_request = overlap.get("pull_request")
-        if not _nonblank(repository) or isinstance(pull_request, bool) or not isinstance(
-            pull_request, int
-        ) or pull_request <= 0:
+        if (
+            not _nonblank(repository)
+            or isinstance(pull_request, bool)
+            or not isinstance(pull_request, int)
+            or pull_request <= 0
+        ):
             findings.append(
                 _finding("GOV-OVERLAP-004", path, "overlap repository/PR identity is invalid")
             )
@@ -357,6 +354,7 @@ def _audit_open_work(
                 )
             )
         else:
+            assert isinstance(repository, str)
             identities.add((repository, pull_request))
         head = overlap.get("head_commit")
         if not isinstance(head, str) or not re.fullmatch(r"[0-9a-f]{40}", head):
@@ -397,16 +395,12 @@ def _audit_vulnerability_exceptions(
     path = "governance/vulnerability_exceptions.toml"
     exceptions = payload.get("exceptions")
     if not isinstance(exceptions, list):
-        findings.append(
-            _finding("GOV-VULN-001", path, "exceptions must be an array")
-        )
+        findings.append(_finding("GOV-VULN-001", path, "exceptions must be an array"))
         return
     ids: set[str] = set()
     for exception in exceptions:
         if not isinstance(exception, dict):
-            findings.append(
-                _finding("GOV-VULN-002", path, "every exception must be a table")
-            )
+            findings.append(_finding("GOV-VULN-002", path, "every exception must be a table"))
             continue
         _exact_fields(
             exception,
@@ -417,12 +411,8 @@ def _audit_vulnerability_exceptions(
             findings=findings,
         )
         exception_id = exception.get("id")
-        if not isinstance(exception_id, str) or not re.fullmatch(
-            r"CS-VULN-[0-9]{3}", exception_id
-        ):
-            findings.append(
-                _finding("GOV-VULN-004", path, "exception ID must match CS-VULN-NNN")
-            )
+        if not isinstance(exception_id, str) or not re.fullmatch(r"CS-VULN-[0-9]{3}", exception_id):
+            findings.append(_finding("GOV-VULN-004", path, "exception ID must match CS-VULN-NNN"))
         elif exception_id in ids:
             findings.append(
                 _finding("GOV-VULN-005", path, f"duplicate exception ID: {exception_id}")

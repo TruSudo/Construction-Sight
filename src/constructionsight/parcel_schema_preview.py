@@ -143,9 +143,7 @@ def preview_schema(preview_input: ParcelSchemaPreviewInput) -> ParcelSchemaPrevi
         if field.source_field not in mapped_field_names
     ]
     matched_roles = {match.field_role for match in matches}
-    matched_roles.update(
-        constant.field_role for constant in preview_input.constant_fields
-    )
+    matched_roles.update(constant.field_role for constant in preview_input.constant_fields)
     missing_required_roles = sorted(
         _REQUIRED_ROLES - matched_roles,
         key=lambda role: role.value,

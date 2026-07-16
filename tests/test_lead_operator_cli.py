@@ -171,11 +171,15 @@ def test_transition_persists_status_and_event(tmp_path) -> None:
 
     with managed_session(factory) as session:
         workflow = load_persisted_lead_workflow(session, "lead-workflow:test")
-        events = session.execute(
-            select(LeadWorkflowEventRecord).where(
-                LeadWorkflowEventRecord.workflow_id == "lead-workflow:test"
+        events = (
+            session.execute(
+                select(LeadWorkflowEventRecord).where(
+                    LeadWorkflowEventRecord.workflow_id == "lead-workflow:test"
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
     assert report.previous_status == "monitor"
     assert report.current_status == "review"
@@ -214,11 +218,15 @@ def test_repeated_transition_cycle_persists_distinct_events(tmp_path) -> None:
 
     with managed_session(factory) as session:
         workflow = load_persisted_lead_workflow(session, "lead-workflow:test")
-        rows = session.execute(
-            select(LeadWorkflowEventRecord).where(
-                LeadWorkflowEventRecord.workflow_id == "lead-workflow:test"
+        rows = (
+            session.execute(
+                select(LeadWorkflowEventRecord).where(
+                    LeadWorkflowEventRecord.workflow_id == "lead-workflow:test"
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
     event_ids = [event.event_id for event in workflow.events]
     assert len(workflow.events) == 4

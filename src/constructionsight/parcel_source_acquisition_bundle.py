@@ -50,9 +50,7 @@ def build_arcgis_bounded_proof_bundle(
 ) -> ParcelArcGISBoundedProofBundle:
     """Bind one complete bounded proof chain into a portable immutable artifact."""
 
-    canonical_evidence = tuple(
-        sorted(source_evidence, key=lambda item: item.evidence_id)
-    )
+    canonical_evidence = tuple(sorted(source_evidence, key=lambda item: item.evidence_id))
     reviewed_observations = tuple(observations)
     if len(reviewed_observations) != len(plan.requests):
         raise ValueError("ArcGIS bounded proof requires one observation per request")
@@ -66,9 +64,7 @@ def build_arcgis_bounded_proof_bundle(
             observation_by_request[request.request_id] for request in plan.requests
         )
     except KeyError as exc:
-        raise ValueError(
-            "ArcGIS bounded proof requires every planned request observation"
-        ) from exc
+        raise ValueError("ArcGIS bounded proof requires every planned request observation") from exc
     rebuilt_plan = build_arcgis_probe_plan(
         snapshot,
         sample_size=plan.sample_size,
@@ -208,9 +204,7 @@ def build_arcgis_proof_persistence_receipt(
         profile_id=bundle.profile.profile_id,
         snapshot_id=bundle.snapshot.snapshot_id,
         plan_id=bundle.plan.plan_id,
-        observation_ids=tuple(
-            sorted(item.observation_id for item in bundle.observations)
-        ),
+        observation_ids=tuple(sorted(item.observation_id for item in bundle.observations)),
         assessment_id=bundle.assessment.assessment_id,
         evidence_count=len(bundle.source_evidence),
         mutation_authorized=True,

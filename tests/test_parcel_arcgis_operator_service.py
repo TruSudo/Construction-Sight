@@ -36,9 +36,7 @@ _NOW = datetime(2026, 7, 15, 12, 0, tzinfo=UTC)
 
 def _profile_and_evidence():
     profile = get_verified_parcel_source_profiles()[0]
-    evidence_by_id = {
-        item.evidence_id: item for item in get_parcel_source_evidence()
-    }
+    evidence_by_id = {item.evidence_id: item for item in get_parcel_source_evidence()}
     evidence = tuple(evidence_by_id[item] for item in profile.evidence_ids)
     return profile, evidence
 
@@ -199,9 +197,7 @@ def test_persistence_requires_exact_bundle_identity_and_scope_bound_authority() 
     assert "destructive overwrite" in authorization["denied_authority"]
     assert persisted.receipt.bundle_id == result.bundle.bundle_id
     assert persisted.receipt.bulk_run_authorized is False
-    assert persister.calls == [
-        (result.bundle.bundle_id, "sqlite+pysqlite:///:memory:")
-    ]
+    assert persister.calls == [(result.bundle.bundle_id, "sqlite+pysqlite:///:memory:")]
 
 
 def test_persistence_rejects_identity_substitution_before_write() -> None:

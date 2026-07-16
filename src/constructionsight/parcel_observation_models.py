@@ -164,11 +164,7 @@ class ParcelSourceCurrentSelection(BaseModel):
         if disposition_ids != sorted(set(disposition_ids)):
             raise ValueError("parcel observation dispositions must be sorted and unique")
         by_status = {
-            status: [
-                item.observation_id
-                for item in self.dispositions
-                if item.status is status
-            ]
+            status: [item.observation_id for item in self.dispositions if item.status is status]
             for status in ParcelObservationDispositionStatus
         }
         if self.status is ParcelSourceSelectionStatus.SELECTED:
@@ -191,8 +187,7 @@ class ParcelSourceCurrentSelection(BaseModel):
             for disposition in self.dispositions:
                 if (
                     disposition.status is ParcelObservationDispositionStatus.SUPERSEDED
-                    and disposition.superseded_by_observation_ids
-                    != [self.current_observation_id]
+                    and disposition.superseded_by_observation_ids != [self.current_observation_id]
                 ):
                     raise ValueError(
                         "superseded observations must identify the current observation"
@@ -220,9 +215,7 @@ class ParcelSourceCurrentSelection(BaseModel):
                 disposition.status is ParcelObservationDispositionStatus.SUPERSEDED
                 and set(disposition.superseded_by_observation_ids) != candidate_set
             ):
-                raise ValueError(
-                    "superseded observations must identify every current candidate"
-                )
+                raise ValueError("superseded observations must identify every current candidate")
         return self
 
 
@@ -275,9 +268,7 @@ class ParcelCurrentSelectionReport(BaseModel):
         )
         if self.current_observation_ids != current_ids:
             raise ValueError("current observation IDs must match source selections")
-        review_required = any(
-            item.requires_human_review for item in self.source_selections
-        )
+        review_required = any(item.requires_human_review for item in self.source_selections)
         if self.requires_human_review != review_required:
             raise ValueError("parcel report review state must match source selections")
         expected_status = (
@@ -380,9 +371,7 @@ def parcel_current_selection_id(
         "normalized_apn": normalized_apn,
         "requires_human_review": requires_human_review,
         "source_count": source_count,
-        "source_selections": [
-            item.model_dump(mode="json") for item in source_selections
-        ],
+        "source_selections": [item.model_dump(mode="json") for item in source_selections],
         "status": status.value,
     }
     return f"parcel-current-selection:{_digest(payload)}"

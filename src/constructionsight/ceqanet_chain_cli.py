@@ -66,9 +66,7 @@ def _snapshot_from_execution_json(
         )
     snapshot = snapshots[snapshot_index]
     if not isinstance(snapshot, dict):
-        raise typer.BadParameter(
-            f"{input_path} snapshots[{snapshot_index}] must be a JSON object."
-        )
+        raise typer.BadParameter(f"{input_path} snapshots[{snapshot_index}] must be a JSON object.")
     return cast(dict[str, Any], snapshot)
 
 

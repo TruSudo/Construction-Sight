@@ -284,8 +284,7 @@ class ParcelSourceVerificationProfile(BaseModel):
             )
         ):
             raise ValueError(
-                "import-ready coverage requires verified access, schema, countywide, "
-                "and bulk proof"
+                "import-ready coverage requires verified access, schema, countywide, and bulk proof"
             )
         expected = parcel_source_verification_profile_id(
             self.model_dump(mode="json", exclude={"profile_id"})
@@ -407,9 +406,7 @@ class ParcelCountyCoverageReport(BaseModel):
     def require_report_consistency(self) -> ParcelCountyCoverageReport:
         """Keep report status and deterministic identity consistent."""
 
-        requirement_counties = tuple(
-            requirement.county for requirement in self.requirements
-        )
+        requirement_counties = tuple(requirement.county for requirement in self.requirements)
         expected_counties = tuple(sorted(requirement_counties))
         if requirement_counties != expected_counties:
             raise ValueError("county coverage requirements must be sorted by county")
@@ -419,16 +416,13 @@ class ParcelCountyCoverageReport(BaseModel):
             raise ValueError("county coverage requirements must identify unique counties")
         if tuple(sorted(set(self.profile_ids))) != self.profile_ids:
             raise ValueError("county coverage profile IDs must be unique and sorted")
-        gap_order = tuple(
-            (gap.county, gap.code.value, gap.explanation) for gap in self.gaps
-        )
+        gap_order = tuple((gap.county, gap.code.value, gap.explanation) for gap in self.gaps)
         if gap_order != tuple(sorted(gap_order)):
             raise ValueError("county coverage gaps must be canonically sorted")
         if not self.gaps:
             expected_status = ParcelCountyCoverageStatus.READY_FOR_BOUNDED_IMPORT
         elif any(
-            gap.code == ParcelCountyCoverageGapCode.SOURCE_REVIEW_REQUIRED
-            for gap in self.gaps
+            gap.code == ParcelCountyCoverageGapCode.SOURCE_REVIEW_REQUIRED for gap in self.gaps
         ):
             expected_status = ParcelCountyCoverageStatus.REVIEW_REQUIRED
         else:

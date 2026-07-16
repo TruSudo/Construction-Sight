@@ -66,14 +66,9 @@ class SourceVerifier:
                 url_reachable=False,
                 portal_type_detected=PlatformFamily.UNKNOWN,
                 public_search_available=False,
-                login_required=(
-                    True if status_code in {401, 403, 407} else None
-                ),
+                login_required=(True if status_code in {401, 403, 407} else None),
                 confidence_score=(25 if status_code in {401, 403} else 0),
-                notes=(
-                    "HTTP verification failed closed: "
-                    f"{observation.failure_kind.value}"
-                ),
+                notes=(f"HTTP verification failed closed: {observation.failure_kind.value}"),
                 raw_observations={
                     "policy_id": observation.policy_id,
                     "status_code": status_code,

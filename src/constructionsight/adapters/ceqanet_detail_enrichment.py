@@ -166,9 +166,11 @@ def enrich_ceqanet_result_record(
             field_sources[field_name] = "unavailable"
 
     has_human_title = bool(detail_metadata.get("has_human_title"))
-    title_source = _string_or_none(detail.get("title_source")) or _string_or_none(
-        result_record.get("title_source")
-    ) or "unavailable"
+    title_source = (
+        _string_or_none(detail.get("title_source"))
+        or _string_or_none(result_record.get("title_source"))
+        or "unavailable"
+    )
     requires_detail_enrichment = bool(result_record.get("requires_detail_enrichment"))
     if has_human_title:
         requires_detail_enrichment = False

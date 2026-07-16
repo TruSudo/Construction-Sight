@@ -45,15 +45,8 @@ class OpportunityScoringProfile(BaseModel):
     def require_threshold_order(self) -> OpportunityScoringProfile:
         """Require thresholds to descend from high-value to monitor."""
 
-        if not (
-            self.high_value_threshold
-            >= self.review_threshold
-            >= self.monitor_threshold
-            >= 0
-        ):
-            raise ValueError(
-                "thresholds must descend: high_value >= review >= monitor >= 0"
-            )
+        if not (self.high_value_threshold >= self.review_threshold >= self.monitor_threshold >= 0):
+            raise ValueError("thresholds must descend: high_value >= review >= monitor >= 0")
         return self
 
     def site_score(self, status: SiteResolutionStatus) -> int | None:

@@ -5,8 +5,9 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Final, Sequence
+from typing import Any, Final
 
 from constructionsight.governance_certification import audit_governance
 from constructionsight.repository_certification import (
@@ -91,9 +92,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 location = finding["path"]
                 if finding["line"] is not None:
                     location = f"{location}:{finding['line']}"
-                print(
-                    f"- {finding['code']} {location}: {finding['message']}"
-                )
+                print(f"- {finding['code']} {location}: {finding['message']}")
     return 0 if report["passed"] else 1
 
 

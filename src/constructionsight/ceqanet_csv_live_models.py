@@ -23,9 +23,7 @@ class CeqanetCsvLiveExecution(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    schema_version: Literal["ceqanet_csv_live_execution.v1"] = (
-        CSV_LIVE_EXECUTION_SCHEMA_VERSION
-    )
+    schema_version: Literal["ceqanet_csv_live_execution.v1"] = CSV_LIVE_EXECUTION_SCHEMA_VERSION
     request: CeqanetCsvExportRequest
     request_url: str = Field(min_length=1)
     final_url: str = Field(min_length=1)

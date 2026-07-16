@@ -375,12 +375,8 @@ def execute_manifest(
         output_path,
         cast(dict[str, object], result.execution.model_dump(mode="json")),
     )
-    typer.echo(
-        f"Authorization decision: {result.authorization.decision.decision_id}"
-    )
-    typer.echo(
-        f"Authorization preflight: {result.authorization.preflight.preflight_id}"
-    )
+    typer.echo(f"Authorization decision: {result.authorization.decision.decision_id}")
+    typer.echo(f"Authorization preflight: {result.authorization.preflight.preflight_id}")
 
 
 @app.command("verify")

@@ -32,9 +32,7 @@ def execute_ceqanet_detail_request(
     """Execute one exact bounded CEQAnet detail read and preserve failure class."""
 
     if timeout_seconds <= 0 or timeout_seconds > CEQANET_DETAIL_POLICY.read_timeout_seconds:
-        raise ValueError(
-            "CEQAnet detail timeout cannot exceed the declared CS-NET-006 ceiling"
-        )
+        raise ValueError("CEQAnet detail timeout cannot exceed the declared CS-NET-006 ceiling")
     if max_body_bytes < 1 or max_body_bytes > CEQANET_DETAIL_POLICY.max_response_bytes:
         raise ValueError(
             "CEQAnet detail response limit cannot exceed the declared CS-NET-006 ceiling"

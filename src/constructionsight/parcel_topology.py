@@ -77,9 +77,7 @@ def evaluate_parcel_point_containment(
     }:
         parsed = parse_parcel_topology(geometry.raw_geometry)
         topology = parsed.polygons if parsed is not None else None
-        if topology is not None and _is_verified_longitude_latitude(
-            geometry.spatial_reference
-        ):
+        if topology is not None and _is_verified_longitude_latitude(geometry.spatial_reference):
             contained = _point_in_multipolygon(
                 longitude=longitude,
                 latitude=latitude,
@@ -89,9 +87,7 @@ def evaluate_parcel_point_containment(
                 contained=contained,
                 method=ParcelContainmentMethod.POLYGON_TOPOLOGY,
                 reason=(
-                    "coordinate hint falls within parcel polygon topology"
-                    if contained
-                    else None
+                    "coordinate hint falls within parcel polygon topology" if contained else None
                 ),
             )
         fallback_limitations: list[str] = [_ENVELOPE_LIMITATION]
@@ -170,8 +166,7 @@ def _envelope_containment(
     assert max_latitude is not None
     assert max_longitude is not None
     contained = (
-        min_latitude <= latitude <= max_latitude
-        and min_longitude <= longitude <= max_longitude
+        min_latitude <= latitude <= max_latitude and min_longitude <= longitude <= max_longitude
     )
     return ParcelPointContainment(
         contained=contained,
@@ -218,16 +213,11 @@ def _point_in_ring(point: Coordinate, ring: Ring) -> bool:
     for current in ring:
         current_longitude, current_latitude = current
         previous_longitude, previous_latitude = previous
-        crosses_latitude = (current_latitude > latitude) != (
-            previous_latitude > latitude
-        )
+        crosses_latitude = (current_latitude > latitude) != (previous_latitude > latitude)
         if crosses_latitude:
-            intersection_longitude = (
-                (previous_longitude - current_longitude)
-                * (latitude - current_latitude)
-                / (previous_latitude - current_latitude)
-                + current_longitude
-            )
+            intersection_longitude = (previous_longitude - current_longitude) * (
+                latitude - current_latitude
+            ) / (previous_latitude - current_latitude) + current_longitude
             if longitude < intersection_longitude:
                 inside = not inside
         previous = current
@@ -255,10 +245,9 @@ def _point_on_segment(
     longitude, latitude = point
     start_longitude, start_latitude = start
     end_longitude, end_latitude = end
-    cross_product = (
-        (longitude - start_longitude) * (end_latitude - start_latitude)
-        - (latitude - start_latitude) * (end_longitude - start_longitude)
-    )
+    cross_product = (longitude - start_longitude) * (end_latitude - start_latitude) - (
+        latitude - start_latitude
+    ) * (end_longitude - start_longitude)
     if abs(cross_product) > 1e-10:
         return False
     return (
@@ -282,9 +271,7 @@ def _has_explicit_incompatible_spatial_reference(
 ) -> bool:
     """Return whether an explicit CRS cannot be compared to longitude/latitude hints."""
 
-    return spatial_reference is not None and not _is_verified_longitude_latitude(
-        spatial_reference
-    )
+    return spatial_reference is not None and not _is_verified_longitude_latitude(spatial_reference)
 
 
 def _is_verified_longitude_latitude(spatial_reference: str | None) -> bool:

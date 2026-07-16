@@ -18,12 +18,8 @@ from constructionsight.ceqanet_csv_models import (
     canonical_digest,
 )
 
-CSV_EVIDENCE_EXECUTION_SCHEMA_VERSION: Final = (
-    "ceqanet_csv_evidence_execution.v1"
-)
-CSV_EVIDENCE_OBSERVATION_SCHEMA_VERSION: Final = (
-    "ceqanet_csv_evidence_observation.v1"
-)
+CSV_EVIDENCE_EXECUTION_SCHEMA_VERSION: Final = "ceqanet_csv_evidence_execution.v1"
+CSV_EVIDENCE_OBSERVATION_SCHEMA_VERSION: Final = "ceqanet_csv_evidence_observation.v1"
 CSV_EVIDENCE_SERIES_SCHEMA_VERSION: Final = "ceqanet_csv_evidence_series.v1"
 CSV_EVIDENCE_SERIES_VERIFICATION_SCHEMA_VERSION: Final = (
     "ceqanet_csv_evidence_series_verification.v1"
@@ -76,24 +72,13 @@ class CeqanetCsvEvidenceExecution(BaseModel):
             raise ValueError("live execution timestamp must be timezone-aware")
         executed_at_utc = executed_at.astimezone(UTC)
         if executed_at_utc.date() != self.authorized_utc_date:
-            raise ValueError(
-                "authorized_utc_date must equal the live execution UTC date"
-            )
+            raise ValueError("authorized_utc_date must equal the live execution UTC date")
         if self.authorization_granted_at > executed_at_utc:
-            raise ValueError(
-                "execution authorization cannot postdate the live request"
-            )
+            raise ValueError("execution authorization cannot postdate the live request")
         if self.authorization_granted_at.date() != self.authorized_utc_date:
-            raise ValueError(
-                "authorization_granted_at must fall on authorized_utc_date"
-            )
-        if (
-            self.live_verification.execution_digest
-            != self.live_execution.execution_digest
-        ):
-            raise ValueError(
-                "live verification execution digest does not match live evidence"
-            )
+            raise ValueError("authorization_granted_at must fall on authorized_utc_date")
+        if self.live_verification.execution_digest != self.live_execution.execution_digest:
+            raise ValueError("live verification execution digest does not match live evidence")
         return self
 
     def evidence_payload(self) -> dict[str, Any]:
@@ -160,13 +145,9 @@ class CeqanetCsvEvidenceObservation(BaseModel):
         if path.is_absolute() or not path.parts:
             raise ValueError("evidence execution artifact ref must be relative")
         if any(part in {"", ".", ".."} for part in path.parts):
-            raise ValueError(
-                "evidence execution artifact ref cannot contain traversal segments"
-            )
+            raise ValueError("evidence execution artifact ref cannot contain traversal segments")
         if path.as_posix() != value:
-            raise ValueError(
-                "evidence execution artifact ref must use canonical POSIX form"
-            )
+            raise ValueError("evidence execution artifact ref must use canonical POSIX form")
         return value
 
     @field_validator("executed_at")
@@ -203,30 +184,18 @@ class CeqanetCsvEvidenceObservation(BaseModel):
         elif self.document_id is None:
             raise ValueError("document observations require document_id")
         if self.verification_finding_count != len(self.verification_findings):
-            raise ValueError(
-                "verification_finding_count must equal verification findings length"
-            )
-        if self.verification_passed != (
-            self.verification_finding_count == 0
-        ):
-            raise ValueError(
-                "verification_passed must agree with verification findings"
-            )
+            raise ValueError("verification_finding_count must equal verification findings length")
+        if self.verification_passed != (self.verification_finding_count == 0):
+            raise ValueError("verification_passed must agree with verification findings")
         if self.successful != self.verification_passed:
-            raise ValueError(
-                "successful must agree with independent live verification"
-            )
+            raise ValueError("successful must agree with independent live verification")
         if self.successful:
             if self.status_code != 200:
                 raise ValueError("successful observations require HTTP 200")
             if not self.retained_body_complete:
-                raise ValueError(
-                    "successful observations require a complete retained body"
-                )
+                raise ValueError("successful observations require a complete retained body")
             if self.inspection_digest is None:
-                raise ValueError(
-                    "successful observations require an inspection digest"
-                )
+                raise ValueError("successful observations require an inspection digest")
         if self.access_control_halt and self.successful:
             raise ValueError("access-control halt observations cannot be successful")
         return self
@@ -253,9 +222,7 @@ class CeqanetCsvEvidenceSeries(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    schema_version: Literal["ceqanet_csv_evidence_series.v1"] = (
-        CSV_EVIDENCE_SERIES_SCHEMA_VERSION
-    )
+    schema_version: Literal["ceqanet_csv_evidence_series.v1"] = CSV_EVIDENCE_SERIES_SCHEMA_VERSION
     source_name: str = Field(min_length=1)
     policy_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
     policy_effective_date: date
@@ -300,9 +267,7 @@ class CeqanetCsvEvidenceSeries(BaseModel):
         """Require deterministic, unique successful UTC dates."""
 
         if values != sorted(set(values)):
-            raise ValueError(
-                "distinct successful UTC dates must be sorted and unique"
-            )
+            raise ValueError("distinct successful UTC dates must be sorted and unique")
         return values
 
     @model_validator(mode="after")
@@ -314,18 +279,12 @@ class CeqanetCsvEvidenceSeries(BaseModel):
         if self.observation_count != len(self.observations):
             raise ValueError("observation_count must equal observations length")
         if self.series_sequence != self.observation_count:
-            raise ValueError(
-                "series_sequence must equal the append-only observation count"
-            )
+            raise ValueError("series_sequence must equal the append-only observation count")
         if self.series_sequence == 0:
             if self.predecessor_series_digest is not None:
-                raise ValueError(
-                    "empty evidence-series baseline cannot have a predecessor"
-                )
+                raise ValueError("empty evidence-series baseline cannot have a predecessor")
         elif self.predecessor_series_digest is None:
-            raise ValueError(
-                "nonempty evidence series must bind its predecessor digest"
-            )
+            raise ValueError("nonempty evidence series must bind its predecessor digest")
         ordered = sorted(
             self.observations,
             key=lambda item: (
@@ -335,15 +294,9 @@ class CeqanetCsvEvidenceSeries(BaseModel):
         )
         if self.observations != ordered:
             raise ValueError("evidence observations must use deterministic order")
-        refs = [
-            item.evidence_execution_artifact_ref for item in self.observations
-        ]
-        execution_digests = [
-            item.evidence_execution_digest for item in self.observations
-        ]
-        observation_digests = [
-            item.observation_digest for item in self.observations
-        ]
+        refs = [item.evidence_execution_artifact_ref for item in self.observations]
+        execution_digests = [item.evidence_execution_digest for item in self.observations]
+        observation_digests = [item.observation_digest for item in self.observations]
         if len(refs) != len(set(refs)):
             raise ValueError("evidence execution artifact refs must be unique")
         if len(execution_digests) != len(set(execution_digests)):
@@ -356,47 +309,34 @@ class CeqanetCsvEvidenceSeries(BaseModel):
         if any(item.policy_digest != self.policy_digest for item in self.observations):
             raise ValueError("every observation must bind the series policy digest")
         if any(
-            item.utc_date < self.policy_effective_date
-            or item.utc_date > self.policy_expires_on
+            item.utc_date < self.policy_effective_date or item.utc_date > self.policy_expires_on
             for item in self.observations
         ):
             raise ValueError("every observation must fall inside the policy window")
         successful = [item for item in self.observations if item.successful]
         if self.successful_observation_count != len(successful):
-            raise ValueError(
-                "successful_observation_count must equal successful observations"
-            )
+            raise ValueError("successful_observation_count must equal successful observations")
         successful_dates = sorted({item.utc_date for item in successful})
         if self.distinct_successful_utc_dates != successful_dates:
-            raise ValueError(
-                "distinct successful UTC dates do not match observations"
-            )
+            raise ValueError("distinct successful UTC dates do not match observations")
         successful_kinds = sorted(
             {item.export_kind for item in successful},
             key=lambda item: item.value,
         )
         if self.observed_successful_export_kinds != successful_kinds:
-            raise ValueError(
-                "observed successful export kinds do not match observations"
-            )
+            raise ValueError("observed successful export kinds do not match observations")
 
-        halted = [
-            item for item in self.observations if item.access_control_halt
-        ]
+        halted = [item for item in self.observations if item.access_control_halt]
         if halted:
             halt = halted[0]
             if len(halted) != 1 or self.observations[-1] != halt:
-                raise ValueError(
-                    "the first access-control halt must end the evidence series"
-                )
+                raise ValueError("the first access-control halt must end the evidence series")
             if self.status is not CeqanetCsvEvidenceSeriesStatus.HALTED:
                 raise ValueError("a halt observation requires halted series status")
             if self.halted_on != halt.utc_date:
                 raise ValueError("halted_on must match the halt observation")
             if self.halt_status_code != halt.status_code:
-                raise ValueError(
-                    "halt_status_code must match the halt observation"
-                )
+                raise ValueError("halt_status_code must match the halt observation")
         else:
             if self.halted_on is not None or self.halt_status_code is not None:
                 raise ValueError("non-halted series cannot include halt metadata")
@@ -411,9 +351,7 @@ class CeqanetCsvEvidenceSeries(BaseModel):
                 else CeqanetCsvEvidenceSeriesStatus.COLLECTING
             )
             if self.status is not expected:
-                raise ValueError(
-                    "series status does not match evidence completion criteria"
-                )
+                raise ValueError("series status does not match evidence completion criteria")
         return self
 
     def evidence_payload(self) -> dict[str, Any]:
@@ -441,9 +379,9 @@ class CeqanetCsvEvidenceSeriesVerification(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    schema_version: Literal[
-        "ceqanet_csv_evidence_series_verification.v1"
-    ] = CSV_EVIDENCE_SERIES_VERIFICATION_SCHEMA_VERSION
+    schema_version: Literal["ceqanet_csv_evidence_series_verification.v1"] = (
+        CSV_EVIDENCE_SERIES_VERIFICATION_SCHEMA_VERSION
+    )
     passed: bool
     finding_count: int = Field(ge=0)
     findings: list[str]
@@ -464,7 +402,5 @@ class CeqanetCsvEvidenceSeriesVerification(BaseModel):
         if self.passed != (self.finding_count == 0):
             raise ValueError("passed must agree with finding_count")
         if self.ready_for_maturity_review and not self.passed:
-            raise ValueError(
-                "failed series verification cannot claim maturity readiness"
-            )
+            raise ValueError("failed series verification cannot claim maturity readiness")
         return self

@@ -70,23 +70,15 @@ def _load_policy_context(
         raise ValueError("source registry JSON must be a list")
     return (
         [PublicSource.model_validate(item) for item in registry_payload],
-        CeqanetCsvLiveExecution.model_validate(
-            _load_json(original_execution_path)
-        ),
+        CeqanetCsvLiveExecution.model_validate(_load_json(original_execution_path)),
         CeqanetCsvEncodingReplay.model_validate(_load_json(replay_path)),
-        CeqanetCsvEncodingReplayVerification.model_validate(
-            _load_json(replay_verification_path)
-        ),
-        CeqanetSourceMaturityProposal.model_validate(
-            _load_json(maturity_proposal_path)
-        ),
+        CeqanetCsvEncodingReplayVerification.model_validate(_load_json(replay_verification_path)),
+        CeqanetSourceMaturityProposal.model_validate(_load_json(maturity_proposal_path)),
         CeqanetSourceMaturityProposalVerification.model_validate(
             _load_json(maturity_verification_path)
         ),
         CeqanetCsvAccessPolicy.model_validate(_load_json(policy_path)),
-        CeqanetCsvAccessPolicyVerification.model_validate(
-            _load_json(policy_verification_path)
-        ),
+        CeqanetCsvAccessPolicyVerification.model_validate(_load_json(policy_verification_path)),
     )
 
 
@@ -97,9 +89,7 @@ def _load_evidence_executions(
     normalized_paths = paths or []
     normalized_refs = artifact_refs or []
     if len(normalized_paths) != len(normalized_refs):
-        raise ValueError(
-            "--evidence-execution and --artifact-ref counts must match"
-        )
+        raise ValueError("--evidence-execution and --artifact-ref counts must match")
     return [
         (
             artifact_ref,
@@ -149,9 +139,7 @@ def _require_output_available(
     if any(path.resolve() == output_identity for path in inputs):
         raise ValueError("output path must differ from every input path")
     if output.exists() and not overwrite:
-        raise ValueError(
-            f"output already exists: {output}; pass --overwrite to replace it"
-        )
+        raise ValueError(f"output already exists: {output}; pass --overwrite to replace it")
     output.parent.mkdir(parents=True, exist_ok=True)
 
 
@@ -345,9 +333,7 @@ def verify_series(
             evidence_execution_paths,
             artifact_refs,
         )
-        series = CeqanetCsvEvidenceSeries.model_validate(
-            _load_json(series_path)
-        )
+        series = CeqanetCsvEvidenceSeries.model_validate(_load_json(series_path))
         verification = verify_ceqanet_csv_evidence_series(
             *context,
             evidence_executions,
@@ -455,9 +441,7 @@ def execute_evidence(
     """Execute one governed request after full policy and ledger verification."""
 
     if not execute_live:
-        raise typer.BadParameter(
-            "explicit --execute-live authorization is required"
-        )
+        raise typer.BadParameter("explicit --execute-live authorization is required")
     try:
         context = _load_policy_context(
             registry_path,
@@ -473,9 +457,7 @@ def execute_evidence(
             evidence_execution_paths,
             artifact_refs,
         )
-        series = CeqanetCsvEvidenceSeries.model_validate(
-            _load_json(series_path)
-        )
+        series = CeqanetCsvEvidenceSeries.model_validate(_load_json(series_path))
         request = build_ceqanet_csv_export_request(
             sch_number=sch_number,
             document_id=document_id,
@@ -514,9 +496,6 @@ def execute_evidence(
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         raise typer.BadParameter(str(exc)) from exc
     console.print(f"Wrote CEQAnet CSV evidence execution to {output}")
-    console.print(
-        f"Independent live verification passed: "
-        f"{execution.live_verification.passed}"
-    )
+    console.print(f"Independent live verification passed: {execution.live_verification.passed}")
     if not execution.live_verification.passed:
         raise typer.Exit(code=1)

@@ -115,9 +115,7 @@ def test_architecture_rejects_import_cycle(tmp_path: Path) -> None:
 
 
 def test_architecture_rejects_undeclared_network_client(tmp_path: Path) -> None:
-    tracked = (
-        _write(tmp_path, "src/constructionsight/transport.py", "import httpx\n"),
-    )
+    tracked = (_write(tmp_path, "src/constructionsight/transport.py", "import httpx\n"),)
     contract = _architecture(
         _layer(
             "transport",
@@ -141,9 +139,7 @@ def test_architecture_rejects_mutation_in_read_only_layer(tmp_path: Path) -> Non
             "from pathlib import Path\nPath('x').write_text('x')\n",
         ),
     )
-    contract = _architecture(
-        _layer("domain", r"src/constructionsight/domain\.py", default=True)
-    )
+    contract = _architecture(_layer("domain", r"src/constructionsight/domain\.py", default=True))
     findings: list[GovernanceFinding] = []
 
     _audit_architecture(tmp_path, tracked, contract, {"policies": []}, findings)
@@ -337,8 +333,7 @@ def test_active_defect_is_a_certification_blocker(tmp_path: Path) -> None:
     _write(
         tmp_path,
         "governance/active_defects.toml",
-        "schema_version = 'constructionsight.active-defects/v1'\n"
-        "[[defects]]\nid = 'CS-TEST-001'\n",
+        "schema_version = 'constructionsight.active-defects/v1'\n[[defects]]\nid = 'CS-TEST-001'\n",
     )
     _write(
         tmp_path,

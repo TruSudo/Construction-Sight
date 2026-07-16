@@ -210,8 +210,7 @@ def store_arcgis_bulk_manifest(
         session.execute(
             select(ParcelArcGISProbeObservationRow).where(
                 ParcelArcGISProbeObservationRow.snapshot_id == manifest.snapshot_id,
-                ParcelArcGISProbeObservationRow.probe_kind
-                == ParcelArcGISProbeKind.COUNT.value,
+                ParcelArcGISProbeObservationRow.probe_kind == ParcelArcGISProbeKind.COUNT.value,
             )
         ).scalars()
     )
@@ -265,16 +264,12 @@ def store_arcgis_acquisition_assessment(
     observation_rows = list(
         session.execute(
             select(ParcelArcGISProbeObservationRow).where(
-                ParcelArcGISProbeObservationRow.observation_id.in_(
-                    assessment.probe_observation_ids
-                )
+                ParcelArcGISProbeObservationRow.observation_id.in_(assessment.probe_observation_ids)
             )
         ).scalars()
     )
     observations = [_observation_from_row(row) for row in observation_rows]
-    if {item.observation_id for item in observations} != set(
-        assessment.probe_observation_ids
-    ):
+    if {item.observation_id for item in observations} != set(assessment.probe_observation_ids):
         raise ValueError("ArcGIS assessment requires every persisted probe observation")
     manifest: ParcelArcGISBulkManifest | None = None
     if assessment.bulk_manifest_id is not None:
@@ -300,8 +295,7 @@ def store_arcgis_acquisition_assessment(
     payload_json = _payload_json(assessment.to_dict())
     existing = session.execute(
         select(ParcelArcGISAcquisitionAssessmentRow).where(
-            ParcelArcGISAcquisitionAssessmentRow.assessment_id
-            == assessment.assessment_id
+            ParcelArcGISAcquisitionAssessmentRow.assessment_id == assessment.assessment_id
         )
     ).scalar_one_or_none()
     if existing is not None:
@@ -346,9 +340,7 @@ def load_arcgis_capability_snapshots(
         statement = statement.where(ParcelArcGISCapabilitySnapshotRow.source_key == source_key)
     if county is not None:
         statement = statement.where(ParcelArcGISCapabilitySnapshotRow.county == county)
-    rows = session.execute(
-        statement.order_by(ParcelArcGISCapabilitySnapshotRow.id)
-    ).scalars()
+    rows = session.execute(statement.order_by(ParcelArcGISCapabilitySnapshotRow.id)).scalars()
     return [_snapshot_from_row(row) for row in rows]
 
 
@@ -378,9 +370,7 @@ def load_arcgis_probe_observations(
         statement = statement.where(ParcelArcGISProbeObservationRow.source_key == source_key)
     if county is not None:
         statement = statement.where(ParcelArcGISProbeObservationRow.county == county)
-    rows = session.execute(
-        statement.order_by(ParcelArcGISProbeObservationRow.id)
-    ).scalars()
+    rows = session.execute(statement.order_by(ParcelArcGISProbeObservationRow.id)).scalars()
     return [_observation_from_row(row) for row in rows]
 
 
@@ -410,14 +400,10 @@ def load_arcgis_acquisition_assessments(
     if status is not None:
         statement = statement.where(ParcelArcGISAcquisitionAssessmentRow.status == status)
     if source_key is not None:
-        statement = statement.where(
-            ParcelArcGISAcquisitionAssessmentRow.source_key == source_key
-        )
+        statement = statement.where(ParcelArcGISAcquisitionAssessmentRow.source_key == source_key)
     if county is not None:
         statement = statement.where(ParcelArcGISAcquisitionAssessmentRow.county == county)
-    rows = session.execute(
-        statement.order_by(ParcelArcGISAcquisitionAssessmentRow.id)
-    ).scalars()
+    rows = session.execute(statement.order_by(ParcelArcGISAcquisitionAssessmentRow.id)).scalars()
     return [_assessment_from_row(row) for row in rows]
 
 
@@ -449,9 +435,7 @@ def _require_capability_matches_profile(
 ) -> None:
     if snapshot.layer_url != profile.source_url:
         raise ValueError("ArcGIS capability URL does not match verification profile")
-    if {field.name for field in snapshot.fields} | {"geometry"} != set(
-        profile.schema_fields
-    ):
+    if {field.name for field in snapshot.fields} | {"geometry"} != set(profile.schema_fields):
         raise ValueError("ArcGIS capability schema does not match verification profile")
     if snapshot.max_record_count != profile.max_record_count:
         raise ValueError("ArcGIS capability record limit does not match verification profile")
@@ -486,9 +470,7 @@ def _require_plan_for_request(session: Session, request_id: str) -> ParcelArcGIS
     rows = list(session.execute(select(ParcelArcGISProbePlanRow)).scalars())
     plans = [_plan_from_row(row) for row in rows]
     matches = [
-        plan
-        for plan in plans
-        if request_id in {request.request_id for request in plan.requests}
+        plan for plan in plans if request_id in {request.request_id for request in plan.requests}
     ]
     if not matches:
         raise ValueError("ArcGIS probe observation requires a persisted request")
@@ -598,9 +580,7 @@ def _observation_from_row(
         row.observation_id,
     )
     observed_count = (
-        model.total_count
-        if model.kind == ParcelArcGISProbeKind.COUNT
-        else len(model.object_ids)
+        model.total_count if model.kind == ParcelArcGISProbeKind.COUNT else len(model.object_ids)
     )
     _require_index_match(
         (

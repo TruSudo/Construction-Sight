@@ -72,9 +72,7 @@ def _context(
 
 def _field(report, field_role: ParcelFieldRole):
     return next(
-        assurance
-        for assurance in report.field_assurances
-        if assurance.field_role == field_role
+        assurance for assurance in report.field_assurances if assurance.field_role == field_role
     )
 
 
@@ -174,9 +172,7 @@ def test_missing_field_is_explicit_and_does_not_assert_absence() -> None:
     owner = _field(report, ParcelFieldRole.OWNER)
     assert owner.status == ParcelAssuranceStatus.MISSING
     assert owner.claim_ids == []
-    assert owner.limitations == [
-        "Missing evidence is not evidence that the fact is absent."
-    ]
+    assert owner.limitations == ["Missing evidence is not evidence that the fact is absent."]
     assert report.review_status == ParcelAssuranceReviewStatus.INCOMPLETE
 
 

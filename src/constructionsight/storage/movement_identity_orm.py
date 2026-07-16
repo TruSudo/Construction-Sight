@@ -20,9 +20,7 @@ class PermitSnapshotRecord(Base):
     """Persisted source-neutral permit snapshot."""
 
     __tablename__ = "permit_snapshots"
-    __table_args__ = (
-        UniqueConstraint("snapshot_id", name="uq_permit_snapshots_snapshot_id"),
-    )
+    __table_args__ = (UniqueConstraint("snapshot_id", name="uq_permit_snapshots_snapshot_id"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     snapshot_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
@@ -100,9 +98,7 @@ class ContractorIdentityRecord(Base):
     """Persisted contractor identity."""
 
     __tablename__ = "contractor_identities"
-    __table_args__ = (
-        UniqueConstraint("contractor_key", name="uq_contractor_identities_key"),
-    )
+    __table_args__ = (UniqueConstraint("contractor_key", name="uq_contractor_identities_key"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     contractor_key: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
@@ -136,9 +132,7 @@ class DecisionRecordRow(Base):
     """Persisted public decision record."""
 
     __tablename__ = "decision_records"
-    __table_args__ = (
-        UniqueConstraint("decision_key", name="uq_decision_records_key"),
-    )
+    __table_args__ = (UniqueConstraint("decision_key", name="uq_decision_records_key"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     decision_key: Mapped[str] = mapped_column(String(255), nullable=False, index=True)

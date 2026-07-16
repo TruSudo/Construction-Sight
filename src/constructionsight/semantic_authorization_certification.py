@@ -69,9 +69,7 @@ def _function_parameters(node: ast.FunctionDef | ast.AsyncFunctionDef) -> set[st
 
 
 def _approved_service_call(name: str) -> bool:
-    return name in _AUTHORIZED_SERVICE_NAMES or name.startswith(
-        _AUTHORIZED_SERVICE_PREFIXES
-    )
+    return name in _AUTHORIZED_SERVICE_NAMES or name.startswith(_AUTHORIZED_SERVICE_PREFIXES)
 
 
 def audit_semantic_authorization(
@@ -84,10 +82,7 @@ def audit_semantic_authorization(
 
     repository_root = root.resolve()
     for relative in sorted((Path(path) for path in tracked_files), key=Path.as_posix):
-        if (
-            not relative.as_posix().startswith("src/constructionsight/")
-            or relative.suffix != ".py"
-        ):
+        if not relative.as_posix().startswith("src/constructionsight/") or relative.suffix != ".py":
             continue
         module = _module_name(relative)
         if layer_by_module.get(module) != "cli":
@@ -106,7 +101,7 @@ def audit_semantic_authorization(
             continue
 
         for node in ast.walk(tree):
-            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            if not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
                 continue
             confirmations = _function_parameters(node) & _HIGH_IMPACT_CONFIRMATIONS
             if not confirmations:
@@ -114,8 +109,7 @@ def audit_semantic_authorization(
             call_names = {
                 name
                 for descendant in ast.walk(node)
-                if isinstance(descendant, ast.Call)
-                and (name := _call_name(descendant)) is not None
+                if isinstance(descendant, ast.Call) and (name := _call_name(descendant)) is not None
             }
             direct_effects = sorted(call_names & _DIRECT_EFFECT_CALLS)
             if direct_effects:
@@ -123,8 +117,7 @@ def audit_semantic_authorization(
                     _finding(
                         "AUTH-BYPASS-001",
                         relative,
-                        "high-impact CLI directly invokes effect boundary: "
-                        f"{direct_effects}",
+                        f"high-impact CLI directly invokes effect boundary: {direct_effects}",
                         node.lineno,
                     )
                 )

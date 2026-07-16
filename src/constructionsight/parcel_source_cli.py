@@ -393,10 +393,7 @@ def acquisition_readiness(
 ) -> None:
     """Show metadata, probe, and complete-rehearsal acquisition maturity."""
 
-    payload = [
-        assessment.to_dict()
-        for assessment in get_official_arcgis_acquisition_assessments()
-    ]
+    payload = [assessment.to_dict() for assessment in get_official_arcgis_acquisition_assessments()]
     if json_output:
         typer.echo(json.dumps(payload, indent=2, sort_keys=True, default=str))
         return
@@ -456,22 +453,16 @@ def acquisition_probe(
     """Authorize schema refresh and five bounded read-only ArcGIS requests."""
 
     _reject_output_without_json(output_path, json_output)
-    profiles = {
-        profile.source_key: profile for profile in get_verified_parcel_source_profiles()
-    }
+    profiles = {profile.source_key: profile for profile in get_verified_parcel_source_profiles()}
     profile = profiles.get(source_key)
     if profile is None:
         typer.echo(f"Unknown verified ArcGIS source key: {source_key}")
         raise typer.Exit(code=1)
-    evidence_by_id = {
-        item.evidence_id: item for item in get_parcel_source_evidence()
-    }
+    evidence_by_id = {item.evidence_id: item for item in get_parcel_source_evidence()}
     try:
         result = execute_authorized_arcgis_probe(
             profile=profile,
-            source_evidence=(
-                evidence_by_id[evidence_id] for evidence_id in profile.evidence_ids
-            ),
+            source_evidence=(evidence_by_id[evidence_id] for evidence_id in profile.evidence_ids),
             sample_size=sample_size,
             timeout_seconds=timeout_seconds,
             authorization_reason=authorization_reason,
@@ -596,9 +587,7 @@ def acquisition_persist_bundle(
         typer.echo(json.dumps(payload, indent=2, sort_keys=True, default=str))
         return
     _render_arcgis_proof_result(payload, title="Parcel ArcGIS Proof Persistence")
-    typer.echo(
-        f"Authorization decision: {result.authorization.decision.decision_id}"
-    )
+    typer.echo(f"Authorization decision: {result.authorization.decision.decision_id}")
 
 
 @app.command("matrix")

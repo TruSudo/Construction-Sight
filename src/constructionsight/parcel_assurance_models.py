@@ -294,16 +294,13 @@ class ParcelAssuranceReport(BaseModel):
             raise ValueError("independent_lineage_count must match lineage keys")
         if not {claim.source_key for claim in self.claims}.issubset(self.source_keys):
             raise ValueError("report claims must use evaluated source keys")
-        if not {claim.lineage_key for claim in self.claims}.issubset(
-            self.lineage_keys
-        ):
+        if not {claim.lineage_key for claim in self.claims}.issubset(self.lineage_keys):
             raise ValueError("report claims must use evaluated lineage keys")
         expected_review_status = ParcelAssuranceReviewStatus.EVALUATED
         if any(assurance.requires_human_review for assurance in self.field_assurances):
             expected_review_status = ParcelAssuranceReviewStatus.REVIEW_REQUIRED
         elif any(
-            assurance.status == ParcelAssuranceStatus.MISSING
-            for assurance in self.field_assurances
+            assurance.status == ParcelAssuranceStatus.MISSING for assurance in self.field_assurances
         ):
             expected_review_status = ParcelAssuranceReviewStatus.INCOMPLETE
         if self.review_status != expected_review_status:

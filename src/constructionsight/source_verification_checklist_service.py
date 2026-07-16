@@ -100,8 +100,7 @@ def build_authorized_source_verification_checklist_report(
                 )
             ],
             "observations": [
-                observation.model_dump(mode="json")
-                for observation in normalized_observations
+                observation.model_dump(mode="json") for observation in normalized_observations
             ],
             "policy_id": "CS-NET-008",
         },
@@ -137,9 +136,7 @@ def build_authorized_source_verification_checklist_report(
         exact_scope=exact_scope,
         current_state_identity=state_identity,
         expected_identity=state_identity,
-        granted_authority=(
-            "perform one exact bounded verification GET for each declared source",
-        ),
+        granted_authority=("perform one exact bounded verification GET for each declared source",),
         denied_authority=tuple(
             sorted(
                 {
@@ -163,7 +160,8 @@ def build_authorized_source_verification_checklist_report(
         limitations=tuple(
             sorted(
                 {
-                    "HTTP evidence does not complete manual query, list, detail, barrier, or terms review",
+                    "HTTP evidence does not complete manual query, list, detail, "
+                    "barrier, or terms review",
                     "local operator identity is not authentication",
                     "single local-process use only",
                 },

@@ -20,9 +20,7 @@ class ResultAuthorityHeadRow(Base):
     """One compare-and-swap authority pointer for each result workflow."""
 
     __tablename__ = "result_authority_heads"
-    __table_args__ = (
-        UniqueConstraint("workflow_id", name="uq_result_authority_heads_workflow"),
-    )
+    __table_args__ = (UniqueConstraint("workflow_id", name="uq_result_authority_heads_workflow"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     workflow_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
@@ -61,9 +59,7 @@ class ResultAuthorityEventRow(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     event_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     workflow_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    previous_ledger_id: Mapped[str | None] = mapped_column(
-        String(255), nullable=True, index=True
-    )
+    previous_ledger_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     current_ledger_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     revision: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     reason: Mapped[str] = mapped_column(String(500), nullable=False, index=True)

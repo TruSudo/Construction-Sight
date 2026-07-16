@@ -48,9 +48,7 @@ class ParcelGeometry(BaseModel):
     def require_geometry_signal(self) -> ParcelGeometry:
         """Require either raw geometry or centroid coordinates."""
 
-        has_centroid = (
-            self.centroid_latitude is not None and self.centroid_longitude is not None
-        )
+        has_centroid = self.centroid_latitude is not None and self.centroid_longitude is not None
         if self.raw_geometry is None and not has_centroid:
             raise ValueError("parcel geometry requires raw geometry or centroid coordinates")
         return self

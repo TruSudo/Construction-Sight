@@ -124,23 +124,21 @@ def _audit_architecture(
         }
         layer_rules.append((name, patterns, default, allowed, forbidden, permissions))
     if default_count != 1:
-        findings.append(_finding("ARCH-CONTRACT-006", path, "exactly one default layer is required"))
+        findings.append(
+            _finding("ARCH-CONTRACT-006", path, "exactly one default layer is required")
+        )
 
     module_paths = tuple(
         candidate
         for candidate in tracked
-        if candidate.as_posix().startswith("src/constructionsight/")
-        and candidate.suffix == ".py"
+        if candidate.as_posix().startswith("src/constructionsight/") and candidate.suffix == ".py"
     )
     modules = {_module_name(candidate): candidate for candidate in module_paths}
     known = set(modules)
     layer_by_module: dict[str, str] = {}
-    permissions_by_layer = {
-        name: permissions for name, _, _, _, _, permissions in layer_rules
-    }
+    permissions_by_layer = {name: permissions for name, _, _, _, _, permissions in layer_rules}
     rule_by_layer = {
-        name: (allowed, forbidden)
-        for name, _, _, allowed, forbidden, _ in layer_rules
+        name: (allowed, forbidden) for name, _, _, allowed, forbidden, _ in layer_rules
     }
 
     exception_pairs: set[tuple[str, str]] = set()
@@ -196,8 +194,7 @@ def _audit_architecture(
                 _finding(
                     "ARCH-EXCEPTION-005",
                     path,
-                    "exception references unknown module edge: "
-                    f"{source_module} -> {target_module}",
+                    f"exception references unknown module edge: {source_module} -> {target_module}",
                 )
             )
             continue
@@ -296,8 +293,7 @@ def _audit_architecture(
                     _finding(
                         "ARCH-IMPORT-001",
                         module_path,
-                        f"{source_layer} cannot depend on {target_layer}: "
-                        f"{module} -> {target}",
+                        f"{source_layer} cannot depend on {target_layer}: {module} -> {target}",
                     )
                 )
         permissions = permissions_by_layer[source_layer]
@@ -318,9 +314,7 @@ def _audit_architecture(
                         "network-client import lacks an approved network policy",
                     )
                 )
-        if _external_matches(external, _PERSISTENCE_IMPORTS) and not permissions[
-            "persistence"
-        ]:
+        if _external_matches(external, _PERSISTENCE_IMPORTS) and not permissions["persistence"]:
             findings.append(
                 _finding(
                     "ARCH-CAP-002",
@@ -328,9 +322,7 @@ def _audit_architecture(
                     f"layer {source_layer} cannot acquire persistence capability",
                 )
             )
-        if _external_matches(external, _SUBPROCESS_IMPORTS) and not permissions[
-            "subprocess"
-        ]:
+        if _external_matches(external, _SUBPROCESS_IMPORTS) and not permissions["subprocess"]:
             findings.append(
                 _finding(
                     "ARCH-CAP-003",
@@ -356,9 +348,7 @@ def _audit_architecture(
     components = _strongly_connected_components(graph)
     cycles = tuple(component for component in components if len(component) > 1)
     if contract.get("prohibit_module_cycles") is not True:
-        findings.append(
-            _finding("ARCH-CONTRACT-007", path, "prohibit_module_cycles must be true")
-        )
+        findings.append(_finding("ARCH-CONTRACT-007", path, "prohibit_module_cycles must be true"))
     else:
         for component in cycles:
             findings.append(

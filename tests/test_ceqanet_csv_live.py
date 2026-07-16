@@ -245,17 +245,14 @@ def test_verifier_rejects_tampered_body_and_digest() -> None:
 
 def test_verifier_rejects_final_url_identity_drift() -> None:
     execution = _successful_execution().model_copy(
-        update={
-            "final_url": "https://ceqanet.lci.ca.gov/Search?OutputFormat=CSV&Sch=2026070311"
-        }
+        update={"final_url": "https://ceqanet.lci.ca.gov/Search?OutputFormat=CSV&Sch=2026070311"}
     )
     verification = verify_ceqanet_csv_live_execution(execution)
 
     assert verification.passed is False
     assert "CEQAnet CSV live execution digest mismatch" in verification.findings
     assert (
-        "live CSV final URL does not match the approved request identity"
-        in verification.findings
+        "live CSV final URL does not match the approved request identity" in verification.findings
     )
 
 

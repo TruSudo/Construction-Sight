@@ -80,12 +80,16 @@ def execute_authorized_ceqanet_write_plan(
             "operation_ids": operation_ids,
         },
     )
+    operation_ids_digest = authorization_digest(
+        "ceqanet-operation-ids",
+        {"ids": operation_ids},
+    )
     exact_scope = tuple(
         sorted(
             {
                 f"destination:{destination_identity}",
                 f"operation-count:{operation_count}",
-                f"operation-id-digest:{authorization_digest('ceqanet-operation-ids', {'ids': operation_ids})}",
+                f"operation-id-digest:{operation_ids_digest}",
                 f"plan-digest:{plan_digest}",
                 "transaction:all-or-nothing",
                 "write-mode:upsert-preview-only",
@@ -100,9 +104,7 @@ def execute_authorized_ceqanet_write_plan(
         exact_scope=exact_scope,
         current_state_identity=current_state_identity,
         expected_identity=current_state_identity,
-        granted_authority=(
-            "atomically apply one exact reviewed CEQAnet write plan",
-        ),
+        granted_authority=("atomically apply one exact reviewed CEQAnet write plan",),
         denied_authority=tuple(
             sorted(
                 {
@@ -144,9 +146,7 @@ def execute_authorized_ceqanet_write_plan(
             "atomic persistence executor returned a partial result contract violation"
         )
     if execution.applied_count != operation_count:
-        raise RuntimeError(
-            "atomic persistence executor applied count disagrees with reviewed plan"
-        )
+        raise RuntimeError("atomic persistence executor applied count disagrees with reviewed plan")
     return AuthorizedPersistenceResult(
         execution=execution,
         authorization=authorization,

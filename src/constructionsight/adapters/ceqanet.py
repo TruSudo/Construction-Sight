@@ -69,8 +69,7 @@ class CeqanetFixtureParser:
                     confidence_score=85,
                     verified=False,
                     notes=(
-                        "Fixture-backed CEQAnet normalization; live verification not yet "
-                        "performed."
+                        "Fixture-backed CEQAnet normalization; live verification not yet performed."
                     ),
                 )
             ],

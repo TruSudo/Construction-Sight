@@ -155,9 +155,7 @@ def _seed(database_url: str) -> None:
                                     "lineage_key": "county-assessor-roll",
                                 }
                             ],
-                            "field_assurances": [
-                                {"field_role": "owner", "status": "missing"}
-                            ],
+                            "field_assurances": [{"field_role": "owner", "status": "missing"}],
                             "limitations": ["current supplied records only"],
                         }
                     ),
@@ -308,9 +306,7 @@ def test_list_cli_outputs_machine_readable_decision_payload(tmp_path) -> None:
     assert result.exit_code == 0
     payload = json.loads(result.stdout)
     assert payload[0]["record_id"] == "decision:test"
-    assert payload[0]["payload"]["limitations"] == [
-        "applicant identity requires review"
-    ]
+    assert payload[0]["payload"]["limitations"] == ["applicant identity requires review"]
 
 
 def test_list_cli_outputs_parcel_assurance_payload(tmp_path) -> None:

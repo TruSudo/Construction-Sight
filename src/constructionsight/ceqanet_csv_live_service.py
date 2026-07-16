@@ -121,9 +121,7 @@ def execute_ceqanet_csv_live_request(
     if max_retained_rows < 0 or max_retained_rows > 1_000:
         raise ValueError("max_retained_rows must be between 0 and 1000")
     if client is None and injected_client_follow_redirects:
-        raise ValueError(
-            "injected_client_follow_redirects is unavailable to production transport"
-        )
+        raise ValueError("injected_client_follow_redirects is unavailable to production transport")
 
     if client is not None:
         return _execute_with_injected_client(
@@ -173,15 +171,16 @@ def verify_ceqanet_csv_live_execution(
         if final_request != execution.request:
             findings.append("live CSV final URL does not match the approved request identity")
 
-    if execution.method != "GET":
+    runtime_payload = execution.model_dump(mode="python")
+    if runtime_payload.get("method") != "GET":
         findings.append("live CSV execution method is not GET")
-    if execution.retry_count != 0:
+    if runtime_payload.get("retry_count") != 0:
         findings.append("live CSV execution reports a retry")
-    if not execution.network_executed:
+    if runtime_payload.get("network_executed") is not True:
         findings.append("live CSV execution does not affirm network execution")
-    if execution.documents_downloaded:
+    if runtime_payload.get("documents_downloaded") is not False:
         findings.append("live CSV execution reports CEQA document downloads")
-    if execution.persistence_mutated:
+    if runtime_payload.get("persistence_mutated") is not False:
         findings.append("live CSV execution reports persistence mutation")
     if execution.status_code != 200:
         findings.append(f"live CSV response status is not 200: {execution.status_code}")
@@ -248,9 +247,7 @@ def verify_ceqanet_csv_live_execution(
         request_url=execution.request_url,
         status_code=execution.status_code,
         inspection_digest=(
-            execution.inspection.inspection_digest
-            if execution.inspection is not None
-            else None
+            execution.inspection.inspection_digest if execution.inspection is not None else None
         ),
         execution_digest=execution.execution_digest,
     )
@@ -386,7 +383,8 @@ def _execution_from_observation(
     complete = (
         not observation.body_truncated
         and observation.failure_kind is not HttpFailureKind.OVERSIZED_RESPONSE
-        and observation.failure_kind not in {
+        and observation.failure_kind
+        not in {
             HttpFailureKind.REDIRECT,
             HttpFailureKind.ACCESS_CONTROL,
             HttpFailureKind.RATE_LIMIT,

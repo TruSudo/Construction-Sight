@@ -17,10 +17,10 @@ runner = CliRunner()
 def _write_export_dir(export_dir: Path) -> None:
     export_dir.mkdir(parents=True, exist_ok=True)
     files = {
-        "operator-package.json": "{\"package\": true}\n",
-        "persistence-preview.json": "{\"preview\": true}\n",
-        "write-plan.json": "{\"plan\": true}\n",
-        "operator-report.json": "{\"report\": true}\n",
+        "operator-package.json": '{"package": true}\n',
+        "persistence-preview.json": '{"preview": true}\n',
+        "write-plan.json": '{"plan": true}\n',
+        "operator-report.json": '{"report": true}\n',
         "operator-report.md": "# CEQAnet Operator Report\n",
     }
     artifacts = []
@@ -119,9 +119,7 @@ def test_ceqanet_operator_archive_verify_cli_emits_json(tmp_path: Path) -> None:
 
     assert result.exit_code == 0
     payload = json.loads(result.output)
-    assert payload["metadata"]["schema_version"] == (
-        "ceqanet_operator_archive_verification.v1"
-    )
+    assert payload["metadata"]["schema_version"] == ("ceqanet_operator_archive_verification.v1")
     assert payload["metadata"]["verified_count"] == 5
     assert payload["metadata"]["passed"] is True
     assert payload["metadata"]["network_executed"] is False

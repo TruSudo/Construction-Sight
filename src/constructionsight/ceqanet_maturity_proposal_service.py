@@ -133,11 +133,7 @@ def verify_ceqanet_source_maturity_proposal(
 
 
 def _ceqanet_source(sources: list[PublicSource]) -> PublicSource:
-    matches = [
-        source
-        for source in sources
-        if source.platform_family is PlatformFamily.CEQANET
-    ]
+    matches = [source for source in sources if source.platform_family is PlatformFamily.CEQANET]
     if len(matches) != 1:
         raise ValueError("source registry must contain exactly one CEQAnet source")
     return matches[0]

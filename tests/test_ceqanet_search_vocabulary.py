@@ -78,6 +78,7 @@ def test_parse_ceqanet_search_vocabulary_ignores_uncontracted_selects() -> None:
     )
     assert vocabulary.has_group("Unrelated") is False
 
+
 def test_parse_ceqanet_search_vocabulary_handles_unclosed_options_and_label_attrs() -> None:
     html = """
     <select name="Region">

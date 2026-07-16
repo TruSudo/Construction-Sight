@@ -11,9 +11,10 @@ import subprocess
 import sys
 import tempfile
 import tomllib
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Final, Sequence
+from typing import Any, Final
 
 SCHEMA_VERSION: Final = "constructionsight.mutation-report/v1"
 CONTRACT_SCHEMA_VERSION: Final = "constructionsight.mutation-contract/v1"
@@ -64,9 +65,7 @@ def _load_contract(root: Path) -> tuple[int, tuple[MutationCase, ...]]:
     }
     unknown_top = set(payload) - allowed_top
     if unknown_top:
-        raise MutationContractError(
-            f"unknown mutation contract fields: {sorted(unknown_top)}"
-        )
+        raise MutationContractError(f"unknown mutation contract fields: {sorted(unknown_top)}")
     timeout = payload.get("timeout_seconds")
     if not isinstance(timeout, int) or timeout < 1 or timeout > 600:
         raise MutationContractError("mutation timeout must be between 1 and 600 seconds")
@@ -101,12 +100,12 @@ def _load_contract(root: Path) -> tuple[int, tuple[MutationCase, ...]]:
             raise MutationContractError(f"duplicate mutation case ID: {case_id}")
         ids.add(case_id)
         tests = raw["tests"]
-        if not isinstance(tests, list) or not tests or not all(
-            isinstance(value, str) and value.startswith("tests/") for value in tests
+        if (
+            not isinstance(tests, list)
+            or not tests
+            or not all(isinstance(value, str) and value.startswith("tests/") for value in tests)
         ):
-            raise MutationContractError(
-                f"mutation case {case_id} requires explicit tests/ targets"
-            )
+            raise MutationContractError(f"mutation case {case_id} requires explicit tests/ targets")
         case = MutationCase(
             id=case_id,
             path=str(raw["path"]),
@@ -126,9 +125,7 @@ def _validate_case_path(root: Path, case: MutationCase) -> None:
     if relative.is_absolute() or ".." in relative.parts:
         raise MutationContractError(f"unsafe mutation path: {case.path}")
     if not case.path.startswith("src/constructionsight/") or relative.suffix != ".py":
-        raise MutationContractError(
-            f"mutation case must target production Python: {case.path}"
-        )
+        raise MutationContractError(f"mutation case must target production Python: {case.path}")
     absolute = root / relative
     if not absolute.is_file():
         raise MutationContractError(f"mutation target is missing: {case.path}")
@@ -148,11 +145,41 @@ def _validate_case_path(root: Path, case: MutationCase) -> None:
             )
 
 
+def _copy_tracked_tree(root: Path, temporary_root: Path) -> None:
+    completed = subprocess.run(
+        ["git", "-C", str(root), "ls-files", "-z"],
+        check=False,
+        capture_output=True,
+    )
+    if completed.returncode != 0:
+        detail = completed.stderr.decode("utf-8", errors="replace")
+        raise MutationContractError(f"cannot enumerate tracked tree: {detail}")
+    for raw_relative in completed.stdout.split(b"\0"):
+        if not raw_relative:
+            continue
+        relative = Path(raw_relative.decode("utf-8"))
+        if relative.is_absolute() or ".." in relative.parts:
+            raise MutationContractError(f"unsafe tracked path: {relative}")
+        source = root / relative
+        if not source.is_file():
+            raise MutationContractError(f"tracked file is missing: {relative}")
+        destination = temporary_root / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, destination)
+
+
+def _timeout_output(value: bytes | str | None) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return value
+
+
 def _run_case(root: Path, case: MutationCase, timeout: int) -> MutationResult:
     with tempfile.TemporaryDirectory(prefix="constructionsight-mutant-") as directory:
         temporary_root = Path(directory)
-        overlay_src = temporary_root / "src"
-        shutil.copytree(root / "src/constructionsight", overlay_src / "constructionsight")
+        _copy_tracked_tree(root, temporary_root)
         target = temporary_root / case.path
         content = target.read_text(encoding="utf-8")
         target.write_text(
@@ -161,7 +188,7 @@ def _run_case(root: Path, case: MutationCase, timeout: int) -> MutationResult:
         )
         environment = os.environ.copy()
         original_pythonpath = environment.get("PYTHONPATH")
-        values = [str(overlay_src), str(root / "src")]
+        values = [str(temporary_root / "src")]
         if original_pythonpath:
             values.append(original_pythonpath)
         environment["PYTHONPATH"] = os.pathsep.join(values)
@@ -179,7 +206,7 @@ def _run_case(root: Path, case: MutationCase, timeout: int) -> MutationResult:
         try:
             completed = subprocess.run(
                 command,
-                cwd=root,
+                cwd=temporary_root,
                 env=environment,
                 check=False,
                 capture_output=True,
@@ -195,7 +222,7 @@ def _run_case(root: Path, case: MutationCase, timeout: int) -> MutationResult:
                 status = "killed"
             return_code: int | None = completed.returncode
         except subprocess.TimeoutExpired as exc:
-            output = (exc.stdout or "") + (exc.stderr or "")
+            output = _timeout_output(exc.stdout) + _timeout_output(exc.stderr)
             status = "timeout"
             return_code = None
         digest = hashlib.sha256(output.encode("utf-8", errors="replace")).hexdigest()
@@ -220,15 +247,11 @@ def run_mutation_certification(
 
     repository_root = root.resolve()
     timeout, cases = _load_contract(repository_root)
-    selected = tuple(
-        case for case in cases if case_ids is None or case.id in case_ids
-    )
+    selected = tuple(case for case in cases if case_ids is None or case.id in case_ids)
     if case_ids is not None:
         missing = case_ids - {case.id for case in selected}
         if missing:
-            raise MutationContractError(
-                f"unknown requested mutation IDs: {sorted(missing)}"
-            )
+            raise MutationContractError(f"unknown requested mutation IDs: {sorted(missing)}")
     results = tuple(_run_case(repository_root, case, timeout) for case in selected)
     killed = sum(result.status == "killed" for result in results)
     return {
@@ -237,9 +260,7 @@ def run_mutation_certification(
         "case_count": len(results),
         "killed_count": killed,
         "survived_count": sum(result.status == "survived" for result in results),
-        "invalid_failure_count": sum(
-            result.status == "invalid_failure" for result in results
-        ),
+        "invalid_failure_count": sum(result.status == "invalid_failure" for result in results),
         "timeout_count": sum(result.status == "timeout" for result in results),
         "passed": bool(results) and killed == len(results),
         "results": [asdict(result) for result in results],
@@ -247,9 +268,7 @@ def run_mutation_certification(
 
 
 def _parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        description="Run focused high-risk mutation certification."
-    )
+    parser = argparse.ArgumentParser(description="Run focused high-risk mutation certification.")
     parser.add_argument("--root", type=Path, default=Path.cwd())
     parser.add_argument("--case-id", action="append", default=[])
     parser.add_argument("--output", type=Path)
@@ -264,9 +283,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         report = run_mutation_certification(
             arguments.root,
-            case_ids=(
-                frozenset(arguments.case_id) if arguments.case_id else None
-            ),
+            case_ids=(frozenset(arguments.case_id) if arguments.case_id else None),
         )
     except (OSError, UnicodeError, MutationContractError) as exc:
         print(f"Mutation certification could not run: {exc}", file=sys.stderr)

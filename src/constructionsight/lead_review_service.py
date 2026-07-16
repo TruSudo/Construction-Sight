@@ -80,10 +80,7 @@ def _summary_for_report(
 ) -> str:
     """Build deterministic lead summary."""
 
-    return (
-        f"Lead score {report.lead_score}; status {status.value}; "
-        f"signals {len(report.signals)}."
-    )
+    return f"Lead score {report.lead_score}; status {status.value}; signals {len(report.signals)}."
 
 
 def _evidence_notes(report: OpportunityEnrichmentReport) -> list[str]:

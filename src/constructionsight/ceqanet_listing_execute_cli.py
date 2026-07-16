@@ -44,9 +44,7 @@ def _parse_optional_date(value: str | None, field_name: str) -> date | None:
     try:
         return date.fromisoformat(value)
     except ValueError as exc:
-        raise typer.BadParameter(
-            f"{field_name} must be an ISO date, e.g. 2026-01-31."
-        ) from exc
+        raise typer.BadParameter(f"{field_name} must be an ISO date, e.g. 2026-01-31.") from exc
 
 
 def _build_query(

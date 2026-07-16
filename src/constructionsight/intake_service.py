@@ -60,13 +60,9 @@ _EMAIL_RE = re.compile(
     re.IGNORECASE,
 )
 _URL_RE = re.compile(r"https?://[^\s\"'<>]+", re.IGNORECASE)
-_PHONE_RE = re.compile(
-    r"(?:\+1[-.\s]?)?\(?\d{3}\)?[-.\s]\d{3}[-.\s]\d{4}"
-)
+_PHONE_RE = re.compile(r"(?:\+1[-.\s]?)?\(?\d{3}\)?[-.\s]\d{3}[-.\s]\d{4}")
 _MONEY_RE = re.compile(r"\$\s?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{2})?")
-_DATE_RE = re.compile(
-    r"\b\d{1,2}/\d{1,2}/\d{2,4}\b|\b\d{4}-\d{2}-\d{2}\b"
-)
+_DATE_RE = re.compile(r"\b\d{1,2}/\d{1,2}/\d{2,4}\b|\b\d{4}-\d{2}-\d{2}\b")
 _CSLB_RE = re.compile(
     r"\b(?:CSLB|License(?:\s+No\.)?)[:#\s-]*(\d{5,8})\b",
     re.IGNORECASE,
@@ -226,9 +222,7 @@ def detect_format_family(
             format_family=DigitalFormatFamily.BINARY,
             media_type="application/octet-stream",
             matched_signals=["binary:undecodable"],
-            limitations=[
-                "content is not UTF-8 text and no supported binary signature matched"
-            ],
+            limitations=["content is not UTF-8 text and no supported binary signature matched"],
         )
 
     stripped = text.lstrip("\ufeff\n\r\t ")
@@ -360,9 +354,7 @@ def build_unmapped_fragments(
         DigitalFormatFamily.BINARY,
         DigitalFormatFamily.UNKNOWN,
     }:
-        reason = (
-            f"{detection.format_family.value} requires a dedicated adapter or extractor"
-        )
+        reason = f"{detection.format_family.value} requires a dedicated adapter or extractor"
         return [
             UnmappedEvidenceFragment(
                 fragment_id=f"fragment:{evidence_id.removeprefix('evidence:')}:001",
@@ -512,19 +504,14 @@ def _detect_zip_family(content: bytes, *, filename: str) -> FormatDetection:
     if "word/document.xml" in names or filename.endswith(".docx"):
         return FormatDetection(
             format_family=DigitalFormatFamily.DOCX,
-            media_type=(
-                "application/vnd.openxmlformats-officedocument."
-                "wordprocessingml.document"
-            ),
+            media_type=("application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
             matched_signals=["magic:PK", "zip:word/document.xml"],
             limitations=["docx text extraction requires a dedicated parser"],
         )
     if "xl/workbook.xml" in names or filename.endswith(".xlsx"):
         return FormatDetection(
             format_family=DigitalFormatFamily.XLSX,
-            media_type=(
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            ),
+            media_type=("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
             matched_signals=["magic:PK", "zip:xl/workbook.xml"],
             limitations=["xlsx table extraction requires a dedicated parser"],
         )
@@ -532,8 +519,7 @@ def _detect_zip_family(content: bytes, *, filename: str) -> FormatDetection:
         return FormatDetection(
             format_family=DigitalFormatFamily.PPTX,
             media_type=(
-                "application/vnd.openxmlformats-officedocument.presentationml."
-                "presentation"
+                "application/vnd.openxmlformats-officedocument.presentationml.presentation"
             ),
             matched_signals=["magic:PK", "zip:ppt/presentation.xml"],
             limitations=["pptx extraction requires a dedicated parser"],
@@ -624,11 +610,7 @@ def _looks_like_email(text: str) -> bool:
     """Return whether text resembles an RFC822 email message."""
 
     first_lines = text.splitlines()[:8]
-    header_names = {
-        line.split(":", 1)[0].lower()
-        for line in first_lines
-        if ":" in line
-    }
+    header_names = {line.split(":", 1)[0].lower() for line in first_lines if ":" in line}
     required_headers = {"from", "to", "subject"}
     minimal_headers = {"from", "subject"}
     return required_headers.issubset(header_names) or minimal_headers.issubset(header_names)

@@ -130,8 +130,7 @@ def verify_ceqanet_csv_evidence_series(
     else:
         if series.evidence_payload() != recomputed.evidence_payload():
             findings.append(
-                "CEQAnet CSV evidence series does not match current policy "
-                "and execution artifacts"
+                "CEQAnet CSV evidence series does not match current policy and execution artifacts"
             )
 
     return CeqanetCsvEvidenceSeriesVerification(
@@ -144,8 +143,7 @@ def verify_ceqanet_csv_evidence_series(
         successful_observation_count=series.successful_observation_count,
         ready_for_maturity_review=(
             not findings
-            and series.status
-            is CeqanetCsvEvidenceSeriesStatus.READY_FOR_MATURITY_REVIEW
+            and series.status is CeqanetCsvEvidenceSeriesStatus.READY_FOR_MATURITY_REVIEW
         ),
     )
 
@@ -168,17 +166,13 @@ def execute_ceqanet_csv_evidence_request(
     authorization_granted_at: datetime | None = None,
     max_retained_rows: int = 1_000,
     operator_id: str | None = None,
-    authorization_reason: str = (
-        "Execute one policy-bound CEQAnet CSV evidence request."
-    ),
+    authorization_reason: str = ("Execute one policy-bound CEQAnet CSV evidence request."),
     ledger: AuthorizationUseLedger | None = None,
 ) -> CeqanetCsvEvidenceExecution:
     """Authorize one policy-bound GET after independently verifying the ledger."""
 
     if not execute_live:
-        raise ValueError(
-            "explicit live confirmation is required for CEQAnet CSV evidence"
-        )
+        raise ValueError("explicit live confirmation is required for CEQAnet CSV evidence")
     authorized_at = authorization_granted_at or datetime.now(UTC)
     if authorized_at.tzinfo is None or authorized_at.utcoffset() is None:
         raise ValueError("authorization_granted_at must be timezone-aware")
@@ -197,21 +191,15 @@ def execute_ceqanet_csv_evidence_request(
         series,
     )
     if not series_verification.passed:
-        raise ValueError(
-            "current CEQAnet CSV evidence series failed independent verification"
-        )
+        raise ValueError("current CEQAnet CSV evidence series failed independent verification")
     assert_ceqanet_csv_access_policy_current(
         policy,
         as_of_date=authorized_at.date(),
     )
     if series.status is not CeqanetCsvEvidenceSeriesStatus.COLLECTING:
-        raise ValueError(
-            "CEQAnet CSV evidence execution requires a collecting series"
-        )
+        raise ValueError("CEQAnet CSV evidence execution requires a collecting series")
     if any(item.utc_date == authorized_at.date() for item in series.observations):
-        raise ValueError(
-            "CEQAnet CSV policy permits at most one execution per UTC day"
-        )
+        raise ValueError("CEQAnet CSV policy permits at most one execution per UTC day")
     if series.observations and authorized_at <= series.observations[-1].executed_at:
         raise ValueError("execution authorization must follow the current series head")
     if not 0 <= max_retained_rows <= 1_000:
@@ -272,9 +260,7 @@ def execute_ceqanet_csv_evidence_request(
         exact_scope=exact_scope,
         current_state_identity=state_identity,
         expected_identity=state_identity,
-        granted_authority=(
-            "execute one exact policy-bound CEQAnet CSV evidence GET",
-        ),
+        granted_authority=("execute one exact policy-bound CEQAnet CSV evidence GET",),
         denied_authority=tuple(
             sorted(
                 {
@@ -426,13 +412,9 @@ def _assert_policy_verified(
         policy,
     )
     if policy_verification != recomputed:
-        raise ValueError(
-            "stored CEQAnet CSV policy verification does not match current evidence"
-        )
+        raise ValueError("stored CEQAnet CSV policy verification does not match current evidence")
     if not policy_verification.passed:
-        raise ValueError(
-            "CEQAnet CSV evidence series requires a passing policy verification"
-        )
+        raise ValueError("CEQAnet CSV evidence series requires a passing policy verification")
 
 
 def _build_observation(
@@ -451,9 +433,7 @@ def _build_observation(
     live = evidence_execution.live_execution
     verification = verify_ceqanet_csv_live_execution(live)
     if verification != evidence_execution.live_verification:
-        raise ValueError(
-            "stored live verification does not match retained execution evidence"
-        )
+        raise ValueError("stored live verification does not match retained execution evidence")
     assert_ceqanet_csv_access_policy_current(
         policy,
         as_of_date=evidence_execution.authorized_utc_date,
@@ -482,14 +462,10 @@ def _build_observation(
         verification_findings=verification.findings,
         successful=verification.passed,
         access_control_halt=(
-            live.status_code in policy.halt_status_codes
-            if live.status_code is not None
-            else False
+            live.status_code in policy.halt_status_codes if live.status_code is not None else False
         ),
         observation_digest="0" * 64,
     )
-    observation = draft.model_copy(
-        update={"observation_digest": draft.computed_digest()}
-    )
+    observation = draft.model_copy(update={"observation_digest": draft.computed_digest()})
     observation.assert_integrity()
     return observation

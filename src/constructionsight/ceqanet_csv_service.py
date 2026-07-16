@@ -216,9 +216,7 @@ def inspect_ceqanet_csv_bytes(
         if not re.fullmatch(r"\d{10}", observed_sch):
             raise ValueError(f"CEQAnet CSV row {row_number} contains an invalid SCH number")
         if observed_sch != request.sch_number:
-            raise ValueError(
-                f"CEQAnet CSV row {row_number} SCH number does not match the request"
-            )
+            raise ValueError(f"CEQAnet CSV row {row_number} SCH number does not match the request")
         row_count += 1
         if len(parsed_rows) < max_retained_rows:
             parsed_rows.append(
@@ -238,13 +236,10 @@ def inspect_ceqanet_csv_bytes(
         warnings.append("unknown columns are preserved without inferred meaning")
     if title_role_suppressions:
         warnings.append(
-            "multiple title columns were preserved; canonical title was assigned "
-            "by export scope"
+            "multiple title columns were preserved; canonical title was assigned by export scope"
         )
     if encoding == "windows-1252":
-        warnings.append(
-            "source body decoded as Windows-1252 after strict UTF-8 failure"
-        )
+        warnings.append("source body decoded as Windows-1252 after strict UTF-8 failure")
     payload: dict[str, Any] = {
         "request": request,
         "content_type": normalized_content_type,
@@ -357,9 +352,7 @@ def _build_columns(
             )
         )
     normalized_names = [column.normalized_name for column in columns]
-    duplicates = sorted(
-        name for name, count in Counter(normalized_names).items() if count > 1
-    )
+    duplicates = sorted(name for name, count in Counter(normalized_names).items() if count > 1)
     if duplicates:
         raise ValueError(f"CEQAnet CSV contains duplicate normalized headers: {duplicates}")
     roles = [column.canonical_role for column in columns if column.canonical_role is not None]

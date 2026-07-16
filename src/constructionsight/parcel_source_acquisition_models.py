@@ -333,9 +333,7 @@ class ParcelArcGISProbeObservation(BaseModel):
         canonical_response = canonical_json_payload(response_payload)
         if self.response_payload_json != canonical_response:
             raise ValueError("ArcGIS probe response payload must be canonical JSON")
-        if self.response_digest != hashlib.sha256(
-            canonical_response.encode("utf-8")
-        ).hexdigest():
+        if self.response_digest != hashlib.sha256(canonical_response.encode("utf-8")).hexdigest():
             raise ValueError("ArcGIS probe response digest does not match its payload")
         if self.kind == ParcelArcGISProbeKind.COUNT:
             if self.total_count is None or self.object_ids:
@@ -348,9 +346,7 @@ class ParcelArcGISProbeObservation(BaseModel):
             if self.object_ids != tuple(sorted(set(self.object_ids))):
                 raise ValueError("ArcGIS page object IDs must be unique and ascending")
         payload = self.model_dump(mode="json", exclude={"observation_id"})
-        if self.observation_id != _digest_id(
-            "parcel-arcgis-probe-observation", payload
-        ):
+        if self.observation_id != _digest_id("parcel-arcgis-probe-observation", payload):
             raise ValueError("ArcGIS probe observation ID does not match response content")
         return self
 
@@ -397,8 +393,7 @@ class ParcelArcGISBulkManifest(BaseModel):
     @classmethod
     def require_page_digests(cls, values: tuple[str, ...]) -> tuple[str, ...]:
         if any(
-            len(value) != 64
-            or any(char not in "0123456789abcdef" for char in value)
+            len(value) != 64 or any(char not in "0123456789abcdef" for char in value)
             for value in values
         ):
             raise ValueError("ArcGIS page response digests must be lowercase SHA-256 values")

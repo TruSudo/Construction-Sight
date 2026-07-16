@@ -9,7 +9,7 @@ from constructionsight.ceqanet_operator_bundle_verify import verify_ceqanet_oper
 
 def _write_bundle_manifest(bundle_dir: Path) -> None:
     (bundle_dir / "operator-report.md").write_text("# CEQAnet Operator Report\n", encoding="utf-8")
-    (bundle_dir / "write-plan.json").write_text("{\"ok\": true}\n", encoding="utf-8")
+    (bundle_dir / "write-plan.json").write_text('{"ok": true}\n', encoding="utf-8")
     report_bytes = (bundle_dir / "operator-report.md").read_bytes()
     plan_bytes = (bundle_dir / "write-plan.json").read_bytes()
     payload = {

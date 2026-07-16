@@ -117,6 +117,4 @@ def test_build_ceqanet_operator_package_rejects_wrong_schema() -> None:
 
 def test_build_ceqanet_operator_package_rejects_missing_enrichment() -> None:
     with pytest.raises(ValueError, match="must contain an enrichment object"):
-        build_ceqanet_operator_package(
-            {"metadata": {"schema_version": "ceqanet_chain_report.v1"}}
-        )
+        build_ceqanet_operator_package({"metadata": {"schema_version": "ceqanet_chain_report.v1"}})

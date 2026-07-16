@@ -109,8 +109,7 @@ def list_result_authority_events(
             f"result authority events contain duplicate or unordered revisions: {workflow_id}"
         )
     history_by_revision = {
-        ledger.revision: ledger
-        for ledger in load_result_ledger_history(session, workflow_id)
+        ledger.revision: ledger for ledger in load_result_ledger_history(session, workflow_id)
     }
     for event in events:
         ledger = history_by_revision.get(event.revision)
@@ -121,18 +120,15 @@ def list_result_authority_events(
             )
         if event.current_ledger_id != ledger.ledger_id:
             raise ResultAuthorityError(
-                "result authority event current ledger disagrees with history: "
-                f"{event.event_id}"
+                f"result authority event current ledger disagrees with history: {event.event_id}"
             )
         if event.previous_ledger_id != ledger.supersedes_ledger_id:
             raise ResultAuthorityError(
-                "result authority event predecessor disagrees with history: "
-                f"{event.event_id}"
+                f"result authority event predecessor disagrees with history: {event.event_id}"
             )
         if event.revision > 1 and event.reason != ledger.correction_reason:
             raise ResultAuthorityError(
-                "result authority event correction reason disagrees with history: "
-                f"{event.event_id}"
+                f"result authority event correction reason disagrees with history: {event.event_id}"
             )
     return events
 
@@ -262,9 +258,7 @@ def _load_result_authority_head(
     workflow_id: str,
 ) -> ResultAuthorityHead | None:
     row = session.execute(
-        select(ResultAuthorityHeadRow).where(
-            ResultAuthorityHeadRow.workflow_id == workflow_id
-        )
+        select(ResultAuthorityHeadRow).where(ResultAuthorityHeadRow.workflow_id == workflow_id)
     ).scalar_one_or_none()
     if row is None:
         return None

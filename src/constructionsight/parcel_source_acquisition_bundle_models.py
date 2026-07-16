@@ -75,10 +75,8 @@ class ParcelArcGISBoundedProofBundle(BaseModel):
             raise ValueError("ArcGIS bounded proof requires a verified-preview profile")
         scope = (self.source_key, self.county, self.profile.profile_id)
         if (
-            (self.profile.source_key, self.profile.county, self.profile.profile_id)
-            != scope
-            or (self.snapshot.source_key, self.snapshot.county, self.snapshot.profile_id)
-            != scope
+            (self.profile.source_key, self.profile.county, self.profile.profile_id) != scope
+            or (self.snapshot.source_key, self.snapshot.county, self.snapshot.profile_id) != scope
             or (self.plan.source_key, self.plan.county, self.plan.profile_id) != scope
             or (
                 self.assessment.source_key,
@@ -159,9 +157,7 @@ class ParcelArcGISBoundedProofVerification(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    verification_id: str = Field(
-        pattern=r"^parcel-arcgis-bounded-proof-verification:[0-9a-f]{64}$"
-    )
+    verification_id: str = Field(pattern=r"^parcel-arcgis-bounded-proof-verification:[0-9a-f]{64}$")
     bundle_id: str = Field(pattern=r"^parcel-arcgis-bounded-proof-bundle:[0-9a-f]{64}$")
     source_key: str = Field(min_length=1)
     county: str = Field(min_length=1)

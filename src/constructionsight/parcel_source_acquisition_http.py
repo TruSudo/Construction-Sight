@@ -169,9 +169,7 @@ def _get_json_object(
                 )
             payload: Any = response.json()
             if not isinstance(payload, dict):
-                raise ParcelArcGISProbeExecutionError(
-                    "ArcGIS response must be a JSON object"
-                )
+                raise ParcelArcGISProbeExecutionError("ArcGIS response must be a JSON object")
             return {str(key): value for key, value in payload.items()}
         except ParcelArcGISProbeExecutionError:
             raise
@@ -181,9 +179,7 @@ def _get_json_object(
                 break
             sleep(policy.retry_delays_seconds[attempt])
         except ValueError as exc:
-            raise ParcelArcGISProbeExecutionError(
-                "ArcGIS response was not valid JSON"
-            ) from exc
+            raise ParcelArcGISProbeExecutionError("ArcGIS response was not valid JSON") from exc
     raise ParcelArcGISProbeExecutionError(
         f"ArcGIS request failed after {policy.max_attempts} attempts"
     ) from last_error

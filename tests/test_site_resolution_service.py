@@ -108,10 +108,7 @@ def test_resolve_site_from_intake_exposes_conflicting_apns() -> None:
 
     assert result.status == SiteResolutionStatus.CONFLICTING
     assert result.conflicts == ["multiple apn values found: 12345678, 99988877"]
-    assert (
-        "conflicts must be resolved before treating this as one parcel"
-        in result.limitations
-    )
+    assert "conflicts must be resolved before treating this as one parcel" in result.limitations
 
 
 def test_resolve_site_from_intake_allows_partial_address_anchor() -> None:

@@ -7,10 +7,7 @@ from constructionsight.parcel_topology import (
 
 def test_wkt_polygon_topology_matches_interior_and_rejects_hole() -> None:
     geometry = normalize_parcel_geometry(
-        raw_geometry=(
-            "POLYGON ((0 0, 4 0, 4 4, 0 4, 0 0), "
-            "(1 1, 3 1, 3 3, 1 3, 1 1))"
-        ),
+        raw_geometry=("POLYGON ((0 0, 4 0, 4 4, 0 4, 0 0), (1 1, 3 1, 3 3, 1 3, 1 1))"),
         spatial_reference="EPSG:4326",
     )
 
@@ -34,8 +31,7 @@ def test_wkt_polygon_topology_matches_interior_and_rejects_hole() -> None:
 def test_ewkt_multipolygon_topology_uses_embedded_srid() -> None:
     geometry = normalize_parcel_geometry(
         raw_geometry=(
-            "SRID=4326;MULTIPOLYGON (((0 0, 1 0, 1 1, 0 1, 0 0)), "
-            "((3 3, 4 3, 4 4, 3 4, 3 3)))"
+            "SRID=4326;MULTIPOLYGON (((0 0, 1 0, 1 1, 0 1, 0 0)), ((3 3, 4 3, 4 4, 3 4, 3 3)))"
         ),
     )
 
@@ -71,9 +67,7 @@ def test_explicit_projected_crs_is_not_compared_to_latlon_hint() -> None:
 
 def test_wkt_z_coordinates_ignore_height_for_planar_topology() -> None:
     geometry = normalize_parcel_geometry(
-        raw_geometry=(
-            "POLYGON Z ((0 0 10, 4 0 11, 4 4 12, 0 4 13, 0 0 10))"
-        ),
+        raw_geometry=("POLYGON Z ((0 0 10, 4 0 11, 4 4 12, 0 4 13, 0 0 10))"),
         spatial_reference="EPSG:4326",
     )
 

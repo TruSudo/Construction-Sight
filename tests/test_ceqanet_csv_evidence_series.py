@@ -49,31 +49,16 @@ EVIDENCE_DIR = ROOT / "evidence/source_verification"
 PROJECT_FIXTURE = ROOT / "tests/fixtures/ceqanet/project_export.csv"
 DOCUMENT_FIXTURE = ROOT / "tests/fixtures/ceqanet/document_export.csv"
 SERIES_PATH = EVIDENCE_DIR / "ceqanet_csv_evidence_series_2026-07-14.json"
-SERIES_VERIFICATION_PATH = (
-    EVIDENCE_DIR
-    / "ceqanet_csv_evidence_series_verification_2026-07-14.json"
-)
-SERIES_AUDIT_PATH = (
-    ROOT / "docs/audits/ceqanet_csv_evidence_series_2026-07-14.md"
-)
-OBSERVATION_EXECUTION_PATH = (
-    EVIDENCE_DIR
-    / "ceqanet_csv_evidence_execution_2026-07-14_project.json"
-)
-SEQUENCE_ONE_SERIES_PATH = (
-    EVIDENCE_DIR
-    / "ceqanet_csv_evidence_series_2026-07-14_sequence_1.json"
-)
+SERIES_VERIFICATION_PATH = EVIDENCE_DIR / "ceqanet_csv_evidence_series_verification_2026-07-14.json"
+SERIES_AUDIT_PATH = ROOT / "docs/audits/ceqanet_csv_evidence_series_2026-07-14.md"
+OBSERVATION_EXECUTION_PATH = EVIDENCE_DIR / "ceqanet_csv_evidence_execution_2026-07-14_project.json"
+SEQUENCE_ONE_SERIES_PATH = EVIDENCE_DIR / "ceqanet_csv_evidence_series_2026-07-14_sequence_1.json"
 SEQUENCE_ONE_VERIFICATION_PATH = (
-    EVIDENCE_DIR
-    / "ceqanet_csv_evidence_series_verification_2026-07-14_sequence_1.json"
+    EVIDENCE_DIR / "ceqanet_csv_evidence_series_verification_2026-07-14_sequence_1.json"
 )
-OBSERVATION_AUDIT_PATH = (
-    ROOT / "docs/audits/ceqanet_csv_evidence_observation_2026-07-14.md"
-)
+OBSERVATION_AUDIT_PATH = ROOT / "docs/audits/ceqanet_csv_evidence_observation_2026-07-14.md"
 OBSERVATION_ARTIFACT_REF = (
-    "evidence/source_verification/"
-    "ceqanet_csv_evidence_execution_2026-07-14_project.json"
+    "evidence/source_verification/ceqanet_csv_evidence_execution_2026-07-14_project.json"
 )
 runner = CliRunner()
 _ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*m")
@@ -97,37 +82,25 @@ def _original_execution() -> CeqanetCsvLiveExecution:
 
 def _replay() -> CeqanetCsvEncodingReplay:
     return CeqanetCsvEncodingReplay.model_validate(
-        _load_json(
-            EVIDENCE_DIR
-            / "ceqanet_csv_windows1252_replay_2026-07-12.json"
-        )
+        _load_json(EVIDENCE_DIR / "ceqanet_csv_windows1252_replay_2026-07-12.json")
     )
 
 
 def _replay_verification() -> CeqanetCsvEncodingReplayVerification:
     return CeqanetCsvEncodingReplayVerification.model_validate(
-        _load_json(
-            EVIDENCE_DIR
-            / "ceqanet_csv_windows1252_replay_verification_2026-07-12.json"
-        )
+        _load_json(EVIDENCE_DIR / "ceqanet_csv_windows1252_replay_verification_2026-07-12.json")
     )
 
 
 def _maturity() -> CeqanetSourceMaturityProposal:
     return CeqanetSourceMaturityProposal.model_validate(
-        _load_json(
-            EVIDENCE_DIR
-            / "ceqanet_source_maturity_proposal_2026-07-13.json"
-        )
+        _load_json(EVIDENCE_DIR / "ceqanet_source_maturity_proposal_2026-07-13.json")
     )
 
 
 def _maturity_verification() -> CeqanetSourceMaturityProposalVerification:
     return CeqanetSourceMaturityProposalVerification.model_validate(
-        _load_json(
-            EVIDENCE_DIR
-            / "ceqanet_source_maturity_proposal_verification_2026-07-13.json"
-        )
+        _load_json(EVIDENCE_DIR / "ceqanet_source_maturity_proposal_verification_2026-07-13.json")
     )
 
 
@@ -139,10 +112,7 @@ def _policy() -> CeqanetCsvAccessPolicy:
 
 def _policy_verification() -> CeqanetCsvAccessPolicyVerification:
     return CeqanetCsvAccessPolicyVerification.model_validate(
-        _load_json(
-            EVIDENCE_DIR
-            / "ceqanet_csv_access_policy_verification_2026-07-14.json"
-        )
+        _load_json(EVIDENCE_DIR / "ceqanet_csv_access_policy_verification_2026-07-14.json")
     )
 
 
@@ -214,8 +184,7 @@ def _execute(
         )
     )
     artifact_ref = (
-        "evidence/source_verification/"
-        f"ceqanet_csv_evidence_execution_2026-07-{day:02d}.json"
+        f"evidence/source_verification/ceqanet_csv_evidence_execution_2026-07-{day:02d}.json"
     )
     execution = execute_ceqanet_csv_evidence_request(
         _sources(),
@@ -271,8 +240,7 @@ def test_governed_execution_performs_one_policy_bound_get() -> None:
     assert artifact_ref.endswith("2026-07-14.json")
     assert client.calls == [
         (
-            "https://ceqanet.lci.ca.gov/Search?"
-            "OutputFormat=CSV&Sch=2026030377",
+            "https://ceqanet.lci.ca.gov/Search?OutputFormat=CSV&Sch=2026030377",
             True,
             20.0,
         )
@@ -308,10 +276,7 @@ def test_series_becomes_ready_only_after_all_policy_criteria() -> None:
         "project",
         "document",
     }
-    assert (
-        series.status
-        is CeqanetCsvEvidenceSeriesStatus.READY_FOR_MATURITY_REVIEW
-    )
+    assert series.status is CeqanetCsvEvidenceSeriesStatus.READY_FOR_MATURITY_REVIEW
     assert series.source_promotion_authorized is False
     assert series.production_recurring_execution_authorized is False
 
@@ -362,9 +327,7 @@ def test_series_rejects_duplicate_execution_artifact_refs() -> None:
 
 def test_verification_detects_tampered_series() -> None:
     series = _build_series([])
-    tampered = series.model_copy(
-        update={"next_gate": "silently promote the source"}
-    )
+    tampered = series.model_copy(update={"next_gate": "silently promote the source"})
 
     verification = verify_ceqanet_csv_evidence_series(
         _sources(),
@@ -397,27 +360,12 @@ def _canonical_cli_inputs() -> list[str]:
     return [
         str(ROOT / "data/source_registry.seed.json"),
         str(EVIDENCE_DIR / "ceqanet_csv_live_execution_2026-07-12.json"),
-        str(
-            EVIDENCE_DIR
-            / "ceqanet_csv_windows1252_replay_2026-07-12.json"
-        ),
-        str(
-            EVIDENCE_DIR
-            / "ceqanet_csv_windows1252_replay_verification_2026-07-12.json"
-        ),
-        str(
-            EVIDENCE_DIR
-            / "ceqanet_source_maturity_proposal_2026-07-13.json"
-        ),
-        str(
-            EVIDENCE_DIR
-            / "ceqanet_source_maturity_proposal_verification_2026-07-13.json"
-        ),
+        str(EVIDENCE_DIR / "ceqanet_csv_windows1252_replay_2026-07-12.json"),
+        str(EVIDENCE_DIR / "ceqanet_csv_windows1252_replay_verification_2026-07-12.json"),
+        str(EVIDENCE_DIR / "ceqanet_source_maturity_proposal_2026-07-13.json"),
+        str(EVIDENCE_DIR / "ceqanet_source_maturity_proposal_verification_2026-07-13.json"),
         str(EVIDENCE_DIR / "ceqanet_csv_access_policy_2026-07-14.json"),
-        str(
-            EVIDENCE_DIR
-            / "ceqanet_csv_access_policy_verification_2026-07-14.json"
-        ),
+        str(EVIDENCE_DIR / "ceqanet_csv_access_policy_verification_2026-07-14.json"),
     ]
 
 
@@ -476,9 +424,8 @@ def test_cli_execute_refuses_missing_explicit_authorization(
     )
 
     assert result.exit_code != 0
-    assert (
-        "explicit --execute-live authorization is required"
-        in _ANSI_ESCAPE.sub("", result.output)
+    assert "explicit --execute-live authorization is required" in _ANSI_ESCAPE.sub(
+        "", result.output
     )
 
 
@@ -529,9 +476,7 @@ def test_cli_preflights_output_conflict_before_executor(
     assert result.exit_code != 0
     assert "output already exists" in _ANSI_ESCAPE.sub("", result.output)
     assert called is False
-    assert output_path.read_text(encoding="utf-8") == (
-        "preserve existing evidence\n"
-    )
+    assert output_path.read_text(encoding="utf-8") == ("preserve existing evidence\n")
 
 
 def test_evidence_execution_rejects_authorization_after_request() -> None:
@@ -629,9 +574,7 @@ def test_verification_detects_forked_predecessor_digest() -> None:
     empty = _build_series([])
     artifact_ref, execution, _ = _execute(empty, [], day=14)
     series = _build_series([(artifact_ref, execution)])
-    forked = series.model_copy(
-        update={"predecessor_series_digest": "0" * 64}
-    )
+    forked = series.model_copy(update={"predecessor_series_digest": "0" * 64})
 
     verification = verify_ceqanet_csv_evidence_series(
         _sources(),
@@ -706,10 +649,7 @@ def test_ready_series_preflight_does_not_call_http_client() -> None:
         )
         executions.append((artifact_ref, execution))
         series = _build_series(executions)
-    assert (
-        series.status
-        is CeqanetCsvEvidenceSeriesStatus.READY_FOR_MATURITY_REVIEW
-    )
+    assert series.status is CeqanetCsvEvidenceSeriesStatus.READY_FOR_MATURITY_REVIEW
 
     request = build_ceqanet_csv_export_request(sch_number="2026030377")
     client = _Client(
@@ -756,9 +696,7 @@ def test_committed_first_observation_recomputes_exactly() -> None:
     evidence_execution = CeqanetCsvEvidenceExecution.model_validate(
         _load_json(OBSERVATION_EXECUTION_PATH)
     )
-    series = CeqanetCsvEvidenceSeries.model_validate(
-        _load_json(SEQUENCE_ONE_SERIES_PATH)
-    )
+    series = CeqanetCsvEvidenceSeries.model_validate(_load_json(SEQUENCE_ONE_SERIES_PATH))
     stored_verification = CeqanetCsvEvidenceSeriesVerification.model_validate(
         _load_json(SEQUENCE_ONE_VERIFICATION_PATH)
     )
@@ -807,5 +745,5 @@ def test_committed_first_observation_recomputes_exactly() -> None:
 def test_socks_proxy_transport_is_declared_and_installed() -> None:
     pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
 
-    assert '"httpx[socks]>=0.27.0"' in pyproject
+    assert '"httpx[socks]==0.28.1"' in pyproject
     assert socksio is not None

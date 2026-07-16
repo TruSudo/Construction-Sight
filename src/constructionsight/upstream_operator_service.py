@@ -44,9 +44,7 @@ _FILTER_SUPPORT: dict[UpstreamOperatorRecordKind, frozenset[str]] = {
     UpstreamOperatorRecordKind.PERMIT_SNAPSHOT: frozenset(
         {"status", "source_key", "source_record_id", "site_key"}
     ),
-    UpstreamOperatorRecordKind.PERMIT_TRANSITION: frozenset(
-        {"source_key", "source_record_id"}
-    ),
+    UpstreamOperatorRecordKind.PERMIT_TRANSITION: frozenset({"source_key", "source_record_id"}),
     UpstreamOperatorRecordKind.CONTRACTOR: frozenset({"status"}),
     UpstreamOperatorRecordKind.DECISION: frozenset(
         {"source_key", "source_record_id", "site_key", "apn"}
@@ -54,25 +52,15 @@ _FILTER_SUPPORT: dict[UpstreamOperatorRecordKind, frozenset[str]] = {
     UpstreamOperatorRecordKind.PARCEL: frozenset(
         {"source_key", "source_record_id", "apn", "county"}
     ),
-    UpstreamOperatorRecordKind.PARCEL_SOURCE_EVIDENCE: frozenset(
-        {"source_key", "county"}
-    ),
+    UpstreamOperatorRecordKind.PARCEL_SOURCE_EVIDENCE: frozenset({"source_key", "county"}),
     UpstreamOperatorRecordKind.PARCEL_SOURCE_VERIFICATION: frozenset(
         {"status", "source_key", "county"}
     ),
     UpstreamOperatorRecordKind.PARCEL_COUNTY_COVERAGE: frozenset({"status"}),
-    UpstreamOperatorRecordKind.PARCEL_ARCGIS_CAPABILITY: frozenset(
-        {"source_key", "county"}
-    ),
-    UpstreamOperatorRecordKind.PARCEL_ARCGIS_PROBE_PLAN: frozenset(
-        {"source_key", "county"}
-    ),
-    UpstreamOperatorRecordKind.PARCEL_ARCGIS_PROBE_OBSERVATION: frozenset(
-        {"source_key", "county"}
-    ),
-    UpstreamOperatorRecordKind.PARCEL_ARCGIS_BULK_MANIFEST: frozenset(
-        {"source_key", "county"}
-    ),
+    UpstreamOperatorRecordKind.PARCEL_ARCGIS_CAPABILITY: frozenset({"source_key", "county"}),
+    UpstreamOperatorRecordKind.PARCEL_ARCGIS_PROBE_PLAN: frozenset({"source_key", "county"}),
+    UpstreamOperatorRecordKind.PARCEL_ARCGIS_PROBE_OBSERVATION: frozenset({"source_key", "county"}),
+    UpstreamOperatorRecordKind.PARCEL_ARCGIS_BULK_MANIFEST: frozenset({"source_key", "county"}),
     UpstreamOperatorRecordKind.PARCEL_ARCGIS_ACQUISITION: frozenset(
         {"status", "source_key", "county"}
     ),
@@ -82,12 +70,8 @@ _FILTER_SUPPORT: dict[UpstreamOperatorRecordKind, frozenset[str]] = {
     UpstreamOperatorRecordKind.PARCEL_OBSERVATION: frozenset(
         {"source_key", "source_record_id", "apn", "county"}
     ),
-    UpstreamOperatorRecordKind.PARCEL_CURRENT_SELECTION: frozenset(
-        {"status", "apn", "county"}
-    ),
-    UpstreamOperatorRecordKind.PARCEL_ASSURANCE: frozenset(
-        {"status", "apn", "county"}
-    ),
+    UpstreamOperatorRecordKind.PARCEL_CURRENT_SELECTION: frozenset({"status", "apn", "county"}),
+    UpstreamOperatorRecordKind.PARCEL_ASSURANCE: frozenset({"status", "apn", "county"}),
     UpstreamOperatorRecordKind.SITE_RESOLUTION: frozenset({"status", "site_key"}),
 }
 
@@ -121,9 +105,7 @@ def list_upstream_operator_records(
     if record_kind == UpstreamOperatorRecordKind.PERMIT_SNAPSHOT:
         snapshot_statement = select(PermitSnapshotRecord)
         if status is not None:
-            snapshot_statement = snapshot_statement.where(
-                PermitSnapshotRecord.status == status
-            )
+            snapshot_statement = snapshot_statement.where(PermitSnapshotRecord.status == status)
         if source_key is not None:
             snapshot_statement = snapshot_statement.where(
                 PermitSnapshotRecord.source_key == source_key
@@ -133,15 +115,11 @@ def list_upstream_operator_records(
                 PermitSnapshotRecord.source_record_id == source_record_id
             )
         if site_key is not None:
-            snapshot_statement = snapshot_statement.where(
-                PermitSnapshotRecord.site_key == site_key
-            )
+            snapshot_statement = snapshot_statement.where(PermitSnapshotRecord.site_key == site_key)
         snapshot_rows = session.execute(
             snapshot_statement.order_by(PermitSnapshotRecord.id.desc()).limit(limit)
         ).scalars()
-        return [
-            _permit_snapshot_record(snapshot_row) for snapshot_row in snapshot_rows
-        ]
+        return [_permit_snapshot_record(snapshot_row) for snapshot_row in snapshot_rows]
 
     if record_kind == UpstreamOperatorRecordKind.PERMIT_TRANSITION:
         transition_statement = select(PermitTransitionRecord)
@@ -154,14 +132,9 @@ def list_upstream_operator_records(
                 PermitTransitionRecord.source_record_id == source_record_id
             )
         transition_rows = session.execute(
-            transition_statement.order_by(PermitTransitionRecord.id.desc()).limit(
-                limit
-            )
+            transition_statement.order_by(PermitTransitionRecord.id.desc()).limit(limit)
         ).scalars()
-        return [
-            _permit_transition_record(transition_row)
-            for transition_row in transition_rows
-        ]
+        return [_permit_transition_record(transition_row) for transition_row in transition_rows]
 
     if record_kind == UpstreamOperatorRecordKind.CONTRACTOR:
         contractor_statement = select(ContractorIdentityRecord)
@@ -170,13 +143,9 @@ def list_upstream_operator_records(
                 ContractorIdentityRecord.status == status
             )
         contractor_rows = session.execute(
-            contractor_statement.order_by(ContractorIdentityRecord.id.desc()).limit(
-                limit
-            )
+            contractor_statement.order_by(ContractorIdentityRecord.id.desc()).limit(limit)
         ).scalars()
-        return [
-            _contractor_record(contractor_row) for contractor_row in contractor_rows
-        ]
+        return [_contractor_record(contractor_row) for contractor_row in contractor_rows]
 
     if record_kind == UpstreamOperatorRecordKind.DECISION:
         decision_statement = select(DecisionRecordRow)
@@ -189,13 +158,9 @@ def list_upstream_operator_records(
                 DecisionRecordRow.source_record_id == source_record_id
             )
         if site_key is not None:
-            decision_statement = decision_statement.where(
-                DecisionRecordRow.site_key == site_key
-            )
+            decision_statement = decision_statement.where(DecisionRecordRow.site_key == site_key)
         if apn is not None:
-            decision_statement = decision_statement.where(
-                DecisionRecordRow.apn == apn
-            )
+            decision_statement = decision_statement.where(DecisionRecordRow.apn == apn)
         decision_rows = session.execute(
             decision_statement.order_by(DecisionRecordRow.id.desc()).limit(limit)
         ).scalars()
@@ -204,9 +169,7 @@ def list_upstream_operator_records(
     if record_kind == UpstreamOperatorRecordKind.PARCEL:
         parcel_statement = select(ParcelCoreRecordRow)
         if source_key is not None:
-            parcel_statement = parcel_statement.where(
-                ParcelCoreRecordRow.source_key == source_key
-            )
+            parcel_statement = parcel_statement.where(ParcelCoreRecordRow.source_key == source_key)
         if source_record_id is not None:
             parcel_statement = parcel_statement.where(
                 ParcelCoreRecordRow.source_record_id == source_record_id
@@ -214,9 +177,7 @@ def list_upstream_operator_records(
         if apn is not None:
             parcel_statement = parcel_statement.where(ParcelCoreRecordRow.apn == apn)
         if county is not None:
-            parcel_statement = parcel_statement.where(
-                ParcelCoreRecordRow.county == county
-            )
+            parcel_statement = parcel_statement.where(ParcelCoreRecordRow.county == county)
         parcel_rows = session.execute(
             parcel_statement.order_by(ParcelCoreRecordRow.id.desc()).limit(limit)
         ).scalars()
@@ -241,14 +202,9 @@ def list_upstream_operator_records(
                 ParcelRecordObservationRow.county == county
             )
         observation_rows = session.execute(
-            observation_statement.order_by(ParcelRecordObservationRow.id.desc()).limit(
-                limit
-            )
+            observation_statement.order_by(ParcelRecordObservationRow.id.desc()).limit(limit)
         ).scalars()
-        return [
-            _parcel_observation_record(observation_row)
-            for observation_row in observation_rows
-        ]
+        return [_parcel_observation_record(observation_row) for observation_row in observation_rows]
 
     if record_kind == UpstreamOperatorRecordKind.PARCEL_SOURCE_EVIDENCE:
         evidence_statement = select(ParcelSourceEvidenceRow)
@@ -257,16 +213,11 @@ def list_upstream_operator_records(
                 ParcelSourceEvidenceRow.source_key == source_key
             )
         if county is not None:
-            evidence_statement = evidence_statement.where(
-                ParcelSourceEvidenceRow.county == county
-            )
+            evidence_statement = evidence_statement.where(ParcelSourceEvidenceRow.county == county)
         evidence_rows = session.execute(
             evidence_statement.order_by(ParcelSourceEvidenceRow.id.desc()).limit(limit)
         ).scalars()
-        return [
-            _parcel_source_evidence_record(evidence_row)
-            for evidence_row in evidence_rows
-        ]
+        return [_parcel_source_evidence_record(evidence_row) for evidence_row in evidence_rows]
 
     if record_kind == UpstreamOperatorRecordKind.PARCEL_SOURCE_VERIFICATION:
         profile_statement = select(ParcelSourceVerificationProfileRow)
@@ -283,14 +234,9 @@ def list_upstream_operator_records(
                 ParcelSourceVerificationProfileRow.county == county
             )
         profile_rows = session.execute(
-            profile_statement.order_by(
-                ParcelSourceVerificationProfileRow.id.desc()
-            ).limit(limit)
+            profile_statement.order_by(ParcelSourceVerificationProfileRow.id.desc()).limit(limit)
         ).scalars()
-        return [
-            _parcel_source_verification_record(profile_row)
-            for profile_row in profile_rows
-        ]
+        return [_parcel_source_verification_record(profile_row) for profile_row in profile_rows]
 
     if record_kind == UpstreamOperatorRecordKind.PARCEL_COUNTY_COVERAGE:
         coverage_statement = select(ParcelCountyCoverageReportRow)
@@ -299,14 +245,9 @@ def list_upstream_operator_records(
                 ParcelCountyCoverageReportRow.status == status
             )
         coverage_rows = session.execute(
-            coverage_statement.order_by(ParcelCountyCoverageReportRow.id.desc()).limit(
-                limit
-            )
+            coverage_statement.order_by(ParcelCountyCoverageReportRow.id.desc()).limit(limit)
         ).scalars()
-        return [
-            _parcel_county_coverage_record(coverage_row)
-            for coverage_row in coverage_rows
-        ]
+        return [_parcel_county_coverage_record(coverage_row) for coverage_row in coverage_rows]
 
     if record_kind == UpstreamOperatorRecordKind.PARCEL_ARCGIS_CAPABILITY:
         capability_statement = select(ParcelArcGISCapabilitySnapshotRow)
@@ -319,22 +260,16 @@ def list_upstream_operator_records(
                 ParcelArcGISCapabilitySnapshotRow.county == county
             )
         capability_rows = session.execute(
-            capability_statement.order_by(
-                ParcelArcGISCapabilitySnapshotRow.id.desc()
-            ).limit(limit)
+            capability_statement.order_by(ParcelArcGISCapabilitySnapshotRow.id.desc()).limit(limit)
         ).scalars()
         return [_parcel_arcgis_capability_record(row) for row in capability_rows]
 
     if record_kind == UpstreamOperatorRecordKind.PARCEL_ARCGIS_PROBE_PLAN:
         plan_statement = select(ParcelArcGISProbePlanRow)
         if source_key is not None:
-            plan_statement = plan_statement.where(
-                ParcelArcGISProbePlanRow.source_key == source_key
-            )
+            plan_statement = plan_statement.where(ParcelArcGISProbePlanRow.source_key == source_key)
         if county is not None:
-            plan_statement = plan_statement.where(
-                ParcelArcGISProbePlanRow.county == county
-            )
+            plan_statement = plan_statement.where(ParcelArcGISProbePlanRow.county == county)
         plan_rows = session.execute(
             plan_statement.order_by(ParcelArcGISProbePlanRow.id.desc()).limit(limit)
         ).scalars()
@@ -351,9 +286,9 @@ def list_upstream_operator_records(
                 ParcelArcGISProbeObservationRow.county == county
             )
         arcgis_observation_rows = session.execute(
-            arcgis_observation_statement.order_by(
-                ParcelArcGISProbeObservationRow.id.desc()
-            ).limit(limit)
+            arcgis_observation_statement.order_by(ParcelArcGISProbeObservationRow.id.desc()).limit(
+                limit
+            )
         ).scalars()
         return [
             _parcel_arcgis_probe_observation_record(arcgis_row)
@@ -371,9 +306,7 @@ def list_upstream_operator_records(
                 ParcelArcGISBulkManifestRow.county == county
             )
         manifest_rows = session.execute(
-            manifest_statement.order_by(ParcelArcGISBulkManifestRow.id.desc()).limit(
-                limit
-            )
+            manifest_statement.order_by(ParcelArcGISBulkManifestRow.id.desc()).limit(limit)
         ).scalars()
         return [_parcel_arcgis_bulk_manifest_record(row) for row in manifest_rows]
 
@@ -392,9 +325,9 @@ def list_upstream_operator_records(
                 ParcelArcGISAcquisitionAssessmentRow.county == county
             )
         assessment_rows = session.execute(
-            assessment_statement.order_by(
-                ParcelArcGISAcquisitionAssessmentRow.id.desc()
-            ).limit(limit)
+            assessment_statement.order_by(ParcelArcGISAcquisitionAssessmentRow.id.desc()).limit(
+                limit
+            )
         ).scalars()
         return [_parcel_arcgis_acquisition_record(row) for row in assessment_rows]
 
@@ -413,9 +346,7 @@ def list_upstream_operator_records(
                 ParcelArcGISBoundedProofBundleRow.county == county
             )
         bundle_rows = session.execute(
-            bundle_statement.order_by(
-                ParcelArcGISBoundedProofBundleRow.id.desc()
-            ).limit(limit)
+            bundle_statement.order_by(ParcelArcGISBoundedProofBundleRow.id.desc()).limit(limit)
         ).scalars()
         return [_parcel_arcgis_proof_bundle_record(row) for row in bundle_rows]
 
@@ -434,14 +365,9 @@ def list_upstream_operator_records(
                 ParcelCurrentSelectionReportRow.county == county
             )
         selection_rows = session.execute(
-            selection_statement.order_by(
-                ParcelCurrentSelectionReportRow.id.desc()
-            ).limit(limit)
+            selection_statement.order_by(ParcelCurrentSelectionReportRow.id.desc()).limit(limit)
         ).scalars()
-        return [
-            _parcel_current_selection_record(selection_row)
-            for selection_row in selection_rows
-        ]
+        return [_parcel_current_selection_record(selection_row) for selection_row in selection_rows]
 
     if record_kind == UpstreamOperatorRecordKind.PARCEL_ASSURANCE:
         assurance_statement = select(ParcelAssuranceReportRow)
@@ -458,20 +384,13 @@ def list_upstream_operator_records(
                 ParcelAssuranceReportRow.county == county
             )
         assurance_rows = session.execute(
-            assurance_statement.order_by(ParcelAssuranceReportRow.id.desc()).limit(
-                limit
-            )
+            assurance_statement.order_by(ParcelAssuranceReportRow.id.desc()).limit(limit)
         ).scalars()
-        return [
-            _parcel_assurance_record(assurance_row)
-            for assurance_row in assurance_rows
-        ]
+        return [_parcel_assurance_record(assurance_row) for assurance_row in assurance_rows]
 
     resolution_statement = select(SiteResolutionResultRow)
     if status is not None:
-        resolution_statement = resolution_statement.where(
-            SiteResolutionResultRow.status == status
-        )
+        resolution_statement = resolution_statement.where(SiteResolutionResultRow.status == status)
     if site_key is not None:
         resolution_statement = resolution_statement.where(
             SiteResolutionResultRow.primary_site_key == site_key
@@ -479,10 +398,7 @@ def list_upstream_operator_records(
     resolution_rows = session.execute(
         resolution_statement.order_by(SiteResolutionResultRow.id.desc()).limit(limit)
     ).scalars()
-    return [
-        _site_resolution_record(resolution_row)
-        for resolution_row in resolution_rows
-    ]
+    return [_site_resolution_record(resolution_row) for resolution_row in resolution_rows]
 
 
 def get_upstream_operator_record(
@@ -494,47 +410,29 @@ def get_upstream_operator_record(
 
     if record_kind == UpstreamOperatorRecordKind.PERMIT_SNAPSHOT:
         snapshot_row = session.execute(
-            select(PermitSnapshotRecord).where(
-                PermitSnapshotRecord.snapshot_id == record_id
-            )
+            select(PermitSnapshotRecord).where(PermitSnapshotRecord.snapshot_id == record_id)
         ).scalar_one_or_none()
-        return (
-            None
-            if snapshot_row is None
-            else _permit_snapshot_record(snapshot_row)
-        )
+        return None if snapshot_row is None else _permit_snapshot_record(snapshot_row)
     if record_kind == UpstreamOperatorRecordKind.PERMIT_TRANSITION:
         transition_row = session.execute(
-            select(PermitTransitionRecord).where(
-                PermitTransitionRecord.transition_id == record_id
-            )
+            select(PermitTransitionRecord).where(PermitTransitionRecord.transition_id == record_id)
         ).scalar_one_or_none()
-        return (
-            None
-            if transition_row is None
-            else _permit_transition_record(transition_row)
-        )
+        return None if transition_row is None else _permit_transition_record(transition_row)
     if record_kind == UpstreamOperatorRecordKind.CONTRACTOR:
         contractor_row = session.execute(
             select(ContractorIdentityRecord).where(
                 ContractorIdentityRecord.contractor_key == record_id
             )
         ).scalar_one_or_none()
-        return (
-            None if contractor_row is None else _contractor_record(contractor_row)
-        )
+        return None if contractor_row is None else _contractor_record(contractor_row)
     if record_kind == UpstreamOperatorRecordKind.DECISION:
         decision_row = session.execute(
-            select(DecisionRecordRow).where(
-                DecisionRecordRow.decision_key == record_id
-            )
+            select(DecisionRecordRow).where(DecisionRecordRow.decision_key == record_id)
         ).scalar_one_or_none()
         return None if decision_row is None else _decision_record(decision_row)
     if record_kind == UpstreamOperatorRecordKind.PARCEL:
         parcel_row = session.execute(
-            select(ParcelCoreRecordRow).where(
-                ParcelCoreRecordRow.parcel_record_id == record_id
-            )
+            select(ParcelCoreRecordRow).where(ParcelCoreRecordRow.parcel_record_id == record_id)
         ).scalar_one_or_none()
         return None if parcel_row is None else _parcel_record(parcel_row)
     if record_kind == UpstreamOperatorRecordKind.PARCEL_OBSERVATION:
@@ -543,65 +441,39 @@ def get_upstream_operator_record(
                 ParcelRecordObservationRow.observation_id == record_id
             )
         ).scalar_one_or_none()
-        return (
-            None
-            if observation_row is None
-            else _parcel_observation_record(observation_row)
-        )
+        return None if observation_row is None else _parcel_observation_record(observation_row)
     if record_kind == UpstreamOperatorRecordKind.PARCEL_SOURCE_EVIDENCE:
         evidence_row = session.execute(
-            select(ParcelSourceEvidenceRow).where(
-                ParcelSourceEvidenceRow.evidence_id == record_id
-            )
+            select(ParcelSourceEvidenceRow).where(ParcelSourceEvidenceRow.evidence_id == record_id)
         ).scalar_one_or_none()
-        return (
-            None
-            if evidence_row is None
-            else _parcel_source_evidence_record(evidence_row)
-        )
+        return None if evidence_row is None else _parcel_source_evidence_record(evidence_row)
     if record_kind == UpstreamOperatorRecordKind.PARCEL_SOURCE_VERIFICATION:
         profile_row = session.execute(
             select(ParcelSourceVerificationProfileRow).where(
                 ParcelSourceVerificationProfileRow.profile_id == record_id
             )
         ).scalar_one_or_none()
-        return (
-            None
-            if profile_row is None
-            else _parcel_source_verification_record(profile_row)
-        )
+        return None if profile_row is None else _parcel_source_verification_record(profile_row)
     if record_kind == UpstreamOperatorRecordKind.PARCEL_COUNTY_COVERAGE:
         coverage_row = session.execute(
             select(ParcelCountyCoverageReportRow).where(
                 ParcelCountyCoverageReportRow.report_id == record_id
             )
         ).scalar_one_or_none()
-        return (
-            None
-            if coverage_row is None
-            else _parcel_county_coverage_record(coverage_row)
-        )
+        return None if coverage_row is None else _parcel_county_coverage_record(coverage_row)
     if record_kind == UpstreamOperatorRecordKind.PARCEL_ARCGIS_CAPABILITY:
         capability_row = session.execute(
             select(ParcelArcGISCapabilitySnapshotRow).where(
                 ParcelArcGISCapabilitySnapshotRow.snapshot_id == record_id
             )
         ).scalar_one_or_none()
-        return (
-            None
-            if capability_row is None
-            else _parcel_arcgis_capability_record(capability_row)
-        )
+        return None if capability_row is None else _parcel_arcgis_capability_record(capability_row)
     if record_kind == UpstreamOperatorRecordKind.PARCEL_ARCGIS_PROBE_PLAN:
         arcgis_plan_row = session.execute(
-            select(ParcelArcGISProbePlanRow).where(
-                ParcelArcGISProbePlanRow.plan_id == record_id
-            )
+            select(ParcelArcGISProbePlanRow).where(ParcelArcGISProbePlanRow.plan_id == record_id)
         ).scalar_one_or_none()
         return (
-            None
-            if arcgis_plan_row is None
-            else _parcel_arcgis_probe_plan_record(arcgis_plan_row)
+            None if arcgis_plan_row is None else _parcel_arcgis_probe_plan_record(arcgis_plan_row)
         )
     if record_kind == UpstreamOperatorRecordKind.PARCEL_ARCGIS_PROBE_OBSERVATION:
         arcgis_observation_row = session.execute(
@@ -653,32 +525,16 @@ def get_upstream_operator_record(
                 ParcelCurrentSelectionReportRow.selection_report_id == record_id
             )
         ).scalar_one_or_none()
-        return (
-            None
-            if selection_row is None
-            else _parcel_current_selection_record(selection_row)
-        )
+        return None if selection_row is None else _parcel_current_selection_record(selection_row)
     if record_kind == UpstreamOperatorRecordKind.PARCEL_ASSURANCE:
         assurance_row = session.execute(
-            select(ParcelAssuranceReportRow).where(
-                ParcelAssuranceReportRow.report_id == record_id
-            )
+            select(ParcelAssuranceReportRow).where(ParcelAssuranceReportRow.report_id == record_id)
         ).scalar_one_or_none()
-        return (
-            None
-            if assurance_row is None
-            else _parcel_assurance_record(assurance_row)
-        )
+        return None if assurance_row is None else _parcel_assurance_record(assurance_row)
     resolution_row = session.execute(
-        select(SiteResolutionResultRow).where(
-            SiteResolutionResultRow.resolution_id == record_id
-        )
+        select(SiteResolutionResultRow).where(SiteResolutionResultRow.resolution_id == record_id)
     ).scalar_one_or_none()
-    return (
-        None
-        if resolution_row is None
-        else _site_resolution_record(resolution_row)
-    )
+    return None if resolution_row is None else _site_resolution_record(resolution_row)
 
 
 def _validate_filters(
@@ -687,9 +543,7 @@ def _validate_filters(
 ) -> None:
     supported = _FILTER_SUPPORT[record_kind]
     unsupported = [
-        name
-        for name, value in filters.items()
-        if value is not None and name not in supported
+        name for name, value in filters.items() if value is not None and name not in supported
     ]
     if unsupported:
         names = ", ".join(sorted(unsupported))

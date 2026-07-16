@@ -35,8 +35,7 @@ def preview_rows(preview_input: ParcelRowPreviewInput) -> ParcelRowPreviewReport
         match.field_role: match.source_field for match in preview_input.field_role_matches
     }
     constant_values = {
-        constant.field_role: constant.value
-        for constant in preview_input.constant_fields
+        constant.field_role: constant.value for constant in preview_input.constant_fields
     }
     mapped_roles = sorted(
         set(role_to_field) | set(constant_values),
@@ -90,21 +89,13 @@ def _preview_row(
 ) -> ParcelRowPreview:
     """Preview one candidate parcel row."""
 
-    apn_value = _value_for_role(
-        row, role_to_field, constant_values, ParcelFieldRole.APN
-    )
-    address_value = _value_for_role(
-        row, role_to_field, constant_values, ParcelFieldRole.ADDRESS
-    )
-    county_value = _value_for_role(
-        row, role_to_field, constant_values, ParcelFieldRole.COUNTY
-    )
+    apn_value = _value_for_role(row, role_to_field, constant_values, ParcelFieldRole.APN)
+    address_value = _value_for_role(row, role_to_field, constant_values, ParcelFieldRole.ADDRESS)
+    county_value = _value_for_role(row, role_to_field, constant_values, ParcelFieldRole.COUNTY)
     source_record_id = _value_for_role(
         row, role_to_field, constant_values, ParcelFieldRole.SOURCE_RECORD_ID
     )
-    geometry_value = _value_for_role(
-        row, role_to_field, constant_values, ParcelFieldRole.GEOMETRY
-    )
+    geometry_value = _value_for_role(row, role_to_field, constant_values, ParcelFieldRole.GEOMETRY)
     limitations: list[str] = []
     normalized_apn = normalize_apn(apn_value) if apn_value else None
     normalized_address = normalize_address(address_value) if address_value else None

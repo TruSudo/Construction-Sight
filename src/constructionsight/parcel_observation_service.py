@@ -68,8 +68,7 @@ def select_current_parcel_observations(
     for observation in retained:
         grouped.setdefault(observation.record.source_key, []).append(observation)
     source_selections = [
-        _select_source(source_key, grouped[source_key])
-        for source_key in sorted(grouped)
+        _select_source(source_key, grouped[source_key]) for source_key in sorted(grouped)
     ]
     requires_review = any(item.requires_human_review for item in source_selections)
     current_ids = sorted(
@@ -139,9 +138,7 @@ def build_longitudinal_parcel_assurance(
         generated_at=generated,
     )
     contexts = _contexts_by_source(source_contexts)
-    observed_source_keys = {
-        observation.record.source_key for observation in observations
-    }
+    observed_source_keys = {observation.record.source_key for observation in observations}
     if set(contexts) != observed_source_keys:
         missing = sorted(observed_source_keys - set(contexts))
         extra = sorted(set(contexts) - observed_source_keys)
@@ -167,8 +164,7 @@ def build_longitudinal_parcel_assurance(
 
     by_id = {item.observation_id: item for item in observations}
     current_records = [
-        by_id[observation_id].record
-        for observation_id in selection.current_observation_ids
+        by_id[observation_id].record for observation_id in selection.current_observation_ids
     ]
     assurance = build_parcel_assurance_report(
         records=current_records,
@@ -188,18 +184,14 @@ def _select_source(
     source_key: str,
     observations: list[ParcelRecordObservation],
 ) -> ParcelSourceCurrentSelection:
-    effective_presence = [
-        item.record.source_updated_at is not None for item in observations
-    ]
+    effective_presence = [item.record.source_updated_at is not None for item in observations]
     if any(effective_presence) and not all(effective_presence):
         candidate_ids = sorted(item.observation_id for item in observations)
         dispositions = [
             ParcelObservationDisposition(
                 observation_id=observation_id,
                 status=ParcelObservationDispositionStatus.CURRENT_CANDIDATE,
-                reasons=[
-                    "The observation cannot be ordered against a different time basis."
-                ],
+                reasons=["The observation cannot be ordered against a different time basis."],
             )
             for observation_id in candidate_ids
         ]
@@ -210,9 +202,7 @@ def _select_source(
             candidate_observation_ids=candidate_ids,
             dispositions=dispositions,
             requires_human_review=True,
-            reasons=[
-                "Some source observations supply source-effective time and others do not."
-            ],
+            reasons=["Some source observations supply source-effective time and others do not."],
             limitations=[
                 (
                     "Source-effective time and observation time are not treated as "
@@ -243,9 +233,7 @@ def _select_source(
 
     governing_timestamp = max(timestamp_by_id.values())
     top = [
-        item
-        for item in observations
-        if timestamp_by_id[item.observation_id] == governing_timestamp
+        item for item in observations if timestamp_by_id[item.observation_id] == governing_timestamp
     ]
     top_ids = sorted(item.observation_id for item in top)
     if len({item.content_digest for item in top}) > 1:
@@ -267,9 +255,7 @@ def _select_source(
                     ),
                 }
             ),
-            limitations=[
-                "No current record is selected through a same-time content conflict."
-            ],
+            limitations=["No current record is selected through a same-time content conflict."],
         )
 
     current = max(

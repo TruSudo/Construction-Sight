@@ -141,10 +141,7 @@ class CeqanetLiveDiscovery:
                 date_field_detected=False,
                 lead_agency_field_detected=False,
                 failure_kind=observation.failure_kind,
-                notes=(
-                    "CEQAnet discovery failed closed: "
-                    f"{observation.failure_kind.value}"
-                ),
+                notes=(f"CEQAnet discovery failed closed: {observation.failure_kind.value}"),
             )
         body = observation.decode_text(self.policy.accepted_encodings).casefold()
         reachable = observation.status_code is not None and 200 <= observation.status_code < 300

@@ -31,8 +31,7 @@ def test_provider_filter_returns_county_gis_targets() -> None:
     assert sources
     assert all(source.provider_kind == ParcelProviderKind.COUNTY_GIS for source in sources)
     assert all(
-        source.coverage.geometry_support == ParcelGeometrySupport.POLYGON
-        for source in sources
+        source.coverage.geometry_support == ParcelGeometrySupport.POLYGON for source in sources
     )
 
 
@@ -43,9 +42,7 @@ def test_parcel_source_report_separates_targets_and_license_blockers() -> None:
     assert "San Bernardino" in report.counties
     assert "Riverside" in report.counties
     assert report.target_sources
-    assert {
-        gap.source_key for gap in report.ready_sources
-    } >= {
+    assert {gap.source_key for gap in report.ready_sources} >= {
         "san-bernardino:county-gis-parcels",
         "riverside:county-gis-parcels",
     }

@@ -118,7 +118,9 @@ def _read_toml(
 ) -> dict[str, Any]:
     path = root / relative
     if not path.is_file():
-        findings.append(_finding("GOV-CONTRACT-001", relative, "required governance contract is missing"))
+        findings.append(
+            _finding("GOV-CONTRACT-001", relative, "required governance contract is missing")
+        )
         return {}
     try:
         payload = tomllib.loads(path.read_text(encoding="utf-8"))
@@ -282,9 +284,12 @@ def _mutation_lines(tree: ast.Module) -> tuple[int, ...]:
                 lines.add(node.lineno)
         if name == "open" and len(node.args) >= 2:
             mode = node.args[1]
-            if isinstance(mode, ast.Constant) and isinstance(mode.value, str):
-                if any(flag in mode.value for flag in "wax+"):
-                    lines.add(node.lineno)
+            if (
+                isinstance(mode, ast.Constant)
+                and isinstance(mode.value, str)
+                and any(flag in mode.value for flag in "wax+")
+            ):
+                lines.add(node.lineno)
     return tuple(sorted(lines))
 
 

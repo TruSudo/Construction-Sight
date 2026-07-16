@@ -87,8 +87,7 @@ def build_parcel_source_report(
         target_sources=[
             gap
             for gap in gaps
-            if gap.coverage_status
-            in {ParcelCoverageStatus.TARGET, ParcelCoverageStatus.DESIGNED}
+            if gap.coverage_status in {ParcelCoverageStatus.TARGET, ParcelCoverageStatus.DESIGNED}
         ],
         blocked_sources=[
             gap for gap in gaps if gap.coverage_status == ParcelCoverageStatus.BLOCKED_BY_LICENSE
@@ -136,8 +135,7 @@ def _default_parcel_sources() -> list[ParcelSource]:
                 "Parcels_for_San_Bernardino_County/FeatureServer/0"
             ),
             documentation_url=(
-                "https://open.sbcounty.gov/datasets/"
-                "san-bernardino-county-parcel-dataset/about"
+                "https://open.sbcounty.gov/datasets/san-bernardino-county-parcel-dataset/about"
             ),
             field_mappings=_san_bernardino_verified_field_mappings(),
             constant_fields=_county_constants(
@@ -156,8 +154,7 @@ def _default_parcel_sources() -> list[ParcelSource]:
                 "parcel geometry is not a surveyed legal boundary",
             ],
             next_action=(
-                "run bounded schema, count, pagination, and completeness verification "
-                "before import"
+                "run bounded schema, count, pagination, and completeness verification before import"
             ),
         ),
         ParcelSource(
@@ -203,8 +200,7 @@ def _default_parcel_sources() -> list[ParcelSource]:
                 "map features are approximate and are not surveyed legal boundaries",
             ],
             next_action=(
-                "run bounded schema, count, pagination, and completeness verification "
-                "before import"
+                "run bounded schema, count, pagination, and completeness verification before import"
             ),
         ),
         ParcelSource(
@@ -226,9 +222,7 @@ def _default_parcel_sources() -> list[ParcelSource]:
             field_mappings=_standard_parcel_field_targets(),
             priority=70,
             limitations=["requires lawful license or user-provided authorization"],
-            next_action=(
-                "support pluggable licensed provider once credentials/license exist"
-            ),
+            next_action=("support pluggable licensed provider once credentials/license exist"),
         ),
         ParcelSource(
             source_key="user-provided:parcel-export",
@@ -241,10 +235,7 @@ def _default_parcel_sources() -> list[ParcelSource]:
                 county="User supplied",
                 geometry_support=ParcelGeometrySupport.UNKNOWN,
                 coverage_notes=[
-                    (
-                        "supports CSV, GeoJSON, shapefile, or other lawful "
-                        "user-provided exports"
-                    ),
+                    ("supports CSV, GeoJSON, shapefile, or other lawful user-provided exports"),
                 ],
             ),
             field_mappings=_standard_parcel_field_targets(),

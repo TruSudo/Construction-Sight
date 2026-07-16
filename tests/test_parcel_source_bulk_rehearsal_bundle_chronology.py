@@ -63,9 +63,7 @@ class _Source:
             2: [3, 4],
             4: [5, 6],
         }
-        return ParcelArcGISBulkPageResponse.from_payload(
-            {"objectIds": pages[offset]}
-        )
+        return ParcelArcGISBulkPageResponse.from_payload({"objectIds": pages[offset]})
 
 
 def _completed_rehearsal(tmp_path: Path):

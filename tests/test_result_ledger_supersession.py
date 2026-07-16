@@ -53,9 +53,11 @@ def test_store_result_ledger_record_appends_superseding_revision() -> None:
         store_result_ledger_record(session, original)
         store_result_ledger_record(session, corrected)
         session.flush()
-        rows = session.execute(
-            select(ResultLedgerRecordRow).order_by(ResultLedgerRecordRow.id)
-        ).scalars().all()
+        rows = (
+            session.execute(select(ResultLedgerRecordRow).order_by(ResultLedgerRecordRow.id))
+            .scalars()
+            .all()
+        )
 
         assert len(rows) == 2
         assert json.loads(rows[0].payload_json)["revision"] == 1

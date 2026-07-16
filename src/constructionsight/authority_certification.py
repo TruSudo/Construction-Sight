@@ -21,9 +21,7 @@ from constructionsight.governance_certification_core import (
 from constructionsight.traceability_certification import _match_contract_owner
 
 
-def _audit_network(
-    contract: Mapping[str, Any], findings: list[GovernanceFinding]
-) -> int:
+def _audit_network(contract: Mapping[str, Any], findings: list[GovernanceFinding]) -> int:
     path = "governance/network_contract.toml"
     policies = contract.get("policies")
     if not isinstance(policies, list):
@@ -136,7 +134,7 @@ def _audit_network(
             "concurrency_limit",
         ):
             value = policy.get(numeric)
-            if not isinstance(value, (int, float)) or value <= 0:
+            if not isinstance(value, int | float) or value <= 0:
                 findings.append(
                     _finding(
                         "NET-CONTRACT-006",
@@ -144,9 +142,7 @@ def _audit_network(
                         f"network policy {policy_id}.{numeric} must be positive",
                     )
                 )
-        if policy.get("max_attempts", 0) > 1 and not policy.get(
-            "retryable_failures"
-        ):
+        if policy.get("max_attempts", 0) > 1 and not policy.get("retryable_failures"):
             findings.append(
                 _finding(
                     "NET-RETRY-001",
@@ -303,15 +299,11 @@ def _audit_test_obligations(
         return
     required_categories = set(contract.get("required_categories", []))
     if not required_categories:
-        findings.append(
-            _finding("TEST-CONTRACT-002", path, "required_categories must be nonempty")
-        )
+        findings.append(_finding("TEST-CONTRACT-002", path, "required_categories must be nonempty"))
     ids: set[str] = set()
     for matrix in matrices:
         if not isinstance(matrix, dict):
-            findings.append(
-                _finding("TEST-CONTRACT-003", path, "each test matrix must be a table")
-            )
+            findings.append(_finding("TEST-CONTRACT-003", path, "each test matrix must be a table"))
             continue
         matrix_id = str(matrix.get("id"))
         if matrix_id in ids:
@@ -341,8 +333,7 @@ def _audit_test_obligations(
                 _finding(
                     "TEST-MATRIX-001",
                     path,
-                    f"{matrix_id} omits categories without justification: "
-                    f"{sorted(missing)}",
+                    f"{matrix_id} omits categories without justification: {sorted(missing)}",
                 )
             )
         tests = matrix.get("tests")
@@ -366,9 +357,7 @@ def _audit_test_obligations(
                 )
 
 
-def _audit_defects_and_review(
-    root: Path, findings: list[GovernanceFinding]
-) -> None:
+def _audit_defects_and_review(root: Path, findings: list[GovernanceFinding]) -> None:
     active = _read_toml(
         root,
         "governance/active_defects.toml",
@@ -439,12 +428,8 @@ def _audit_defects_and_review(
             )
         )
     review_findings = report.get("findings")
-    malformed_or_unresolved = (
-        not isinstance(review_findings, list)
-        or any(
-            not isinstance(item, dict) or item.get("status") != "resolved"
-            for item in review_findings
-        )
+    malformed_or_unresolved = not isinstance(review_findings, list) or any(
+        not isinstance(item, dict) or item.get("status") != "resolved" for item in review_findings
     )
     if malformed_or_unresolved:
         findings.append(
@@ -455,9 +440,7 @@ def _audit_defects_and_review(
             )
         )
     reviewed_commit = report.get("reviewed_commit")
-    if not isinstance(reviewed_commit, str) or not re.fullmatch(
-        r"[0-9a-f]{40}", reviewed_commit
-    ):
+    if not isinstance(reviewed_commit, str) or not re.fullmatch(r"[0-9a-f]{40}", reviewed_commit):
         findings.append(
             _finding(
                 "REVIEW-006",
@@ -468,9 +451,7 @@ def _audit_defects_and_review(
         return
     try:
         head_parent = _git(root, "rev-parse", "HEAD^")
-        changed = set(
-            _git(root, "diff", "--name-only", f"{reviewed_commit}..HEAD").splitlines()
-        )
+        changed = set(_git(root, "diff", "--name-only", f"{reviewed_commit}..HEAD").splitlines())
     except GovernanceContractError as exc:
         findings.append(
             _finding(

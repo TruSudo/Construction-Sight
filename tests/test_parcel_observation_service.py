@@ -204,9 +204,7 @@ def test_same_time_content_conflict_preserves_candidates_and_supersession() -> N
         zoning="residential",
     )
 
-    report = select_current_parcel_observations(
-        [residential, older, industrial]
-    )
+    report = select_current_parcel_observations([residential, older, industrial])
     selection = report.source_selections[0]
     candidate_ids = sorted([industrial.observation_id, residential.observation_id])
 
@@ -214,9 +212,7 @@ def test_same_time_content_conflict_preserves_candidates_and_supersession() -> N
     assert selection.current_observation_id is None
     assert selection.candidate_observation_ids == candidate_ids
     older_disposition = next(
-        item
-        for item in selection.dispositions
-        if item.observation_id == older.observation_id
+        item for item in selection.dispositions if item.observation_id == older.observation_id
     )
     assert older_disposition.status is ParcelObservationDispositionStatus.SUPERSEDED
     assert older_disposition.superseded_by_observation_ids == candidate_ids
@@ -428,16 +424,12 @@ def test_selection_store_is_immutable_and_semantically_idempotent() -> None:
         [observation],
         generated_at=BASE_TIME,
     )
-    replay = report.model_copy(
-        update={"generated_at": BASE_TIME + timedelta(minutes=1)}
-    )
+    replay = report.model_copy(update={"generated_at": BASE_TIME + timedelta(minutes=1)})
 
     with managed_session(factory) as session:
         first = store_parcel_current_selection_report(session, report)
         second = store_parcel_current_selection_report(session, replay)
-        rows = session.execute(
-            select(ParcelCurrentSelectionReportRow)
-        ).scalars().all()
+        rows = session.execute(select(ParcelCurrentSelectionReportRow)).scalars().all()
 
         assert first.id == second.id
         assert len(rows) == 1
@@ -455,9 +447,7 @@ def test_selection_store_rejects_identity_collision() -> None:
         [_observation("parcel:a:1")],
         generated_at=BASE_TIME,
     )
-    different = report.model_copy(
-        update={"limitations": ["changed without changing identity"]}
-    )
+    different = report.model_copy(update={"limitations": ["changed without changing identity"]})
 
     with managed_session(factory) as session:
         store_parcel_current_selection_report(session, report)

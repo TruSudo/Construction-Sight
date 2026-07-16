@@ -27,9 +27,7 @@ from constructionsight.site_resolution_models import (
 
 _APN_DIGIT_RE = re.compile(r"\d+")
 _SPACE_RE = re.compile(r"\s+")
-_COORDINATE_RE = re.compile(
-    r"(?P<lat>-?\d{1,2}(?:\.\d+)?)\s*,\s*(?P<lon>-?\d{1,3}(?:\.\d+)?)"
-)
+_COORDINATE_RE = re.compile(r"(?P<lat>-?\d{1,2}(?:\.\d+)?)\s*,\s*(?P<lon>-?\d{1,3}(?:\.\d+)?)")
 
 
 def resolve_site_from_intake(intake: UniversalIntakeRecord) -> SiteResolutionResult:
@@ -200,9 +198,7 @@ def _detect_conflicts(identifiers: Iterable[SiteIdentifier]) -> list[str]:
     for identifier_kind in (SiteIdentifierKind.APN, SiteIdentifierKind.ADDRESS):
         values = sorted(by_kind.get(identifier_kind, set()))
         if len(values) > 1:
-            conflicts.append(
-                f"multiple {identifier_kind.value} values found: {', '.join(values)}"
-            )
+            conflicts.append(f"multiple {identifier_kind.value} values found: {', '.join(values)}")
     return conflicts
 
 

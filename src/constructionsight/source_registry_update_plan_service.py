@@ -57,8 +57,7 @@ def _update_row(
     original_payload = source.model_dump(mode="json")
     proposed_payload = _proposed_payload(original_payload, proposed_status)
     update_required = (
-        proposed_status is not None
-        and proposed_status != source.verification_status.value
+        proposed_status is not None and proposed_status != source.verification_status.value
     )
     return SourceRegistryUpdatePlanRow(
         source_key=plan_row.source_key,

@@ -94,16 +94,12 @@ def audit_adversarial_contract(
 
     raw_matrices = contract.get("matrices")
     if not isinstance(raw_matrices, list) or not raw_matrices:
-        findings.append(
-            _finding("ADV-MATRIX-001", path, "at least one test matrix is required")
-        )
+        findings.append(_finding("ADV-MATRIX-001", path, "at least one test matrix is required"))
         return
     ids: set[str] = set()
     for raw in raw_matrices:
         if not isinstance(raw, dict):
-            findings.append(
-                _finding("ADV-MATRIX-002", path, "every test matrix must be a table")
-            )
+            findings.append(_finding("ADV-MATRIX-002", path, "every test matrix must be a table"))
             continue
         missing_fields = _MATRIX_FIELDS - set(raw)
         unknown_fields = set(raw) - _MATRIX_FIELDS
@@ -117,12 +113,8 @@ def audit_adversarial_contract(
                 )
             )
         matrix_id = raw.get("id")
-        if not isinstance(matrix_id, str) or not re.fullmatch(
-            r"CS-TEST-[0-9]{3}", matrix_id
-        ):
-            findings.append(
-                _finding("ADV-MATRIX-004", path, "matrix ID must match CS-TEST-NNN")
-            )
+        if not isinstance(matrix_id, str) or not re.fullmatch(r"CS-TEST-[0-9]{3}", matrix_id):
+            findings.append(_finding("ADV-MATRIX-004", path, "matrix ID must match CS-TEST-NNN"))
             matrix_label = "unknown"
         else:
             matrix_label = matrix_id

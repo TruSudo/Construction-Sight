@@ -62,9 +62,7 @@ def build_contractor_identity(
         contractor_group_key=contractor_group_key,
     )
     status = (
-        license_signal.status
-        if license_signal is not None
-        else ContractorIdentityStatus.UNKNOWN
+        license_signal.status if license_signal is not None else ContractorIdentityStatus.UNKNOWN
     )
     return ContractorIdentity(
         contractor_key=contractor_key,
@@ -101,9 +99,7 @@ def resolve_contractor_identity(
     )
     top_score = sorted_candidates[0].confidence_score
     top_candidates = [
-        candidate
-        for candidate in sorted_candidates
-        if candidate.confidence_score == top_score
+        candidate for candidate in sorted_candidates if candidate.confidence_score == top_score
     ]
     status = "resolved" if len(top_candidates) == 1 else "ambiguous"
     primary_key = top_candidates[0].contractor_key if status == "resolved" else None

@@ -55,9 +55,7 @@ def _decided_date(value: str | None) -> date | None:
     try:
         return date.fromisoformat(value)
     except ValueError as exc:
-        raise ResultAuthorityError(
-            "--decided-date must use ISO format YYYY-MM-DD"
-        ) from exc
+        raise ResultAuthorityError("--decided-date must use ISO format YYYY-MM-DD") from exc
 
 
 @app.callback()

@@ -11,9 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from constructionsight.ceqanet_csv_models import canonical_digest
 
 MATURITY_PROPOSAL_SCHEMA_VERSION: Final = "ceqanet_source_maturity_proposal.v1"
-MATURITY_VERIFICATION_SCHEMA_VERSION: Final = (
-    "ceqanet_source_maturity_proposal_verification.v1"
-)
+MATURITY_VERIFICATION_SCHEMA_VERSION: Final = "ceqanet_source_maturity_proposal_verification.v1"
 
 
 class CeqanetMaturityDecision(StrEnum):
@@ -99,9 +97,9 @@ class CeqanetSourceMaturityProposalVerification(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    schema_version: Literal[
-        "ceqanet_source_maturity_proposal_verification.v1"
-    ] = MATURITY_VERIFICATION_SCHEMA_VERSION
+    schema_version: Literal["ceqanet_source_maturity_proposal_verification.v1"] = (
+        MATURITY_VERIFICATION_SCHEMA_VERSION
+    )
     passed: bool
     finding_count: int = Field(ge=0)
     findings: list[str]

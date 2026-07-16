@@ -66,9 +66,7 @@ class _Executor:
             executed_at=executed_at or _NOW,
             execution_digest="0" * 64,
         )
-        return draft.model_copy(
-            update={"execution_digest": draft.computed_digest()}
-        )
+        return draft.model_copy(update={"execution_digest": draft.computed_digest()})
 
 
 class _Verifier:

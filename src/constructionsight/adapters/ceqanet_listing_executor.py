@@ -109,11 +109,7 @@ class CeqanetListingResponseSnapshot:
     def reachable(self) -> bool:
         """Return true only for a classified, non-error 2xx response."""
 
-        return (
-            self.error is None
-            and self.status_code is not None
-            and 200 <= self.status_code < 300
-        )
+        return self.error is None and self.status_code is not None and 200 <= self.status_code < 300
 
 
 @dataclass(frozen=True)
@@ -144,9 +140,7 @@ class CeqanetListingReadOnlyExecutor:
         max_body_chars: int = 50_000,
         policy: CeqanetListingExecutionPolicy | None = None,
     ) -> None:
-        if policy is not None and (
-            timeout_seconds != 20.0 or max_body_chars != 50_000
-        ):
+        if policy is not None and (timeout_seconds != 20.0 or max_body_chars != 50_000):
             raise ValueError("provide either a policy or explicit legacy bounds, not both")
         self.policy = policy or CeqanetListingExecutionPolicy(
             timeout_seconds=timeout_seconds,
@@ -176,9 +170,7 @@ class CeqanetListingReadOnlyExecutor:
             raise CeqanetListingExecutionError(
                 "CEQAnet listing executor refuses remote-mutating plans"
             )
-        snapshots = tuple(
-            self._execute_request(request) for request in dry_run_report.requests
-        )
+        snapshots = tuple(self._execute_request(request) for request in dry_run_report.requests)
         successful_count = sum(snapshot.reachable for snapshot in snapshots)
         return CeqanetListingExecutionReport(
             allowed=True,
@@ -195,9 +187,7 @@ class CeqanetListingReadOnlyExecutor:
         request: CeqanetDryRunRequest,
     ) -> CeqanetListingResponseSnapshot:
         if request.method != "GET":
-            raise CeqanetListingExecutionError(
-                "CEQAnet listing executor only permits GET requests"
-            )
+            raise CeqanetListingExecutionError("CEQAnet listing executor only permits GET requests")
         if self.client is None:
             observation = execute_bounded_http(
                 request.url,
@@ -295,10 +285,7 @@ def _snapshot_from_observation(
     request: CeqanetDryRunRequest,
     observation: BoundedHttpObservation,
 ) -> CeqanetListingResponseSnapshot:
-    if (
-        observation.body_truncated
-        or observation.failure_kind is HttpFailureKind.OVERSIZED_RESPONSE
-    ):
+    if observation.body_truncated or observation.failure_kind is HttpFailureKind.OVERSIZED_RESPONSE:
         body_text = ""
     else:
         try:

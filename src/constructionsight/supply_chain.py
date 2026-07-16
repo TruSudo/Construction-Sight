@@ -51,9 +51,7 @@ def _logical_lock_rows(path: Path) -> tuple[tuple[int, str], ...]:
     rows: list[tuple[int, str]] = []
     parts: list[str] = []
     first_line: int | None = None
-    for number, line in enumerate(
-        path.read_text(encoding="utf-8").splitlines(), start=1
-    ):
+    for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
         stripped = line.strip()
         if not stripped or stripped.startswith("#"):
             if parts:
@@ -87,32 +85,22 @@ def load_lock_entries(path: Path) -> tuple[LockedRequirement, ...]:
     for number, row in _logical_lock_rows(path):
         match = _REQUIREMENT_PATTERN.fullmatch(row)
         if match is None:
-            raise ValueError(
-                f"{path}:{number}: lock entry must be exact and SHA-256 hashed: {row}"
-            )
+            raise ValueError(f"{path}:{number}: lock entry must be exact and SHA-256 hashed: {row}")
         raw_name = match.group("name")
         name = canonical_name(raw_name)
         if raw_name != name:
-            raise ValueError(
-                f"{path}:{number}: distribution name must be canonical: {raw_name}"
-            )
+            raise ValueError(f"{path}:{number}: distribution name must be canonical: {raw_name}")
         raw_extras = match.group("extras")
         extras = (
-            tuple(canonical_name(value) for value in raw_extras.split(","))
-            if raw_extras
-            else ()
+            tuple(canonical_name(value) for value in raw_extras.split(",")) if raw_extras else ()
         )
         if extras != tuple(sorted(set(extras))):
-            raise ValueError(
-                f"{path}:{number}: extras must be canonical, unique, and sorted"
-            )
+            raise ValueError(f"{path}:{number}: extras must be canonical, unique, and sorted")
         hashes = tuple(_HASH_TOKEN_PATTERN.findall(match.group("options")))
         if not hashes:
             raise ValueError(f"{path}:{number}: lock entry has no SHA-256 artifact hash")
         if hashes != tuple(sorted(set(hashes))):
-            raise ValueError(
-                f"{path}:{number}: artifact hashes must be unique and sorted"
-            )
+            raise ValueError(f"{path}:{number}: artifact hashes must be unique and sorted")
         if name in seen:
             raise ValueError(f"{path}:{number}: duplicate lock entry: {name}")
         seen.add(name)
@@ -139,12 +127,24 @@ def load_lock(path: Path) -> dict[str, str]:
     return {entry.name: entry.version for entry in load_lock_entries(path)}
 
 
+def _metadata_value(
+    distribution: importlib.metadata.Distribution,
+    key: str,
+) -> str | None:
+    """Return one metadata value without relying on an untyped get method."""
+
+    try:
+        return distribution.metadata[key]
+    except KeyError:
+        return None
+
+
 def installed_inventory() -> dict[str, importlib.metadata.Distribution]:
     """Return exactly one installed distribution per canonical identity."""
 
     inventory: dict[str, importlib.metadata.Distribution] = {}
     for distribution in importlib.metadata.distributions():
-        raw_name = distribution.metadata.get("Name")
+        raw_name = _metadata_value(distribution, "Name")
         if not raw_name:
             raise RuntimeError("installed distribution is missing canonical Name metadata")
         name = canonical_name(raw_name)
@@ -167,9 +167,7 @@ def _verification_report(
     for name, version in expected.items():
         distribution = installed.get(name)
         if distribution is None:
-            findings.append(
-                {"code": "SUPPLY-MISSING-001", "package": name, "expected": version}
-            )
+            findings.append({"code": "SUPPLY-MISSING-001", "package": name, "expected": version})
         elif distribution.version != version:
             findings.append(
                 {
@@ -198,9 +196,7 @@ def _verification_report(
                     "actual": distribution.version,
                 }
             )
-    unexpected = sorted(
-        set(installed) - set(expected) - set(_EXPECTED_UNLOCKED_DISTRIBUTIONS)
-    )
+    unexpected = sorted(set(installed) - set(expected) - set(_EXPECTED_UNLOCKED_DISTRIBUTIONS))
     for name in unexpected:
         findings.append(
             {
@@ -230,7 +226,7 @@ def verify_lock(path: Path) -> dict[str, Any]:
 
 
 def _license_expression(distribution: importlib.metadata.Distribution) -> str:
-    license_value = distribution.metadata.get("License")
+    license_value = _metadata_value(distribution, "License")
     if license_value and license_value.strip() and license_value.strip() != "UNKNOWN":
         return license_value.strip()
     classifiers = distribution.metadata.get_all("Classifier") or []
@@ -249,7 +245,7 @@ def _authoritative_project_url(
     for raw in distribution.metadata.get_all("Project-URL") or []:
         _, separator, value = raw.partition(",")
         candidates.append(value.strip() if separator else raw.strip())
-    homepage = distribution.metadata.get("Home-page")
+    homepage = _metadata_value(distribution, "Home-page")
     if homepage:
         candidates.append(homepage.strip())
     for candidate in candidates:
@@ -278,10 +274,7 @@ def _component(
         "licenses": [{"expression": _license_expression(distribution)}],
     }
     if hashes:
-        component["hashes"] = [
-            {"alg": "SHA-256", "content": digest}
-            for digest in hashes
-        ]
+        component["hashes"] = [{"alg": "SHA-256", "content": digest} for digest in hashes]
     homepage = _authoritative_project_url(distribution)
     if homepage is not None:
         component["externalReferences"] = [
@@ -301,12 +294,8 @@ def build_sbom(lock_path: Path) -> dict[str, Any]:
     installed = installed_inventory()
     verification = _verification_report(lock_path, expected, installed)
     if not verification["passed"]:
-        raise RuntimeError(
-            "cannot generate an exact-environment SBOM from a mismatched lock"
-        )
-    project_name, project_version = next(
-        iter(_EXPECTED_UNLOCKED_DISTRIBUTIONS.items())
-    )
+        raise RuntimeError("cannot generate an exact-environment SBOM from a mismatched lock")
+    project_name, project_version = next(iter(_EXPECTED_UNLOCKED_DISTRIBUTIONS.items()))
     project_component = _component(
         installed[project_name],
         name=project_name,
@@ -395,10 +384,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 0 if payload["passed"] else 1
         payload = build_sbom(arguments.lock)
         _write_json(arguments.output, payload)
-        print(
-            f"Wrote {len(payload['components'])} locked components "
-            f"to {arguments.output}"
-        )
+        print(f"Wrote {len(payload['components'])} locked components to {arguments.output}")
         return 0
     except (OSError, UnicodeError, ValueError, RuntimeError) as exc:
         print(f"Supply-chain certification failed: {exc}", file=sys.stderr)

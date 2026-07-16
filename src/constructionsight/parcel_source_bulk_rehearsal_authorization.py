@@ -19,10 +19,7 @@ from constructionsight.parcel_source_bulk_rehearsal_http import (
 
 _DEFAULT_LIMITATIONS = (
     "Authorization permits one complete read-only rehearsal only.",
-    (
-        "Authorization does not permit parcel import, profile promotion, "
-        "or recurring execution."
-    ),
+    ("Authorization does not permit parcel import, profile promotion, or recurring execution."),
     "Authorization expires automatically and cannot be reused after one execution.",
     (
         "Every exact response, checkpoint, portable bundle, and independent "

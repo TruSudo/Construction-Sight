@@ -113,9 +113,7 @@ def build_authorized_source_readiness_report(
         exact_scope=exact_scope,
         current_state_identity=state_identity,
         expected_identity=state_identity,
-        granted_authority=(
-            "perform bounded public HEAD checks with 405-only GET fallback",
-        ),
+        granted_authority=("perform bounded public HEAD checks with 405-only GET fallback",),
         denied_authority=tuple(
             sorted(
                 {
@@ -171,9 +169,7 @@ def _build_row(
     """Build one source-readiness row."""
 
     spec = adapter_specs.get(source.platform_family)
-    adapter_status = (
-        spec.status if spec is not None else AdapterImplementationStatus.PLACEHOLDER
-    )
+    adapter_status = spec.status if spec is not None else AdapterImplementationStatus.PLACEHOLDER
     readiness_status, reason, limitations, next_action = _readiness_decision(
         source.verification_status,
         adapter_status,

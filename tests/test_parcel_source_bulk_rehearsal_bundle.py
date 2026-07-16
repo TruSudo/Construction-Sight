@@ -154,9 +154,10 @@ def test_bundle_json_round_trip_and_exact_replay_save(tmp_path: Path) -> None:
 
     assert path.read_bytes() == first_bytes
     assert loaded == bundle
-    assert ParcelArcGISBulkRehearsalProofBundle.model_validate_json(
-        json.dumps(bundle.to_dict())
-    ) == bundle
+    assert (
+        ParcelArcGISBulkRehearsalProofBundle.model_validate_json(json.dumps(bundle.to_dict()))
+        == bundle
+    )
 
 
 def test_bundle_rejects_embedded_response_tampering(tmp_path: Path) -> None:

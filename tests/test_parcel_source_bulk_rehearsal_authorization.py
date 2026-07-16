@@ -121,9 +121,7 @@ def test_preflight_rejects_wrong_identity_future_expired_and_consumed() -> None:
             _snapshot(),
             _plan(),
             authorization,
-            expected_authorization_id=(
-                "parcel-arcgis-bulk-rehearsal-authorization:" + ("0" * 64)
-            ),
+            expected_authorization_id=("parcel-arcgis-bulk-rehearsal-authorization:" + ("0" * 64)),
             checked_at=_NOT_BEFORE,
         )
     with pytest.raises(ValueError, match="not effective yet"):
