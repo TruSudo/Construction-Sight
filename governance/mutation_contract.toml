@@ -22,6 +22,24 @@ expected_output = "test_single_use_claim_allows_only_one_concurrent_caller"
 risk = "Concurrent callers could reuse a single-use high-impact authorization."
 
 [[cases]]
+id = "CS-MUT-AUTH-BOOLEAN-001"
+path = "src/constructionsight/local_operator_authorization.py"
+search = "if not caller_confirmation:"
+replacement = "if caller_confirmation:"
+tests = ["tests/test_local_operator_authorization.py::test_boolean_confirmation_is_not_authority"]
+expected_output = "test_boolean_confirmation_is_not_authority"
+risk = "A bare Boolean could replace rather than supplement a complete scope-bound decision."
+
+[[cases]]
+id = "CS-MUT-AUTH-UNICODE-001"
+path = "src/constructionsight/local_operator_authorization.py"
+search = "normalized = unicodedata.normalize(\"NFC\", value).strip()"
+replacement = "normalized = value.strip()"
+tests = ["tests/test_local_operator_authorization.py::test_local_authorization_normalizes_identity_and_emits_redacted_audit"]
+expected_output = "test_local_authorization_normalizes_identity_and_emits_redacted_audit"
+risk = "Canonically equivalent operator or scope identities could produce different authority identities."
+
+[[cases]]
 id = "CS-MUT-NET-REDIRECT-001"
 path = "src/constructionsight/http_transport.py"
 search = "if 300 <= response.status_code < 400:"
@@ -38,6 +56,24 @@ replacement = "if declared_length < policy.max_response_bytes:"
 tests = ["tests/test_http_transport.py::test_bounded_http_rejects_declared_oversized_response_without_body_read"]
 expected_output = "test_bounded_http_rejects_declared_oversized_response_without_body_read"
 risk = "An oversized response could be read despite the declared byte ceiling."
+
+[[cases]]
+id = "CS-MUT-CSV-REDIRECT-001"
+path = "src/constructionsight/ceqanet_csv_live_service.py"
+search = "if 300 <= status_code < 400:"
+replacement = "if 300 <= status_code < 302:"
+tests = ["tests/test_ceqanet_csv_live.py::test_redirect_is_terminal_and_location_body_is_not_retained"]
+expected_output = "test_redirect_is_terminal_and_location_body_is_not_retained"
+risk = "The CSV test seam could classify a redirect as successful evidence and retain its body."
+
+[[cases]]
+id = "CS-MUT-LISTING-RETRY-001"
+path = "src/constructionsight/adapters/ceqanet_listing_executor.py"
+search = "if self.max_attempts != 1 or self.retry_delays_seconds:"
+replacement = "if self.max_attempts < 1:"
+tests = ["tests/test_ceqanet_listing_executor.py::test_ceqanet_listing_executor_rejects_invalid_runtime_bounds"]
+expected_output = "test_ceqanet_listing_executor_rejects_invalid_runtime_bounds"
+risk = "Listing execution could silently expand from one attempt into retries that contradict CS-NET-002."
 
 [[cases]]
 id = "CS-MUT-ARCH-BYPASS-001"
