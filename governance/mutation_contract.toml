@@ -40,6 +40,15 @@ expected_output = "test_local_authorization_normalizes_identity_and_emits_redact
 risk = "Canonically equivalent operator or scope identities could produce different authority identities."
 
 [[cases]]
+id = "CS-MUT-AUTH-REGISTRY-APPLY-001"
+path = "src/constructionsight/semantic_authorization_certification.py"
+search = "        \"apply_changes\","
+replacement = "        \"apply_changes_disabled\","
+tests = ["tests/test_semantic_authorization_certification.py::test_registry_apply_confirmation_is_high_impact"]
+expected_output = "test_registry_apply_confirmation_is_high_impact"
+risk = "Registry apply could fall outside the high-impact CLI authorization gate."
+
+[[cases]]
 id = "CS-MUT-NET-REDIRECT-001"
 path = "src/constructionsight/http_transport.py"
 search = "if 300 <= response.status_code < 400:"
