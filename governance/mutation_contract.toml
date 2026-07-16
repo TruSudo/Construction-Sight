@@ -49,6 +49,33 @@ expected_output = "test_registry_apply_confirmation_is_high_impact"
 risk = "Registry apply could fall outside the high-impact CLI authorization gate."
 
 [[cases]]
+id = "CS-MUT-AUTH-CHECK-HTTP-001"
+path = "src/constructionsight/semantic_authorization_certification.py"
+search = "        \"check_http\","
+replacement = "        \"check_http_disabled\","
+tests = ["tests/test_semantic_authorization_certification.py::test_http_check_confirmation_is_high_impact"]
+expected_output = "test_http_check_confirmation_is_high_impact"
+risk = "Live source evidence checks could fall outside the high-impact CLI authorization gate."
+
+[[cases]]
+id = "CS-MUT-AUTH-LEAD-CONFIRM-001"
+path = "src/constructionsight/operator_services/lead_workflow_transition_service.py"
+search = "    if not caller_confirmation:"
+replacement = "    if caller_confirmation:"
+tests = ["tests/test_lead_workflow_transition_authorization.py::test_transition_requires_scope_bound_confirmation"]
+expected_output = "test_transition_requires_scope_bound_confirmation"
+risk = "A lead workflow transition could execute without caller confirmation supplementing exact authority."
+
+[[cases]]
+id = "CS-MUT-AUTH-RESULT-CONFIRM-001"
+path = "src/constructionsight/operator_services/result_authority_apply_service.py"
+search = "    if not caller_confirmation:"
+replacement = "    if caller_confirmation:"
+tests = ["tests/test_result_authority_apply_authorization.py::test_result_authority_requires_scope_bound_confirmation"]
+expected_output = "test_result_authority_requires_scope_bound_confirmation"
+risk = "An authoritative result mutation could execute without caller confirmation supplementing exact authority."
+
+[[cases]]
 id = "CS-MUT-NET-REDIRECT-001"
 path = "src/constructionsight/http_transport.py"
 search = "if 300 <= response.status_code < 400:"

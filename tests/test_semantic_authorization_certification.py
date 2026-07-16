@@ -78,6 +78,19 @@ def apply(apply_changes: bool) -> None:
     assert "AUTH-BOOLEAN-002" in _codes(findings)
 
 
+def test_http_check_confirmation_is_high_impact(tmp_path: Path) -> None:
+    findings = _audit(
+        tmp_path,
+        """
+def build(check_http: bool) -> None:
+    if check_http:
+        check_source_http()
+""",
+    )
+
+    assert "AUTH-BOOLEAN-002" in _codes(findings)
+
+
 def test_direct_registry_apply_is_rejected(tmp_path: Path) -> None:
     findings = _audit(
         tmp_path,
@@ -100,6 +113,20 @@ def apply(apply_changes: bool) -> None:
         sources,
         plan,
         caller_confirmation=apply_changes,
+    )
+""",
+    )
+
+    assert findings == []
+
+
+def test_authorized_http_check_service_is_accepted(tmp_path: Path) -> None:
+    findings = _audit(
+        tmp_path,
+        """
+def build(check_http: bool) -> None:
+    build_authorized_source_verification_evidence_package(
+        caller_confirmation=check_http,
     )
 """,
     )
