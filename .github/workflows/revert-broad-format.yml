@@ -24,14 +24,26 @@ jobs:
           fetch-depth: 0
           persist-credentials: true
 
-      - name: Revert only the broad formatter commit
+      - name: Verify target ancestry
         shell: bash
         run: |
           set -euo pipefail
-          target=59759d545f243e67fdfa284ced34a66e36090f59
-          git merge-base --is-ancestor "${target}" HEAD
+          git merge-base --is-ancestor \
+            59759d545f243e67fdfa284ced34a66e36090f59 \
+            HEAD
+
+      - name: Create exact revert commit
+        shell: bash
+        run: |
+          set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git revert --no-edit "${target}"
-          git diff --check HEAD^ HEAD
-          git push origin HEAD:agent/silent-risk-certification
+          git revert --no-edit 59759d545f243e67fdfa284ced34a66e36090f59
+
+      - name: Check revert diff hygiene
+        shell: bash
+        run: git diff --check HEAD^ HEAD
+
+      - name: Push exact revert commit
+        shell: bash
+        run: git push origin HEAD:agent/silent-risk-certification
