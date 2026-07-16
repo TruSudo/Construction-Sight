@@ -52,32 +52,13 @@ jobs:
           set -euo pipefail
           python scripts/apply_static_certification_fixes.py
 
-      - name: Apply Ruff corrections
-        id: ruff
-        continue-on-error: true
+      - name: Apply and enforce Ruff corrections
         shell: bash
         run: |
-          set -o pipefail
+          set -euo pipefail
           python -m ruff check src tests scripts --fix --unsafe-fixes
           python -m ruff format src tests scripts
-          python -m ruff check src tests scripts --output-format=concise \
-            > static-ruff.txt 2>&1
-          if [ ! -s static-ruff.txt ]; then
-            printf '%s\n' 'Ruff passed with no findings.' > static-ruff.txt
-          fi
-
-      - name: Retain Ruff diagnostic
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: static-correction-ruff
-          path: static-ruff.txt
-          if-no-files-found: error
-          retention-days: 7
-
-      - name: Enforce Ruff result
-        shell: bash
-        run: test '${{ steps.ruff.outcome }}' = 'success'
+          python -m ruff check src tests scripts
 
       - name: Enforce mypy
         shell: bash
