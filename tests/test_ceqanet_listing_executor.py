@@ -8,7 +8,10 @@ from constructionsight.adapters.ceqanet_listing import (
     CeqanetListingQuery,
     CeqanetReadOnlyListingPlanner,
 )
-from constructionsight.adapters.ceqanet_listing_executor import CeqanetListingReadOnlyExecutor
+from constructionsight.adapters.ceqanet_listing_executor import (
+    CeqanetListingExecutionPolicy,
+    CeqanetListingReadOnlyExecutor,
+)
 from constructionsight.legal import AccessDecision, AccessPolicyResult
 
 
@@ -58,7 +61,11 @@ def _blocked() -> AccessPolicyResult:
 
 
 def test_ceqanet_listing_executor_executes_bounded_get_requests_with_fake_client() -> None:
-    query = CeqanetListingQuery(counties=("San Bernardino",), page_size=25, max_pages=2)
+    query = CeqanetListingQuery(
+        counties=("San Bernardino",),
+        page_size=25,
+        max_pages=2,
+    )
     plan = CeqanetReadOnlyListingPlanner().build_plan(query, _allowed())
     client = FakeClient(
         responses=(
@@ -77,7 +84,10 @@ def test_ceqanet_listing_executor_executes_bounded_get_requests_with_fake_client
         )
     )
 
-    report = CeqanetListingReadOnlyExecutor(client=client, timeout_seconds=7.5).run(plan)
+    report = CeqanetListingReadOnlyExecutor(
+        client=client,
+        timeout_seconds=7.5,
+    ).run(plan)
 
     assert report.allowed is True
     assert report.planned_request_count == 2
@@ -85,7 +95,7 @@ def test_ceqanet_listing_executor_executes_bounded_get_requests_with_fake_client
     assert report.successful_response_count == 2
     assert report.failed_response_count == 0
     assert report.maximum_records == 50
-    assert all(value is True for value in client.follow_redirects_values)
+    assert all(value is False for value in client.follow_redirects_values)
     assert client.timeout_values == [7.5, 7.5]
     assert len(client.requested_urls) == 2
     assert client.requested_urls[0].endswith("County=San+Bernardino&page=1")
@@ -97,7 +107,11 @@ def test_ceqanet_listing_executor_executes_bounded_get_requests_with_fake_client
 
 
 def test_ceqanet_listing_executor_returns_no_requests_when_plan_is_blocked() -> None:
-    query = CeqanetListingQuery(counties=("San Bernardino",), page_size=25, max_pages=2)
+    query = CeqanetListingQuery(
+        counties=("San Bernardino",),
+        page_size=25,
+        max_pages=2,
+    )
     plan = CeqanetReadOnlyListingPlanner().build_plan(query, _blocked())
     client = FakeClient(responses=())
 
@@ -133,7 +147,7 @@ def test_ceqanet_listing_executor_records_http_errors_as_snapshots() -> None:
     assert report.snapshots[0].error == "ConnectError"
 
 
-def test_ceqanet_listing_executor_truncates_large_response_bodies() -> None:
+def test_ceqanet_listing_executor_classifies_oversized_response_as_failure() -> None:
     query = CeqanetListingQuery(counties=("San Bernardino",))
     plan = CeqanetReadOnlyListingPlanner().build_plan(query, _allowed())
     client = FakeClient(
@@ -147,16 +161,49 @@ def test_ceqanet_listing_executor_truncates_large_response_bodies() -> None:
         )
     )
 
-    report = CeqanetListingReadOnlyExecutor(client=client, max_body_chars=3).run(plan)
+    report = CeqanetListingReadOnlyExecutor(
+        client=client,
+        max_body_chars=3,
+    ).run(plan)
 
     assert report.snapshots[0].body_text == "abc"
     assert report.snapshots[0].body_length == 6
     assert report.snapshots[0].body_truncated is True
+    assert report.snapshots[0].reachable is False
+    assert report.snapshots[0].error == "ResponseTooLarge"
+
+
+def test_ceqanet_listing_executor_rejects_redirects() -> None:
+    plan = CeqanetReadOnlyListingPlanner().build_plan(
+        CeqanetListingQuery(counties=("San Bernardino",)),
+        _allowed(),
+    )
+    client = FakeClient(
+        responses=(
+            FakeResponse(
+                status_code=302,
+                text="redirect body must not be retained",
+                url="https://ceqanet.lci.ca.gov/Search",
+                headers={"location": "https://example.invalid/"},
+            ),
+        )
+    )
+
+    report = CeqanetListingReadOnlyExecutor(client=client).run(plan)
+
+    assert report.snapshots[0].reachable is False
+    assert report.snapshots[0].error == "RedirectDenied"
+    assert report.snapshots[0].body_text == ""
+    assert client.follow_redirects_values == [False]
 
 
 def test_ceqanet_listing_executor_rejects_invalid_runtime_bounds() -> None:
-    with pytest.raises(ValueError, match="timeout_seconds must be greater than 0"):
+    with pytest.raises(ValueError, match="between 0 and 20"):
         CeqanetListingReadOnlyExecutor(timeout_seconds=0)
-
-    with pytest.raises(ValueError, match="max_body_chars must be at least 1"):
+    with pytest.raises(ValueError, match="between 1 and 50000"):
         CeqanetListingReadOnlyExecutor(max_body_chars=0)
+    with pytest.raises(ValueError, match="exactly one attempt"):
+        CeqanetListingExecutionPolicy(
+            max_attempts=2,
+            retry_delays_seconds=(0.1,),
+        )
