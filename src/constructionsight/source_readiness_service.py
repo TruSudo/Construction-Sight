@@ -69,7 +69,7 @@ def build_authorized_source_readiness_report(
             "platform_family": family.value,
             "status": spec.status.value,
             "uses_public_http": spec.uses_public_http,
-            "lawful_access_boundary": spec.lawful_access_boundary,
+            "lawful_access_boundary": _lawful_access_boundary(spec),
         }
         for family, spec in sorted(adapter_specs.items(), key=lambda item: item[0].value)
     ]
