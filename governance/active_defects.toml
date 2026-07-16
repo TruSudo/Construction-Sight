@@ -168,3 +168,19 @@ area = "intent-implementation-divergence"
 root_cause = "The CEQAnet listing application service imported a nonexistent model generation while the live CLI bypassed that service and constructed the legacy executor directly, allowing documented architecture and executable behavior to diverge."
 discovered_against = "e47e33514ef906244d1f5959af49cc193b271305"
 required_resolution = "Reconcile the listing plan, executor, service, CLI, and tests around one canonical model; enforce one-attempt retry doctrine; prohibit direct CLI transport construction; and add an import/runtime branch obligation that detects nonexistent service dependencies."
+
+[[defects]]
+id = "CS-SR-022"
+severity = "P0"
+area = "atomic-persistence"
+root_cause = "CEQAnet persistence execution could commit valid operations while reporting other operations as failed or skipped, and the CLI treated a bare Boolean as the operative write grant."
+discovered_against = "9fbd989cb20e1bf078f0ee188b9eaaf7830d172f"
+required_resolution = "Prevalidate the complete reviewed write plan, execute all operations in one transaction, roll back on any runtime failure, route the CLI through an exact plan-and-destination authorization facade, and retain zero-partial-commit regressions."
+
+[[defects]]
+id = "CS-SR-023"
+severity = "P0"
+area = "synchronization-integrity"
+root_cause = "Sequential hardening commits left tests importing application functions that were not committed, placed authorization logic inside a domain-classified planning module, and allowed PR and governance inventories to lag the actual branch."
+discovered_against = "9fbd989cb20e1bf078f0ee188b9eaaf7830d172f"
+required_resolution = "Restore pure domain boundaries, add application-layer facades, align every test import and CLI call, synchronize mutation/adversarial/capability/defect contracts and PR metadata, and obtain exact-head CI evidence before resolution."
