@@ -24,9 +24,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version:
-          - "3.11"
-          - "3.12"
+        include:
+          - python-version: "3.11"
+            lock-file: requirements/py311.lock
+            lock-tag: py311
+          - python-version: "3.12"
+            lock-file: requirements/py312.lock
+            lock-tag: py312
 
     steps:
       - name: Check out repository
@@ -39,20 +43,18 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
-          cache-dependency-path: requirements/py${{ matrix.python-version == '3.11' && '311' || '312' }}.lock
+          cache-dependency-path: ${{ matrix.lock-file }}
 
       - name: Install exact supported environment
         shell: bash
         run: |
           set -euo pipefail
-          tag="$(printf '%s' '${{ matrix.python-version }}' | tr -d '.')"
-          lock="requirements/py${tag}.lock"
           python -m pip install \
             --disable-pip-version-check \
             --require-hashes \
             --only-binary=:all: \
             --no-deps \
-            -r "${lock}"
+            -r "${{ matrix.lock-file }}"
           python -m pip install \
             --disable-pip-version-check \
             --no-deps \
@@ -66,11 +68,10 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "${REPORT_DIR}"
-          tag="$(printf '%s' '${{ matrix.python-version }}' | tr -d '.')"
           python -m constructionsight.supply_chain verify-lock \
-            --lock "requirements/py${tag}.lock" \
-            --output "${REPORT_DIR}/lock-verification-py${tag}.json" \
-            2>&1 | tee "${REPORT_DIR}/lock-verification-py${tag}.txt"
+            --lock "${{ matrix.lock-file }}" \
+            --output "${REPORT_DIR}/lock-verification-${{ matrix.lock-tag }}.json" \
+            2>&1 | tee "${REPORT_DIR}/lock-verification-${{ matrix.lock-tag }}.txt"
 
       - name: Dependency integrity
         id: pip-check
@@ -79,15 +80,15 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p "${REPORT_DIR}"
-          tag="$(printf '%s' '${{ matrix.python-version }}' | tr -d '.')"
-          python -m pip check 2>&1 | tee "${REPORT_DIR}/pip-check-py${tag}.txt"
+          python -m pip check \
+            2>&1 | tee "${REPORT_DIR}/pip-check-${{ matrix.lock-tag }}.txt"
 
       - name: Vulnerability audit
         id: vulnerability-audit
         continue-on-error: true
         uses: pypa/gh-action-pip-audit@fb241f581674a1bb995061d62504857a9ea4b69e # reviewed 2026-07-15
         with:
-          inputs: requirements/py${{ matrix.python-version == '3.11' && '311' || '312' }}.lock
+          inputs: ${{ matrix.lock-file }}
           no-deps: true
           summary: true
           vulnerability-service: PyPI
@@ -100,11 +101,10 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "${REPORT_DIR}"
-          tag="$(printf '%s' '${{ matrix.python-version }}' | tr -d '.')"
           if [ -n "${AUDIT_OUTPUT}" ]; then
-            printf '%s' "${AUDIT_OUTPUT}" | base64 --decode > "${REPORT_DIR}/pip-audit-py${tag}.txt"
+            printf '%s' "${AUDIT_OUTPUT}" | base64 --decode > "${REPORT_DIR}/pip-audit-${{ matrix.lock-tag }}.txt"
           else
-            printf '%s\n' 'pip-audit produced no report output' > "${REPORT_DIR}/pip-audit-py${tag}.txt"
+            printf '%s\n' 'pip-audit produced no report output' > "${REPORT_DIR}/pip-audit-${{ matrix.lock-tag }}.txt"
           fi
 
       - name: Generate deterministic SBOM
@@ -114,11 +114,10 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p "${REPORT_DIR}"
-          tag="$(printf '%s' '${{ matrix.python-version }}' | tr -d '.')"
           python -m constructionsight.supply_chain sbom \
-            --lock "requirements/py${tag}.lock" \
-            --output "${REPORT_DIR}/sbom-py${tag}.json" \
-            2>&1 | tee "${REPORT_DIR}/sbom-py${tag}.txt"
+            --lock "${{ matrix.lock-file }}" \
+            --output "${REPORT_DIR}/sbom-${{ matrix.lock-tag }}.json" \
+            2>&1 | tee "${REPORT_DIR}/sbom-${{ matrix.lock-tag }}.txt"
 
       - name: Ruff
         id: ruff
@@ -127,8 +126,8 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p "${REPORT_DIR}"
-          tag="$(printf '%s' '${{ matrix.python-version }}' | tr -d '.')"
-          python -m ruff check src tests 2>&1 | tee "${REPORT_DIR}/ruff-py${tag}.txt"
+          python -m ruff check src tests \
+            2>&1 | tee "${REPORT_DIR}/ruff-${{ matrix.lock-tag }}.txt"
 
       - name: Mypy
         id: mypy
@@ -137,8 +136,8 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p "${REPORT_DIR}"
-          tag="$(printf '%s' '${{ matrix.python-version }}' | tr -d '.')"
-          python -m mypy src 2>&1 | tee "${REPORT_DIR}/mypy-py${tag}.txt"
+          python -m mypy src \
+            2>&1 | tee "${REPORT_DIR}/mypy-${{ matrix.lock-tag }}.txt"
 
       - name: Compile source and tests
         id: compile
@@ -147,8 +146,8 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p "${REPORT_DIR}"
-          tag="$(printf '%s' '${{ matrix.python-version }}' | tr -d '.')"
-          python -m compileall -q src tests 2>&1 | tee "${REPORT_DIR}/compile-py${tag}.txt"
+          python -m compileall -q src tests \
+            2>&1 | tee "${REPORT_DIR}/compile-${{ matrix.lock-tag }}.txt"
 
       - name: Pytest
         id: pytest
@@ -157,9 +156,8 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p "${REPORT_DIR}"
-          tag="$(printf '%s' '${{ matrix.python-version }}' | tr -d '.')"
           python -m pytest --strict-config --strict-markers -ra -W error \
-            2>&1 | tee "${REPORT_DIR}/pytest-py${tag}.txt"
+            2>&1 | tee "${REPORT_DIR}/pytest-${{ matrix.lock-tag }}.txt"
 
       - name: Focused mutation certification
         id: mutation-certification
@@ -168,11 +166,10 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p "${REPORT_DIR}"
-          tag="$(printf '%s' '${{ matrix.python-version }}' | tr -d '.')"
           python -m constructionsight.mutation_certification \
             --root . \
-            --output "${REPORT_DIR}/mutation-certification-py${tag}.json" \
-            2>&1 | tee "${REPORT_DIR}/mutation-certification-py${tag}.txt"
+            --output "${REPORT_DIR}/mutation-certification-${{ matrix.lock-tag }}.json" \
+            2>&1 | tee "${REPORT_DIR}/mutation-certification-${{ matrix.lock-tag }}.txt"
 
       - name: Adapter contract audit
         id: adapter-audit
@@ -181,9 +178,8 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p "${REPORT_DIR}"
-          tag="$(printf '%s' '${{ matrix.python-version }}' | tr -d '.')"
           constructionsight audit-adapters \
-            2>&1 | tee "${REPORT_DIR}/adapter-audit-py${tag}.txt"
+            2>&1 | tee "${REPORT_DIR}/adapter-audit-${{ matrix.lock-tag }}.txt"
 
       - name: Source adapter coverage audit
         id: source-audit
@@ -192,9 +188,8 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p "${REPORT_DIR}"
-          tag="$(printf '%s' '${{ matrix.python-version }}' | tr -d '.')"
           constructionsight audit-source-coverage data/source_registry.seed.json \
-            2>&1 | tee "${REPORT_DIR}/source-audit-py${tag}.txt"
+            2>&1 | tee "${REPORT_DIR}/source-audit-${{ matrix.lock-tag }}.txt"
 
       - name: Repository and semantic certification audit
         id: repository-certification
@@ -203,13 +198,11 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p "${REPORT_DIR}"
-          tag="$(printf '%s' '${{ matrix.python-version }}' | tr -d '.')"
-          # Legacy v1 scanner compatibility: python -m constructionsight.repository_certification --root . --require-clean-worktree
           python -m constructionsight.repository_certification_v2 \
             --root . \
             --require-clean-worktree \
-            --output "${REPORT_DIR}/repository-certification-py${tag}.json" \
-            2>&1 | tee "${REPORT_DIR}/repository-certification-py${tag}.txt"
+            --output "${REPORT_DIR}/repository-certification-${{ matrix.lock-tag }}.json" \
+            2>&1 | tee "${REPORT_DIR}/repository-certification-${{ matrix.lock-tag }}.txt"
 
       - name: Diff hygiene
         id: diff-hygiene
@@ -218,8 +211,8 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p "${REPORT_DIR}"
-          tag="$(printf '%s' '${{ matrix.python-version }}' | tr -d '.')"
-          git diff --check 2>&1 | tee "${REPORT_DIR}/diff-hygiene-py${tag}.txt"
+          git diff --check \
+            2>&1 | tee "${REPORT_DIR}/diff-hygiene-${{ matrix.lock-tag }}.txt"
 
       - name: Enforce all quality gates
         if: always()
@@ -255,7 +248,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: certification-python-${{ matrix.python-version }}
+          name: certification-${{ matrix.lock-tag }}
           path: ${{ env.REPORT_DIR }}/
           if-no-files-found: error
           retention-days: 30
