@@ -1,0 +1,161 @@
+name: Lock Wheel Audit
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+      - synchronize
+  push:
+    branches:
+      - agent/silent-risk-certification
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: Python ${{ matrix.python-version }} lock wheel audit
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - python-version: "3.11"
+            lock-file: requirements/py311.lock
+            lock-tag: py311
+          - python-version: "3.12"
+            lock-file: requirements/py312.lock
+            lock-tag: py312
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: false
+
+      - name: Resolve and hash exact wheels
+        id: wheel-audit
+        continue-on-error: true
+        env:
+          LOCK_FILE: ${{ matrix.lock-file }}
+          OUTPUT_FILE: lock-wheel-audit-${{ matrix.lock-tag }}.json
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from __future__ import annotations
+
+          import hashlib
+          import json
+          import os
+          import re
+          import subprocess
+          import sys
+          import tempfile
+          from pathlib import Path
+
+          lock_path = Path(os.environ["LOCK_FILE"])
+          output_path = Path(os.environ["OUTPUT_FILE"])
+          logical_rows: list[str] = []
+          buffer = ""
+          for raw_line in lock_path.read_text(encoding="utf-8").splitlines():
+              stripped = raw_line.strip()
+              if not stripped or stripped.startswith("#"):
+                  continue
+              buffer = f"{buffer} {stripped}".strip()
+              if buffer.endswith("\\"):
+                  buffer = buffer[:-1].rstrip()
+                  continue
+              logical_rows.append(buffer)
+              buffer = ""
+          if buffer:
+              raise RuntimeError("unterminated logical lock row")
+
+          results: list[dict[str, object]] = []
+          for row in logical_rows:
+              requirement = row.split()[0]
+              expected = sorted(set(re.findall(r"--hash=sha256:([0-9a-f]{64})", row)))
+              with tempfile.TemporaryDirectory(prefix="lock-wheel-") as directory:
+                  completed = subprocess.run(
+                      [
+                          sys.executable,
+                          "-m",
+                          "pip",
+                          "download",
+                          "--disable-pip-version-check",
+                          "--only-binary=:all:",
+                          "--no-deps",
+                          "--dest",
+                          directory,
+                          requirement,
+                      ],
+                      check=False,
+                      capture_output=True,
+                      text=True,
+                  )
+                  files = sorted(Path(directory).iterdir())
+                  if completed.returncode != 0 or len(files) != 1:
+                      results.append(
+                          {
+                              "requirement": requirement,
+                              "expected_hashes": expected,
+                              "status": "download_failed",
+                              "return_code": completed.returncode,
+                              "stdout": completed.stdout[-2000:],
+                              "stderr": completed.stderr[-2000:],
+                              "files": [path.name for path in files],
+                          }
+                      )
+                      continue
+                  wheel = files[0]
+                  actual = hashlib.sha256(wheel.read_bytes()).hexdigest()
+                  results.append(
+                      {
+                          "requirement": requirement,
+                          "filename": wheel.name,
+                          "expected_hashes": expected,
+                          "actual_sha256": actual,
+                          "status": "match" if actual in expected else "mismatch",
+                      }
+                  )
+
+          payload = {
+              "schema_version": "constructionsight.lock-wheel-audit/v1",
+              "python": sys.version.split()[0],
+              "lock_file": lock_path.as_posix(),
+              "result_count": len(results),
+              "mismatch_count": sum(item["status"] == "mismatch" for item in results),
+              "download_failure_count": sum(
+                  item["status"] == "download_failed" for item in results
+              ),
+              "results": results,
+          }
+          output_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          print(json.dumps(payload, indent=2, sort_keys=True))
+          if payload["mismatch_count"] or payload["download_failure_count"]:
+              raise SystemExit(1)
+          PY
+
+      - name: Retain wheel audit
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: lock-wheel-audit-${{ matrix.lock-tag }}
+          path: lock-wheel-audit-${{ matrix.lock-tag }}.json
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Enforce wheel audit
+        if: always()
+        shell: bash
+        run: test '${{ steps.wheel-audit.outcome }}' = 'success'
