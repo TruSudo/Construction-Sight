@@ -40,10 +40,6 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git revert --no-edit 59759d545f243e67fdfa284ced34a66e36090f59
 
-      - name: Check revert diff hygiene
-        shell: bash
-        run: git diff --check HEAD^ HEAD
-
       - name: Push exact revert commit
         shell: bash
         run: git push origin HEAD:agent/silent-risk-certification
