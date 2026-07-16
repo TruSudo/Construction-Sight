@@ -8,7 +8,10 @@ from datetime import datetime
 from typing import Protocol
 
 from constructionsight.adapters.ceqanet_listing_executor import CeqanetListingHttpClient
-from constructionsight.authorization_decision import AuthorizationUseLedger
+from constructionsight.authorization_decision import (
+    AuthorizationDeniedError,
+    AuthorizationUseLedger,
+)
 from constructionsight.authorization_decision_models import authorization_digest
 from constructionsight.ceqanet_recurring_run_models import (
     CeqanetRecurringRunDefinition,
@@ -72,6 +75,11 @@ def execute_authorized_ceqanet_recurring_run(
 ) -> AuthorizedRecurringRunResult:
     """Authorize one exact, foreground, manually initiated manifest attempt."""
 
+    if not caller_confirmation:
+        raise AuthorizationDeniedError(
+            "explicit live execution authorization is required in addition to "
+            "scope-bound authority"
+        )
     definition.assert_integrity()
     manifest.assert_integrity()
     assert_ceqanet_definition_evidence_current(
@@ -91,10 +99,10 @@ def execute_authorized_ceqanet_recurring_run(
     current_state_identity = authorization_digest(
         "ceqanet-recurring-run-current-state",
         {
-            "definition": definition.model_dump(mode="json"),
-            "manifest": manifest.model_dump(mode="json"),
-            "sources": [source.model_dump(mode="json") for source in sources],
-            "checklist": checklist_report.model_dump(mode="json"),
+            "definition_digest": definition.definition_digest,
+            "manifest_digest": manifest.manifest_digest,
+            "source_registry_digest": definition.source_registry_digest,
+            "checklist_evidence_digest": definition.checklist_evidence_digest,
             "attempt_sequence": attempt_sequence,
         },
     )
@@ -156,7 +164,7 @@ def execute_authorized_ceqanet_recurring_run(
             )
         ),
         reason=authorization_reason,
-        caller_confirmation=caller_confirmation,
+        caller_confirmation=True,
         limitations=tuple(
             sorted(
                 {

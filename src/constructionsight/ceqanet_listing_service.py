@@ -208,6 +208,16 @@ def execute_authorized_ceqanet_listing(
 ) -> dict[str, object]:
     """Authorize and execute one exact immutable CEQAnet listing plan."""
 
+    if not caller_confirmation:
+        raise AuthorizationDeniedError(
+            "caller confirmation is required in addition to scope-bound authority"
+        )
+    access = evaluate_access(access_profile)
+    _verify_current_plan_access(
+        plan,
+        decision=access.decision,
+        reason=access.reason,
+    )
     policy = CeqanetListingExecutionPolicy(
         timeout_seconds=timeout_seconds,
         max_response_bytes=max_response_bytes,
@@ -220,12 +230,6 @@ def execute_authorized_ceqanet_listing(
             "listing plan attempts an authority outside read-only listing"
         )
 
-    access = evaluate_access(access_profile)
-    _verify_current_plan_access(
-        plan,
-        decision=access.decision,
-        reason=access.reason,
-    )
     plan_id = _plan_identity(plan)
     state_identity = _access_state(
         access_profile,
@@ -267,7 +271,7 @@ def execute_authorized_ceqanet_listing(
             "source promotion",
         ),
         reason=authorization_reason,
-        caller_confirmation=caller_confirmation,
+        caller_confirmation=True,
         limitations=_canonical_tuple(
             "local operator identity is not authentication",
             "no credential use or access-control bypass is authorized",

@@ -279,6 +279,13 @@ def execute_ceqanet_listing(
 ) -> None:
     """Authorize and execute one bounded CEQAnet read-only listing plan."""
 
+    if not execute_live:
+        typer.echo(
+            "Refusing live execution without --execute-live; caller confirmation is "
+            "required in addition to scope-bound authority.",
+            err=True,
+        )
+        raise typer.Exit(code=1)
     _reject_output_without_json(output_path, json_output)
     query = _build_query(
         county=county,
@@ -307,7 +314,7 @@ def execute_ceqanet_listing(
             plan=plan,
             access_profile=profile,
             authorization_reason=authorization_reason,
-            caller_confirmation=execute_live,
+            caller_confirmation=True,
             timeout_seconds=timeout_seconds,
             max_response_bytes=max_body_bytes,
             operator_id=operator_id,

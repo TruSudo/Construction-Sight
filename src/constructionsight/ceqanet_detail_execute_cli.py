@@ -13,6 +13,7 @@ from rich.table import Table
 from constructionsight.authorization_decision import AuthorizationDeniedError
 from constructionsight.ceqanet_detail_service import execute_authorized_ceqanet_detail
 from constructionsight.legal import SourceAccessProfile
+from constructionsight.local_operator_authorization import resolve_local_operator_id
 
 app = typer.Typer(help="Execute governed CEQAnet detail/project page reads.")
 console = Console(width=240, color_system=None)
@@ -103,19 +104,19 @@ def execute_ceqanet_detail(
         typer.Option("--url", help="Exact public CEQAnet detail/project HTTPS URL."),
     ],
     operator_id: Annotated[
-        str,
+        str | None,
         typer.Option(
             "--operator-id",
-            help="Explicit local operator audit identity; this is not authentication.",
+            help="Optional local operator audit identity; this is not authentication.",
         ),
-    ],
+    ] = None,
     authorization_reason: Annotated[
         str,
         typer.Option(
             "--authorization-reason",
             help="Nonblank reason for this exact one-request authorization.",
         ),
-    ],
+    ] = "Execute one reviewed CEQAnet detail read.",
     public_url: Annotated[
         str,
         typer.Option(help="Public source URL evaluated by lawful-access policy."),
@@ -173,6 +174,13 @@ def execute_ceqanet_detail(
 ) -> None:
     """Authorize and execute one exact bounded CEQAnet GET request."""
 
+    if not execute_live:
+        typer.echo(
+            "Refusing live execution without --execute-live; caller confirmation is "
+            "required in addition to scope-bound authority.",
+            err=True,
+        )
+        raise typer.Exit(code=1)
     _reject_output_without_json(output_path, json_output)
     profile = SourceAccessProfile(
         public_url=public_url,
@@ -186,9 +194,9 @@ def execute_ceqanet_detail(
         payload = execute_authorized_ceqanet_detail(
             detail_url=detail_url,
             access_profile=profile,
-            operator_id=operator_id,
+            operator_id=resolve_local_operator_id(operator_id),
             authorization_reason=authorization_reason,
-            caller_confirmation=execute_live,
+            caller_confirmation=True,
             timeout_seconds=timeout_seconds,
             max_body_bytes=max_body_bytes,
         )

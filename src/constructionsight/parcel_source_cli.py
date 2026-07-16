@@ -574,6 +574,13 @@ def acquisition_persist_bundle(
 ) -> None:
     """Authorize persistence of one exact verified bundle; never authorize bulk."""
 
+    if not authorize_persistence:
+        typer.echo(
+            "ArcGIS bounded-proof persistence blocked: acquisition-persist-bundle "
+            "requires --authorize-persistence in addition to scope-bound authority",
+            err=True,
+        )
+        raise typer.Exit(code=1)
     try:
         bundle = load_arcgis_bounded_proof_bundle(input_path)
         result = persist_authorized_arcgis_bundle(
@@ -581,7 +588,7 @@ def acquisition_persist_bundle(
             expected_bundle_id=expected_bundle_id,
             database_url=database_url,
             authorization_reason=authorization_reason,
-            caller_confirmation=authorize_persistence,
+            caller_confirmation=True,
             operator_id=operator_id,
         )
     except (

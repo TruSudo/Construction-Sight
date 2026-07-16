@@ -47,7 +47,6 @@ def _database_url(database_url: str | None, database_path: Path | None) -> str:
     if database_url is not None:
         return database_url
     if database_path is not None:
-        database_path.parent.mkdir(parents=True, exist_ok=True)
         return database_url_from_path(database_path)
     raise typer.BadParameter(
         "A target database must be supplied with --database-url or --database-path."
@@ -162,13 +161,20 @@ def execute_persistence_plan(
 ) -> None:
     """Authorize and atomically execute one CEQAnet write plan."""
 
+    if not execute_write:
+        typer.echo(
+            "Refusing persistence execution without --execute-write; caller "
+            "confirmation is required in addition to scope-bound authority.",
+            err=True,
+        )
+        raise typer.Exit(code=1)
     _reject_output_without_json(output_path, json_output)
     resolved_database_url = _database_url(database_url, database_path)
     try:
         result = execute_authorized_ceqanet_write_plan(
             write_plan_payload=_load_json_object(write_plan_path),
             database_url=resolved_database_url,
-            caller_confirmation=execute_write,
+            caller_confirmation=True,
             authorization_reason=authorization_reason,
             operator_id=operator_id,
         )
