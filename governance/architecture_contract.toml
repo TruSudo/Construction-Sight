@@ -97,8 +97,8 @@ responsibility = "Pure evidence, identity, state, rule, value, and deterministic
 path_patterns = [
   "src/constructionsight/(?!storage/)(?!adapters/)(?!parcel_source_bulk_rehearsal_bundle_models\\.py$).*(?:_models|models)\\.py",
   "src/constructionsight/(?:domain_types|legal|provenance|parcel_geometry|parcel_topology|parcel_topology_parse|.*_rules|opportunity_scoring_profile|ceqanet_endpoints)\\.py",
-  "src/constructionsight/(?:site_resolution_service|ceqanet_csv_service|parcel_source_acquisition|parcel_source_bulk_rehearsal|parcel_source_bulk_rehearsal_artifacts|source_registry_integrity|source_registry_update_plan_service|result_ledger_service|parcel_source_acquisition_bundle)\\.py",
-  "src/constructionsight/intelligence/(?:__init__|schemas|artifact_identity)\\.py",
+  "src/constructionsight/(?:site_resolution_service|ceqanet_csv_service|source_registry_integrity|result_ledger_service|parcel_source_acquisition_bundle)\\.py",
+  "src/constructionsight/intelligence/(?:schemas|artifact_identity)\\.py",
 ]
 default = false
 allowed_internal_layers = ["domain", "package"]
@@ -113,7 +113,10 @@ authority_bearing = false
 [[layers]]
 name = "application"
 responsibility = "Canonical use cases, orchestration, authorization preflight, verification, and report construction."
-path_patterns = ["a^"]
+path_patterns = [
+  "src/constructionsight/(?:parcel_source_acquisition|parcel_source_bulk_rehearsal|parcel_source_bulk_rehearsal_artifacts|source_registry_update_plan_service)\\.py",
+  "src/constructionsight/intelligence/__init__\\.py",
+]
 default = true
 allowed_internal_layers = ["application", "domain", "persistence", "transport", "adapter", "package"]
 forbidden_internal_layers = ["cli", "governance"]
