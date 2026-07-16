@@ -1,0 +1,3 @@
+src/constructionsight/architecture_certification.py:127:101: E501 Line too long (101 > 100)
+src/constructionsight/governance_certification_core.py:121:101: E501 Line too long (106 > 100)
+Found 2 errors.
