@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
 
@@ -46,25 +47,12 @@ class RecurringRunExecutor(Protocol):
         """Execute one exact manifest attempt."""
 
 
-class AuthorizedRecurringRunResult(tuple):
+@dataclass(frozen=True)
+class AuthorizedRecurringRunResult:
     """Immutable execution and authorization pair."""
 
-    __slots__ = ()
-
-    def __new__(
-        cls,
-        execution: CeqanetRecurringRunExecution,
-        authorization: LocalAuthorizationResult,
-    ) -> AuthorizedRecurringRunResult:
-        return super().__new__(cls, (execution, authorization))
-
-    @property
-    def execution(self) -> CeqanetRecurringRunExecution:
-        return self[0]
-
-    @property
-    def authorization(self) -> LocalAuthorizationResult:
-        return self[1]
+    execution: CeqanetRecurringRunExecution
+    authorization: LocalAuthorizationResult
 
 
 def execute_authorized_ceqanet_recurring_run(
@@ -195,4 +183,7 @@ def execute_authorized_ceqanet_recurring_run(
         execute_live=True,
         client=client,
     )
-    return AuthorizedRecurringRunResult(execution, authorization)
+    return AuthorizedRecurringRunResult(
+        execution=execution,
+        authorization=authorization,
+    )
