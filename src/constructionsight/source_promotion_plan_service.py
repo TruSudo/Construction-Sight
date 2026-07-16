@@ -69,7 +69,7 @@ def _planned_action(row: SourceVerificationChecklistRow) -> SourcePromotionPlanA
     if row.checklist_status.value == "failed":
         return SourcePromotionPlanAction.MARK_FAILED_CANDIDATE
     if _has_full_manual_verification(row):
-        if row.adapter_status == "placeholder":
+        if row.adapter_status not in {"live_read_only", "production_ready"}:
             return SourcePromotionPlanAction.MARK_PARTIAL_CANDIDATE
         return SourcePromotionPlanAction.VERIFIED_CANDIDATE_REVIEW
     if _has_partial_manual_verification(row):
