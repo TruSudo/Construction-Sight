@@ -14,11 +14,13 @@ from rich.console import Console
 from rich.table import Table
 
 from constructionsight.adapters import default_adapter_family_specs
+from constructionsight.authorization_decision import AuthorizationDeniedError
 from constructionsight.models import PublicSource
-from constructionsight.source_registry_apply_service import (
-    SourceRegistryApplyError,
-    apply_source_registry_update_plan,
+from constructionsight.operator_services.source_registry_service import (
+    apply_authorized_source_registry_update_plan,
+    build_authorized_source_registry_update_plan,
 )
+from constructionsight.source_registry_apply_service import SourceRegistryApplyError
 from constructionsight.source_registry_update_plan_models import (
     SourceRegistryUpdatePlanReport,
 )
@@ -101,6 +103,12 @@ def _require_distinct_paths(paths: dict[str, Path]) -> None:
         resolved[canonical] = label
 
 
+def _require_authorization_value(value: str | None, option: str) -> str:
+    if value is None or not value.strip():
+        _abort(f"{option} is required for this high-impact operation.")
+    return value.strip()
+
+
 @app.callback()
 def source_registry_update_root() -> None:
     """ConstructionSight source registry update plan and apply commands."""
@@ -119,6 +127,20 @@ def source_registry_update_plan(
     ] = None,
     json_output: Annotated[bool, typer.Option("--json-output")] = False,
     check_http: Annotated[bool, typer.Option("--check-http")] = False,
+    operator_id: Annotated[
+        str | None,
+        typer.Option(
+            "--operator-id",
+            help="Explicit local operator audit identity required with --check-http.",
+        ),
+    ] = None,
+    authorization_reason: Annotated[
+        str | None,
+        typer.Option(
+            "--authorization-reason",
+            help="Nonblank reason required with --check-http.",
+        ),
+    ] = None,
     overwrite: Annotated[
         bool,
         typer.Option("--overwrite", help="Allow replacement of an existing plan output file."),
@@ -126,12 +148,33 @@ def source_registry_update_plan(
 ) -> None:
     """Build a dry-run source registry update plan without writing registry data."""
 
-    report = build_source_registry_update_plan(
-        _load_sources_from_json(registry_path),
-        default_adapter_family_specs(),
-        check_http=check_http,
-        observations=_load_observations(observations_path),
-    )
+    sources = _load_sources_from_json(registry_path)
+    observations = _load_observations(observations_path)
+    if check_http:
+        resolved_operator = _require_authorization_value(operator_id, "--operator-id")
+        resolved_reason = _require_authorization_value(
+            authorization_reason,
+            "--authorization-reason",
+        )
+        try:
+            report = build_authorized_source_registry_update_plan(
+                sources,
+                default_adapter_family_specs(),
+                observations=observations,
+                caller_confirmation=True,
+                authorization_reason=resolved_reason,
+                operator_id=resolved_operator,
+            )
+        except (AuthorizationDeniedError, ValueError) as exc:
+            _abort(str(exc))
+    else:
+        report = build_source_registry_update_plan(
+            sources,
+            default_adapter_family_specs(),
+            check_http=False,
+            observations=observations,
+        )
+
     rendered = json.dumps(report.to_dict(), indent=2)
     if output is not None:
         plan_paths = {
@@ -208,8 +251,19 @@ def source_registry_apply(
     ] = None,
     apply_changes: Annotated[
         bool,
-        typer.Option("--apply", help="Explicitly authorize registry status changes."),
+        typer.Option(
+            "--apply",
+            help="Additional caller confirmation; not the operative authorization.",
+        ),
     ] = False,
+    operator_id: Annotated[
+        str | None,
+        typer.Option("--operator-id", help="Explicit local operator audit identity."),
+    ] = None,
+    authorization_reason: Annotated[
+        str | None,
+        typer.Option("--authorization-reason", help="Nonblank reason for this exact apply."),
+    ] = None,
     overwrite: Annotated[
         bool,
         typer.Option("--overwrite", help="Allow replacement of output, audit, or backup files."),
@@ -218,7 +272,7 @@ def source_registry_apply(
     """Apply an approved evidence-backed plan with atomic file replacement."""
 
     if not apply_changes:
-        _abort("Explicit --apply authorization is required.")
+        _abort("Explicit --apply caller confirmation is required.")
     if in_place and output is not None:
         _abort("Use either --in-place or --output, not both.")
     if not in_place and output is None:
@@ -251,17 +305,29 @@ def source_registry_apply(
     if backup_output is not None:
         _require_available_output(backup_output, overwrite=overwrite)
 
+    resolved_operator = _require_authorization_value(operator_id, "--operator-id")
+    resolved_reason = _require_authorization_value(
+        authorization_reason,
+        "--authorization-reason",
+    )
     sources = _load_sources_from_json(registry_path)
     plan = _load_plan(plan_path)
     try:
-        updated_sources, report = apply_source_registry_update_plan(
+        authorized = apply_authorized_source_registry_update_plan(
             sources,
             plan,
-            approved_plan_digest=approved_plan_digest.strip(),
+            expected_plan_digest=approved_plan_digest.strip(),
+            expected_registry_digest=plan.registry_digest,
+            target_path_identity=str(target_path.resolve()),
+            caller_confirmation=apply_changes,
+            authorization_reason=resolved_reason,
+            operator_id=resolved_operator,
         )
-    except SourceRegistryApplyError as exc:
+    except (AuthorizationDeniedError, SourceRegistryApplyError, ValueError) as exc:
         _abort(str(exc))
 
+    updated_sources = list(authorized.sources)
+    report = authorized.report
     if backup_output is not None:
         _atomic_write_text(backup_output, registry_path.read_text(encoding="utf-8"))
     _atomic_write_text(
