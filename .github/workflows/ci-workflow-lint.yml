@@ -40,7 +40,27 @@ jobs:
           cache: false
 
       - name: Validate canonical CI workflow
+        id: actionlint
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          go run ./.tools/actionlint/cmd/actionlint .github/workflows/ci.yml \
+            > actionlint.txt 2>&1
+
+      - name: Retain actionlint diagnostic
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: canonical-ci-actionlint
+          path: actionlint.txt
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Enforce actionlint result
+        if: always()
         shell: bash
         run: |
           set -euo pipefail
-          go run ./.tools/actionlint/cmd/actionlint .github/workflows/ci.yml
+          cat actionlint.txt
+          test '${{ steps.actionlint.outcome }}' = 'success'
