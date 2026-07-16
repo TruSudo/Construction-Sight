@@ -51,6 +51,7 @@ jobs:
         run: |
           set -euo pipefail
           python scripts/apply_static_certification_fixes.py
+          python scripts/apply_static_ruff_fixes.py
 
       - name: Apply Ruff corrections
         id: ruff
