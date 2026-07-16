@@ -26,6 +26,7 @@ from constructionsight.adapters.ceqanet_search_vocabulary import (
 )
 
 InputFormat = Literal["auto", "execution-json", "html"]
+_INPUT_FORMATS = frozenset({"auto", "execution-json", "html"})
 
 app = typer.Typer(help="Export CEQAnet advanced-search controlled vocabulary.")
 console = Console(width=240, color_system=None)
@@ -34,6 +35,15 @@ console = Console(width=240, color_system=None)
 @app.callback()
 def main() -> None:
     """Export CEQAnet advanced-search controlled vocabulary."""
+
+
+def _validated_input_format(value: str) -> InputFormat:
+    """Validate the Typer-facing string while retaining a precise internal type."""
+
+    normalized = value.strip().casefold()
+    if normalized not in _INPUT_FORMATS:
+        raise typer.BadParameter("input-format must be auto, execution-json, or html.")
+    return cast(InputFormat, normalized)
 
 
 def _reject_output_without_json(output_path: Path | None, json_output: bool) -> None:
@@ -230,7 +240,8 @@ def _render_summary(payload: dict[str, Any]) -> None:
     summary.add_column("Field")
     summary.add_column("Value")
     summary.add_row("Schema", str(metadata["schema_version"]))
-    summary.add_row("Input format", str(cast(dict[str, Any], metadata["input"])["input_format"]))
+    input_metadata = cast(dict[str, Any], metadata["input"])
+    summary.add_row("Input format", str(input_metadata["input_format"]))
     summary.add_row("Groups", str(metadata["group_count"]))
     summary.add_row("Options", str(metadata["option_count"]))
     console.print(summary)
@@ -266,7 +277,7 @@ def export_ceqanet_vocabulary(
         ),
     ],
     input_format: Annotated[
-        InputFormat,
+        str,
         typer.Option("--input-format", help="Input format: auto, execution-json, or html."),
     ] = "auto",
     snapshot_index: Annotated[
@@ -291,7 +302,7 @@ def export_ceqanet_vocabulary(
     _reject_output_without_json(output_path, json_output)
     html, input_metadata = _extract_html(
         input_path,
-        input_format=input_format,
+        input_format=_validated_input_format(input_format),
         snapshot_index=snapshot_index,
     )
     vocabulary = parse_ceqanet_search_vocabulary(html)
