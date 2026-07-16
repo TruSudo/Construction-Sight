@@ -11,8 +11,12 @@ from rich.console import Console
 from rich.table import Table
 
 from constructionsight.adapters import default_adapter_family_specs
+from constructionsight.authorization_decision import AuthorizationDeniedError
 from constructionsight.models import PublicSource
-from constructionsight.source_readiness_service import build_source_readiness_report
+from constructionsight.source_readiness_service import (
+    build_authorized_source_readiness_report,
+    build_source_readiness_report,
+)
 
 app = typer.Typer(help="ConstructionSight source-readiness tools.")
 console = Console()
@@ -44,17 +48,52 @@ def source_readiness_check(
     ] = False,
     check_http: Annotated[
         bool,
-        typer.Option("--check-http", help="Perform lightweight public HTTP checks."),
+        typer.Option(
+            "--check-http",
+            help=(
+                "Additional confirmation for bounded live reachability checks. "
+                "This Boolean is not the operative authorization decision."
+            ),
+        ),
     ] = False,
+    operator_id: Annotated[
+        str | None,
+        typer.Option(
+            "--operator-id",
+            help="Optional local audit identity; this is not authentication.",
+        ),
+    ] = None,
+    authorization_reason: Annotated[
+        str,
+        typer.Option(
+            "--authorization-reason",
+            help="Reason for the exact source-set reachability authorization.",
+        ),
+    ] = "Perform one reviewed source-readiness reachability check.",
 ) -> None:
-    """Build a conservative source-readiness report without registry mutation."""
+    """Build a conservative report; authorize only the optional HTTP branch."""
 
     sources = _load_sources_from_json(registry_path)
-    report = build_source_readiness_report(
-        sources,
-        default_adapter_family_specs(),
-        check_http=check_http,
-    )
+    adapter_specs = default_adapter_family_specs()
+    try:
+        report = (
+            build_authorized_source_readiness_report(
+                sources,
+                adapter_specs,
+                caller_confirmation=True,
+                authorization_reason=authorization_reason,
+                operator_id=operator_id,
+            )
+            if check_http
+            else build_source_readiness_report(
+                sources,
+                adapter_specs,
+                check_http=False,
+            )
+        )
+    except (AuthorizationDeniedError, ValueError) as exc:
+        typer.echo(f"Source readiness check blocked: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
     if json_output:
         console.print_json(json.dumps(report.to_dict()))
         return
@@ -77,7 +116,9 @@ def source_readiness_check(
     for row in report.rows:
         http_status = "not_checked"
         if row.http_reachability.checked:
-            http_status = str(row.http_reachability.status_code or row.http_reachability.error)
+            http_status = str(
+                row.http_reachability.status_code or row.http_reachability.error
+            )
         rows.add_row(
             row.source_name,
             row.platform_family,
