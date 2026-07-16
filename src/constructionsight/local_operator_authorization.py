@@ -7,9 +7,10 @@ import json
 import os
 import sys
 import unicodedata
-from collections.abc import Callable, Iterable, TextIO
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from typing import TextIO
 
 from constructionsight.authorization_decision import (
     AuthorizationDeniedError,
