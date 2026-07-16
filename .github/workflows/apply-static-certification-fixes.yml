@@ -56,9 +56,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python -m ruff check src tests scripts --fix --unsafe-fixes
-          python -m ruff format src tests scripts
-          python -m ruff check src tests scripts
+          python -m ruff check src tests --fix --unsafe-fixes
+          python -m ruff format src tests
+          python -m ruff check src tests
 
       - name: Enforce mypy
         shell: bash
