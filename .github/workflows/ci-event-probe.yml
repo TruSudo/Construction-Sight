@@ -25,7 +25,7 @@ jobs:
         run: |
           set -euo pipefail
           body="CI event probe reached a GitHub-hosted runner. Exact head: \`${HEAD_SHA}\`. Run: ${SERVER_URL}/${REPOSITORY}/actions/runs/${RUN_ID}. This probe performs no repository checkout and no product execution."
-          payload="$(python -c 'import json, os; print(json.dumps({"body": os.environ["BODY"]}))' BODY="${body}")"
+          payload="$(BODY="${body}" python -c 'import json, os; print(json.dumps({"body": os.environ["BODY"]}))')"
           curl --fail-with-body --silent --show-error \
             -X POST \
             -H "Accept: application/vnd.github+json" \
