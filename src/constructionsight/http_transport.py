@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from contextlib import nullcontext
+from typing import TypedDict
 from urllib.parse import urlparse
 
 import httpx
@@ -15,6 +16,16 @@ from constructionsight.http_transport_models import (
 )
 
 _ACCESS_CONTROL_STATUSES = frozenset({401, 403, 407, 451})
+
+
+class _ObservationBase(TypedDict):
+    policy: BoundedHttpPolicy
+    method: str
+    request_url: str
+    final_url: str
+    status_code: int
+    content_type: str | None
+    content_encoding: str | None
 
 
 def _host_allowed(host: str, allowed_hosts: tuple[str, ...]) -> bool:
@@ -130,124 +141,121 @@ def execute_bounded_http(
     active_client = client or httpx.Client(follow_redirects=False)
     context = active_client if owned_client else nullcontext(active_client)
     try:
-        with context as session:
-            with session.stream(
-                canonical_method,
-                url,
-                follow_redirects=False,
-                timeout=timeout,
-                headers={
-                    "Accept": ", ".join(policy.accepted_media_types),
-                    "Accept-Encoding": "identity",
-                    "User-Agent": policy.user_agent,
-                },
-            ) as response:
-                final_url = str(response.url)
-                raw_content_type = response.headers.get("content-type")
-                content_type = _media_type(raw_content_type)
-                charset = _charset(raw_content_type)
-                transfer_encoding = response.headers.get("content-encoding")
-                base = {
-                    "policy": policy,
-                    "method": canonical_method,
-                    "request_url": url,
-                    "final_url": final_url,
-                    "status_code": response.status_code,
-                    "content_type": content_type,
-                    "content_encoding": charset,
-                }
-                if transfer_encoding not in {None, "", "identity"}:
-                    return _observation(
-                        **base,
-                        failure_kind=HttpFailureKind.ENCODING,
-                        error_type="UnsupportedContentEncoding",
-                        error_detail=transfer_encoding,
-                    )
-                if 300 <= response.status_code < 400:
-                    return _observation(
-                        **base,
-                        failure_kind=HttpFailureKind.REDIRECT,
-                        error_type="RedirectDenied",
-                        error_detail=response.headers.get("location"),
-                    )
-                if response.status_code in _ACCESS_CONTROL_STATUSES:
-                    return _observation(
-                        **base,
-                        failure_kind=HttpFailureKind.ACCESS_CONTROL,
-                        error_type="AccessControlStatus",
-                    )
-                if response.status_code == 429:
-                    return _observation(
-                        **base,
-                        failure_kind=HttpFailureKind.RATE_LIMIT,
-                        error_type="RateLimitStatus",
-                    )
-                if response.status_code >= 400:
-                    return _observation(
-                        **base,
-                        failure_kind=HttpFailureKind.TERMINAL_STATUS,
-                        error_type="TerminalHttpStatus",
-                    )
-                if canonical_method == "HEAD" or response.status_code in {204, 205, 304}:
-                    return _observation(**base, failure_kind=HttpFailureKind.NONE)
-                content_length = response.headers.get("content-length")
-                if content_length is not None:
-                    try:
-                        declared_length = int(content_length)
-                    except ValueError:
-                        return _observation(
-                            **base,
-                            failure_kind=HttpFailureKind.MALFORMED_RESPONSE,
-                            error_type="InvalidContentLength",
-                        )
-                    if declared_length > policy.max_response_bytes:
-                        return _observation(
-                            **base,
-                            response_size=declared_length,
-                            body_truncated=True,
-                            failure_kind=HttpFailureKind.OVERSIZED_RESPONSE,
-                            error_type="DeclaredResponseTooLarge",
-                        )
-                body, observed_size, truncated = _read_bounded(
-                    response.iter_raw(),
-                    policy.max_response_bytes,
+        with context as session, session.stream(
+            canonical_method,
+            url,
+            follow_redirects=False,
+            timeout=timeout,
+            headers={
+                "Accept": ", ".join(policy.accepted_media_types),
+                "Accept-Encoding": "identity",
+                "User-Agent": policy.user_agent,
+            },
+        ) as response:
+            final_url = str(response.url)
+            raw_content_type = response.headers.get("content-type")
+            content_type = _media_type(raw_content_type)
+            charset = _charset(raw_content_type)
+            transfer_encoding = response.headers.get("content-encoding")
+            base: _ObservationBase = {
+                "policy": policy,
+                "method": canonical_method,
+                "request_url": url,
+                "final_url": final_url,
+                "status_code": response.status_code,
+                "content_type": content_type,
+                "content_encoding": charset,
+            }
+            if transfer_encoding not in {None, "", "identity"}:
+                return _observation(
+                    **base,
+                    failure_kind=HttpFailureKind.ENCODING,
+                    error_type="UnsupportedContentEncoding",
+                    error_detail=transfer_encoding,
                 )
-                if truncated:
+            if 300 <= response.status_code < 400:
+                return _observation(
+                    **base,
+                    failure_kind=HttpFailureKind.REDIRECT,
+                    error_type="RedirectDenied",
+                    error_detail=response.headers.get("location"),
+                )
+            if response.status_code in _ACCESS_CONTROL_STATUSES:
+                return _observation(
+                    **base,
+                    failure_kind=HttpFailureKind.ACCESS_CONTROL,
+                    error_type="AccessControlStatus",
+                )
+            if response.status_code == 429:
+                return _observation(
+                    **base,
+                    failure_kind=HttpFailureKind.RATE_LIMIT,
+                    error_type="RateLimitStatus",
+                )
+            if response.status_code >= 400:
+                return _observation(
+                    **base,
+                    failure_kind=HttpFailureKind.TERMINAL_STATUS,
+                    error_type="TerminalHttpStatus",
+                )
+            if canonical_method == "HEAD" or response.status_code in {204, 205, 304}:
+                return _observation(**base, failure_kind=HttpFailureKind.NONE)
+            content_length = response.headers.get("content-length")
+            if content_length is not None:
+                try:
+                    declared_length = int(content_length)
+                except ValueError:
                     return _observation(
                         **base,
-                        response_body=body,
-                        response_size=observed_size,
+                        failure_kind=HttpFailureKind.MALFORMED_RESPONSE,
+                        error_type="InvalidContentLength",
+                    )
+                if declared_length > policy.max_response_bytes:
+                    return _observation(
+                        **base,
+                        response_size=declared_length,
                         body_truncated=True,
                         failure_kind=HttpFailureKind.OVERSIZED_RESPONSE,
-                        error_type="StreamedResponseTooLarge",
+                        error_type="DeclaredResponseTooLarge",
                     )
-                if content_type not in {
-                    value.casefold() for value in policy.accepted_media_types
-                }:
-                    return _observation(
-                        **base,
-                        response_body=body,
-                        response_size=observed_size,
-                        failure_kind=HttpFailureKind.MEDIA_TYPE,
-                        error_type="UnexpectedMediaType",
-                    )
-                observation = _observation(
+            body, observed_size, truncated = _read_bounded(
+                response.iter_bytes(),
+                policy.max_response_bytes,
+            )
+            if truncated:
+                return _observation(
                     **base,
                     response_body=body,
                     response_size=observed_size,
-                    failure_kind=HttpFailureKind.NONE,
+                    body_truncated=True,
+                    failure_kind=HttpFailureKind.OVERSIZED_RESPONSE,
+                    error_type="StreamedResponseTooLarge",
                 )
-                try:
-                    observation.decode_text(policy.accepted_encodings)
-                except UnicodeError:
-                    return _observation(
-                        **base,
-                        response_body=body,
-                        response_size=observed_size,
-                        failure_kind=HttpFailureKind.ENCODING,
-                        error_type="UnsupportedCharacterEncoding",
-                    )
-                return observation
+            if content_type not in {value.casefold() for value in policy.accepted_media_types}:
+                return _observation(
+                    **base,
+                    response_body=body,
+                    response_size=observed_size,
+                    failure_kind=HttpFailureKind.MEDIA_TYPE,
+                    error_type="UnexpectedMediaType",
+                )
+            observation = _observation(
+                **base,
+                response_body=body,
+                response_size=observed_size,
+                failure_kind=HttpFailureKind.NONE,
+            )
+            try:
+                observation.decode_text(policy.accepted_encodings)
+            except UnicodeError:
+                return _observation(
+                    **base,
+                    response_body=body,
+                    response_size=observed_size,
+                    failure_kind=HttpFailureKind.ENCODING,
+                    error_type="UnsupportedCharacterEncoding",
+                )
+            return observation
     except httpx.TimeoutException as exc:
         return _observation(
             policy=policy,
