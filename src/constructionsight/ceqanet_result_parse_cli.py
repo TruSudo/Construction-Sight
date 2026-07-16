@@ -18,6 +18,7 @@ from rich.table import Table
 from constructionsight.adapters.ceqanet_result_parser import parse_ceqanet_result_page
 
 InputFormat = Literal["auto", "execution-json", "html"]
+_INPUT_FORMATS = frozenset({"auto", "execution-json", "html"})
 
 app = typer.Typer(help="Parse stored CEQAnet search-result pages.")
 console = Console(width=240, color_system=None)
@@ -26,6 +27,15 @@ console = Console(width=240, color_system=None)
 @app.callback()
 def main() -> None:
     """Parse stored CEQAnet search-result pages."""
+
+
+def _validated_input_format(value: str) -> InputFormat:
+    """Validate the Typer-facing string while retaining a precise internal type."""
+
+    normalized = value.strip().casefold()
+    if normalized not in _INPUT_FORMATS:
+        raise typer.BadParameter("input-format must be auto, execution-json, or html.")
+    return cast(InputFormat, normalized)
 
 
 def _reject_output_without_json(output_path: Path | None, json_output: bool) -> None:
@@ -208,7 +218,7 @@ def parse_ceqanet_results(
         ),
     ],
     input_format: Annotated[
-        InputFormat,
+        str,
         typer.Option("--input-format", help="Input format: auto, execution-json, or html."),
     ] = "auto",
     snapshot_index: Annotated[
@@ -229,7 +239,7 @@ def parse_ceqanet_results(
     _reject_output_without_json(output_path, json_output)
     html, source_url, input_metadata = _extract_html(
         input_path,
-        input_format=input_format,
+        input_format=_validated_input_format(input_format),
         snapshot_index=snapshot_index,
     )
     report = parse_ceqanet_result_page(html, source_url=source_url)
