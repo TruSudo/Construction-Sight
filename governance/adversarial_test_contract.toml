@@ -43,6 +43,7 @@ tests = [
   "tests/test_governance_link_certification.py",
   "tests/test_http_transport.py",
   "tests/test_local_operator_authorization.py",
+  "tests/test_mutation_detection.py",
   "tests/test_parcel_arcgis_operator_service.py",
   "tests/test_parcel_source_bulk_rehearsal_authorization.py",
   "tests/test_parcel_source_bulk_rehearsal_authorization_chronology.py",
