@@ -46,20 +46,25 @@ jobs:
           cache-dependency-path: ${{ matrix.lock-file }}
 
       - name: Install exact supported environment
+        id: install
+        continue-on-error: true
         shell: bash
         run: |
-          set -euo pipefail
-          python -m pip install \
-            --disable-pip-version-check \
-            --require-hashes \
-            --only-binary=:all: \
-            --no-deps \
-            -r "${{ matrix.lock-file }}"
-          python -m pip install \
-            --disable-pip-version-check \
-            --no-deps \
-            --no-build-isolation \
-            -e .
+          set -o pipefail
+          mkdir -p "${REPORT_DIR}"
+          {
+            python -m pip install \
+              --disable-pip-version-check \
+              --require-hashes \
+              --only-binary=:all: \
+              --no-deps \
+              -r "${{ matrix.lock-file }}"
+            python -m pip install \
+              --disable-pip-version-check \
+              --no-deps \
+              --no-build-isolation \
+              -e .
+          } 2>&1 | tee "${REPORT_DIR}/install-${{ matrix.lock-tag }}.txt"
 
       - name: Verify exact lock
         id: lock-verification
@@ -221,6 +226,7 @@ jobs:
           set -euo pipefail
           failed=0
           for gate in \
+            '${{ steps.install.outcome }}' \
             '${{ steps.lock-verification.outcome }}' \
             '${{ steps.pip-check.outcome }}' \
             '${{ steps.vulnerability-audit.outcome }}' \
