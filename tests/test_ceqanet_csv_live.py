@@ -86,7 +86,7 @@ def test_live_execution_requires_explicit_authorization() -> None:
         execute_ceqanet_csv_live_request(_request(), execute_live=False)
 
 
-def test_live_execution_performs_exactly_one_get_without_retry() -> None:
+def test_live_execution_performs_exactly_one_get_without_redirect_or_retry() -> None:
     request = _request()
     client = _Client(
         _Response(
@@ -104,7 +104,7 @@ def test_live_execution_performs_exactly_one_get_without_retry() -> None:
         timeout_seconds=12.5,
     )
 
-    assert client.calls == [(request.source_url, True, 12.5)]
+    assert client.calls == [(request.source_url, False, 12.5)]
     assert execution.method == "GET"
     assert execution.retry_count == 0
     assert execution.network_executed is True
@@ -128,7 +128,7 @@ def test_successful_live_execution_embeds_canonical_offline_inspection() -> None
     assert verification.inspection_digest == execution.inspection.inspection_digest
 
 
-def test_http_403_is_preserved_without_bypass_or_inspection_claim() -> None:
+def test_http_403_is_terminal_without_body_retention_or_bypass() -> None:
     request = _request()
     execution = execute_ceqanet_csv_live_request(
         request,
@@ -146,11 +146,37 @@ def test_http_403_is_preserved_without_bypass_or_inspection_claim() -> None:
 
     assert execution.status_code == 403
     assert execution.inspection is None
-    assert execution.error is None
+    assert execution.error == "AccessControlStatus"
     assert execution.retry_count == 0
-    assert execution.retained_body_bytes() == b"Forbidden"
+    assert execution.retained_body_bytes() == b""
+    assert execution.retained_body_complete is False
     assert verification.passed is False
     assert "live CSV response status is not 200: 403" in verification.findings
+    assert any("AccessControlStatus" in item for item in verification.findings)
+
+
+def test_redirect_is_terminal_and_location_body_is_not_retained() -> None:
+    request = _request()
+    client = _Client(
+        _Response(
+            status_code=302,
+            content=b"redirect response",
+            url=request.source_url,
+            headers={"location": "https://example.invalid/"},
+        )
+    )
+
+    execution = execute_ceqanet_csv_live_request(
+        request,
+        execute_live=True,
+        client=client,
+    )
+
+    assert client.calls == [(request.source_url, False, 20.0)]
+    assert execution.status_code == 302
+    assert execution.error == "RedirectDenied"
+    assert execution.retained_body_bytes() == b""
+    assert execution.retained_body_complete is False
 
 
 def test_csv_validation_failure_is_retained_as_evidence() -> None:
@@ -177,7 +203,7 @@ def test_csv_validation_failure_is_retained_as_evidence() -> None:
     assert any("inspection recorded error" in finding for finding in verification.findings)
 
 
-def test_oversized_response_is_hashed_but_not_partially_retained() -> None:
+def test_oversized_response_is_not_partially_retained_or_claimed_hashed() -> None:
     request = _request()
     execution = execute_ceqanet_csv_live_request(
         request,
@@ -241,7 +267,7 @@ def test_live_model_rejects_unknown_fields() -> None:
         CeqanetCsvLiveExecution.model_validate(payload)
 
 
-def test_execute_cli_refuses_missing_authorization(tmp_path: Path) -> None:
+def test_execute_cli_refuses_missing_scope_bound_authorization(tmp_path: Path) -> None:
     result = runner.invoke(
         app,
         [
@@ -254,10 +280,8 @@ def test_execute_cli_refuses_missing_authorization(tmp_path: Path) -> None:
     )
 
     assert result.exit_code != 0
-    assert (
-        "explicit --execute-live authorization is required"
-        in _plain_terminal(result.output)
-    )
+    assert "caller confirmation is required" in _plain_terminal(result.output)
+    assert not (tmp_path / "execution.json").exists()
 
 
 def test_verify_execution_cli_operates_offline(tmp_path: Path) -> None:
