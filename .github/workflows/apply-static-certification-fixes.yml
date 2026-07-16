@@ -61,7 +61,6 @@ jobs:
         run: |
           set +e
           python -m ruff check src tests --fix --unsafe-fixes
-          python -m ruff format src tests
           python -m ruff check src tests --output-format=concise \
             > /tmp/static-ruff.txt 2>&1
           status=$?
