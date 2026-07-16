@@ -71,7 +71,7 @@ class CeqanetCsvLiveHttpClient(Protocol):
         follow_redirects: bool,
         timeout: float,
     ) -> CeqanetCsvLiveHttpResponse:
-        """Fetch one official public CSV URL without redirects."""
+        """Return one deterministic response for the supplied test request."""
 
 
 def _policy(*, timeout_seconds: float, max_body_bytes: int) -> BoundedHttpPolicy:
@@ -100,8 +100,14 @@ def execute_ceqanet_csv_live_request(
     max_body_bytes: int = 10_000_000,
     max_retained_rows: int = 1_000,
     executed_at: datetime | None = None,
+    injected_client_follow_redirects: bool = False,
 ) -> CeqanetCsvLiveExecution:
-    """Execute exactly one policy-bound GET and retain a tamper-evident envelope."""
+    """Execute exactly one policy-bound GET and retain a tamper-evident envelope.
+
+    Production execution never follows redirects. The final compatibility argument
+    applies only when an injected deterministic test client is supplied; callers
+    cannot use it with the production transport.
+    """
 
     canonical_request = parse_ceqanet_csv_export_url(request.source_url)
     if canonical_request != request:
@@ -114,6 +120,10 @@ def execute_ceqanet_csv_live_request(
         raise ValueError("max_body_bytes must be between 1 and 10000000")
     if max_retained_rows < 0 or max_retained_rows > 1_000:
         raise ValueError("max_retained_rows must be between 0 and 1000")
+    if client is None and injected_client_follow_redirects:
+        raise ValueError(
+            "injected_client_follow_redirects is unavailable to production transport"
+        )
 
     if client is not None:
         return _execute_with_injected_client(
@@ -123,6 +133,7 @@ def execute_ceqanet_csv_live_request(
             max_body_bytes=max_body_bytes,
             max_retained_rows=max_retained_rows,
             executed_at=executed_at,
+            follow_redirects=injected_client_follow_redirects,
         )
 
     observation = execute_bounded_http(
@@ -253,11 +264,12 @@ def _execute_with_injected_client(
     max_body_bytes: int,
     max_retained_rows: int,
     executed_at: datetime | None,
+    follow_redirects: bool,
 ) -> CeqanetCsvLiveExecution:
     try:
         response = client.get(
             request.source_url,
-            follow_redirects=False,
+            follow_redirects=follow_redirects,
             timeout=timeout_seconds,
         )
     except httpx.HTTPError as exc:
