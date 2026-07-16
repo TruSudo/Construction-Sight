@@ -17,6 +17,7 @@ _HIGH_IMPACT_CONFIRMATIONS = frozenset(
         "authorize_persistence",
         "check_http",
         "execute_live",
+        "execute_write",
     }
 )
 _AUTHORIZED_SERVICE_PREFIXES = (
@@ -32,10 +33,12 @@ _AUTHORIZED_SERVICE_NAMES = frozenset(
 _DIRECT_EFFECT_CALLS = frozenset(
     {
         "check_source_http_reachability",
+        "create_database_engine",
         "execute_arcgis_bounded_probe",
         "execute_bounded_http",
         "execute_ceqanet_csv_live_request",
         "execute_ceqanet_listing_plan",
+        "execute_ceqanet_write_plan",
         "store_arcgis_bounded_proof_bundle_chain",
     }
 )
