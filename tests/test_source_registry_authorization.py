@@ -18,12 +18,12 @@ from constructionsight.models import (
     SourceType,
     VerificationStatus,
 )
-from constructionsight.source_readiness_models import HttpReachabilityResult
-from constructionsight.source_registry_apply_service import (
+from constructionsight.operator_services.source_registry_service import (
     apply_authorized_source_registry_update_plan,
-)
-from constructionsight.source_registry_update_plan_service import (
     build_authorized_source_registry_update_plan,
+)
+from constructionsight.source_readiness_models import HttpReachabilityResult
+from constructionsight.source_registry_update_plan_service import (
     build_source_registry_update_plan,
 )
 from constructionsight.source_verification_checklist_models import (
@@ -100,7 +100,7 @@ def test_authorized_registry_plan_binds_exact_sources_and_observations() -> None
     )
 
     assert report.source_count == 1
-    assert report.update_row_count == 1
+    assert report.update_count == 1
     assert checker.calls == ["https://ceqanet.opr.ca.gov/"]
 
 
@@ -137,7 +137,7 @@ def test_shared_ledger_rejects_repeated_live_registry_plan() -> None:
         ledger=ledger,
         http_checker=checker,
     )
-    assert first.update_row_count == 1
+    assert first.update_count == 1
     with pytest.raises(AuthorizationDeniedError, match="already consumed"):
         build_authorized_source_registry_update_plan(
             [_source()],
@@ -165,7 +165,7 @@ def test_registry_apply_binds_exact_plan_registry_and_target() -> None:
     result = apply_authorized_source_registry_update_plan(
         sources,
         plan,
-        expected_plan_id=plan.plan_id,
+        expected_plan_digest=plan.plan_digest,
         expected_registry_digest=plan.registry_digest,
         target_path_identity="data/source_registry.updated.json",
         caller_confirmation=True,
@@ -193,11 +193,33 @@ def test_boolean_confirmation_cannot_authorize_registry_apply() -> None:
         apply_authorized_source_registry_update_plan(
             sources,
             plan,
-            expected_plan_id=plan.plan_id,
+            expected_plan_digest=plan.plan_digest,
             expected_registry_digest=plan.registry_digest,
             target_path_identity="data/source_registry.updated.json",
             caller_confirmation=False,
             authorization_reason="Attempt registry apply without confirmation.",
+            operator_id="operator:tyler",
+            now=lambda: _NOW,
+        )
+
+
+def test_registry_apply_rejects_stale_expected_registry_before_authorization() -> None:
+    sources = [_source()]
+    plan = build_source_registry_update_plan(
+        sources,
+        default_adapter_family_specs(),
+        observations=[_observation()],
+    )
+
+    with pytest.raises(ValueError, match="expected registry digest"):
+        apply_authorized_source_registry_update_plan(
+            sources,
+            plan,
+            expected_plan_digest=plan.plan_digest,
+            expected_registry_digest="0" * 64,
+            target_path_identity="data/source_registry.updated.json",
+            caller_confirmation=True,
+            authorization_reason="Attempt stale registry apply.",
             operator_id="operator:tyler",
             now=lambda: _NOW,
         )
