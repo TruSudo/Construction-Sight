@@ -2,9 +2,15 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
+from datetime import datetime
 
 from constructionsight.adapters.specs import AdapterFamilySpec
+from constructionsight.authorization_decision import AuthorizationUseLedger
+from constructionsight.authorization_decision_models import authorization_digest
+from constructionsight.local_operator_authorization import (
+    authorize_local_operator_operation,
+)
 from constructionsight.models import PlatformFamily, PublicSource
 from constructionsight.source_readiness_service import HttpReachabilityChecker
 from constructionsight.source_verification_checklist_models import (
@@ -61,6 +67,121 @@ def build_source_verification_checklist_report(
             )
         )
     return SourceVerificationChecklistReport.from_rows(rows)
+
+
+def build_authorized_source_verification_checklist_report(
+    sources: list[PublicSource],
+    adapter_specs: dict[PlatformFamily, AdapterFamilySpec],
+    *,
+    observations: Iterable[SourceVerificationObservation] | None,
+    caller_confirmation: bool,
+    authorization_reason: str,
+    operator_id: str | None = None,
+    now: Callable[[], datetime] | None = None,
+    ledger: AuthorizationUseLedger | None = None,
+    http_checker: HttpReachabilityChecker | None = None,
+) -> SourceVerificationChecklistReport:
+    """Authorize exact-source verification GET evidence before checklist building."""
+
+    normalized_observations = tuple(observations or ())
+    state_identity = authorization_digest(
+        "source-verification-checklist-state",
+        {
+            "sources": [source.model_dump(mode="json") for source in sources],
+            "adapter_specs": [
+                {
+                    "platform_family": family.value,
+                    "status": spec.status.value,
+                    "uses_public_http": spec.uses_public_http,
+                }
+                for family, spec in sorted(
+                    adapter_specs.items(),
+                    key=lambda item: item[0].value,
+                )
+            ],
+            "observations": [
+                observation.model_dump(mode="json")
+                for observation in normalized_observations
+            ],
+            "policy_id": "CS-NET-008",
+        },
+    )
+    resource_id = authorization_digest(
+        "source-verification-checklist-resource",
+        {
+            "urls": [str(source.public_url) for source in sources],
+            "source_names": [source.source_name for source in sources],
+        },
+    )
+    exact_scope = tuple(
+        sorted(
+            {
+                "concurrency:1",
+                "max-attempts-per-source:1",
+                "max-response-bytes:50000",
+                "method:GET",
+                f"observation-count:{len(normalized_observations)}",
+                "policy:CS-NET-008",
+                "redirects:denied",
+                "retries:0",
+                f"source-count:{len(sources)}",
+                *(f"url:{source.public_url}" for source in sources),
+            },
+            key=str.casefold,
+        )
+    )
+    authorize_local_operator_operation(
+        action="build-source-verification-checklist-live-evidence",
+        resource_type="public-source-verification-snapshot",
+        resource_id=resource_id,
+        exact_scope=exact_scope,
+        current_state_identity=state_identity,
+        expected_identity=state_identity,
+        granted_authority=(
+            "perform one exact bounded verification GET for each declared source",
+        ),
+        denied_authority=tuple(
+            sorted(
+                {
+                    "access-control bypass",
+                    "alternate-host fallback",
+                    "credential use",
+                    "document download",
+                    "observation mutation",
+                    "persistence mutation",
+                    "production recurrence",
+                    "redirect following",
+                    "registry mutation",
+                    "retry",
+                    "source promotion",
+                },
+                key=str.casefold,
+            )
+        ),
+        reason=authorization_reason,
+        caller_confirmation=caller_confirmation,
+        limitations=tuple(
+            sorted(
+                {
+                    "HTTP evidence does not complete manual query, list, detail, barrier, or terms review",
+                    "local operator identity is not authentication",
+                    "single local-process use only",
+                },
+                key=str.casefold,
+            )
+        ),
+        operator_id=operator_id,
+        current_revocation_identity=state_identity,
+        now=now,
+        ledger=ledger,
+    )
+    return build_source_verification_checklist_report(
+        sources,
+        adapter_specs,
+        check_http=True,
+        http_checker=http_checker,
+        observations=normalized_observations,
+    )
 
 
 def build_source_observation_templates(
