@@ -163,7 +163,8 @@ def build_authorized_source_verification_checklist_report(
         limitations=tuple(
             sorted(
                 {
-                    "HTTP evidence does not complete manual query, list, detail, barrier, or terms review",
+                    "HTTP evidence does not complete manual query, list, detail, "
+                    "barrier, or terms review",
                     "local operator identity is not authentication",
                     "single local-process use only",
                 },

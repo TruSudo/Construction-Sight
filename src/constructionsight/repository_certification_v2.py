@@ -5,8 +5,9 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Final, Sequence
+from typing import Any, Final
 
 from constructionsight.governance_certification import audit_governance
 from constructionsight.repository_certification import (

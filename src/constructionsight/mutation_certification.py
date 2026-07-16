@@ -11,9 +11,10 @@ import subprocess
 import sys
 import tempfile
 import tomllib
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Final, Sequence
+from typing import Any, Final
 
 SCHEMA_VERSION: Final = "constructionsight.mutation-report/v1"
 CONTRACT_SCHEMA_VERSION: Final = "constructionsight.mutation-contract/v1"
@@ -148,11 +149,41 @@ def _validate_case_path(root: Path, case: MutationCase) -> None:
             )
 
 
+def _copy_tracked_tree(root: Path, temporary_root: Path) -> None:
+    completed = subprocess.run(
+        ["git", "-C", str(root), "ls-files", "-z"],
+        check=False,
+        capture_output=True,
+    )
+    if completed.returncode != 0:
+        detail = completed.stderr.decode("utf-8", errors="replace")
+        raise MutationContractError(f"cannot enumerate tracked tree: {detail}")
+    for raw_relative in completed.stdout.split(b"\0"):
+        if not raw_relative:
+            continue
+        relative = Path(raw_relative.decode("utf-8"))
+        if relative.is_absolute() or ".." in relative.parts:
+            raise MutationContractError(f"unsafe tracked path: {relative}")
+        source = root / relative
+        if not source.is_file():
+            raise MutationContractError(f"tracked file is missing: {relative}")
+        destination = temporary_root / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, destination)
+
+
+def _timeout_output(value: bytes | str | None) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return value
+
+
 def _run_case(root: Path, case: MutationCase, timeout: int) -> MutationResult:
     with tempfile.TemporaryDirectory(prefix="constructionsight-mutant-") as directory:
         temporary_root = Path(directory)
-        overlay_src = temporary_root / "src"
-        shutil.copytree(root / "src/constructionsight", overlay_src / "constructionsight")
+        _copy_tracked_tree(root, temporary_root)
         target = temporary_root / case.path
         content = target.read_text(encoding="utf-8")
         target.write_text(
@@ -161,7 +192,7 @@ def _run_case(root: Path, case: MutationCase, timeout: int) -> MutationResult:
         )
         environment = os.environ.copy()
         original_pythonpath = environment.get("PYTHONPATH")
-        values = [str(overlay_src), str(root / "src")]
+        values = [str(temporary_root / "src")]
         if original_pythonpath:
             values.append(original_pythonpath)
         environment["PYTHONPATH"] = os.pathsep.join(values)
@@ -179,7 +210,7 @@ def _run_case(root: Path, case: MutationCase, timeout: int) -> MutationResult:
         try:
             completed = subprocess.run(
                 command,
-                cwd=root,
+                cwd=temporary_root,
                 env=environment,
                 check=False,
                 capture_output=True,
@@ -195,7 +226,7 @@ def _run_case(root: Path, case: MutationCase, timeout: int) -> MutationResult:
                 status = "killed"
             return_code: int | None = completed.returncode
         except subprocess.TimeoutExpired as exc:
-            output = (exc.stdout or "") + (exc.stderr or "")
+            output = _timeout_output(exc.stdout) + _timeout_output(exc.stderr)
             status = "timeout"
             return_code = None
         digest = hashlib.sha256(output.encode("utf-8", errors="replace")).hexdigest()

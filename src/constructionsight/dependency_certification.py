@@ -401,19 +401,20 @@ def audit_dependencies(
         )
     by_name: dict[str, Mapping[str, Any]] = {}
     for entry in entries:
-        name = _audit_registry_entry(entry, path=path, findings=findings)
-        if name is None:
+        registry_name = _audit_registry_entry(entry, path=path, findings=findings)
+        if registry_name is None:
             continue
-        if name in by_name:
+        if registry_name in by_name:
             findings.append(
                 _finding(
                     "DEP-REGISTRY-003",
                     path,
-                    f"duplicate canonical dependency registry identity: {name}",
+                    "duplicate canonical dependency registry identity: "
+                    f"{registry_name}",
                 )
             )
             continue
-        by_name[name] = entry
+        by_name[registry_name] = entry
     if set(by_name) != direct_names:
         findings.append(
             _finding(
@@ -514,7 +515,7 @@ def audit_dependencies(
                 )
             )
     action_pattern = re.compile(
-        r"^(?P<indent>\s*)uses:\s*(?P<action>[^@\s]+)@"
+        r"^(?P<indent>\s*)(?:-\s*)?uses:\s*(?P<action>[^@\s]+)@"
         r"(?P<ref>[^\s#]+)(?P<comment>.*)$"
     )
     for workflow in workflow_paths:

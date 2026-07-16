@@ -124,7 +124,13 @@ def _audit_architecture(
         }
         layer_rules.append((name, patterns, default, allowed, forbidden, permissions))
     if default_count != 1:
-        findings.append(_finding("ARCH-CONTRACT-006", path, "exactly one default layer is required"))
+        findings.append(
+            _finding(
+                "ARCH-CONTRACT-006",
+                path,
+                "exactly one default layer is required",
+            )
+        )
 
     module_paths = tuple(
         candidate

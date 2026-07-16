@@ -357,6 +357,7 @@ def _audit_open_work(
                 )
             )
         else:
+            assert isinstance(repository, str)
             identities.add((repository, pull_request))
         head = overlap.get("head_commit")
         if not isinstance(head, str) or not re.fullmatch(r"[0-9a-f]{40}", head):

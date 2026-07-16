@@ -139,12 +139,24 @@ def load_lock(path: Path) -> dict[str, str]:
     return {entry.name: entry.version for entry in load_lock_entries(path)}
 
 
+def _metadata_value(
+    distribution: importlib.metadata.Distribution,
+    key: str,
+) -> str | None:
+    """Return one metadata value without relying on an untyped get method."""
+
+    try:
+        return distribution.metadata[key]
+    except KeyError:
+        return None
+
+
 def installed_inventory() -> dict[str, importlib.metadata.Distribution]:
     """Return exactly one installed distribution per canonical identity."""
 
     inventory: dict[str, importlib.metadata.Distribution] = {}
     for distribution in importlib.metadata.distributions():
-        raw_name = distribution.metadata.get("Name")
+        raw_name = _metadata_value(distribution, "Name")
         if not raw_name:
             raise RuntimeError("installed distribution is missing canonical Name metadata")
         name = canonical_name(raw_name)
@@ -230,7 +242,7 @@ def verify_lock(path: Path) -> dict[str, Any]:
 
 
 def _license_expression(distribution: importlib.metadata.Distribution) -> str:
-    license_value = distribution.metadata.get("License")
+    license_value = _metadata_value(distribution, "License")
     if license_value and license_value.strip() and license_value.strip() != "UNKNOWN":
         return license_value.strip()
     classifiers = distribution.metadata.get_all("Classifier") or []
@@ -249,7 +261,7 @@ def _authoritative_project_url(
     for raw in distribution.metadata.get_all("Project-URL") or []:
         _, separator, value = raw.partition(",")
         candidates.append(value.strip() if separator else raw.strip())
-    homepage = distribution.metadata.get("Home-page")
+    homepage = _metadata_value(distribution, "Home-page")
     if homepage:
         candidates.append(homepage.strip())
     for candidate in candidates:

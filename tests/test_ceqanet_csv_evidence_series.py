@@ -807,5 +807,5 @@ def test_committed_first_observation_recomputes_exactly() -> None:
 def test_socks_proxy_transport_is_declared_and_installed() -> None:
     pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
 
-    assert '"httpx[socks]>=0.27.0"' in pyproject
+    assert '"httpx[socks]==0.28.1"' in pyproject
     assert socksio is not None

@@ -136,7 +136,7 @@ def _audit_network(
             "concurrency_limit",
         ):
             value = policy.get(numeric)
-            if not isinstance(value, (int, float)) or value <= 0:
+            if not isinstance(value, int | float) or value <= 0:
                 findings.append(
                     _finding(
                         "NET-CONTRACT-006",

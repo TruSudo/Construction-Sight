@@ -370,7 +370,7 @@ def parse_arcgis_object_id_page(
     direct_ids = payload.get("objectIds")
     if direct_ids is not None:
         if not isinstance(direct_ids, Sequence) or isinstance(
-            direct_ids, (str, bytes, bytearray)
+            direct_ids, str | bytes | bytearray
         ):
             raise ParcelArcGISBulkRehearsalError(
                 "ArcGIS objectIds response must be an array"
@@ -379,7 +379,7 @@ def parse_arcgis_object_id_page(
 
     features = payload.get("features")
     if not isinstance(features, Sequence) or isinstance(
-        features, (str, bytes, bytearray)
+        features, str | bytes | bytearray
     ):
         raise ParcelArcGISBulkRehearsalError(
             "ArcGIS page response must contain objectIds or features"

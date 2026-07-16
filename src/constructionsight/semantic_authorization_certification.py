@@ -106,7 +106,7 @@ def audit_semantic_authorization(
             continue
 
         for node in ast.walk(tree):
-            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            if not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
                 continue
             confirmations = _function_parameters(node) & _HIGH_IMPACT_CONFIRMATIONS
             if not confirmations:

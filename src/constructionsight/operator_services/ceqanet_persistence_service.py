@@ -80,12 +80,16 @@ def execute_authorized_ceqanet_write_plan(
             "operation_ids": operation_ids,
         },
     )
+    operation_ids_digest = authorization_digest(
+        "ceqanet-operation-ids",
+        {"ids": operation_ids},
+    )
     exact_scope = tuple(
         sorted(
             {
                 f"destination:{destination_identity}",
                 f"operation-count:{operation_count}",
-                f"operation-id-digest:{authorization_digest('ceqanet-operation-ids', {'ids': operation_ids})}",
+                f"operation-id-digest:{operation_ids_digest}",
                 f"plan-digest:{plan_digest}",
                 "transaction:all-or-nothing",
                 "write-mode:upsert-preview-only",
