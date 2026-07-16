@@ -5,8 +5,14 @@ from __future__ import annotations
 import hashlib
 from collections import Counter
 from collections.abc import Callable
+from datetime import datetime
 
 from constructionsight.adapters.specs import AdapterFamilySpec, AdapterImplementationStatus
+from constructionsight.authorization_decision import AuthorizationUseLedger
+from constructionsight.authorization_decision_models import authorization_digest
+from constructionsight.local_operator_authorization import (
+    authorize_local_operator_operation,
+)
 from constructionsight.models import PlatformFamily, PublicSource, VerificationStatus
 from constructionsight.source_readiness_http import check_source_http_reachability
 from constructionsight.source_readiness_models import (
@@ -41,6 +47,113 @@ def build_source_readiness_report(
         source_count=len(rows),
         status_counts=dict(Counter(row.readiness_status.value for row in rows)),
         rows=rows,
+    )
+
+
+def build_authorized_source_readiness_report(
+    sources: list[PublicSource],
+    adapter_specs: dict[PlatformFamily, AdapterFamilySpec],
+    *,
+    caller_confirmation: bool,
+    authorization_reason: str,
+    operator_id: str | None = None,
+    now: Callable[[], datetime] | None = None,
+    ledger: AuthorizationUseLedger | None = None,
+    http_checker: HttpReachabilityChecker | None = None,
+) -> SourceReadinessReport:
+    """Authorize bounded HEAD/405-GET reachability for the exact source set."""
+
+    source_payload = [source.model_dump(mode="json") for source in sources]
+    adapter_payload = [
+        {
+            "platform_family": family.value,
+            "status": spec.status.value,
+            "uses_public_http": spec.uses_public_http,
+            "lawful_access_boundary": spec.lawful_access_boundary,
+        }
+        for family, spec in sorted(adapter_specs.items(), key=lambda item: item[0].value)
+    ]
+    state_identity = authorization_digest(
+        "source-readiness-state",
+        {
+            "sources": source_payload,
+            "adapter_specs": adapter_payload,
+            "policy_id": "CS-NET-007",
+            "method_sequence": ["HEAD", "GET only after 405"],
+            "max_response_bytes": 4096,
+        },
+    )
+    resource_id = authorization_digest(
+        "source-readiness-resource",
+        {
+            "source_keys": [_source_key(source) for source in sources],
+            "urls": [str(source.public_url) for source in sources],
+        },
+    )
+    exact_scope = tuple(
+        sorted(
+            {
+                "fallback:GET-only-after-405",
+                "max-attempts-per-source:2",
+                "max-response-bytes:4096",
+                "method:HEAD",
+                "policy:CS-NET-007",
+                "redirects:denied",
+                "retries:0",
+                f"source-count:{len(sources)}",
+                *(f"url:{source.public_url}" for source in sources),
+            },
+            key=str.casefold,
+        )
+    )
+    authorize_local_operator_operation(
+        action="check-source-http-readiness",
+        resource_type="public-source-registry-snapshot",
+        resource_id=resource_id,
+        exact_scope=exact_scope,
+        current_state_identity=state_identity,
+        expected_identity=state_identity,
+        granted_authority=(
+            "perform bounded public HEAD checks with 405-only GET fallback",
+        ),
+        denied_authority=tuple(
+            sorted(
+                {
+                    "access-control bypass",
+                    "credential use",
+                    "document download",
+                    "persistence mutation",
+                    "production recurrence",
+                    "redirect following",
+                    "registry mutation",
+                    "retry",
+                    "source promotion",
+                },
+                key=str.casefold,
+            )
+        ),
+        reason=authorization_reason,
+        caller_confirmation=caller_confirmation,
+        limitations=tuple(
+            sorted(
+                {
+                    "local operator identity is not authentication",
+                    "reachability does not establish source completeness or maturity",
+                    "single local-process use only",
+                },
+                key=str.casefold,
+            )
+        ),
+        operator_id=operator_id,
+        current_revocation_identity=state_identity,
+        now=now,
+        ledger=ledger,
+    )
+    return build_source_readiness_report(
+        sources,
+        adapter_specs,
+        check_http=True,
+        http_checker=http_checker,
     )
 
 
