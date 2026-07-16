@@ -46,6 +46,54 @@ jobs:
             --no-build-isolation \
             -e .
 
+      - name: Tighten duplicate-target assertions
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('scripts/apply_alignment_baseline_fixes.py')
+          content = path.read_text(encoding='utf-8')
+          replacements = (
+              (
+                  '    replace_once(\n'
+                  '        "src/constructionsight/ceqanet_recurring_run_cli.py",\n'
+                  '        "    definition = _load_model(definition_path, CeqanetRecurringRunDefinition)\\n",\n'
+                  '        "    if not execute_live:\\n"',
+                  '    replace_once(\n'
+                  '        "src/constructionsight/ceqanet_recurring_run_cli.py",\n'
+                  '        "    \\\"\\\"\\\"Authorize and execute one exact foreground recurring-run attempt.\\\"\\\"\\\"\\n"\n'
+                  '        "\\n"\n'
+                  '        "    definition = _load_model(definition_path, CeqanetRecurringRunDefinition)\\n",\n'
+                  '        "    \\\"\\\"\\\"Authorize and execute one exact foreground recurring-run attempt.\\\"\\\"\\\"\\n"\n'
+                  '        "\\n"\n'
+                  '        "    if not execute_live:\\n"',
+              ),
+              (
+                  '    replace_once(\n'
+                  '        "src/constructionsight/parcel_source_cli.py",\n'
+                  '        "    try:\\n"\n'
+                  '        "        bundle = load_arcgis_bounded_proof_bundle(input_path)\\n",\n'
+                  '        "    if not authorize_persistence:\\n"',
+                  '    replace_once(\n'
+                  '        "src/constructionsight/parcel_source_cli.py",\n'
+                  '        "    \\\"\\\"\\\"Authorize persistence of one exact verified bundle; never authorize bulk.\\\"\\\"\\\"\\n"\n'
+                  '        "\\n"\n'
+                  '        "    try:\\n"\n'
+                  '        "        bundle = load_arcgis_bounded_proof_bundle(input_path)\\n",\n'
+                  '        "    \\\"\\\"\\\"Authorize persistence of one exact verified bundle; never authorize bulk.\\\"\\\"\\\"\\n"\n'
+                  '        "\\n"\n'
+                  '        "    if not authorize_persistence:\\n"',
+              ),
+          )
+          for old, new in replacements:
+              count = content.count(old)
+              if count != 1:
+                  raise RuntimeError(f'expected one script target, found {count}')
+              content = content.replace(old, new, 1)
+          path.write_text(content, encoding='utf-8')
+          PY
+
       - name: Apply assertion-bound corrections
         shell: bash
         run: python scripts/apply_alignment_baseline_fixes.py
