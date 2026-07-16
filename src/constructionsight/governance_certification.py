@@ -38,6 +38,9 @@ from constructionsight.governance_contract_schema import (
     audit_governance_contract_shapes,
 )
 from constructionsight.governance_link_certification import audit_governance_links
+from constructionsight.semantic_authorization_certification import (
+    audit_semantic_authorization,
+)
 from constructionsight.traceability_certification import _audit_capabilities
 
 _MUTATION_SCHEMA = "constructionsight.mutation-contract/v1"
@@ -139,6 +142,12 @@ def audit_governance(root: Path, tracked_files: Sequence[Path]) -> GovernanceRep
         tracked,
         architecture,
         network,
+        findings,
+    )
+    audit_semantic_authorization(
+        repository_root,
+        tracked,
+        layer_by_module,
         findings,
     )
     capability_count = _audit_capabilities(
