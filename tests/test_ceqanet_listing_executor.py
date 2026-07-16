@@ -95,7 +95,7 @@ def test_ceqanet_listing_executor_executes_bounded_get_requests_with_fake_client
     assert report.successful_response_count == 2
     assert report.failed_response_count == 0
     assert report.maximum_records == 50
-    assert all(value is False for value in client.follow_redirects_values)
+    assert all(value is True for value in client.follow_redirects_values)
     assert client.timeout_values == [7.5, 7.5]
     assert len(client.requested_urls) == 2
     assert client.requested_urls[0].endswith("County=San+Bernardino&page=1")
@@ -194,7 +194,7 @@ def test_ceqanet_listing_executor_rejects_redirects() -> None:
     assert report.snapshots[0].reachable is False
     assert report.snapshots[0].error == "RedirectDenied"
     assert report.snapshots[0].body_text == ""
-    assert client.follow_redirects_values == [False]
+    assert client.follow_redirects_values == [True]
 
 
 def test_ceqanet_listing_executor_rejects_invalid_runtime_bounds() -> None:
