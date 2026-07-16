@@ -1,0 +1,37 @@
+name: Revert Broad Formatting Commit
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - reopened
+
+permissions:
+  contents: write
+
+jobs:
+  revert:
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref == 'agent/silent-risk-certification'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out exact draft branch
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: agent/silent-risk-certification
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Revert only the broad formatter commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          target=59759d545f243e67fdfa284ced34a66e36090f59
+          git merge-base --is-ancestor "${target}" HEAD
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git revert --no-edit "${target}"
+          git diff --check HEAD^ HEAD
+          git push origin HEAD:agent/silent-risk-certification
