@@ -9,14 +9,9 @@ from typing import Annotated, Any
 import typer
 from rich.console import Console
 
+from constructionsight.authorization_decision import AuthorizationDeniedError
 from constructionsight.ceqanet_csv_live_models import CeqanetCsvLiveExecution
-from constructionsight.ceqanet_csv_live_service import (
-    execute_ceqanet_csv_live_request,
-    verify_ceqanet_csv_live_execution,
-)
-from constructionsight.ceqanet_csv_replay_models import (
-    CeqanetCsvEncodingReplay,
-)
+from constructionsight.ceqanet_csv_replay_models import CeqanetCsvEncodingReplay
 from constructionsight.ceqanet_csv_replay_service import (
     build_ceqanet_csv_encoding_replay,
     verify_ceqanet_csv_encoding_replay,
@@ -25,6 +20,11 @@ from constructionsight.ceqanet_csv_service import (
     build_ceqanet_csv_export_request,
     inspect_ceqanet_csv_bytes,
     parse_ceqanet_csv_export_url,
+)
+from constructionsight.legal import SourceAccessProfile
+from constructionsight.operator_services.ceqanet_csv_service import (
+    execute_authorized_ceqanet_csv,
+    verify_retained_ceqanet_csv,
 )
 
 app = typer.Typer(help="Governed CEQAnet official CSV planning, inspection, and proof.")
@@ -117,16 +117,60 @@ def execute_live_csv_export(
         int | None,
         typer.Option("--document-id", min=1, help="Optional positive document ID."),
     ] = None,
+    operator_id: Annotated[
+        str | None,
+        typer.Option(
+            "--operator-id",
+            help=(
+                "Optional local audit identity. Defaults to CONSTRUCTIONSIGHT_OPERATOR_ID "
+                "or the local OS account; this is not authentication."
+            ),
+        ),
+    ] = None,
+    authorization_reason: Annotated[
+        str,
+        typer.Option(
+            "--authorization-reason",
+            help="Reason for this exact one-request authorization.",
+        ),
+    ] = "Execute one reviewed CEQAnet CSV evidence request.",
     execute_live: Annotated[
         bool,
         typer.Option(
             "--execute-live",
-            help="Authorize exactly one bounded public GET with no retries.",
+            help=(
+                "Additional caller confirmation. This Boolean is not the operative "
+                "authorization decision."
+            ),
         ),
+    ] = False,
+    public_url: Annotated[
+        str,
+        typer.Option(help="Public source URL evaluated by lawful-access policy."),
+    ] = "https://ceqanet.lci.ca.gov/",
+    requires_login: Annotated[
+        bool,
+        typer.Option(help="Mark the source as requiring login."),
+    ] = False,
+    has_captcha: Annotated[
+        bool,
+        typer.Option(help="Mark the source as presenting captcha."),
+    ] = False,
+    robots_disallows_collection: Annotated[
+        bool,
+        typer.Option(help="Mark the intended path as robots-disallowed."),
+    ] = False,
+    terms_disallow_collection: Annotated[
+        bool,
+        typer.Option(help="Mark source terms as disallowing collection."),
+    ] = False,
+    paywalled: Annotated[
+        bool,
+        typer.Option(help="Mark the source as paywalled."),
     ] = False,
     timeout_seconds: Annotated[
         float,
-        typer.Option("--timeout-seconds", min=0.1, max=120.0),
+        typer.Option("--timeout-seconds", min=0.1, max=20.0),
     ] = 20.0,
     max_body_bytes: Annotated[
         int,
@@ -134,39 +178,51 @@ def execute_live_csv_export(
     ] = 10_000_000,
     max_retained_rows: Annotated[
         int,
-        typer.Option("--max-retained-rows", min=0),
+        typer.Option("--max-retained-rows", min=0, max=1_000),
     ] = 1_000,
     overwrite: Annotated[bool, typer.Option("--overwrite")] = False,
 ) -> None:
-    """Execute one explicit CSV GET and retain its complete verification envelope."""
+    """Authorize one exact CSV GET and retain its verification envelope."""
 
-    if not execute_live:
-        raise typer.BadParameter("explicit --execute-live authorization is required")
+    profile = SourceAccessProfile(
+        public_url=public_url,
+        requires_login=requires_login,
+        has_captcha=has_captcha,
+        robots_disallows_collection=robots_disallows_collection,
+        terms_disallow_collection=terms_disallow_collection,
+        paywalled=paywalled,
+    )
     try:
         request = build_ceqanet_csv_export_request(
             sch_number=sch_number,
             document_id=document_id,
         )
-        execution = execute_ceqanet_csv_live_request(
-            request,
-            execute_live=True,
+        result = execute_authorized_ceqanet_csv(
+            request=request,
+            access_profile=profile,
+            authorization_reason=authorization_reason,
+            caller_confirmation=execute_live,
             timeout_seconds=timeout_seconds,
             max_body_bytes=max_body_bytes,
             max_retained_rows=max_retained_rows,
+            operator_id=operator_id,
         )
-        verification = verify_ceqanet_csv_live_execution(execution)
-    except ValueError as exc:
-        raise typer.BadParameter(str(exc)) from exc
+    except (AuthorizationDeniedError, ValueError) as exc:
+        typer.echo(f"CEQAnet CSV execution blocked: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
 
     _write_json_file(
         output,
-        execution.model_dump(mode="json"),
+        result.execution.model_dump(mode="json"),
         overwrite=overwrite,
     )
+    authorization = result.authorization.to_dict()
     console.print(f"Wrote CEQAnet CSV live execution evidence to {output}")
-    console.print(f"Verification passed: {verification.passed}")
-    if not verification.passed:
-        for finding in verification.findings:
+    console.print(f"Authorization decision: {authorization['decision_id']}")
+    console.print(f"Authorization preflight: {authorization['preflight_id']}")
+    console.print(f"Verification passed: {result.verification.passed}")
+    if not result.verification.passed:
+        for finding in result.verification.findings:
             console.print(f"- {finding}")
         raise typer.Exit(code=1)
 
@@ -187,13 +243,12 @@ def verify_live_csv_execution(
     try:
         payload: Any = json.loads(execution_path.read_text(encoding="utf-8"))
         execution = CeqanetCsvLiveExecution.model_validate(payload)
-        verification = verify_ceqanet_csv_live_execution(execution)
+        verification = verify_retained_ceqanet_csv(execution)
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         raise typer.BadParameter(str(exc)) from exc
     _emit_json(verification.model_dump(mode="json"), output)
     if not verification.passed:
         raise typer.Exit(code=1)
-
 
 
 @app.command("replay-execution")
@@ -262,9 +317,12 @@ def verify_csv_replay(
     if not verification.passed:
         raise typer.Exit(code=1)
 
+
 def _write_json_file(path: Path, payload: object, *, overwrite: bool) -> None:
     if path.exists() and not overwrite:
-        raise typer.BadParameter(f"output already exists: {path}; pass --overwrite to replace it")
+        raise typer.BadParameter(
+            f"output already exists: {path}; pass --overwrite to replace it"
+        )
     rendered = json.dumps(payload, indent=2, sort_keys=True)
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(f".{path.name}.tmp")
