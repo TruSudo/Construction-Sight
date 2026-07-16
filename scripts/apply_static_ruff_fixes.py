@@ -1,4 +1,4 @@
-"""Apply the exact formatter-resistant Ruff corrections from the retained report."""
+"""Apply the exact formatter-resistant Ruff corrections from retained reports."""
 
 from __future__ import annotations
 
@@ -28,6 +28,28 @@ def main() -> None:
         "                and any(flag in mode.value for flag in \"wax+\")\n"
         "            ):\n"
         "                lines.add(node.lineno)\n",
+    )
+    replace_once(
+        "src/constructionsight/governance_certification_core.py",
+        '        findings.append(_finding("GOV-CONTRACT-001", relative, "required governance contract is missing"))\n',
+        "        findings.append(\n"
+        "            _finding(\n"
+        "                \"GOV-CONTRACT-001\",\n"
+        "                relative,\n"
+        "                \"required governance contract is missing\",\n"
+        "            )\n"
+        "        )\n",
+    )
+    replace_once(
+        "src/constructionsight/architecture_certification.py",
+        '        findings.append(_finding("ARCH-CONTRACT-006", path, "exactly one default layer is required"))\n',
+        "        findings.append(\n"
+        "            _finding(\n"
+        "                \"ARCH-CONTRACT-006\",\n"
+        "                path,\n"
+        "                \"exactly one default layer is required\",\n"
+        "            )\n"
+        "        )\n",
     )
 
     replace_once(
@@ -64,9 +86,11 @@ def main() -> None:
         '                    "barrier, or terms review",\n',
     )
 
-    diagnostic = ROOT / "governance/diagnostics/static_ruff.txt"
-    if diagnostic.exists():
-        diagnostic.unlink()
+    diagnostic_root = ROOT / "governance/diagnostics"
+    if diagnostic_root.is_dir():
+        for pattern in ("static_ruff*.txt", "static_regressions*.txt"):
+            for diagnostic in diagnostic_root.glob(pattern):
+                diagnostic.unlink()
 
 
 if __name__ == "__main__":
