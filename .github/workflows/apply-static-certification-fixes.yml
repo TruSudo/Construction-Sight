@@ -76,11 +76,12 @@ jobs:
           set -euo pipefail
           git reset --hard HEAD
           mkdir -p governance/diagnostics
-          cp /tmp/static-ruff.txt governance/diagnostics/static_ruff.txt
+          diagnostic="governance/diagnostics/static_ruff_${GITHUB_RUN_ID}.txt"
+          cp /tmp/static-ruff.txt "${diagnostic}"
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add governance/diagnostics/static_ruff.txt
-          git commit -m 'Retain static Ruff diagnostic'
+          git add "${diagnostic}"
+          git commit -m "Retain static Ruff diagnostic ${GITHUB_RUN_ID}"
           git push origin HEAD:agent/silent-risk-certification
           exit 1
 
@@ -122,11 +123,12 @@ jobs:
           set -euo pipefail
           git reset --hard HEAD
           mkdir -p governance/diagnostics
-          cp /tmp/static-regressions.txt governance/diagnostics/static_regressions.txt
+          diagnostic="governance/diagnostics/static_regressions_${GITHUB_RUN_ID}.txt"
+          cp /tmp/static-regressions.txt "${diagnostic}"
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add governance/diagnostics/static_regressions.txt
-          git commit -m 'Retain static regression diagnostic'
+          git add "${diagnostic}"
+          git commit -m "Retain static regression diagnostic ${GITHUB_RUN_ID}"
           git push origin HEAD:agent/silent-risk-certification
           exit 1
 
