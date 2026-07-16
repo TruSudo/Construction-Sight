@@ -7,9 +7,7 @@ from datetime import datetime
 from typing import Protocol
 
 from constructionsight.adapters.ceqanet_listing import CeqanetListingPlan
-from constructionsight.adapters.ceqanet_listing_dry_run import (
-    CeqanetListingDryRunExecutor,
-)
+from constructionsight.adapters.ceqanet_listing_dry_run import CeqanetListingDryRunExecutor
 from constructionsight.adapters.ceqanet_listing_executor import (
     CeqanetListingExecutionError,
     CeqanetListingExecutionPolicy,
@@ -29,7 +27,6 @@ from constructionsight.local_operator_authorization import (
 
 _ACTION = "execute-ceqanet-listing-plan"
 _RESOURCE_TYPE = "ceqanet-listing-plan"
-_POLICY = CeqanetListingExecutionPolicy()
 
 
 class CeqanetListingServiceError(RuntimeError):
@@ -202,6 +199,8 @@ def execute_authorized_ceqanet_listing(
     access_profile: SourceAccessProfile,
     authorization_reason: str,
     caller_confirmation: bool,
+    timeout_seconds: float = 20.0,
+    max_response_bytes: int = 50_000,
     operator_id: str | None = None,
     now: Callable[[], datetime] | None = None,
     ledger: AuthorizationUseLedger | None = None,
@@ -209,6 +208,10 @@ def execute_authorized_ceqanet_listing(
 ) -> dict[str, object]:
     """Authorize and execute one exact immutable CEQAnet listing plan."""
 
+    policy = CeqanetListingExecutionPolicy(
+        timeout_seconds=timeout_seconds,
+        max_response_bytes=max_response_bytes,
+    )
     dry_run = CeqanetListingDryRunExecutor().run(plan)
     if not dry_run.requests or dry_run.planned_request_count != len(dry_run.requests):
         raise ValueError("listing plan must contain its exact nonempty request sequence")
@@ -231,15 +234,15 @@ def execute_authorized_ceqanet_listing(
         plan_id=plan_id,
     )
     exact_scope = _canonical_tuple(
-        f"max-attempts:{_POLICY.max_attempts}",
+        f"max-attempts:{policy.max_attempts}",
         f"max-pages:{plan.query.max_pages}",
-        f"max-response-bytes:{_POLICY.max_response_bytes}",
+        f"max-response-bytes:{policy.max_response_bytes}",
         "method:GET",
         f"plan-id:{plan_id}",
         "policy:CS-NET-002",
         f"request-count:{dry_run.planned_request_count}",
         "retries:0",
-        f"timeout-seconds:{_POLICY.timeout_seconds:g}",
+        f"timeout-seconds:{policy.timeout_seconds:g}",
         *(f"url:{request.url}" for request in dry_run.requests),
     )
     authorization = authorize_local_operator_operation(
@@ -279,7 +282,7 @@ def execute_authorized_ceqanet_listing(
     )
     active_executor: CeqanetListingExecutor = executor or execute_ceqanet_listing_plan
     try:
-        report = active_executor(plan, policy=_POLICY)
+        report = active_executor(plan, policy=policy)
     except CeqanetListingExecutionError as exc:
         raise CeqanetListingServiceError(str(exc)) from exc
     return _report_payload(
