@@ -18,7 +18,7 @@ from constructionsight.models import (
     SourceType,
     VerificationStatus,
 )
-from constructionsight.source_promotion_plan_service import (
+from constructionsight.operator_services.source_promotion_service import (
     build_authorized_source_promotion_plan,
 )
 from constructionsight.source_readiness_models import HttpReachabilityResult
