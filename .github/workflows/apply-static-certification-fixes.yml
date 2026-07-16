@@ -97,16 +97,42 @@ jobs:
         run: python -m compileall -q src tests scripts
 
       - name: Run focused static regressions
+        id: regressions
+        continue-on-error: true
         shell: bash
         run: |
-          set -euo pipefail
+          set -o pipefail
           python -m pytest --strict-config --strict-markers -W error -q \
             tests/test_supply_chain.py \
             tests/test_dependency_certification.py \
             tests/test_governance_contract_schema.py \
             tests/test_ceqanet_csv_live.py \
-            tests/test_ceqanet_csv_evidence_series.py::test_socks_proxy_transport_is_declared_and_installed
-          git diff --check
+            tests/test_ceqanet_csv_evidence_series.py::test_socks_proxy_transport_is_declared_and_installed \
+            > /tmp/static-regressions.txt 2>&1
+          status=$?
+          if [ ! -s /tmp/static-regressions.txt ]; then
+            printf '%s\n' 'Focused regressions passed with no output.' > /tmp/static-regressions.txt
+          fi
+          exit "${status}"
+
+      - name: Publish regression diagnostic without source edits
+        if: steps.regressions.outcome != 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git reset --hard HEAD
+          mkdir -p governance/diagnostics
+          cp /tmp/static-regressions.txt governance/diagnostics/static_regressions.txt
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add governance/diagnostics/static_regressions.txt
+          git commit -m 'Retain static regression diagnostic'
+          git push origin HEAD:agent/silent-risk-certification
+          exit 1
+
+      - name: Enforce focused regressions
+        shell: bash
+        run: test '${{ steps.regressions.outcome }}' = 'success'
 
       - name: Exercise corrected mutation overlay
         id: mutation
@@ -122,6 +148,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          git diff --check
           if git diff --quiet; then
             echo 'Static correction script produced no changes.' >&2
             exit 1
