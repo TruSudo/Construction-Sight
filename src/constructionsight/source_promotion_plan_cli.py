@@ -11,7 +11,11 @@ from rich.console import Console
 from rich.table import Table
 
 from constructionsight.adapters import default_adapter_family_specs
+from constructionsight.authorization_decision import AuthorizationDeniedError
 from constructionsight.models import PublicSource
+from constructionsight.operator_services.source_promotion_service import (
+    build_authorized_source_promotion_plan,
+)
 from constructionsight.source_promotion_plan_service import build_source_promotion_plan
 from constructionsight.source_verification_checklist_models import (
     SourceVerificationObservation,
@@ -51,15 +55,49 @@ def source_promotion_plan(
     ] = None,
     json_output: Annotated[bool, typer.Option("--json-output")] = False,
     check_http: Annotated[bool, typer.Option("--check-http")] = False,
+    operator_id: Annotated[
+        str | None,
+        typer.Option(
+            "--operator-id",
+            help="Explicit local operator audit identity required with --check-http.",
+        ),
+    ] = None,
+    authorization_reason: Annotated[
+        str | None,
+        typer.Option(
+            "--authorization-reason",
+            help="Nonblank reason required with --check-http.",
+        ),
+    ] = None,
 ) -> None:
     """Build a dry-run source promotion plan without registry mutation."""
 
-    report = build_source_promotion_plan(
-        _load_sources_from_json(registry_path),
-        default_adapter_family_specs(),
-        check_http=check_http,
-        observations=_load_observations(observations_path),
-    )
+    sources = _load_sources_from_json(registry_path)
+    observations = _load_observations(observations_path)
+    if check_http:
+        if operator_id is None or not operator_id.strip():
+            raise typer.BadParameter("--operator-id is required with --check-http")
+        if authorization_reason is None or not authorization_reason.strip():
+            raise typer.BadParameter("--authorization-reason is required with --check-http")
+        try:
+            report = build_authorized_source_promotion_plan(
+                sources,
+                default_adapter_family_specs(),
+                observations=observations,
+                caller_confirmation=True,
+                authorization_reason=authorization_reason,
+                operator_id=operator_id,
+            )
+        except (AuthorizationDeniedError, ValueError) as exc:
+            raise typer.BadParameter(str(exc)) from exc
+    else:
+        report = build_source_promotion_plan(
+            sources,
+            default_adapter_family_specs(),
+            check_http=False,
+            observations=observations,
+        )
+
     if json_output:
         console.print_json(json.dumps(report.to_dict()))
         return
