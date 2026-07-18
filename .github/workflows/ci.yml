@@ -7,8 +7,11 @@ on:
   push:
     branches:
       - main
-      - "agent/**"
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -20,6 +23,7 @@ jobs:
   quality:
     name: Python ${{ matrix.python-version }} quality gate
     runs-on: ubuntu-latest
+    timeout-minutes: 45
 
     strategy:
       fail-fast: false
@@ -258,4 +262,4 @@ jobs:
           name: certification-${{ matrix.lock-tag }}
           path: ${{ env.REPORT_DIR }}/
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 7
