@@ -340,10 +340,18 @@ def _safe_existing_paths(
         or values != sorted(set(values))
     ):
         return False
+    root_resolved = root.resolve()
     for raw_value in values:
         assert isinstance(raw_value, str)
         candidate = Path(raw_value)
-        if candidate.is_absolute() or ".." in candidate.parts or not (root / candidate).is_file():
+        if candidate.is_absolute() or ".." in candidate.parts:
+            return False
+        try:
+            resolved = (root / candidate).resolve(strict=True)
+            resolved.relative_to(root_resolved)
+        except (OSError, ValueError):
+            return False
+        if not resolved.is_file():
             return False
         if require_tests and (
             not raw_value.startswith("tests/") or candidate.suffix != ".py"
