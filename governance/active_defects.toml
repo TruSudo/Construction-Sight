@@ -208,3 +208,11 @@ area = "defect-closure-ledger-integrity"
 root_cause = "Canonical governance-shape certification validates active defect entries but does not validate resolved defect entry shape, evidence paths, resolution provenance, duplicate IDs, or active/resolved disjointness. The ledger comment also requires exact-tree certification before a defect can move to resolved even though exact-tree certification is mechanically blocked while any defect remains active, creating a circular and unenforceable closure rule."
 discovered_against = "e24eaea49fd9d05b256c2fac438e1a3d8d816657"
 required_resolution = "Define and enforce an exact resolved-defect evidence schema; require unique IDs, full discovery and resolution commit provenance, nonblank resolution summary, safe existing regression/evidence paths, independent-review binding, and active/resolved disjointness; revise closure doctrine so correction, regression evidence, and independent review authorize the ledger move and canonical exact-tree CI certifies the resulting zero-active-defect tree; add malformed, duplicate, overlap, unsafe-path, and valid-closure regressions."
+
+[[defects]]
+id = "CS-SR-027"
+severity = "P0"
+area = "independent-review-identity-authenticity"
+root_cause = "The independent-review certifier requires only nonblank reviewer text inside a repository-controlled JSON artifact. An implementing author can therefore self-author an otherwise valid artifact, claim an arbitrary reviewer identity, and satisfy the mechanical review gate without a separately submitted GitHub review."
+discovered_against = "dcffdb41cc947388528fa9fa2c4bec34e4589299"
+required_resolution = "Bind the review artifact to a real GitHub pull-request review ID and exact reviewed commit; require canonical pull-request CI to fetch that review from GitHub and verify APPROVED state, matching reviewer login, matching commit, a human User identity distinct from the PR author and repository owner, and aggregate the external-review result as a mandatory finalization gate; add positive and spoofing regressions while retaining repository certification as the missing-review blocker before an artifact exists."
