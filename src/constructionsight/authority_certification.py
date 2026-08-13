@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
+import subprocess
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
@@ -15,10 +17,30 @@ from constructionsight.governance_certification_core import (
     GovernanceContractError,
     GovernanceFinding,
     _finding,
-    _git,
     _read_toml,
 )
 from constructionsight.traceability_certification import _match_contract_owner
+
+_ALLOWED_AFTER_REVIEW = frozenset(
+    {
+        "governance/reviews/independent_review.json",
+        "governance/active_defects.toml",
+        "governance/resolved_defects.toml",
+        "docs/audits/silent_risk_certification_2026-07-15.md",
+    }
+)
+_REVIEW_FIELDS = frozenset(
+    {
+        "schema_version",
+        "status",
+        "reviewer",
+        "review_method",
+        "reviewed_commit",
+        "reviewed_tree_digest",
+        "findings",
+    }
+)
+_REVIEW_TREE_DOMAIN = b"constructionsight.reviewed-tree/v1\0"
 
 
 def _audit_network(
@@ -366,6 +388,54 @@ def _audit_test_obligations(
                 )
 
 
+def _reviewed_tree_digest(root: Path) -> str:
+    """Return a topology-independent digest of the review-covered Git index tree."""
+
+    completed = subprocess.run(
+        ["git", "-C", str(root), "ls-files", "--stage", "-z"],
+        check=False,
+        capture_output=True,
+    )
+    if completed.returncode != 0:
+        detail = (
+            completed.stderr.decode("utf-8", errors="replace").strip()
+            or completed.stdout.decode("utf-8", errors="replace").strip()
+            or "unknown git error"
+        )
+        raise GovernanceContractError(detail)
+
+    allowed = {path.encode("utf-8") for path in _ALLOWED_AFTER_REVIEW}
+    entries: list[tuple[bytes, bytes, bytes]] = []
+    for raw_entry in completed.stdout.split(b"\0"):
+        if not raw_entry:
+            continue
+        metadata, separator, path = raw_entry.partition(b"\t")
+        fields = metadata.split()
+        if not separator or len(fields) != 3:
+            raise GovernanceContractError("git index entry has an unexpected shape")
+        mode, object_id, stage = fields
+        if stage != b"0":
+            display_path = path.decode("utf-8", errors="replace")
+            raise GovernanceContractError(
+                f"git index contains an unresolved stage for {display_path!r}"
+            )
+        if path in allowed:
+            continue
+        entries.append((path, mode, object_id))
+
+    digest = hashlib.sha256()
+    digest.update(_REVIEW_TREE_DOMAIN)
+    for path, mode, object_id in sorted(entries, key=lambda entry: entry[0]):
+        digest.update(len(path).to_bytes(8, byteorder="big"))
+        digest.update(path)
+        digest.update(b"\0")
+        digest.update(mode)
+        digest.update(b"\0")
+        digest.update(object_id)
+        digest.update(b"\0")
+    return digest.hexdigest()
+
+
 def _audit_defects_and_review(
     root: Path, findings: list[GovernanceFinding]
 ) -> None:
@@ -422,6 +492,26 @@ def _audit_defects_and_review(
             )
         )
         return
+    if not isinstance(report, dict):
+        findings.append(
+            _finding(
+                "REVIEW-002",
+                review_path.relative_to(root),
+                "review report must be a JSON object",
+            )
+        )
+        return
+    missing = _REVIEW_FIELDS - set(report)
+    unknown = set(report) - _REVIEW_FIELDS
+    if missing or unknown:
+        findings.append(
+            _finding(
+                "REVIEW-010",
+                review_path.relative_to(root),
+                "independent review fields disagree with schema; "
+                f"missing={sorted(missing)}, unknown={sorted(unknown)}",
+            )
+        )
     if report.get("schema_version") != _REVIEW_SCHEMA:
         findings.append(
             _finding(
@@ -438,6 +528,16 @@ def _audit_defects_and_review(
                 "independent review has not passed",
             )
         )
+    for field in ("reviewer", "review_method"):
+        value = report.get(field)
+        if not isinstance(value, str) or not value.strip() or value != value.strip():
+            findings.append(
+                _finding(
+                    "REVIEW-011",
+                    review_path.relative_to(root),
+                    f"{field} must be nonblank trimmed text",
+                )
+            )
     review_findings = report.get("findings")
     malformed_or_unresolved = (
         not isinstance(review_findings, list)
@@ -465,12 +565,20 @@ def _audit_defects_and_review(
                 "reviewed_commit must be a full commit SHA",
             )
         )
+    reviewed_tree_digest = report.get("reviewed_tree_digest")
+    if not isinstance(reviewed_tree_digest, str) or not re.fullmatch(
+        r"[0-9a-f]{64}", reviewed_tree_digest
+    ):
+        findings.append(
+            _finding(
+                "REVIEW-012",
+                review_path.relative_to(root),
+                "reviewed_tree_digest must be a lowercase SHA-256 digest",
+            )
+        )
         return
     try:
-        head_parent = _git(root, "rev-parse", "HEAD^")
-        changed = set(
-            _git(root, "diff", "--name-only", f"{reviewed_commit}..HEAD").splitlines()
-        )
+        current_tree_digest = _reviewed_tree_digest(root)
     except GovernanceContractError as exc:
         findings.append(
             _finding(
@@ -480,26 +588,12 @@ def _audit_defects_and_review(
             )
         )
         return
-    allowed_after_review = {
-        "governance/reviews/independent_review.json",
-        "governance/active_defects.toml",
-        "governance/resolved_defects.toml",
-        "docs/audits/silent_risk_certification_2026-07-15.md",
-    }
-    if head_parent != reviewed_commit:
-        findings.append(
-            _finding(
-                "REVIEW-008",
-                review_path.relative_to(root),
-                "reviewed_commit must be the direct parent of the exact certified head",
-            )
-        )
-    unreviewed = changed - allowed_after_review
-    if unreviewed:
+    if current_tree_digest != reviewed_tree_digest:
         findings.append(
             _finding(
                 "REVIEW-009",
                 review_path.relative_to(root),
-                f"unreviewed files changed after reviewed commit: {sorted(unreviewed)}",
+                "tracked tree outside permitted post-review governance artifacts "
+                "does not match the independently reviewed tree digest",
             )
         )
