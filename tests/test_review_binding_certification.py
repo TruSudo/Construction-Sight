@@ -4,11 +4,16 @@ import json
 import subprocess
 from pathlib import Path
 
+import pytest
+
 from constructionsight.authority_certification import (
     _audit_defects_and_review,
     _reviewed_tree_digest,
 )
-from constructionsight.governance_certification_core import GovernanceFinding
+from constructionsight.governance_certification_core import (
+    GovernanceContractError,
+    GovernanceFinding,
+)
 
 
 def _git(root: Path, *args: str) -> str:
@@ -114,7 +119,9 @@ def test_review_binding_survives_synthetic_merge_topology(tmp_path: Path) -> Non
     assert _review_codes(findings) == set()
 
 
-def test_review_binding_rejects_nonpermitted_tree_change(tmp_path: Path) -> None:
+def test_review_binding_rejects_nonpermitted_committed_tree_change(
+    tmp_path: Path,
+) -> None:
     _initialize_repository(tmp_path)
     reviewed_commit = _git(tmp_path, "rev-parse", "HEAD")
     reviewed_tree_digest = _reviewed_tree_digest(tmp_path)
@@ -124,14 +131,61 @@ def test_review_binding_rejects_nonpermitted_tree_change(tmp_path: Path) -> None
         reviewed_tree_digest=reviewed_tree_digest,
     )
     _git(tmp_path, "add", "governance/reviews/independent_review.json")
+    _git(tmp_path, "commit", "-m", "record review")
 
     _write(tmp_path, "src/constructionsight/reviewed.py", "VALUE = 'tampered'\n")
     _git(tmp_path, "add", "src/constructionsight/reviewed.py")
+    _git(tmp_path, "commit", "-m", "tamper reviewed implementation")
 
     findings: list[GovernanceFinding] = []
     _audit_defects_and_review(tmp_path, findings)
 
     assert "REVIEW-009" in _review_codes(findings)
+
+
+def test_reviewed_tree_digest_rejects_unstaged_nonpermitted_change(
+    tmp_path: Path,
+) -> None:
+    _initialize_repository(tmp_path)
+    _write(tmp_path, "src/constructionsight/reviewed.py", "VALUE = 'unstaged'\n")
+
+    with pytest.raises(GovernanceContractError, match="review-covered worktree is dirty"):
+        _reviewed_tree_digest(tmp_path)
+
+
+def test_reviewed_tree_digest_rejects_staged_nonpermitted_change(
+    tmp_path: Path,
+) -> None:
+    _initialize_repository(tmp_path)
+    _write(tmp_path, "src/constructionsight/reviewed.py", "VALUE = 'staged'\n")
+    _git(tmp_path, "add", "src/constructionsight/reviewed.py")
+
+    with pytest.raises(GovernanceContractError, match="review-covered worktree is dirty"):
+        _reviewed_tree_digest(tmp_path)
+
+
+def test_reviewed_tree_digest_rejects_untracked_nonpermitted_change(
+    tmp_path: Path,
+) -> None:
+    _initialize_repository(tmp_path)
+    _write(tmp_path, "src/constructionsight/untracked.py", "VALUE = 'untracked'\n")
+
+    with pytest.raises(GovernanceContractError, match="review-covered worktree is dirty"):
+        _reviewed_tree_digest(tmp_path)
+
+
+def test_reviewed_tree_digest_allows_dirty_permitted_finalization_path(
+    tmp_path: Path,
+) -> None:
+    _initialize_repository(tmp_path)
+    baseline = _reviewed_tree_digest(tmp_path)
+    _write(
+        tmp_path,
+        "docs/audits/silent_risk_certification_2026-07-15.md",
+        "permitted finalization evidence\n",
+    )
+
+    assert _reviewed_tree_digest(tmp_path) == baseline
 
 
 def test_review_binding_rejects_unknown_review_fields(tmp_path: Path) -> None:
