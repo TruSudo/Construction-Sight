@@ -184,3 +184,11 @@ area = "synchronization-integrity"
 root_cause = "Sequential hardening commits left tests importing application functions that were not committed, placed authorization logic inside a domain-classified planning module, and allowed PR and governance inventories to lag the actual branch."
 discovered_against = "9fbd989cb20e1bf078f0ee188b9eaaf7830d172f"
 required_resolution = "Restore pure domain boundaries, add application-layer facades, align every test import and CLI call, synchronize mutation/adversarial/capability/defect contracts and PR metadata, and obtain exact-head CI evidence before resolution."
+
+[[defects]]
+id = "CS-SR-024"
+severity = "P0"
+area = "independent-review-binding"
+root_cause = "The independent-review certifier binds reviewed_commit to HEAD^ and diffs reviewed_commit..HEAD, but canonical pull-request CI checks out a shallow synthetic merge ref whose first parent is main rather than the reviewed branch implementation. A legitimate review can therefore fail solely because of GitHub merge topology, and the binding is not stable across an equivalent squash-merged tree."
+discovered_against = "3d2cd3ad81e6fe4a3f5ec0b637f95a57315c1c55"
+required_resolution = "Replace parent-topology binding with a deterministic reviewed-tree digest that covers every tracked path except explicitly permitted post-review governance artifacts; retain reviewed commit provenance; reject any non-permitted tree drift; and add synthetic-merge, shallow-history, allowed-finalization, and tamper regressions."
