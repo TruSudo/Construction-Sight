@@ -38,6 +38,7 @@ tests = [
   "tests/test_ceqanet_persistence_execute.py",
   "tests/test_ceqanet_persistence_operator_service.py",
   "tests/test_ceqanet_recurring_run_operator_service.py",
+  "tests/test_ci_exact_head_contract.py",
   "tests/test_dependency_certification.py",
   "tests/test_governance_certification.py",
   "tests/test_governance_contract_schema.py",
