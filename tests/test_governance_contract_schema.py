@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
@@ -96,6 +97,58 @@ def _contracts() -> dict[str, dict[str, Any]]:
     }
 
 
+def _active_defect(defect_id: str = "CS-SR-001") -> dict[str, Any]:
+    return {
+        "id": defect_id,
+        "severity": "P1",
+        "area": "certification",
+        "root_cause": "root cause",
+        "discovered_against": "a" * 40,
+        "required_resolution": "required resolution",
+    }
+
+
+def _write_resolution_evidence(root: Path, digest: str) -> None:
+    (root / "docs").mkdir(parents=True, exist_ok=True)
+    (root / "tests").mkdir(parents=True, exist_ok=True)
+    (root / "governance/reviews").mkdir(parents=True, exist_ok=True)
+    (root / "docs/evidence.md").write_text("evidence\n", encoding="utf-8")
+    (root / "tests/test_resolution.py").write_text(
+        "def test_resolution():\n    assert True\n",
+        encoding="utf-8",
+    )
+    (root / "governance/reviews/independent_review.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "constructionsight.independent-review/v1",
+                "status": "passed",
+                "reviewer": "independent-reviewer",
+                "review_method": "adversarial review",
+                "reviewed_commit": "c" * 40,
+                "reviewed_tree_digest": digest,
+                "findings": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
+def _resolved_defect(
+    defect_id: str = "CS-SR-001",
+    *,
+    digest: str = "d" * 64,
+) -> dict[str, Any]:
+    return {
+        **_active_defect(defect_id),
+        "resolution_summary": "Implemented and regression-tested the required correction.",
+        "resolution_commit": "b" * 40,
+        "evidence_paths": ["docs/evidence.md"],
+        "regression_tests": ["tests/test_resolution.py"],
+        "review_artifact": "governance/reviews/independent_review.json",
+        "reviewed_tree_digest": digest,
+    }
+
+
 def _codes(findings: list[GovernanceFinding]) -> set[str]:
     return {finding.code for finding in findings}
 
@@ -155,6 +208,88 @@ def test_active_defect_requires_exact_fields_identity_and_commit(tmp_path: Path)
         "GOV-LEDGER-007",
         "GOV-LEDGER-008",
     } <= _codes(findings)
+
+
+def test_valid_resolved_defect_requires_review_and_evidence(tmp_path: Path) -> None:
+    digest = "d" * 64
+    _write_resolution_evidence(tmp_path, digest)
+    contracts = _contracts()
+    contracts["governance/resolved_defects.toml"]["defects"] = [
+        _resolved_defect(digest=digest)
+    ]
+    findings: list[GovernanceFinding] = []
+
+    audit_governance_contract_shapes(tmp_path, contracts, findings)
+
+    assert findings == []
+
+
+def test_resolved_defect_rejects_malformed_and_unsafe_evidence(tmp_path: Path) -> None:
+    contracts = _contracts()
+    malformed = _resolved_defect()
+    malformed.update(
+        {
+            "id": "bad-id",
+            "severity": "urgent",
+            "area": " certification ",
+            "root_cause": "",
+            "discovered_against": "short",
+            "required_resolution": "",
+            "resolution_summary": "",
+            "resolution_commit": "short",
+            "evidence_paths": ["../escape"],
+            "regression_tests": ["docs/not-a-test.md"],
+            "review_artifact": "governance/reviews/other.json",
+            "reviewed_tree_digest": "short",
+            "unknown": True,
+        }
+    )
+    contracts["governance/resolved_defects.toml"]["defects"] = [malformed]
+    findings: list[GovernanceFinding] = []
+
+    audit_governance_contract_shapes(tmp_path, contracts, findings)
+
+    assert {
+        "GOV-RESOLVED-003",
+        "GOV-RESOLVED-004",
+        "GOV-RESOLVED-007",
+        "GOV-RESOLVED-008",
+        "GOV-RESOLVED-009",
+        "GOV-RESOLVED-010",
+        "GOV-RESOLVED-011",
+        "GOV-RESOLVED-012",
+        "GOV-RESOLVED-013",
+    } <= _codes(findings)
+
+
+def test_resolved_defects_reject_duplicate_and_active_overlap(tmp_path: Path) -> None:
+    digest = "d" * 64
+    _write_resolution_evidence(tmp_path, digest)
+    resolved = _resolved_defect(digest=digest)
+    contracts = _contracts()
+    contracts["governance/active_defects.toml"]["defects"] = [_active_defect()]
+    contracts["governance/resolved_defects.toml"]["defects"] = [
+        resolved,
+        deepcopy(resolved),
+    ]
+    findings: list[GovernanceFinding] = []
+
+    audit_governance_contract_shapes(tmp_path, contracts, findings)
+
+    assert {"GOV-RESOLVED-005", "GOV-RESOLVED-006"} <= _codes(findings)
+
+
+def test_resolved_defect_must_bind_canonical_review_digest(tmp_path: Path) -> None:
+    _write_resolution_evidence(tmp_path, "e" * 64)
+    contracts = _contracts()
+    contracts["governance/resolved_defects.toml"]["defects"] = [
+        _resolved_defect(digest="d" * 64)
+    ]
+    findings: list[GovernanceFinding] = []
+
+    audit_governance_contract_shapes(tmp_path, contracts, findings)
+
+    assert "GOV-RESOLVED-015" in _codes(findings)
 
 
 def test_open_work_rejects_duplicate_and_unsafe_overlap_paths(tmp_path: Path) -> None:
