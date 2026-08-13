@@ -192,3 +192,11 @@ area = "independent-review-binding"
 root_cause = "The independent-review certifier binds reviewed_commit to HEAD^ and diffs reviewed_commit..HEAD, but canonical pull-request CI checks out a shallow synthetic merge ref whose first parent is main rather than the reviewed branch implementation. A legitimate review can therefore fail solely because of GitHub merge topology, and the binding is not stable across an equivalent squash-merged tree."
 discovered_against = "3d2cd3ad81e6fe4a3f5ec0b637f95a57315c1c55"
 required_resolution = "Replace parent-topology binding with a deterministic reviewed-tree digest that covers every tracked path except explicitly permitted post-review governance artifacts; retain reviewed commit provenance; reject any non-permitted tree drift; and add synthetic-merge, shallow-history, allowed-finalization, and tamper regressions."
+
+[[defects]]
+id = "CS-SR-025"
+severity = "P0"
+area = "independent-review-worktree-binding"
+root_cause = "The reviewed-tree digest is computed from Git index object identities without first rejecting dirty non-permitted worktree state. A reviewer could therefore compute a digest that represents the committed index while inspecting or executing unstaged, staged, or untracked non-permitted content not represented by that digest."
+discovered_against = "684cc01aa3d2094bd743484280634e182d9f3626"
+required_resolution = "Make reviewed-tree digest computation fail closed when any staged, unstaged, or untracked path exists outside the explicit post-review finalization allowlist; retain permitted finalization behavior; and add staged, unstaged, untracked, and allowed-path regression coverage."
