@@ -441,7 +441,8 @@ def _audit_resolved_defects(
                 _finding(
                     "GOV-RESOLVED-010",
                     path,
-                    f"resolved defect {defect_id}.evidence_paths must be safe, existing, unique, and sorted",
+                    f"resolved defect {defect_id}.evidence_paths must be safe, existing, "
+                    "unique, and sorted",
                 )
             )
         if not _safe_existing_paths(
@@ -453,7 +454,8 @@ def _audit_resolved_defects(
                 _finding(
                     "GOV-RESOLVED-011",
                     path,
-                    f"resolved defect {defect_id}.regression_tests must be safe existing tests, unique, and sorted",
+                    f"resolved defect {defect_id}.regression_tests must be safe existing "
+                    "tests, unique, and sorted",
                 )
             )
         review_artifact = defect.get("review_artifact")
@@ -464,7 +466,8 @@ def _audit_resolved_defects(
                 _finding(
                     "GOV-RESOLVED-012",
                     path,
-                    f"resolved defect {defect_id} must reference the existing canonical independent-review artifact",
+                    f"resolved defect {defect_id} must reference the existing canonical "
+                    "independent-review artifact",
                 )
             )
         reviewed_tree_digest = defect.get("reviewed_tree_digest")
@@ -475,7 +478,8 @@ def _audit_resolved_defects(
                 _finding(
                     "GOV-RESOLVED-013",
                     path,
-                    f"resolved defect {defect_id}.reviewed_tree_digest must be a lowercase SHA-256 digest",
+                    f"resolved defect {defect_id}.reviewed_tree_digest must be a lowercase "
+                    "SHA-256 digest",
                 )
             )
         elif review_artifact == _CANONICAL_REVIEW_ARTIFACT and (
@@ -490,7 +494,8 @@ def _audit_resolved_defects(
                     _finding(
                         "GOV-RESOLVED-014",
                         path,
-                        f"resolved defect {defect_id} cannot verify malformed independent-review evidence",
+                        f"resolved defect {defect_id} cannot verify malformed "
+                        "independent-review evidence",
                     )
                 )
             else:
@@ -501,7 +506,8 @@ def _audit_resolved_defects(
                         _finding(
                             "GOV-RESOLVED-015",
                             path,
-                            f"resolved defect {defect_id} does not bind the canonical reviewed-tree digest",
+                            f"resolved defect {defect_id} does not bind the canonical "
+                            "reviewed-tree digest",
                         )
                     )
 
