@@ -262,6 +262,25 @@ def test_resolved_defect_rejects_malformed_and_unsafe_evidence(tmp_path: Path) -
     } <= _codes(findings)
 
 
+def test_resolved_defect_rejects_symlink_escape(tmp_path: Path) -> None:
+    digest = "d" * 64
+    _write_resolution_evidence(tmp_path, digest)
+    evidence = tmp_path / "docs/evidence.md"
+    evidence.unlink()
+    outside = tmp_path.parent / f"{tmp_path.name}-outside-evidence.md"
+    outside.write_text("outside\n", encoding="utf-8")
+    evidence.symlink_to(outside)
+    contracts = _contracts()
+    contracts["governance/resolved_defects.toml"]["defects"] = [
+        _resolved_defect(digest=digest)
+    ]
+    findings: list[GovernanceFinding] = []
+
+    audit_governance_contract_shapes(tmp_path, contracts, findings)
+
+    assert "GOV-RESOLVED-010" in _codes(findings)
+
+
 def test_resolved_defects_reject_duplicate_and_active_overlap(tmp_path: Path) -> None:
     digest = "d" * 64
     _write_resolution_evidence(tmp_path, digest)
