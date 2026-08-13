@@ -61,7 +61,7 @@ A planned capability is not an active defect when the current supported boundary
 
 A certified tree must contain zero active defects. Any new runtime, data-quality, documentation, persistence, provenance, compatibility, security, or CI defect is recorded here immediately and blocks feature work until resolved.
 
-Current active entries: **none recorded**. The executable certification gate remains authoritative for the exact Git tree.
+Current active entries: **24 (`CS-SR-001` through `CS-SR-024`)**. The ledger intentionally remains blocking until each entry has correction evidence, independent review, and exact-tree certification.
 
 ## Resolved defect ledger
 
