@@ -26,7 +26,8 @@ def main() -> None:
 
 def _reject_output_without_json(output_path: Path | None, json_output: bool) -> None:
     if output_path is not None and not json_output:
-        raise typer.BadParameter("--output requires --json-output")
+        typer.echo("--output requires --json-output", err=True)
+        raise typer.Exit(code=1)
 
 
 def _write_json_file(output_path: Path, payload: dict[str, object]) -> None:
