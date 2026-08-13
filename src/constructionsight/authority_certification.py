@@ -388,9 +388,41 @@ def _audit_test_obligations(
                 )
 
 
-def _reviewed_tree_digest(root: Path) -> str:
-    """Return a topology-independent digest of the review-covered Git index tree."""
+def _assert_review_worktree_clean(root: Path) -> None:
+    command = [
+        "git",
+        "-C",
+        str(root),
+        "status",
+        "--porcelain=v1",
+        "-z",
+        "--untracked-files=all",
+        "--",
+        ".",
+        *(f":(exclude){path}" for path in sorted(_ALLOWED_AFTER_REVIEW)),
+    ]
+    completed = subprocess.run(command, check=False, capture_output=True)
+    if completed.returncode != 0:
+        detail = (
+            completed.stderr.decode("utf-8", errors="replace").strip()
+            or completed.stdout.decode("utf-8", errors="replace").strip()
+            or "unknown git error"
+        )
+        raise GovernanceContractError(detail)
+    if completed.stdout:
+        dirty = completed.stdout.replace(b"\0", b"\n").decode(
+            "utf-8", errors="replace"
+        ).strip()
+        raise GovernanceContractError(
+            "review-covered worktree is dirty outside permitted finalization paths: "
+            f"{dirty}"
+        )
 
+
+def _reviewed_tree_digest(root: Path) -> str:
+    """Return a topology-independent digest of the clean review-covered Git index tree."""
+
+    _assert_review_worktree_clean(root)
     completed = subprocess.run(
         ["git", "-C", str(root), "ls-files", "--stage", "-z"],
         check=False,
