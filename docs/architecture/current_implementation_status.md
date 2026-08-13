@@ -52,7 +52,7 @@ A planned capability is not an active defect when the current supported boundary
 | Lead review package | Yes | Yes | Yes | Yes | Yes | No | Full review payloads, reasons, limitations, and scores remain visible. |
 | Lead dedupe | Yes | Yes | Yes | Yes | Yes | No | Fingerprints and duplicate results are persisted and visible. |
 | Lead workflow status | Yes | Yes | Yes | Yes | Yes | No | Matrix-valid, exact-state transitions preserve append-only unique events. |
-| Result ledger/share authority | Yes | Yes | Yes | Yes | Yes | No | Immutable revisions, serialized exact-state authority, and append-only operator events govern result entry and correction. |
+| Result ledger/share authority | Yes | Yes | Yes | Yes | Yes | No | Immutable revisions, serialized exact-state authority heads, and append-only operator events govern result entry and correction. |
 | Repository certification | Yes | Yes | Yes | N/A | Yes | N/A | Every tracked file is scanned; CI enforces dependency integrity, strict lint/type/test gates, warning failure, clean worktree, and diff hygiene. |
 | Outreach preview | No | No | No | No | No | No | Planned product capability; no external action is implied. |
 | UI/operator app | No | No | No | No | No | No | Planned product capability. |
@@ -61,7 +61,7 @@ A planned capability is not an active defect when the current supported boundary
 
 A certified tree must contain zero active defects. Any new runtime, data-quality, documentation, persistence, provenance, compatibility, security, or CI defect is recorded here immediately and blocks feature work until resolved.
 
-Current active entries: **26 (`CS-SR-001` through `CS-SR-026`)**. The ledger intentionally remains blocking until each entry has correction evidence, independent review, and exact-tree certification.
+Current active entries: **27 (`CS-SR-001` through `CS-SR-027`)**. The ledger intentionally remains blocking until each entry has correction evidence, independent review, and exact-tree certification.
 
 ## Resolved defect ledger
 
