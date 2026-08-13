@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 from collections.abc import Mapping
 from datetime import date
@@ -100,6 +101,14 @@ _ACTIVE_DEFECT_FIELDS: Final = {
     "discovered_against",
     "required_resolution",
 }
+_RESOLVED_DEFECT_FIELDS: Final = _ACTIVE_DEFECT_FIELDS | {
+    "resolution_summary",
+    "resolution_commit",
+    "evidence_paths",
+    "regression_tests",
+    "review_artifact",
+    "reviewed_tree_digest",
+}
 _OVERLAP_FIELDS: Final = {
     "repository",
     "pull_request",
@@ -122,6 +131,7 @@ _VULNERABILITY_EXCEPTION_FIELDS: Final = {
     "expires_on",
     "review_evidence",
 }
+_CANONICAL_REVIEW_ARTIFACT: Final = "governance/reviews/independent_review.json"
 
 
 def _nonblank(value: object) -> bool:
@@ -256,12 +266,12 @@ def _audit_policy_boundaries(
 def _audit_active_defects(
     payload: Mapping[str, Any],
     findings: list[GovernanceFinding],
-) -> None:
+) -> set[str]:
     path = "governance/active_defects.toml"
     defects = payload.get("defects")
     if not isinstance(defects, list):
         findings.append(_finding("GOV-LEDGER-001", path, "defects must be an array"))
-        return
+        return set()
     ids: set[str] = set()
     for defect in defects:
         if not isinstance(defect, dict):
@@ -314,6 +324,178 @@ def _audit_active_defects(
                         f"active defect {defect_id}.{field} must be nonblank trimmed text",
                     )
                 )
+    return ids
+
+
+def _safe_existing_paths(
+    root: Path,
+    values: object,
+    *,
+    require_tests: bool,
+) -> bool:
+    if (
+        not isinstance(values, list)
+        or not values
+        or not all(_nonblank(value) for value in values)
+        or values != sorted(set(values))
+    ):
+        return False
+    for raw_value in values:
+        assert isinstance(raw_value, str)
+        candidate = Path(raw_value)
+        if candidate.is_absolute() or ".." in candidate.parts or not (root / candidate).is_file():
+            return False
+        if require_tests and (
+            not raw_value.startswith("tests/") or candidate.suffix != ".py"
+        ):
+            return False
+    return True
+
+
+def _audit_resolved_defects(
+    root: Path,
+    payload: Mapping[str, Any],
+    active_ids: set[str],
+    findings: list[GovernanceFinding],
+) -> None:
+    path = "governance/resolved_defects.toml"
+    defects = payload.get("defects")
+    if not isinstance(defects, list):
+        findings.append(_finding("GOV-RESOLVED-001", path, "defects must be an array"))
+        return
+    ids: set[str] = set()
+    for defect in defects:
+        if not isinstance(defect, dict):
+            findings.append(
+                _finding("GOV-RESOLVED-002", path, "every resolved defect must be a table")
+            )
+            continue
+        _exact_fields(
+            defect,
+            _RESOLVED_DEFECT_FIELDS,
+            path=path,
+            code="GOV-RESOLVED-003",
+            label="resolved defect",
+            findings=findings,
+        )
+        defect_id = defect.get("id")
+        if not isinstance(defect_id, str) or not re.fullmatch(r"CS-SR-[0-9]{3}", defect_id):
+            findings.append(
+                _finding("GOV-RESOLVED-004", path, "resolved defect ID must match CS-SR-NNN")
+            )
+        elif defect_id in ids:
+            findings.append(
+                _finding("GOV-RESOLVED-005", path, f"duplicate resolved defect ID: {defect_id}")
+            )
+        else:
+            ids.add(defect_id)
+        if isinstance(defect_id, str) and defect_id in active_ids:
+            findings.append(
+                _finding(
+                    "GOV-RESOLVED-006",
+                    path,
+                    f"defect cannot be both active and resolved: {defect_id}",
+                )
+            )
+        if defect.get("severity") not in {"P0", "P1", "P2", "P3"}:
+            findings.append(
+                _finding(
+                    "GOV-RESOLVED-007",
+                    path,
+                    f"invalid severity for resolved defect {defect_id}",
+                )
+            )
+        for field in ("discovered_against", "resolution_commit"):
+            value = defect.get(field)
+            if not isinstance(value, str) or not re.fullmatch(r"[0-9a-f]{40}", value):
+                findings.append(
+                    _finding(
+                        "GOV-RESOLVED-008",
+                        path,
+                        f"resolved defect {defect_id}.{field} must be a full commit SHA",
+                    )
+                )
+        for field in ("area", "root_cause", "required_resolution", "resolution_summary"):
+            if not _nonblank(defect.get(field)):
+                findings.append(
+                    _finding(
+                        "GOV-RESOLVED-009",
+                        path,
+                        f"resolved defect {defect_id}.{field} must be nonblank trimmed text",
+                    )
+                )
+        if not _safe_existing_paths(
+            root,
+            defect.get("evidence_paths"),
+            require_tests=False,
+        ):
+            findings.append(
+                _finding(
+                    "GOV-RESOLVED-010",
+                    path,
+                    f"resolved defect {defect_id}.evidence_paths must be safe, existing, unique, and sorted",
+                )
+            )
+        if not _safe_existing_paths(
+            root,
+            defect.get("regression_tests"),
+            require_tests=True,
+        ):
+            findings.append(
+                _finding(
+                    "GOV-RESOLVED-011",
+                    path,
+                    f"resolved defect {defect_id}.regression_tests must be safe existing tests, unique, and sorted",
+                )
+            )
+        review_artifact = defect.get("review_artifact")
+        if review_artifact != _CANONICAL_REVIEW_ARTIFACT or not (
+            root / _CANONICAL_REVIEW_ARTIFACT
+        ).is_file():
+            findings.append(
+                _finding(
+                    "GOV-RESOLVED-012",
+                    path,
+                    f"resolved defect {defect_id} must reference the existing canonical independent-review artifact",
+                )
+            )
+        reviewed_tree_digest = defect.get("reviewed_tree_digest")
+        if not isinstance(reviewed_tree_digest, str) or not re.fullmatch(
+            r"[0-9a-f]{64}", reviewed_tree_digest
+        ):
+            findings.append(
+                _finding(
+                    "GOV-RESOLVED-013",
+                    path,
+                    f"resolved defect {defect_id}.reviewed_tree_digest must be a lowercase SHA-256 digest",
+                )
+            )
+        elif review_artifact == _CANONICAL_REVIEW_ARTIFACT and (
+            root / _CANONICAL_REVIEW_ARTIFACT
+        ).is_file():
+            try:
+                review_payload = json.loads(
+                    (root / _CANONICAL_REVIEW_ARTIFACT).read_text(encoding="utf-8")
+                )
+            except (OSError, UnicodeError, json.JSONDecodeError):
+                findings.append(
+                    _finding(
+                        "GOV-RESOLVED-014",
+                        path,
+                        f"resolved defect {defect_id} cannot verify malformed independent-review evidence",
+                    )
+                )
+            else:
+                if not isinstance(review_payload, dict) or review_payload.get(
+                    "reviewed_tree_digest"
+                ) != reviewed_tree_digest:
+                    findings.append(
+                        _finding(
+                            "GOV-RESOLVED-015",
+                            path,
+                            f"resolved defect {defect_id} does not bind the canonical reviewed-tree digest",
+                        )
+                    )
 
 
 def _audit_open_work(
@@ -487,7 +669,15 @@ def audit_governance_contract_shapes(
     if any(path not in contracts for path in _CONTRACT_FIELDS):
         return
     _audit_policy_boundaries(contracts, findings)
-    _audit_active_defects(contracts["governance/active_defects.toml"], findings)
+    active_ids = _audit_active_defects(
+        contracts["governance/active_defects.toml"], findings
+    )
+    _audit_resolved_defects(
+        root,
+        contracts["governance/resolved_defects.toml"],
+        active_ids,
+        findings,
+    )
     _audit_open_work(contracts["governance/open_work.toml"], findings)
     _audit_vulnerability_exceptions(
         contracts["governance/vulnerability_exceptions.toml"],
