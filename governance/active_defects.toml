@@ -312,3 +312,27 @@ area = "http-environment-and-transport-authority"
 root_cause = "The bounded HTTP engine creates its owned httpx.Client with the default trust_env=True and accepts preconfigured injected clients, so environment proxy routing, proxy credentials, CA trust, and client-certificate state can be introduced beneath exact URL and auth checks; auth=None does not neutralize transport-level environment or TLS credential configuration."
 discovered_against = "5f714c68f07d0820516046349210067dc5ad8c93"
 required_resolution = "Construct the production client with trust_env=False and explicit reviewed TLS settings, remove effect-capable preconfigured client injection from production-visible boundaries, isolate deterministic test transport behind a non-production boundary, and add regression and mutation coverage proving environment proxies, CA overrides, proxy credentials, and client certificates cannot alter production HTTP execution."
+
+[[defects]]
+id = "CS-SR-040"
+severity = "P0"
+area = "arcgis-exact-request-and-evidence-integrity"
+root_cause = "ArcGIS acquisition and rehearsal effect boundaries accept caller-configured httpx.Client instances and call Client.get or Client.stream, allowing client query defaults, authentication, hooks, redirect policy, environment proxy or TLS state, and custom transports to alter the request or response evidence beneath the reviewed plan; post-response history and endpoint checks occur only after effects, and the acquisition path does not reject redirect history."
+discovered_against = "5f714c68f07d0820516046349210067dc5ad8c93"
+required_resolution = "Route every production ArcGIS request through an environment-independent bounded transport that constructs and authorizes one exact canonical URL including its complete query, denies redirects before execution, rejects unauthorized authentication and hooks, removes effect-capable client injection from production-visible APIs, and adds query-default, auth, hook, redirect, proxy, TLS, and forged-evidence regressions plus focused mutants."
+
+[[defects]]
+id = "CS-SR-041"
+severity = "P0"
+area = "arcgis-bounded-response-enforcement"
+root_cause = "The ArcGIS capability and probe transport calls Client.get and accesses response.content before comparing its length with max_response_bytes, so an untrusted response is fully materialized before the declared memory ceiling is enforced."
+discovered_against = "5f714c68f07d0820516046349210067dc5ad8c93"
+required_resolution = "Use the shared streamed bounded-response engine or an equivalent pre-read Content-Length check and incrementally bounded stream, stop at the first byte beyond the ceiling, retain no incomplete body as successful evidence, and add declared-length and chunked-oversize regressions and mutants."
+
+[[defects]]
+id = "CS-SR-042"
+severity = "P1"
+area = "network-media-type-contract-drift"
+root_cause = "CS-NET-003 omits text/html from its approved CEQAnet CSV media types while the executable _ACCEPTED_MEDIA_TYPES allowlist includes text/html, so the machine-readable network contract and runtime acceptance boundary disagree."
+discovered_against = "5f714c68f07d0820516046349210067dc5ad8c93"
+required_resolution = "Remove HTML from the CSV transport success allowlist unless separately authorized by an exact reviewed policy, mechanically reconcile declared and executable media types, and add a regression proving a 200 HTML login, denial, or error page cannot enter the CSV evidence path as an accepted transport response."
