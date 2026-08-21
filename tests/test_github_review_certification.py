@@ -18,6 +18,7 @@ def _report() -> dict[str, Any]:
         "reviewer": "github:IndependentReviewer#4242",
         "review_method": "adversarial review of the exact reviewed tree",
         "reviewed_commit": "a" * 40,
+        "reviewed_active_defects_digest": "c" * 64,
         "reviewed_tree_digest": "b" * 64,
         "findings": [],
     }

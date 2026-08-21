@@ -118,7 +118,8 @@ jobs:
         with:
           persist-credentials: false
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          fetch-depth: 2
+          # Resolution ancestry certification requires the complete reviewed history.
+          fetch-depth: 0
 
       - name: Verify exact checkout
         id: checkout-identity

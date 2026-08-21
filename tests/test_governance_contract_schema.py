@@ -125,6 +125,7 @@ def _write_resolution_evidence(root: Path, digest: str) -> None:
                 "reviewer": "independent-reviewer",
                 "review_method": "adversarial review",
                 "reviewed_commit": "c" * 40,
+                "reviewed_active_defects_digest": "e" * 64,
                 "reviewed_tree_digest": digest,
                 "findings": [],
             }

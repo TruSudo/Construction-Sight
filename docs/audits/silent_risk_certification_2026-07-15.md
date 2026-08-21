@@ -139,11 +139,11 @@ Every future `governance/resolved_defects.toml` entry must preserve the original
 - `review_artifact`
 - `reviewed_tree_digest`
 
-The certifier rejects malformed or duplicate IDs, active/resolved overlap, invalid commit provenance, blank closure prose, unsafe/missing evidence paths, non-test regression paths, repository-relative symlink escape, missing/noncanonical review evidence, and reviewed-tree digest disagreement.
+The review artifact additionally carries `reviewed_active_defects_digest`, a domain-separated SHA-256 digest of the complete canonical active-defect facts read from `reviewed_commit`. The certifier rejects malformed or duplicate IDs, active/resolved overlap, invalid commit provenance, blank closure prose, unsafe/missing evidence paths, non-test regression paths, repository-relative symlink escape, missing/noncanonical review evidence, reviewed-tree or reviewed-defect digest disagreement, incomplete reviewed-ID accounting, changed original facts, changed prior closure records, nonexistent resolution commits, and resolution commits outside reviewed history.
 
 ## Defect evidence matrix
 
-All 36 defects remain active. The evidence below establishes the prior implementation/regression claims for `CS-SR-001` through `CS-SR-027`; the failed review proved those claims were incomplete at the system boundary. Working-candidate correction and regression evidence is now present for `CS-SR-029` through `CS-SR-036`. `CS-SR-028` is the remaining implementation defect, and no entry may close before a fresh complete-tree review and certification.
+All 36 defects remain active. The evidence below establishes the prior implementation/regression claims for `CS-SR-001` through `CS-SR-027`; the failed review proved those claims were incomplete at the system boundary. Working-candidate correction and regression evidence is now present for `CS-SR-028` through `CS-SR-036`. No entry may close before a fresh complete-tree review and certification.
 
 ### CS-SR-001 — Architecture
 
@@ -657,7 +657,9 @@ All 36 defects remain active. The evidence below establishes the prior implement
 
 **Required correction:** preserve every reviewed defect field exactly, require complete reviewed-ID accounting, and prove every resolution commit exists and is an ancestor of the reviewed implementation commit.
 
-**State:** no accepted correction or regression evidence; blocks a new review candidate.
+**Current remediation evidence:** `defect_closure_certification.py` reads both ledgers from the exact reviewed Git commit, computes a domain-separated digest over every canonical active-defect fact, and reconciles those immutable records with finalization ledgers. It requires zero remaining active IDs, exact reviewed active/prior-resolved ID accounting, exact equality of every original parsed fact, unchanged prior closure records, a real reviewed commit in current history, and real resolution commits that are ancestors of the reviewed implementation. The independent-review artifact now binds `reviewed_active_defects_digest`; canonical quality checkout uses complete Git history. Regressions cover accepted complete closure, changed original facts, missing reviewed IDs, nonexistent resolution commits, unrelated resolution and review history, mismatched reviewed-fact digest, nonexistent reviewed commit, synthetic merge topology, and permitted/nonpermitted review-tree changes. Focused mutants protect original-fact equality and ancestry enforcement. The complete local working-candidate gate passes Ruff, strict mypy over 246 source files, compilation, 1,186 warning-strict tests, and all 21 focused mutants; exact-head CI remains the authoritative acceptance check.
+
+**State:** correction is implemented in the current working candidate but remains active until the complete matrix and a new independent adversarial review accept it.
 
 ### CS-SR-029 — HTTP URL canonicalization
 
@@ -727,7 +729,7 @@ All 36 defects remain active. The evidence below establishes the prior implement
 
 **Required correction:** build a resolved interprocedural call graph from operator entry points to effects and cover spoofed names, aliases, indirect calls, branch bypass, and effect-before-authorization.
 
-**Current remediation evidence:** `semantic_authorization_certification.py` now parses the complete tracked production graph, resolves imported, re-exported, module-level, local, and class-method call targets, propagates Boolean and callable arguments across function boundaries, and evaluates authorization phase along branch-, exception-, conditional-expression-, comprehension-, and loop-sensitive paths. Only the exact canonical combined authorizer or the resolved decision-builder/preflight sequence can establish authority; exact and injected effect boundaries fail closed unless completed authorization dominates the call. Unresolved authorized-looking services and indirect callable selection produce dedicated findings. Regression coverage includes spoofed functions and methods, import/module/local aliases, module-global aliases, unresolved services, collection-selected indirect effects, branch bypass, swallowed authorization failure, effect-before-authorization, preflight-before-decision, accepted direct decision/preflight order, and safe/unsafe cross-module paths. Focused mutants protect exact effect-target resolution and dominance enforcement.
+**Current remediation evidence:** `semantic_authorization_certification.py` now parses the complete tracked production graph, resolves imported, re-exported, module-level, local, and class-method call targets, propagates Boolean and callable arguments across function boundaries, and evaluates authorization phase along branch-, exception-, conditional-expression-, comprehension-, and loop-sensitive paths. Only the exact canonical combined authorizer or the resolved decision-builder/preflight sequence can establish authority; exact and injected effect boundaries fail closed unless completed authorization dominates the call. Unresolved authorized-looking services and indirect callable selection produce dedicated findings. Regression coverage includes spoofed functions and methods, import/module/local aliases, module-global aliases, unresolved services, collection-selected indirect effects, branch bypass, swallowed authorization failure, effect-before-authorization, preflight-before-decision, accepted direct decision/preflight order, and safe/unsafe cross-module paths. Focused mutants protect exact effect-target resolution and dominance enforcement. Exact-head CI #1058 (`32475767196`) accepted Ruff, strict mypy over 245 source files, compilation, 1,177 warning-strict tests, all 19 focused mutants, adapter/source audits, and unchanged pre/post environment identity on both Python 3.11 and 3.12; only the deliberate 36 active defects plus `REVIEW-001` blocked aggregate certification.
 
 **State:** correction is implemented in the current working candidate but remains active until the complete matrix and a new independent adversarial review accept it.
 
@@ -749,9 +751,9 @@ All 36 defects remain active. The evidence below establishes the prior implement
 
 **Discovery evidence:** CI #1056 (`32472457754`) failed both isolated vulnerability-enforcement jobs on exact commit `730a036038d1e18f9a54b0915f5440c5b4e414a1` while both quality jobs passed Ruff, strict mypy, compilation, 1,169 warning-strict tests, all 19 focused mutants, adapter/source audits, diff hygiene, exact environment checks, and repository certification apart from the 35 then-active defects plus `REVIEW-001`.
 
-**Current remediation evidence:** both supported-environment locks and the dependency bootstrap contract now select the exact universal `pip==26.2` wheel with reviewed SHA-256 `931c303696af6fa3417112103b1cad26890e5a07eccb5b99783700e33f2b8aad`. No vulnerability exception was added.
+**Current remediation evidence:** both supported-environment locks and the dependency bootstrap contract now select the exact universal `pip==26.2` wheel with reviewed SHA-256 `931c303696af6fa3417112103b1cad26890e5a07eccb5b99783700e33f2b8aad`. No vulnerability exception was added. Exact-head CI #1057 (`32473893969`) accepted both isolated Python 3.11/3.12 vulnerability jobs, and #1058 repeated that result while validating the subsequent semantic-authorization transaction.
 
-**State:** correction is implemented in the current working candidate but remains active until both isolated vulnerability jobs and the complete matrix accept the exact corrected tree.
+**State:** correction is implemented and its isolated vulnerability jobs pass, but it remains active until the complete corrected tree and a new independent adversarial review accept it.
 
 ## Failed-review disposition and next handoff
 
@@ -769,7 +771,12 @@ The historical handoff required a clean checkout and independent digest computat
 python - <<'PY'
 from pathlib import Path
 from constructionsight.authority_certification import _reviewed_tree_digest
-print(_reviewed_tree_digest(Path('.')))
+from constructionsight.defect_closure_certification import reviewed_active_defects_digest
+
+root = Path('.')
+reviewed_commit = '<new-corrected-review-candidate-sha>'
+print(_reviewed_tree_digest(root))
+print(reviewed_active_defects_digest(root, reviewed_commit))
 PY
 ```
 
@@ -815,6 +822,7 @@ The resulting artifact must satisfy the exact schema enforced by `authority_cert
   "reviewer": "github:<reviewer-login>#<review-id>",
   "review_method": "<specific adversarial review methodology>",
   "reviewed_commit": "<new-corrected-review-candidate-sha>",
+  "reviewed_active_defects_digest": "<complete reviewed active-defect facts digest>",
   "reviewed_tree_digest": "<independently computed lowercase SHA-256 digest>",
   "findings": []
 }
@@ -826,9 +834,9 @@ At the August 13 failed-review checkpoint, GitHub's PR Reviews API contained **n
 
 ## Finalization sequence after a corrected candidate and legitimate review
 
-1. create `governance/reviews/independent_review.json` bound to the actual external GitHub approval and independently computed reviewed-tree digest;
+1. create `governance/reviews/independent_review.json` bound to the actual external GitHub approval, independently computed reviewed-tree digest, and complete reviewed active-defect facts digest;
 2. update this exempt dossier with the reviewer identity, review ID, methodology, digest, and finding disposition;
-3. construct strict resolved-ledger entries for every reviewed defect whose correction/regression/review evidence supports closure;
+3. construct strict resolved-ledger entries for every reviewed defect, preserving every original fact and naming only resolution commits that exist in the reviewed commit's ancestry;
 4. remove those same IDs from the active ledger, with active/resolved disjointness mechanically enforced;
 5. leave the active ledger with **zero entries** before final certification;
 6. run canonical exact-head CI on the resulting finalization head under Python 3.11 and Python 3.12;
@@ -849,7 +857,7 @@ Subsequent adversarial work identified and corrected:
 - CS-SR-026 — resolved-ledger/finalization integrity; and
 - CS-SR-027 — external independent-review identity authenticity.
 
-Accordingly, #1028 remains historical evidence only. Run #1050 and candidate `4cc3ce763354ea91ef8c4bed28c3ce0b531379c3` are also historical evidence after the August 13 failed review. No current review candidate exists until all current defects through `CS-SR-036` are corrected and the complete exact-head matrix passes again.
+Accordingly, #1028 remains historical evidence only. Run #1050 and candidate `4cc3ce763354ea91ef8c4bed28c3ce0b531379c3` are also historical evidence after the August 13 failed review. The current working candidate contains corrections for every defect through `CS-SR-036`; it becomes the new review candidate only after its complete exact-head matrix passes, and the exact accepted commit must be frozen in the PR handoff.
 
 ## Product continuation after hardening
 

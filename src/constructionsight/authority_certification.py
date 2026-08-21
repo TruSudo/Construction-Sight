@@ -10,6 +10,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
+from constructionsight.defect_closure_certification import audit_defect_closure
 from constructionsight.governance_certification_core import (
     _ACTIVE_DEFECT_SCHEMA,
     _RESOLVED_DEFECT_SCHEMA,
@@ -40,6 +41,7 @@ _REVIEW_FIELDS = frozenset(
         "reviewer",
         "review_method",
         "reviewed_commit",
+        "reviewed_active_defects_digest",
         "reviewed_tree_digest",
         "findings",
     }
@@ -47,9 +49,7 @@ _REVIEW_FIELDS = frozenset(
 _REVIEW_TREE_DOMAIN = b"constructionsight.reviewed-tree/v1\0"
 
 
-def _audit_network(
-    contract: Mapping[str, Any], findings: list[GovernanceFinding]
-) -> int:
+def _audit_network(contract: Mapping[str, Any], findings: list[GovernanceFinding]) -> int:
     path = "governance/network_contract.toml"
     policies = contract.get("policies")
     if not isinstance(policies, list):
@@ -170,9 +170,7 @@ def _audit_network(
                         f"network policy {policy_id}.{numeric} must be positive",
                     )
                 )
-        if policy.get("max_attempts", 0) > 1 and not policy.get(
-            "retryable_failures"
-        ):
+        if policy.get("max_attempts", 0) > 1 and not policy.get("retryable_failures"):
             findings.append(
                 _finding(
                     "NET-RETRY-001",
@@ -329,15 +327,11 @@ def _audit_test_obligations(
         return
     required_categories = set(contract.get("required_categories", []))
     if not required_categories:
-        findings.append(
-            _finding("TEST-CONTRACT-002", path, "required_categories must be nonempty")
-        )
+        findings.append(_finding("TEST-CONTRACT-002", path, "required_categories must be nonempty"))
     ids: set[str] = set()
     for matrix in matrices:
         if not isinstance(matrix, dict):
-            findings.append(
-                _finding("TEST-CONTRACT-003", path, "each test matrix must be a table")
-            )
+            findings.append(_finding("TEST-CONTRACT-003", path, "each test matrix must be a table"))
             continue
         matrix_id = str(matrix.get("id"))
         if matrix_id in ids:
@@ -367,8 +361,7 @@ def _audit_test_obligations(
                 _finding(
                     "TEST-MATRIX-001",
                     path,
-                    f"{matrix_id} omits categories without justification: "
-                    f"{sorted(missing)}",
+                    f"{matrix_id} omits categories without justification: {sorted(missing)}",
                 )
             )
         tests = matrix.get("tests")
@@ -421,12 +414,9 @@ def _assert_review_worktree_clean(root: Path) -> None:
         )
         raise GovernanceContractError(detail)
     if completed.stdout:
-        dirty = completed.stdout.replace(b"\0", b"\n").decode(
-            "utf-8", errors="replace"
-        ).strip()
+        dirty = completed.stdout.replace(b"\0", b"\n").decode("utf-8", errors="replace").strip()
         raise GovernanceContractError(
-            "review-covered worktree is dirty outside permitted finalization paths: "
-            f"{dirty}"
+            f"review-covered worktree is dirty outside permitted finalization paths: {dirty}"
         )
 
 
@@ -479,9 +469,7 @@ def _reviewed_tree_digest(root: Path) -> str:
     return digest.hexdigest()
 
 
-def _audit_defects_and_review(
-    root: Path, findings: list[GovernanceFinding]
-) -> None:
+def _audit_defects_and_review(root: Path, findings: list[GovernanceFinding]) -> None:
     active = _read_toml(
         root,
         "governance/active_defects.toml",
@@ -507,7 +495,7 @@ def _audit_defects_and_review(
                     f"active defect blocks certification: {defect_id}",
                 )
             )
-    _read_toml(
+    resolved = _read_toml(
         root,
         "governance/resolved_defects.toml",
         _RESOLVED_DEFECT_SCHEMA,
@@ -589,12 +577,8 @@ def _audit_defects_and_review(
                 )
             )
     review_findings = report.get("findings")
-    malformed_or_unresolved = (
-        not isinstance(review_findings, list)
-        or any(
-            not isinstance(item, dict) or item.get("status") != "resolved"
-            for item in review_findings
-        )
+    malformed_or_unresolved = not isinstance(review_findings, list) or any(
+        not isinstance(item, dict) or item.get("status") != "resolved" for item in review_findings
     )
     if malformed_or_unresolved:
         findings.append(
@@ -605,9 +589,7 @@ def _audit_defects_and_review(
             )
         )
     reviewed_commit = report.get("reviewed_commit")
-    if not isinstance(reviewed_commit, str) or not re.fullmatch(
-        r"[0-9a-f]{40}", reviewed_commit
-    ):
+    if not isinstance(reviewed_commit, str) or not re.fullmatch(r"[0-9a-f]{40}", reviewed_commit):
         findings.append(
             _finding(
                 "REVIEW-006",
@@ -627,6 +609,17 @@ def _audit_defects_and_review(
             )
         )
         return
+    reviewed_active_defects_digest = report.get("reviewed_active_defects_digest")
+    if not isinstance(reviewed_active_defects_digest, str) or not re.fullmatch(
+        r"[0-9a-f]{64}", reviewed_active_defects_digest
+    ):
+        findings.append(
+            _finding(
+                "REVIEW-013",
+                review_relative,
+                "reviewed_active_defects_digest must be a lowercase SHA-256 digest",
+            )
+        )
     try:
         current_tree_digest = _reviewed_tree_digest(root)
     except GovernanceContractError as exc:
@@ -647,3 +640,11 @@ def _audit_defects_and_review(
                 "does not match the independently reviewed tree digest",
             )
         )
+    if (
+        report.get("status") == "passed"
+        and isinstance(reviewed_commit, str)
+        and re.fullmatch(r"[0-9a-f]{40}", reviewed_commit)
+        and isinstance(reviewed_active_defects_digest, str)
+        and re.fullmatch(r"[0-9a-f]{64}", reviewed_active_defects_digest)
+    ):
+        audit_defect_closure(root, active, resolved, report, findings)

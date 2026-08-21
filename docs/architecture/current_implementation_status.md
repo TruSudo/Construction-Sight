@@ -61,7 +61,7 @@ A planned capability is not an active defect when the current supported boundary
 
 A certified tree must contain zero active defects. Any new runtime, data-quality, documentation, persistence, provenance, compatibility, security, or CI defect is recorded here immediately and blocks feature work until resolved.
 
-Current active entries: **36 (`CS-SR-001` through `CS-SR-036`)**. `CS-SR-028` through `CS-SR-035` record the eight P0 findings from the failed August 13 adversarial review; `CS-SR-036` records newly published pip advisory `PYSEC-2026-3721` discovered by exact-head CI #1056. Working-candidate corrections now exist for `CS-SR-029` through `CS-SR-036`; `CS-SR-028` is the remaining implementation defect. Every entry remains active until the complete corrected tree has correction evidence, a fresh independent review, and exact-tree certification.
+Current active entries: **36 (`CS-SR-001` through `CS-SR-036`)**. `CS-SR-028` through `CS-SR-035` record the eight P0 findings from the failed August 13 adversarial review; `CS-SR-036` records newly published pip advisory `PYSEC-2026-3721` discovered by exact-head CI #1056. Working-candidate corrections now exist for `CS-SR-028` through `CS-SR-036`. Every entry remains active until the complete corrected tree has correction evidence, a fresh independent review, and exact-tree certification.
 
 ## Resolved defect ledger
 
