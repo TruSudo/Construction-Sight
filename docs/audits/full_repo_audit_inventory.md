@@ -81,7 +81,7 @@ The active-defect count for a certified tree must be zero. Planned capabilities 
 
 Any newly discovered defect is added here immediately, invalidates certification, and blocks feature work until the entry is resolved and moved to the resolved-defect ledger. The certification PR itself remains incomplete while this ledger is nonempty or any executable audit finding remains.
 
-Current active entries: **none recorded in the canonical inventory**. CI remains the authoritative executable check for the exact tree.
+Current active entries: **35 (`CS-SR-001` through `CS-SR-035`)**. The August 13 adversarial review invalidated candidate `4cc3ce763354ea91ef8c4bed28c3ce0b531379c3` and added eight P0 findings as `CS-SR-028` through `CS-SR-035`. The first 27 entries retain their prior correction evidence but remain open pending legitimate closure; the eight new entries have no accepted correction or regression evidence yet. CI remains the authoritative executable check for the exact tree.
 
 The CEQAnet HTTP 403 is preserved as an external access limitation and verified-promotion blocker. It is not treated as a defect to bypass.
 

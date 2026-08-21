@@ -269,6 +269,7 @@ No external communication behavior is implied by the existing models or CLI.
 
 ## Known limitations
 
+- Draft PR #117 is not certified. The August 13 adversarial review invalidated candidate `4cc3ce763354ea91ef8c4bed28c3ce0b531379c3`; 35 active defects (`CS-SR-001` through `CS-SR-035`) now block review, readiness, and merge.
 - CEQAnet is `partial`, not `verified`; automated HTML collection received HTTP 403.
 - The original UTF-8 inspection failure remains preserved; the derived Windows-1252 replay passes against the same retained body hash without a second request.
 - Two retained point-in-time CSV successes, including one governed sequence observation, still do not establish recurring availability, completeness, or broader source coverage.

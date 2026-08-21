@@ -216,3 +216,67 @@ area = "independent-review-identity-authenticity"
 root_cause = "The independent-review certifier requires only nonblank reviewer text inside a repository-controlled JSON artifact. An implementing author can therefore self-author an otherwise valid artifact, claim an arbitrary reviewer identity, and satisfy the mechanical review gate without a separately submitted GitHub review."
 discovered_against = "dcffdb41cc947388528fa9fa2c4bec34e4589299"
 required_resolution = "Bind the review artifact to a real GitHub pull-request review ID and exact reviewed commit; require canonical pull-request CI to fetch that review from GitHub and verify APPROVED state, matching reviewer login, matching commit, a human User identity distinct from the PR author and repository owner, and aggregate the external-review result as a mandatory finalization gate; add positive and spoofing regressions while retaining repository certification as the missing-review blocker before an artifact exists."
+
+[[defects]]
+id = "CS-SR-028"
+severity = "P0"
+area = "defect-closure-fact-integrity"
+root_cause = "Resolved-defect validation checks schema and evidence references but does not prove that the original active-defect facts are identical to those present in the reviewed commit, and resolution commits are not proven to exist in reviewed history."
+discovered_against = "4cc3ce763354ea91ef8c4bed28c3ce0b531379c3"
+required_resolution = "Bind closure records to the reviewed commit's complete active-defect ledger, preserve every original defect field exactly, require complete reviewed-ID accounting, and prove each resolution commit exists and is an ancestor of the reviewed implementation commit."
+
+[[defects]]
+id = "CS-SR-029"
+severity = "P0"
+area = "http-url-canonicalization"
+root_cause = "The bounded HTTP layer can authorize one URL path representation while the HTTP client transmits a different normalized representation, and ambiguous encoded path forms are not rejected consistently."
+discovered_against = "4cc3ce763354ea91ef8c4bed28c3ce0b531379c3"
+required_resolution = "Derive one canonical outbound URL, validate and authorize that exact representation, reject ambiguous encoded separators, dot segments, backslashes, fragments, user information, and noncanonical percent encodings, and transmit only the authorized representation."
+
+[[defects]]
+id = "CS-SR-030"
+severity = "P0"
+area = "persistence-authorization-toctou"
+root_cause = "The CEQAnet persistence facade authorizes a caller-owned mutable write-plan object and later gives the same object to the effect boundary, permitting authorization and execution content to diverge."
+discovered_against = "4cc3ce763354ea91ef8c4bed28c3ce0b531379c3"
+required_resolution = "Create a detached canonical write-plan snapshot before authorization, validate and hash that snapshot, recheck its exact identity immediately before the effect, execute only the detached snapshot, and add nested and callback-time mutation regressions."
+
+[[defects]]
+id = "CS-SR-031"
+severity = "P0"
+area = "ci-environment-identity"
+root_cause = "The exact installed Python environment is verified before vulnerability tooling runs, but the vulnerability action installs additional distributions into the same interpreter before lint, type, test, mutation, and repository-certification gates execute."
+discovered_against = "4cc3ce763354ea91ef8c4bed28c3ce0b531379c3"
+required_resolution = "Run vulnerability tooling in an isolated job or interpreter and verify the supported interpreter's exact installed-distribution identity immediately before and after every executable quality-gate sequence."
+
+[[defects]]
+id = "CS-SR-032"
+severity = "P0"
+area = "ceqanet-redirect-doctrine"
+root_cause = "A production-visible CEQAnet compatibility client path enables redirect following even though the canonical network contract requires redirects to be denied at request time, and current regression coverage preserves the conflicting behavior."
+discovered_against = "4cc3ce763354ea91ef8c4bed28c3ce0b531379c3"
+required_resolution = "Deny redirects at request time on every production-visible CEQAnet path, remove or route the compatibility transport through the common bounded engine, and replace the conflicting regression with fail-closed redirect coverage."
+
+[[defects]]
+id = "CS-SR-033"
+severity = "P0"
+area = "repository-evidence-containment"
+root_cause = "Tracked symbolic links are not prohibited and several governance evidence, test, ADR, lock, and mutation references are accepted without proving their resolved targets remain inside the reviewed repository tree."
+discovered_against = "4cc3ce763354ea91ef8c4bed28c3ce0b531379c3"
+required_resolution = "Reject Git mode 120000 tracked symbolic links and require one centralized, symlink-resistant repository-containment check for every governance evidence, test, ADR, lock, review, and mutation reference."
+
+[[defects]]
+id = "CS-SR-034"
+severity = "P0"
+area = "semantic-authorization-proof"
+root_cause = "The static semantic-authorization audit trusts authorized-looking function names without resolving imported or aliased call targets and proving that canonical authorization occurs before every reachable effect."
+discovered_against = "4cc3ce763354ea91ef8c4bed28c3ce0b531379c3"
+required_resolution = "Replace naming-convention trust with a resolved interprocedural call graph from operator entry points to effect boundaries, prove authorization and preflight precede every reachable effect, and add spoofed-name, alias, indirect-call, branch-bypass, and effect-before-authorization regressions."
+
+[[defects]]
+id = "CS-SR-035"
+severity = "P0"
+area = "network-query-authority"
+root_cause = "Exact network query scope remains partly prose because the bounded HTTP policy does not represent query authority and the CEQAnet listing planner accepts caller-supplied base search URLs."
+discovered_against = "4cc3ce763354ea91ef8c4bed28c3ce0b531379c3"
+required_resolution = "Represent exact query scope or canonical request identity in executable network policy, remove arbitrary base-URL injection from the CEQAnet planner, and reject any request whose host, path, query keys, query values, or canonical identity exceeds reviewed authority."

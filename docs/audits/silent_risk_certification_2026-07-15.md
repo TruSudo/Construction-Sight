@@ -2,17 +2,19 @@
 
 ## Status
 
-**Not certified. Independent adversarial review and final zero-finding exact-head certification remain mandatory.**
+**Not certified. The August 13 adversarial review failed and invalidated candidate `4cc3ce763354ea91ef8c4bed28c3ce0b531379c3`. Thirty-five active defects now block any review, closure, readiness, or merge claim.**
 
 This dossier records the correction and regression evidence for the active silent-risk defect ledger. It is an evidence record, not a substitute for independent review, and it does not itself authorize any defect to move from `governance/active_defects.toml` to `governance/resolved_defects.toml`.
 
-The review-covered implementation tree is frozen at:
+The implementation tree reviewed on August 13 was:
 
 ```text
 4cc3ce763354ea91ef8c4bed28c3ce0b531379c3
 ```
 
-This document is intentionally one of the four post-review finalization artifacts excluded from the reviewed-tree digest. A later audit-only commit that changes this file does **not** change the reviewed implementation tree and does not replace the frozen `reviewed_commit` above.
+That tree is retained for provenance only. It is no longer a valid review or certification candidate. The failed review is recorded in `docs/audits/adversarial_review_2026-08-13.md`, and its eight P0 findings are registered as `CS-SR-028` through `CS-SR-035`.
+
+This document was intentionally one of the four post-review finalization artifacts excluded from the reviewed-tree digest. That prior finalization allowance is no longer operative because the reviewed candidate failed. Any correction to a review-covered path requires a new exact candidate and a fresh adversarial review.
 
 The only tracked paths permitted to change after independent review without invalidating the reviewed-tree digest are:
 
@@ -23,9 +25,11 @@ governance/resolved_defects.toml
 docs/audits/silent_risk_certification_2026-07-15.md
 ```
 
-Any other tracked-tree change requires a new independent review of the corrected tree.
+Any corrected candidate requires a new independent review of the complete corrected tree.
 
-## Final pre-review exact-head evidence
+## Historical pre-review exact-head evidence
+
+The evidence below proves the ordinary gates that passed before the August 13 adversarial review. It does not certify the invalidated candidate and does not cover `CS-SR-028` through `CS-SR-035`.
 
 Canonical GitHub Actions run **#1050** (`31673225260`) explicitly checked out and verified exact SHA:
 
@@ -96,7 +100,7 @@ The retained repository-certification JSON from **both** runtime artifacts agree
 - governance-shape / traceability / adversarial-contract findings beyond the active ledger: **0**
 - tracked-tree findings beyond the active ledger: **0**
 
-The aggregate CI jobs therefore remain red **by design**. The red state is not an unclassified implementation failure; it is the deliberate result of retaining all 27 defects as active until legitimate review and retaining `REVIEW-001` until that review exists.
+At that historical checkpoint, the aggregate CI jobs remained red **by design** because all 27 then-known defects stayed active and `REVIEW-001` remained. The later failed review added eight implementation defects; the current blocker set is therefore 35 active defects plus the still-missing independent-review artifact.
 
 ## Closure doctrine
 
@@ -139,7 +143,7 @@ The certifier rejects malformed or duplicate IDs, active/resolved overlap, inval
 
 ## Defect evidence matrix
 
-All 27 defects remain active. The evidence below establishes the implementation/regression side of closure; independent review and final certification remain pending for every entry.
+All 35 defects remain active. The evidence below establishes the prior implementation/regression claims for `CS-SR-001` through `CS-SR-027`; the failed review proved those claims were incomplete at the system boundary. `CS-SR-028` through `CS-SR-035` have no accepted correction or regression evidence and must be remediated before a new candidate is frozen.
 
 ### CS-SR-001 — Architecture
 
@@ -535,7 +539,7 @@ All 27 defects remain active. The evidence below establishes the implementation/
 - pure domain/application ownership was reconciled
 - test imports and CLI/application calls align with committed code
 - architecture/capability/adversarial/defect/status inventories were synchronized
-- PR #117 metadata now points exclusively to the frozen candidate and final evidence
+- at run #1050, PR #117 metadata pointed to the then-frozen candidate and evidence; the August 13 failed-review disposition now supersedes that target
 
 **Regression evidence:**
 
@@ -644,17 +648,97 @@ All 27 defects remain active. The evidence below establishes the implementation/
 
 **State:** correction/regression present; **actual separate human GitHub approval remains pending**; final certification pending.
 
-## Independent review handoff
+### CS-SR-028 — Defect-closure fact integrity
 
-The independent reviewer must inspect the frozen review-covered implementation tree rather than treating this dossier, the PR description, or passing tests as proof.
+**Root issue:** closure validation does not bind resolved entries to the complete original defect facts at the reviewed commit and does not prove resolution-commit ancestry.
 
-### Exact review target
+**Review evidence:** `AR-001` in `docs/audits/adversarial_review_2026-08-13.md`.
+
+**Required correction:** preserve every reviewed defect field exactly, require complete reviewed-ID accounting, and prove every resolution commit exists and is an ancestor of the reviewed implementation commit.
+
+**State:** no accepted correction or regression evidence; blocks a new review candidate.
+
+### CS-SR-029 — HTTP URL canonicalization
+
+**Root issue:** the URL representation authorized by the bounded HTTP layer can differ from the representation normalized and transmitted by the client.
+
+**Review evidence:** `AR-002` in `docs/audits/adversarial_review_2026-08-13.md`.
+
+**Required correction:** canonicalize once, reject ambiguous URL forms, validate and authorize the exact canonical representation, and transmit only that representation.
+
+**State:** no accepted correction or regression evidence; blocks a new review candidate.
+
+### CS-SR-030 — Persistence authorization TOCTOU
+
+**Root issue:** CEQAnet persistence authorizes and later executes the same caller-owned mutable plan object.
+
+**Review evidence:** `AR-003` in `docs/audits/adversarial_review_2026-08-13.md`.
+
+**Required correction:** authorize a detached canonical snapshot, recheck its identity immediately before the effect, execute only that snapshot, and cover nested and callback-time mutation.
+
+**State:** no accepted correction or regression evidence; blocks a new review candidate.
+
+### CS-SR-031 — CI environment identity
+
+**Root issue:** vulnerability tooling installs additional packages into the interpreter after exact installed-environment verification and before executable quality gates.
+
+**Review evidence:** `AR-004` in `docs/audits/adversarial_review_2026-08-13.md`.
+
+**Required correction:** isolate vulnerability tooling and verify the supported interpreter immediately before and after the complete executable gate sequence.
+
+**State:** no accepted correction or regression evidence; blocks a new review candidate.
+
+### CS-SR-032 — CEQAnet redirect doctrine
+
+**Root issue:** a production-visible compatibility client enables redirect following even though the network contract requires denial at request time.
+
+**Review evidence:** `AR-005` in `docs/audits/adversarial_review_2026-08-13.md`.
+
+**Required correction:** deny redirects on every production-visible path, remove or constrain the alternate transport, and replace the regression that currently preserves redirect following.
+
+**State:** no accepted correction or regression evidence; blocks a new review candidate.
+
+### CS-SR-033 — Repository evidence containment
+
+**Root issue:** tracked symbolic links and several governance references can escape uniform proof of containment within the reviewed repository tree.
+
+**Review evidence:** `AR-006` in `docs/audits/adversarial_review_2026-08-13.md`.
+
+**Required correction:** reject Git mode `120000` and apply one symlink-resistant repository-containment primitive to every evidence, test, ADR, lock, review, and mutation reference.
+
+**State:** no accepted correction or regression evidence; blocks a new review candidate.
+
+### CS-SR-034 — Semantic authorization proof
+
+**Root issue:** the static authorization audit trusts authorized-looking names instead of resolving call targets and proving authorization precedes every effect.
+
+**Review evidence:** `AR-007` in `docs/audits/adversarial_review_2026-08-13.md`.
+
+**Required correction:** build a resolved interprocedural call graph from operator entry points to effects and cover spoofed names, aliases, indirect calls, branch bypass, and effect-before-authorization.
+
+**State:** no accepted correction or regression evidence; blocks a new review candidate.
+
+### CS-SR-035 — Network query authority
+
+**Root issue:** exact query scope is partly prose and the CEQAnet listing planner accepts caller-supplied base search URLs.
+
+**Review evidence:** `AR-008` in `docs/audits/adversarial_review_2026-08-13.md`.
+
+**Required correction:** encode exact query or request identity in executable policy, remove arbitrary base-URL injection, and reject any request outside reviewed host, path, query-key, query-value, and canonical-identity scope.
+
+**State:** no accepted correction or regression evidence; blocks a new review candidate.
+
+## Failed-review disposition and next handoff
+
+The August 13 reviewer inspected the frozen implementation tree rather than treating this dossier, the PR description, or passing tests as proof. The review failed. No independent-review artifact may record a passing result for the target below, and the prior handoff must not be reused.
+
+### Invalidated review target
 
 ```text
 4cc3ce763354ea91ef8c4bed28c3ce0b531379c3
 ```
 
-The reviewer must use a clean checkout and independently compute:
+The historical handoff required a clean checkout and independent digest computation:
 
 ```bash
 python - <<'PY'
@@ -664,9 +748,9 @@ print(_reviewed_tree_digest(Path('.')))
 PY
 ```
 
-Digest computation intentionally fails closed when any staged, unstaged, or untracked non-permitted review-covered path is dirty.
+Digest computation intentionally fails closed when any staged, unstaged, or untracked non-permitted review-covered path is dirty. This remains useful doctrine, but the digest of the invalidated target cannot support certification.
 
-### Required adversarial scope
+### Required adversarial scope for the next candidate
 
 At minimum, independently challenge:
 
@@ -689,10 +773,10 @@ At minimum, independently challenge:
 
 If any problem is found, the reviewer must **not** approve. Findings must first be corrected and regression-tested, and any review-covered correction creates a new candidate requiring a fresh review.
 
-If the frozen tree genuinely passes review, the reviewer must submit an actual GitHub **APPROVED** pull-request review anchored to exact commit:
+After `CS-SR-028` through `CS-SR-035` are corrected with focused negative regressions and the complete Python 3.11/3.12 matrix passes on a new exact candidate, a fresh reviewer must submit an actual GitHub **APPROVED** pull-request review anchored to that new exact commit:
 
 ```text
-4cc3ce763354ea91ef8c4bed28c3ce0b531379c3
+<new-corrected-review-candidate-sha>
 ```
 
 The reviewer must be a human GitHub `User` whose login differs from `TruSudo` as both PR author and repository owner.
@@ -705,7 +789,7 @@ The resulting artifact must satisfy the exact schema enforced by `authority_cert
   "status": "passed",
   "reviewer": "github:<reviewer-login>#<review-id>",
   "review_method": "<specific adversarial review methodology>",
-  "reviewed_commit": "4cc3ce763354ea91ef8c4bed28c3ce0b531379c3",
+  "reviewed_commit": "<new-corrected-review-candidate-sha>",
   "reviewed_tree_digest": "<independently computed lowercase SHA-256 digest>",
   "findings": []
 }
@@ -713,9 +797,9 @@ The resulting artifact must satisfy the exact schema enforced by `authority_cert
 
 Canonical CI will independently re-fetch that GitHub review ID and verify its external identity/state/commit binding before the aggregate finalization gate can pass.
 
-At the final pre-review checkpoint, GitHub's PR Reviews API contained **no review objects** for PR #117. No ordinary PR comment, including prior handoff comments, constitutes the required approval.
+At the August 13 failed-review checkpoint, GitHub's PR Reviews API contained **no review objects** for PR #117. No ordinary PR comment, including prior handoff comments, constitutes the required approval. A review of the invalidated target cannot satisfy the future gate.
 
-## Finalization sequence after legitimate review
+## Finalization sequence after a corrected candidate and legitimate review
 
 1. create `governance/reviews/independent_review.json` bound to the actual external GitHub approval and independently computed reviewed-tree digest;
 2. update this exempt dossier with the reviewer identity, review ID, methodology, digest, and finding disposition;
@@ -740,7 +824,7 @@ Subsequent adversarial work identified and corrected:
 - CS-SR-026 — resolved-ledger/finalization integrity; and
 - CS-SR-027 — external independent-review identity authenticity.
 
-Accordingly, #1028 remains historical evidence only. It is superseded for review targeting by frozen candidate `4cc3ce763354ea91ef8c4bed28c3ce0b531379c3` and run #1050.
+Accordingly, #1028 remains historical evidence only. Run #1050 and candidate `4cc3ce763354ea91ef8c4bed28c3ce0b531379c3` are also historical evidence after the August 13 failed review. No current review candidate exists until `CS-SR-028` through `CS-SR-035` are corrected and the complete exact-head matrix passes again.
 
 ## Product continuation after hardening
 
