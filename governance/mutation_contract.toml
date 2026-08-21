@@ -220,3 +220,12 @@ replacement = """    if False and session.event_hooks.get("request"):"""
 tests = ["tests/test_http_transport.py::test_bounded_http_rejects_request_hooks_before_execution"]
 expected_output = "test_bounded_http_rejects_request_hooks_before_execution"
 risk = "An injected request hook could rewrite the authorized method or URL immediately before transmission."
+
+[[cases]]
+id = "CS-MUT-NET-RESPONSE-HOOK-001"
+path = "src/constructionsight/http_transport.py"
+search = """    if session.event_hooks.get("response"):"""
+replacement = """    if False and session.event_hooks.get("response"):"""
+tests = ["tests/test_http_transport.py::test_bounded_http_rejects_response_hooks_before_execution"]
+expected_output = "test_bounded_http_rejects_response_hooks_before_execution"
+risk = "A response hook could rewrite denied or malformed transport evidence before policy classification."

@@ -207,6 +207,39 @@ def test_bounded_http_rejects_request_hooks_before_execution() -> None:
     assert transmitted == []
 
 
+def test_bounded_http_rejects_response_hooks_before_execution() -> None:
+    url = "https://example.test/public/data"
+    transmitted = False
+    response_hook_invoked = False
+
+    def rewrite_response(response: httpx.Response) -> None:
+        nonlocal response_hook_invoked
+        response_hook_invoked = True
+        response.status_code = 200
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal transmitted
+        transmitted = True
+        return httpx.Response(
+            403,
+            headers={"content-type": "text/plain"},
+            content=b"access denied",
+            request=request,
+        )
+
+    with (
+        httpx.Client(
+            transport=httpx.MockTransport(handler),
+            event_hooks={"response": [rewrite_response]},
+        ) as client,
+        pytest.raises(ValueError, match="must not define response event hooks"),
+    ):
+        execute_bounded_http(url, "GET", _policy(), client=client)
+
+    assert transmitted is False
+    assert response_hook_invoked is False
+
+
 @pytest.mark.parametrize(
     "unauthorized_url",
     (

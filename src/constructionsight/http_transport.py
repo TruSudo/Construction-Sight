@@ -161,6 +161,8 @@ def _send_exact_request(
 ) -> Iterator[httpx.Response]:
     if session.event_hooks.get("request"):
         raise ValueError("bounded HTTP client must not define request event hooks")
+    if session.event_hooks.get("response"):
+        raise ValueError("bounded HTTP client must not define response event hooks")
     _validate_outbound_request(
         request,
         canonical_method=canonical_method,

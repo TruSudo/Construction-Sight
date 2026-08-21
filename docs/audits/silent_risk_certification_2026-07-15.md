@@ -143,7 +143,7 @@ The review artifact additionally carries `reviewed_active_defects_digest`, a dom
 
 ## Defect evidence matrix
 
-All 38 defects remain active. The evidence below establishes the prior implementation/regression claims for `CS-SR-001` through `CS-SR-027`; the failed review proved those claims were incomplete at the system boundary. Correction and regression evidence is present for `CS-SR-028` through `CS-SR-036`; exact-head CI #1062 accepted the `CS-SR-037` correction's ordinary gates; `CS-SR-038` is registered without an accepted correction. No entry may close before a fresh complete-tree review and certification.
+All 38 defects remain active. The evidence below establishes the prior implementation/regression claims for `CS-SR-001` through `CS-SR-027`; the failed review proved those claims were incomplete at the system boundary. Correction and regression evidence is present for `CS-SR-028` through `CS-SR-036`; exact-head CI #1062 accepted the `CS-SR-037` correction's ordinary gates; a working correction and focused negative regression are present for `CS-SR-038`, but no correction is accepted before exact-head CI. No entry may close before a fresh complete-tree review and certification.
 
 ### CS-SR-001 — Architecture
 
@@ -818,6 +818,8 @@ If any problem is found, the reviewer must **not** approve. Findings must first 
 **Discovery evidence:** continued adversarial verification of `ffaa745dea866dadc3d21e0272c6361128a80901` found that injected `httpx.Client` response hooks execute inside `Client.send` before `execute_bounded_http` classifies the response. A configured hook can therefore rewrite status, headers, body, or request evidence after transport and convert denied or malformed input into apparently accepted evidence.
 
 **Required correction:** reject configured response hooks before transport execution or replace client injection with a constrained transport-only boundary, and retain a negative regression proving a response hook cannot transform an access-control response into accepted evidence.
+
+**Working remediation evidence:** the bounded engine now rejects configured response hooks before validating or sending the explicit request. The negative regression configures a hook that would convert a 403 response to 200 and proves that neither the transport nor the hook executes. A focused mutant disables the response-hook guard and must be killed by that regression.
 
 After all current defects, including `CS-SR-028` through `CS-SR-038`, are corrected with focused negative regressions and the complete Python 3.11/3.12 matrix passes on a new exact candidate, a fresh reviewer must submit an actual GitHub **APPROVED** pull-request review anchored to that new exact commit:
 
