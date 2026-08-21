@@ -296,3 +296,11 @@ area = "http-exact-request-identity"
 root_cause = "The bounded HTTP engine validates a canonical URL before passing it to an injected httpx.Client stream call, where client-level query parameters can be merged before transmission; the exact authorized identity can therefore diverge from the wire request despite CS-SR-029."
 discovered_against = "1296b6053da3a5f30cbed702cc1333e9365bb307"
 required_resolution = "Build one explicit request outside injected-client configuration, prevent client defaults and request hooks from changing its authorized URL or method before transmission, and add a regression proving client-level query configuration cannot cause an unauthorized request."
+
+[[defects]]
+id = "CS-SR-038"
+severity = "P0"
+area = "http-response-evidence-integrity"
+root_cause = "Injected httpx.Client response hooks execute before the bounded HTTP engine inspects the response, so a hook can alter status, headers, body, or request evidence after transport and before policy classification."
+discovered_against = "ffaa745dea866dadc3d21e0272c6361128a80901"
+required_resolution = "Reject configured response hooks before transport execution or replace client injection with a constrained transport-only boundary, and add a regression proving a response hook cannot transform an access-control response into accepted evidence."
