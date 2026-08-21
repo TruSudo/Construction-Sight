@@ -10,6 +10,8 @@ High-impact operations require a complete authorization decision binding actor/o
 
 A Boolean may be an additional caller confirmation but cannot itself grant authority. Operation-specific contracts may be stricter, including single-use authorization and exact replay rules.
 
+Repository certification resolves tracked call targets from every high-impact operator entry point instead of trusting authorized-looking names. It follows imported, re-exported, local, module-level, and class-method aliases across application functions, preserves distinct authorization phases along reachable control-flow paths, and rejects any effect not dominated by completed canonical authorization and preflight. Indirect callable selection or an unresolved authorized-looking service fails closed.
+
 ## Current identity boundary
 
 The current local CLI records an explicit operator identifier. This is audit identity, not authentication. Hosted authentication, delegation, impersonation, temporary access, elevation, and tenant isolation are mandatory entry conditions before a hosted GUI can be production-ready.

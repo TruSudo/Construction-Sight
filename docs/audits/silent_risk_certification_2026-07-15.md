@@ -143,7 +143,7 @@ The certifier rejects malformed or duplicate IDs, active/resolved overlap, inval
 
 ## Defect evidence matrix
 
-All 36 defects remain active. The evidence below establishes the prior implementation/regression claims for `CS-SR-001` through `CS-SR-027`; the failed review proved those claims were incomplete at the system boundary. Working-candidate correction and regression evidence is now present for `CS-SR-029` through `CS-SR-033`, `CS-SR-035`, and `CS-SR-036`. `CS-SR-028` and `CS-SR-034` still await implementation, and no entry may close before a fresh complete-tree review and certification.
+All 36 defects remain active. The evidence below establishes the prior implementation/regression claims for `CS-SR-001` through `CS-SR-027`; the failed review proved those claims were incomplete at the system boundary. Working-candidate correction and regression evidence is now present for `CS-SR-029` through `CS-SR-036`. `CS-SR-028` is the remaining implementation defect, and no entry may close before a fresh complete-tree review and certification.
 
 ### CS-SR-001 — Architecture
 
@@ -727,7 +727,9 @@ All 36 defects remain active. The evidence below establishes the prior implement
 
 **Required correction:** build a resolved interprocedural call graph from operator entry points to effects and cover spoofed names, aliases, indirect calls, branch bypass, and effect-before-authorization.
 
-**State:** no accepted correction or regression evidence; blocks a new review candidate.
+**Current remediation evidence:** `semantic_authorization_certification.py` now parses the complete tracked production graph, resolves imported, re-exported, module-level, local, and class-method call targets, propagates Boolean and callable arguments across function boundaries, and evaluates authorization phase along branch-, exception-, conditional-expression-, comprehension-, and loop-sensitive paths. Only the exact canonical combined authorizer or the resolved decision-builder/preflight sequence can establish authority; exact and injected effect boundaries fail closed unless completed authorization dominates the call. Unresolved authorized-looking services and indirect callable selection produce dedicated findings. Regression coverage includes spoofed functions and methods, import/module/local aliases, module-global aliases, unresolved services, collection-selected indirect effects, branch bypass, swallowed authorization failure, effect-before-authorization, preflight-before-decision, accepted direct decision/preflight order, and safe/unsafe cross-module paths. Focused mutants protect exact effect-target resolution and dominance enforcement.
+
+**State:** correction is implemented in the current working candidate but remains active until the complete matrix and a new independent adversarial review accept it.
 
 ### CS-SR-035 — Network query authority
 
