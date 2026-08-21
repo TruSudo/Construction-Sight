@@ -229,3 +229,23 @@ replacement = """    if False and session.event_hooks.get("response"):"""
 tests = ["tests/test_http_transport.py::test_bounded_http_rejects_response_hooks_before_execution"]
 expected_output = "test_bounded_http_rejects_response_hooks_before_execution"
 risk = "A response hook could rewrite denied or malformed transport evidence before policy classification."
+
+[[cases]]
+id = "CS-MUT-NET-CSV-MEDIA-001"
+path = "src/constructionsight/ceqanet_csv_live_service.py"
+search = """_ACCEPTED_MEDIA_TYPES = (
+    "application/csv",
+    "application/vnd.ms-excel",
+    "text/csv",
+    "text/plain",
+)"""
+replacement = """_ACCEPTED_MEDIA_TYPES = (
+    "application/csv",
+    "application/vnd.ms-excel",
+    "text/csv",
+    "text/html",
+    "text/plain",
+)"""
+tests = ["tests/test_ceqanet_csv_live.py::test_csv_validation_failure_is_retained_as_evidence"]
+expected_output = "test_csv_validation_failure_is_retained_as_evidence"
+risk = "An HTML login, denial, or error page could cross the CS-NET-003 media-type boundary as accepted CSV transport evidence."

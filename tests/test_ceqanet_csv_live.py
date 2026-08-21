@@ -206,11 +206,12 @@ def test_csv_validation_failure_is_retained_as_evidence() -> None:
     verification = verify_ceqanet_csv_live_execution(execution)
 
     assert execution.inspection is None
-    assert execution.inspection_error is not None
-    assert "unsupported CEQAnet CSV content type" in execution.inspection_error
+    assert execution.inspection_error is None
+    assert execution.error == "UnexpectedMediaType"
+    assert execution.retained_body_bytes() == b""
+    assert execution.retained_body_complete is False
     assert verification.passed is False
-    assert any("offline inspection failed" in finding for finding in verification.findings)
-    assert any("inspection recorded error" in finding for finding in verification.findings)
+    assert any("UnexpectedMediaType" in finding for finding in verification.findings)
 
 
 def test_oversized_response_is_not_partially_retained_or_claimed_hashed() -> None:

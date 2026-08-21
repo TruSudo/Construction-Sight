@@ -35,7 +35,6 @@ _ACCEPTED_MEDIA_TYPES = (
     "application/csv",
     "application/vnd.ms-excel",
     "text/csv",
-    "text/html",
     "text/plain",
 )
 CeqanetCsvLiveHttpClient: TypeAlias = httpx.Client
@@ -223,16 +222,7 @@ def _execution_from_observation(
     max_retained_rows: int,
     executed_at: datetime | None,
 ) -> CeqanetCsvLiveExecution:
-    complete = (
-        not observation.body_truncated
-        and observation.failure_kind is not HttpFailureKind.OVERSIZED_RESPONSE
-        and observation.failure_kind not in {
-            HttpFailureKind.REDIRECT,
-            HttpFailureKind.ACCESS_CONTROL,
-            HttpFailureKind.RATE_LIMIT,
-            HttpFailureKind.TERMINAL_STATUS,
-        }
-    )
+    complete = observation.failure_kind is HttpFailureKind.NONE
     retained_body = observation.response_body if complete else b""
     error = observation.error_type
     if observation.failure_kind is HttpFailureKind.OVERSIZED_RESPONSE:
