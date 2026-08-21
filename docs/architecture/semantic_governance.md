@@ -39,7 +39,9 @@ The capability registry does not claim that source adapters are operational mere
 
 ## Supply-chain doctrine
 
-Direct, development, and build dependencies are exact declarations governed by the dependency registry. Each supported Python environment has a platform-specific lock whose logical rows bind exact versions to reviewed SHA-256 wheel identities. CI rejects resolver-selected versions, source-distribution fallback, unreviewed alternate artifacts, and unhashed lock entries. Installed-version verification, `pip check`, vulnerability scanning, immutable Action pins, and deterministic SBOM generation are independent required gates.
+Direct, development, and build dependencies are exact declarations governed by the dependency registry. Each supported Python environment has a platform-specific lock whose logical rows bind exact versions to reviewed SHA-256 wheel identities. CI rejects resolver-selected versions, source-distribution fallback, unreviewed alternate artifacts, and unhashed lock entries. Installed-version verification, `pip check`, vulnerability scanning, immutable Action pins, and deterministic SBOM generation are independent required gates. Vulnerability scanning executes in an isolated job; exact installed-distribution identity is enforced immediately before and after executable quality gates.
+
+Every governance file reference is resolved through one canonical repository-containment primitive. Absolute, noncanonical, missing, wrong-kind, symlinked, and repository-escaping evidence, test, ADR, lock, review, or mutation references fail certification. Git mode `120000` entries are prohibited before dependency or audit inputs are consumed.
 
 The current locks certify GitHub-hosted Ubuntu x86_64 environments only. Support for another operating system, architecture, Python implementation, or wheel-tag set requires a separate reviewed lock and CI job.
 

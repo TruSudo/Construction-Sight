@@ -8,6 +8,10 @@ from pathlib import Path
 from typing import Any, Final
 
 from constructionsight.governance_certification_core import GovernanceFinding, _finding
+from constructionsight.repository_path_certification import (
+    RepositoryPathError,
+    resolve_repository_file,
+)
 
 _REQUIRED_CATEGORIES: Final = {
     "empty-absent-null-unknown-extra",
@@ -156,13 +160,14 @@ def audit_adversarial_contract(
             )
         else:
             for test in tests:
-                relative = Path(test)
-                if (
-                    relative.is_absolute()
-                    or ".." in relative.parts
-                    or relative.parts[:1] != ("tests",)
-                    or not (root / relative).is_file()
-                ):
+                try:
+                    resolve_repository_file(
+                        root,
+                        test,
+                        required_prefix="tests",
+                        required_suffix=".py",
+                    )
+                except RepositoryPathError:
                     findings.append(
                         _finding(
                             "ADV-MATRIX-008",

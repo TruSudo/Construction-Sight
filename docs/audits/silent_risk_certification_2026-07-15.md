@@ -365,6 +365,7 @@ All 35 defects remain active. The evidence below establishes the prior implement
 
 - deterministic SBOM implementation in `src/constructionsight/supply_chain.py`
 - governed artifact identities and application root component
+- warning-free optional metadata lookup compatible with current `importlib.metadata`
 
 **Regression evidence:**
 
@@ -686,7 +687,9 @@ All 35 defects remain active. The evidence below establishes the prior implement
 
 **Required correction:** isolate vulnerability tooling and verify the supported interpreter immediately before and after the complete executable gate sequence.
 
-**State:** no accepted correction or regression evidence; blocks a new review candidate.
+**Current remediation evidence:** `.github/workflows/ci.yml` runs the pinned vulnerability action in its own Python 3.11/3.12 job, rejects tracked symbolic links before input consumption, and enforces pre/post exact-lock verification around the quality sequence. `dependency_certification.py` rejects scanner/quality co-location and missing enforced environment brackets; `tests/test_dependency_certification.py` covers both regressions.
+
+**State:** correction is implemented in the current working candidate but remains active until the complete matrix and a new independent adversarial review accept it.
 
 ### CS-SR-032 — CEQAnet redirect doctrine
 
@@ -706,7 +709,9 @@ All 35 defects remain active. The evidence below establishes the prior implement
 
 **Required correction:** reject Git mode `120000` and apply one symlink-resistant repository-containment primitive to every evidence, test, ADR, lock, review, and mutation reference.
 
-**State:** no accepted correction or regression evidence; blocks a new review candidate.
+**Current remediation evidence:** `repository_path_certification.py` is the common strict resolver; repository certification and mutation-tree copying reject index mode `120000`; governance contract, capability, architecture-exception, dependency-lock, adversarial-test, resolved-defect, vulnerability-evidence, independent-review, and mutation references all use the resolver. Negative regressions cover external and internal symlinks, tracked symlinks, symlinked governance artifacts, locks, resolved evidence, and mutation targets/tests.
+
+**State:** correction is implemented in the current working candidate but remains active until the complete matrix and a new independent adversarial review accept it.
 
 ### CS-SR-034 — Semantic authorization proof
 

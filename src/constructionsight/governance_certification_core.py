@@ -11,6 +11,11 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Final
 
+from constructionsight.repository_path_certification import (
+    RepositoryPathError,
+    resolve_repository_file,
+)
+
 SCHEMA_VERSION: Final = "constructionsight.governance-certification/v1"
 _ARCHITECTURE_SCHEMA: Final = "constructionsight.architecture-contract/v1"
 _CAPABILITY_SCHEMA: Final = "constructionsight.capability-contract/v1"
@@ -116,13 +121,14 @@ def _read_toml(
     schema: str,
     findings: list[GovernanceFinding],
 ) -> dict[str, Any]:
-    path = root / relative
-    if not path.is_file():
+    try:
+        _canonical, path = resolve_repository_file(root, relative)
+    except RepositoryPathError:
         findings.append(
             _finding(
                 "GOV-CONTRACT-001",
                 relative,
-                "required governance contract is missing",
+                "required governance contract is missing or unsafe",
             )
         )
         return {}

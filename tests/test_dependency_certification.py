@@ -12,15 +12,30 @@ from constructionsight.governance_certification_core import GovernanceFinding
 
 _HASH = "a" * 64
 _REQUIRED_CI = """name: CI
-steps:
-  - uses: actions/checkout@1111111111111111111111111111111111111111 # v1
-  - run: python -m pip install --require-hashes --only-binary=:all: --no-deps -r lock
-  - run: python -m constructionsight.supply_chain verify-lock
-  - run: python -m pip check
-  - uses: pypa/gh-action-pip-audit@2222222222222222222222222222222222222222 # reviewed
-  - run: python -m constructionsight.supply_chain sbom
-  - run: python -m constructionsight.mutation_certification
-  - run: python -m constructionsight.repository_certification_v2
+jobs:
+  vulnerability:
+    steps:
+      - run: git ls-files --stage
+      - uses: pypa/gh-action-pip-audit@2222222222222222222222222222222222222222 # reviewed
+  quality:
+    steps:
+      - uses: actions/checkout@1111111111111111111111111111111111111111 # v1
+      - run: git ls-files --stage
+      - run: python -m pip install --require-hashes --only-binary=:all: --no-deps -r lock
+      - run: python -m pip check
+      - run: python -m constructionsight.supply_chain sbom
+      - id: pre-gate-lock-verification
+        run: python -m constructionsight.supply_chain verify-lock
+      - run: python -m ruff check src tests
+      - run: python -m mypy src
+      - run: python -m compileall src tests
+      - run: python -m pytest
+      - run: python -m constructionsight.mutation_certification
+      - run: python -m constructionsight.repository_certification_v2
+      - id: post-gate-lock-verification
+        run: python -m constructionsight.supply_chain verify-lock
+      - run: test '${{ steps.pre-gate-lock-verification.outcome }}' = success
+      - run: test '${{ steps.post-gate-lock-verification.outcome }}' = success
 """
 
 
@@ -272,6 +287,20 @@ def test_canonical_dependency_audit_rejects_unsafe_lock_path(tmp_path: Path) -> 
     assert "DEP-LOCK-008" in _codes(findings)
 
 
+def test_canonical_dependency_audit_rejects_symlinked_lock(tmp_path: Path) -> None:
+    _project(tmp_path)
+    outside = tmp_path.parent / f"{tmp_path.name}-outside.lock"
+    outside.write_text(_lock(), encoding="utf-8")
+    lock = tmp_path / "requirements/test.lock"
+    lock.parent.mkdir(parents=True)
+    lock.symlink_to(outside)
+    findings: list[GovernanceFinding] = []
+
+    audit_dependencies(tmp_path, _contract(), findings)
+
+    assert "DEP-LOCK-008" in _codes(findings)
+
+
 def test_canonical_dependency_audit_rejects_bootstrap_disagreement(
     tmp_path: Path,
 ) -> None:
@@ -324,3 +353,70 @@ def test_canonical_dependency_audit_rejects_missing_ci_gate(tmp_path: Path) -> N
     audit_dependencies(tmp_path, _contract(), findings)
 
     assert "DEP-CI-001" in _codes(findings)
+
+
+def test_canonical_dependency_audit_rejects_scanner_in_quality_job(
+    tmp_path: Path,
+) -> None:
+    _project(tmp_path)
+    _write(tmp_path, "requirements/test.lock", _lock())
+    shared_job = _REQUIRED_CI.replace(
+        "  vulnerability:\n"
+        "    steps:\n"
+        "      - uses: pypa/gh-action-"
+        "pip-audit@2222222222222222222222222222222222222222 # reviewed\n",
+        "",
+    ).replace(
+        "      - uses: actions/checkout@1111111111111111111111111111111111111111 # v1\n",
+        "      - uses: actions/checkout@1111111111111111111111111111111111111111 # v1\n"
+        "      - uses: pypa/gh-action-"
+        "pip-audit@2222222222222222222222222222222222222222 # reviewed\n",
+    )
+    _write(tmp_path, ".github/workflows/ci.yml", shared_job)
+    findings: list[GovernanceFinding] = []
+
+    audit_dependencies(tmp_path, _contract(), findings)
+
+    assert "DEP-CI-002" in _codes(findings)
+
+
+def test_canonical_dependency_audit_requires_post_gate_environment_check(
+    tmp_path: Path,
+) -> None:
+    _project(tmp_path)
+    _write(tmp_path, "requirements/test.lock", _lock())
+    missing_post = _REQUIRED_CI.replace(
+        "      - id: post-gate-lock-verification\n"
+        "        run: python -m constructionsight.supply_chain verify-lock\n",
+        "",
+    ).replace(
+        "      - run: test '${{ steps.post-gate-lock-verification.outcome }}' = success\n",
+        "",
+    )
+    _write(tmp_path, ".github/workflows/ci.yml", missing_post)
+    findings: list[GovernanceFinding] = []
+
+    audit_dependencies(tmp_path, _contract(), findings)
+
+    assert "DEP-CI-004" in _codes(findings)
+
+
+def test_canonical_dependency_audit_rejects_misordered_environment_check(
+    tmp_path: Path,
+) -> None:
+    _project(tmp_path)
+    _write(tmp_path, "requirements/test.lock", _lock())
+    post_step = (
+        "      - id: post-gate-lock-verification\n"
+        "        run: python -m constructionsight.supply_chain verify-lock\n"
+    )
+    misordered = _REQUIRED_CI.replace(post_step, "").replace(
+        "      - run: python -m ruff check src tests\n",
+        post_step + "      - run: python -m ruff check src tests\n",
+    )
+    _write(tmp_path, ".github/workflows/ci.yml", misordered)
+    findings: list[GovernanceFinding] = []
+
+    audit_dependencies(tmp_path, _contract(), findings)
+
+    assert "DEP-CI-004" in _codes(findings)

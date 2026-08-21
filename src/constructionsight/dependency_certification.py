@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 import tomllib
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from datetime import date
 from pathlib import Path
 from typing import Any, Final
@@ -12,6 +12,10 @@ from urllib.parse import urlsplit
 
 from constructionsight import __version__
 from constructionsight.governance_certification_core import GovernanceFinding, _finding
+from constructionsight.repository_path_certification import (
+    RepositoryPathError,
+    resolve_repository_file,
+)
 from constructionsight.supply_chain import load_lock_entries
 
 _EXACT_REQUIREMENT: Final = re.compile(
@@ -73,6 +77,7 @@ _REQUIRED_CI_SNIPPETS: Final = {
     "--require-hashes",
     "--only-binary=:all:",
     "--no-deps",
+    "git ls-files --stage",
     "python -m constructionsight.supply_chain verify-lock",
     "python -m pip check",
     "pypa/gh-action-pip-audit@",
@@ -80,6 +85,18 @@ _REQUIRED_CI_SNIPPETS: Final = {
     "python -m constructionsight.mutation_certification",
     "python -m constructionsight.repository_certification_v2",
 }
+_EXECUTABLE_GATE_MARKERS: Final = (
+    "python -m ruff check",
+    "python -m mypy",
+    "python -m compileall",
+    "python -m pytest",
+    "python -m constructionsight.mutation_certification",
+    "python -m constructionsight.repository_certification_v2",
+    "constructionsight audit-adapters",
+    "constructionsight audit-source-coverage",
+    "python -m constructionsight.github_review_certification",
+    "git diff --check",
+)
 
 
 def _canonical_name(value: str) -> str:
@@ -100,7 +117,8 @@ def _parse_exact(value: str) -> tuple[str, tuple[str, ...], str] | None:
 
 
 def _raw_direct_requirements(root: Path) -> list[str]:
-    pyproject = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
+    _relative, pyproject_path = resolve_repository_file(root, "pyproject.toml")
+    pyproject = tomllib.loads(pyproject_path.read_text(encoding="utf-8"))
     raw: list[str] = []
     project = pyproject.get("project", {})
     raw.extend(str(value) for value in project.get("dependencies", []))
@@ -133,15 +151,6 @@ def _is_https_url(value: object, *, host: str | None = None) -> bool:
         and bool(parsed.netloc)
         and (host is None or parsed.hostname == host)
     )
-
-
-def _safe_relative_path(value: object) -> Path | None:
-    if not isinstance(value, str) or not value.strip():
-        return None
-    path = Path(value)
-    if path.is_absolute() or ".." in path.parts or path.as_posix() != value:
-        return None
-    return path
 
 
 def _audit_contract_policy(
@@ -181,13 +190,14 @@ def _audit_contract_policy(
                 )
             )
     for artifact_field in ("vulnerability_exceptions", "review_evidence"):
-        relative = _safe_relative_path(contract.get(artifact_field))
-        if relative is None or not (root / relative).is_file():
+        try:
+            resolve_repository_file(root, contract.get(artifact_field))
+        except RepositoryPathError:
             findings.append(
                 _finding(
                     "DEP-POLICY-002",
                     path,
-                    f"{artifact_field} must reference an existing safe relative path",
+                    f"{artifact_field} must reference an existing contained file",
                 )
             )
     bootstrap = contract.get("bootstrap_distributions")
@@ -207,6 +217,120 @@ def _audit_contract_policy(
                 "every bootstrap distribution must use one exact requirement",
             )
         )
+
+
+def _workflow_job_blocks(workflow: str) -> dict[str, str]:
+    blocks: dict[str, list[str]] = {}
+    current: str | None = None
+    in_jobs = False
+    for line in workflow.splitlines():
+        if line == "jobs:":
+            in_jobs = True
+            current = None
+            continue
+        if not in_jobs:
+            continue
+        if line and not line.startswith(" "):
+            break
+        match = re.fullmatch(r"  ([A-Za-z0-9_-]+):\s*", line)
+        if match is not None:
+            current = match.group(1)
+            blocks[current] = [line]
+            continue
+        if current is not None:
+            blocks[current].append(line)
+    return {name: "\n".join(lines) for name, lines in blocks.items()}
+
+
+def _audit_ci_environment_identity(
+    workflow_paths: Sequence[tuple[Path, Path]],
+    findings: list[GovernanceFinding],
+) -> None:
+    scanner_jobs: list[tuple[Path, str, str]] = []
+    gate_jobs: list[tuple[Path, str, str]] = []
+    for relative, workflow in workflow_paths:
+        text = workflow.read_text(encoding="utf-8")
+        for job_name, block in _workflow_job_blocks(text).items():
+            effective = "\n".join(
+                line for line in block.splitlines() if not line.lstrip().startswith("#")
+            )
+            if re.search(
+                r"^\s*(?:-\s*)?uses:\s*pypa/gh-action-pip-audit@[0-9a-f]{40}",
+                effective,
+                flags=re.MULTILINE,
+            ):
+                scanner_jobs.append((relative, job_name, effective))
+            if any(marker in effective for marker in _EXECUTABLE_GATE_MARKERS):
+                gate_jobs.append((relative, job_name, effective))
+
+    if not scanner_jobs:
+        findings.append(
+            _finding(
+                "DEP-CI-002",
+                ".github/workflows",
+                "vulnerability tooling must run in an isolated workflow job",
+            )
+        )
+    if not gate_jobs:
+        findings.append(
+            _finding(
+                "DEP-CI-004",
+                ".github/workflows",
+                "no executable quality-gate job has enforceable environment identity",
+            )
+        )
+    for relative, job_name, block in scanner_jobs:
+        if any(marker in block for marker in _EXECUTABLE_GATE_MARKERS):
+            findings.append(
+                _finding(
+                    "DEP-CI-002",
+                    relative,
+                    "vulnerability tooling must run in a job isolated from executable "
+                    f"quality gates: {job_name}",
+                )
+            )
+    for relative, job_name, block in gate_jobs:
+        required_markers = (
+            "id: pre-gate-lock-verification",
+            "id: post-gate-lock-verification",
+            "steps.pre-gate-lock-verification.outcome",
+            "steps.post-gate-lock-verification.outcome",
+        )
+        missing = [marker for marker in required_markers if marker not in block]
+        gate_positions = [
+            block.index(marker)
+            for marker in _EXECUTABLE_GATE_MARKERS
+            if marker in block
+        ]
+        pre_position = block.find("id: pre-gate-lock-verification")
+        post_position = block.find("id: post-gate-lock-verification")
+        verify_positions = [
+            match.start()
+            for match in re.finditer(
+                "python -m constructionsight.supply_chain verify-lock",
+                block,
+            )
+        ]
+        ordered = (
+            bool(gate_positions)
+            and pre_position >= 0
+            and post_position >= 0
+            and pre_position < min(gate_positions)
+            and post_position > max(gate_positions)
+            and any(pre_position < position < min(gate_positions) for position in verify_positions)
+            and any(position > post_position for position in verify_positions)
+        )
+        if not ordered:
+            missing.append("ordered pre/post verify-lock execution")
+        if missing:
+            findings.append(
+                _finding(
+                    "DEP-CI-004",
+                    relative,
+                    "executable quality-gate job lacks enforced pre/post exact-environment "
+                    f"verification: {job_name}; missing={missing}",
+                )
+            )
 
 
 def _audit_registry_entry(
@@ -344,8 +468,9 @@ def audit_dependencies(
 
     path = "governance/dependency_contract.toml"
     _audit_contract_policy(root, contract, findings)
-    pyproject_path = root / "pyproject.toml"
-    if not pyproject_path.is_file():
+    try:
+        _relative, pyproject_path = resolve_repository_file(root, "pyproject.toml")
+    except RepositoryPathError:
         findings.append(
             _finding("DEP-PROJECT-001", "pyproject.toml", "project declaration is missing")
         )
@@ -434,20 +559,20 @@ def audit_dependencies(
         )
     else:
         for raw_path in lock_paths:
-            lock_path = _safe_relative_path(raw_path)
-            if lock_path is None:
+            try:
+                lock_path, absolute = resolve_repository_file(
+                    root,
+                    raw_path,
+                    required_prefix="requirements",
+                    required_suffix=".lock",
+                )
+            except RepositoryPathError:
                 findings.append(
                     _finding(
                         "DEP-LOCK-008",
                         path,
-                        f"lock path must be safe and repository-relative: {raw_path}",
+                        f"lock path must resolve to a contained requirements lock: {raw_path}",
                     )
-                )
-                continue
-            absolute = root / lock_path
-            if not absolute.is_file():
-                findings.append(
-                    _finding("DEP-LOCK-002", lock_path, "declared lock file is missing")
                 )
                 continue
             try:
@@ -500,10 +625,22 @@ def audit_dependencies(
                         )
                     )
 
-    workflow_paths = sorted((root / ".github/workflows").glob("*.y*ml"))
+    workflow_paths: list[tuple[Path, Path]] = []
+    for candidate in sorted((root / ".github/workflows").glob("*.y*ml")):
+        raw_relative = candidate.relative_to(root).as_posix()
+        try:
+            workflow_paths.append(resolve_repository_file(root, raw_relative))
+        except RepositoryPathError:
+            findings.append(
+                _finding(
+                    "DEP-CI-003",
+                    raw_relative,
+                    "workflow path is missing or escapes repository containment",
+                )
+            )
     workflow_text = "\n".join(
         workflow.read_text(encoding="utf-8")
-        for workflow in workflow_paths
+        for _relative, workflow in workflow_paths
     )
     for snippet in sorted(_REQUIRED_CI_SNIPPETS):
         if snippet not in workflow_text:
@@ -518,8 +655,8 @@ def audit_dependencies(
         r"^(?P<indent>\s*)(?:-\s*)?uses:\s*(?P<action>[^@\s]+)@"
         r"(?P<ref>[^\s#]+)(?P<comment>.*)$"
     )
-    for workflow in workflow_paths:
-        relative = workflow.relative_to(root)
+    _audit_ci_environment_identity(workflow_paths, findings)
+    for relative, workflow in workflow_paths:
         for number, line in enumerate(
             workflow.read_text(encoding="utf-8").splitlines(), start=1
         ):
@@ -561,7 +698,10 @@ def audit_dependency_agreement(
     """Reject version or extras disagreement among declarations, registry, and locks."""
 
     path = "governance/dependency_contract.toml"
-    direct = _direct_requirements(root)
+    try:
+        direct = _direct_requirements(root)
+    except RepositoryPathError:
+        return
     entries = contract.get("dependencies")
     if not isinstance(entries, list):
         return
@@ -599,11 +739,14 @@ def audit_dependency_agreement(
     if not isinstance(lock_paths, list):
         return
     for raw_path in lock_paths:
-        lock_path = _safe_relative_path(raw_path)
-        if lock_path is None:
-            continue
-        absolute = root / lock_path
-        if not absolute.is_file():
+        try:
+            lock_path, absolute = resolve_repository_file(
+                root,
+                raw_path,
+                required_prefix="requirements",
+                required_suffix=".lock",
+            )
+        except RepositoryPathError:
             continue
         try:
             lock_entries = load_lock_entries(absolute)

@@ -10,6 +10,10 @@ from pathlib import Path
 from typing import Any, Final
 
 from constructionsight.governance_certification_core import GovernanceFinding, _finding
+from constructionsight.repository_path_certification import (
+    RepositoryPathError,
+    resolve_repository_file,
+)
 
 _CONTRACT_FIELDS: Final = {
     "governance/architecture_contract.toml": (
@@ -340,22 +344,16 @@ def _safe_existing_paths(
         or values != sorted(set(values))
     ):
         return False
-    root_resolved = root.resolve()
     for raw_value in values:
         assert isinstance(raw_value, str)
-        candidate = Path(raw_value)
-        if candidate.is_absolute() or ".." in candidate.parts:
-            return False
         try:
-            resolved = (root / candidate).resolve(strict=True)
-            resolved.relative_to(root_resolved)
-        except (OSError, ValueError):
-            return False
-        if not resolved.is_file():
-            return False
-        if require_tests and (
-            not raw_value.startswith("tests/") or candidate.suffix != ".py"
-        ):
+            resolve_repository_file(
+                root,
+                raw_value,
+                required_prefix="tests" if require_tests else None,
+                required_suffix=".py" if require_tests else None,
+            )
+        except RepositoryPathError:
             return False
     return True
 
@@ -459,9 +457,18 @@ def _audit_resolved_defects(
                 )
             )
         review_artifact = defect.get("review_artifact")
-        if review_artifact != _CANONICAL_REVIEW_ARTIFACT or not (
-            root / _CANONICAL_REVIEW_ARTIFACT
-        ).is_file():
+        review_path: Path | None = None
+        if review_artifact == _CANONICAL_REVIEW_ARTIFACT:
+            try:
+                _relative, review_path = resolve_repository_file(
+                    root,
+                    _CANONICAL_REVIEW_ARTIFACT,
+                    required_prefix="governance/reviews",
+                    required_suffix=".json",
+                )
+            except RepositoryPathError:
+                review_path = None
+        if review_path is None:
             findings.append(
                 _finding(
                     "GOV-RESOLVED-012",
@@ -482,13 +489,9 @@ def _audit_resolved_defects(
                     "SHA-256 digest",
                 )
             )
-        elif review_artifact == _CANONICAL_REVIEW_ARTIFACT and (
-            root / _CANONICAL_REVIEW_ARTIFACT
-        ).is_file():
+        elif review_path is not None:
             try:
-                review_payload = json.loads(
-                    (root / _CANONICAL_REVIEW_ARTIFACT).read_text(encoding="utf-8")
-                )
+                review_payload = json.loads(review_path.read_text(encoding="utf-8"))
             except (OSError, UnicodeError, json.JSONDecodeError):
                 findings.append(
                     _finding(
@@ -640,12 +643,9 @@ def _audit_vulnerability_exceptions(
                 )
             )
         evidence = exception.get("review_evidence")
-        if (
-            not isinstance(evidence, str)
-            or Path(evidence).is_absolute()
-            or ".." in Path(evidence).parts
-            or not (root / evidence).is_file()
-        ):
+        try:
+            resolve_repository_file(root, evidence)
+        except RepositoryPathError:
             findings.append(
                 _finding(
                     "GOV-VULN-007",

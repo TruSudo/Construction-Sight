@@ -215,6 +215,40 @@ def test_capability_registry_rejects_planned_runtime_exposure(tmp_path: Path) ->
     assert "CAP-RUNTIME-001" in _codes(findings)
 
 
+def test_capability_registry_rejects_symlinked_governance_artifact(
+    tmp_path: Path,
+) -> None:
+    tracked = (_write(tmp_path, "src/constructionsight/current.py", "VALUE = 1\n"),)
+    _write(tmp_path, "tests/evidence.py", "def test_evidence():\n    assert True\n")
+    _write(tmp_path, "docs/adr.md", "# ADR\n")
+    outside = tmp_path.parent / f"{tmp_path.name}-doctrine.md"
+    outside.write_text("outside doctrine\n", encoding="utf-8")
+    doctrine = tmp_path / "docs/doctrine.md"
+    doctrine.symlink_to(outside)
+    contract = {
+        "capabilities": [
+            _capability(
+                capability_id="CS-CAP-001",
+                status="implemented",
+                owning_layer="application",
+                pattern=r"src/constructionsight/current\.py",
+                default_owner=True,
+            )
+        ]
+    }
+    findings: list[GovernanceFinding] = []
+
+    _audit_capabilities(
+        tmp_path,
+        tracked,
+        contract,
+        {"constructionsight.current": "application"},
+        findings,
+    )
+
+    assert "CAP-ARTIFACT-001" in _codes(findings)
+
+
 def _dependency_entry() -> dict[str, Any]:
     return {
         "name": "example",

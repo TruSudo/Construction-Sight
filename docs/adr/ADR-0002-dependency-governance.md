@@ -10,6 +10,8 @@
 
 CI installs the selected lock with `--require-hashes`, `--only-binary=:all:`, and `--no-deps`; it then installs the project without dependency resolution or build isolation. The supply-chain certifier rejects unhashed, nonexact, duplicate, malformed, or dangling lock entries, verifies installed versions, runs `pip check`, performs a fatal vulnerability audit, and emits a deterministic SBOM.
 
+Vulnerability tooling runs in a separate matrix job and cannot modify the interpreter used for executable quality gates. The supported interpreter is reverified against the exact lock immediately before and after the complete executable gate sequence. Both jobs reject tracked Git mode `120000` entries before consuming repository paths.
+
 Every third-party GitHub Action is pinned to an immutable commit SHA with an inline release or review comment. Dependency, lock, build, Action, or installation changes require explicit review evidence.
 
 ## Artifact boundary

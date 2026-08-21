@@ -145,10 +145,8 @@ def _metadata_value(
 ) -> str | None:
     """Return one metadata value without relying on an untyped get method."""
 
-    try:
-        return distribution.metadata[key]
-    except KeyError:
-        return None
+    values = distribution.metadata.get_all(key)
+    return values[0] if values else None
 
 
 def installed_inventory() -> dict[str, importlib.metadata.Distribution]:

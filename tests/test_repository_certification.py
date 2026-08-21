@@ -46,6 +46,7 @@ jobs:
           - "3.11"
           - "3.12"
     steps:
+      - run: git ls-files --stage
       - run: python -m ruff check src tests
       - run: python -m mypy src
       - run: python -m compileall -q src tests
@@ -127,6 +128,25 @@ def test_broken_local_markdown_link_fails(tmp_path: Path) -> None:
     report = audit_repository(tmp_path)
 
     assert any(finding.code == "CERT-DOC-001" for finding in report.findings)
+
+
+def test_tracked_symbolic_link_fails_without_reading_target(tmp_path: Path) -> None:
+    _build_repository(tmp_path)
+    outside = tmp_path.parent / f"{tmp_path.name}-outside.md"
+    outside.write_text("outside\n", encoding="utf-8")
+    link = tmp_path / "docs/external.md"
+    link.parent.mkdir(parents=True)
+    link.symlink_to(outside)
+    _run(tmp_path, "add", "docs/external.md")
+    _run(tmp_path, "commit", "-m", "Add prohibited symbolic link")
+
+    report = audit_repository(tmp_path)
+
+    assert any(
+        finding.code == "CERT-PATH-005"
+        and finding.path == "docs/external.md"
+        for finding in report.findings
+    )
 
 
 def test_dirty_worktree_fails_when_required(tmp_path: Path) -> None:

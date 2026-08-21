@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
+from email.message import Message
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -29,7 +29,8 @@ class _Metadata(dict[str, str]):
             return list(self._project_urls)
         if key == "Classifier":
             return list(self._classifiers)
-        return None
+        value = self.get(key)
+        return [value] if value is not None else None
 
 
 @dataclass(frozen=True)
@@ -52,8 +53,19 @@ class _InventoryDistribution:
     version: str
 
     @property
-    def metadata(self) -> dict[str, Any]:
-        return {} if self.name is None else {"Name": self.name}
+    def metadata(self) -> _Metadata:
+        return _Metadata({} if self.name is None else {"Name": self.name})
+
+
+@dataclass(frozen=True)
+class _MessageDistribution:
+    version: str = "1.0"
+
+    @property
+    def metadata(self) -> Message:
+        metadata = Message()
+        metadata["Name"] = "example"
+        return metadata
 
 
 def _locked(requirement: str, *, digest: str = _HASH) -> str:
@@ -78,6 +90,10 @@ def _with_project(
 def test_canonical_name_normalizes_python_distribution_identity() -> None:
     assert supply_chain.canonical_name("Python_DateUtil") == "python-dateutil"
     assert supply_chain.canonical_name("typing.extensions") == "typing-extensions"
+
+
+def test_metadata_value_handles_absent_email_metadata_without_warning() -> None:
+    assert supply_chain._metadata_value(_MessageDistribution(), "Missing") is None
 
 
 def test_load_lock_rejects_nonexact_entry(tmp_path: Path) -> None:

@@ -23,6 +23,10 @@ from constructionsight.governance_certification_core import (
     _mutation_lines,
     _strongly_connected_components,
 )
+from constructionsight.repository_path_certification import (
+    RepositoryPathError,
+    resolve_repository_file,
+)
 
 
 def _audit_architecture(
@@ -225,13 +229,20 @@ def _audit_architecture(
                 )
             )
         for artifact_field in ("test", "adr"):
-            artifact = root / str(exception[artifact_field])
-            if not artifact.is_file():
+            required_prefix = "tests" if artifact_field == "test" else "docs"
+            try:
+                resolve_repository_file(
+                    root,
+                    exception[artifact_field],
+                    required_prefix=required_prefix,
+                    required_suffix=".py" if artifact_field == "test" else ".md",
+                )
+            except RepositoryPathError:
                 findings.append(
                     _finding(
                         "ARCH-EXCEPTION-008",
                         path,
-                        f"exception references missing {artifact_field}: "
+                        f"exception references missing or unsafe {artifact_field}: "
                         f"{exception[artifact_field]}",
                     )
                 )
@@ -279,11 +290,17 @@ def _audit_architecture(
     }
     for module, module_path in sorted(modules.items()):
         try:
+            _relative, absolute_module = resolve_repository_file(
+                root,
+                module_path.as_posix(),
+                required_prefix="src/constructionsight",
+                required_suffix=".py",
+            )
             tree = ast.parse(
-                (root / module_path).read_text(encoding="utf-8"),
+                absolute_module.read_text(encoding="utf-8"),
                 filename=module_path.as_posix(),
             )
-        except (OSError, UnicodeError, SyntaxError):
+        except (OSError, UnicodeError, SyntaxError, RepositoryPathError):
             continue
         internal, external = _imports(tree, module, known)
         graph[module].update(target for target in internal if target != module)

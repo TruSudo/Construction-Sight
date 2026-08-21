@@ -15,6 +15,10 @@ from constructionsight.governance_certification_core import (
     _finding,
     _module_name,
 )
+from constructionsight.repository_path_certification import (
+    RepositoryPathError,
+    resolve_repository_file,
+)
 
 
 def _match_contract_owner(
@@ -139,12 +143,25 @@ def _audit_capabilities(
                 )
                 continue
             for value in values:
-                if not isinstance(value, str) or not (root / value).is_file():
+                required_prefix = {
+                    "tests": "tests",
+                    "doctrine": "docs",
+                    "adrs": "docs",
+                }[artifact_field]
+                required_suffix = ".py" if artifact_field == "tests" else ".md"
+                try:
+                    resolve_repository_file(
+                        root,
+                        value,
+                        required_prefix=required_prefix,
+                        required_suffix=required_suffix,
+                    )
+                except RepositoryPathError:
                     findings.append(
                         _finding(
                             "CAP-ARTIFACT-001",
                             path,
-                            f"{capability_id} references missing {artifact_field} "
+                            f"{capability_id} references missing or unsafe {artifact_field} "
                             f"artifact: {value}",
                         )
                     )
@@ -293,8 +310,9 @@ def _audit_dependencies(
     findings: list[GovernanceFinding],
 ) -> int:
     path = "governance/dependency_contract.toml"
-    pyproject_path = root / "pyproject.toml"
-    if not pyproject_path.is_file():
+    try:
+        _relative, pyproject_path = resolve_repository_file(root, "pyproject.toml")
+    except RepositoryPathError:
         return 0
     pyproject = tomllib.loads(pyproject_path.read_text(encoding="utf-8"))
     direct_raw: list[str] = []
@@ -393,10 +411,20 @@ def _audit_dependencies(
         findings.append(_finding("DEP-LOCK-001", path, "at least one lock file is required"))
     else:
         for lock_path in lock_paths:
-            lock = root / str(lock_path)
-            if not lock.is_file():
+            try:
+                _relative, lock = resolve_repository_file(
+                    root,
+                    lock_path,
+                    required_prefix="requirements",
+                    required_suffix=".lock",
+                )
+            except RepositoryPathError:
                 findings.append(
-                    _finding("DEP-LOCK-002", str(lock_path), "declared lock file is missing")
+                    _finding(
+                        "DEP-LOCK-002",
+                        str(lock_path),
+                        "declared lock file is missing or unsafe",
+                    )
                 )
                 continue
             lock_names: set[str] = set()

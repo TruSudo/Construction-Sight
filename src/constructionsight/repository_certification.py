@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import ast
 import json
+import posixpath
 import re
 import subprocess
 import sys
@@ -12,6 +13,11 @@ from collections.abc import Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
+
+from constructionsight.repository_path_certification import (
+    RepositoryPathError,
+    resolve_repository_file,
+)
 
 SCHEMA_VERSION = "constructionsight.repository_certification.v1"
 
@@ -100,6 +106,7 @@ _SECRET_RULES = (
     ("OpenAI-style secret", re.compile(_joined(r"\bsk-", r"[A-Za-z0-9_-]{20,}\b"))),
 )
 _REQUIRED_CI_SNIPPETS = (
+    "git ls-files --stage",
     "python -m pip check",
     "python -m ruff check src tests",
     "python -m mypy src",
@@ -162,12 +169,27 @@ def _run_git(root: Path, *arguments: str) -> str:
     raise CertificationError(f"git command failed: {' '.join(command)}: {detail}")
 
 
-def _tracked_files(root: Path) -> tuple[Path, ...]:
-    output = _run_git(root, "ls-files", "-z")
-    paths = tuple(Path(value) for value in output.split("\0") if value)
-    if not paths:
+def _tracked_index_entries(root: Path) -> tuple[tuple[Path, str], ...]:
+    output = _run_git(root, "ls-files", "--stage", "-z")
+    entries: list[tuple[Path, str]] = []
+    for raw_entry in output.split("\0"):
+        if not raw_entry:
+            continue
+        metadata, separator, raw_path = raw_entry.partition("\t")
+        fields = metadata.split()
+        if not separator or len(fields) != 3:
+            raise CertificationError("git index entry has an unexpected shape")
+        mode, _object_id, stage = fields
+        if stage != "0":
+            raise CertificationError(f"git index contains unresolved stages: {raw_path}")
+        entries.append((Path(raw_path), mode))
+    if not entries:
         raise CertificationError("repository has no tracked files")
-    return tuple(sorted(paths, key=Path.as_posix))
+    return tuple(sorted(entries, key=lambda entry: entry[0].as_posix()))
+
+
+def _tracked_files(root: Path) -> tuple[Path, ...]:
+    return tuple(path for path, _mode in _tracked_index_entries(root))
 
 
 def _line_number(text: str, offset: int) -> int:
@@ -338,16 +360,19 @@ def _audit_markdown_links(
         target = _link_target(match.group(1))
         if not target or target.startswith(("http://", "https://", "mailto:", "#")):
             continue
-        if target.startswith("/"):
-            candidate = root / target.lstrip("/")
-        else:
-            candidate = root / path.parent / target
-        if not candidate.exists():
+        relative_target = (
+            target.lstrip("/")
+            if target.startswith("/")
+            else posixpath.normpath((path.parent / target).as_posix())
+        )
+        try:
+            resolve_repository_file(root, relative_target)
+        except RepositoryPathError:
             findings.append(
                 _finding(
                     "CERT-DOC-001",
                     path,
-                    f"local Markdown link target does not exist: {target}",
+                    f"local Markdown link target is missing or unsafe: {target}",
                     _line_number(text, match.start()),
                 )
             )
@@ -371,8 +396,9 @@ def _audit_pyproject(
     findings: list[CertificationFinding],
 ) -> None:
     path = Path("pyproject.toml")
-    absolute_path = root / path
-    if not absolute_path.exists():
+    try:
+        _relative, absolute_path = resolve_repository_file(root, path.as_posix())
+    except RepositoryPathError:
         findings.append(_finding("CERT-CONFIG-001", path, "pyproject.toml is required"))
         return
     payload = tomllib.loads(absolute_path.read_text(encoding="utf-8"))
@@ -406,7 +432,23 @@ def _audit_pyproject(
                 _finding("CERT-SCRIPT-002", path, f"script module is not tracked: {module_path}")
             )
             continue
-        source = (root / module_path).read_text(encoding="utf-8")
+        try:
+            _relative, source_path = resolve_repository_file(
+                root,
+                module_path.as_posix(),
+                required_prefix="src/constructionsight",
+                required_suffix=".py",
+            )
+        except RepositoryPathError:
+            findings.append(
+                _finding(
+                    "CERT-SCRIPT-002",
+                    path,
+                    f"script module is not safely resolvable: {module_path}",
+                )
+            )
+            continue
+        source = source_path.read_text(encoding="utf-8")
         if attribute_name not in _defined_module_names(ast.parse(source)):
             findings.append(
                 _finding(
@@ -419,8 +461,9 @@ def _audit_pyproject(
 
 def _audit_ci(root: Path, findings: list[CertificationFinding]) -> None:
     path = Path(".github/workflows/ci.yml")
-    absolute_path = root / path
-    if not absolute_path.exists():
+    try:
+        _relative, absolute_path = resolve_repository_file(root, path.as_posix())
+    except RepositoryPathError:
         findings.append(_finding("CERT-CI-001", path, "canonical CI workflow is required"))
         return
     workflow = absolute_path.read_text(encoding="utf-8")
@@ -442,7 +485,9 @@ def _audit_ci(root: Path, findings: list[CertificationFinding]) -> None:
 
 def audit_repository(root: Path, *, require_clean_worktree: bool = False) -> CertificationReport:
     repository_root = root.resolve()
-    tracked_files = _tracked_files(repository_root)
+    tracked_entries = _tracked_index_entries(repository_root)
+    tracked_files = tuple(path for path, _mode in tracked_entries)
+    mode_by_path = dict(tracked_entries)
     tracked = set(tracked_files)
     findings: list[CertificationFinding] = []
     normalized_paths: dict[str, Path] = {}
@@ -468,7 +513,30 @@ def audit_repository(root: Path, *, require_clean_worktree: bool = False) -> Cer
         ):
             findings.append(_finding("CERT-PATH-003", path, "transient or backup file is tracked"))
 
-        absolute_path = repository_root / path
+        mode = mode_by_path[path]
+        if mode == "120000":
+            findings.append(
+                _finding(
+                    "CERT-PATH-005",
+                    path,
+                    "tracked symbolic links are prohibited",
+                )
+            )
+            continue
+        try:
+            _relative, absolute_path = resolve_repository_file(
+                repository_root,
+                display_path,
+            )
+        except RepositoryPathError as exc:
+            findings.append(
+                _finding(
+                    "CERT-PATH-006",
+                    path,
+                    f"tracked path is missing or unsafe: {exc}",
+                )
+            )
+            continue
         if absolute_path.stat().st_size > _MAX_TRACKED_FILE_BYTES:
             findings.append(_finding("CERT-PATH-004", path, "tracked file exceeds 5 MiB"))
         if path.suffix.lower() == ".py":

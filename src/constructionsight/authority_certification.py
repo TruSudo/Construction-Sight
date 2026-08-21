@@ -19,6 +19,10 @@ from constructionsight.governance_certification_core import (
     _finding,
     _read_toml,
 )
+from constructionsight.repository_path_certification import (
+    RepositoryPathError,
+    resolve_repository_file,
+)
 from constructionsight.traceability_certification import _match_contract_owner
 
 _ALLOWED_AFTER_REVIEW = frozenset(
@@ -378,12 +382,19 @@ def _audit_test_obligations(
             )
             continue
         for test in tests:
-            if not isinstance(test, str) or not (root / test).is_file():
+            try:
+                resolve_repository_file(
+                    root,
+                    test,
+                    required_prefix="tests",
+                    required_suffix=".py",
+                )
+            except RepositoryPathError:
                 findings.append(
                     _finding(
                         "TEST-MATRIX-003",
                         path,
-                        f"{matrix_id} references missing test: {test}",
+                        f"{matrix_id} references missing or unsafe test: {test}",
                     )
                 )
 
@@ -503,12 +514,19 @@ def _audit_defects_and_review(
         findings,
     )
 
-    review_path = root / "governance/reviews/independent_review.json"
-    if not review_path.is_file():
+    review_relative = Path("governance/reviews/independent_review.json")
+    try:
+        _canonical, review_path = resolve_repository_file(
+            root,
+            review_relative.as_posix(),
+            required_prefix="governance/reviews",
+            required_suffix=".json",
+        )
+    except RepositoryPathError:
         findings.append(
             _finding(
                 "REVIEW-001",
-                review_path.relative_to(root),
+                review_relative,
                 "independent adversarial review report is missing",
             )
         )
@@ -519,7 +537,7 @@ def _audit_defects_and_review(
         findings.append(
             _finding(
                 "REVIEW-002",
-                review_path.relative_to(root),
+                review_relative,
                 f"review report is malformed: {exc}",
             )
         )
@@ -528,7 +546,7 @@ def _audit_defects_and_review(
         findings.append(
             _finding(
                 "REVIEW-002",
-                review_path.relative_to(root),
+                review_relative,
                 "review report must be a JSON object",
             )
         )
@@ -539,7 +557,7 @@ def _audit_defects_and_review(
         findings.append(
             _finding(
                 "REVIEW-010",
-                review_path.relative_to(root),
+                review_relative,
                 "independent review fields disagree with schema; "
                 f"missing={sorted(missing)}, unknown={sorted(unknown)}",
             )
@@ -548,7 +566,7 @@ def _audit_defects_and_review(
         findings.append(
             _finding(
                 "REVIEW-003",
-                review_path.relative_to(root),
+                review_relative,
                 "unsupported independent review schema",
             )
         )
@@ -556,7 +574,7 @@ def _audit_defects_and_review(
         findings.append(
             _finding(
                 "REVIEW-004",
-                review_path.relative_to(root),
+                review_relative,
                 "independent review has not passed",
             )
         )
@@ -566,7 +584,7 @@ def _audit_defects_and_review(
             findings.append(
                 _finding(
                     "REVIEW-011",
-                    review_path.relative_to(root),
+                    review_relative,
                     f"{field} must be nonblank trimmed text",
                 )
             )
@@ -582,7 +600,7 @@ def _audit_defects_and_review(
         findings.append(
             _finding(
                 "REVIEW-005",
-                review_path.relative_to(root),
+                review_relative,
                 "independent review contains unresolved or malformed findings",
             )
         )
@@ -593,7 +611,7 @@ def _audit_defects_and_review(
         findings.append(
             _finding(
                 "REVIEW-006",
-                review_path.relative_to(root),
+                review_relative,
                 "reviewed_commit must be a full commit SHA",
             )
         )
@@ -604,7 +622,7 @@ def _audit_defects_and_review(
         findings.append(
             _finding(
                 "REVIEW-012",
-                review_path.relative_to(root),
+                review_relative,
                 "reviewed_tree_digest must be a lowercase SHA-256 digest",
             )
         )
@@ -615,7 +633,7 @@ def _audit_defects_and_review(
         findings.append(
             _finding(
                 "REVIEW-007",
-                review_path.relative_to(root),
+                review_relative,
                 f"cannot verify review binding: {exc}",
             )
         )
@@ -624,7 +642,7 @@ def _audit_defects_and_review(
         findings.append(
             _finding(
                 "REVIEW-009",
-                review_path.relative_to(root),
+                review_relative,
                 "tracked tree outside permitted post-review governance artifacts "
                 "does not match the independently reviewed tree digest",
             )

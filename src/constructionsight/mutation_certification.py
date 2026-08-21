@@ -16,6 +16,11 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Final
 
+from constructionsight.repository_path_certification import (
+    RepositoryPathError,
+    resolve_repository_file,
+)
+
 SCHEMA_VERSION: Final = "constructionsight.mutation-report/v1"
 CONTRACT_SCHEMA_VERSION: Final = "constructionsight.mutation-contract/v1"
 
@@ -47,9 +52,13 @@ class MutationContractError(RuntimeError):
 
 
 def _load_contract(root: Path) -> tuple[int, tuple[MutationCase, ...]]:
-    path = root / "governance/mutation_contract.toml"
-    if not path.is_file():
-        raise MutationContractError("mutation contract is missing")
+    try:
+        _relative, path = resolve_repository_file(
+            root,
+            "governance/mutation_contract.toml",
+        )
+    except RepositoryPathError as exc:
+        raise MutationContractError("mutation contract is missing") from exc
     try:
         payload = tomllib.loads(path.read_text(encoding="utf-8"))
     except (OSError, UnicodeError, tomllib.TOMLDecodeError) as exc:
@@ -123,16 +132,19 @@ def _load_contract(root: Path) -> tuple[int, tuple[MutationCase, ...]]:
 
 
 def _validate_case_path(root: Path, case: MutationCase) -> None:
-    relative = Path(case.path)
-    if relative.is_absolute() or ".." in relative.parts:
-        raise MutationContractError(f"unsafe mutation path: {case.path}")
-    if not case.path.startswith("src/constructionsight/") or relative.suffix != ".py":
+    try:
+        _relative, absolute = resolve_repository_file(
+            root,
+            case.path,
+            required_prefix="src/constructionsight",
+            required_suffix=".py",
+        )
+    except RepositoryPathError as exc:
+        raise MutationContractError(f"unsafe mutation path: {case.path}") from exc
+    if not case.path.startswith("src/constructionsight/"):
         raise MutationContractError(
             f"mutation case must target production Python: {case.path}"
         )
-    absolute = root / relative
-    if not absolute.is_file():
-        raise MutationContractError(f"mutation target is missing: {case.path}")
     content = absolute.read_text(encoding="utf-8")
     count = content.count(case.search)
     if count != 1:
@@ -142,31 +154,47 @@ def _validate_case_path(root: Path, case: MutationCase) -> None:
     if case.search == case.replacement:
         raise MutationContractError(f"mutation {case.id} does not change the target")
     for test in case.tests:
-        test_path = root / test.split("::", 1)[0]
-        if not test_path.is_file():
+        try:
+            resolve_repository_file(
+                root,
+                test.split("::", 1)[0],
+                required_prefix="tests",
+                required_suffix=".py",
+            )
+        except RepositoryPathError as exc:
             raise MutationContractError(
                 f"mutation {case.id} references missing test target: {test}"
-            )
+            ) from exc
 
 
 def _copy_tracked_tree(root: Path, temporary_root: Path) -> None:
     completed = subprocess.run(
-        ["git", "-C", str(root), "ls-files", "-z"],
+        ["git", "-C", str(root), "ls-files", "--stage", "-z"],
         check=False,
         capture_output=True,
     )
     if completed.returncode != 0:
         detail = completed.stderr.decode("utf-8", errors="replace")
         raise MutationContractError(f"cannot enumerate tracked tree: {detail}")
-    for raw_relative in completed.stdout.split(b"\0"):
-        if not raw_relative:
+    for raw_entry in completed.stdout.split(b"\0"):
+        if not raw_entry:
             continue
-        relative = Path(raw_relative.decode("utf-8"))
-        if relative.is_absolute() or ".." in relative.parts:
-            raise MutationContractError(f"unsafe tracked path: {relative}")
-        source = root / relative
-        if not source.is_file():
-            raise MutationContractError(f"tracked file is missing: {relative}")
+        metadata, separator, raw_relative = raw_entry.partition(b"\t")
+        fields = metadata.split()
+        if not separator or len(fields) != 3 or fields[2] != b"0":
+            raise MutationContractError("git index entry has an unexpected shape")
+        mode = fields[0]
+        relative_text = raw_relative.decode("utf-8")
+        if mode == b"120000":
+            raise MutationContractError(
+                f"tracked symbolic link is prohibited: {relative_text}"
+            )
+        try:
+            relative, source = resolve_repository_file(root, relative_text)
+        except RepositoryPathError as exc:
+            raise MutationContractError(
+                f"unsafe tracked path: {relative_text}"
+            ) from exc
         destination = temporary_root / relative
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, destination)
