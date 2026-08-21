@@ -288,3 +288,11 @@ area = "supply-chain-vulnerability"
 root_cause = "Exact-head CI run #1056 discovered newly published advisory PYSEC-2026-3721 against the locked pip 26.1.2 bootstrap distribution, so both supported environments now fail the mandatory zero-known-vulnerability gate."
 discovered_against = "730a036038d1e18f9a54b0915f5440c5b4e414a1"
 required_resolution = "Upgrade both artifact-hashed environment locks and bootstrap doctrine to pip 26.2 or later using the reviewed exact wheel identity, rerun the full Python 3.11/3.12 vulnerability matrix, and retain zero-vulnerability evidence without an exception."
+
+[[defects]]
+id = "CS-SR-037"
+severity = "P0"
+area = "http-exact-request-identity"
+root_cause = "The bounded HTTP engine validates a canonical URL before passing it to an injected httpx.Client stream call, where client-level query parameters can be merged before transmission; the exact authorized identity can therefore diverge from the wire request despite CS-SR-029."
+discovered_against = "1296b6053da3a5f30cbed702cc1333e9365bb307"
+required_resolution = "Build one explicit request outside injected-client configuration, prevent client defaults and request hooks from changing its authorized URL or method before transmission, and add a regression proving client-level query configuration cannot cause an unauthorized request."

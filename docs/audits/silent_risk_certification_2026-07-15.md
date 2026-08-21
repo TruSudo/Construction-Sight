@@ -100,7 +100,7 @@ The retained repository-certification JSON from **both** runtime artifacts agree
 - governance-shape / traceability / adversarial-contract findings beyond the active ledger: **0**
 - tracked-tree findings beyond the active ledger: **0**
 
-At that historical checkpoint, the aggregate CI jobs remained red **by design** because all 27 then-known defects stayed active and `REVIEW-001` remained. The later failed review added eight implementation defects, and run #1056 discovered one newly published bootstrap vulnerability; the current blocker set is therefore 36 active defects plus the still-missing independent-review artifact.
+At that historical checkpoint, the aggregate CI jobs remained red **by design** because all 27 then-known defects stayed active and `REVIEW-001` remained. The later failed review added eight implementation defects, and run #1056 discovered one newly published bootstrap vulnerability; corrected-candidate adversarial verification subsequently exposed `CS-SR-037`, so the current blocker set is 37 active defects plus the still-missing independent-review artifact.
 
 ## Closure doctrine
 
@@ -143,7 +143,7 @@ The review artifact additionally carries `reviewed_active_defects_digest`, a dom
 
 ## Defect evidence matrix
 
-All 36 defects remain active. The evidence below establishes the prior implementation/regression claims for `CS-SR-001` through `CS-SR-027`; the failed review proved those claims were incomplete at the system boundary. Working-candidate correction and regression evidence is now present for `CS-SR-028` through `CS-SR-036`. No entry may close before a fresh complete-tree review and certification.
+All 37 defects remain active. The evidence below establishes the prior implementation/regression claims for `CS-SR-001` through `CS-SR-027`; the failed review proved those claims were incomplete at the system boundary. Correction and regression evidence is present for `CS-SR-028` through `CS-SR-036`; `CS-SR-037` is registered without an accepted correction. No entry may close before a fresh complete-tree review and certification.
 
 ### CS-SR-001 — Architecture
 
@@ -805,7 +805,13 @@ At minimum, independently challenge:
 
 If any problem is found, the reviewer must **not** approve. Findings must first be corrected and regression-tested, and any review-covered correction creates a new candidate requiring a fresh review.
 
-After all current defects, including `CS-SR-028` through `CS-SR-036`, are corrected with focused negative regressions and the complete Python 3.11/3.12 matrix passes on a new exact candidate, a fresh reviewer must submit an actual GitHub **APPROVED** pull-request review anchored to that new exact commit:
+### CS-SR-037 — Exact HTTP request identity after client configuration
+
+**Discovery evidence:** adversarial verification of exact candidate `1296b6053da3a5f30cbed702cc1333e9365bb307` found that `execute_bounded_http` authorizes its canonical URL before calling `httpx.Client.stream`. An injected client's default query parameters can be merged while the request is built, after authorization but before transmission, so the wire request can differ from the authorized identity.
+
+**Required correction:** construct a single explicit request outside injected-client configuration, prevent client defaults and request hooks from changing the authorized URL or method before transmission, validate that exact request identity immediately before the effect, and retain a focused regression proving configured client query parameters cannot produce an unauthorized request.
+
+After all current defects, including `CS-SR-028` through `CS-SR-037`, are corrected with focused negative regressions and the complete Python 3.11/3.12 matrix passes on a new exact candidate, a fresh reviewer must submit an actual GitHub **APPROVED** pull-request review anchored to that new exact commit:
 
 ```text
 <new-corrected-review-candidate-sha>
@@ -857,7 +863,7 @@ Subsequent adversarial work identified and corrected:
 - CS-SR-026 — resolved-ledger/finalization integrity; and
 - CS-SR-027 — external independent-review identity authenticity.
 
-Accordingly, #1028 remains historical evidence only. Run #1050 and candidate `4cc3ce763354ea91ef8c4bed28c3ce0b531379c3` are also historical evidence after the August 13 failed review. The current working candidate contains corrections for every defect through `CS-SR-036`; it becomes the new review candidate only after its complete exact-head matrix passes, and the exact accepted commit must be frozen in the PR handoff.
+Accordingly, #1028 remains historical evidence only. Run #1050 and candidate `4cc3ce763354ea91ef8c4bed28c3ce0b531379c3` are also historical evidence after the August 13 failed review. Candidate `1296b6053da3a5f30cbed702cc1333e9365bb307` contains corrections through `CS-SR-036` but is invalidated by `CS-SR-037`. A successor becomes the new review candidate only after the new correction and its complete exact-head matrix pass, and that exact accepted commit must be frozen in the PR handoff.
 
 ## Product continuation after hardening
 
