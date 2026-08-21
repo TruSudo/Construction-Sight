@@ -148,6 +148,24 @@ expected_output = "test_ceqanet_listing_executor_rejects_forged_query_before_htt
 risk = "A forged listing query could become its own transport authority instead of remaining bound to canonical planner output."
 
 [[cases]]
+id = "CS-MUT-PERSIST-SNAPSHOT-001"
+path = "src/constructionsight/operator_services/ceqanet_persistence_service.py"
+search = "    execution = active_executor(execution_payload, database_url)"
+replacement = "    execution = active_executor(write_plan_payload, database_url)"
+tests = ["tests/test_ceqanet_persistence_operator_service.py::test_persistence_facade_executes_only_a_deeply_detached_snapshot", "tests/test_ceqanet_persistence_operator_service.py::test_authorization_callback_mutation_cannot_change_snapshot_or_effect"]
+expected_output = "test_authorization_callback_mutation_cannot_change_snapshot_or_effect"
+risk = "Caller-owned nested write-plan content could change after authorization and reach the persistence effect."
+
+[[cases]]
+id = "CS-MUT-PERSIST-RECHECK-001"
+path = "src/constructionsight/operator_services/ceqanet_persistence_service.py"
+search = "    if current_plan_digest != snapshot.plan_digest:"
+replacement = "    if False and current_plan_digest != snapshot.plan_digest:"
+tests = ["tests/test_ceqanet_persistence_operator_service.py::test_persistence_facade_rechecks_snapshot_identity_before_effect"]
+expected_output = "test_persistence_facade_rechecks_snapshot_identity_before_effect"
+risk = "A detached persistence snapshot could execute without a final exact-identity recheck."
+
+[[cases]]
 id = "CS-MUT-ARCH-BYPASS-001"
 path = "src/constructionsight/architecture_boundary_certification.py"
 search = "if source_layer != \"transport\":"

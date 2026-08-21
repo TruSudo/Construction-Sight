@@ -143,7 +143,7 @@ The certifier rejects malformed or duplicate IDs, active/resolved overlap, inval
 
 ## Defect evidence matrix
 
-All 35 defects remain active. The evidence below establishes the prior implementation/regression claims for `CS-SR-001` through `CS-SR-027`; the failed review proved those claims were incomplete at the system boundary. Working-candidate correction and regression evidence is now present for `CS-SR-029`, `CS-SR-031`, `CS-SR-032`, `CS-SR-033`, and `CS-SR-035`. `CS-SR-028`, `CS-SR-030`, and `CS-SR-034` still await implementation, and no entry may close before a fresh complete-tree review and certification.
+All 35 defects remain active. The evidence below establishes the prior implementation/regression claims for `CS-SR-001` through `CS-SR-027`; the failed review proved those claims were incomplete at the system boundary. Working-candidate correction and regression evidence is now present for `CS-SR-029` through `CS-SR-033` and `CS-SR-035`. `CS-SR-028` and `CS-SR-034` still await implementation, and no entry may close before a fresh complete-tree review and certification.
 
 ### CS-SR-001 — Architecture
 
@@ -679,7 +679,9 @@ All 35 defects remain active. The evidence below establishes the prior implement
 
 **Required correction:** authorize a detached canonical snapshot, recheck its identity immediately before the effect, execute only that snapshot, and cover nested and callback-time mutation.
 
-**State:** no accepted correction or regression evidence; blocks a new review candidate.
+**Current remediation evidence:** `operator_services/ceqanet_persistence_service.py` converts caller input to deterministic canonical JSON bytes before authorization, validates and hashes a detached materialization, and retains no caller-owned container across the authorization boundary. Immediately before the database executor, it rematerializes only those immutable bytes, revalidates the complete plan, and rechecks canonical bytes, digest, operation count, and operation identities. `tests/test_ceqanet_persistence_operator_service.py` proves deep object detachment, nested mutation isolation at the effect boundary, authorization-callback mutation isolation, and fail-closed final identity rechecking. Focused persistence mutants prove that restoring the caller-owned handoff or removing the recheck is detected.
+
+**State:** correction is implemented in the current working candidate but remains active until the complete matrix and a new independent adversarial review accept it.
 
 ### CS-SR-031 — CI environment identity
 
