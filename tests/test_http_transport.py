@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import httpx
 import pytest
 
@@ -7,7 +9,11 @@ from constructionsight.http_transport import execute_bounded_http
 from constructionsight.http_transport_models import BoundedHttpPolicy, HttpFailureKind
 
 
-def _policy(*, max_response_bytes: int = 32) -> BoundedHttpPolicy:
+def _policy(
+    *,
+    max_response_bytes: int = 32,
+    allowed_request_urls: tuple[str, ...] = (),
+) -> BoundedHttpPolicy:
     return BoundedHttpPolicy(
         policy_id="CS-NET-TEST",
         allowed_methods=("GET",),
@@ -20,6 +26,7 @@ def _policy(*, max_response_bytes: int = 32) -> BoundedHttpPolicy:
         max_response_bytes=max_response_bytes,
         accepted_media_types=("text/plain",),
         accepted_encodings=("utf-8",),
+        allowed_request_urls=allowed_request_urls,
     )
 
 
@@ -33,6 +40,150 @@ def test_bounded_http_rejects_host_outside_policy_before_execution() -> None:
             "https://other.test/public/data",
             "GET",
             _policy(),
+        )
+
+
+def test_bounded_http_rejects_path_prefix_confusion_before_execution() -> None:
+    with pytest.raises(ValueError, match="path is outside policy"):
+        execute_bounded_http(
+            "https://example.test/publicity/data",
+            "GET",
+            _policy(),
+        )
+
+
+@pytest.mark.parametrize(
+    "url",
+    (
+        "HTTPS://example.test/public/data",
+        "https://EXAMPLE.test/public/data",
+        "https://example.test:443/public/data",
+        "https://user@example.test/public/data",
+        "https://example.test/public/data#fragment",
+        "https://example.test/public\\data",
+        "https://example.test/public/../private",
+        "https://example.test/public/%2E%2E/private",
+        "https://example.test/public/%2Fprivate",
+        "https://example.test/public/%5Cprivate",
+        "https://example.test/public/%41",
+        "https://example.test/public/%2fprivate",
+        "https://example.test/public/%",
+        "https://example.test/public//data",
+        "https://example.test/public/data?",
+        "https://example.test",
+    ),
+)
+def test_bounded_http_rejects_ambiguous_url_forms_before_execution(url: str) -> None:
+    executed = False
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal executed
+        executed = True
+        return httpx.Response(200, content=b"unexpected", request=request)
+
+    with (
+        _client(httpx.MockTransport(handler)) as client,
+        pytest.raises(ValueError),
+    ):
+        execute_bounded_http(url, "GET", _policy(), client=client)
+
+    assert executed is False
+
+
+def test_bounded_http_requires_executable_authority_for_any_query() -> None:
+    with pytest.raises(ValueError, match="query is outside policy"):
+        execute_bounded_http(
+            "https://example.test/public/data?page=1",
+            "GET",
+            _policy(),
+        )
+
+
+def test_bounded_http_authorizes_and_transmits_one_exact_url_identity() -> None:
+    url = (
+        "https://example.test/public/data?"
+        "County=San+Bernardino&DocumentType=EIR+-+Draft+EIR&page=1"
+    )
+    transmitted: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        transmitted.append(str(request.url))
+        return httpx.Response(
+            200,
+            headers={"content-type": "text/plain"},
+            content=b"exact",
+            request=request,
+        )
+
+    policy = _policy(allowed_request_urls=(url,))
+    with _client(httpx.MockTransport(handler)) as client:
+        observation = execute_bounded_http(url, "GET", policy, client=client)
+
+    assert transmitted == [url]
+    assert observation.request_url == url
+    assert observation.final_url == url
+    assert observation.response_body == b"exact"
+
+
+@pytest.mark.parametrize(
+    "unauthorized_url",
+    (
+        "https://example.test/public/data?County=San+Bernardino&page=2",
+        "https://example.test/public/data?page=1&County=San+Bernardino",
+        "https://example.test/public/data?County=Riverside&page=1",
+        "https://example.test/public/data?county=San+Bernardino&page=1",
+        "https://example.test/public/data?County=San+Bernardino&page=1&extra=true",
+    ),
+)
+def test_bounded_http_rejects_any_query_identity_drift(
+    unauthorized_url: str,
+) -> None:
+    authorized_url = (
+        "https://example.test/public/data?County=San+Bernardino&page=1"
+    )
+    executed = False
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal executed
+        executed = True
+        return httpx.Response(200, content=b"unexpected", request=request)
+
+    policy = _policy(allowed_request_urls=(authorized_url,))
+    with (
+        _client(httpx.MockTransport(handler)) as client,
+        pytest.raises(ValueError, match="canonical identity is outside policy"),
+    ):
+        execute_bounded_http(
+            unauthorized_url,
+            "GET",
+            policy,
+            client=client,
+        )
+
+    assert executed is False
+
+
+def test_http_policy_rejects_noncanonical_exact_request_identity() -> None:
+    with pytest.raises(ValueError, match="ambiguous encoded separator"):
+        _policy(
+            allowed_request_urls=(
+                "https://example.test/public/%2Fprivate?scope=approved",
+            )
+        )
+
+
+def test_bounded_http_rejects_legacy_alternate_client_protocol() -> None:
+    class LegacyClient:
+        def get(self, url: str, *, follow_redirects: bool, timeout: float) -> object:
+            raise AssertionError((url, follow_redirects, timeout))
+
+    legacy_client: Any = LegacyClient()
+    with pytest.raises(TypeError, match="must be an httpx.Client"):
+        execute_bounded_http(
+            "https://example.test/public/data",
+            "GET",
+            _policy(),
+            client=legacy_client,
         )
 
 

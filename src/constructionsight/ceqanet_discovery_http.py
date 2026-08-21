@@ -27,6 +27,7 @@ CEQANET_DISCOVERY_POLICY = BoundedHttpPolicy(
     max_response_bytes=50_000,
     accepted_media_types=("text/html",),
     accepted_encodings=("utf-8", "windows-1252"),
+    allowed_request_urls=(CEQANET_ADVANCED_SEARCH_URL,),
 )
 
 

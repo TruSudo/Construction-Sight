@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import httpx
 import pytest
 from typer.testing import CliRunner
 
@@ -40,20 +41,25 @@ class _Response:
     headers: dict[str, str]
 
 
-class _Client:
+class _Client(httpx.Client):
     def __init__(self, response: _Response) -> None:
         self.response = response
-        self.calls: list[tuple[str, bool, float]] = []
+        self.calls: list[tuple[str, float]] = []
+        super().__init__(
+            transport=httpx.MockTransport(self._handle_request),
+            follow_redirects=True,
+        )
 
-    def get(
-        self,
-        url: str,
-        *,
-        follow_redirects: bool,
-        timeout: float,
-    ) -> _Response:
-        self.calls.append((url, follow_redirects, timeout))
-        return self.response
+    def _handle_request(self, request: httpx.Request) -> httpx.Response:
+        self.calls.append(
+            (str(request.url), float(request.extensions["timeout"]["read"]))
+        )
+        return httpx.Response(
+            self.response.status_code,
+            content=self.response.content,
+            headers=self.response.headers,
+            request=request,
+        )
 
 
 def _request() -> CeqanetCsvExportRequest:
@@ -62,23 +68,25 @@ def _request() -> CeqanetCsvExportRequest:
 
 def _successful_execution() -> CeqanetCsvLiveExecution:
     request = _request()
-    return execute_ceqanet_csv_live_request(
-        request,
-        execute_live=True,
-        client=_Client(
-            _Response(
-                status_code=200,
-                content=PROJECT_FIXTURE.read_bytes(),
-                url=request.source_url,
-                headers={
-                    "content-type": "text/csv; charset=utf-8",
-                    "content-disposition": 'attachment; filename="project.csv"',
-                },
-            )
-        ),
-        timeout_seconds=12.5,
-        max_retained_rows=1,
+    client = _Client(
+        _Response(
+            status_code=200,
+            content=PROJECT_FIXTURE.read_bytes(),
+            url=request.source_url,
+            headers={
+                "content-type": "text/csv; charset=utf-8",
+                "content-disposition": 'attachment; filename="project.csv"',
+            },
+        )
     )
+    with client:
+        return execute_ceqanet_csv_live_request(
+            request,
+            execute_live=True,
+            client=client,
+            timeout_seconds=12.5,
+            max_retained_rows=1,
+        )
 
 
 def test_live_execution_requires_explicit_authorization() -> None:
@@ -97,14 +105,15 @@ def test_live_execution_performs_exactly_one_get_without_redirect_or_retry() -> 
         )
     )
 
-    execution = execute_ceqanet_csv_live_request(
-        request,
-        execute_live=True,
-        client=client,
-        timeout_seconds=12.5,
-    )
+    with client:
+        execution = execute_ceqanet_csv_live_request(
+            request,
+            execute_live=True,
+            client=client,
+            timeout_seconds=12.5,
+        )
 
-    assert client.calls == [(request.source_url, False, 12.5)]
+    assert client.calls == [(request.source_url, 12.5)]
     assert execution.method == "GET"
     assert execution.retry_count == 0
     assert execution.network_executed is True
@@ -166,13 +175,14 @@ def test_redirect_is_terminal_and_location_body_is_not_retained() -> None:
         )
     )
 
-    execution = execute_ceqanet_csv_live_request(
-        request,
-        execute_live=True,
-        client=client,
-    )
+    with client:
+        execution = execute_ceqanet_csv_live_request(
+            request,
+            execute_live=True,
+            client=client,
+        )
 
-    assert client.calls == [(request.source_url, False, 20.0)]
+    assert client.calls == [(request.source_url, 20.0)]
     assert execution.status_code == 302
     assert execution.error == "RedirectDenied"
     assert execution.retained_body_bytes() == b""

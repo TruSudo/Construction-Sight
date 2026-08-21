@@ -143,7 +143,7 @@ The certifier rejects malformed or duplicate IDs, active/resolved overlap, inval
 
 ## Defect evidence matrix
 
-All 35 defects remain active. The evidence below establishes the prior implementation/regression claims for `CS-SR-001` through `CS-SR-027`; the failed review proved those claims were incomplete at the system boundary. `CS-SR-028` through `CS-SR-035` have no accepted correction or regression evidence and must be remediated before a new candidate is frozen.
+All 35 defects remain active. The evidence below establishes the prior implementation/regression claims for `CS-SR-001` through `CS-SR-027`; the failed review proved those claims were incomplete at the system boundary. Working-candidate correction and regression evidence is now present for `CS-SR-029`, `CS-SR-031`, `CS-SR-032`, `CS-SR-033`, and `CS-SR-035`. `CS-SR-028`, `CS-SR-030`, and `CS-SR-034` still await implementation, and no entry may close before a fresh complete-tree review and certification.
 
 ### CS-SR-001 — Architecture
 
@@ -667,7 +667,9 @@ All 35 defects remain active. The evidence below establishes the prior implement
 
 **Required correction:** canonicalize once, reject ambiguous URL forms, validate and authorize the exact canonical representation, and transmit only that representation.
 
-**State:** no accepted correction or regression evidence; blocks a new review candidate.
+**Current remediation evidence:** `http_transport_models.py` accepts only already-canonical ASCII HTTP(S) wire identities and rejects user information, fragments, explicit ports, backslashes, dot segments, ambiguous encoded path separators, noncanonical percent encodings, and client-normalized representations. `http_transport.py` constructs one `httpx.URL`, verifies its serialized identity, validates that exact value, and passes the same object to `Client.stream`. `tests/test_http_transport.py` covers ambiguous forms and proves the authorized, observed, and transmitted identities are identical.
+
+**State:** correction is implemented in the current working candidate but remains active until the complete matrix and a new independent adversarial review accept it.
 
 ### CS-SR-030 — Persistence authorization TOCTOU
 
@@ -699,7 +701,9 @@ All 35 defects remain active. The evidence below establishes the prior implement
 
 **Required correction:** deny redirects on every production-visible path, remove or constrain the alternate transport, and replace the regression that currently preserves redirect following.
 
-**State:** no accepted correction or regression evidence; blocks a new review candidate.
+**Current remediation evidence:** both CEQAnet listing and CSV injected clients are now actual `httpx.Client` instances routed through `execute_bounded_http`; the separate materializing compatibility branches and the CSV redirect-control argument are removed. The common engine supplies `follow_redirects=False` per request, so deterministic clients configured with a redirect-following default still stop at the first 3xx. Listing, CSV, evidence-series, and recurring-run regressions exercise the unified path and retain no redirect body.
+
+**State:** correction is implemented in the current working candidate but remains active until the complete matrix and a new independent adversarial review accept it.
 
 ### CS-SR-033 — Repository evidence containment
 
@@ -731,7 +735,9 @@ All 35 defects remain active. The evidence below establishes the prior implement
 
 **Required correction:** encode exact query or request identity in executable policy, remove arbitrary base-URL injection, and reject any request outside reviewed host, path, query-key, query-value, and canonical-identity scope.
 
-**State:** no accepted correction or regression evidence; blocks a new review candidate.
+**Current remediation evidence:** `BoundedHttpPolicy.allowed_request_urls` carries immutable complete canonical identities; the common engine rejects every nonempty query without one and requires exact string identity when present. Every shared-engine operation now supplies its exact URL. The CEQAnet planner no longer accepts a base URL, dry-run construction permits only the canonical `/Search` action, and the live executor recomputes canonical planner output before transport. Negative regressions cover missing query authority, reordered/added/changed keys and values, forged listing base paths and queries, and arbitrary planner URL injection. Focused mutation cases protect URL canonicalization, query authority, CSV identity, and canonical listing-plan identity.
+
+**State:** correction is implemented in the current working candidate but remains active until the complete matrix and a new independent adversarial review accept it.
 
 ## Failed-review disposition and next handoff
 

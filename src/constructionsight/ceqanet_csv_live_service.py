@@ -5,9 +5,8 @@ from __future__ import annotations
 import base64
 import binascii
 import hashlib
-from collections.abc import Mapping
 from datetime import UTC, datetime
-from typing import Any, Protocol
+from typing import Any, TypeAlias
 
 import httpx
 
@@ -28,6 +27,7 @@ from constructionsight.http_transport_models import (
     BoundedHttpObservation,
     BoundedHttpPolicy,
     HttpFailureKind,
+    canonicalize_http_url,
 )
 
 _USER_AGENT = "ConstructionSight-CEQAnetCSV/1.0 (+lawful-public-record-review)"
@@ -38,43 +38,15 @@ _ACCEPTED_MEDIA_TYPES = (
     "text/html",
     "text/plain",
 )
-_ACCESS_CONTROL_STATUSES = frozenset({401, 403, 407, 451})
+CeqanetCsvLiveHttpClient: TypeAlias = httpx.Client
 
 
-class CeqanetCsvLiveHttpResponse(Protocol):
-    """Read-only response contract used by deterministic injected-client tests."""
-
-    @property
-    def status_code(self) -> int:
-        """Return the HTTP response status."""
-
-    @property
-    def content(self) -> bytes:
-        """Return response bytes supplied by the deterministic test client."""
-
-    @property
-    def url(self) -> Any:
-        """Return the final response URL."""
-
-    @property
-    def headers(self) -> Mapping[str, str]:
-        """Return response headers through a read-only mapping contract."""
-
-
-class CeqanetCsvLiveHttpClient(Protocol):
-    """Minimal injected client contract used only by deterministic tests."""
-
-    def get(
-        self,
-        url: str,
-        *,
-        follow_redirects: bool,
-        timeout: float,
-    ) -> CeqanetCsvLiveHttpResponse:
-        """Return one deterministic response for the supplied test request."""
-
-
-def _policy(*, timeout_seconds: float, max_body_bytes: int) -> BoundedHttpPolicy:
+def _policy(
+    *,
+    request_url: str,
+    timeout_seconds: float,
+    max_body_bytes: int,
+) -> BoundedHttpPolicy:
     return BoundedHttpPolicy(
         policy_id="CS-NET-003",
         allowed_methods=("GET",),
@@ -88,6 +60,7 @@ def _policy(*, timeout_seconds: float, max_body_bytes: int) -> BoundedHttpPolicy
         accepted_media_types=_ACCEPTED_MEDIA_TYPES,
         accepted_encodings=("utf-8", "windows-1252"),
         user_agent=_USER_AGENT,
+        allowed_request_urls=(request_url,),
     )
 
 
@@ -100,18 +73,17 @@ def execute_ceqanet_csv_live_request(
     max_body_bytes: int = 10_000_000,
     max_retained_rows: int = 1_000,
     executed_at: datetime | None = None,
-    injected_client_follow_redirects: bool = False,
 ) -> CeqanetCsvLiveExecution:
     """Execute exactly one policy-bound GET and retain a tamper-evident envelope.
 
-    Production execution never follows redirects. The final compatibility argument
-    applies only when an injected deterministic test client is supplied; callers
-    cannot use it with the production transport.
+    Production and injected deterministic clients use the same streamed engine,
+    exact request identity, byte ceiling, and request-time redirect denial.
     """
 
     canonical_request = parse_ceqanet_csv_export_url(request.source_url)
     if canonical_request != request:
         raise ValueError("CEQAnet CSV request fields do not agree with source_url")
+    request_url = canonicalize_http_url(request.source_url)
     if not execute_live:
         raise ValueError("explicit live authorization is required for CEQAnet CSV execution")
     if timeout_seconds <= 0 or timeout_seconds > 20.0:
@@ -120,29 +92,16 @@ def execute_ceqanet_csv_live_request(
         raise ValueError("max_body_bytes must be between 1 and 10000000")
     if max_retained_rows < 0 or max_retained_rows > 1_000:
         raise ValueError("max_retained_rows must be between 0 and 1000")
-    if client is None and injected_client_follow_redirects:
-        raise ValueError(
-            "injected_client_follow_redirects is unavailable to production transport"
-        )
-
-    if client is not None:
-        return _execute_with_injected_client(
-            request,
-            client,
-            timeout_seconds=timeout_seconds,
-            max_body_bytes=max_body_bytes,
-            max_retained_rows=max_retained_rows,
-            executed_at=executed_at,
-            follow_redirects=injected_client_follow_redirects,
-        )
 
     observation = execute_bounded_http(
-        request.source_url,
+        request_url,
         "GET",
         _policy(
+            request_url=request_url,
             timeout_seconds=timeout_seconds,
             max_body_bytes=max_body_bytes,
         ),
+        client=client,
     )
     return _execution_from_observation(
         request,
@@ -254,126 +213,6 @@ def verify_ceqanet_csv_live_execution(
             else None
         ),
         execution_digest=execution.execution_digest,
-    )
-
-
-def _execute_with_injected_client(
-    request: CeqanetCsvExportRequest,
-    client: CeqanetCsvLiveHttpClient,
-    *,
-    timeout_seconds: float,
-    max_body_bytes: int,
-    max_retained_rows: int,
-    executed_at: datetime | None,
-    follow_redirects: bool,
-) -> CeqanetCsvLiveExecution:
-    try:
-        response = client.get(
-            request.source_url,
-            follow_redirects=follow_redirects,
-            timeout=timeout_seconds,
-        )
-    except httpx.HTTPError as exc:
-        return _build_execution(
-            request=request,
-            final_url=request.source_url,
-            status_code=None,
-            content_type=None,
-            content_disposition=None,
-            observed_body_length=0,
-            retained_body=b"",
-            retained_complete=True,
-            error=exc.__class__.__name__,
-            inspection=None,
-            inspection_error=None,
-            executed_at=executed_at,
-        )
-
-    status_code = response.status_code
-    final_url = str(response.url)
-    content_type = response.headers.get("content-type")
-    content_disposition = response.headers.get("content-disposition")
-    if 300 <= status_code < 400:
-        return _build_execution(
-            request=request,
-            final_url=final_url,
-            status_code=status_code,
-            content_type=content_type,
-            content_disposition=content_disposition,
-            observed_body_length=0,
-            retained_body=b"",
-            retained_complete=False,
-            error="RedirectDenied",
-            inspection=None,
-            inspection_error=None,
-            executed_at=executed_at,
-        )
-    if status_code in _ACCESS_CONTROL_STATUSES:
-        return _build_execution(
-            request=request,
-            final_url=final_url,
-            status_code=status_code,
-            content_type=content_type,
-            content_disposition=content_disposition,
-            observed_body_length=0,
-            retained_body=b"",
-            retained_complete=False,
-            error="AccessControlStatus",
-            inspection=None,
-            inspection_error=None,
-            executed_at=executed_at,
-        )
-    if status_code == 429 or status_code >= 400:
-        return _build_execution(
-            request=request,
-            final_url=final_url,
-            status_code=status_code,
-            content_type=content_type,
-            content_disposition=content_disposition,
-            observed_body_length=0,
-            retained_body=b"",
-            retained_complete=False,
-            error="TerminalHttpStatus",
-            inspection=None,
-            inspection_error=None,
-            executed_at=executed_at,
-        )
-
-    body = response.content
-    if len(body) > max_body_bytes:
-        return _build_execution(
-            request=request,
-            final_url=final_url,
-            status_code=status_code,
-            content_type=content_type,
-            content_disposition=content_disposition,
-            observed_body_length=len(body),
-            retained_body=b"",
-            retained_complete=False,
-            error="response_exceeds_max_body_bytes",
-            inspection=None,
-            inspection_error=None,
-            executed_at=executed_at,
-        )
-    inspection, inspection_error = _inspect_complete_body(
-        request,
-        body,
-        content_type=content_type,
-        max_retained_rows=max_retained_rows,
-    )
-    return _build_execution(
-        request=request,
-        final_url=final_url,
-        status_code=status_code,
-        content_type=content_type,
-        content_disposition=content_disposition,
-        observed_body_length=len(body),
-        retained_body=body,
-        retained_complete=True,
-        error=None,
-        inspection=inspection,
-        inspection_error=inspection_error,
-        executed_at=executed_at,
     )
 
 

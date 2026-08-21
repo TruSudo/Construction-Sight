@@ -94,13 +94,40 @@ expected_output = "test_bounded_http_rejects_declared_oversized_response_without
 risk = "An oversized response could be read despite the declared byte ceiling."
 
 [[cases]]
-id = "CS-MUT-CSV-REDIRECT-001"
+id = "CS-MUT-CSV-IDENTITY-001"
 path = "src/constructionsight/ceqanet_csv_live_service.py"
-search = "if 300 <= status_code < 400:"
-replacement = "if 300 <= status_code < 302:"
-tests = ["tests/test_ceqanet_csv_live.py::test_redirect_is_terminal_and_location_body_is_not_retained"]
-expected_output = "test_redirect_is_terminal_and_location_body_is_not_retained"
-risk = "The CSV test seam could classify a redirect as successful evidence and retain its body."
+search = "allowed_request_urls=(request_url,),"
+replacement = "allowed_request_urls=(),"
+tests = ["tests/test_ceqanet_csv_live.py::test_live_execution_performs_exactly_one_get_without_redirect_or_retry"]
+expected_output = "test_live_execution_performs_exactly_one_get_without_redirect_or_retry"
+risk = "A CEQAnet CSV query could execute without exact canonical request-identity authority."
+
+[[cases]]
+id = "CS-MUT-NET-QUERY-AUTHORITY-001"
+path = "src/constructionsight/http_transport.py"
+search = "elif parsed.query:"
+replacement = "elif False and parsed.query:"
+tests = ["tests/test_http_transport.py::test_bounded_http_requires_executable_authority_for_any_query"]
+expected_output = "test_bounded_http_requires_executable_authority_for_any_query"
+risk = "A query could execute under prose-only host/path scope without an exact request identity."
+
+[[cases]]
+id = "CS-MUT-NET-CANONICAL-PATH-001"
+path = "src/constructionsight/http_transport_models.py"
+search = "if path_component and decoded_character in _AMBIGUOUS_ENCODED_PATH_CHARACTERS:"
+replacement = "if False and path_component and decoded_character in _AMBIGUOUS_ENCODED_PATH_CHARACTERS:"
+tests = ["tests/test_http_transport.py::test_bounded_http_rejects_ambiguous_url_forms_before_execution"]
+expected_output = "test_bounded_http_rejects_ambiguous_url_forms_before_execution"
+risk = "Encoded path separators or dot segments could be authorized under a representation different from the transmitted path."
+
+[[cases]]
+id = "CS-MUT-NET-CLIENT-TYPE-001"
+path = "src/constructionsight/http_transport.py"
+search = "if client is not None and not isinstance(client, httpx.Client):"
+replacement = "if False and client is not None and not isinstance(client, httpx.Client):"
+tests = ["tests/test_http_transport.py::test_bounded_http_rejects_legacy_alternate_client_protocol"]
+expected_output = "test_bounded_http_rejects_legacy_alternate_client_protocol"
+risk = "A legacy alternate client protocol could bypass the common httpx streamed execution contract."
 
 [[cases]]
 id = "CS-MUT-LISTING-RETRY-001"
@@ -110,6 +137,15 @@ replacement = "if self.max_attempts < 1:"
 tests = ["tests/test_ceqanet_listing_executor.py::test_ceqanet_listing_executor_rejects_invalid_runtime_bounds"]
 expected_output = "test_ceqanet_listing_executor_rejects_invalid_runtime_bounds"
 risk = "Listing execution could silently expand from one attempt into retries that contradict CS-NET-002."
+
+[[cases]]
+id = "CS-MUT-LISTING-PLAN-IDENTITY-001"
+path = "src/constructionsight/adapters/ceqanet_listing_executor.py"
+search = "if plan != canonical_plan:"
+replacement = "if False and plan != canonical_plan:"
+tests = ["tests/test_ceqanet_listing_executor.py::test_ceqanet_listing_executor_rejects_forged_query_before_http"]
+expected_output = "test_ceqanet_listing_executor_rejects_forged_query_before_http"
+risk = "A forged listing query could become its own transport authority instead of remaining bound to canonical planner output."
 
 [[cases]]
 id = "CS-MUT-ARCH-BYPASS-001"

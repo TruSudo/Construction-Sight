@@ -5,7 +5,11 @@ from __future__ import annotations
 from dataclasses import replace
 
 from constructionsight.http_transport import execute_bounded_http
-from constructionsight.http_transport_models import BoundedHttpPolicy, HttpExecutor
+from constructionsight.http_transport_models import (
+    BoundedHttpPolicy,
+    HttpExecutor,
+    canonicalize_http_url,
+)
 
 CEQANET_DETAIL_POLICY = BoundedHttpPolicy(
     policy_id="CS-NET-006",
@@ -39,12 +43,14 @@ def execute_ceqanet_detail_request(
         raise ValueError(
             "CEQAnet detail response limit cannot exceed the declared CS-NET-006 ceiling"
         )
+    request_url = canonicalize_http_url(url)
     policy = replace(
         CEQANET_DETAIL_POLICY,
         read_timeout_seconds=timeout_seconds,
         max_response_bytes=max_body_bytes,
+        allowed_request_urls=(request_url,),
     )
-    observation = (executor or execute_bounded_http)(url, "GET", policy)
+    observation = (executor or execute_bounded_http)(request_url, "GET", policy)
     body_text = ""
     if observation.response_body:
         try:

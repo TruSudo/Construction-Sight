@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, date, datetime
 
+import httpx
 import pytest
 from pydantic import HttpUrl
 
@@ -39,28 +40,23 @@ from constructionsight.source_verification_checklist_models import (
 )
 
 
-class _FakeResponse:
-    status_code = 200
-    text = "<html>" + ("x" * 200) + "</html>"
-    url = "https://ceqanet.lci.ca.gov/Search?County=Riverside"
-    headers = {"content-type": "text/html; charset=utf-8"}
-
-
-class _FakeClient:
+class _FakeClient(httpx.Client):
     def __init__(self) -> None:
         self.urls: list[str] = []
+        super().__init__(
+            transport=httpx.MockTransport(self._handle_request),
+            follow_redirects=True,
+        )
 
-    def get(
-        self,
-        url: str,
-        *,
-        follow_redirects: bool,
-        timeout: float,
-    ) -> _FakeResponse:
-        assert follow_redirects is True
-        assert timeout == 9.0
-        self.urls.append(url)
-        return _FakeResponse()
+    def _handle_request(self, request: httpx.Request) -> httpx.Response:
+        assert float(request.extensions["timeout"]["read"]) == 9.0
+        self.urls.append(str(request.url))
+        return httpx.Response(
+            200,
+            text="<html>" + ("x" * 200) + "</html>",
+            headers={"content-type": "text/html; charset=utf-8"},
+            request=request,
+        )
 
 
 def _source(status: VerificationStatus) -> PublicSource:

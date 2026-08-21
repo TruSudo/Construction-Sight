@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from contextlib import nullcontext
 from typing import TypedDict
-from urllib.parse import urlparse
+from urllib.parse import urlsplit
 
 import httpx
 
@@ -13,6 +13,7 @@ from constructionsight.http_transport_models import (
     BoundedHttpObservation,
     BoundedHttpPolicy,
     HttpFailureKind,
+    canonicalize_http_url,
 )
 
 _ACCESS_CONTROL_STATUSES = frozenset({401, 403, 407, 451})
@@ -41,21 +42,35 @@ def _host_allowed(host: str, allowed_hosts: tuple[str, ...]) -> bool:
     return False
 
 
+def _path_allowed(path: str, allowed_path_prefixes: tuple[str, ...]) -> bool:
+    for prefix in allowed_path_prefixes:
+        if prefix == "/" or path == prefix:
+            return True
+        if prefix.endswith("/") and path.startswith(prefix):
+            return True
+        if path.startswith(f"{prefix}/"):
+            return True
+    return False
+
+
 def _validate_scope(url: str, method: str, policy: BoundedHttpPolicy) -> None:
-    parsed = urlparse(url)
-    if parsed.username is not None or parsed.password is not None:
-        raise ValueError("HTTP policy prohibits URL-embedded credentials")
+    parsed = urlsplit(url)
     allowed_schemes = {"https"}
     if policy.allow_http:
         allowed_schemes.add("http")
-    if parsed.scheme.casefold() not in allowed_schemes:
+    if parsed.scheme not in allowed_schemes:
         raise ValueError("HTTP request scheme is outside policy")
     if not parsed.hostname or not _host_allowed(parsed.hostname, policy.allowed_hosts):
         raise ValueError("HTTP request host is outside policy")
-    if not any(parsed.path.startswith(prefix) for prefix in policy.allowed_path_prefixes):
+    if not _path_allowed(parsed.path, policy.allowed_path_prefixes):
         raise ValueError("HTTP request path is outside policy")
     if method not in policy.allowed_methods:
         raise ValueError("HTTP request method is outside policy")
+    if policy.allowed_request_urls:
+        if url not in policy.allowed_request_urls:
+            raise ValueError("HTTP request canonical identity is outside policy")
+    elif parsed.query:
+        raise ValueError("HTTP request query is outside policy")
 
 
 def _media_type(value: str | None) -> str | None:
@@ -130,7 +145,13 @@ def execute_bounded_http(
     """Execute one attempt under a validated complete policy and classify the outcome."""
 
     canonical_method = method.upper()
-    _validate_scope(url, canonical_method, policy)
+    canonical_url = canonicalize_http_url(url)
+    if client is not None and not isinstance(client, httpx.Client):
+        raise TypeError("bounded HTTP client must be an httpx.Client instance")
+    outbound_url = httpx.URL(canonical_url)
+    if str(outbound_url) != canonical_url:
+        raise ValueError("HTTP client cannot preserve the authorized URL representation")
+    _validate_scope(canonical_url, canonical_method, policy)
     timeout = httpx.Timeout(
         connect=policy.connect_timeout_seconds,
         read=policy.read_timeout_seconds,
@@ -143,7 +164,7 @@ def execute_bounded_http(
     try:
         with context as session, session.stream(
             canonical_method,
-            url,
+            outbound_url,
             follow_redirects=False,
             timeout=timeout,
             headers={
@@ -160,7 +181,7 @@ def execute_bounded_http(
             base: _ObservationBase = {
                 "policy": policy,
                 "method": canonical_method,
-                "request_url": url,
+                "request_url": canonical_url,
                 "final_url": final_url,
                 "status_code": response.status_code,
                 "content_type": content_type,
@@ -260,7 +281,7 @@ def execute_bounded_http(
         return _observation(
             policy=policy,
             method=canonical_method,
-            request_url=url,
+            request_url=canonical_url,
             failure_kind=HttpFailureKind.TIMEOUT,
             error_type=exc.__class__.__name__,
         )
@@ -268,7 +289,7 @@ def execute_bounded_http(
         return _observation(
             policy=policy,
             method=canonical_method,
-            request_url=url,
+            request_url=canonical_url,
             failure_kind=HttpFailureKind.TRANSPORT,
             error_type=exc.__class__.__name__,
         )

@@ -2,16 +2,21 @@
 
 from __future__ import annotations
 
-from urllib.parse import urlparse
+from urllib.parse import urlsplit
 
 from constructionsight.http_transport import execute_bounded_http
-from constructionsight.http_transport_models import BoundedHttpPolicy, HttpExecutor
+from constructionsight.http_transport_models import (
+    BoundedHttpPolicy,
+    HttpExecutor,
+    canonicalize_http_url,
+)
 from constructionsight.models import PublicSource
 from constructionsight.source_readiness_models import HttpReachabilityResult
 
 
 def _policy_for_source(url: str) -> BoundedHttpPolicy:
-    parsed = urlparse(url)
+    canonical_url = canonicalize_http_url(url)
+    parsed = urlsplit(canonical_url)
     if parsed.hostname is None:
         raise ValueError("source URL requires a hostname")
     return BoundedHttpPolicy(
@@ -33,6 +38,7 @@ def _policy_for_source(url: str) -> BoundedHttpPolicy:
         ),
         accepted_encodings=("utf-8", "windows-1252"),
         allow_http=parsed.scheme.casefold() == "http",
+        allowed_request_urls=(canonical_url,),
     )
 
 
@@ -43,7 +49,7 @@ def check_source_http_reachability(
 ) -> HttpReachabilityResult:
     """Run HEAD and only a 405-authorized GET fallback under one exact host policy."""
 
-    url = str(source.public_url)
+    url = canonicalize_http_url(str(source.public_url))
     policy = _policy_for_source(url)
     execute = executor or execute_bounded_http
     observation = execute(url, "HEAD", policy)

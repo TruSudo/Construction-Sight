@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+import httpx
 import pytest
 import socksio
 from pydantic import ValidationError
@@ -170,20 +171,25 @@ class _Response:
     headers: dict[str, str]
 
 
-class _Client:
+class _Client(httpx.Client):
     def __init__(self, response: _Response) -> None:
         self.response = response
-        self.calls: list[tuple[str, bool, float]] = []
+        self.calls: list[tuple[str, float]] = []
+        super().__init__(
+            transport=httpx.MockTransport(self._handle_request),
+            follow_redirects=True,
+        )
 
-    def get(
-        self,
-        url: str,
-        *,
-        follow_redirects: bool,
-        timeout: float,
-    ) -> _Response:
-        self.calls.append((url, follow_redirects, timeout))
-        return self.response
+    def _handle_request(self, request: httpx.Request) -> httpx.Response:
+        self.calls.append(
+            (str(request.url), float(request.extensions["timeout"]["read"]))
+        )
+        return httpx.Response(
+            self.response.status_code,
+            content=self.response.content,
+            headers=self.response.headers,
+            request=request,
+        )
 
 
 def _execute(
@@ -217,23 +223,24 @@ def _execute(
         "evidence/source_verification/"
         f"ceqanet_csv_evidence_execution_2026-07-{day:02d}.json"
     )
-    execution = execute_ceqanet_csv_evidence_request(
-        _sources(),
-        _original_execution(),
-        _replay(),
-        _replay_verification(),
-        _maturity(),
-        _maturity_verification(),
-        _policy(),
-        _policy_verification(),
-        series,
-        existing,
-        request,
-        execute_live=True,
-        client=client,
-        authorization_granted_at=datetime(2026, 7, day, 12, tzinfo=UTC),
-        max_retained_rows=1_000,
-    )
+    with client:
+        execution = execute_ceqanet_csv_evidence_request(
+            _sources(),
+            _original_execution(),
+            _replay(),
+            _replay_verification(),
+            _maturity(),
+            _maturity_verification(),
+            _policy(),
+            _policy_verification(),
+            series,
+            existing,
+            request,
+            execute_live=True,
+            client=client,
+            authorization_granted_at=datetime(2026, 7, day, 12, tzinfo=UTC),
+            max_retained_rows=1_000,
+        )
     return artifact_ref, execution, client
 
 
@@ -273,7 +280,6 @@ def test_governed_execution_performs_one_policy_bound_get() -> None:
         (
             "https://ceqanet.lci.ca.gov/Search?"
             "OutputFormat=CSV&Sch=2026030377",
-            True,
             20.0,
         )
     ]
@@ -338,6 +344,7 @@ def test_access_control_response_halts_series_and_blocks_later_execution() -> No
     series = _build_series(existing)
 
     assert series.status is CeqanetCsvEvidenceSeriesStatus.HALTED
+    assert series.halted_on is not None
     assert series.halted_on.isoformat() == "2026-07-14"
     assert series.halt_status_code == 403
     assert series.observations[0].verification_passed is False

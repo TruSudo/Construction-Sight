@@ -1,19 +1,20 @@
 """Policy-bound live executor for immutable CEQAnet listing plans.
 
-Production execution uses the shared streamed HTTP engine and never follows redirects.
-An intentionally narrow injected client remains available for deterministic legacy
-tests; redirect responses are still classified as terminal and never accepted.
+Every production and deterministic-test execution uses the shared streamed HTTP
+engine and denies redirects at request time.
 """
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Protocol
+from typing import TypeAlias
 
 import httpx
 
-from constructionsight.adapters.ceqanet_listing import CeqanetListingPlan
+from constructionsight.adapters.ceqanet_listing import (
+    CeqanetListingPlan,
+    CeqanetReadOnlyListingPlanner,
+)
 from constructionsight.adapters.ceqanet_listing_dry_run import (
     CeqanetDryRunRequest,
     CeqanetListingDryRunExecutor,
@@ -47,7 +48,7 @@ class CeqanetListingExecutionPolicy:
         if self.max_attempts != 1 or self.retry_delays_seconds:
             raise ValueError("CS-NET-002 permits exactly one attempt and no retry delay")
 
-    def http_policy(self) -> BoundedHttpPolicy:
+    def http_policy(self, request_url: str) -> BoundedHttpPolicy:
         """Return the complete immutable policy consumed by the shared HTTP engine."""
 
         return BoundedHttpPolicy(
@@ -63,29 +64,11 @@ class CeqanetListingExecutionPolicy:
             accepted_media_types=("text/html",),
             accepted_encodings=("utf-8", "windows-1252"),
             user_agent="ConstructionSight-CEQAnetListing/1.0",
+            allowed_request_urls=(request_url,),
         )
 
 
-class CeqanetListingHttpResponse(Protocol):
-    """Minimal injected response contract used only by deterministic tests."""
-
-    status_code: int
-    text: str
-    url: Any
-    headers: Mapping[str, str]
-
-
-class CeqanetListingHttpClient(Protocol):
-    """Minimal injected client contract used only by deterministic tests."""
-
-    def get(
-        self,
-        url: str,
-        *,
-        follow_redirects: bool,
-        timeout: float,
-    ) -> CeqanetListingHttpResponse:
-        """Return one deterministic response for the supplied test request."""
+CeqanetListingHttpClient: TypeAlias = httpx.Client
 
 
 @dataclass(frozen=True)
@@ -157,6 +140,14 @@ class CeqanetListingReadOnlyExecutor:
     def run(self, plan: CeqanetListingPlan) -> CeqanetListingExecutionReport:
         """Execute a bounded, access-approved CEQAnet listing plan."""
 
+        canonical_plan = CeqanetReadOnlyListingPlanner().build_plan(
+            plan.query,
+            plan.access_result,
+        )
+        if plan != canonical_plan:
+            raise CeqanetListingExecutionError(
+                "CEQAnet listing plan differs from the canonical planner output"
+            )
         dry_run_report = CeqanetListingDryRunExecutor().run(plan)
         if not plan.allowed:
             return CeqanetListingExecutionReport(
@@ -198,97 +189,13 @@ class CeqanetListingReadOnlyExecutor:
             raise CeqanetListingExecutionError(
                 "CEQAnet listing executor only permits GET requests"
             )
-        if self.client is None:
-            observation = execute_bounded_http(
-                request.url,
-                request.method,
-                self.policy.http_policy(),
-            )
-            return _snapshot_from_observation(request, observation)
-        return self._execute_with_injected_client(request)
-
-    def _execute_with_injected_client(
-        self,
-        request: CeqanetDryRunRequest,
-    ) -> CeqanetListingResponseSnapshot:
-        """Apply terminal rules to a deterministic injected compatibility client."""
-
-        assert self.client is not None
-        try:
-            response = self.client.get(
-                request.url,
-                follow_redirects=True,
-                timeout=self.policy.timeout_seconds,
-            )
-        except httpx.HTTPError as exc:
-            return CeqanetListingResponseSnapshot(
-                page_number=request.page_number,
-                method=request.method,
-                request_url=request.url,
-                final_url=request.url,
-                status_code=None,
-                content_type=None,
-                body_text="",
-                body_length=0,
-                body_truncated=False,
-                executed=True,
-                error=exc.__class__.__name__,
-                failure_kind=HttpFailureKind.TRANSPORT.value,
-            )
-        final_url = str(response.url)
-        content_type = response.headers.get("content-type")
-        if 300 <= response.status_code < 400:
-            return CeqanetListingResponseSnapshot(
-                page_number=request.page_number,
-                method=request.method,
-                request_url=request.url,
-                final_url=final_url,
-                status_code=response.status_code,
-                content_type=content_type,
-                body_text="",
-                body_length=0,
-                body_truncated=False,
-                executed=True,
-                error="RedirectDenied",
-                failure_kind=HttpFailureKind.REDIRECT.value,
-            )
-        if response.status_code >= 400:
-            return CeqanetListingResponseSnapshot(
-                page_number=request.page_number,
-                method=request.method,
-                request_url=request.url,
-                final_url=final_url,
-                status_code=response.status_code,
-                content_type=content_type,
-                body_text="",
-                body_length=0,
-                body_truncated=False,
-                executed=True,
-                error="TerminalHttpStatus",
-                failure_kind=HttpFailureKind.TERMINAL_STATUS.value,
-            )
-        body_bytes = response.text.encode("utf-8")
-        body_length = len(body_bytes)
-        truncated = body_length > self.policy.max_response_bytes
-        retained = body_bytes[: self.policy.max_response_bytes]
-        return CeqanetListingResponseSnapshot(
-            page_number=request.page_number,
-            method=request.method,
-            request_url=request.url,
-            final_url=final_url,
-            status_code=response.status_code,
-            content_type=content_type,
-            body_text=retained.decode("utf-8"),
-            body_length=body_length,
-            body_truncated=truncated,
-            executed=True,
-            error="ResponseTooLarge" if truncated else None,
-            failure_kind=(
-                HttpFailureKind.OVERSIZED_RESPONSE.value
-                if truncated
-                else HttpFailureKind.NONE.value
-            ),
+        observation = execute_bounded_http(
+            request.url,
+            request.method,
+            self.policy.http_policy(request.url),
+            client=self.client,
         )
+        return _snapshot_from_observation(request, observation)
 
 
 def _snapshot_from_observation(
