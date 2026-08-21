@@ -304,3 +304,11 @@ area = "http-response-evidence-integrity"
 root_cause = "Injected httpx.Client response hooks execute before the bounded HTTP engine inspects the response, so a hook can alter status, headers, body, or request evidence after transport and before policy classification."
 discovered_against = "ffaa745dea866dadc3d21e0272c6361128a80901"
 required_resolution = "Reject configured response hooks before transport execution or replace client injection with a constrained transport-only boundary, and add a regression proving a response hook cannot transform an access-control response into accepted evidence."
+
+[[defects]]
+id = "CS-SR-039"
+severity = "P0"
+area = "http-environment-and-transport-authority"
+root_cause = "The bounded HTTP engine creates its owned httpx.Client with the default trust_env=True and accepts preconfigured injected clients, so environment proxy routing, proxy credentials, CA trust, and client-certificate state can be introduced beneath exact URL and auth checks; auth=None does not neutralize transport-level environment or TLS credential configuration."
+discovered_against = "5f714c68f07d0820516046349210067dc5ad8c93"
+required_resolution = "Construct the production client with trust_env=False and explicit reviewed TLS settings, remove effect-capable preconfigured client injection from production-visible boundaries, isolate deterministic test transport behind a non-production boundary, and add regression and mutation coverage proving environment proxies, CA overrides, proxy credentials, and client certificates cannot alter production HTTP execution."
