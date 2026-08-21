@@ -184,6 +184,78 @@ def test_http_executor_fails_closed_on_nonretryable_status_and_oversize() -> Non
         )
 
 
+def test_http_executor_rejects_declared_oversize_before_read() -> None:
+    baseline = get_official_arcgis_capability_snapshots()[0]
+    profile = next(
+        item
+        for item in get_verified_parcel_source_profiles()
+        if item.profile_id == baseline.profile_id
+    )
+    read_started = False
+
+    class FailIfRead(httpx.SyncByteStream):
+        def __iter__(self):
+            nonlocal read_started
+            read_started = True
+            yield b"should not be read"
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            headers={"content-length": "100"},
+            stream=FailIfRead(),
+        )
+
+    with (
+        httpx.Client(transport=httpx.MockTransport(handler)) as client,
+        pytest.raises(ParcelArcGISProbeExecutionError, match="byte limit"),
+    ):
+        fetch_arcgis_capability_snapshot(
+            profile,
+            client,
+            limitations=("declared oversize test",),
+            policy=ParcelArcGISHTTPPolicy(max_response_bytes=10),
+            now=lambda: _NOW,
+            sleep=lambda _delay: None,
+        )
+
+    assert read_started is False
+
+
+def test_http_executor_stops_stream_at_byte_ceiling() -> None:
+    baseline = get_official_arcgis_capability_snapshots()[0]
+    profile = next(
+        item
+        for item in get_verified_parcel_source_profiles()
+        if item.profile_id == baseline.profile_id
+    )
+    chunks_read: list[int] = []
+
+    class CountingStream(httpx.SyncByteStream):
+        def __iter__(self):
+            for index in range(1, 4):
+                chunks_read.append(index)
+                yield b"x" * 6
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, stream=CountingStream())
+
+    with (
+        httpx.Client(transport=httpx.MockTransport(handler)) as client,
+        pytest.raises(ParcelArcGISProbeExecutionError, match="byte limit"),
+    ):
+        fetch_arcgis_capability_snapshot(
+            profile,
+            client,
+            limitations=("streamed oversize test",),
+            policy=ParcelArcGISHTTPPolicy(max_response_bytes=10),
+            now=lambda: _NOW,
+            sleep=lambda _delay: None,
+        )
+
+    assert chunks_read == [1, 2]
+
+
 def _metadata_for_snapshot(snapshot) -> dict[str, object]:
     if snapshot.county == "Riverside":
         spatial_reference = {"wkid": 102646, "latestWkid": 2230}

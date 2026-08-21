@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import time
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
@@ -151,23 +152,26 @@ def _get_json_object(
     last_error: Exception | None = None
     for attempt in range(policy.max_attempts):
         try:
-            response = client.get(
+            with client.stream(
+                "GET",
                 url,
                 params=parameters,
                 timeout=policy.timeout_seconds,
                 headers={"Accept": "application/json"},
-            )
-            if response.status_code in policy.retry_status_codes:
-                raise _RetryableStatus(response.status_code)
-            if response.status_code != 200:
-                raise ParcelArcGISProbeExecutionError(
-                    f"ArcGIS request returned HTTP {response.status_code}"
-                )
-            if len(response.content) > policy.max_response_bytes:
-                raise ParcelArcGISProbeExecutionError(
-                    "ArcGIS response exceeded the configured byte limit"
-                )
-            payload: Any = response.json()
+                follow_redirects=False,
+            ) as response:
+                if response.history:
+                    raise ParcelArcGISProbeExecutionError(
+                        "ArcGIS HTTP redirects are forbidden"
+                    )
+                if response.status_code in policy.retry_status_codes:
+                    raise _RetryableStatus(response.status_code)
+                if response.status_code != 200:
+                    raise ParcelArcGISProbeExecutionError(
+                        f"ArcGIS request returned HTTP {response.status_code}"
+                    )
+                response_body = _read_bounded_response(response, policy.max_response_bytes)
+            payload: Any = json.loads(response_body)
             if not isinstance(payload, dict):
                 raise ParcelArcGISProbeExecutionError(
                     "ArcGIS response must be a JSON object"
@@ -187,6 +191,35 @@ def _get_json_object(
     raise ParcelArcGISProbeExecutionError(
         f"ArcGIS request failed after {policy.max_attempts} attempts"
     ) from last_error
+
+
+def _read_bounded_response(response: httpx.Response, limit: int) -> bytes:
+    declared_length = response.headers.get("content-length")
+    if declared_length is not None:
+        try:
+            declared_size = int(declared_length)
+        except ValueError as exc:
+            raise ParcelArcGISProbeExecutionError(
+                "ArcGIS response Content-Length is malformed"
+            ) from exc
+        if declared_size < 0:
+            raise ParcelArcGISProbeExecutionError(
+                "ArcGIS response Content-Length is malformed"
+            )
+        if declared_size > limit:
+            raise ParcelArcGISProbeExecutionError(
+                "ArcGIS response exceeded the configured byte limit"
+            )
+    body = bytearray()
+    observed_size = 0
+    for chunk in response.iter_bytes():
+        observed_size += len(chunk)
+        if observed_size > limit:
+            raise ParcelArcGISProbeExecutionError(
+                "ArcGIS response exceeded the configured byte limit"
+            )
+        body.extend(chunk)
+    return bytes(body)
 
 
 class _RetryableStatus(Exception):

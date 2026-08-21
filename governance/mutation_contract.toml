@@ -249,3 +249,21 @@ replacement = """_ACCEPTED_MEDIA_TYPES = (
 tests = ["tests/test_ceqanet_csv_live.py::test_csv_validation_failure_is_retained_as_evidence"]
 expected_output = "test_csv_validation_failure_is_retained_as_evidence"
 risk = "An HTML login, denial, or error page could cross the CS-NET-003 media-type boundary as accepted CSV transport evidence."
+
+[[cases]]
+id = "CS-MUT-ARCGIS-DECLARED-SIZE-001"
+path = "src/constructionsight/parcel_source_acquisition_http.py"
+search = "        if declared_size > limit:"
+replacement = "        if declared_size < limit:"
+tests = ["tests/test_parcel_source_acquisition_http.py::test_http_executor_rejects_declared_oversize_before_read"]
+expected_output = "test_http_executor_rejects_declared_oversize_before_read"
+risk = "An ArcGIS response with a declared size above the policy ceiling could begin streaming before rejection."
+
+[[cases]]
+id = "CS-MUT-ARCGIS-STREAM-SIZE-001"
+path = "src/constructionsight/parcel_source_acquisition_http.py"
+search = "        if observed_size > limit:"
+replacement = "        if observed_size < limit:"
+tests = ["tests/test_parcel_source_acquisition_http.py::test_http_executor_stops_stream_at_byte_ceiling"]
+expected_output = "test_http_executor_stops_stream_at_byte_ceiling"
+risk = "A chunked ArcGIS response could continue reading after crossing the policy byte ceiling."
