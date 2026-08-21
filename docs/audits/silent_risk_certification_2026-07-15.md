@@ -751,7 +751,7 @@ All 36 defects remain active. The evidence below establishes the prior implement
 
 **Discovery evidence:** CI #1056 (`32472457754`) failed both isolated vulnerability-enforcement jobs on exact commit `730a036038d1e18f9a54b0915f5440c5b4e414a1` while both quality jobs passed Ruff, strict mypy, compilation, 1,169 warning-strict tests, all 19 focused mutants, adapter/source audits, diff hygiene, exact environment checks, and repository certification apart from the 35 then-active defects plus `REVIEW-001`.
 
-**Current remediation evidence:** both supported-environment locks and the dependency bootstrap contract now select the exact universal `pip==26.2` wheel with reviewed SHA-256 `931c303696af6fa3417112103b1cad26890e5a07eccb5b99783700e33f2b8aad`. No vulnerability exception was added. Exact-head CI #1057 (`32473893969`) accepted both isolated Python 3.11/3.12 vulnerability jobs, and #1058 repeated that result while validating the subsequent semantic-authorization transaction.
+**Current remediation evidence:** both supported-environment locks and the dependency bootstrap contract now select the exact universal `pip==26.2` wheel with reviewed SHA-256 `931c303696af6fa3417112103b1cad26890e5a07eccb5b99783700e33f2b8aad`. No vulnerability exception was added. Exact-head CI #1057 (`32473426675`) accepted both isolated Python 3.11/3.12 vulnerability jobs, and #1058 repeated that result while validating the subsequent semantic-authorization transaction.
 
 **State:** correction is implemented and its isolated vulnerability jobs pass, but it remains active until the complete corrected tree and a new independent adversarial review accept it.
 
