@@ -2,7 +2,7 @@
 
 ## Status
 
-**Not certified. The August 13 adversarial review failed and invalidated candidate `4cc3ce763354ea91ef8c4bed28c3ce0b531379c3`. Thirty-five active defects now block any review, closure, readiness, or merge claim.**
+**Not certified. The August 13 adversarial review failed and invalidated candidate `4cc3ce763354ea91ef8c4bed28c3ce0b531379c3`. Exact-head CI #1056 later discovered `PYSEC-2026-3721`; thirty-six active defects now block any review, closure, readiness, or merge claim.**
 
 This dossier records the correction and regression evidence for the active silent-risk defect ledger. It is an evidence record, not a substitute for independent review, and it does not itself authorize any defect to move from `governance/active_defects.toml` to `governance/resolved_defects.toml`.
 
@@ -100,7 +100,7 @@ The retained repository-certification JSON from **both** runtime artifacts agree
 - governance-shape / traceability / adversarial-contract findings beyond the active ledger: **0**
 - tracked-tree findings beyond the active ledger: **0**
 
-At that historical checkpoint, the aggregate CI jobs remained red **by design** because all 27 then-known defects stayed active and `REVIEW-001` remained. The later failed review added eight implementation defects; the current blocker set is therefore 35 active defects plus the still-missing independent-review artifact.
+At that historical checkpoint, the aggregate CI jobs remained red **by design** because all 27 then-known defects stayed active and `REVIEW-001` remained. The later failed review added eight implementation defects, and run #1056 discovered one newly published bootstrap vulnerability; the current blocker set is therefore 36 active defects plus the still-missing independent-review artifact.
 
 ## Closure doctrine
 
@@ -143,7 +143,7 @@ The certifier rejects malformed or duplicate IDs, active/resolved overlap, inval
 
 ## Defect evidence matrix
 
-All 35 defects remain active. The evidence below establishes the prior implementation/regression claims for `CS-SR-001` through `CS-SR-027`; the failed review proved those claims were incomplete at the system boundary. Working-candidate correction and regression evidence is now present for `CS-SR-029` through `CS-SR-033` and `CS-SR-035`. `CS-SR-028` and `CS-SR-034` still await implementation, and no entry may close before a fresh complete-tree review and certification.
+All 36 defects remain active. The evidence below establishes the prior implementation/regression claims for `CS-SR-001` through `CS-SR-027`; the failed review proved those claims were incomplete at the system boundary. Working-candidate correction and regression evidence is now present for `CS-SR-029` through `CS-SR-033`, `CS-SR-035`, and `CS-SR-036`. `CS-SR-028` and `CS-SR-034` still await implementation, and no entry may close before a fresh complete-tree review and certification.
 
 ### CS-SR-001 — Architecture
 
@@ -741,6 +741,16 @@ All 35 defects remain active. The evidence below establishes the prior implement
 
 **State:** correction is implemented in the current working candidate but remains active until the complete matrix and a new independent adversarial review accept it.
 
+### CS-SR-036 — Newly published pip vulnerability
+
+**Root issue:** run #1056 independently reported `PYSEC-2026-3721` against the exact locked `pip==26.1.2` bootstrap distribution on both Python 3.11 and 3.12; the advisory identifies pip 26.2 as fixed.
+
+**Discovery evidence:** CI #1056 (`32472457754`) failed both isolated vulnerability-enforcement jobs on exact commit `730a036038d1e18f9a54b0915f5440c5b4e414a1` while both quality jobs passed Ruff, strict mypy, compilation, 1,169 warning-strict tests, all 19 focused mutants, adapter/source audits, diff hygiene, exact environment checks, and repository certification apart from the 35 then-active defects plus `REVIEW-001`.
+
+**Current remediation evidence:** both supported-environment locks and the dependency bootstrap contract now select the exact universal `pip==26.2` wheel with reviewed SHA-256 `931c303696af6fa3417112103b1cad26890e5a07eccb5b99783700e33f2b8aad`. No vulnerability exception was added.
+
+**State:** correction is implemented in the current working candidate but remains active until both isolated vulnerability jobs and the complete matrix accept the exact corrected tree.
+
 ## Failed-review disposition and next handoff
 
 The August 13 reviewer inspected the frozen implementation tree rather than treating this dossier, the PR description, or passing tests as proof. The review failed. No independent-review artifact may record a passing result for the target below, and the prior handoff must not be reused.
@@ -786,7 +796,7 @@ At minimum, independently challenge:
 
 If any problem is found, the reviewer must **not** approve. Findings must first be corrected and regression-tested, and any review-covered correction creates a new candidate requiring a fresh review.
 
-After `CS-SR-028` through `CS-SR-035` are corrected with focused negative regressions and the complete Python 3.11/3.12 matrix passes on a new exact candidate, a fresh reviewer must submit an actual GitHub **APPROVED** pull-request review anchored to that new exact commit:
+After all current defects, including `CS-SR-028` through `CS-SR-036`, are corrected with focused negative regressions and the complete Python 3.11/3.12 matrix passes on a new exact candidate, a fresh reviewer must submit an actual GitHub **APPROVED** pull-request review anchored to that new exact commit:
 
 ```text
 <new-corrected-review-candidate-sha>
@@ -837,7 +847,7 @@ Subsequent adversarial work identified and corrected:
 - CS-SR-026 — resolved-ledger/finalization integrity; and
 - CS-SR-027 — external independent-review identity authenticity.
 
-Accordingly, #1028 remains historical evidence only. Run #1050 and candidate `4cc3ce763354ea91ef8c4bed28c3ce0b531379c3` are also historical evidence after the August 13 failed review. No current review candidate exists until `CS-SR-028` through `CS-SR-035` are corrected and the complete exact-head matrix passes again.
+Accordingly, #1028 remains historical evidence only. Run #1050 and candidate `4cc3ce763354ea91ef8c4bed28c3ce0b531379c3` are also historical evidence after the August 13 failed review. No current review candidate exists until all current defects through `CS-SR-036` are corrected and the complete exact-head matrix passes again.
 
 ## Product continuation after hardening
 

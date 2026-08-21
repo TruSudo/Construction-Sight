@@ -269,8 +269,8 @@ No external communication behavior is implied by the existing models or CLI.
 
 ## Known limitations
 
-- Draft PR #117 is not certified. The August 13 adversarial review invalidated candidate `4cc3ce763354ea91ef8c4bed28c3ce0b531379c3`; 35 active defects (`CS-SR-001` through `CS-SR-035`) now block review, readiness, and merge.
-- Working-candidate remediation is implemented for `CS-SR-029`, `CS-SR-031`, `CS-SR-032`, `CS-SR-033`, and `CS-SR-035`, but those defects deliberately remain active until the complete corrected tree passes a fresh exact-head matrix and independent adversarial review.
+- Draft PR #117 is not certified. The August 13 adversarial review invalidated candidate `4cc3ce763354ea91ef8c4bed28c3ce0b531379c3`; exact-head CI #1056 later discovered `PYSEC-2026-3721`, bringing the active ledger to 36 defects (`CS-SR-001` through `CS-SR-036`) that block review, readiness, and merge.
+- Working-candidate remediation is implemented for `CS-SR-029` through `CS-SR-033`, `CS-SR-035`, and `CS-SR-036`, but those defects deliberately remain active until the complete corrected tree passes a fresh exact-head matrix and independent adversarial review.
 - CEQAnet is `partial`, not `verified`; automated HTML collection received HTTP 403.
 - The original UTF-8 inspection failure remains preserved; the derived Windows-1252 replay passes against the same retained body hash without a second request.
 - Two retained point-in-time CSV successes, including one governed sequence observation, still do not establish recurring availability, completeness, or broader source coverage.

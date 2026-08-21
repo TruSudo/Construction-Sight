@@ -82,7 +82,7 @@ def _contract(*, lock_files: list[str] | None = None) -> dict[str, Any]:
         "reject_unexpected_installed_distributions": True,
         "expected_project_distribution": "constructionsight==0.1.0",
         "bootstrap_distributions": [
-            "pip==26.1.2",
+            "pip==26.2",
             "setuptools==83.0.0",
             "wheel==0.47.0",
         ],
@@ -101,7 +101,7 @@ def _contract(*, lock_files: list[str] | None = None) -> dict[str, Any]:
 def _lock(example_version: str = "2.0") -> str:
     return (
         _locked(f"example=={example_version}")
-        + _locked("pip==26.1.2")
+        + _locked("pip==26.2")
         + _locked("setuptools==83.0.0")
         + _locked("wheel==0.47.0")
     )
@@ -309,7 +309,7 @@ def test_canonical_dependency_audit_rejects_bootstrap_disagreement(
         tmp_path,
         "requirements/test.lock",
         _locked("example==2.0")
-        + _locked("pip==26.1.2")
+        + _locked("pip==26.2")
         + _locked("setuptools==82.0.0")
         + _locked("wheel==0.47.0"),
     )
