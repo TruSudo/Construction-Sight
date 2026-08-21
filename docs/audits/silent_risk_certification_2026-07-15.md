@@ -143,7 +143,7 @@ The review artifact additionally carries `reviewed_active_defects_digest`, a dom
 
 ## Defect evidence matrix
 
-All 37 defects remain active. The evidence below establishes the prior implementation/regression claims for `CS-SR-001` through `CS-SR-027`; the failed review proved those claims were incomplete at the system boundary. Correction and regression evidence is present for `CS-SR-028` through `CS-SR-036`; `CS-SR-037` is registered without an accepted correction. No entry may close before a fresh complete-tree review and certification.
+All 37 defects remain active. The evidence below establishes the prior implementation/regression claims for `CS-SR-001` through `CS-SR-027`; the failed review proved those claims were incomplete at the system boundary. Correction and regression evidence is present for `CS-SR-028` through `CS-SR-036`; a working correction and focused negative regressions are present for `CS-SR-037`, but no correction is accepted before exact-head CI. No entry may close before a fresh complete-tree review and certification.
 
 ### CS-SR-001 — Architecture
 
@@ -810,6 +810,8 @@ If any problem is found, the reviewer must **not** approve. Findings must first 
 **Discovery evidence:** adversarial verification of exact candidate `1296b6053da3a5f30cbed702cc1333e9365bb307` found that `execute_bounded_http` authorizes its canonical URL before calling `httpx.Client.stream`. An injected client's default query parameters can be merged while the request is built, after authorization but before transmission, so the wire request can differ from the authorized identity.
 
 **Required correction:** construct a single explicit request outside injected-client configuration, prevent client defaults and request hooks from changing the authorized URL or method before transmission, validate that exact request identity immediately before the effect, and retain a focused regression proving configured client query parameters cannot produce an unauthorized request.
+
+**Working remediation evidence:** the bounded engine now constructs one explicit `httpx.Request` with the exact authorized method, URL, headers, and timeout extension, validates it immediately before `Client.send`, disables client authentication, denies request hooks before execution, and rechecks the response-bound request before accepting evidence. Regressions prove that injected client query defaults are not merged, client authentication cannot rewrite the target, and request hooks fail before the transport runs. Three focused mutants protect explicit-request transmission, authentication disabling, and hook rejection.
 
 After all current defects, including `CS-SR-028` through `CS-SR-037`, are corrected with focused negative regressions and the complete Python 3.11/3.12 matrix passes on a new exact candidate, a fresh reviewer must submit an actual GitHub **APPROVED** pull-request review anchored to that new exact commit:
 

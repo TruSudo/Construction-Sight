@@ -125,6 +125,88 @@ def test_bounded_http_authorizes_and_transmits_one_exact_url_identity() -> None:
     assert observation.response_body == b"exact"
 
 
+def test_bounded_http_does_not_merge_injected_client_query_defaults() -> None:
+    url = "https://example.test/public/data"
+    transmitted: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        transmitted.append(str(request.url))
+        return httpx.Response(
+            200,
+            headers={"content-type": "text/plain"},
+            content=b"exact",
+            request=request,
+        )
+
+    with httpx.Client(
+        transport=httpx.MockTransport(handler),
+        params={"unauthorized": "true"},
+    ) as client:
+        observation = execute_bounded_http(url, "GET", _policy(), client=client)
+
+    assert transmitted == [url]
+    assert observation.request_url == url
+    assert observation.final_url == url
+
+
+def test_bounded_http_disables_injected_client_auth_mutation() -> None:
+    url = "https://example.test/public/data"
+    mutated_url = "https://example.test/public/data?unauthorized=true"
+    auth_invoked = False
+    transmitted: list[str] = []
+
+    def rewrite_request(request: httpx.Request) -> httpx.Request:
+        nonlocal auth_invoked
+        auth_invoked = True
+        request.url = httpx.URL(mutated_url)
+        return request
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        transmitted.append(str(request.url))
+        return httpx.Response(
+            200,
+            headers={"content-type": "text/plain"},
+            content=b"exact",
+            request=request,
+        )
+
+    with httpx.Client(
+        transport=httpx.MockTransport(handler),
+        auth=rewrite_request,
+    ) as client:
+        observation = execute_bounded_http(url, "GET", _policy(), client=client)
+
+    assert auth_invoked is False
+    assert transmitted == [url]
+    assert observation.request_url == url
+    assert observation.final_url == url
+
+
+def test_bounded_http_rejects_request_hooks_before_execution() -> None:
+    url = "https://example.test/public/data"
+    transmitted: list[str] = []
+
+    def rewrite_request(request: httpx.Request) -> None:
+        request.url = httpx.URL(
+            "https://example.test/public/data?unauthorized=true"
+        )
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        transmitted.append(str(request.url))
+        return httpx.Response(200, content=b"unexpected", request=request)
+
+    with (
+        httpx.Client(
+            transport=httpx.MockTransport(handler),
+            event_hooks={"request": [rewrite_request]},
+        ) as client,
+        pytest.raises(ValueError, match="must not define request event hooks"),
+    ):
+        execute_bounded_http(url, "GET", _policy(), client=client)
+
+    assert transmitted == []
+
+
 @pytest.mark.parametrize(
     "unauthorized_url",
     (

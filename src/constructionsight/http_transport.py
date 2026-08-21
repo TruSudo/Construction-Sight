@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
-from contextlib import nullcontext
+from collections.abc import Iterable, Iterator
+from contextlib import contextmanager, nullcontext
 from typing import TypedDict
 from urllib.parse import urlsplit
 
@@ -135,6 +135,58 @@ def _read_bounded(chunks: Iterable[bytes], limit: int) -> tuple[bytes, int, bool
     return bytes(retained), observed_size, False
 
 
+def _validate_outbound_request(
+    request: httpx.Request,
+    *,
+    canonical_method: str,
+    canonical_url: str,
+    policy: BoundedHttpPolicy,
+) -> None:
+    if request.method != canonical_method:
+        raise ValueError("HTTP client cannot preserve the authorized method")
+    request_url = str(request.url)
+    if request_url != canonical_url:
+        raise ValueError("HTTP client cannot preserve the authorized URL identity")
+    _validate_scope(request_url, request.method, policy)
+
+
+@contextmanager
+def _send_exact_request(
+    session: httpx.Client,
+    request: httpx.Request,
+    *,
+    canonical_method: str,
+    canonical_url: str,
+    policy: BoundedHttpPolicy,
+) -> Iterator[httpx.Response]:
+    if session.event_hooks.get("request"):
+        raise ValueError("bounded HTTP client must not define request event hooks")
+    _validate_outbound_request(
+        request,
+        canonical_method=canonical_method,
+        canonical_url=canonical_url,
+        policy=policy,
+    )
+    response = session.send(
+        request,
+        stream=True,
+        auth=None,
+        follow_redirects=False,
+    )
+    try:
+        if response.request is not request:
+            raise ValueError("HTTP client replaced the authorized request")
+        _validate_outbound_request(
+            response.request,
+            canonical_method=canonical_method,
+            canonical_url=canonical_url,
+            policy=policy,
+        )
+        yield response
+    finally:
+        response.close()
+
+
 def execute_bounded_http(
     url: str,
     method: str,
@@ -158,20 +210,26 @@ def execute_bounded_http(
         write=policy.write_timeout_seconds,
         pool=policy.pool_timeout_seconds,
     )
+    request = httpx.Request(
+        canonical_method,
+        outbound_url,
+        headers={
+            "Accept": ", ".join(policy.accepted_media_types),
+            "Accept-Encoding": "identity",
+            "User-Agent": policy.user_agent,
+        },
+        extensions={"timeout": timeout.as_dict()},
+    )
     owned_client = client is None
     active_client = client or httpx.Client(follow_redirects=False)
     context = active_client if owned_client else nullcontext(active_client)
     try:
-        with context as session, session.stream(
-            canonical_method,
-            outbound_url,
-            follow_redirects=False,
-            timeout=timeout,
-            headers={
-                "Accept": ", ".join(policy.accepted_media_types),
-                "Accept-Encoding": "identity",
-                "User-Agent": policy.user_agent,
-            },
+        with context as session, _send_exact_request(
+            session,
+            request,
+            canonical_method=canonical_method,
+            canonical_url=canonical_url,
+            policy=policy,
         ) as response:
             final_url = str(response.url)
             raw_content_type = response.headers.get("content-type")

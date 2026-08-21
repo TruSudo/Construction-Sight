@@ -191,3 +191,32 @@ replacement = "if source_layer == \"transport\":"
 tests = ["tests/test_architecture_boundary_certification.py::test_low_level_http_engine_cannot_be_imported_by_application"]
 expected_output = "test_low_level_http_engine_cannot_be_imported_by_application"
 risk = "Application code could reacquire the low-level HTTP engine through a generic utility bypass."
+
+[[cases]]
+id = "CS-MUT-NET-EXPLICIT-REQUEST-001"
+path = "src/constructionsight/http_transport.py"
+search = """    response = session.send(
+        request,"""
+replacement = """    response = session.send(
+        session.build_request(request.method, request.url),"""
+tests = ["tests/test_http_transport.py::test_bounded_http_does_not_merge_injected_client_query_defaults"]
+expected_output = "test_bounded_http_does_not_merge_injected_client_query_defaults"
+risk = "Client-level query defaults could be merged after authorization if the bounded engine rebuilt the explicit request."
+
+[[cases]]
+id = "CS-MUT-NET-CLIENT-AUTH-001"
+path = "src/constructionsight/http_transport.py"
+search = "        auth=None,"
+replacement = "        auth=httpx.USE_CLIENT_DEFAULT,"
+tests = ["tests/test_http_transport.py::test_bounded_http_disables_injected_client_auth_mutation"]
+expected_output = "test_bounded_http_disables_injected_client_auth_mutation"
+risk = "Injected client authentication could mutate the exact request identity after authorization."
+
+[[cases]]
+id = "CS-MUT-NET-REQUEST-HOOK-001"
+path = "src/constructionsight/http_transport.py"
+search = """    if session.event_hooks.get("request"):"""
+replacement = """    if False and session.event_hooks.get("request"):"""
+tests = ["tests/test_http_transport.py::test_bounded_http_rejects_request_hooks_before_execution"]
+expected_output = "test_bounded_http_rejects_request_hooks_before_execution"
+risk = "An injected request hook could rewrite the authorized method or URL immediately before transmission."
