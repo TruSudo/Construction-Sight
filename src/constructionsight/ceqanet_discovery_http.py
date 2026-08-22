@@ -7,10 +7,9 @@ from dataclasses import dataclass, replace
 from pydantic import HttpUrl, TypeAdapter
 
 from constructionsight.ceqanet_endpoints import CEQANET_ADVANCED_SEARCH_URL
-from constructionsight.http_transport import execute_bounded_http
+from constructionsight.http_transport import execute_bounded_http as _execute_bounded_http
 from constructionsight.http_transport_models import (
     BoundedHttpPolicy,
-    HttpExecutor,
     HttpFailureKind,
 )
 from constructionsight.models import PlatformFamily, SourceVerificationResult
@@ -116,17 +115,15 @@ class CeqanetLiveDiscovery:
 
     def __init__(
         self,
-        executor: HttpExecutor | None = None,
         timeout_seconds: float = 20.0,
     ) -> None:
-        self.executor = executor or execute_bounded_http
         self.policy = replace(
             CEQANET_DISCOVERY_POLICY,
             read_timeout_seconds=timeout_seconds,
         )
 
     def discover(self) -> CeqanetDiscoveryResult:
-        observation = self.executor(
+        observation = _execute_bounded_http(
             CEQANET_ADVANCED_SEARCH_URL,
             "GET",
             self.policy,
