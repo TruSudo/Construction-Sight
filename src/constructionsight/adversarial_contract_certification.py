@@ -79,7 +79,8 @@ def _mutation_cases(
     for raw_case in raw_cases:
         if not isinstance(raw_case, dict):
             continue
-        mutation_id = raw_case.get("id")
+        mutation_id_value = raw_case.get("id")
+        mutation_id = mutation_id_value if isinstance(mutation_id_value, str) else ""
         if not _nonblank(mutation_id):
             continue
         by_id.setdefault(mutation_id, []).append(raw_case)
@@ -103,7 +104,7 @@ def _pytest_node_exists(root: Path, node: str) -> bool:
     except (RepositoryPathError, OSError, UnicodeError, SyntaxError):
         return False
     return any(
-        isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef))
+        isinstance(item, ast.FunctionDef | ast.AsyncFunctionDef)
         and item.name == test_name
         for item in tree.body
     )
@@ -160,9 +161,12 @@ def _audit_witnesses(
             )
             valid = False
 
-        category = raw_witness.get("category")
-        test_node = raw_witness.get("test")
-        mutation_id = raw_witness.get("mutation_id")
+        category_value = raw_witness.get("category")
+        test_node_value = raw_witness.get("test")
+        mutation_id_value = raw_witness.get("mutation_id")
+        category = category_value if isinstance(category_value, str) else ""
+        test_node = test_node_value if isinstance(test_node_value, str) else ""
+        mutation_id = mutation_id_value if isinstance(mutation_id_value, str) else ""
         if (
             not _nonblank(category)
             or category not in _REQUIRED_CATEGORIES
@@ -255,10 +259,10 @@ def _audit_witnesses(
                     )
                 )
                 valid = False
-            elif isinstance(category, str):
+            else:
                 used_mutations[mutation_id] = category
 
-        if valid and isinstance(category, str):
+        if valid:
             valid_categories.add(category)
 
     if witness_categories != sorted(set(witness_categories)):

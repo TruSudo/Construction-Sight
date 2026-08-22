@@ -352,8 +352,14 @@ risk = "Unknown authority-significant fields could be silently discarded instead
 [[cases]]
 id = "CS-MUT-AUTH-ID-SCHEMA-001"
 path = "src/constructionsight/authorization_decision_models.py"
-search = "    decision_id: str = Field(pattern=r\"^authorization-decision:[0-9a-f]{64}$\")"
-replacement = "    decision_id: str = Field(min_length=1)"
+search = '''    schema_version: Literal["constructionsight.authorization-decision/v1"] = (
+        AUTHORIZATION_DECISION_SCHEMA_VERSION
+    )
+    decision_id: str = Field(pattern=r"^authorization-decision:[0-9a-f]{64}$")'''
+replacement = '''    schema_version: Literal["constructionsight.authorization-decision/v1"] = (
+        AUTHORIZATION_DECISION_SCHEMA_VERSION
+    )
+    decision_id: str = Field(min_length=1)'''
 tests = ["tests/test_adversarial_semantic_witnesses.py::test_authorization_decision_rejects_malformed_identity_schema"]
 expected_output = "test_authorization_decision_rejects_malformed_identity_schema"
 risk = "Malformed authorization identity syntax could reach semantic validation instead of failing at the identity boundary."

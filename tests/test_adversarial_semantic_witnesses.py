@@ -157,18 +157,20 @@ def test_result_audit_failure_rolls_back_authoritative_transaction(
         "store_result_authority_event",
         fail_audit_event,
     )
-    with managed_session(factory) as session:
-        with pytest.raises(
+    with (
+        managed_session(factory) as session,
+        pytest.raises(
             result_authority_service.ResultAuthorityError,
             match="audit unavailable",
-        ):
-            result_authority_service.apply_authoritative_result(
-                session,
-                workflow_id=_workflow().workflow_id,
-                expected_current_ledger_id=None,
-                status=ResultLedgerStatus.UNKNOWN,
-                authority_reason="semantic witness audit rollback",
-            )
+        ),
+    ):
+        result_authority_service.apply_authoritative_result(
+            session,
+            workflow_id=_workflow().workflow_id,
+            expected_current_ledger_id=None,
+            status=ResultLedgerStatus.UNKNOWN,
+            authority_reason="semantic witness audit rollback",
+        )
 
     with managed_session(factory) as session:
         assert session.scalar(select(func.count()).select_from(ResultLedgerRecordRow)) == 0
