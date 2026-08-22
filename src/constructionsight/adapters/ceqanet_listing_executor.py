@@ -7,9 +7,6 @@ engine and denies redirects at request time.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TypeAlias
-
-import httpx
 
 from constructionsight.adapters.ceqanet_listing import (
     CeqanetListingPlan,
@@ -68,9 +65,6 @@ class CeqanetListingExecutionPolicy:
         )
 
 
-CeqanetListingHttpClient: TypeAlias = httpx.Client
-
-
 @dataclass(frozen=True)
 class CeqanetListingResponseSnapshot:
     """One bounded response snapshot from a read-only CEQAnet listing request."""
@@ -121,7 +115,6 @@ class CeqanetListingReadOnlyExecutor:
 
     def __init__(
         self,
-        client: CeqanetListingHttpClient | None = None,
         *,
         timeout_seconds: float = 20.0,
         max_body_chars: int = 50_000,
@@ -135,7 +128,6 @@ class CeqanetListingReadOnlyExecutor:
             timeout_seconds=timeout_seconds,
             max_response_bytes=max_body_chars,
         )
-        self.client = client
 
     def run(self, plan: CeqanetListingPlan) -> CeqanetListingExecutionReport:
         """Execute a bounded, access-approved CEQAnet listing plan."""
@@ -193,7 +185,6 @@ class CeqanetListingReadOnlyExecutor:
             request.url,
             request.method,
             self.policy.http_policy(request.url),
-            client=self.client,
         )
         return _snapshot_from_observation(request, observation)
 
