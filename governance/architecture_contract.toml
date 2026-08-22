@@ -65,7 +65,7 @@ responsibility = "Approved bounded external transport only; no workflow or persi
 path_patterns = [
   "src/constructionsight/adapters/ceqanet_listing_executor\\.py",
   "src/constructionsight/(?:ceqanet_detail_http|ceqanet_discovery_http|http_transport|source_readiness_http|source_verification_http)\\.py",
-  "src/constructionsight/.*(?:_http|_live_service)\\.py",
+  "src/constructionsight/(?!parcel_source_probe_http\\.py$).*(?:_http|_live_service)\\.py",
 ]
 default = false
 allowed_internal_layers = ["transport", "domain", "adapter", "package"]
@@ -115,7 +115,7 @@ authority_bearing = false
 name = "application"
 responsibility = "Canonical use cases, orchestration, authorization preflight, verification, and report construction."
 path_patterns = [
-  "src/constructionsight/(?:parcel_source_bulk_rehearsal|parcel_source_bulk_rehearsal_artifacts|source_registry_update_plan_service)\\.py",
+  "src/constructionsight/(?:parcel_source_bulk_rehearsal|parcel_source_bulk_rehearsal_artifacts|parcel_source_probe_http|source_registry_update_plan_service)\\.py",
 ]
 default = true
 allowed_internal_layers = ["application", "domain", "persistence", "transport", "adapter", "package"]
