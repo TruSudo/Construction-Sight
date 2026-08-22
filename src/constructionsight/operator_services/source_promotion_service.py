@@ -8,13 +8,21 @@ from datetime import datetime
 from constructionsight.adapters.specs import AdapterFamilySpec
 from constructionsight.authorization_decision import AuthorizationUseLedger
 from constructionsight.authorization_decision_models import authorization_digest
-from constructionsight.local_operator_authorization import authorize_local_operator_operation
+from constructionsight.local_operator_authorization import (
+    authorize_local_operator_operation,
+)
 from constructionsight.models import PlatformFamily, PublicSource
 from constructionsight.source_promotion_plan_models import SourcePromotionPlanReport
-from constructionsight.source_promotion_plan_service import build_source_promotion_plan
-from constructionsight.source_readiness_service import HttpReachabilityChecker
+from constructionsight.source_promotion_plan_service import (
+    _build_source_promotion_plan_from_checklist,
+)
 from constructionsight.source_registry_integrity import source_registry_digest
-from constructionsight.source_verification_checklist_models import SourceVerificationObservation
+from constructionsight.source_verification_checklist_models import (
+    SourceVerificationObservation,
+)
+from constructionsight.source_verification_checklist_service import (
+    _build_source_verification_checklist_report_with_owned_http,
+)
 
 
 def build_authorized_source_promotion_plan(
@@ -27,7 +35,6 @@ def build_authorized_source_promotion_plan(
     operator_id: str | None = None,
     now: Callable[[], datetime] | None = None,
     ledger: AuthorizationUseLedger | None = None,
-    http_checker: HttpReachabilityChecker | None = None,
 ) -> SourcePromotionPlanReport:
     """Authorize exact-source HTTP evidence used by one report-only promotion plan."""
 
@@ -122,10 +129,9 @@ def build_authorized_source_promotion_plan(
         now=now,
         ledger=ledger,
     )
-    return build_source_promotion_plan(
+    checklist = _build_source_verification_checklist_report_with_owned_http(
         sources,
         adapter_specs,
-        check_http=True,
-        http_checker=http_checker,
         observations=normalized_observations,
     )
+    return _build_source_promotion_plan_from_checklist(checklist)
