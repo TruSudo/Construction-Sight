@@ -1,8 +1,7 @@
 """Pure CEQAnet parsing and normalization adapter.
 
 Live network execution is intentionally excluded from this module and provided by
-``constructionsight.ceqanet_discovery_http``. The imported live-discovery symbols
-below are a compatibility re-export only; adapter methods never invoke transport.
+``constructionsight.ceqanet_discovery_http``.
 """
 
 from __future__ import annotations
@@ -15,10 +14,6 @@ from pydantic import HttpUrl, TypeAdapter
 
 from constructionsight.adapters.base import AdapterSearchDescriptor, SourceAdapter
 from constructionsight.ceqa_models import CeqaRecord
-from constructionsight.ceqanet_discovery_http import (
-    CeqanetDiscoveryResult,
-    CeqanetLiveDiscovery,
-)
 from constructionsight.ceqanet_endpoints import (
     CEQANET_ADVANCED_SEARCH_URL,
     CEQANET_SEARCH_URL,
@@ -164,7 +159,7 @@ class CeqanetAdapter(SourceAdapter[dict[str, Any], CeqaRecord]):
         return record
 
     def normalize(self, record: dict[str, Any]) -> CeqaRecord:
-        """Normalize a CEQAnet fixture row into a CEQA record."""
+        """Normalize a CEQAnet fixture row into a normalized CEQA record."""
 
         return self.parser.parse_row(
             record,
@@ -177,7 +172,5 @@ __all__ = [
     "CEQANET_ADVANCED_SEARCH_URL",
     "CEQANET_SEARCH_URL",
     "CeqanetAdapter",
-    "CeqanetDiscoveryResult",
     "CeqanetFixtureParser",
-    "CeqanetLiveDiscovery",
 ]
