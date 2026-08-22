@@ -168,6 +168,26 @@ expected_output = "test_bounded_http_owned_client_disables_ambient_environment_a
 risk = "Production TLS certificate verification could be disabled beneath the exact request boundary."
 
 [[cases]]
+id = "CS-MUT-NET-CLIENT-CERT-001"
+path = "src/constructionsight/http_transport.py"
+search = '''    return httpx.Client(
+        follow_redirects=False,
+        trust_env=False,
+        verify=True,
+        proxy=None,
+    )'''
+replacement = '''    return httpx.Client(
+        follow_redirects=False,
+        trust_env=False,
+        verify=True,
+        proxy=None,
+        cert=("client-cert.pem", "client-key.pem"),
+    )'''
+tests = ["tests/test_http_transport.py::test_bounded_http_owned_client_disables_ambient_environment_authority"]
+expected_output = "test_bounded_http_owned_client_disables_ambient_environment_authority"
+risk = "A production client certificate could be introduced beneath the reviewed public transport boundary."
+
+[[cases]]
 id = "CS-MUT-LISTING-RETRY-001"
 path = "src/constructionsight/adapters/ceqanet_listing_executor.py"
 search = "if self.max_attempts != 1 or self.retry_delays_seconds:"
