@@ -30,7 +30,11 @@ from constructionsight.parcel_source_bulk_rehearsal_artifacts import (
 )
 
 _ARCGIS_ALLOWED_HOSTS = ("gis.countyofriverside.us", "services.arcgis.com")
-_ARCGIS_ALLOWED_PATH_PREFIXES = ("/arcgis/rest/services/", "/server/rest/services/")
+_ARCGIS_ALLOWED_PATH_PREFIXES = (
+    "/arcgis/rest/services/",
+    "/arcgis_mapping/rest/services/",
+    "/server/rest/services/",
+)
 
 
 class ParcelArcGISBulkHTTPError(RuntimeError):
