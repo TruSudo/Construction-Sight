@@ -53,7 +53,9 @@ jobs:
       - run: python -m pytest --strict-config --strict-markers -ra
       - run: python -m pip check
       - run: git diff --check
-      - run: python -m constructionsight.repository_certification_v2 --root . --require-clean-worktree
+      - run: >-
+          python -m constructionsight.repository_certification_v2
+          --root . --require-clean-worktree
       - run: constructionsight audit-adapters
       - run: constructionsight audit-source-coverage data/source_registry.seed.json
 """
@@ -173,9 +175,8 @@ def test_ci_gate_in_comment_does_not_satisfy_required_command(tmp_path: Path) ->
     _build_repository(tmp_path)
     command = "python -m constructionsight.repository_certification_v2"
     workflow = _MINIMAL_WORKFLOW.replace(
-        "      - run: python -m constructionsight.repository_certification_v2 "
-        "--root . --require-clean-worktree\n",
-        f"      # legacy compatibility: {command}\n",
+        "          python -m constructionsight.repository_certification_v2\n",
+        f"          # legacy compatibility: {command}\n",
     )
     _write(tmp_path, ".github/workflows/ci.yml", workflow)
     _run(tmp_path, "add", ".github/workflows/ci.yml")

@@ -267,3 +267,39 @@ replacement = "        if observed_size < limit:"
 tests = ["tests/test_parcel_source_acquisition_http.py::test_http_executor_stops_stream_at_byte_ceiling"]
 expected_output = "test_http_executor_stops_stream_at_byte_ceiling"
 risk = "A chunked ArcGIS response could continue reading after crossing the policy byte ceiling."
+
+[[cases]]
+id = "CS-MUT-ARCH-IMPORTFROM-EXTERNAL-001"
+path = "src/constructionsight/governance_certification_core.py"
+search = "                            external.add(f\"{base}.{alias.name}\")"
+replacement = "                            external.add(base)"
+tests = ["tests/test_governance_certification.py::test_architecture_rejects_member_import_network_client"]
+expected_output = "test_architecture_rejects_member_import_network_client"
+risk = "A member-qualified prohibited capability could disappear from architecture classification when imported with from X import Y syntax."
+
+[[cases]]
+id = "CS-MUT-ARCH-IMPORTFROM-INTERNAL-001"
+path = "src/constructionsight/governance_certification_core.py"
+search = "                        internal.add(member)"
+replacement = "                        internal.add(resolved)"
+tests = ["tests/test_governance_certification.py::test_architecture_resolves_internal_member_module_import"]
+expected_output = "test_architecture_resolves_internal_member_module_import"
+risk = "A package-level member import could hide the exact lower-level internal module dependency from architecture enforcement."
+
+[[cases]]
+id = "CS-MUT-ARCH-BOUNDARY-WIRING-001"
+path = "src/constructionsight/governance_certification.py"
+search = "    audit_architecture_boundaries(\n"
+replacement = "    if False:\n        audit_architecture_boundaries(\n"
+tests = ["tests/test_governance_certification.py::test_canonical_governance_audit_invokes_architecture_boundary"]
+expected_output = "test_canonical_governance_audit_invokes_architecture_boundary"
+risk = "A tested architecture-boundary certifier could become dead code and stop contributing to the canonical governance result."
+
+[[cases]]
+id = "CS-MUT-CI-EXECUTABLE-001"
+path = "src/constructionsight/repository_certification.py"
+search = "        if not any(line.startswith(snippet) for line in executable_lines):"
+replacement = "        if snippet not in workflow:"
+tests = ["tests/test_repository_certification.py::test_ci_gate_in_comment_does_not_satisfy_required_command"]
+expected_output = "test_ci_gate_in_comment_does_not_satisfy_required_command"
+risk = "Commented workflow text could again satisfy a required CI execution gate."
