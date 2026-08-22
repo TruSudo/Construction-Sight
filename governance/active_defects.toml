@@ -472,3 +472,19 @@ area = "deep-content-immutability"
 root_cause = "Some frozen or content-addressed outer models contain mutable nested models or collections, so validated content can change after identity or digest construction without forcing a new identity."
 discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
 required_resolution = "Make content-addressed evidence recursively immutable or defensively detached, use immutable collection types for digest-bound fields, prevent nested post-validation mutation, and add nested-list, nested-model, stale-digest, and copy-isolation regressions."
+
+[[defects]]
+id = "CS-SR-060"
+severity = "P0"
+area = "public-source-egress-authority"
+root_cause = "Generic source-readiness and source-verification transports derive their allowed host and exact request authority from the same caller-controlled source URL they are meant to constrain, so canonical loopback, private, link-local, reserved, or otherwise internal destinations can self-authorize a bounded HTTP request."
+discovered_against = "689e25cd9bfc36facceb0e1d271eb13b86b2aebc"
+required_resolution = "Derive executable source authority only from a separately governed source identity and public-egress policy; reject IP literals and special-use hostnames; validate every resolved address and alias as globally routable; prevent resolution-to-connect rebinding or enforce equivalent network egress controls; preserve exact request, redirect, credential, TLS, and response bounds; and add loopback, private, link-local, numeric-address, mixed-answer, CNAME, and rebinding regressions."
+
+[[defects]]
+id = "CS-SR-061"
+severity = "P0"
+area = "effect-consumption-atomicity"
+root_cause = "High-impact authorization and evidence-execution paths determine use or attempt availability from caller-selected, invocation-local, absent, or stale snapshot state and perform the effect without a ConstructionSight-owned atomic consumption reservation, allowing one logical authorization, UTC-date allowance, or recurring-run attempt identity to cause multiple effects."
+discovered_against = "689e25cd9bfc36facceb0e1d271eb13b86b2aebc"
+required_resolution = "Introduce a ConstructionSight-owned consumption service that atomically reserves the exact decision or operation identity immediately before effect execution; use durable uniqueness or compare-and-swap for cross-process database, file, evidence-series, and recurring-run operations; remove production ledger and used-ID injection; bind reservation to exact scope, current state, trusted time, and the owned implementation; make permitted exact replay return the prior committed result without repeating effects; persist terminal success or failure; and add sequential, concurrent, restart, stale-series, duplicate-sequence, and failed-effect recovery regressions."
