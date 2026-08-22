@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Iterator
-from contextlib import contextmanager, nullcontext
+from contextlib import contextmanager
 from typing import TypedDict
 from urllib.parse import urlsplit
 
@@ -150,6 +150,12 @@ def _validate_outbound_request(
     _validate_scope(request_url, request.method, policy)
 
 
+def _build_http_client() -> httpx.Client:
+    """Construct the sole production HTTP client with ambient environment authority disabled."""
+
+    return httpx.Client(follow_redirects=False, trust_env=False)
+
+
 @contextmanager
 def _send_exact_request(
     session: httpx.Client,
@@ -193,15 +199,11 @@ def execute_bounded_http(
     url: str,
     method: str,
     policy: BoundedHttpPolicy,
-    *,
-    client: httpx.Client | None = None,
 ) -> BoundedHttpObservation:
     """Execute one attempt under a validated complete policy and classify the outcome."""
 
     canonical_method = method.upper()
     canonical_url = canonicalize_http_url(url)
-    if client is not None and not isinstance(client, httpx.Client):
-        raise TypeError("bounded HTTP client must be an httpx.Client instance")
     outbound_url = httpx.URL(canonical_url)
     if str(outbound_url) != canonical_url:
         raise ValueError("HTTP client cannot preserve the authorized URL representation")
@@ -222,11 +224,8 @@ def execute_bounded_http(
         },
         extensions={"timeout": timeout.as_dict()},
     )
-    owned_client = client is None
-    active_client = client or httpx.Client(follow_redirects=False)
-    context = active_client if owned_client else nullcontext(active_client)
     try:
-        with context as session, _send_exact_request(
+        with _build_http_client() as session, _send_exact_request(
             session,
             request,
             canonical_method=canonical_method,
