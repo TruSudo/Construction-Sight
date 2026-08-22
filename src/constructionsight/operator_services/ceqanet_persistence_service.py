@@ -7,7 +7,7 @@ import math
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Protocol, cast
+from typing import Any, cast
 
 from constructionsight.authorization_decision import (
     AuthorizationDeniedError,
@@ -24,17 +24,6 @@ from constructionsight.local_operator_authorization import (
     authorize_local_operator_operation,
 )
 from constructionsight.storage.database import create_database_engine
-
-
-class PersistenceExecutor(Protocol):
-    """Atomic persistence interface used by the facade and deterministic tests."""
-
-    def __call__(
-        self,
-        write_plan_payload: dict[str, Any],
-        database_url: str,
-    ) -> CeqanetPersistenceExecutionResult:
-        """Persist one completely validated write plan."""
 
 
 @dataclass(frozen=True)
@@ -166,7 +155,6 @@ def execute_authorized_ceqanet_write_plan(
     operator_id: str | None = None,
     now: Callable[[], datetime] | None = None,
     ledger: AuthorizationUseLedger | None = None,
-    executor: PersistenceExecutor | None = None,
 ) -> AuthorizedPersistenceResult:
     """Authorize and atomically apply one exact reviewed write plan."""
 
@@ -249,9 +237,8 @@ def execute_authorized_ceqanet_write_plan(
         now=now,
         ledger=ledger,
     )
-    active_executor: PersistenceExecutor = executor or _execute_persistence
     execution_payload = _verified_execution_payload(snapshot)
-    execution = active_executor(execution_payload, database_url)
+    execution = _execute_persistence(execution_payload, database_url)
     if execution.failed_count or execution.skipped_count:
         raise RuntimeError(
             "atomic persistence executor returned a partial result contract violation"
