@@ -114,9 +114,10 @@ _REQUIRED_CI_SNIPPETS = (
     "python -m pytest --strict-config --strict-markers -ra",
     "constructionsight audit-adapters",
     "constructionsight audit-source-coverage data/source_registry.seed.json",
-    "python -m constructionsight.repository_certification --root . --require-clean-worktree",
+    "python -m constructionsight.repository_certification_v2",
     "git diff --check",
 )
+_CI_BLOCK_MARKERS = {"|", "|-", "|+", ">", ">-", ">+"}
 
 
 @dataclass(frozen=True)
@@ -459,6 +460,42 @@ def _audit_pyproject(
             )
 
 
+def _executable_ci_lines(workflow: str) -> tuple[str, ...]:
+    lines = workflow.splitlines()
+    executable: list[str] = []
+    index = 0
+    while index < len(lines):
+        raw_line = lines[index]
+        stripped = raw_line.lstrip()
+        match = re.fullmatch(r"(?:-\s+)?run:\s*(.*)", stripped)
+        if match is None:
+            index += 1
+            continue
+        value = match.group(1).strip()
+        indent = len(raw_line) - len(stripped)
+        if value in _CI_BLOCK_MARKERS:
+            index += 1
+            while index < len(lines):
+                candidate = lines[index]
+                candidate_text = candidate.strip()
+                if not candidate_text:
+                    index += 1
+                    continue
+                candidate_indent = len(candidate) - len(candidate.lstrip())
+                if candidate_indent <= indent:
+                    break
+                if not candidate_text.startswith("#"):
+                    executable.append(candidate_text)
+                index += 1
+            continue
+        if value and not value.startswith("#"):
+            if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+                value = value[1:-1].strip()
+            executable.append(value)
+        index += 1
+    return tuple(executable)
+
+
 def _audit_ci(root: Path, findings: list[CertificationFinding]) -> None:
     path = Path(".github/workflows/ci.yml")
     try:
@@ -467,8 +504,9 @@ def _audit_ci(root: Path, findings: list[CertificationFinding]) -> None:
         findings.append(_finding("CERT-CI-001", path, "canonical CI workflow is required"))
         return
     workflow = absolute_path.read_text(encoding="utf-8")
+    executable_lines = _executable_ci_lines(workflow)
     for snippet in _REQUIRED_CI_SNIPPETS:
-        if snippet not in workflow:
+        if not any(line.startswith(snippet) for line in executable_lines):
             findings.append(
                 _finding(
                     "CERT-CI-002",

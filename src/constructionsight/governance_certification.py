@@ -8,6 +8,9 @@ from pathlib import Path
 from constructionsight.adversarial_contract_certification import (
     audit_adversarial_contract,
 )
+from constructionsight.architecture_boundary_certification import (
+    audit_architecture_boundaries,
+)
 from constructionsight.architecture_certification import _audit_architecture
 from constructionsight.authority_certification import (
     _audit_authorization,
@@ -137,12 +140,18 @@ def audit_governance(root: Path, tracked_files: Sequence[Path]) -> GovernanceRep
     audit_governance_links(contracts, findings)
     audit_adversarial_contract(repository_root, tests, findings)
 
-    layer_by_module, _graph, mutation_map, metrics = _audit_architecture(
+    layer_by_module, graph, mutation_map, metrics = _audit_architecture(
         repository_root,
         tracked,
         architecture,
         network,
         findings,
+    )
+    audit_architecture_boundaries(
+        layer_by_module=layer_by_module,
+        graph=graph,
+        network_contract=network,
+        findings=findings,
     )
     audit_semantic_authorization(
         repository_root,

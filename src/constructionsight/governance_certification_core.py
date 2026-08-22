@@ -220,10 +220,19 @@ def _imports(tree: ast.Module, current: str, known: set[str]) -> tuple[set[str],
             resolved = _resolve_import(current, node, known)
             if resolved is not None:
                 internal.add(resolved)
+                for alias in node.names:
+                    if alias.name == "*":
+                        continue
+                    member = f"{resolved}.{alias.name}"
+                    if member in known:
+                        internal.add(member)
             else:
                 base = node.module or ""
                 if base:
                     external.add(base)
+                    for alias in node.names:
+                        if alias.name != "*":
+                            external.add(f"{base}.{alias.name}")
     return internal, external
 
 
