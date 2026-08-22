@@ -128,18 +128,6 @@ operator = false
 authority_bearing = true
 
 [[exceptions]]
-source_module = "constructionsight.adapters.ceqanet"
-target_module = "constructionsight.ceqanet_discovery_http"
-reason = "Temporary public API compatibility re-export after live discovery moved into approved transport."
-risk = "A transport type remains visible through the adapter namespace and could encourage coupling."
-compensating_control = "Adapter methods never execute transport; exact typed discovery behavior is regression-tested; all other adapter-to-transport edges remain prohibited."
-owner = "ConstructionSight maintainers"
-issued_on = "2026-07-15"
-expires_on = "2026-10-15"
-test = "tests/test_ceqanet_adapter.py"
-adr = "docs/adr/ADR-0006-ceqanet-compatibility-reexport.md"
-
-[[exceptions]]
 source_module = "constructionsight.parcel_source_bulk_rehearsal_http"
 target_module = "constructionsight.parcel_source_bulk_rehearsal"
 reason = "Temporary type-only compatibility for the immutable rehearsal policy and retry-classification exception co-located with the complete executor."
