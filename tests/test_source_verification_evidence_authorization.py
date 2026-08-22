@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import inspect
 import json
 from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
 
+import constructionsight.source_readiness_service as readiness_service
 from constructionsight.adapters import default_adapter_family_specs
 from constructionsight.authorization_decision import (
     AuthorizationDeniedError,
@@ -44,7 +46,6 @@ class _Checker:
 
 
 def _build(
-    checker: _Checker,
     *,
     confirmation: bool = True,
     ledger: AuthorizationUseLedger | None = None,
@@ -57,35 +58,49 @@ def _build(
         operator_id="operator:tyler",
         now=lambda: _NOW,
         ledger=ledger,
-        http_checker=checker,
     )
 
 
-def test_authorized_evidence_package_executes_exact_source_set_once() -> None:
+def test_authorized_evidence_package_executes_exact_source_set_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     checker = _Checker()
+    monkeypatch.setattr(readiness_service, "_check_source_http_reachability", checker)
 
-    package = _build(checker)
+    package = _build()
 
     assert package.source_count == 2
     assert checker.calls == [str(source.public_url) for source in _sources()]
     assert all(row.http_checked for row in package.rows)
 
 
-def test_evidence_package_requires_scope_bound_confirmation() -> None:
+def test_evidence_package_requires_scope_bound_confirmation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     checker = _Checker()
+    monkeypatch.setattr(readiness_service, "_check_source_http_reachability", checker)
 
     with pytest.raises(AuthorizationDeniedError, match="in addition"):
-        _build(checker, confirmation=False)
+        _build(confirmation=False)
 
     assert checker.calls == []
 
 
-def test_shared_ledger_rejects_repeated_evidence_package_check() -> None:
+def test_shared_ledger_rejects_repeated_evidence_package_check(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     checker = _Checker()
+    monkeypatch.setattr(readiness_service, "_check_source_http_reachability", checker)
     ledger = AuthorizationUseLedger()
 
-    _build(checker, ledger=ledger)
+    _build(ledger=ledger)
     with pytest.raises(AuthorizationDeniedError, match="already consumed"):
-        _build(checker, ledger=ledger)
+        _build(ledger=ledger)
 
     assert len(checker.calls) == 2
+
+
+def test_authorized_evidence_package_does_not_accept_http_checker() -> None:
+    assert "http_checker" not in inspect.signature(
+        build_authorized_source_verification_evidence_package
+    ).parameters
