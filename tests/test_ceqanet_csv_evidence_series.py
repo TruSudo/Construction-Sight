@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import inspect
 import json
 import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from unittest.mock import patch
 
 import httpx
 import pytest
@@ -13,6 +15,7 @@ import socksio
 from pydantic import ValidationError
 from typer.testing import CliRunner
 
+import constructionsight.http_transport as http_transport_module
 from constructionsight import ceqanet_csv_evidence_series_cli as series_cli
 from constructionsight.ceqanet_csv_access_policy_models import (
     CeqanetCsvAccessPolicy,
@@ -28,7 +31,7 @@ from constructionsight.ceqanet_csv_evidence_series_models import (
 from constructionsight.ceqanet_csv_evidence_series_service import (
     EvidenceExecutionInput,
     build_ceqanet_csv_evidence_series,
-    execute_ceqanet_csv_evidence_request,
+    execute_ceqanet_csv_evidence_request as _execute_owned_csv_evidence_request,
     verify_ceqanet_csv_evidence_series,
 )
 from constructionsight.ceqanet_csv_live_models import CeqanetCsvLiveExecution
@@ -190,6 +193,34 @@ class _Client(httpx.Client):
             headers=self.response.headers,
             request=request,
         )
+
+    def build_owned_client(self) -> httpx.Client:
+        return httpx.Client(
+            transport=httpx.MockTransport(self._handle_request),
+            follow_redirects=False,
+            trust_env=False,
+        )
+
+
+def execute_ceqanet_csv_evidence_request(
+    *args: Any,
+    client: _Client | None = None,
+    **kwargs: Any,
+) -> CeqanetCsvEvidenceExecution:
+    """Test-only adapter that patches the private owned HTTP-client constructor."""
+
+    if client is None:
+        return _execute_owned_csv_evidence_request(*args, **kwargs)
+    with patch.object(
+        http_transport_module,
+        "_build_http_client",
+        client.build_owned_client,
+    ):
+        return _execute_owned_csv_evidence_request(*args, **kwargs)
+
+
+def test_production_csv_evidence_boundary_rejects_client_injection() -> None:
+    assert "client" not in inspect.signature(_execute_owned_csv_evidence_request).parameters
 
 
 def _execute(
