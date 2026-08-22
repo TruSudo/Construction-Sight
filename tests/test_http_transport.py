@@ -322,12 +322,13 @@ def test_bounded_http_rejects_legacy_client_keyword_before_execution() -> None:
             raise AssertionError((url, follow_redirects, timeout))
 
     legacy_client: Any = LegacyClient()
+    execute: Any = execute_bounded_http
     with pytest.raises(TypeError, match="unexpected keyword argument 'client'"):
-        execute_bounded_http(
+        execute(
             "https://example.test/public/data",
             "GET",
             _policy(),
-            client=legacy_client,  # type: ignore[call-arg]
+            client=legacy_client,
         )
 
 
