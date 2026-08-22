@@ -132,6 +132,7 @@ class BoundedHttpPolicy:
     allow_http: bool = False
     user_agent: str = "ConstructionSight/0.1"
     allowed_request_urls: tuple[str, ...] = ()
+    request_accept: str | None = None
 
     def __post_init__(self) -> None:
         if not self.policy_id.strip():
@@ -165,6 +166,8 @@ class BoundedHttpPolicy:
             not value.strip() for value in self.accepted_encodings
         ):
             raise ValueError("HTTP policy requires accepted encodings")
+        if self.request_accept is not None and not self.request_accept.strip():
+            raise ValueError("HTTP policy request Accept value cannot be blank")
         if len(set(self.allowed_request_urls)) != len(self.allowed_request_urls):
             raise ValueError("HTTP policy exact request identities must be unique")
         for request_url in self.allowed_request_urls:
