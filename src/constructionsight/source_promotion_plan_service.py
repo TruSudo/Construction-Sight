@@ -11,9 +11,9 @@ from constructionsight.source_promotion_plan_models import (
     SourcePromotionPlanReport,
     SourcePromotionPlanRow,
 )
-from constructionsight.source_readiness_service import HttpReachabilityChecker
 from constructionsight.source_verification_checklist_models import (
     ChecklistItemStatus,
+    SourceVerificationChecklistReport,
     SourceVerificationChecklistRow,
     SourceVerificationObservation,
 )
@@ -27,7 +27,6 @@ def build_source_promotion_plan(
     adapter_specs: dict[PlatformFamily, AdapterFamilySpec],
     *,
     check_http: bool = False,
-    http_checker: HttpReachabilityChecker | None = None,
     observations: Iterable[SourceVerificationObservation] | None = None,
 ) -> SourcePromotionPlanReport:
     """Build a dry-run source promotion plan without mutating registry data."""
@@ -36,10 +35,17 @@ def build_source_promotion_plan(
         sources,
         adapter_specs,
         check_http=check_http,
-        http_checker=http_checker,
         observations=observations,
     )
-    return SourcePromotionPlanReport.from_rows([_plan_row(row) for row in checklist.rows])
+    return _build_source_promotion_plan_from_checklist(checklist)
+
+
+def _build_source_promotion_plan_from_checklist(
+    checklist: SourceVerificationChecklistReport,
+) -> SourcePromotionPlanReport:
+    return SourcePromotionPlanReport.from_rows(
+        [_plan_row(row) for row in checklist.rows]
+    )
 
 
 def _plan_row(row: SourceVerificationChecklistRow) -> SourcePromotionPlanRow:
@@ -120,7 +126,8 @@ def _plan_reasons(
         return ["some manual source behavior was observed"]
     if action == SourcePromotionPlanAction.VERIFIED_CANDIDATE_REVIEW:
         return [
-            "manual entry, query, list, detail, barrier, terms, and evidence review is complete"
+            "manual entry, query, list, detail, barrier, terms, and evidence "
+            "review is complete"
         ]
     if action == SourcePromotionPlanAction.MARK_BLOCKED_CANDIDATE:
         return ["operator observed an access barrier"]
@@ -135,7 +142,9 @@ def _plan_limitations(
     if action != SourcePromotionPlanAction.KEEP_UNVERIFIED:
         limitations.append("this is a dry-run plan and does not mutate registry data")
     if action == SourcePromotionPlanAction.MARK_PARTIAL_CANDIDATE:
-        limitations.append("source evidence is incomplete or adapter maturity is limited")
+        limitations.append(
+            "source evidence is incomplete or adapter maturity is limited"
+        )
     if action == SourcePromotionPlanAction.VERIFIED_CANDIDATE_REVIEW:
         limitations.append("human approval is still required before registry update")
     if not row.evidence_refs:
