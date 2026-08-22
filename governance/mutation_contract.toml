@@ -303,3 +303,93 @@ replacement = "        if snippet not in workflow:"
 tests = ["tests/test_repository_certification.py::test_ci_gate_in_comment_does_not_satisfy_required_command"]
 expected_output = "test_ci_gate_in_comment_does_not_satisfy_required_command"
 risk = "Commented workflow text could again satisfy a required CI execution gate."
+
+[[cases]]
+id = "CS-MUT-RESULT-AUDIT-ROLLBACK-001"
+path = "src/constructionsight/result_authority_service.py"
+search = "        with session.begin_nested():"
+replacement = "        with session.no_autoflush:"
+tests = ["tests/test_adversarial_semantic_witnesses.py::test_result_audit_failure_rolls_back_authoritative_transaction"]
+expected_output = "test_result_audit_failure_rolls_back_authoritative_transaction"
+risk = "A failed authoritative-result audit event could leave ledger or head state committed outside the audit transaction."
+
+[[cases]]
+id = "CS-MUT-PARCEL-CONFLICT-001"
+path = "src/constructionsight/parcel_assurance.py"
+search = "    if len(value_groups) > 1:"
+replacement = "    if False and len(value_groups) > 1:"
+tests = ["tests/test_parcel_assurance.py::test_conflict_retains_each_value_and_requires_review"]
+expected_output = "test_conflict_retains_each_value_and_requires_review"
+risk = "Conflicting current parcel evidence could be collapsed into a selected value without mandatory review."
+
+[[cases]]
+id = "CS-MUT-DEPENDENCY-DRIFT-001"
+path = "src/constructionsight/dependency_certification.py"
+search = "        if registered is not None and registered != declaration:"
+replacement = "        if False and registered is not None and registered != declaration:"
+tests = ["tests/test_dependency_certification.py::test_registry_version_must_equal_direct_declaration"]
+expected_output = "test_registry_version_must_equal_direct_declaration"
+risk = "Dependency registry identity could drift from the direct project declaration without certification failure."
+
+[[cases]]
+id = "CS-MUT-DEDUPE-ORDER-001"
+path = "src/constructionsight/lead_dedupe_service.py"
+search = "    basis = \"|\".join([candidate.fingerprint_key, \",\".join(sorted(matched_keys))])"
+replacement = "    basis = \"|\".join([candidate.fingerprint_key, \",\".join(matched_keys)])"
+tests = ["tests/test_adversarial_semantic_witnesses.py::test_duplicate_result_identity_is_order_independent"]
+expected_output = "test_duplicate_result_identity_is_order_independent"
+risk = "Duplicate-result identity could depend on input enumeration order rather than the semantic match set."
+
+[[cases]]
+id = "CS-MUT-AUTH-EXTRA-001"
+path = "src/constructionsight/authorization_decision_models.py"
+search = "class AuthorizationDecision(BaseModel):\n    \"\"\"Fail-closed authority for one exact action, resource, state, and scope.\"\"\"\n\n    model_config = ConfigDict(extra=\"forbid\", frozen=True)"
+replacement = "class AuthorizationDecision(BaseModel):\n    \"\"\"Fail-closed authority for one exact action, resource, state, and scope.\"\"\"\n\n    model_config = ConfigDict(extra=\"ignore\", frozen=True)"
+tests = ["tests/test_adversarial_semantic_witnesses.py::test_authorization_decision_rejects_unknown_extra_fields"]
+expected_output = "test_authorization_decision_rejects_unknown_extra_fields"
+risk = "Unknown authority-significant fields could be silently discarded instead of rejected."
+
+[[cases]]
+id = "CS-MUT-AUTH-ID-SCHEMA-001"
+path = "src/constructionsight/authorization_decision_models.py"
+search = "    decision_id: str = Field(pattern=r\"^authorization-decision:[0-9a-f]{64}$\")"
+replacement = "    decision_id: str = Field(min_length=1)"
+tests = ["tests/test_adversarial_semantic_witnesses.py::test_authorization_decision_rejects_malformed_identity_schema"]
+expected_output = "test_authorization_decision_rejects_malformed_identity_schema"
+risk = "Malformed authorization identity syntax could reach semantic validation instead of failing at the identity boundary."
+
+[[cases]]
+id = "CS-MUT-PERSIST-INTERRUPT-ROLLBACK-001"
+path = "src/constructionsight/storage/database.py"
+search = "        session.rollback()"
+replacement = "        session.commit()"
+tests = ["tests/test_adversarial_semantic_witnesses.py::test_mid_transaction_failure_rolls_back_partial_writes"]
+expected_output = "test_mid_transaction_failure_rolls_back_partial_writes"
+risk = "An interrupted multi-record persistence operation could commit its partial prefix instead of rolling it back."
+
+[[cases]]
+id = "CS-MUT-AUTH-REPLAY-IDENTITY-001"
+path = "src/constructionsight/authorization_decision.py"
+search = "                and existing == replay_identity"
+replacement = "                and existing != replay_identity"
+tests = ["tests/test_authorization_decision.py::test_exact_replay_requires_same_replay_identity_and_repeats_no_effect"]
+expected_output = "test_exact_replay_requires_same_replay_identity_and_repeats_no_effect"
+risk = "Exact replay could accept a conflicting replay identity and reject the true idempotent replay."
+
+[[cases]]
+id = "CS-MUT-AUTH-NAIVE-PREFLIGHT-001"
+path = "src/constructionsight/authorization_decision.py"
+search = "    if checked_at.tzinfo is None or checked_at.utcoffset() is None:"
+replacement = "    if False and (checked_at.tzinfo is None or checked_at.utcoffset() is None):"
+tests = ["tests/test_adversarial_semantic_witnesses.py::test_preflight_rejects_naive_checked_at"]
+expected_output = "test_preflight_rejects_naive_checked_at"
+risk = "A timezone-naive authorization preflight timestamp could enter validity-window evaluation."
+
+[[cases]]
+id = "CS-MUT-REPO-SYMLINK-001"
+path = "src/constructionsight/repository_path_certification.py"
+search = "        if candidate.is_symlink():"
+replacement = "        if False and candidate.is_symlink():"
+tests = ["tests/test_repository_path_certification.py::test_repository_file_resolution_rejects_external_and_internal_symlinks"]
+expected_output = "test_repository_file_resolution_rejects_external_and_internal_symlinks"
+risk = "Repository evidence resolution could follow a symbolic-link component outside the intended evidence path."

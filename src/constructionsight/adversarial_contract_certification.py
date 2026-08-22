@@ -1,7 +1,8 @@
-"""Strict adversarial-test matrix and category certification."""
+"""Strict adversarial-test matrix and mutation-backed witness certification."""
 
 from __future__ import annotations
 
+import ast
 import re
 from collections.abc import Mapping
 from pathlib import Path
@@ -13,6 +14,7 @@ from constructionsight.repository_path_certification import (
     resolve_repository_file,
 )
 
+_SCHEMA_VERSION: Final = "constructionsight.adversarial-test-contract/v2"
 _REQUIRED_CATEGORIES: Final = {
     "empty-absent-null-unknown-extra",
     "malformed-identity-schema",
@@ -37,13 +39,19 @@ _MATRIX_FIELDS: Final = {
     "capability_ids",
     "tests",
     "categories",
+    "witnesses",
     "exclusions",
     "branch_testing",
     "mutation_testing",
     "property_testing",
     "concurrency_testing",
 }
+_WITNESS_FIELDS: Final = {"category", "test", "mutation_id"}
 _EXCLUSION_FIELDS: Final = {"category", "reason"}
+_PYTEST_NODE: Final = re.compile(
+    r"^(?P<path>tests/(?:[A-Za-z0-9_.-]+/)*[A-Za-z0-9_.-]+\.py)"
+    r"::(?P<name>test_[A-Za-z0-9_]+)$"
+)
 
 
 def _nonblank(value: object) -> bool:
@@ -61,14 +69,238 @@ def _canonical_string_list(value: object, *, nonempty: bool) -> list[str] | None
     return values
 
 
+def _mutation_cases(
+    mutation_contract: Mapping[str, Any],
+) -> dict[str, list[Mapping[str, Any]]]:
+    by_id: dict[str, list[Mapping[str, Any]]] = {}
+    raw_cases = mutation_contract.get("cases")
+    if not isinstance(raw_cases, list):
+        return by_id
+    for raw_case in raw_cases:
+        if not isinstance(raw_case, dict):
+            continue
+        mutation_id = raw_case.get("id")
+        if not _nonblank(mutation_id):
+            continue
+        by_id.setdefault(mutation_id, []).append(raw_case)
+    return by_id
+
+
+def _pytest_node_exists(root: Path, node: str) -> bool:
+    match = _PYTEST_NODE.fullmatch(node)
+    if match is None:
+        return False
+    raw_path = match.group("path")
+    test_name = match.group("name")
+    try:
+        _relative, test_path = resolve_repository_file(
+            root,
+            raw_path,
+            required_prefix="tests",
+            required_suffix=".py",
+        )
+        tree = ast.parse(test_path.read_text(encoding="utf-8"), filename=str(test_path))
+    except (RepositoryPathError, OSError, UnicodeError, SyntaxError):
+        return False
+    return any(
+        isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and item.name == test_name
+        for item in tree.body
+    )
+
+
+def _audit_witnesses(
+    root: Path,
+    *,
+    matrix_label: str,
+    raw_witnesses: object,
+    matrix_tests: set[str],
+    covered: set[str],
+    required_set: set[str],
+    mutation_cases: Mapping[str, list[Mapping[str, Any]]],
+    used_mutations: dict[str, str],
+    findings: list[GovernanceFinding],
+) -> None:
+    path = "governance/adversarial_test_contract.toml"
+    required_witnesses = covered & required_set
+    if not isinstance(raw_witnesses, list):
+        findings.append(
+            _finding(
+                "ADV-WITNESS-001",
+                path,
+                f"{matrix_label} requires one mutation-backed witness per covered category",
+            )
+        )
+        return
+
+    witness_categories: list[str] = []
+    valid_categories: set[str] = set()
+    seen_categories: set[str] = set()
+    for raw_witness in raw_witnesses:
+        valid = True
+        if not isinstance(raw_witness, dict):
+            findings.append(
+                _finding(
+                    "ADV-WITNESS-002",
+                    path,
+                    f"{matrix_label} witness must be a table",
+                )
+            )
+            continue
+        missing = _WITNESS_FIELDS - set(raw_witness)
+        unknown = set(raw_witness) - _WITNESS_FIELDS
+        if missing or unknown:
+            findings.append(
+                _finding(
+                    "ADV-WITNESS-002",
+                    path,
+                    f"{matrix_label} witness fields disagree; "
+                    f"missing={sorted(missing)}, unknown={sorted(unknown)}",
+                )
+            )
+            valid = False
+
+        category = raw_witness.get("category")
+        test_node = raw_witness.get("test")
+        mutation_id = raw_witness.get("mutation_id")
+        if (
+            not _nonblank(category)
+            or category not in _REQUIRED_CATEGORIES
+            or category not in required_set
+            or category not in covered
+        ):
+            findings.append(
+                _finding(
+                    "ADV-WITNESS-002",
+                    path,
+                    f"{matrix_label} witness category is invalid: {category}",
+                )
+            )
+            valid = False
+        else:
+            witness_categories.append(category)
+            if category in seen_categories:
+                findings.append(
+                    _finding(
+                        "ADV-WITNESS-002",
+                        path,
+                        f"{matrix_label} duplicates witness category: {category}",
+                    )
+                )
+                valid = False
+            seen_categories.add(category)
+
+        if not _nonblank(test_node) or not _pytest_node_exists(root, test_node):
+            findings.append(
+                _finding(
+                    "ADV-WITNESS-003",
+                    path,
+                    f"{matrix_label} witness requires an existing exact pytest node: "
+                    f"{test_node}",
+                )
+            )
+            valid = False
+        elif test_node.split("::", 1)[0] not in matrix_tests:
+            findings.append(
+                _finding(
+                    "ADV-WITNESS-003",
+                    path,
+                    f"{matrix_label} witness test file is absent from matrix tests: "
+                    f"{test_node}",
+                )
+            )
+            valid = False
+
+        if not _nonblank(mutation_id):
+            findings.append(
+                _finding(
+                    "ADV-WITNESS-004",
+                    path,
+                    f"{matrix_label} witness requires a mutation ID: {category}",
+                )
+            )
+            valid = False
+        else:
+            cases = mutation_cases.get(mutation_id, [])
+            if len(cases) != 1:
+                findings.append(
+                    _finding(
+                        "ADV-WITNESS-004",
+                        path,
+                        f"{matrix_label} witness mutation must resolve uniquely: "
+                        f"{mutation_id}",
+                    )
+                )
+                valid = False
+            else:
+                mutation_tests = cases[0].get("tests")
+                if mutation_tests != [test_node]:
+                    findings.append(
+                        _finding(
+                            "ADV-WITNESS-004",
+                            path,
+                            f"{matrix_label} witness mutation {mutation_id} must target "
+                            f"only {test_node}",
+                        )
+                    )
+                    valid = False
+            prior_category = used_mutations.get(mutation_id)
+            if prior_category is not None and prior_category != category:
+                findings.append(
+                    _finding(
+                        "ADV-WITNESS-005",
+                        path,
+                        f"mutation {mutation_id} cannot witness both "
+                        f"{prior_category} and {category}",
+                    )
+                )
+                valid = False
+            elif isinstance(category, str):
+                used_mutations[mutation_id] = category
+
+        if valid and isinstance(category, str):
+            valid_categories.add(category)
+
+    if witness_categories != sorted(set(witness_categories)):
+        findings.append(
+            _finding(
+                "ADV-WITNESS-002",
+                path,
+                f"{matrix_label}.witnesses must be unique and sorted by category",
+            )
+        )
+
+    missing_witnesses = required_witnesses - valid_categories
+    if missing_witnesses:
+        findings.append(
+            _finding(
+                "ADV-WITNESS-001",
+                path,
+                f"{matrix_label} lacks valid mutation-backed witnesses for: "
+                f"{sorted(missing_witnesses)}",
+            )
+        )
+
+
 def audit_adversarial_contract(
     root: Path,
     contract: Mapping[str, Any],
     findings: list[GovernanceFinding],
+    *,
+    mutation_contract: Mapping[str, Any],
 ) -> None:
-    """Reject incomplete, ambiguous, invented, or noncanonical test obligations."""
+    """Reject incomplete, ambiguous, or non-executable adversarial-test claims."""
 
     path = "governance/adversarial_test_contract.toml"
+    if contract.get("schema_version") != _SCHEMA_VERSION:
+        findings.append(
+            _finding(
+                "ADV-CONTRACT-001",
+                path,
+                f"adversarial test contract must use {_SCHEMA_VERSION}",
+            )
+        )
+
     required = _canonical_string_list(
         contract.get("required_categories"),
         nonempty=True,
@@ -102,6 +334,9 @@ def audit_adversarial_contract(
             _finding("ADV-MATRIX-001", path, "at least one test matrix is required")
         )
         return
+
+    mutation_cases = _mutation_cases(mutation_contract)
+    used_mutations: dict[str, str] = {}
     ids: set[str] = set()
     for raw in raw_matrices:
         if not isinstance(raw, dict):
@@ -150,6 +385,7 @@ def audit_adversarial_contract(
             )
 
         tests = _canonical_string_list(raw.get("tests"), nonempty=True)
+        matrix_tests: set[str] = set()
         if tests is None:
             findings.append(
                 _finding(
@@ -159,6 +395,7 @@ def audit_adversarial_contract(
                 )
             )
         else:
+            matrix_tests = set(tests)
             for test in tests:
                 try:
                     resolve_repository_file(
@@ -278,6 +515,19 @@ def audit_adversarial_contract(
                     f"{matrix_label} omits required categories: {sorted(missing_categories)}",
                 )
             )
+
+        _audit_witnesses(
+            root,
+            matrix_label=matrix_label,
+            raw_witnesses=raw.get("witnesses"),
+            matrix_tests=matrix_tests,
+            covered=covered,
+            required_set=required_set,
+            mutation_cases=mutation_cases,
+            used_mutations=used_mutations,
+            findings=findings,
+        )
+
         for field in (
             "branch_testing",
             "mutation_testing",

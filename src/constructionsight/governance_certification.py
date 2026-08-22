@@ -30,7 +30,6 @@ from constructionsight.governance_certification_core import (
     _DEPENDENCY_SCHEMA,
     _NETWORK_SCHEMA,
     _RESOLVED_DEFECT_SCHEMA,
-    _TEST_SCHEMA,
     SCHEMA_VERSION,
     GovernanceFinding,
     GovernanceMetrics,
@@ -46,6 +45,7 @@ from constructionsight.semantic_authorization_certification import (
 )
 from constructionsight.traceability_certification import _audit_capabilities
 
+_ADVERSARIAL_TEST_SCHEMA = "constructionsight.adversarial-test-contract/v2"
 _MUTATION_SCHEMA = "constructionsight.mutation-contract/v1"
 _OPEN_WORK_SCHEMA = "constructionsight.open-work/v1"
 _VULNERABILITY_EXCEPTION_SCHEMA = "constructionsight.vulnerability-exceptions/v1"
@@ -90,7 +90,7 @@ def audit_governance(root: Path, tracked_files: Sequence[Path]) -> GovernanceRep
     tests = _read_toml(
         repository_root,
         "governance/adversarial_test_contract.toml",
-        _TEST_SCHEMA,
+        _ADVERSARIAL_TEST_SCHEMA,
         findings,
     )
     mutation = _read_toml(
@@ -138,7 +138,12 @@ def audit_governance(root: Path, tracked_files: Sequence[Path]) -> GovernanceRep
     }
     audit_governance_contract_shapes(repository_root, contracts, findings)
     audit_governance_links(contracts, findings)
-    audit_adversarial_contract(repository_root, tests, findings)
+    audit_adversarial_contract(
+        repository_root,
+        tests,
+        findings,
+        mutation_contract=mutation,
+    )
 
     layer_by_module, graph, mutation_map, metrics = _audit_architecture(
         repository_root,
