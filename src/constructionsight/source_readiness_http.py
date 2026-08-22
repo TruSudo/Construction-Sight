@@ -12,6 +12,7 @@ from constructionsight.http_transport_models import (
     canonicalize_http_url,
 )
 from constructionsight.models import PublicSource
+from constructionsight.source_authority_rules import governed_source_url
 from constructionsight.source_readiness_models import HttpReachabilityResult
 
 
@@ -46,7 +47,7 @@ def _policy_for_source(url: str) -> BoundedHttpPolicy:
 def check_source_http_reachability(source: PublicSource) -> HttpReachabilityResult:
     """Run HEAD and only a 405-authorized GET fallback under one exact host policy."""
 
-    url = canonicalize_http_url(str(source.public_url))
+    url = governed_source_url(source)
     policy = _policy_for_source(url)
     observation = _execute_bounded_http(url, "HEAD", policy)
     if observation.status_code == 405:

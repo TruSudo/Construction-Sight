@@ -36,6 +36,40 @@ review_process = "Verify PyPI project identity, upstream ownership, release meta
 replacement_considerations = "stdlib packaging is unavailable; replacement requires a separate reproducibility and migration review."
 
 [[dependencies]]
+name = "certifi"
+canonical_project = "certifi"
+extras = []
+version = "2025.6.15"
+classification = "runtime"
+purpose = "Owned Mozilla CA bundle for public TLS verification without ambient trust-store authority."
+capabilities = ["CS-CAP-005"]
+authoritative_registry = "https://pypi.org/project/certifi/2025.6.15/"
+authoritative_project_source = "https://github.com/certifi/python-certifi"
+license = "MPL-2.0"
+security_review = "Canonical certifi identity and pinned CA-bundle release verified; the bounded transport loads only this reviewed bundle."
+maintenance_review = "Maintained upstream; CA-bundle changes require dependency, TLS, and advisory review."
+reviewed_on = "2026-08-22"
+review_process = "Verify release identity, Mozilla bundle provenance, certificate-store behavior, advisories, and both supported Python locks."
+replacement_considerations = "A system trust store would reacquire ambient authority; replacement requires an equally explicit reviewed trust-root source."
+
+[[dependencies]]
+name = "httpcore"
+canonical_project = "httpcore"
+extras = []
+version = "1.0.9"
+classification = "runtime"
+purpose = "Public connection-pool and network-backend interfaces used to pin reviewed DNS resolution to TCP."
+capabilities = ["CS-CAP-005"]
+authoritative_registry = "https://pypi.org/project/httpcore/1.0.9/"
+authoritative_project_source = "https://github.com/encode/httpcore"
+license = "BSD-3-Clause"
+security_review = "Canonical Encode project identity and public NetworkBackend API verified; only the bounded transport imports it."
+maintenance_review = "Maintained upstream; network-backend and TLS behavior are fixed by exact version and focused regression evidence."
+reviewed_on = "2026-08-22"
+review_process = "Verify project identity, release provenance, public transport API, advisories, DNS-to-connect semantics, and lock compatibility."
+replacement_considerations = "A custom socket-level HTTP implementation would increase protocol risk; upgrades require re-review of pinning semantics."
+
+[[dependencies]]
 name = "httpx"
 canonical_project = "httpx"
 extras = ["socks"]

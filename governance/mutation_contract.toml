@@ -143,16 +143,14 @@ risk = "A production-visible client parameter could reacquire caller-selected tr
 id = "CS-MUT-NET-AMBIENT-ENV-001"
 path = "src/constructionsight/http_transport.py"
 search = '''    return httpx.Client(
+        transport=_PinnedHttpTransport(),
         follow_redirects=False,
         trust_env=False,
-        verify=True,
-        proxy=None,
     )'''
 replacement = '''    return httpx.Client(
+        transport=_PinnedHttpTransport(),
         follow_redirects=False,
         trust_env=True,
-        verify=True,
-        proxy=None,
     )'''
 tests = ["tests/test_http_transport.py::test_bounded_http_owned_client_disables_ambient_environment_authority"]
 expected_output = "test_bounded_http_owned_client_disables_ambient_environment_authority"
@@ -161,31 +159,57 @@ risk = "Environment proxy, certificate, or credential configuration could regain
 [[cases]]
 id = "CS-MUT-NET-TLS-VERIFY-001"
 path = "src/constructionsight/http_transport.py"
-search = "        verify=True,"
-replacement = "        verify=False,"
-tests = ["tests/test_http_transport.py::test_bounded_http_owned_client_disables_ambient_environment_authority"]
-expected_output = "test_bounded_http_owned_client_disables_ambient_environment_authority"
+search = "    context.check_hostname = True"
+replacement = "    context.check_hostname = False"
+tests = ["tests/test_http_transport.py::test_bounded_http_owns_tls_roots_and_requires_hostname_verification"]
+expected_output = "test_bounded_http_owns_tls_roots_and_requires_hostname_verification"
 risk = "Production TLS certificate verification could be disabled beneath the exact request boundary."
 
 [[cases]]
 id = "CS-MUT-NET-CLIENT-CERT-001"
 path = "src/constructionsight/http_transport.py"
-search = '''    return httpx.Client(
-        follow_redirects=False,
-        trust_env=False,
-        verify=True,
-        proxy=None,
-    )'''
-replacement = '''    return httpx.Client(
-        follow_redirects=False,
-        trust_env=False,
-        verify=True,
-        proxy=None,
-        cert=("client-cert.pem", "client-key.pem"),
-    )'''
-tests = ["tests/test_http_transport.py::test_bounded_http_owned_client_disables_ambient_environment_authority"]
-expected_output = "test_bounded_http_owned_client_disables_ambient_environment_authority"
+search = "    context.load_verify_locations(cafile=certifi.where())"
+replacement = '''    context.load_verify_locations(cafile=certifi.where())
+    context.load_cert_chain("client-cert.pem", "client-key.pem")'''
+tests = ["tests/test_http_transport.py::test_bounded_http_owns_tls_roots_and_requires_hostname_verification"]
+expected_output = "test_bounded_http_owns_tls_roots_and_requires_hostname_verification"
 risk = "A production client certificate could be introduced beneath the reviewed public transport boundary."
+
+[[cases]]
+id = "CS-MUT-NET-IP-LITERAL-001"
+path = "src/constructionsight/http_transport.py"
+search = "        raise ValueError(\"HTTP URL IP literals are outside public egress authority\")"
+replacement = "        pass"
+tests = ["tests/test_http_transport.py::test_public_egress_rejects_literal_and_special_use_authorities"]
+expected_output = "test_public_egress_rejects_literal_and_special_use_authorities"
+risk = "A caller could direct an authorized public read to a loopback, link-local, or other literal address."
+
+[[cases]]
+id = "CS-MUT-NET-PUBLIC-RESOLUTION-001"
+path = "src/constructionsight/http_transport.py"
+search = "    if any(not _is_globally_routable_address(address) for address in addresses):"
+replacement = "    if False and any(not _is_globally_routable_address(address) for address in addresses):"
+tests = ["tests/test_http_transport.py::test_public_egress_rejects_any_non_public_dns_answer"]
+expected_output = "test_public_egress_rejects_any_non_public_dns_answer"
+risk = "A mixed DNS answer set could smuggle a loopback or private connection target into public egress."
+
+[[cases]]
+id = "CS-MUT-NET-RESOLUTION-PIN-001"
+path = "src/constructionsight/http_transport.py"
+search = "            host=self._authority.address,"
+replacement = "            host=host,"
+tests = ["tests/test_http_transport.py::test_public_egress_pins_single_resolution_to_tcp_and_preserves_tls_hostname"]
+expected_output = "test_public_egress_pins_single_resolution_to_tcp_and_preserves_tls_hostname"
+risk = "The socket layer could perform a second attacker-controlled DNS resolution after public-address validation."
+
+[[cases]]
+id = "CS-MUT-NET-SOURCE-AUTHORITY-001"
+path = "src/constructionsight/source_authority_rules.py"
+search = "    if url not in _GOVERNED_SOURCE_URLS:"
+replacement = "    if False and url not in _GOVERNED_SOURCE_URLS:"
+tests = ["tests/test_source_http_effect_ownership.py::test_source_verification_rejects_caller_controlled_public_host_authority"]
+expected_output = "test_source_verification_rejects_caller_controlled_public_host_authority"
+risk = "A caller-controlled source registry record could grant itself generic public-source egress authority."
 
 [[cases]]
 id = "CS-MUT-LISTING-RETRY-001"

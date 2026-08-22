@@ -13,6 +13,8 @@ authors = [
   { name = "Tyler Alston" }
 ]
 dependencies = [
+  "certifi==2025.6.15",
+  "httpcore==1.0.9",
   "httpx[socks]==0.28.1",
   "pydantic==2.11.7",
   "typer==0.16.0",

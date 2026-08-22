@@ -2,11 +2,17 @@
 
 from __future__ import annotations
 
+import ipaddress
+import socket
+import ssl
 from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
-from typing import TypedDict
+from dataclasses import dataclass
+from typing import Any, TypedDict
 from urllib.parse import urlsplit
 
+import certifi
+import httpcore
 import httpx
 
 from constructionsight.http_transport_models import (
@@ -17,6 +23,259 @@ from constructionsight.http_transport_models import (
 )
 
 _ACCESS_CONTROL_STATUSES = frozenset({401, 403, 407, 451})
+_SPECIAL_USE_DNS_SUFFIXES = (
+    ".alt",
+    ".example",
+    ".home.arpa",
+    ".internal",
+    ".invalid",
+    ".local",
+    ".localhost",
+    ".onion",
+    ".test",
+)
+_IPV6_TRANSITION_NETWORKS = (
+    ipaddress.ip_network("::ffff:0:0/96"),
+    ipaddress.ip_network("64:ff9b::/96"),
+    ipaddress.ip_network("64:ff9b:1::/48"),
+    ipaddress.ip_network("2001::/32"),
+    ipaddress.ip_network("2002::/16"),
+)
+
+
+@dataclass(frozen=True)
+class _ResolvedPublicAuthority:
+    host: str
+    port: int
+    address: str
+
+
+class _PinnedNetworkStream(httpcore.NetworkStream):
+    """Preserve the reviewed TLS hostname over an already-pinned TCP connection."""
+
+    def __init__(self, stream: httpcore.NetworkStream, expected_host: str) -> None:
+        self._stream = stream
+        self._expected_host = expected_host
+
+    def read(self, max_bytes: int, timeout: float | None = None) -> bytes:
+        return self._stream.read(max_bytes, timeout)
+
+    def write(self, buffer: bytes, timeout: float | None = None) -> None:
+        self._stream.write(buffer, timeout)
+
+    def close(self) -> None:
+        self._stream.close()
+
+    def start_tls(
+        self,
+        ssl_context: ssl.SSLContext,
+        server_hostname: str | None = None,
+        timeout: float | None = None,
+    ) -> httpcore.NetworkStream:
+        if server_hostname != self._expected_host:
+            raise httpcore.ConnectError("TLS hostname differs from resolved authority")
+        stream = self._stream.start_tls(
+            ssl_context,
+            server_hostname=self._expected_host,
+            timeout=timeout,
+        )
+        return _PinnedNetworkStream(stream, self._expected_host)
+
+    def get_extra_info(self, info: str) -> Any:
+        return self._stream.get_extra_info(info)
+
+
+class _PinnedNetworkBackend(httpcore.NetworkBackend):
+    """Connect only to the public address selected by the single owned resolution."""
+
+    def __init__(
+        self,
+        authority: _ResolvedPublicAuthority,
+        backend: httpcore.NetworkBackend | None = None,
+    ) -> None:
+        self._authority = authority
+        self._backend = backend or httpcore.SyncBackend()
+
+    def connect_tcp(
+        self,
+        host: str,
+        port: int,
+        timeout: float | None = None,
+        local_address: str | None = None,
+        socket_options: Iterable[httpcore.SOCKET_OPTION] | None = None,
+    ) -> httpcore.NetworkStream:
+        normalized_host = host.casefold().rstrip(".")
+        if normalized_host != self._authority.host or port != self._authority.port:
+            raise httpcore.ConnectError("connection authority differs from resolved authority")
+        if local_address is not None:
+            raise httpcore.ConnectError("caller-selected local address is prohibited")
+        stream = self._backend.connect_tcp(
+            host=self._authority.address,
+            port=self._authority.port,
+            timeout=timeout,
+            local_address=None,
+            socket_options=socket_options,
+        )
+        return _PinnedNetworkStream(stream, self._authority.host)
+
+    def connect_unix_socket(
+        self,
+        path: str,
+        timeout: float | None = None,
+        socket_options: Iterable[httpcore.SOCKET_OPTION] | None = None,
+    ) -> httpcore.NetworkStream:
+        raise httpcore.ConnectError("UNIX socket authority is prohibited")
+
+
+@contextmanager
+def _map_httpcore_exceptions() -> Iterator[None]:
+    mappings: tuple[tuple[type[Exception], type[httpx.TransportError]], ...] = (
+        (httpcore.ConnectTimeout, httpx.ConnectTimeout),
+        (httpcore.ReadTimeout, httpx.ReadTimeout),
+        (httpcore.WriteTimeout, httpx.WriteTimeout),
+        (httpcore.PoolTimeout, httpx.PoolTimeout),
+        (httpcore.ConnectError, httpx.ConnectError),
+        (httpcore.ReadError, httpx.ReadError),
+        (httpcore.WriteError, httpx.WriteError),
+        (httpcore.ProxyError, httpx.ProxyError),
+        (httpcore.UnsupportedProtocol, httpx.UnsupportedProtocol),
+        (httpcore.LocalProtocolError, httpx.LocalProtocolError),
+        (httpcore.RemoteProtocolError, httpx.RemoteProtocolError),
+    )
+    try:
+        yield
+    except Exception as exc:
+        for source_type, target_type in mappings:
+            if isinstance(exc, source_type):
+                raise target_type(str(exc)) from exc
+        raise
+
+
+class _PinnedResponseStream(httpx.SyncByteStream):
+    def __init__(self, stream: Iterable[bytes]) -> None:
+        self._stream = stream
+
+    def __iter__(self) -> Iterator[bytes]:
+        with _map_httpcore_exceptions():
+            yield from self._stream
+
+    def close(self) -> None:
+        close = getattr(self._stream, "close", None)
+        if close is not None:
+            close()
+
+
+class _PinnedHttpTransport(httpx.BaseTransport):
+    """Resolve once, reject non-public answers, and bind connection to that result."""
+
+    def __init__(self) -> None:
+        self._pool: httpcore.ConnectionPool | None = None
+        self._used = False
+
+    def handle_request(self, request: httpx.Request) -> httpx.Response:
+        if self._used:
+            raise httpx.ConnectError("bounded HTTP transport is single-use", request=request)
+        self._used = True
+        authority = _resolve_public_authority(str(request.url))
+        self._pool = httpcore.ConnectionPool(
+            ssl_context=_owned_tls_context(),
+            max_connections=1,
+            max_keepalive_connections=0,
+            http1=True,
+            http2=False,
+            retries=0,
+            network_backend=_PinnedNetworkBackend(authority),
+        )
+        assert isinstance(request.stream, httpx.SyncByteStream)
+        core_request = httpcore.Request(
+            method=request.method,
+            url=httpcore.URL(
+                scheme=request.url.raw_scheme,
+                host=request.url.raw_host,
+                port=request.url.port,
+                target=request.url.raw_path,
+            ),
+            headers=request.headers.raw,
+            content=request.stream,
+            extensions=request.extensions,
+        )
+        with _map_httpcore_exceptions():
+            response = self._pool.handle_request(core_request)
+        if not isinstance(response.stream, Iterable):
+            raise httpx.ProtocolError("HTTP core returned a non-synchronous stream")
+        return httpx.Response(
+            status_code=response.status,
+            headers=response.headers,
+            stream=_PinnedResponseStream(response.stream),
+            extensions=response.extensions,
+        )
+
+    def close(self) -> None:
+        if self._pool is not None:
+            with _map_httpcore_exceptions():
+                self._pool.close()
+
+
+def _owned_tls_context() -> ssl.SSLContext:
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    context.verify_mode = ssl.CERT_REQUIRED
+    context.check_hostname = True
+    context.load_verify_locations(cafile=certifi.where())
+    return context
+
+
+def _is_globally_routable_address(address: str) -> bool:
+    parsed = ipaddress.ip_address(address)
+    if not parsed.is_global:
+        return False
+    return not (
+        isinstance(parsed, ipaddress.IPv6Address)
+        and any(parsed in network for network in _IPV6_TRANSITION_NETWORKS)
+    )
+
+
+def _resolve_public_authority(url: str) -> _ResolvedPublicAuthority:
+    parsed = urlsplit(url)
+    host = parsed.hostname
+    if host is None:
+        raise ValueError("HTTP URL requires a hostname")
+    try:
+        ipaddress.ip_address(host)
+    except ValueError:
+        pass
+    else:
+        raise ValueError("HTTP URL IP literals are outside public egress authority")
+    normalized_host = host.casefold().rstrip(".")
+    if normalized_host == "localhost" or normalized_host.endswith(_SPECIAL_USE_DNS_SUFFIXES):
+        raise ValueError("HTTP URL special-use hostname is outside public egress authority")
+    port = 443 if parsed.scheme == "https" else 80
+    try:
+        answers = socket.getaddrinfo(
+            normalized_host,
+            port,
+            family=socket.AF_UNSPEC,
+            type=socket.SOCK_STREAM,
+            proto=socket.IPPROTO_TCP,
+        )
+    except OSError as exc:
+        raise httpx.ConnectError("public authority resolution failed") from exc
+    addresses = sorted({str(answer[4][0]) for answer in answers})
+    if not addresses:
+        raise httpx.ConnectError("public authority resolution returned no addresses")
+    if any(not _is_globally_routable_address(address) for address in addresses):
+        raise ValueError("HTTP authority resolved to a non-public address")
+    selected_address = min(
+        addresses,
+        key=lambda address: (
+            ipaddress.ip_address(address).version,
+            ipaddress.ip_address(address).packed,
+        ),
+    )
+    return _ResolvedPublicAuthority(
+        host=normalized_host,
+        port=port,
+        address=selected_address,
+    )
 
 
 class _ObservationBase(TypedDict):
@@ -154,10 +413,9 @@ def _build_http_client() -> httpx.Client:
     """Construct the sole production HTTP client with reviewed transport authority."""
 
     return httpx.Client(
+        transport=_PinnedHttpTransport(),
         follow_redirects=False,
         trust_env=False,
-        verify=True,
-        proxy=None,
     )
 
 

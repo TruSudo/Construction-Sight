@@ -7,7 +7,7 @@ from constructionsight.models import PlatformFamily, PublicSource
 from constructionsight.verification.source_verifier import SourceVerifier
 
 
-def _source(url: str = "https://example.gov/citizenaccess/") -> PublicSource:
+def _source(url: str = "https://ezop.sbcounty.gov/citizenaccess/") -> PublicSource:
     return PublicSource.model_validate(
         {
             "jurisdiction": {
@@ -83,7 +83,7 @@ def test_verifier_flags_login_hints() -> None:
         executor=_executor(body=b"Login required. Please enter username and password.")
     )
 
-    result = verifier.verify(_source("https://example.gov/login"))
+    result = verifier.verify(_source("https://www.cslb.ca.gov/"))
 
     assert result.url_reachable is True
     assert result.login_required is True

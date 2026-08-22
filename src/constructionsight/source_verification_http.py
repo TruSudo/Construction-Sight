@@ -9,9 +9,9 @@ from constructionsight.http_transport_models import (
     BoundedHttpObservation,
     BoundedHttpPolicy,
     HttpExecutor,
-    canonicalize_http_url,
 )
 from constructionsight.models import PublicSource
+from constructionsight.source_authority_rules import governed_source_url
 
 
 def source_verification_policy(
@@ -21,7 +21,7 @@ def source_verification_policy(
 ) -> BoundedHttpPolicy:
     """Bind a verification request to the source's exact declared host."""
 
-    url = canonicalize_http_url(str(source.public_url))
+    url = governed_source_url(source)
     parsed = urlsplit(url)
     if parsed.hostname is None:
         raise ValueError("source URL requires a hostname")
@@ -55,7 +55,7 @@ def fetch_source_verification(
 ) -> tuple[BoundedHttpObservation, BoundedHttpPolicy]:
     """Execute one bounded source verification GET under an exact-host policy."""
 
-    request_url = canonicalize_http_url(str(source.public_url))
+    request_url = governed_source_url(source)
     policy = source_verification_policy(source, timeout_seconds=timeout_seconds)
     observation = (executor or execute_bounded_http)(
         request_url,

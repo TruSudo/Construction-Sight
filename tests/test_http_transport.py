@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import inspect
+import socket
+import ssl
 from collections.abc import Callable
 from typing import Any
 
+import httpcore
 import httpx
 import pytest
 
@@ -72,12 +75,250 @@ def test_bounded_http_owned_client_disables_ambient_environment_authority(
     client = http_transport_module._build_http_client()
 
     assert isinstance(client, StubClient)
-    assert captured == {
-        "follow_redirects": False,
-        "trust_env": False,
-        "verify": True,
-        "proxy": None,
-    }
+    assert captured["follow_redirects"] is False
+    assert captured["trust_env"] is False
+    assert isinstance(captured["transport"], http_transport_module._PinnedHttpTransport)
+    assert set(captured) == {"follow_redirects", "transport", "trust_env"}
+
+
+def test_bounded_http_owns_tls_roots_and_requires_hostname_verification(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class StubContext:
+        verify_mode: ssl.VerifyMode | None = None
+        check_hostname = False
+
+        def __init__(self) -> None:
+            self.protocol: int | None = None
+            self.loaded_cafile: str | None = None
+
+        def load_verify_locations(self, *, cafile: str) -> None:
+            self.loaded_cafile = cafile
+
+    context = StubContext()
+
+    def build_context(protocol: int) -> StubContext:
+        context.protocol = protocol
+        return context
+
+    monkeypatch.setattr(http_transport_module.ssl, "SSLContext", build_context)
+    monkeypatch.setattr(http_transport_module.certifi, "where", lambda: "/reviewed/ca.pem")
+
+    result = http_transport_module._owned_tls_context()
+
+    assert result is context
+    assert context.protocol == ssl.PROTOCOL_TLS_CLIENT
+    assert context.verify_mode == ssl.CERT_REQUIRED
+    assert context.check_hostname is True
+    assert context.loaded_cafile == "/reviewed/ca.pem"
+
+
+@pytest.mark.parametrize(
+    "url",
+    (
+        "https://127.0.0.1/public/data",
+        "https://169.254.169.254/public/data",
+        "https://localhost/public/data",
+        "https://service.internal/public/data",
+    ),
+)
+def test_public_egress_rejects_literal_and_special_use_authorities(url: str) -> None:
+    with pytest.raises(ValueError, match="outside public egress authority"):
+        http_transport_module._resolve_public_authority(url)
+
+
+def test_public_egress_rejects_any_non_public_dns_answer(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    answers = [
+        (socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", ("93.184.216.34", 443)),
+        (socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", ("127.0.0.1", 443)),
+    ]
+    monkeypatch.setattr(http_transport_module.socket, "getaddrinfo", lambda *_a, **_k: answers)
+
+    with pytest.raises(ValueError, match="resolved to a non-public address"):
+        http_transport_module._resolve_public_authority("https://public.example.com/data")
+
+
+@pytest.mark.parametrize("numeric_host", ("2130706433", "0x7f000001"))
+def test_public_egress_rejects_legacy_numeric_host_forms_after_resolution(
+    numeric_host: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    answers = [
+        (socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", ("127.0.0.1", 443))
+    ]
+    monkeypatch.setattr(http_transport_module.socket, "getaddrinfo", lambda *_a, **_k: answers)
+
+    with pytest.raises(ValueError, match="resolved to a non-public address"):
+        http_transport_module._resolve_public_authority(
+            f"https://{numeric_host}/public/data"
+        )
+
+
+def test_public_egress_resolves_alias_once_and_retains_alias_as_tls_authority(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    queries: list[tuple[str, int]] = []
+
+    def resolve(host: str, port: int, **_kwargs: Any) -> list[tuple[Any, ...]]:
+        queries.append((host, port))
+        return [
+            (
+                socket.AF_INET,
+                socket.SOCK_STREAM,
+                socket.IPPROTO_TCP,
+                "canonical.public.example.com",
+                ("93.184.216.34", 443),
+            )
+        ]
+
+    monkeypatch.setattr(http_transport_module.socket, "getaddrinfo", resolve)
+
+    authority = http_transport_module._resolve_public_authority(
+        "https://alias.public.example.com/data"
+    )
+
+    assert queries == [("alias.public.example.com", 443)]
+    assert authority.host == "alias.public.example.com"
+    assert authority.address == "93.184.216.34"
+
+
+def test_public_egress_pins_single_resolution_to_tcp_and_preserves_tls_hostname(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    resolutions = 0
+
+    def resolve(*_args: Any, **_kwargs: Any) -> list[tuple[Any, ...]]:
+        nonlocal resolutions
+        resolutions += 1
+        return [
+            (
+                socket.AF_INET,
+                socket.SOCK_STREAM,
+                socket.IPPROTO_TCP,
+                "",
+                ("93.184.216.34", 443),
+            )
+        ]
+
+    class StubStream(httpcore.NetworkStream):
+        def __init__(self) -> None:
+            self.tls_hostnames: list[str | None] = []
+
+        def read(self, max_bytes: int, timeout: float | None = None) -> bytes:
+            return b""
+
+        def write(self, buffer: bytes, timeout: float | None = None) -> None:
+            return None
+
+        def close(self) -> None:
+            return None
+
+        def start_tls(
+            self,
+            ssl_context: ssl.SSLContext,
+            server_hostname: str | None = None,
+            timeout: float | None = None,
+        ) -> httpcore.NetworkStream:
+            self.tls_hostnames.append(server_hostname)
+            return self
+
+    class StubBackend(httpcore.NetworkBackend):
+        def __init__(self) -> None:
+            self.connections: list[tuple[str, int, str | None]] = []
+            self.stream = StubStream()
+
+        def connect_tcp(
+            self,
+            host: str,
+            port: int,
+            timeout: float | None = None,
+            local_address: str | None = None,
+            socket_options: Any = None,
+        ) -> httpcore.NetworkStream:
+            self.connections.append((host, port, local_address))
+            return self.stream
+
+        def connect_unix_socket(
+            self,
+            path: str,
+            timeout: float | None = None,
+            socket_options: Any = None,
+        ) -> httpcore.NetworkStream:
+            raise AssertionError(path)
+
+    monkeypatch.setattr(http_transport_module.socket, "getaddrinfo", resolve)
+    authority = http_transport_module._resolve_public_authority(
+        "https://public.example.com/data"
+    )
+    underlying = StubBackend()
+    backend = http_transport_module._PinnedNetworkBackend(authority, underlying)
+
+    stream = backend.connect_tcp("public.example.com", 443)
+    tls_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    stream.start_tls(tls_context, server_hostname="public.example.com")
+
+    assert resolutions == 1
+    assert underlying.connections == [("93.184.216.34", 443, None)]
+    assert underlying.stream.tls_hostnames == ["public.example.com"]
+
+
+def test_owned_transport_preserves_original_http_authority_in_core_request(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    authority = http_transport_module._ResolvedPublicAuthority(
+        host="public.example.com",
+        port=443,
+        address="93.184.216.34",
+    )
+    captured: dict[str, Any] = {}
+
+    class StubPool:
+        def __init__(self, **kwargs: Any) -> None:
+            captured["pool_kwargs"] = kwargs
+            captured["pool"] = self
+            self.closed = False
+
+        def handle_request(self, request: httpcore.Request) -> httpcore.Response:
+            captured["request"] = request
+            return httpcore.Response(
+                200,
+                headers=[(b"content-type", b"text/plain")],
+                content=[b"owned"],
+            )
+
+        def close(self) -> None:
+            self.closed = True
+
+    tls_context = object()
+    monkeypatch.setattr(
+        http_transport_module,
+        "_resolve_public_authority",
+        lambda _url: authority,
+    )
+    monkeypatch.setattr(http_transport_module, "_owned_tls_context", lambda: tls_context)
+    monkeypatch.setattr(http_transport_module.httpcore, "ConnectionPool", StubPool)
+
+    with http_transport_module._build_http_client() as client:
+        response = client.send(
+            httpx.Request("GET", "https://public.example.com/data"),
+            stream=True,
+        )
+        assert response.read() == b"owned"
+        response.close()
+
+    request = captured["request"]
+    assert isinstance(request, httpcore.Request)
+    assert request.url.host == b"public.example.com"
+    assert request.url.target == b"/data"
+    pool_kwargs = captured["pool_kwargs"]
+    assert isinstance(pool_kwargs, dict)
+    assert pool_kwargs["ssl_context"] is tls_context
+    assert isinstance(pool_kwargs["network_backend"], http_transport_module._PinnedNetworkBackend)
+    pool = captured["pool"]
+    assert isinstance(pool, StubPool)
+    assert pool.closed is True
 
 
 def test_bounded_http_rejects_host_outside_policy_before_execution() -> None:
