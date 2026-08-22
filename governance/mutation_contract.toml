@@ -142,11 +142,30 @@ risk = "A production-visible client parameter could reacquire caller-selected tr
 [[cases]]
 id = "CS-MUT-NET-AMBIENT-ENV-001"
 path = "src/constructionsight/http_transport.py"
-search = "return httpx.Client(follow_redirects=False, trust_env=False)"
-replacement = "return httpx.Client(follow_redirects=False, trust_env=True)"
+search = '''    return httpx.Client(
+        follow_redirects=False,
+        trust_env=False,
+        verify=True,
+        proxy=None,
+    )'''
+replacement = '''    return httpx.Client(
+        follow_redirects=False,
+        trust_env=True,
+        verify=True,
+        proxy=None,
+    )'''
 tests = ["tests/test_http_transport.py::test_bounded_http_owned_client_disables_ambient_environment_authority"]
 expected_output = "test_bounded_http_owned_client_disables_ambient_environment_authority"
 risk = "Environment proxy, certificate, or credential configuration could regain authority beneath the reviewed request."
+
+[[cases]]
+id = "CS-MUT-NET-TLS-VERIFY-001"
+path = "src/constructionsight/http_transport.py"
+search = "        verify=True,"
+replacement = "        verify=False,"
+tests = ["tests/test_http_transport.py::test_bounded_http_owned_client_disables_ambient_environment_authority"]
+expected_output = "test_bounded_http_owned_client_disables_ambient_environment_authority"
+risk = "Production TLS certificate verification could be disabled beneath the exact request boundary."
 
 [[cases]]
 id = "CS-MUT-LISTING-RETRY-001"
@@ -248,6 +267,15 @@ replacement = """    if False and session.event_hooks.get("response"):"""
 tests = ["tests/test_http_transport.py::test_bounded_http_test_seam_rejects_response_hooks_before_execution"]
 expected_output = "test_bounded_http_test_seam_rejects_response_hooks_before_execution"
 risk = "A substituted response hook could rewrite denied or malformed evidence before classification if defense-in-depth regressed."
+
+[[cases]]
+id = "CS-MUT-NET-RESPONSE-REQUEST-IDENTITY-001"
+path = "src/constructionsight/http_transport.py"
+search = "        if response.request is not request:"
+replacement = "        if False and response.request is not request:"
+tests = ["tests/test_http_transport.py::test_bounded_http_rejects_forged_response_request_identity"]
+expected_output = "test_bounded_http_rejects_forged_response_request_identity"
+risk = "A transport-substituted response request object could be accepted as evidence instead of remaining bound to the exact authorized request object."
 
 [[cases]]
 id = "CS-MUT-NET-CSV-MEDIA-001"

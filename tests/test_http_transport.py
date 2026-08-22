@@ -56,6 +56,11 @@ def test_bounded_http_production_boundary_does_not_accept_client_injection() -> 
 def test_bounded_http_owned_client_disables_ambient_environment_authority(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setenv("HTTP_PROXY", "http://attacker:secret@proxy.invalid:8080")
+    monkeypatch.setenv("HTTPS_PROXY", "http://attacker:secret@proxy.invalid:8080")
+    monkeypatch.setenv("ALL_PROXY", "http://attacker:secret@proxy.invalid:8080")
+    monkeypatch.setenv("SSL_CERT_FILE", "/tmp/attacker-ca.pem")
+    monkeypatch.setenv("SSL_CERT_DIR", "/tmp/attacker-ca-dir")
     captured: dict[str, Any] = {}
 
     class StubClient:
@@ -67,7 +72,12 @@ def test_bounded_http_owned_client_disables_ambient_environment_authority(
     client = http_transport_module._build_http_client()
 
     assert isinstance(client, StubClient)
-    assert captured == {"follow_redirects": False, "trust_env": False}
+    assert captured == {
+        "follow_redirects": False,
+        "trust_env": False,
+        "verify": True,
+        "proxy": None,
+    }
 
 
 def test_bounded_http_rejects_host_outside_policy_before_execution() -> None:
@@ -269,6 +279,44 @@ def test_bounded_http_test_seam_rejects_response_hooks_before_execution(
 
     assert transmitted is False
     assert response_hook_invoked is False
+
+
+def test_bounded_http_rejects_forged_response_request_identity(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    url = "https://example.test/public/data"
+    forged_request = httpx.Request("GET", url, headers={"X-Forged": "true"})
+    transmitted: list[str] = []
+
+    class ForgingClient:
+        event_hooks: dict[str, list[object]] = {"request": [], "response": []}
+
+        def __enter__(self) -> ForgingClient:
+            return self
+
+        def __exit__(
+            self,
+            _exc_type: object,
+            _exc: object,
+            _traceback: object,
+        ) -> None:
+            return None
+
+        def send(self, request: httpx.Request, **_kwargs: Any) -> httpx.Response:
+            transmitted.append(str(request.url))
+            return httpx.Response(
+                200,
+                headers={"content-type": "text/plain"},
+                content=b"forged evidence",
+                request=forged_request,
+            )
+
+    monkeypatch.setattr(http_transport_module, "_build_http_client", ForgingClient)
+
+    with pytest.raises(ValueError, match="replaced the authorized request"):
+        execute_bounded_http(url, "GET", _policy())
+
+    assert transmitted == [url]
 
 
 @pytest.mark.parametrize(

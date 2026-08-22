@@ -151,9 +151,14 @@ def _validate_outbound_request(
 
 
 def _build_http_client() -> httpx.Client:
-    """Construct the sole production HTTP client with ambient environment authority disabled."""
+    """Construct the sole production HTTP client with reviewed transport authority."""
 
-    return httpx.Client(follow_redirects=False, trust_env=False)
+    return httpx.Client(
+        follow_redirects=False,
+        trust_env=False,
+        verify=True,
+        proxy=None,
+    )
 
 
 @contextmanager
