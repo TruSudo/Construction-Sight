@@ -31,8 +31,10 @@ from constructionsight.ceqanet_csv_evidence_series_models import (
 from constructionsight.ceqanet_csv_evidence_series_service import (
     EvidenceExecutionInput,
     build_ceqanet_csv_evidence_series,
-    execute_ceqanet_csv_evidence_request as _execute_owned_csv_evidence_request,
     verify_ceqanet_csv_evidence_series,
+)
+from constructionsight.ceqanet_csv_evidence_series_service import (
+    execute_ceqanet_csv_evidence_request as _execute_owned_csv_evidence_request,
 )
 from constructionsight.ceqanet_csv_live_models import CeqanetCsvLiveExecution
 from constructionsight.ceqanet_csv_replay_models import (
