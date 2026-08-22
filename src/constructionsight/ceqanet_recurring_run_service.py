@@ -14,7 +14,6 @@ from constructionsight.adapters.ceqanet_listing import (
 )
 from constructionsight.adapters.ceqanet_listing_executor import (
     CeqanetListingExecutionReport,
-    CeqanetListingHttpClient,
     CeqanetListingReadOnlyExecutor,
     CeqanetListingResponseSnapshot,
 )
@@ -226,7 +225,6 @@ def execute_ceqanet_recurring_run(
     *,
     attempt_sequence: int,
     execute_live: bool,
-    client: CeqanetListingHttpClient | None = None,
 ) -> CeqanetRecurringRunExecution:
     """Execute one manifest through the existing bounded listing executor."""
 
@@ -259,7 +257,6 @@ def execute_ceqanet_recurring_run(
         raise ValueError("manifest execution base does not resolve to the CEQAnet search contract")
     plan = CeqanetReadOnlyListingPlanner().build_plan(query, access_result)
     report = CeqanetListingReadOnlyExecutor(
-        client=client,
         timeout_seconds=manifest.timeout_seconds,
         max_body_chars=manifest.max_body_chars,
     ).run(plan)
