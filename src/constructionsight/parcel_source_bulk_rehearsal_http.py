@@ -344,9 +344,8 @@ def _require_exact_body(
             f"ArcGIS rehearsal request returned HTTP {observation.status_code}"
         )
     if observation.failure_kind is not HttpFailureKind.NONE:
-        raise ParcelArcGISBulkHTTPError(
-            f"ArcGIS rehearsal HTTP failed: {observation.error_type or observation.failure_kind.value}"
-        )
+        detail = observation.error_type or observation.failure_kind.value
+        raise ParcelArcGISBulkHTTPError(f"ArcGIS rehearsal HTTP failed: {detail}")
     if not observation.response_body:
         raise ParcelArcGISBulkHTTPError("ArcGIS response body cannot be empty")
     return observation.response_body
