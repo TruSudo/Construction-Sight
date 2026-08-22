@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import inspect
 from datetime import UTC, datetime
 
 import pytest
 
+import constructionsight.source_verification_checklist_service as checklist_service
 from constructionsight.adapters.specs import default_adapter_family_specs
 from constructionsight.authorization_decision import (
     AuthorizationDeniedError,
@@ -69,14 +71,16 @@ class _Checker:
         )
 
 
-def test_offline_checklist_does_not_acquire_network_authority() -> None:
+def test_offline_checklist_does_not_acquire_network_authority(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     checker = _Checker()
+    monkeypatch.setattr(checklist_service, "_check_source_verification", checker)
 
     report = build_source_verification_checklist_report(
         [_source()],
         default_adapter_family_specs(),
         check_http=False,
-        http_checker=checker,
         observations=_observations(),
     )
 
@@ -85,8 +89,21 @@ def test_offline_checklist_does_not_acquire_network_authority() -> None:
     assert report.rows[0].evidence_refs == ["manual:test"]
 
 
-def test_authorized_checklist_binds_exact_source_and_observation_set() -> None:
+def test_offline_checklist_rejects_live_http_request() -> None:
+    with pytest.raises(ValueError, match="requires build_authorized"):
+        build_source_verification_checklist_report(
+            [_source()],
+            default_adapter_family_specs(),
+            check_http=True,
+            observations=_observations(),
+        )
+
+
+def test_authorized_checklist_binds_exact_source_and_observation_set(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     checker = _Checker()
+    monkeypatch.setattr(checklist_service, "_check_source_verification", checker)
 
     report = build_authorized_source_verification_checklist_report(
         [_source()],
@@ -96,7 +113,6 @@ def test_authorized_checklist_binds_exact_source_and_observation_set() -> None:
         authorization_reason="Perform one reviewed source verification check.",
         operator_id="operator:tyler",
         now=lambda: _NOW,
-        http_checker=checker,
     )
 
     assert report.source_count == 1
@@ -105,8 +121,11 @@ def test_authorized_checklist_binds_exact_source_and_observation_set() -> None:
     assert report.rows[0].evidence_refs == ["manual:test"]
 
 
-def test_boolean_confirmation_cannot_authorize_live_checklist() -> None:
+def test_boolean_confirmation_cannot_authorize_live_checklist(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     checker = _Checker()
+    monkeypatch.setattr(checklist_service, "_check_source_verification", checker)
 
     with pytest.raises(AuthorizationDeniedError, match="in addition"):
         build_authorized_source_verification_checklist_report(
@@ -117,14 +136,16 @@ def test_boolean_confirmation_cannot_authorize_live_checklist() -> None:
             authorization_reason="Attempt a live checklist without confirmation.",
             operator_id="operator:tyler",
             now=lambda: _NOW,
-            http_checker=checker,
         )
 
     assert checker.calls == []
 
 
-def test_shared_ledger_rejects_repeated_live_checklist() -> None:
+def test_shared_ledger_rejects_repeated_live_checklist(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     checker = _Checker()
+    monkeypatch.setattr(checklist_service, "_check_source_verification", checker)
     ledger = AuthorizationUseLedger()
 
     first = build_authorized_source_verification_checklist_report(
@@ -136,7 +157,6 @@ def test_shared_ledger_rejects_repeated_live_checklist() -> None:
         operator_id="operator:tyler",
         now=lambda: _NOW,
         ledger=ledger,
-        http_checker=checker,
     )
     assert first.source_count == 1
     with pytest.raises(AuthorizationDeniedError, match="already consumed"):
@@ -149,7 +169,12 @@ def test_shared_ledger_rejects_repeated_live_checklist() -> None:
             operator_id="operator:tyler",
             now=lambda: _NOW,
             ledger=ledger,
-            http_checker=checker,
         )
 
     assert checker.calls == ["https://example.invalid/source"]
+
+
+def test_authorized_checklist_does_not_accept_caller_selected_http_checker() -> None:
+    assert "http_checker" not in inspect.signature(
+        build_authorized_source_verification_checklist_report
+    ).parameters
