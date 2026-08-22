@@ -6,6 +6,7 @@ import httpx
 import pytest
 from pydantic import HttpUrl
 
+import constructionsight.http_transport as http_transport_module
 from constructionsight.ceqanet_recurring_run_models import (
     CeqanetAccessAssumptions,
     CeqanetRecurringQueryTemplate,
@@ -40,12 +41,15 @@ from constructionsight.source_verification_checklist_models import (
 )
 
 
-class _FakeClient(httpx.Client):
+class _FakeTransport:
     def __init__(self) -> None:
         self.urls: list[str] = []
-        super().__init__(
+
+    def build(self) -> httpx.Client:
+        return httpx.Client(
             transport=httpx.MockTransport(self._handle_request),
-            follow_redirects=True,
+            follow_redirects=False,
+            trust_env=False,
         )
 
     def _handle_request(self, request: httpx.Request) -> httpx.Response:
@@ -57,6 +61,12 @@ class _FakeClient(httpx.Client):
             headers={"content-type": "text/html; charset=utf-8"},
             request=request,
         )
+
+
+def _install_transport(monkeypatch: pytest.MonkeyPatch) -> _FakeTransport:
+    transport = _FakeTransport()
+    monkeypatch.setattr(http_transport_module, "_build_http_client", transport.build)
+    return transport
 
 
 def _source(status: VerificationStatus) -> PublicSource:
@@ -282,18 +292,19 @@ def test_execution_requires_explicit_authorization() -> None:
             _ready_checklist(),
             attempt_sequence=1,
             execute_live=False,
-            client=_FakeClient(),
         )
 
 
-def test_ready_manifest_executes_through_bounded_existing_executor() -> None:
+def test_ready_manifest_executes_through_bounded_existing_executor(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     definition = _ready_definition()
     manifest = build_ceqanet_recurring_run_manifest(
         definition,
         window_start=date(2026, 7, 1),
         window_end=date(2026, 7, 7),
     )
-    client = _FakeClient()
+    transport = _install_transport(monkeypatch)
 
     execution = execute_ceqanet_recurring_run(
         definition,
@@ -302,14 +313,13 @@ def test_ready_manifest_executes_through_bounded_existing_executor() -> None:
         _ready_checklist(),
         attempt_sequence=1,
         execute_live=True,
-        client=client,
     )
 
     assert execution.network_executed is True
     assert execution.persistence_mutated is False
     assert len(execution.execution_digest) == 64
     execution.assert_integrity()
-    assert len(client.urls) == 2
+    assert len(transport.urls) == 2
     metadata = execution.execution_report["metadata"]
     assert metadata["executed_request_count"] == 2
     assert metadata["query"] == manifest.query
@@ -328,13 +338,16 @@ def test_ready_manifest_executes_through_bounded_existing_executor() -> None:
     assert verification.findings == []
 
 
-def test_verification_detects_execution_query_and_host_drift() -> None:
+def test_verification_detects_execution_query_and_host_drift(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     definition = _ready_definition()
     manifest = build_ceqanet_recurring_run_manifest(
         definition,
         window_start=date(2026, 7, 1),
         window_end=date(2026, 7, 7),
     )
+    _install_transport(monkeypatch)
     execution = execute_ceqanet_recurring_run(
         definition,
         manifest,
@@ -342,7 +355,6 @@ def test_verification_detects_execution_query_and_host_drift() -> None:
         _ready_checklist(),
         attempt_sequence=1,
         execute_live=True,
-        client=_FakeClient(),
     )
     payload = execution.model_dump(mode="json")
     report = payload["execution_report"]
@@ -364,13 +376,16 @@ def test_verification_detects_execution_query_and_host_drift() -> None:
     assert "snapshots[0] request_url host is outside manifest" in verification.findings
 
 
-def test_verification_detects_retained_body_tampering() -> None:
+def test_verification_detects_retained_body_tampering(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     definition = _ready_definition()
     manifest = build_ceqanet_recurring_run_manifest(
         definition,
         window_start=date(2026, 7, 1),
         window_end=date(2026, 7, 7),
     )
+    _install_transport(monkeypatch)
     execution = execute_ceqanet_recurring_run(
         definition,
         manifest,
@@ -378,7 +393,6 @@ def test_verification_detects_retained_body_tampering() -> None:
         _ready_checklist(),
         attempt_sequence=1,
         execute_live=True,
-        client=_FakeClient(),
     )
     payload = execution.model_dump(mode="json")
     payload["execution_report"]["snapshots"][0]["body_text"] = "altered"
@@ -396,13 +410,16 @@ def test_verification_detects_retained_body_tampering() -> None:
     assert verification.findings[0] == "CEQAnet recurring-run execution digest mismatch"
 
 
-def test_verification_detects_network_execution_flag_drift() -> None:
+def test_verification_detects_network_execution_flag_drift(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     definition = _ready_definition()
     manifest = build_ceqanet_recurring_run_manifest(
         definition,
         window_start=date(2026, 7, 1),
         window_end=date(2026, 7, 7),
     )
+    _install_transport(monkeypatch)
     execution = execute_ceqanet_recurring_run(
         definition,
         manifest,
@@ -410,7 +427,6 @@ def test_verification_detects_network_execution_flag_drift() -> None:
         _ready_checklist(),
         attempt_sequence=1,
         execute_live=True,
-        client=_FakeClient(),
     ).model_copy(update={"network_executed": False})
 
     verification = verify_ceqanet_recurring_run_execution(
