@@ -169,6 +169,28 @@ def test_missing_console_script_attribute_fails(tmp_path: Path) -> None:
     assert any(finding.code == "CERT-SCRIPT-003" for finding in report.findings)
 
 
+def test_ci_gate_in_comment_does_not_satisfy_required_command(tmp_path: Path) -> None:
+    _build_repository(tmp_path)
+    command = (
+        "python -m constructionsight.repository_certification "
+        "--root . --require-clean-worktree"
+    )
+    workflow = _MINIMAL_WORKFLOW.replace(
+        f"      - run: {command}\n",
+        f"      # legacy compatibility: {command}\n",
+    )
+    _write(tmp_path, ".github/workflows/ci.yml", workflow)
+    _run(tmp_path, "add", ".github/workflows/ci.yml")
+    _run(tmp_path, "commit", "-m", "Comment out required certification command")
+
+    report = audit_repository(tmp_path)
+
+    assert any(
+        finding.code == "CERT-CI-002" and command in finding.message
+        for finding in report.findings
+    )
+
+
 def test_cli_returns_failure_for_findings(tmp_path: Path) -> None:
     _build_repository(tmp_path)
     _write(tmp_path, "README.md", "# Fixture without final newline")
