@@ -19,8 +19,8 @@ from constructionsight.adapters import (
     default_adapter_registry,
 )
 from constructionsight.adapters.base import AdapterRunContext
-from constructionsight.adapters.ceqanet import CeqanetLiveDiscovery
 from constructionsight.adapters.runner import AdapterRunner
+from constructionsight.ceqanet_discovery_service import discover_ceqanet_public_search
 from constructionsight.intelligence.artifact_identity import (
     IdentityFingerprint,
     IdentityResolutionCandidate,
@@ -612,7 +612,7 @@ def discover_ceqanet(
 ) -> None:
     """Discover the public CEQAnet advanced-search surface without collecting records."""
 
-    result = CeqanetLiveDiscovery().discover()
+    result = discover_ceqanet_public_search()
     table = Table(title="CEQAnet Public Search Discovery")
     table.add_column("Check")
     table.add_column("Result")
