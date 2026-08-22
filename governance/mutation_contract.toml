@@ -115,7 +115,7 @@ risk = "A query could execute under prose-only host/path scope without an exact 
 id = "CS-MUT-NET-CANONICAL-PATH-001"
 path = "src/constructionsight/http_transport_models.py"
 search = "if path_component and decoded_character in _AMBIGUOUS_ENCODED_PATH_CHARACTERS:"
-replacement = "if False and path_component in _AMBIGUOUS_ENCODED_PATH_CHARACTERS:"
+replacement = "if False and path_component and decoded_character in _AMBIGUOUS_ENCODED_PATH_CHARACTERS:"
 tests = ["tests/test_http_transport.py::test_bounded_http_rejects_ambiguous_url_forms_before_execution"]
 expected_output = "test_bounded_http_rejects_ambiguous_url_forms_before_execution"
 risk = "Encoded path separators or dot segments could be authorized under a representation different from the transmitted path."
@@ -270,22 +270,36 @@ expected_output = "test_csv_validation_failure_is_retained_as_evidence"
 risk = "An HTML login, denial, or error page could cross the CS-NET-003 media-type boundary as accepted CSV transport evidence."
 
 [[cases]]
-id = "CS-MUT-ARCGIS-DECLARED-SIZE-001"
+id = "CS-MUT-ARCGIS-PROBE-CLIENT-INJECTION-001"
 path = "src/constructionsight/parcel_source_acquisition_http.py"
-search = "        if declared_size > limit:"
-replacement = "        if declared_size < limit:"
-tests = ["tests/test_parcel_source_acquisition_http.py::test_http_executor_rejects_declared_oversize_before_read"]
-expected_output = "test_http_executor_rejects_declared_oversize_before_read"
-risk = "An ArcGIS response with a declared size above the policy ceiling could begin streaming before rejection."
+search = '''def fetch_arcgis_capability_snapshot(
+    profile: ParcelSourceVerificationProfile,
+    *,'''
+replacement = '''def fetch_arcgis_capability_snapshot(
+    profile: ParcelSourceVerificationProfile,
+    client: httpx.Client | None = None,
+    *,'''
+tests = ["tests/test_parcel_source_acquisition_http.py::test_arcgis_production_boundaries_do_not_accept_client_injection"]
+expected_output = "test_arcgis_production_boundaries_do_not_accept_client_injection"
+risk = "The ArcGIS probe boundary could reacquire caller-selected HTTP client authority."
 
 [[cases]]
-id = "CS-MUT-ARCGIS-STREAM-SIZE-001"
-path = "src/constructionsight/parcel_source_acquisition_http.py"
-search = "        if observed_size > limit:"
-replacement = "        if observed_size < limit:"
-tests = ["tests/test_parcel_source_acquisition_http.py::test_http_executor_stops_stream_at_byte_ceiling"]
-expected_output = "test_http_executor_stops_stream_at_byte_ceiling"
-risk = "A chunked ArcGIS response could continue reading after crossing the policy byte ceiling."
+id = "CS-MUT-ARCGIS-BULK-CLIENT-INJECTION-001"
+path = "src/constructionsight/parcel_source_bulk_rehearsal_http.py"
+search = '''    def __init__(
+        self,
+        snapshot: ParcelArcGISCapabilitySnapshot,
+        plan: ParcelArcGISBulkRehearsalPlan,
+    ) -> None:'''
+replacement = '''    def __init__(
+        self,
+        snapshot: ParcelArcGISCapabilitySnapshot,
+        plan: ParcelArcGISBulkRehearsalPlan,
+        client: httpx.Client | None = None,
+    ) -> None:'''
+tests = ["tests/test_parcel_source_bulk_rehearsal_http.py::test_http_source_constructor_does_not_accept_client_injection"]
+expected_output = "test_http_source_constructor_does_not_accept_client_injection"
+risk = "The ArcGIS bulk source could reacquire caller-selected HTTP client authority."
 
 [[cases]]
 id = "CS-MUT-ARCH-IMPORTFROM-EXTERNAL-001"
