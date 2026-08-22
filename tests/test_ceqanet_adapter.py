@@ -1,4 +1,7 @@
+import pytest
+
 import constructionsight.adapters.ceqanet as ceqanet_adapter_module
+import constructionsight.ceqanet_discovery_http as ceqanet_discovery_http_module
 from constructionsight.adapters.ceqanet import (
     CEQANET_ADVANCED_SEARCH_URL,
     CeqanetAdapter,
@@ -130,10 +133,12 @@ def test_ceqanet_adapter_namespace_does_not_reexport_live_transport() -> None:
     assert "CeqanetDiscoveryResult" not in ceqanet_adapter_module.__all__
 
 
-def test_ceqanet_live_discovery_detects_public_search_fields() -> None:
+def test_ceqanet_live_discovery_detects_public_search_fields(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     body = b"Advanced Search SCH Number Document Type Received Date Lead Agency Public Agency"
 
-    def executor(
+    def owned_test_effect(
         url: str,
         method: str,
         policy: BoundedHttpPolicy,
@@ -144,7 +149,12 @@ def test_ceqanet_live_discovery_detects_public_search_fields() -> None:
         assert policy.max_response_bytes == 50_000
         return _observation(body=body)
 
-    discovery = CeqanetLiveDiscovery(executor=executor)
+    monkeypatch.setattr(
+        ceqanet_discovery_http_module,
+        "_execute_bounded_http",
+        owned_test_effect,
+    )
+    discovery = CeqanetLiveDiscovery()
 
     result = discovery.discover()
 
@@ -158,8 +168,10 @@ def test_ceqanet_live_discovery_detects_public_search_fields() -> None:
     assert result.failure_kind is HttpFailureKind.NONE
 
 
-def test_ceqanet_live_discovery_preserves_transport_failure_class() -> None:
-    def executor(
+def test_ceqanet_live_discovery_preserves_transport_failure_class(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def owned_test_effect(
         url: str,
         method: str,
         policy: BoundedHttpPolicy,
@@ -170,7 +182,12 @@ def test_ceqanet_live_discovery_preserves_transport_failure_class() -> None:
             error_type="ConnectError",
         )
 
-    discovery = CeqanetLiveDiscovery(executor=executor)
+    monkeypatch.setattr(
+        ceqanet_discovery_http_module,
+        "_execute_bounded_http",
+        owned_test_effect,
+    )
+    discovery = CeqanetLiveDiscovery()
 
     result = discovery.discover()
 
