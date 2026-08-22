@@ -81,6 +81,7 @@ class ParcelArcGISHTTPPolicy:
             accepted_encodings=("utf-8",),
             user_agent="ConstructionSight-ArcGISProbe/1.0",
             allowed_request_urls=(request_url,),
+            request_accept="application/json",
         )
 
 
