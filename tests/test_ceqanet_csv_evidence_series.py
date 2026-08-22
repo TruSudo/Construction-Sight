@@ -15,7 +15,7 @@ import socksio
 from pydantic import ValidationError
 from typer.testing import CliRunner
 
-from constructionsight import ceqanet_csv_evidence_series_cli as series_cli
+import constructionsight.ceqanet_csv_evidence_series_cli as series_cli
 import constructionsight.http_transport as http_transport_module
 from constructionsight.ceqanet_csv_access_policy_models import (
     CeqanetCsvAccessPolicy,
