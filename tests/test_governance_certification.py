@@ -3,6 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+import pytest
+
+import constructionsight.governance_certification as governance_certification
 from constructionsight.architecture_certification import _audit_architecture
 from constructionsight.authority_certification import (
     _audit_authorization,
@@ -10,7 +13,10 @@ from constructionsight.authority_certification import (
     _audit_network,
 )
 from constructionsight.dependency_certification import audit_dependencies
-from constructionsight.governance_certification_core import GovernanceFinding
+from constructionsight.governance_certification_core import (
+    GovernanceFinding,
+    GovernanceMetrics,
+)
 from constructionsight.traceability_certification import _audit_capabilities
 
 _HASH = "a" * 64
@@ -133,6 +139,56 @@ def test_architecture_rejects_undeclared_network_client(tmp_path: Path) -> None:
     assert "NET-BOUNDARY-001" in _codes(findings)
 
 
+def test_architecture_rejects_member_import_network_client(tmp_path: Path) -> None:
+    tracked = (
+        _write(
+            tmp_path,
+            "src/constructionsight/domain.py",
+            "from urllib import request\n",
+        ),
+    )
+    contract = _architecture(
+        _layer("domain", r"src/constructionsight/domain\.py", default=True)
+    )
+    findings: list[GovernanceFinding] = []
+
+    _audit_architecture(tmp_path, tracked, contract, {"policies": []}, findings)
+
+    assert "ARCH-CAP-001" in _codes(findings)
+
+
+def test_architecture_resolves_internal_member_module_import(tmp_path: Path) -> None:
+    tracked = (
+        _write(tmp_path, "src/constructionsight/__init__.py", ""),
+        _write(
+            tmp_path,
+            "src/constructionsight/service.py",
+            "from constructionsight import http_transport\n",
+        ),
+        _write(tmp_path, "src/constructionsight/http_transport.py", "VALUE = 1\n"),
+    )
+    contract = _architecture(
+        _layer(
+            "transport",
+            r"src/constructionsight/http_transport\.py",
+            allowed=["transport"],
+            network=True,
+        ),
+        _layer(
+            "application",
+            r"a^",
+            default=True,
+            allowed=["application"],
+            forbidden=["transport"],
+        ),
+    )
+    findings: list[GovernanceFinding] = []
+
+    _audit_architecture(tmp_path, tracked, contract, {"policies": []}, findings)
+
+    assert "ARCH-IMPORT-001" in _codes(findings)
+
+
 def test_architecture_rejects_mutation_in_read_only_layer(tmp_path: Path) -> None:
     tracked = (
         _write(
@@ -149,6 +205,92 @@ def test_architecture_rejects_mutation_in_read_only_layer(tmp_path: Path) -> Non
     _audit_architecture(tmp_path, tracked, contract, {"policies": []}, findings)
 
     assert "ARCH-CAP-004" in _codes(findings)
+
+
+def test_canonical_governance_audit_invokes_architecture_boundary(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[dict[str, object]] = []
+
+    def record_boundary(**kwargs: object) -> None:
+        calls.append(dict(kwargs))
+
+    monkeypatch.setattr(
+        governance_certification,
+        "audit_architecture_boundaries",
+        record_boundary,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        governance_certification,
+        "_read_toml",
+        lambda *args, **kwargs: {},
+    )
+    monkeypatch.setattr(
+        governance_certification,
+        "audit_governance_contract_shapes",
+        lambda *args, **kwargs: None,
+    )
+    monkeypatch.setattr(
+        governance_certification,
+        "audit_governance_links",
+        lambda *args, **kwargs: None,
+    )
+    monkeypatch.setattr(
+        governance_certification,
+        "audit_adversarial_contract",
+        lambda *args, **kwargs: None,
+    )
+    monkeypatch.setattr(
+        governance_certification,
+        "_audit_architecture",
+        lambda *args, **kwargs: ({}, {}, {}, GovernanceMetrics()),
+    )
+    monkeypatch.setattr(
+        governance_certification,
+        "audit_semantic_authorization",
+        lambda *args, **kwargs: None,
+    )
+    monkeypatch.setattr(
+        governance_certification,
+        "_audit_capabilities",
+        lambda *args, **kwargs: 0,
+    )
+    monkeypatch.setattr(
+        governance_certification,
+        "audit_dependencies",
+        lambda *args, **kwargs: 0,
+    )
+    monkeypatch.setattr(
+        governance_certification,
+        "audit_dependency_agreement",
+        lambda *args, **kwargs: None,
+    )
+    monkeypatch.setattr(
+        governance_certification,
+        "_audit_network",
+        lambda *args, **kwargs: 0,
+    )
+    monkeypatch.setattr(
+        governance_certification,
+        "_audit_authorization",
+        lambda *args, **kwargs: 0,
+    )
+    monkeypatch.setattr(
+        governance_certification,
+        "_audit_test_obligations",
+        lambda *args, **kwargs: None,
+    )
+    monkeypatch.setattr(
+        governance_certification,
+        "_audit_defects_and_review",
+        lambda *args, **kwargs: None,
+    )
+
+    governance_certification.audit_governance(tmp_path, ())
+
+    assert len(calls) == 1
 
 
 def _capability(
