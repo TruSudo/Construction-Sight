@@ -6,10 +6,16 @@ import hashlib
 import json
 from dataclasses import dataclass
 from datetime import datetime
-from urllib.parse import urlsplit
 
 import httpx
 
+from constructionsight.http_transport import execute_bounded_http
+from constructionsight.http_transport_models import (
+    BoundedHttpObservation,
+    BoundedHttpPolicy,
+    HttpFailureKind,
+    canonicalize_http_url,
+)
 from constructionsight.parcel_source_acquisition_models import (
     ParcelArcGISCapabilitySnapshot,
 )
@@ -22,6 +28,9 @@ from constructionsight.parcel_source_bulk_rehearsal_artifacts import (
     ParcelArcGISBulkPageResponse,
     decode_json_object,
 )
+
+_ARCGIS_ALLOWED_HOSTS = ("arcgis.com", "*.arcgis.com", "*.gov")
+_ARCGIS_ALLOWED_PATH_PREFIXES = ("/arcgis/rest/services/", "/server/rest/services/")
 
 
 class ParcelArcGISBulkHTTPError(RuntimeError):
@@ -57,6 +66,26 @@ class ParcelArcGISBulkHTTPPolicy:
             raise ValueError(
                 "ArcGIS rehearsal HTTP media types must be unique, sorted, and canonical"
             )
+
+    def bounded_policy(self, request_url: str) -> BoundedHttpPolicy:
+        """Bind one exact rehearsal request to the central one-attempt HTTP engine."""
+
+        return BoundedHttpPolicy(
+            policy_id="CS-NET-005",
+            allowed_methods=("GET",),
+            allowed_hosts=_ARCGIS_ALLOWED_HOSTS,
+            allowed_path_prefixes=_ARCGIS_ALLOWED_PATH_PREFIXES,
+            connect_timeout_seconds=self.timeout_seconds,
+            read_timeout_seconds=self.timeout_seconds,
+            write_timeout_seconds=self.timeout_seconds,
+            pool_timeout_seconds=self.timeout_seconds,
+            max_response_bytes=self.max_response_bytes,
+            accepted_media_types=self.accepted_media_types,
+            accepted_encodings=("utf-8",),
+            user_agent="ConstructionSight-ArcGISBulkRehearsal/1.0",
+            allowed_request_urls=(request_url,),
+            request_accept="application/json",
+        )
 
 
 @dataclass(frozen=True)
@@ -224,12 +253,10 @@ class HTTPParcelArcGISBulkRehearsalSource:
         self,
         snapshot: ParcelArcGISCapabilitySnapshot,
         plan: ParcelArcGISBulkRehearsalPlan,
-        client: httpx.Client,
     ) -> None:
         _validate_plan_scope(snapshot, plan)
         self._snapshot = snapshot
         self._plan = plan
-        self._client = client
         self._http_policy = plan.http_policy
 
     def fetch_count(self) -> ParcelArcGISBulkCountResponse:
@@ -281,61 +308,48 @@ class HTTPParcelArcGISBulkRehearsalSource:
         return ParcelArcGISBulkPageResponse(response_body=response_body)
 
     def _request_exact(self, parameters: dict[str, str]) -> bytes:
-        expected_endpoint = urlsplit(self._plan.query_url)
-        try:
-            with self._client.stream(
-                "GET",
-                self._plan.query_url,
-                params=parameters,
-                timeout=self._http_policy.timeout_seconds,
-                headers={"Accept": "application/json"},
-            ) as response:
-                if response.history:
-                    raise ParcelArcGISBulkHTTPError("ArcGIS rehearsal HTTP redirects are forbidden")
-                final_url = response.request.url
-                if (
-                    final_url.scheme != expected_endpoint.scheme
-                    or final_url.host != expected_endpoint.hostname
-                    or final_url.path != expected_endpoint.path
-                ):
-                    raise ParcelArcGISBulkHTTPError("ArcGIS rehearsal response endpoint changed")
-                if 300 <= response.status_code < 400:
-                    raise ParcelArcGISBulkHTTPError("ArcGIS rehearsal HTTP redirects are forbidden")
-                if response.status_code in self._http_policy.retry_status_codes:
-                    raise ParcelArcGISBulkTransientError(f"http_{response.status_code}")
-                if response.status_code != 200:
-                    raise ParcelArcGISBulkHTTPError(
-                        f"ArcGIS rehearsal request returned HTTP {response.status_code}"
-                    )
-                _validate_media_type(response, self._http_policy)
-                declared_length = response.headers.get("Content-Length")
-                if declared_length is not None:
-                    try:
-                        declared_size = int(declared_length)
-                    except ValueError as exc:
-                        raise ParcelArcGISBulkHTTPError(
-                            "ArcGIS response Content-Length is malformed"
-                        ) from exc
-                    if declared_size > self._http_policy.max_response_bytes:
-                        raise ParcelArcGISBulkHTTPError(
-                            "ArcGIS response exceeded the configured byte limit"
-                        )
-                body = bytearray()
-                for chunk in response.iter_bytes():
-                    body.extend(chunk)
-                    if len(body) > self._http_policy.max_response_bytes:
-                        raise ParcelArcGISBulkHTTPError(
-                            "ArcGIS response exceeded the configured byte limit"
-                        )
-        except ParcelArcGISBulkHTTPError:
-            raise
-        except ParcelArcGISBulkTransientError:
-            raise
-        except httpx.TransportError as exc:
-            raise ParcelArcGISBulkTransientError("transport") from exc
-        if not body:
-            raise ParcelArcGISBulkHTTPError("ArcGIS response body cannot be empty")
-        return bytes(body)
+        request_url = canonicalize_http_url(
+            str(httpx.URL(self._plan.query_url, params=parameters))
+        )
+        observation = execute_bounded_http(
+            request_url,
+            "GET",
+            self._http_policy.bounded_policy(request_url),
+        )
+        return _require_exact_body(observation, self._http_policy)
+
+
+def _require_exact_body(
+    observation: BoundedHttpObservation,
+    policy: ParcelArcGISBulkHTTPPolicy,
+) -> bytes:
+    if observation.status_code in policy.retry_status_codes:
+        raise ParcelArcGISBulkTransientError(f"http_{observation.status_code}")
+    if observation.failure_kind in {HttpFailureKind.TIMEOUT, HttpFailureKind.TRANSPORT}:
+        raise ParcelArcGISBulkTransientError("transport")
+    if observation.failure_kind is HttpFailureKind.REDIRECT:
+        raise ParcelArcGISBulkHTTPError("ArcGIS rehearsal HTTP redirects are forbidden")
+    if observation.failure_kind is HttpFailureKind.OVERSIZED_RESPONSE:
+        raise ParcelArcGISBulkHTTPError("ArcGIS response exceeded the configured byte limit")
+    if observation.failure_kind is HttpFailureKind.MALFORMED_RESPONSE:
+        raise ParcelArcGISBulkHTTPError("ArcGIS response Content-Length is malformed")
+    if observation.failure_kind is HttpFailureKind.MEDIA_TYPE:
+        raise ParcelArcGISBulkHTTPError(
+            f"ArcGIS response media type is not permitted: {observation.content_type}"
+        )
+    if observation.failure_kind is HttpFailureKind.ENCODING:
+        raise ParcelArcGISBulkHTTPError("ArcGIS response was not strict UTF-8 JSON")
+    if observation.status_code != 200:
+        raise ParcelArcGISBulkHTTPError(
+            f"ArcGIS rehearsal request returned HTTP {observation.status_code}"
+        )
+    if observation.failure_kind is not HttpFailureKind.NONE:
+        raise ParcelArcGISBulkHTTPError(
+            f"ArcGIS rehearsal HTTP failed: {observation.error_type or observation.failure_kind.value}"
+        )
+    if not observation.response_body:
+        raise ParcelArcGISBulkHTTPError("ArcGIS response body cannot be empty")
+    return observation.response_body
 
 
 def _validate_plan_scope(
@@ -356,20 +370,6 @@ def _validate_plan_scope(
         raise ValueError("ArcGIS rehearsal HTTP page size exceeds the snapshot")
     if not snapshot.advertised_ready_for_probe:
         raise ValueError("ArcGIS rehearsal HTTP source lacks advertised query primitives")
-
-
-def _validate_media_type(
-    response: httpx.Response,
-    policy: ParcelArcGISBulkHTTPPolicy,
-) -> None:
-    content_type = response.headers.get("Content-Type")
-    if content_type is None:
-        raise ParcelArcGISBulkHTTPError("ArcGIS response is missing Content-Type")
-    media_type = content_type.split(";", 1)[0].strip().casefold()
-    if media_type not in policy.accepted_media_types:
-        raise ParcelArcGISBulkHTTPError(
-            f"ArcGIS response media type is not permitted: {media_type}"
-        )
 
 
 def _decode_service_payload(
