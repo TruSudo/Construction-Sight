@@ -28,6 +28,7 @@ from constructionsight.models import (
     SourceType,
     VerificationStatus,
 )
+from constructionsight.operator_services import ceqanet_recurring_run_service
 from constructionsight.operator_services.ceqanet_recurring_run_service import (
     execute_authorized_ceqanet_recurring_run,
 )
@@ -137,8 +138,8 @@ class _Executor:
         *,
         attempt_sequence: int,
         execute_live: bool,
-        client=None,
     ) -> CeqanetRecurringRunExecution:
+        del sources, checklist_report
         self.calls.append((manifest.run_id, attempt_sequence, execute_live))
         return CeqanetRecurringRunExecution(
             run_id=manifest.run_id,
@@ -153,11 +154,17 @@ class _Executor:
 
 
 def _execute(
+    monkeypatch: pytest.MonkeyPatch,
     executor: _Executor,
     *,
     confirmation: bool = True,
     ledger: AuthorizationUseLedger | None = None,
 ):
+    monkeypatch.setattr(
+        ceqanet_recurring_run_service,
+        "execute_ceqanet_recurring_run",
+        executor,
+    )
     sources, checklist, definition, manifest = _artifacts()
     return execute_authorized_ceqanet_recurring_run(
         definition=definition,
@@ -170,14 +177,15 @@ def _execute(
         operator_id="operator:tyler",
         now=lambda: _NOW,
         ledger=ledger,
-        executor=executor,
     )
 
 
-def test_recurring_run_facade_binds_manual_attempt_and_negative_authority() -> None:
+def test_recurring_run_facade_binds_manual_attempt_and_negative_authority(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     executor = _Executor()
 
-    result = _execute(executor)
+    result = _execute(monkeypatch, executor)
 
     authorization = result.authorization.to_dict()
     assert authorization["action"] == "execute-ceqanet-recurring-run-attempt"
@@ -187,22 +195,26 @@ def test_recurring_run_facade_binds_manual_attempt_and_negative_authority() -> N
     assert executor.calls == [(result.execution.run_id, 1, True)]
 
 
-def test_boolean_confirmation_cannot_authorize_recurring_run() -> None:
+def test_boolean_confirmation_cannot_authorize_recurring_run(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     executor = _Executor()
 
     with pytest.raises(AuthorizationDeniedError, match="in addition"):
-        _execute(executor, confirmation=False)
+        _execute(monkeypatch, executor, confirmation=False)
 
     assert executor.calls == []
 
 
-def test_shared_ledger_rejects_repeated_recurring_attempt() -> None:
+def test_shared_ledger_rejects_repeated_recurring_attempt(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     executor = _Executor()
     ledger = AuthorizationUseLedger()
 
-    first = _execute(executor, ledger=ledger)
+    first = _execute(monkeypatch, executor, ledger=ledger)
     assert first.execution.attempt_sequence == 1
     with pytest.raises(AuthorizationDeniedError, match="already consumed"):
-        _execute(executor, ledger=ledger)
+        _execute(monkeypatch, executor, ledger=ledger)
 
     assert len(executor.calls) == 1
