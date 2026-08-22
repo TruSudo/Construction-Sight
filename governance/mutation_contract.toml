@@ -115,19 +115,38 @@ risk = "A query could execute under prose-only host/path scope without an exact 
 id = "CS-MUT-NET-CANONICAL-PATH-001"
 path = "src/constructionsight/http_transport_models.py"
 search = "if path_component and decoded_character in _AMBIGUOUS_ENCODED_PATH_CHARACTERS:"
-replacement = "if False and path_component and decoded_character in _AMBIGUOUS_ENCODED_PATH_CHARACTERS:"
+replacement = "if False and path_component in _AMBIGUOUS_ENCODED_PATH_CHARACTERS:"
 tests = ["tests/test_http_transport.py::test_bounded_http_rejects_ambiguous_url_forms_before_execution"]
 expected_output = "test_bounded_http_rejects_ambiguous_url_forms_before_execution"
 risk = "Encoded path separators or dot segments could be authorized under a representation different from the transmitted path."
 
 [[cases]]
-id = "CS-MUT-NET-CLIENT-TYPE-001"
+id = "CS-MUT-NET-CLIENT-INJECTION-001"
 path = "src/constructionsight/http_transport.py"
-search = "if client is not None and not isinstance(client, httpx.Client):"
-replacement = "if False and client is not None and not isinstance(client, httpx.Client):"
-tests = ["tests/test_http_transport.py::test_bounded_http_rejects_legacy_alternate_client_protocol"]
-expected_output = "test_bounded_http_rejects_legacy_alternate_client_protocol"
-risk = "A legacy alternate client protocol could bypass the common httpx streamed execution contract."
+search = '''def execute_bounded_http(
+    url: str,
+    method: str,
+    policy: BoundedHttpPolicy,
+) -> BoundedHttpObservation:'''
+replacement = '''def execute_bounded_http(
+    url: str,
+    method: str,
+    policy: BoundedHttpPolicy,
+    *,
+    client: httpx.Client | None = None,
+) -> BoundedHttpObservation:'''
+tests = ["tests/test_http_transport.py::test_bounded_http_production_boundary_does_not_accept_client_injection"]
+expected_output = "test_bounded_http_production_boundary_does_not_accept_client_injection"
+risk = "A production-visible client parameter could reacquire caller-selected transport authority."
+
+[[cases]]
+id = "CS-MUT-NET-AMBIENT-ENV-001"
+path = "src/constructionsight/http_transport.py"
+search = "return httpx.Client(follow_redirects=False, trust_env=False)"
+replacement = "return httpx.Client(follow_redirects=False, trust_env=True)"
+tests = ["tests/test_http_transport.py::test_bounded_http_owned_client_disables_ambient_environment_authority"]
+expected_output = "test_bounded_http_owned_client_disables_ambient_environment_authority"
+risk = "Environment proxy, certificate, or credential configuration could regain authority beneath the reviewed request."
 
 [[cases]]
 id = "CS-MUT-LISTING-RETRY-001"
@@ -199,8 +218,8 @@ search = """    response = session.send(
         request,"""
 replacement = """    response = session.send(
         session.build_request(request.method, request.url),"""
-tests = ["tests/test_http_transport.py::test_bounded_http_does_not_merge_injected_client_query_defaults"]
-expected_output = "test_bounded_http_does_not_merge_injected_client_query_defaults"
+tests = ["tests/test_http_transport.py::test_bounded_http_test_seam_cannot_merge_client_query_defaults"]
+expected_output = "test_bounded_http_test_seam_cannot_merge_client_query_defaults"
 risk = "Client-level query defaults could be merged after authorization if the bounded engine rebuilt the explicit request."
 
 [[cases]]
@@ -208,27 +227,27 @@ id = "CS-MUT-NET-CLIENT-AUTH-001"
 path = "src/constructionsight/http_transport.py"
 search = "        auth=None,"
 replacement = "        auth=httpx.USE_CLIENT_DEFAULT,"
-tests = ["tests/test_http_transport.py::test_bounded_http_disables_injected_client_auth_mutation"]
-expected_output = "test_bounded_http_disables_injected_client_auth_mutation"
-risk = "Injected client authentication could mutate the exact request identity after authorization."
+tests = ["tests/test_http_transport.py::test_bounded_http_test_seam_disables_client_auth_mutation"]
+expected_output = "test_bounded_http_test_seam_disables_client_auth_mutation"
+risk = "A test-substituted client authentication hook could mutate exact request identity if the production engine stopped forcing auth=None."
 
 [[cases]]
 id = "CS-MUT-NET-REQUEST-HOOK-001"
 path = "src/constructionsight/http_transport.py"
 search = """    if session.event_hooks.get("request"):"""
 replacement = """    if False and session.event_hooks.get("request"):"""
-tests = ["tests/test_http_transport.py::test_bounded_http_rejects_request_hooks_before_execution"]
-expected_output = "test_bounded_http_rejects_request_hooks_before_execution"
-risk = "An injected request hook could rewrite the authorized method or URL immediately before transmission."
+tests = ["tests/test_http_transport.py::test_bounded_http_test_seam_rejects_request_hooks_before_execution"]
+expected_output = "test_bounded_http_test_seam_rejects_request_hooks_before_execution"
+risk = "A substituted request hook could rewrite the authorized method or URL immediately before transmission if defense-in-depth regressed."
 
 [[cases]]
 id = "CS-MUT-NET-RESPONSE-HOOK-001"
 path = "src/constructionsight/http_transport.py"
 search = """    if session.event_hooks.get("response"):"""
 replacement = """    if False and session.event_hooks.get("response"):"""
-tests = ["tests/test_http_transport.py::test_bounded_http_rejects_response_hooks_before_execution"]
-expected_output = "test_bounded_http_rejects_response_hooks_before_execution"
-risk = "A response hook could rewrite denied or malformed transport evidence before policy classification."
+tests = ["tests/test_http_transport.py::test_bounded_http_test_seam_rejects_response_hooks_before_execution"]
+expected_output = "test_bounded_http_test_seam_rejects_response_hooks_before_execution"
+risk = "A substituted response hook could rewrite denied or malformed evidence before classification if defense-in-depth regressed."
 
 [[cases]]
 id = "CS-MUT-NET-CSV-MEDIA-001"
