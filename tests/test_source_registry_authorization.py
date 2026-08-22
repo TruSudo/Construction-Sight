@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import inspect
 from datetime import UTC, date, datetime
 
 import pytest
 
+import constructionsight.source_verification_checklist_service as checklist_service
 from constructionsight.adapters import default_adapter_family_specs
 from constructionsight.authorization_decision import (
     AuthorizationDeniedError,
@@ -85,8 +87,11 @@ class _Checker:
         )
 
 
-def test_authorized_registry_plan_binds_exact_sources_and_observations() -> None:
+def test_authorized_registry_plan_binds_exact_sources_and_observations(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     checker = _Checker()
+    monkeypatch.setattr(checklist_service, "_check_source_verification", checker)
 
     report = build_authorized_source_registry_update_plan(
         [_source()],
@@ -96,7 +101,6 @@ def test_authorized_registry_plan_binds_exact_sources_and_observations() -> None
         authorization_reason="Build one reviewed registry update plan.",
         operator_id="operator:tyler",
         now=lambda: _NOW,
-        http_checker=checker,
     )
 
     assert report.source_count == 1
@@ -104,8 +108,11 @@ def test_authorized_registry_plan_binds_exact_sources_and_observations() -> None
     assert checker.calls == ["https://ceqanet.opr.ca.gov/"]
 
 
-def test_boolean_confirmation_cannot_authorize_live_registry_plan() -> None:
+def test_boolean_confirmation_cannot_authorize_live_registry_plan(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     checker = _Checker()
+    monkeypatch.setattr(checklist_service, "_check_source_verification", checker)
 
     with pytest.raises(AuthorizationDeniedError, match="in addition"):
         build_authorized_source_registry_update_plan(
@@ -116,14 +123,16 @@ def test_boolean_confirmation_cannot_authorize_live_registry_plan() -> None:
             authorization_reason="Attempt a live plan without confirmation.",
             operator_id="operator:tyler",
             now=lambda: _NOW,
-            http_checker=checker,
         )
 
     assert checker.calls == []
 
 
-def test_shared_ledger_rejects_repeated_live_registry_plan() -> None:
+def test_shared_ledger_rejects_repeated_live_registry_plan(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     checker = _Checker()
+    monkeypatch.setattr(checklist_service, "_check_source_verification", checker)
     ledger = AuthorizationUseLedger()
 
     first = build_authorized_source_registry_update_plan(
@@ -135,7 +144,6 @@ def test_shared_ledger_rejects_repeated_live_registry_plan() -> None:
         operator_id="operator:tyler",
         now=lambda: _NOW,
         ledger=ledger,
-        http_checker=checker,
     )
     assert first.update_count == 1
     with pytest.raises(AuthorizationDeniedError, match="already consumed"):
@@ -148,10 +156,15 @@ def test_shared_ledger_rejects_repeated_live_registry_plan() -> None:
             operator_id="operator:tyler",
             now=lambda: _NOW,
             ledger=ledger,
-            http_checker=checker,
         )
 
     assert checker.calls == ["https://ceqanet.opr.ca.gov/"]
+
+
+def test_authorized_registry_plan_does_not_accept_http_checker() -> None:
+    assert "http_checker" not in inspect.signature(
+        build_authorized_source_registry_update_plan
+    ).parameters
 
 
 def test_registry_apply_binds_exact_plan_registry_and_target() -> None:
