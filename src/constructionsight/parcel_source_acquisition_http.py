@@ -227,10 +227,7 @@ def _require_success_body(observation: BoundedHttpObservation) -> bytes:
             "ArcGIS response Content-Length is malformed"
         )
     if observation.failure_kind is HttpFailureKind.REDIRECT:
-        status_code = observation.status_code
-        raise ParcelArcGISProbeExecutionError(
-            f"ArcGIS request returned HTTP {status_code}"
-        )
+        raise ParcelArcGISProbeExecutionError("ArcGIS HTTP redirects are forbidden")
     if observation.status_code != 200:
         raise ParcelArcGISProbeExecutionError(
             f"ArcGIS request returned HTTP {observation.status_code}"
