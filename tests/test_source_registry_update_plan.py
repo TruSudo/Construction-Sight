@@ -11,6 +11,9 @@ from constructionsight.models import (
     SourceType,
     VerificationStatus,
 )
+from constructionsight.source_promotion_plan_service import (
+    _build_source_promotion_plan_from_checklist,
+)
 from constructionsight.source_readiness_models import HttpReachabilityResult
 from constructionsight.source_registry_apply_service import (
     SourceRegistryApplyError,
@@ -18,9 +21,13 @@ from constructionsight.source_registry_apply_service import (
 )
 from constructionsight.source_registry_update_plan_cli import app
 from constructionsight.source_registry_update_plan_service import (
+    _build_source_registry_update_plan_from_promotion_plan,
     build_source_registry_update_plan,
 )
 from constructionsight.source_verification_checklist_models import SourceVerificationObservation
+from constructionsight.source_verification_checklist_service import (
+    _build_source_verification_checklist_report_from_results,
+)
 
 
 def _source() -> PublicSource:
@@ -114,11 +121,17 @@ def _reachable(source: PublicSource) -> HttpReachabilityResult:
 
 
 def test_update_plan_has_no_updates_without_observations() -> None:
-    report = build_source_registry_update_plan(
-        [_source()],
+    source = _source()
+    checklist = _build_source_verification_checklist_report_from_results(
+        [source],
         default_adapter_family_specs(),
-        check_http=True,
-        http_checker=_reachable,
+        http_results=(_reachable(source),),
+        observations=None,
+    )
+    promotion_plan = _build_source_promotion_plan_from_checklist(checklist)
+    report = _build_source_registry_update_plan_from_promotion_plan(
+        [source],
+        promotion_plan,
     )
     row = report.rows[0]
 
@@ -131,12 +144,17 @@ def test_update_plan_has_no_updates_without_observations() -> None:
 
 
 def test_update_plan_builds_partial_payload_from_complete_placeholder_evidence() -> None:
-    report = build_source_registry_update_plan(
-        [_source()],
+    source = _source()
+    checklist = _build_source_verification_checklist_report_from_results(
+        [source],
         default_adapter_family_specs(),
-        check_http=True,
-        http_checker=_reachable,
+        http_results=(_reachable(source),),
         observations=[_complete_observation()],
+    )
+    promotion_plan = _build_source_promotion_plan_from_checklist(checklist)
+    report = _build_source_registry_update_plan_from_promotion_plan(
+        [source],
+        promotion_plan,
     )
     row = report.rows[0]
 
