@@ -3,9 +3,9 @@ from constructionsight.adapters.ceqanet import (
     CEQANET_ADVANCED_SEARCH_URL,
     CeqanetAdapter,
     CeqanetFixtureParser,
-    CeqanetLiveDiscovery,
 )
 from constructionsight.adapters.runner import AdapterRunner
+from constructionsight.ceqanet_discovery_http import CeqanetLiveDiscovery
 from constructionsight.http_transport_models import (
     BoundedHttpObservation,
     BoundedHttpPolicy,
