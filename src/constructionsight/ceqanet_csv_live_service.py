@@ -6,9 +6,7 @@ import base64
 import binascii
 import hashlib
 from datetime import UTC, datetime
-from typing import Any, TypeAlias
-
-import httpx
+from typing import Any
 
 from constructionsight.ceqanet_csv_live_models import (
     CeqanetCsvLiveExecution,
@@ -37,7 +35,6 @@ _ACCEPTED_MEDIA_TYPES = (
     "text/csv",
     "text/plain",
 )
-CeqanetCsvLiveHttpClient: TypeAlias = httpx.Client
 
 
 def _policy(
@@ -67,17 +64,12 @@ def execute_ceqanet_csv_live_request(
     request: CeqanetCsvExportRequest,
     *,
     execute_live: bool,
-    client: CeqanetCsvLiveHttpClient | None = None,
     timeout_seconds: float = 20.0,
     max_body_bytes: int = 10_000_000,
     max_retained_rows: int = 1_000,
     executed_at: datetime | None = None,
 ) -> CeqanetCsvLiveExecution:
-    """Execute exactly one policy-bound GET and retain a tamper-evident envelope.
-
-    Production and injected deterministic clients use the same streamed engine,
-    exact request identity, byte ceiling, and request-time redirect denial.
-    """
+    """Execute exactly one policy-bound GET and retain a tamper-evident envelope."""
 
     canonical_request = parse_ceqanet_csv_export_url(request.source_url)
     if canonical_request != request:
@@ -100,7 +92,6 @@ def execute_ceqanet_csv_live_request(
             timeout_seconds=timeout_seconds,
             max_body_bytes=max_body_bytes,
         ),
-        client=client,
     )
     return _execution_from_observation(
         request,
