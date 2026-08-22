@@ -5,9 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Protocol
 
-from constructionsight.adapters.ceqanet_listing_executor import CeqanetListingHttpClient
 from constructionsight.authorization_decision import (
     AuthorizationDeniedError,
     AuthorizationUseLedger,
@@ -33,23 +31,6 @@ from constructionsight.source_verification_checklist_models import (
 )
 
 
-class RecurringRunExecutor(Protocol):
-    """Execution interface used by the authorized facade and deterministic tests."""
-
-    def __call__(
-        self,
-        definition: CeqanetRecurringRunDefinition,
-        manifest: CeqanetRecurringRunManifest,
-        sources: list[PublicSource],
-        checklist_report: SourceVerificationChecklistReport,
-        *,
-        attempt_sequence: int,
-        execute_live: bool,
-        client: CeqanetListingHttpClient | None = None,
-    ) -> CeqanetRecurringRunExecution:
-        """Execute one exact manifest attempt."""
-
-
 @dataclass(frozen=True)
 class AuthorizedRecurringRunResult:
     """Immutable execution and authorization pair."""
@@ -70,8 +51,6 @@ def execute_authorized_ceqanet_recurring_run(
     operator_id: str | None = None,
     now: Callable[[], datetime] | None = None,
     ledger: AuthorizationUseLedger | None = None,
-    client: CeqanetListingHttpClient | None = None,
-    executor: RecurringRunExecutor | None = None,
 ) -> AuthorizedRecurringRunResult:
     """Authorize one exact, foreground, manually initiated manifest attempt."""
 
@@ -182,15 +161,13 @@ def execute_authorized_ceqanet_recurring_run(
         now=now,
         ledger=ledger,
     )
-    active_executor: RecurringRunExecutor = executor or execute_ceqanet_recurring_run
-    execution = active_executor(
+    execution = execute_ceqanet_recurring_run(
         definition,
         manifest,
         sources,
         checklist_report,
         attempt_sequence=attempt_sequence,
         execute_live=True,
-        client=client,
     )
     return AuthorizedRecurringRunResult(
         execution=execution,
