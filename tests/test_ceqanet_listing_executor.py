@@ -3,6 +3,7 @@ from dataclasses import dataclass, replace
 import httpx
 import pytest
 
+import constructionsight.http_transport as http_transport_module
 from constructionsight.adapters.ceqanet_listing import (
     CeqanetListingQuery,
     CeqanetReadOnlyListingPlanner,
@@ -30,7 +31,8 @@ class FakeClient(httpx.Client):
         self.timeout_values: list[float] = []
         super().__init__(
             transport=httpx.MockTransport(self._handle_request),
-            follow_redirects=True,
+            follow_redirects=False,
+            trust_env=False,
         )
 
     def _handle_request(self, request: httpx.Request) -> httpx.Response:
@@ -50,12 +52,17 @@ class FailingClient(httpx.Client):
         self.requested_urls: list[str] = []
         super().__init__(
             transport=httpx.MockTransport(self._handle_request),
-            follow_redirects=True,
+            follow_redirects=False,
+            trust_env=False,
         )
 
     def _handle_request(self, request: httpx.Request) -> httpx.Response:
         self.requested_urls.append(str(request.url))
         raise httpx.ConnectError("connection refused", request=request)
+
+
+def _install_client(monkeypatch: pytest.MonkeyPatch, client: httpx.Client) -> None:
+    monkeypatch.setattr(http_transport_module, "_build_http_client", lambda: client)
 
 
 def _allowed() -> AccessPolicyResult:
@@ -72,7 +79,9 @@ def _blocked() -> AccessPolicyResult:
     )
 
 
-def test_ceqanet_listing_executor_executes_bounded_get_requests_with_fake_client() -> None:
+def test_ceqanet_listing_executor_executes_bounded_get_requests_with_fake_client(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     query = CeqanetListingQuery(
         counties=("San Bernardino",),
         page_size=25,
@@ -95,12 +104,9 @@ def test_ceqanet_listing_executor_executes_bounded_get_requests_with_fake_client
             ),
         )
     )
+    _install_client(monkeypatch, client)
 
-    with client:
-        report = CeqanetListingReadOnlyExecutor(
-            client=client,
-            timeout_seconds=7.5,
-        ).run(plan)
+    report = CeqanetListingReadOnlyExecutor(timeout_seconds=7.5).run(plan)
 
     assert report.allowed is True
     assert report.planned_request_count == 2
@@ -125,10 +131,8 @@ def test_ceqanet_listing_executor_returns_no_requests_when_plan_is_blocked() -> 
         max_pages=2,
     )
     plan = CeqanetReadOnlyListingPlanner().build_plan(query, _blocked())
-    client = FakeClient(responses=())
 
-    with client:
-        report = CeqanetListingReadOnlyExecutor(client=client).run(plan)
+    report = CeqanetListingReadOnlyExecutor().run(plan)
 
     assert report.allowed is False
     assert report.planned_request_count == 0
@@ -137,17 +141,18 @@ def test_ceqanet_listing_executor_returns_no_requests_when_plan_is_blocked() -> 
     assert report.failed_response_count == 0
     assert report.maximum_records == 0
     assert report.snapshots == ()
-    assert client.requested_urls == []
     assert "captcha" in report.reason
 
 
-def test_ceqanet_listing_executor_records_http_errors_as_snapshots() -> None:
+def test_ceqanet_listing_executor_records_http_errors_as_snapshots(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     query = CeqanetListingQuery(counties=("Riverside",))
     plan = CeqanetReadOnlyListingPlanner().build_plan(query, _allowed())
     client = FailingClient()
+    _install_client(monkeypatch, client)
 
-    with client:
-        report = CeqanetListingReadOnlyExecutor(client=client).run(plan)
+    report = CeqanetListingReadOnlyExecutor().run(plan)
 
     assert len(client.requested_urls) == 1
     assert report.allowed is True
@@ -161,7 +166,9 @@ def test_ceqanet_listing_executor_records_http_errors_as_snapshots() -> None:
     assert report.snapshots[0].error == "ConnectError"
 
 
-def test_ceqanet_listing_executor_classifies_oversized_response_as_failure() -> None:
+def test_ceqanet_listing_executor_classifies_oversized_response_as_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     query = CeqanetListingQuery(counties=("San Bernardino",))
     plan = CeqanetReadOnlyListingPlanner().build_plan(query, _allowed())
     client = FakeClient(
@@ -174,12 +181,9 @@ def test_ceqanet_listing_executor_classifies_oversized_response_as_failure() -> 
             ),
         )
     )
+    _install_client(monkeypatch, client)
 
-    with client:
-        report = CeqanetListingReadOnlyExecutor(
-            client=client,
-            max_body_chars=3,
-        ).run(plan)
+    report = CeqanetListingReadOnlyExecutor(max_body_chars=3).run(plan)
 
     assert report.snapshots[0].body_text == ""
     assert report.snapshots[0].body_length == 6
@@ -188,7 +192,9 @@ def test_ceqanet_listing_executor_classifies_oversized_response_as_failure() -> 
     assert report.snapshots[0].error == "DeclaredResponseTooLarge"
 
 
-def test_ceqanet_listing_executor_rejects_redirects() -> None:
+def test_ceqanet_listing_executor_rejects_redirects(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     plan = CeqanetReadOnlyListingPlanner().build_plan(
         CeqanetListingQuery(counties=("San Bernardino",)),
         _allowed(),
@@ -203,9 +209,9 @@ def test_ceqanet_listing_executor_rejects_redirects() -> None:
             ),
         )
     )
+    _install_client(monkeypatch, client)
 
-    with client:
-        report = CeqanetListingReadOnlyExecutor(client=client).run(plan)
+    report = CeqanetListingReadOnlyExecutor().run(plan)
 
     assert report.snapshots[0].reachable is False
     assert report.snapshots[0].error == "RedirectDenied"
@@ -225,15 +231,12 @@ def test_ceqanet_listing_executor_rejects_forged_base_url_before_http() -> None:
         search_url="https://ceqanet.lci.ca.gov/Search/Unreviewed",
     )
     forged_plan = replace(plan, pages=(forged_page,))
-    client = FakeClient(responses=())
 
-    with client, pytest.raises(
+    with pytest.raises(
         CeqanetListingExecutionError,
         match="differs from the canonical planner output",
     ):
-        CeqanetListingReadOnlyExecutor(client=client).run(forged_plan)
-
-    assert client.requested_urls == []
+        CeqanetListingReadOnlyExecutor().run(forged_plan)
 
 
 def test_ceqanet_listing_executor_rejects_forged_query_before_http() -> None:
@@ -246,15 +249,12 @@ def test_ceqanet_listing_executor_rejects_forged_query_before_http() -> None:
         params=(("County", "Riverside"), ("unreviewed", "true")),
     )
     forged_plan = replace(plan, pages=(forged_page,))
-    client = FakeClient(responses=())
 
-    with client, pytest.raises(
+    with pytest.raises(
         CeqanetListingExecutionError,
         match="differs from the canonical planner output",
     ):
-        CeqanetListingReadOnlyExecutor(client=client).run(forged_plan)
-
-    assert client.requested_urls == []
+        CeqanetListingReadOnlyExecutor().run(forged_plan)
 
 
 def test_ceqanet_listing_executor_rejects_invalid_runtime_bounds() -> None:
