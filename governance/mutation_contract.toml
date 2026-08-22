@@ -432,3 +432,42 @@ replacement = "        if False and candidate.is_symlink():"
 tests = ["tests/test_repository_path_certification.py::test_repository_file_resolution_rejects_external_and_internal_symlinks"]
 expected_output = "test_repository_file_resolution_rejects_external_and_internal_symlinks"
 risk = "Repository evidence resolution could follow a symbolic-link component outside the intended evidence path."
+
+[[cases]]
+id = "CS-MUT-CEQANET-DISCOVERY-EXECUTOR-001"
+path = "src/constructionsight/ceqanet_discovery_http.py"
+search = '''    def __init__(
+        self,
+        timeout_seconds: float = 20.0,
+    ) -> None:
+        self.policy = replace(
+            CEQANET_DISCOVERY_POLICY,
+            read_timeout_seconds=timeout_seconds,
+        )
+
+    def discover(self) -> CeqanetDiscoveryResult:
+        observation = _execute_bounded_http(
+            CEQANET_ADVANCED_SEARCH_URL,
+            "GET",
+            self.policy,
+        )'''
+replacement = '''    def __init__(
+        self,
+        timeout_seconds: float = 20.0,
+        executor=_execute_bounded_http,
+    ) -> None:
+        self.policy = replace(
+            CEQANET_DISCOVERY_POLICY,
+            read_timeout_seconds=timeout_seconds,
+        )
+        self.executor = executor
+
+    def discover(self) -> CeqanetDiscoveryResult:
+        observation = self.executor(
+            CEQANET_ADVANCED_SEARCH_URL,
+            "GET",
+            self.policy,
+        )'''
+tests = ["tests/test_ceqanet_discovery_http.py::test_live_discovery_does_not_accept_caller_selected_executor"]
+expected_output = "test_live_discovery_does_not_accept_caller_selected_executor"
+risk = "CEQAnet live discovery could reacquire caller-selected HTTP effect authority after the production boundary is reviewed."
