@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import inspect
+from collections.abc import Callable
 from typing import Any
 
 import httpx
 import pytest
 
+import constructionsight.http_transport as http_transport_module
 from constructionsight.http_transport import execute_bounded_http
 from constructionsight.http_transport_models import BoundedHttpPolicy, HttpFailureKind
 
@@ -30,8 +33,41 @@ def _policy(
     )
 
 
-def _client(handler: httpx.MockTransport) -> httpx.Client:
-    return httpx.Client(transport=handler, follow_redirects=False)
+def _install_client(
+    monkeypatch: pytest.MonkeyPatch,
+    handler: Callable[[httpx.Request], httpx.Response],
+    **kwargs: Any,
+) -> None:
+    def build_client() -> httpx.Client:
+        return httpx.Client(
+            transport=httpx.MockTransport(handler),
+            follow_redirects=False,
+            trust_env=False,
+            **kwargs,
+        )
+
+    monkeypatch.setattr(http_transport_module, "_build_http_client", build_client)
+
+
+def test_bounded_http_production_boundary_does_not_accept_client_injection() -> None:
+    assert "client" not in inspect.signature(execute_bounded_http).parameters
+
+
+def test_bounded_http_owned_client_disables_ambient_environment_authority(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, Any] = {}
+
+    class StubClient:
+        def __init__(self, **kwargs: Any) -> None:
+            captured.update(kwargs)
+
+    monkeypatch.setattr(http_transport_module.httpx, "Client", StubClient)
+
+    client = http_transport_module._build_http_client()
+
+    assert isinstance(client, StubClient)
+    assert captured == {"follow_redirects": False, "trust_env": False}
 
 
 def test_bounded_http_rejects_host_outside_policy_before_execution() -> None:
@@ -73,7 +109,10 @@ def test_bounded_http_rejects_path_prefix_confusion_before_execution() -> None:
         "https://example.test",
     ),
 )
-def test_bounded_http_rejects_ambiguous_url_forms_before_execution(url: str) -> None:
+def test_bounded_http_rejects_ambiguous_url_forms_before_execution(
+    url: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     executed = False
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -81,11 +120,9 @@ def test_bounded_http_rejects_ambiguous_url_forms_before_execution(url: str) -> 
         executed = True
         return httpx.Response(200, content=b"unexpected", request=request)
 
-    with (
-        _client(httpx.MockTransport(handler)) as client,
-        pytest.raises(ValueError),
-    ):
-        execute_bounded_http(url, "GET", _policy(), client=client)
+    _install_client(monkeypatch, handler)
+    with pytest.raises(ValueError):
+        execute_bounded_http(url, "GET", _policy())
 
     assert executed is False
 
@@ -99,7 +136,9 @@ def test_bounded_http_requires_executable_authority_for_any_query() -> None:
         )
 
 
-def test_bounded_http_authorizes_and_transmits_one_exact_url_identity() -> None:
+def test_bounded_http_authorizes_and_transmits_one_exact_url_identity(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     url = (
         "https://example.test/public/data?"
         "County=San+Bernardino&DocumentType=EIR+-+Draft+EIR&page=1"
@@ -115,9 +154,9 @@ def test_bounded_http_authorizes_and_transmits_one_exact_url_identity() -> None:
             request=request,
         )
 
+    _install_client(monkeypatch, handler)
     policy = _policy(allowed_request_urls=(url,))
-    with _client(httpx.MockTransport(handler)) as client:
-        observation = execute_bounded_http(url, "GET", policy, client=client)
+    observation = execute_bounded_http(url, "GET", policy)
 
     assert transmitted == [url]
     assert observation.request_url == url
@@ -125,7 +164,9 @@ def test_bounded_http_authorizes_and_transmits_one_exact_url_identity() -> None:
     assert observation.response_body == b"exact"
 
 
-def test_bounded_http_does_not_merge_injected_client_query_defaults() -> None:
+def test_bounded_http_test_seam_cannot_merge_client_query_defaults(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     url = "https://example.test/public/data"
     transmitted: list[str] = []
 
@@ -138,18 +179,17 @@ def test_bounded_http_does_not_merge_injected_client_query_defaults() -> None:
             request=request,
         )
 
-    with httpx.Client(
-        transport=httpx.MockTransport(handler),
-        params={"unauthorized": "true"},
-    ) as client:
-        observation = execute_bounded_http(url, "GET", _policy(), client=client)
+    _install_client(monkeypatch, handler, params={"unauthorized": "true"})
+    observation = execute_bounded_http(url, "GET", _policy())
 
     assert transmitted == [url]
     assert observation.request_url == url
     assert observation.final_url == url
 
 
-def test_bounded_http_disables_injected_client_auth_mutation() -> None:
+def test_bounded_http_test_seam_disables_client_auth_mutation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     url = "https://example.test/public/data"
     mutated_url = "https://example.test/public/data?unauthorized=true"
     auth_invoked = False
@@ -170,11 +210,8 @@ def test_bounded_http_disables_injected_client_auth_mutation() -> None:
             request=request,
         )
 
-    with httpx.Client(
-        transport=httpx.MockTransport(handler),
-        auth=rewrite_request,
-    ) as client:
-        observation = execute_bounded_http(url, "GET", _policy(), client=client)
+    _install_client(monkeypatch, handler, auth=rewrite_request)
+    observation = execute_bounded_http(url, "GET", _policy())
 
     assert auth_invoked is False
     assert transmitted == [url]
@@ -182,7 +219,9 @@ def test_bounded_http_disables_injected_client_auth_mutation() -> None:
     assert observation.final_url == url
 
 
-def test_bounded_http_rejects_request_hooks_before_execution() -> None:
+def test_bounded_http_test_seam_rejects_request_hooks_before_execution(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     url = "https://example.test/public/data"
     transmitted: list[str] = []
 
@@ -195,19 +234,16 @@ def test_bounded_http_rejects_request_hooks_before_execution() -> None:
         transmitted.append(str(request.url))
         return httpx.Response(200, content=b"unexpected", request=request)
 
-    with (
-        httpx.Client(
-            transport=httpx.MockTransport(handler),
-            event_hooks={"request": [rewrite_request]},
-        ) as client,
-        pytest.raises(ValueError, match="must not define request event hooks"),
-    ):
-        execute_bounded_http(url, "GET", _policy(), client=client)
+    _install_client(monkeypatch, handler, event_hooks={"request": [rewrite_request]})
+    with pytest.raises(ValueError, match="must not define request event hooks"):
+        execute_bounded_http(url, "GET", _policy())
 
     assert transmitted == []
 
 
-def test_bounded_http_rejects_response_hooks_before_execution() -> None:
+def test_bounded_http_test_seam_rejects_response_hooks_before_execution(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     url = "https://example.test/public/data"
     transmitted = False
     response_hook_invoked = False
@@ -227,14 +263,9 @@ def test_bounded_http_rejects_response_hooks_before_execution() -> None:
             request=request,
         )
 
-    with (
-        httpx.Client(
-            transport=httpx.MockTransport(handler),
-            event_hooks={"response": [rewrite_response]},
-        ) as client,
-        pytest.raises(ValueError, match="must not define response event hooks"),
-    ):
-        execute_bounded_http(url, "GET", _policy(), client=client)
+    _install_client(monkeypatch, handler, event_hooks={"response": [rewrite_response]})
+    with pytest.raises(ValueError, match="must not define response event hooks"):
+        execute_bounded_http(url, "GET", _policy())
 
     assert transmitted is False
     assert response_hook_invoked is False
@@ -252,6 +283,7 @@ def test_bounded_http_rejects_response_hooks_before_execution() -> None:
 )
 def test_bounded_http_rejects_any_query_identity_drift(
     unauthorized_url: str,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     authorized_url = (
         "https://example.test/public/data?County=San+Bernardino&page=1"
@@ -263,16 +295,13 @@ def test_bounded_http_rejects_any_query_identity_drift(
         executed = True
         return httpx.Response(200, content=b"unexpected", request=request)
 
+    _install_client(monkeypatch, handler)
     policy = _policy(allowed_request_urls=(authorized_url,))
-    with (
-        _client(httpx.MockTransport(handler)) as client,
-        pytest.raises(ValueError, match="canonical identity is outside policy"),
-    ):
+    with pytest.raises(ValueError, match="canonical identity is outside policy"):
         execute_bounded_http(
             unauthorized_url,
             "GET",
             policy,
-            client=client,
         )
 
     assert executed is False
@@ -287,37 +316,38 @@ def test_http_policy_rejects_noncanonical_exact_request_identity() -> None:
         )
 
 
-def test_bounded_http_rejects_legacy_alternate_client_protocol() -> None:
+def test_bounded_http_rejects_legacy_client_keyword_before_execution() -> None:
     class LegacyClient:
         def get(self, url: str, *, follow_redirects: bool, timeout: float) -> object:
             raise AssertionError((url, follow_redirects, timeout))
 
     legacy_client: Any = LegacyClient()
-    with pytest.raises(TypeError, match="must be an httpx.Client"):
+    with pytest.raises(TypeError, match="unexpected keyword argument 'client'"):
         execute_bounded_http(
             "https://example.test/public/data",
             "GET",
             _policy(),
-            client=legacy_client,
+            client=legacy_client,  # type: ignore[call-arg]
         )
 
 
-def test_bounded_http_retains_successful_exact_bytes() -> None:
-    transport = httpx.MockTransport(
-        lambda request: httpx.Response(
+def test_bounded_http_retains_successful_exact_bytes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
             200,
             headers={"content-type": "text/plain; charset=utf-8"},
             content=b"verified evidence",
             request=request,
         )
+
+    _install_client(monkeypatch, handler)
+    observation = execute_bounded_http(
+        "https://example.test/public/data",
+        "GET",
+        _policy(),
     )
-    with _client(transport) as client:
-        observation = execute_bounded_http(
-            "https://example.test/public/data",
-            "GET",
-            _policy(),
-            client=client,
-        )
 
     assert observation.succeeded is True
     assert observation.failure_kind is HttpFailureKind.NONE
@@ -326,7 +356,9 @@ def test_bounded_http_retains_successful_exact_bytes() -> None:
     assert observation.decode_text(("utf-8",)) == "verified evidence"
 
 
-def test_bounded_http_denies_redirect_without_following_location() -> None:
+def test_bounded_http_denies_redirect_without_following_location(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     requested: list[str] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -337,13 +369,12 @@ def test_bounded_http_denies_redirect_without_following_location() -> None:
             request=request,
         )
 
-    with _client(httpx.MockTransport(handler)) as client:
-        observation = execute_bounded_http(
-            "https://example.test/public/data",
-            "GET",
-            _policy(),
-            client=client,
-        )
+    _install_client(monkeypatch, handler)
+    observation = execute_bounded_http(
+        "https://example.test/public/data",
+        "GET",
+        _policy(),
+    )
 
     assert requested == ["https://example.test/public/data"]
     assert observation.failure_kind is HttpFailureKind.REDIRECT
@@ -351,9 +382,11 @@ def test_bounded_http_denies_redirect_without_following_location() -> None:
     assert observation.error_type == "RedirectDenied"
 
 
-def test_bounded_http_rejects_declared_oversized_response_without_body_read() -> None:
-    transport = httpx.MockTransport(
-        lambda request: httpx.Response(
+def test_bounded_http_rejects_declared_oversized_response_without_body_read(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
             200,
             headers={
                 "content-type": "text/plain",
@@ -362,14 +395,13 @@ def test_bounded_http_rejects_declared_oversized_response_without_body_read() ->
             content=b"x" * 100,
             request=request,
         )
+
+    _install_client(monkeypatch, handler)
+    observation = execute_bounded_http(
+        "https://example.test/public/data",
+        "GET",
+        _policy(max_response_bytes=16),
     )
-    with _client(transport) as client:
-        observation = execute_bounded_http(
-            "https://example.test/public/data",
-            "GET",
-            _policy(max_response_bytes=16),
-            client=client,
-        )
 
     assert observation.failure_kind is HttpFailureKind.OVERSIZED_RESPONSE
     assert observation.body_truncated is True
@@ -377,22 +409,23 @@ def test_bounded_http_rejects_declared_oversized_response_without_body_read() ->
     assert observation.response_body == b""
 
 
-def test_bounded_http_preserves_access_control_as_terminal_class() -> None:
-    transport = httpx.MockTransport(
-        lambda request: httpx.Response(
+def test_bounded_http_preserves_access_control_as_terminal_class(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
             403,
             headers={"content-type": "text/plain"},
             content=b"login required",
             request=request,
         )
+
+    _install_client(monkeypatch, handler)
+    observation = execute_bounded_http(
+        "https://example.test/public/data",
+        "GET",
+        _policy(),
     )
-    with _client(transport) as client:
-        observation = execute_bounded_http(
-            "https://example.test/public/data",
-            "GET",
-            _policy(),
-            client=client,
-        )
 
     assert observation.failure_kind is HttpFailureKind.ACCESS_CONTROL
     assert observation.response_body == b""
