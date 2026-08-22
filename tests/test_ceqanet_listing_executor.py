@@ -24,12 +24,14 @@ class FakeResponse:
     headers: dict[str, str]
 
 
-class FakeClient(httpx.Client):
+class FakeClient:
     def __init__(self, responses: tuple[FakeResponse, ...]) -> None:
         self.responses = list(responses)
         self.requested_urls: list[str] = []
         self.timeout_values: list[float] = []
-        super().__init__(
+
+    def build(self) -> httpx.Client:
+        return httpx.Client(
             transport=httpx.MockTransport(self._handle_request),
             follow_redirects=False,
             trust_env=False,
@@ -47,10 +49,12 @@ class FakeClient(httpx.Client):
         )
 
 
-class FailingClient(httpx.Client):
+class FailingClient:
     def __init__(self) -> None:
         self.requested_urls: list[str] = []
-        super().__init__(
+
+    def build(self) -> httpx.Client:
+        return httpx.Client(
             transport=httpx.MockTransport(self._handle_request),
             follow_redirects=False,
             trust_env=False,
@@ -61,8 +65,8 @@ class FailingClient(httpx.Client):
         raise httpx.ConnectError("connection refused", request=request)
 
 
-def _install_client(monkeypatch: pytest.MonkeyPatch, client: httpx.Client) -> None:
-    monkeypatch.setattr(http_transport_module, "_build_http_client", lambda: client)
+def _install_client(monkeypatch: pytest.MonkeyPatch, client: FakeClient | FailingClient) -> None:
+    monkeypatch.setattr(http_transport_module, "_build_http_client", client.build)
 
 
 def _allowed() -> AccessPolicyResult:
