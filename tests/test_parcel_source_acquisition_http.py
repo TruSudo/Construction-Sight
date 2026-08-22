@@ -1,5 +1,5 @@
-from datetime import UTC, datetime
 import inspect
+from datetime import UTC, datetime
 
 import httpx
 import pytest
