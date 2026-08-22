@@ -237,8 +237,9 @@ def execute_authorized_ceqanet_write_plan(
         now=now,
         ledger=ledger,
     )
+    active_executor = _execute_persistence
     execution_payload = _verified_execution_payload(snapshot)
-    execution = _execute_persistence(execution_payload, database_url)
+    execution = active_executor(execution_payload, database_url)
     if execution.failed_count or execution.skipped_count:
         raise RuntimeError(
             "atomic persistence executor returned a partial result contract violation"
