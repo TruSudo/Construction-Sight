@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 from datetime import UTC, datetime
 
 import pytest
@@ -69,11 +70,17 @@ class _Executor:
 
 
 def _execute(
+    monkeypatch: pytest.MonkeyPatch,
     executor: _Executor,
     *,
     confirmation: bool = True,
     ledger: AuthorizationUseLedger | None = None,
 ):
+    monkeypatch.setattr(
+        ceqanet_persistence_service,
+        "_execute_persistence",
+        executor,
+    )
     return execute_authorized_ceqanet_write_plan(
         write_plan_payload=_plan(),
         database_url="sqlite+pysqlite:///:memory:",
@@ -82,14 +89,21 @@ def _execute(
         operator_id="operator:tyler",
         now=lambda: _NOW,
         ledger=ledger,
-        executor=executor,
     )
 
 
-def test_persistence_facade_binds_plan_destination_and_atomicity() -> None:
+def test_persistence_facade_does_not_accept_executor_injection() -> None:
+    assert "executor" not in inspect.signature(
+        execute_authorized_ceqanet_write_plan
+    ).parameters
+
+
+def test_persistence_facade_binds_plan_destination_and_atomicity(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     executor = _Executor()
 
-    result = _execute(executor)
+    result = _execute(monkeypatch, executor)
 
     authorization = result.authorization.to_dict()
     assert authorization["action"] == "execute-ceqanet-write-plan"
@@ -101,29 +115,40 @@ def test_persistence_facade_binds_plan_destination_and_atomicity() -> None:
     ]
 
 
-def test_boolean_confirmation_cannot_authorize_persistence() -> None:
+def test_boolean_confirmation_cannot_authorize_persistence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     executor = _Executor()
 
     with pytest.raises(AuthorizationDeniedError, match="in addition"):
-        _execute(executor, confirmation=False)
+        _execute(monkeypatch, executor, confirmation=False)
 
     assert executor.calls == []
 
 
-def test_shared_ledger_rejects_repeated_persistence() -> None:
+def test_shared_ledger_rejects_repeated_persistence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     executor = _Executor()
     ledger = AuthorizationUseLedger()
 
-    first = _execute(executor, ledger=ledger)
+    first = _execute(monkeypatch, executor, ledger=ledger)
     assert first.execution.applied_count == 1
     with pytest.raises(AuthorizationDeniedError, match="already consumed"):
-        _execute(executor, ledger=ledger)
+        _execute(monkeypatch, executor, ledger=ledger)
 
     assert len(executor.calls) == 1
 
 
-def test_invalid_plan_is_rejected_before_authorization_or_database_effect() -> None:
+def test_invalid_plan_is_rejected_before_authorization_or_database_effect(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     executor = _Executor()
+    monkeypatch.setattr(
+        ceqanet_persistence_service,
+        "_execute_persistence",
+        executor,
+    )
     plan = _plan()
     metadata = plan["metadata"]
     assert isinstance(metadata, dict)
@@ -137,13 +162,14 @@ def test_invalid_plan_is_rejected_before_authorization_or_database_effect() -> N
             authorization_reason="Attempt a drifted plan.",
             operator_id="operator:tyler",
             now=lambda: _NOW,
-            executor=executor,
         )
 
     assert executor.calls == []
 
 
-def test_persistence_facade_executes_only_a_deeply_detached_snapshot() -> None:
+def test_persistence_facade_executes_only_a_deeply_detached_snapshot(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     caller_plan = _plan()
     caller_operations = caller_plan["operations"]
     assert isinstance(caller_operations, list)
@@ -175,6 +201,11 @@ def test_persistence_facade_executes_only_a_deeply_detached_snapshot() -> None:
             )
         )
 
+    monkeypatch.setattr(
+        ceqanet_persistence_service,
+        "_execute_persistence",
+        executor,
+    )
     result = execute_authorized_ceqanet_write_plan(
         write_plan_payload=caller_plan,
         database_url="sqlite+pysqlite:///:memory:",
@@ -182,7 +213,6 @@ def test_persistence_facade_executes_only_a_deeply_detached_snapshot() -> None:
         authorization_reason="Apply a detached reviewed plan.",
         operator_id="operator:tyler",
         now=lambda: _NOW,
-        executor=executor,
     )
 
     assert result.execution.applied_count == 1
@@ -192,7 +222,9 @@ def test_persistence_facade_executes_only_a_deeply_detached_snapshot() -> None:
     assert observed["payload"] is not caller_payload
 
 
-def test_authorization_callback_mutation_cannot_change_snapshot_or_effect() -> None:
+def test_authorization_callback_mutation_cannot_change_snapshot_or_effect(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     caller_plan = _plan()
     reviewed_plan = _plan()
     operations = caller_plan["operations"]
@@ -225,6 +257,11 @@ def test_authorization_callback_mutation_cannot_change_snapshot_or_effect() -> N
             )
         )
 
+    monkeypatch.setattr(
+        ceqanet_persistence_service,
+        "_execute_persistence",
+        executor,
+    )
     result = execute_authorized_ceqanet_write_plan(
         write_plan_payload=caller_plan,
         database_url="sqlite+pysqlite:///:memory:",
@@ -232,7 +269,6 @@ def test_authorization_callback_mutation_cannot_change_snapshot_or_effect() -> N
         authorization_reason="Apply the pre-callback reviewed plan.",
         operator_id="operator:tyler",
         now=mutating_clock,
-        executor=executor,
     )
 
     assert observed == {
@@ -249,6 +285,11 @@ def test_persistence_facade_rechecks_snapshot_identity_before_effect(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     executor = _Executor()
+    monkeypatch.setattr(
+        ceqanet_persistence_service,
+        "_execute_persistence",
+        executor,
+    )
     real_identity = ceqanet_persistence_service._write_plan_identity
     identity_calls = 0
 
@@ -267,7 +308,7 @@ def test_persistence_facade_rechecks_snapshot_identity_before_effect(
     )
 
     with pytest.raises(AuthorizationDeniedError, match="identity changed"):
-        _execute(executor)
+        _execute(monkeypatch, executor)
 
     assert identity_calls == 2
     assert executor.calls == []
