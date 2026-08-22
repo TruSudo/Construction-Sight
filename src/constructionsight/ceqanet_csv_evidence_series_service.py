@@ -23,7 +23,6 @@ from constructionsight.ceqanet_csv_evidence_series_models import (
 )
 from constructionsight.ceqanet_csv_live_models import CeqanetCsvLiveExecution
 from constructionsight.ceqanet_csv_live_service import (
-    CeqanetCsvLiveHttpClient,
     execute_ceqanet_csv_live_request,
     verify_ceqanet_csv_live_execution,
 )
@@ -164,7 +163,6 @@ def execute_ceqanet_csv_evidence_request(
     request: CeqanetCsvExportRequest,
     *,
     execute_live: bool,
-    client: CeqanetCsvLiveHttpClient | None = None,
     authorization_granted_at: datetime | None = None,
     max_retained_rows: int = 1_000,
     operator_id: str | None = None,
@@ -316,7 +314,6 @@ def execute_ceqanet_csv_evidence_request(
     live_execution = execute_ceqanet_csv_live_request(
         request,
         execute_live=True,
-        client=client,
         timeout_seconds=policy.timeout_seconds,
         max_body_bytes=policy.max_body_bytes,
         max_retained_rows=max_retained_rows,
