@@ -14,17 +14,26 @@ from constructionsight.local_operator_authorization import (
     authorize_local_operator_operation,
 )
 from constructionsight.models import PlatformFamily, PublicSource
-from constructionsight.source_readiness_service import HttpReachabilityChecker
+from constructionsight.source_promotion_plan_service import (
+    _build_source_promotion_plan_from_checklist,
+)
 from constructionsight.source_registry_apply_models import SourceRegistryApplyReport
-from constructionsight.source_registry_apply_service import apply_source_registry_update_plan
+from constructionsight.source_registry_apply_service import (
+    apply_source_registry_update_plan,
+)
 from constructionsight.source_registry_integrity import source_registry_digest
 from constructionsight.source_registry_update_plan_models import (
     SourceRegistryUpdatePlanReport,
 )
 from constructionsight.source_registry_update_plan_service import (
-    build_source_registry_update_plan,
+    _build_source_registry_update_plan_from_promotion_plan,
 )
-from constructionsight.source_verification_checklist_models import SourceVerificationObservation
+from constructionsight.source_verification_checklist_models import (
+    SourceVerificationObservation,
+)
+from constructionsight.source_verification_checklist_service import (
+    _build_source_verification_checklist_report_with_owned_http,
+)
 
 
 @dataclass(frozen=True)
@@ -46,7 +55,6 @@ def build_authorized_source_registry_update_plan(
     operator_id: str | None = None,
     now: Callable[[], datetime] | None = None,
     ledger: AuthorizationUseLedger | None = None,
-    http_checker: HttpReachabilityChecker | None = None,
 ) -> SourceRegistryUpdatePlanReport:
     """Authorize exact-source HTTP evidence used to build one report-only plan."""
 
@@ -102,7 +110,8 @@ def build_authorized_source_registry_update_plan(
         current_state_identity=state_identity,
         expected_identity=state_identity,
         granted_authority=(
-            "perform one bounded verification GET per source and build a report-only update plan",
+            "perform one bounded verification GET per source and build a "
+            "report-only update plan",
         ),
         denied_authority=tuple(
             sorted(
@@ -140,12 +149,15 @@ def build_authorized_source_registry_update_plan(
         now=now,
         ledger=ledger,
     )
-    return build_source_registry_update_plan(
+    checklist = _build_source_verification_checklist_report_with_owned_http(
         sources,
         adapter_specs,
-        check_http=True,
-        http_checker=http_checker,
         observations=normalized_observations,
+    )
+    promotion_plan = _build_source_promotion_plan_from_checklist(checklist)
+    return _build_source_registry_update_plan_from_promotion_plan(
+        sources,
+        promotion_plan,
     )
 
 
@@ -213,7 +225,8 @@ def apply_authorized_source_registry_update_plan(
         current_state_identity=current_state_identity,
         expected_identity=current_state_identity,
         granted_authority=(
-            "apply the exact reviewed verification-status transitions to one exact registry target",
+            "apply the exact reviewed verification-status transitions to one exact "
+            "registry target",
         ),
         denied_authority=tuple(
             sorted(
@@ -237,7 +250,8 @@ def apply_authorized_source_registry_update_plan(
             sorted(
                 {
                     "authorization covers one local-process in-memory apply result",
-                    "caller must persist only the returned registry and report to the bound target",
+                    "caller must persist only the returned registry and report "
+                    "to the bound target",
                     "local operator identity is not authentication",
                     "single local-process use only",
                 },
