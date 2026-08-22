@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import tomllib
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
@@ -94,6 +95,9 @@ def _contracts() -> dict[str, dict[str, Any]]:
             "schema_version": "constructionsight.vulnerability-exceptions/v1",
             "exceptions": [],
         },
+        "governance/assurance_contract.toml": tomllib.loads(
+            Path("governance/assurance_contract.toml").read_text(encoding="utf-8")
+        ),
     }
 
 
@@ -117,10 +121,10 @@ def _write_resolution_evidence(root: Path, digest: str) -> None:
         "def test_resolution():\n    assert True\n",
         encoding="utf-8",
     )
-    (root / "governance/reviews/independent_review.json").write_text(
+    (root / "governance/reviews/assurance_review.json").write_text(
         json.dumps(
             {
-                "schema_version": "constructionsight.independent-review/v1",
+                "schema_version": "constructionsight.assurance-review/v1",
                 "status": "passed",
                 "reviewer": "independent-reviewer",
                 "review_method": "adversarial review",
@@ -145,7 +149,7 @@ def _resolved_defect(
         "resolution_commit": "b" * 40,
         "evidence_paths": ["docs/evidence.md"],
         "regression_tests": ["tests/test_resolution.py"],
-        "review_artifact": "governance/reviews/independent_review.json",
+        "review_artifact": "governance/reviews/assurance_review.json",
         "reviewed_tree_digest": digest,
     }
 

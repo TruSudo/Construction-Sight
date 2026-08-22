@@ -2,9 +2,11 @@
 
 ## Status
 
-**Not certified. The August 13 adversarial review failed and invalidated candidate `4cc3ce763354ea91ef8c4bed28c3ce0b531379c3`. Exact-head CI #1056 later discovered `PYSEC-2026-3721`; thirty-six active defects now block any review, closure, readiness, or merge claim.**
+**Not certified. Sixty-one active defects and the missing `ASSURANCE-001` evidence transaction block closure, readiness, and merge claims. Earlier candidate and CI statements below remain historical evidence only.**
 
-This dossier records the correction and regression evidence for the active silent-risk defect ledger. It is an evidence record, not a substitute for independent review, and it does not itself authorize any defect to move from `governance/active_defects.toml` to `governance/resolved_defects.toml`.
+This dossier records correction and regression evidence for the active silent-risk defect ledger. It is not a substitute for the cumulative assurance required by `SECURITY.md`, `governance/assurance_contract.toml`, and ADR-0009, and it does not itself authorize any defect to move from `governance/active_defects.toml` to `governance/resolved_defects.toml`.
+
+The Native Maximum Assurance policy adopted on 2026-08-22 supersedes this dossier's earlier statements that unrelated human GitHub approval is the only closure path. Historical references to `REVIEW-001`, `independent_review.json`, prior defect counts, and a mandatory GitHub reviewer describe the controls and evidence at those earlier checkpoints; they are not current instructions.
 
 The implementation tree reviewed on August 13 was:
 
@@ -16,16 +18,16 @@ That tree is retained for provenance only. It is no longer a valid review or cer
 
 This document was intentionally one of the four post-review finalization artifacts excluded from the reviewed-tree digest. That prior finalization allowance is no longer operative because the reviewed candidate failed. Any correction to a review-covered path requires a new exact candidate and a fresh adversarial review.
 
-The only tracked paths permitted to change after independent review without invalidating the reviewed-tree digest are:
+The only tracked paths permitted to change after the assurance-covered tree is frozen without invalidating its digest are:
 
 ```text
-governance/reviews/independent_review.json
+governance/reviews/**
 governance/active_defects.toml
 governance/resolved_defects.toml
 docs/audits/silent_risk_certification_2026-07-15.md
 ```
 
-Any corrected candidate requires a new independent review of the complete corrected tree.
+Any corrected candidate requires the complete Native Maximum Assurance protocol to restart on the new exact tree.
 
 ## Historical pre-review exact-head evidence
 
@@ -112,16 +114,16 @@ A defect may move from active to resolved only after:
 
 1. the stated root cause has been corrected;
 2. focused regression evidence exists;
-3. the corrected review-covered tree has received legitimate independent adversarial review;
-4. the independent review has no unresolved findings affecting that defect or the certified tree; and
+3. the corrected assurance-covered tree has completed the required cumulative assurance mode;
+4. the blind candidate union has complete coverage and no unresolved or deferred candidate affecting that defect or the certified tree; and
 5. the resolved entry satisfies the strict evidence schema enforced by `governance_contract_schema.py`.
 
 ### Stage 2 — certify the resulting tree
 
 After all reviewed defects have moved to the resolved ledger and the active ledger is empty, canonical exact-head CI must pass on Python 3.11 and Python 3.12 with:
 
-- a valid independent-review artifact;
-- successful external GitHub review revalidation;
+- a valid `governance/reviews/assurance_review.json` artifact and every hash-bound evidence file;
+- successful GitHub revalidation only if the artifact claims `independent_human` mode;
 - zero repository-certification findings;
 - every executable quality gate successful; and
 - retained final certification evidence.
@@ -139,7 +141,7 @@ Every future `governance/resolved_defects.toml` entry must preserve the original
 - `review_artifact`
 - `reviewed_tree_digest`
 
-The review artifact additionally carries `reviewed_active_defects_digest`, a domain-separated SHA-256 digest of the complete canonical active-defect facts read from `reviewed_commit`. The certifier rejects malformed or duplicate IDs, active/resolved overlap, invalid commit provenance, blank closure prose, unsafe/missing evidence paths, non-test regression paths, repository-relative symlink escape, missing/noncanonical review evidence, reviewed-tree or reviewed-defect digest disagreement, incomplete reviewed-ID accounting, changed original facts, changed prior closure records, nonexistent resolution commits, and resolution commits outside reviewed history.
+The assurance artifact additionally carries `reviewed_active_defects_digest`, a domain-separated SHA-256 digest of the complete canonical active-defect facts read from `reviewed_commit`. The certifier rejects malformed or duplicate IDs, active/resolved overlap, invalid commit provenance, blank closure prose, unsafe or missing evidence paths, non-test regression paths, repository-relative symlink escape, missing or noncanonical assurance evidence, reviewed-tree or reviewed-defect digest disagreement, incomplete reviewed-ID accounting, changed original facts, changed prior closure records, nonexistent resolution commits, and resolution commits outside reviewed history.
 
 ## Defect evidence matrix
 
@@ -784,7 +786,7 @@ Digest computation intentionally fails closed when any staged, unstaged, or untr
 
 ### Required adversarial scope for the next candidate
 
-At minimum, independently challenge:
+At minimum, the context-isolated native passes must challenge:
 
 - architecture classification, import boundaries, cycle/capability ownership, and every exception;
 - dependency identity, lock/hash provenance, unexpected installed code, Action pins, SBOM provenance, and vulnerability posture;
@@ -801,9 +803,9 @@ At minimum, independently challenge:
 - external-review authenticity; and
 - every active defect's original root cause and stated required resolution.
 
-### Required GitHub review
+### Optional independent-human GitHub tier
 
-If any problem is found, the reviewer must **not** approve. Findings must first be corrected and regression-tested, and any review-covered correction creates a new candidate requiring a fresh review.
+GitHub human approval is additive and is required only when the assurance artifact claims `independent_human`. If any problem is found, the reviewer must **not** approve. Findings must first be corrected and regression-tested, and any assurance-covered correction creates a new candidate requiring the complete native protocol again.
 
 ### CS-SR-037 — Exact HTTP request identity after client configuration
 
@@ -821,46 +823,23 @@ If any problem is found, the reviewer must **not** approve. Findings must first 
 
 **Working remediation evidence:** the bounded engine now rejects configured response hooks before validating or sending the explicit request. The negative regression configures a hook that would convert a 403 response to 200 and proves that neither the transport nor the hook executes. A focused mutant disables the response-hook guard and must be killed by that regression.
 
-After all current defects, including `CS-SR-028` through `CS-SR-038`, are corrected with focused negative regressions and the complete Python 3.11/3.12 matrix passes on a new exact candidate, a fresh reviewer must submit an actual GitHub **APPROVED** pull-request review anchored to that new exact commit:
-
-```text
-<new-corrected-review-candidate-sha>
-```
-
-The reviewer must be a human GitHub `User` whose login differs from `TruSudo` as both PR author and repository owner.
-
-The resulting artifact must satisfy the exact schema enforced by `authority_certification.py`, including:
-
-```json
-{
-  "schema_version": "constructionsight.independent-review/v1",
-  "status": "passed",
-  "reviewer": "github:<reviewer-login>#<review-id>",
-  "review_method": "<specific adversarial review methodology>",
-  "reviewed_commit": "<new-corrected-review-candidate-sha>",
-  "reviewed_active_defects_digest": "<complete reviewed active-defect facts digest>",
-  "reviewed_tree_digest": "<independently computed lowercase SHA-256 digest>",
-  "findings": []
-}
-```
-
-Canonical CI will independently re-fetch that GitHub review ID and verify its external identity/state/commit binding before the aggregate finalization gate can pass.
+For that optional mode, the reviewer must be a human GitHub `User` whose login differs from the PR author and repository owner. The canonical assurance artifact binds the PR and exact review ID; CI re-fetches both the pull request and review objects and verifies identity, state, and exact reviewed-commit binding. Native or external-model modes make no human-approval claim and do not invoke this revalidation.
 
 At the August 13 failed-review checkpoint, GitHub's PR Reviews API contained **no review objects** for PR #117. No ordinary PR comment, including prior handoff comments, constitutes the required approval. A review of the invalidated target cannot satisfy the future gate.
 
-## Finalization sequence after a corrected candidate and legitimate review
+## Finalization sequence after a corrected candidate and required assurance
 
-1. create `governance/reviews/independent_review.json` bound to the actual external GitHub approval, independently computed reviewed-tree digest, and complete reviewed active-defect facts digest;
-2. update this exempt dossier with the reviewer identity, review ID, methodology, digest, and finding disposition;
-3. construct strict resolved-ledger entries for every reviewed defect, preserving every original fact and naming only resolution commits that exist in the reviewed commit's ancestry;
-4. remove those same IDs from the active ledger, with active/resolved disjointness mechanically enforced;
-5. leave the active ledger with **zero entries** before final certification;
-6. run canonical exact-head CI on the resulting finalization head under Python 3.11 and Python 3.12;
-7. require the external GitHub review revalidation stage to pass on both jobs;
-8. require repository certification to produce **zero findings** on both jobs;
-9. require the aggregate quality gate to pass on both jobs;
-10. retain and record the final certification artifacts and SHA-256 digests;
-11. verify the intended merge/squash result is content-equivalent to the reviewed tree outside the four explicitly permitted finalization paths;
+1. freeze one exact implementation commit and assurance-covered tree;
+2. complete at least three context-isolated deep Standard passes, one exact-diff pass, and one adversarial invariant/attack-path pass;
+3. union every candidate blindly, prove complete coverage, resolve or evidentially reject every candidate, and rerun the entire protocol after any correction;
+4. create `governance/reviews/assurance_review.json` and its complete SHA-256-bound evidence set using the honest assurance mode;
+5. update this exempt dossier with methodology, binding digests, candidate disposition, limitations, and any additive reviewer identity;
+6. construct strict resolved-ledger entries for every reviewed defect, preserving every original fact and naming only resolution commits in the reviewed commit's ancestry;
+7. remove those same IDs from the active ledger and leave it with **zero entries**;
+8. run canonical exact-head CI on the finalization head under Python 3.11 and Python 3.12;
+9. require optional human GitHub revalidation only when `independent_human` is claimed;
+10. require repository certification and every aggregate quality gate to pass with zero findings on both jobs;
+11. retain final artifacts and verify the intended merge result is content-equivalent outside the fixed post-assurance finalization paths;
 12. only then mark PR #117 ready, reconcile overlapping PR #116, and proceed with merge.
 
 ## Historical checkpoint — run #1028

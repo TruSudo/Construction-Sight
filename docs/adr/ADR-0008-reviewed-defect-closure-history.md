@@ -6,11 +6,11 @@
 
 ## Context
 
-The active and resolved defect ledgers are permitted finalization paths after an independent review. Schema validation alone therefore cannot prove that a resolved entry preserves the facts that the reviewer actually saw, accounts for every reviewed defect, or names a resolution commit in the reviewed implementation history.
+The active and resolved defect ledgers are permitted finalization paths after the required assurance review. Schema validation alone therefore cannot prove that a resolved entry preserves the facts that the assurance passes saw, accounts for every reviewed defect, or names a resolution commit in the reviewed implementation history.
 
 ## Decision
 
-The independent-review artifact binds both the exact reviewed commit and a domain-separated SHA-256 digest of that commit's complete canonical active-defect facts. Final repository certification reads the active and resolved ledgers directly from the reviewed commit and requires:
+The canonical assurance artifact binds both the exact reviewed commit and a domain-separated SHA-256 digest of that commit's complete canonical active-defect facts. Final repository certification reads the active and resolved ledgers directly from the reviewed commit and requires:
 
 - every reviewed active ID to move to the resolved ledger exactly once;
 - no reviewed ID to remain active and no unreviewed ID to appear;

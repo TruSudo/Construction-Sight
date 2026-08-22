@@ -13,14 +13,12 @@ from constructionsight.github_review_certification import (
 
 def _report() -> dict[str, Any]:
     return {
-        "schema_version": "constructionsight.independent-review/v1",
-        "status": "passed",
+        "schema_version": "constructionsight.assurance-review/v1",
+        "assurance_mode": "independent_human",
+        "independence_claim": "independent_human",
         "reviewer": "github:IndependentReviewer#4242",
-        "review_method": "adversarial review of the exact reviewed tree",
         "reviewed_commit": "a" * 40,
-        "reviewed_active_defects_digest": "c" * 64,
-        "reviewed_tree_digest": "b" * 64,
-        "findings": [],
+        "pull_request_number": 117,
     }
 
 
@@ -36,17 +34,24 @@ def _github_review() -> dict[str, Any]:
     }
 
 
+def _github_pull_request() -> dict[str, Any]:
+    return {
+        "number": 117,
+        "user": {"login": "TruSudo", "type": "User"},
+    }
+
+
 def _findings(
     report: dict[str, Any] | None = None,
     review: dict[str, Any] | None = None,
+    pull_request: dict[str, Any] | None = None,
     *,
-    pr_author: str = "TruSudo",
     repository_owner: str = "TruSudo",
 ) -> tuple[str, ...]:
     return verify_github_review_binding(
         report or _report(),
         review or _github_review(),
-        pr_author=pr_author,
+        pull_request or _github_pull_request(),
         repository_owner=repository_owner,
     )
 
@@ -74,8 +79,18 @@ def test_parse_bound_reviewer_rejects_malformed_values(value: object) -> None:
         parse_bound_reviewer(value)
 
 
-def test_valid_external_review_binding_passes() -> None:
+def test_valid_independent_human_review_binding_passes() -> None:
     assert _findings() == ()
+
+
+def test_native_or_external_model_mode_cannot_claim_human_approval() -> None:
+    report = _report()
+    report["assurance_mode"] = "native_maximum"
+    report["independence_claim"] = "native_context_isolated_not_independent"
+
+    assert "GitHub approval only verifies independent_human assurance mode" in _findings(
+        report=report
+    )
 
 
 def test_pr_author_cannot_self_certify() -> None:
@@ -110,25 +125,27 @@ def test_review_must_be_approved() -> None:
     assert "GitHub review state must be APPROVED" in _findings(review=review)
 
 
-def test_review_id_must_match_artifact_binding() -> None:
+def test_review_and_pull_request_ids_must_match_artifact() -> None:
     review = _github_review()
     review["id"] = 9999
+    pull_request = _github_pull_request()
+    pull_request["number"] = 118
+    findings = _findings(review=review, pull_request=pull_request)
 
-    assert "GitHub review ID does not match the artifact binding" in _findings(
-        review=review
-    )
+    assert "GitHub review ID does not match the assurance binding" in findings
+    assert "GitHub pull request does not match the assurance binding" in findings
 
 
 def test_reviewer_login_must_match_artifact_binding() -> None:
     review = _github_review()
     review["user"] = {"login": "SomeoneElse", "type": "User"}
 
-    assert "GitHub reviewer login does not match the artifact binding" in _findings(
+    assert "GitHub reviewer login does not match the assurance binding" in _findings(
         review=review
     )
 
 
-def test_bot_identity_cannot_satisfy_independent_review() -> None:
+def test_bot_identity_cannot_satisfy_independent_human_review() -> None:
     review = _github_review()
     review["user"] = {"login": "IndependentReviewer", "type": "Bot"}
 
@@ -146,11 +163,11 @@ def test_review_commit_must_match_reviewed_commit() -> None:
     )
 
 
-def test_report_is_deterministic_and_exposes_external_review_id() -> None:
+def test_report_is_deterministic_and_exposes_source_identities() -> None:
     report = build_report(
         _report(),
         _github_review(),
-        pr_author="TruSudo",
+        _github_pull_request(),
         repository_owner="TruSudo",
     )
 
@@ -159,6 +176,7 @@ def test_report_is_deterministic_and_exposes_external_review_id() -> None:
         "passed": True,
         "reviewer": "github:IndependentReviewer#4242",
         "reviewed_commit": "a" * 40,
+        "pull_request_number": 117,
         "github_review_id": 4242,
         "findings": [],
     }

@@ -22,6 +22,7 @@ The canonical contracts are:
 - `governance/authorization_contract.toml`
 - `governance/adversarial_test_contract.toml`
 - `governance/mutation_contract.toml`
+- `governance/assurance_contract.toml`
 
 Unknown schema versions, malformed fields, unclassified modules, multiply classified modules, missing artifacts, and code/contract disagreement block certification.
 
@@ -55,11 +56,13 @@ The current product is a local CLI. An explicit operator identifier is sufficien
 
 ## Defect invalidation
 
-Every discovered certification defect enters `governance/active_defects.toml`. Active defects are executable blockers. A defect moves to `governance/resolved_defects.toml` only after the correction, regression evidence, independent review, and exact-tree certification are complete. Findings are never suppressed to preserve a zero-defect statement.
+Every discovered certification defect enters `governance/active_defects.toml`. Active defects are executable blockers. A defect moves to `governance/resolved_defects.toml` only after the correction, regression evidence, required cumulative assurance mode, and exact-tree certification are complete. Findings are never suppressed to preserve a zero-defect statement.
 
 ## High-risk review
 
-Changes involving authorization, dependency identity, Actions, network execution, mutation, evidence identity, maturity or promotion, recurrence, workflow state, result correction, sending, architecture, compatibility, cryptographic identity, or certification are high risk. They require a separate adversarial review report bound to the exact reviewed commit. The reviewer must seek bypasses, authority expansion, stale state, replay, concurrency, fail-open behavior, supply-chain defects, doctrine gaps, and tests that merely mirror implementation.
+Changes involving authorization, dependency identity, Actions, network execution, mutation, evidence identity, maturity or promotion, recurrence, workflow state, result correction, sending, architecture, compatibility, cryptographic identity, or certification are high risk. They require Native Maximum Assurance bound to the exact reviewed commit: at least three context-isolated complete deep-scan passes, one separate exact-diff pass, one separate adversarial invariant pass, blind candidate union, complete coverage, zero unresolved or deferred candidates, and zero surviving security mutants. The passes must seek bypasses, authority expansion, stale state, replay, concurrency, fail-open behavior, supply-chain defects, doctrine gaps, and tests that merely mirror implementation.
+
+Native context isolation is a fresh analytical take, not external independence. Review by a different model provider is recorded as `independent_external_model` and is not human approval. An unrelated exact-commit GitHub approval is recorded as `independent_human`. Both are additive; neither reduces the native baseline.
 
 ## Unsupported boundaries
 

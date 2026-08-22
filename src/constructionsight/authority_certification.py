@@ -1,21 +1,19 @@
-"""Network, authorization, test, defect, and review certification."""
+"""Network, authorization, test, defect, and assurance certification."""
 
 from __future__ import annotations
 
-import hashlib
-import json
-import re
-import subprocess
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-from constructionsight.defect_closure_certification import audit_defect_closure
+from constructionsight.assurance_certification import (
+    assured_tree_digest,
+    audit_assurance_review,
+)
 from constructionsight.governance_certification_core import (
     _ACTIVE_DEFECT_SCHEMA,
+    _ASSURANCE_CONTRACT_SCHEMA,
     _RESOLVED_DEFECT_SCHEMA,
-    _REVIEW_SCHEMA,
-    GovernanceContractError,
     GovernanceFinding,
     _finding,
     _read_toml,
@@ -26,27 +24,11 @@ from constructionsight.repository_path_certification import (
 )
 from constructionsight.traceability_certification import _match_contract_owner
 
-_ALLOWED_AFTER_REVIEW = frozenset(
-    {
-        "governance/reviews/independent_review.json",
-        "governance/active_defects.toml",
-        "governance/resolved_defects.toml",
-        "docs/audits/silent_risk_certification_2026-07-15.md",
-    }
-)
-_REVIEW_FIELDS = frozenset(
-    {
-        "schema_version",
-        "status",
-        "reviewer",
-        "review_method",
-        "reviewed_commit",
-        "reviewed_active_defects_digest",
-        "reviewed_tree_digest",
-        "findings",
-    }
-)
-_REVIEW_TREE_DOMAIN = b"constructionsight.reviewed-tree/v1\0"
+
+def _reviewed_tree_digest(root: Path) -> str:
+    """Compatibility name for the canonical assurance-covered tree digest."""
+
+    return assured_tree_digest(root)
 
 
 def _audit_network(contract: Mapping[str, Any], findings: list[GovernanceFinding]) -> int:
@@ -392,84 +374,11 @@ def _audit_test_obligations(
                 )
 
 
-def _assert_review_worktree_clean(root: Path) -> None:
-    command = [
-        "git",
-        "-C",
-        str(root),
-        "status",
-        "--porcelain=v1",
-        "-z",
-        "--untracked-files=all",
-        "--",
-        ".",
-        *(f":(exclude){path}" for path in sorted(_ALLOWED_AFTER_REVIEW)),
-    ]
-    completed = subprocess.run(command, check=False, capture_output=True)
-    if completed.returncode != 0:
-        detail = (
-            completed.stderr.decode("utf-8", errors="replace").strip()
-            or completed.stdout.decode("utf-8", errors="replace").strip()
-            or "unknown git error"
-        )
-        raise GovernanceContractError(detail)
-    if completed.stdout:
-        dirty = completed.stdout.replace(b"\0", b"\n").decode("utf-8", errors="replace").strip()
-        raise GovernanceContractError(
-            f"review-covered worktree is dirty outside permitted finalization paths: {dirty}"
-        )
-
-
-def _reviewed_tree_digest(root: Path) -> str:
-    """Return a topology-independent digest of the clean review-covered Git index tree."""
-
-    _assert_review_worktree_clean(root)
-    completed = subprocess.run(
-        ["git", "-C", str(root), "ls-files", "--stage", "-z"],
-        check=False,
-        capture_output=True,
-    )
-    if completed.returncode != 0:
-        detail = (
-            completed.stderr.decode("utf-8", errors="replace").strip()
-            or completed.stdout.decode("utf-8", errors="replace").strip()
-            or "unknown git error"
-        )
-        raise GovernanceContractError(detail)
-
-    allowed = {path.encode("utf-8") for path in _ALLOWED_AFTER_REVIEW}
-    entries: list[tuple[bytes, bytes, bytes]] = []
-    for raw_entry in completed.stdout.split(b"\0"):
-        if not raw_entry:
-            continue
-        metadata, separator, path = raw_entry.partition(b"\t")
-        fields = metadata.split()
-        if not separator or len(fields) != 3:
-            raise GovernanceContractError("git index entry has an unexpected shape")
-        mode, object_id, stage = fields
-        if stage != b"0":
-            display_path = path.decode("utf-8", errors="replace")
-            raise GovernanceContractError(
-                f"git index contains an unresolved stage for {display_path!r}"
-            )
-        if path in allowed:
-            continue
-        entries.append((path, mode, object_id))
-
-    digest = hashlib.sha256()
-    digest.update(_REVIEW_TREE_DOMAIN)
-    for path, mode, object_id in sorted(entries, key=lambda entry: entry[0]):
-        digest.update(len(path).to_bytes(8, byteorder="big"))
-        digest.update(path)
-        digest.update(b"\0")
-        digest.update(mode)
-        digest.update(b"\0")
-        digest.update(object_id)
-        digest.update(b"\0")
-    return digest.hexdigest()
-
-
-def _audit_defects_and_review(root: Path, findings: list[GovernanceFinding]) -> None:
+def _audit_defects_and_review(
+    root: Path,
+    findings: list[GovernanceFinding],
+    assurance_contract: Mapping[str, Any] | None = None,
+) -> None:
     active = _read_toml(
         root,
         "governance/active_defects.toml",
@@ -501,150 +410,14 @@ def _audit_defects_and_review(root: Path, findings: list[GovernanceFinding]) -> 
         _RESOLVED_DEFECT_SCHEMA,
         findings,
     )
-
-    review_relative = Path("governance/reviews/independent_review.json")
-    try:
-        _canonical, review_path = resolve_repository_file(
+    contract = (
+        assurance_contract
+        if assurance_contract is not None
+        else _read_toml(
             root,
-            review_relative.as_posix(),
-            required_prefix="governance/reviews",
-            required_suffix=".json",
+            "governance/assurance_contract.toml",
+            _ASSURANCE_CONTRACT_SCHEMA,
+            findings,
         )
-    except RepositoryPathError:
-        findings.append(
-            _finding(
-                "REVIEW-001",
-                review_relative,
-                "independent adversarial review report is missing",
-            )
-        )
-        return
-    try:
-        report = json.loads(review_path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
-        findings.append(
-            _finding(
-                "REVIEW-002",
-                review_relative,
-                f"review report is malformed: {exc}",
-            )
-        )
-        return
-    if not isinstance(report, dict):
-        findings.append(
-            _finding(
-                "REVIEW-002",
-                review_relative,
-                "review report must be a JSON object",
-            )
-        )
-        return
-    missing = _REVIEW_FIELDS - set(report)
-    unknown = set(report) - _REVIEW_FIELDS
-    if missing or unknown:
-        findings.append(
-            _finding(
-                "REVIEW-010",
-                review_relative,
-                "independent review fields disagree with schema; "
-                f"missing={sorted(missing)}, unknown={sorted(unknown)}",
-            )
-        )
-    if report.get("schema_version") != _REVIEW_SCHEMA:
-        findings.append(
-            _finding(
-                "REVIEW-003",
-                review_relative,
-                "unsupported independent review schema",
-            )
-        )
-    if report.get("status") != "passed":
-        findings.append(
-            _finding(
-                "REVIEW-004",
-                review_relative,
-                "independent review has not passed",
-            )
-        )
-    for field in ("reviewer", "review_method"):
-        value = report.get(field)
-        if not isinstance(value, str) or not value.strip() or value != value.strip():
-            findings.append(
-                _finding(
-                    "REVIEW-011",
-                    review_relative,
-                    f"{field} must be nonblank trimmed text",
-                )
-            )
-    review_findings = report.get("findings")
-    malformed_or_unresolved = not isinstance(review_findings, list) or any(
-        not isinstance(item, dict) or item.get("status") != "resolved" for item in review_findings
     )
-    if malformed_or_unresolved:
-        findings.append(
-            _finding(
-                "REVIEW-005",
-                review_relative,
-                "independent review contains unresolved or malformed findings",
-            )
-        )
-    reviewed_commit = report.get("reviewed_commit")
-    if not isinstance(reviewed_commit, str) or not re.fullmatch(r"[0-9a-f]{40}", reviewed_commit):
-        findings.append(
-            _finding(
-                "REVIEW-006",
-                review_relative,
-                "reviewed_commit must be a full commit SHA",
-            )
-        )
-    reviewed_tree_digest = report.get("reviewed_tree_digest")
-    if not isinstance(reviewed_tree_digest, str) or not re.fullmatch(
-        r"[0-9a-f]{64}", reviewed_tree_digest
-    ):
-        findings.append(
-            _finding(
-                "REVIEW-012",
-                review_relative,
-                "reviewed_tree_digest must be a lowercase SHA-256 digest",
-            )
-        )
-        return
-    reviewed_active_defects_digest = report.get("reviewed_active_defects_digest")
-    if not isinstance(reviewed_active_defects_digest, str) or not re.fullmatch(
-        r"[0-9a-f]{64}", reviewed_active_defects_digest
-    ):
-        findings.append(
-            _finding(
-                "REVIEW-013",
-                review_relative,
-                "reviewed_active_defects_digest must be a lowercase SHA-256 digest",
-            )
-        )
-    try:
-        current_tree_digest = _reviewed_tree_digest(root)
-    except GovernanceContractError as exc:
-        findings.append(
-            _finding(
-                "REVIEW-007",
-                review_relative,
-                f"cannot verify review binding: {exc}",
-            )
-        )
-        return
-    if current_tree_digest != reviewed_tree_digest:
-        findings.append(
-            _finding(
-                "REVIEW-009",
-                review_relative,
-                "tracked tree outside permitted post-review governance artifacts "
-                "does not match the independently reviewed tree digest",
-            )
-        )
-    if (
-        report.get("status") == "passed"
-        and isinstance(reviewed_commit, str)
-        and re.fullmatch(r"[0-9a-f]{40}", reviewed_commit)
-        and isinstance(reviewed_active_defects_digest, str)
-        and re.fullmatch(r"[0-9a-f]{64}", reviewed_active_defects_digest)
-    ):
-        audit_defect_closure(root, active, resolved, report, findings)
+    audit_assurance_review(root, contract, active, resolved, findings)

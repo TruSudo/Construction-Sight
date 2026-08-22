@@ -1,4 +1,4 @@
-"""Verify an independent-review artifact against one GitHub pull-request review."""
+"""Verify optional independent-human assurance against GitHub source evidence."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 _SCHEMA_VERSION = "constructionsight.github-review-certification/v1"
+_ASSURANCE_SCHEMA_VERSION = "constructionsight.assurance-review/v1"
 _REVIEWER_PATTERN = re.compile(
     r"github:(?P<login>[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?)#"
     r"(?P<review_id>[1-9][0-9]*)"
@@ -21,8 +22,12 @@ def _nonblank(value: object) -> bool:
     return isinstance(value, str) and bool(value.strip()) and value == value.strip()
 
 
+def _positive_integer(value: object) -> bool:
+    return not isinstance(value, bool) and isinstance(value, int) and value > 0
+
+
 def parse_bound_reviewer(value: object) -> tuple[str, int]:
-    """Return the GitHub login and review ID encoded by the review artifact."""
+    """Return the GitHub login and review ID encoded by the assurance artifact."""
 
     if not isinstance(value, str):
         raise ValueError("reviewer must bind a GitHub login and review ID")
@@ -33,32 +38,57 @@ def parse_bound_reviewer(value: object) -> tuple[str, int]:
 
 
 def verify_github_review_binding(
-    review_report: Mapping[str, Any],
+    assurance_report: Mapping[str, Any],
     github_review: Mapping[str, Any],
+    github_pull_request: Mapping[str, Any],
     *,
-    pr_author: str,
     repository_owner: str,
 ) -> tuple[str, ...]:
-    """Return deterministic findings for the external GitHub review binding."""
+    """Return deterministic findings for independent-human GitHub assurance."""
 
     findings: list[str] = []
+    if assurance_report.get("schema_version") != _ASSURANCE_SCHEMA_VERSION:
+        findings.append("assurance report schema is unsupported")
+    if assurance_report.get("assurance_mode") != "independent_human":
+        findings.append("GitHub approval only verifies independent_human assurance mode")
+    if assurance_report.get("independence_claim") != "independent_human":
+        findings.append("assurance report does not make the exact human-independence claim")
     try:
-        bound_login, bound_review_id = parse_bound_reviewer(review_report.get("reviewer"))
+        bound_login, bound_review_id = parse_bound_reviewer(
+            assurance_report.get("reviewer")
+        )
     except ValueError as exc:
         findings.append(str(exc))
         return tuple(findings)
 
-    reviewed_commit = review_report.get("reviewed_commit")
+    reviewed_commit = assurance_report.get("reviewed_commit")
     if not isinstance(reviewed_commit, str) or _COMMIT_PATTERN.fullmatch(
         reviewed_commit
     ) is None:
         findings.append("reviewed_commit must be a full lowercase commit SHA")
 
-    if not _nonblank(pr_author) or not _nonblank(repository_owner):
-        findings.append("PR author and repository owner identities must be nonblank")
+    bound_pr_number = assurance_report.get("pull_request_number")
+    if not _positive_integer(bound_pr_number):
+        findings.append("assurance report must bind a positive pull-request number")
+
+    source_pr_number = github_pull_request.get("number")
+    if not _positive_integer(source_pr_number):
+        findings.append("GitHub pull-request number must be a positive integer")
+    elif source_pr_number != bound_pr_number:
+        findings.append("GitHub pull request does not match the assurance binding")
+
+    pr_user = github_pull_request.get("user")
+    pr_author: str | None = None
+    if not isinstance(pr_user, Mapping) or not _nonblank(pr_user.get("login")):
+        findings.append("GitHub pull-request author must be a user login")
+    else:
+        pr_author = str(pr_user["login"])
+
+    if not _nonblank(repository_owner):
+        findings.append("repository owner identity must be nonblank")
     else:
         reviewer_key = bound_login.casefold()
-        if reviewer_key == pr_author.casefold():
+        if pr_author is not None and reviewer_key == pr_author.casefold():
             findings.append("independent reviewer must differ from the PR author")
         if reviewer_key == repository_owner.casefold():
             findings.append("independent reviewer must differ from the repository owner")
@@ -67,7 +97,7 @@ def verify_github_review_binding(
     if isinstance(review_id, bool) or not isinstance(review_id, int):
         findings.append("GitHub review ID must be an integer")
     elif review_id != bound_review_id:
-        findings.append("GitHub review ID does not match the artifact binding")
+        findings.append("GitHub review ID does not match the assurance binding")
 
     if github_review.get("state") != "APPROVED":
         findings.append("GitHub review state must be APPROVED")
@@ -78,7 +108,7 @@ def verify_github_review_binding(
     else:
         login = user.get("login")
         if not isinstance(login, str) or login.casefold() != bound_login.casefold():
-            findings.append("GitHub reviewer login does not match the artifact binding")
+            findings.append("GitHub reviewer login does not match the assurance binding")
         if user.get("type") != "User":
             findings.append("independent GitHub reviewer must be a human User identity")
 
@@ -92,27 +122,28 @@ def verify_github_review_binding(
 
 
 def build_report(
-    review_report: Mapping[str, Any],
+    assurance_report: Mapping[str, Any],
     github_review: Mapping[str, Any],
+    github_pull_request: Mapping[str, Any],
     *,
-    pr_author: str,
     repository_owner: str,
 ) -> dict[str, Any]:
-    """Build the deterministic CI report for one external review verification."""
+    """Build the deterministic CI report for one human-review verification."""
 
     findings = verify_github_review_binding(
-        review_report,
+        assurance_report,
         github_review,
-        pr_author=pr_author,
+        github_pull_request,
         repository_owner=repository_owner,
     )
-    reviewer = review_report.get("reviewer")
-    reviewed_commit = review_report.get("reviewed_commit")
+    reviewer = assurance_report.get("reviewer")
+    reviewed_commit = assurance_report.get("reviewed_commit")
     return {
         "schema_version": _SCHEMA_VERSION,
         "passed": not findings,
         "reviewer": reviewer if isinstance(reviewer, str) else None,
         "reviewed_commit": reviewed_commit if isinstance(reviewed_commit, str) else None,
+        "pull_request_number": assurance_report.get("pull_request_number"),
         "github_review_id": github_review.get("id"),
         "findings": list(findings),
     }
@@ -138,21 +169,21 @@ def _write_report(path: Path, payload: Mapping[str, Any]) -> None:
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Verify ConstructionSight independent review against GitHub evidence."
+        description="Verify ConstructionSight human assurance against GitHub evidence."
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     review_id = subparsers.add_parser(
-        "review-id", help="Print the GitHub review ID bound by the review artifact."
+        "review-id", help="Print the GitHub review ID bound by the assurance artifact."
     )
     review_id.add_argument("--review-artifact", type=Path, required=True)
 
     verify = subparsers.add_parser(
-        "verify", help="Verify one fetched GitHub review against the artifact."
+        "verify", help="Verify fetched GitHub pull-request and review evidence."
     )
     verify.add_argument("--review-artifact", type=Path, required=True)
     verify.add_argument("--github-review", type=Path, required=True)
-    verify.add_argument("--pr-author", required=True)
+    verify.add_argument("--github-pull-request", type=Path, required=True)
     verify.add_argument("--repository-owner", required=True)
     verify.add_argument("--output", type=Path, required=True)
     return parser
@@ -164,17 +195,20 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
     try:
-        review_report = _read_json_object(args.review_artifact)
+        assurance_report = _read_json_object(args.review_artifact)
         if args.command == "review-id":
-            _, review_id = parse_bound_reviewer(review_report.get("reviewer"))
+            if assurance_report.get("assurance_mode") != "independent_human":
+                raise ValueError("review-id requires independent_human assurance mode")
+            _, review_id = parse_bound_reviewer(assurance_report.get("reviewer"))
             print(review_id)
             return 0
 
         github_review = _read_json_object(args.github_review)
+        github_pull_request = _read_json_object(args.github_pull_request)
         report = build_report(
-            review_report,
+            assurance_report,
             github_review,
-            pr_author=args.pr_author,
+            github_pull_request,
             repository_owner=args.repository_owner,
         )
         _write_report(args.output, report)
@@ -182,7 +216,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.exit(1, f"github review certification failed: {exc}\n")
 
     if report["passed"]:
-        print("Independent GitHub review certification passed.")
+        print("Independent human GitHub review certification passed.")
         return 0
     for finding in report["findings"]:
         print(f"- {finding}")

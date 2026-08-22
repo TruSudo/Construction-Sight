@@ -640,3 +640,81 @@ replacement = '''    def __init__(
 tests = ["tests/test_ceqanet_discovery_http.py::test_live_discovery_does_not_accept_caller_selected_executor"]
 expected_output = "test_live_discovery_does_not_accept_caller_selected_executor"
 risk = "CEQAnet live discovery could reacquire caller-selected HTTP effect authority after the production boundary is reviewed."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-FRESH-CONTEXT-001"
+path = "src/constructionsight/assurance_certification.py"
+search = '''        if raw.get("fresh_context") is not True:'''
+replacement = '''        if False and raw.get("fresh_context") is not True:'''
+tests = ["tests/test_assurance_certification.py::test_assurance_rejects_non_fresh_pass"]
+expected_output = "test_assurance_rejects_non_fresh_pass"
+risk = "A pass primed by the implementation session or earlier candidates could be counted as a fresh analytical take."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-DEEP-COUNT-001"
+path = "src/constructionsight/assurance_certification.py"
+search = '''    if not _positive_integer(minimum_deep) or deep_review_count < cast(
+        int, minimum_deep
+    ):'''
+replacement = '''    if not _positive_integer(minimum_deep) or False:'''
+tests = ["tests/test_assurance_certification.py::test_assurance_rejects_insufficient_deep_passes"]
+expected_output = "test_assurance_rejects_insufficient_deep_passes"
+risk = "A single or incomplete deep review could be misrepresented as the required variance-reducing multi-pass scan."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-DEFERRED-CANDIDATE-001"
+path = "src/constructionsight/assurance_certification.py"
+search = '''        if disposition not in {"resolved", "rejected"}:'''
+replacement = '''        if disposition not in {"resolved", "rejected", "deferred"}:'''
+tests = ["tests/test_assurance_certification.py::test_assurance_rejects_deferred_candidate"]
+expected_output = "test_assurance_rejects_deferred_candidate"
+risk = "A deferred security candidate could disappear behind a passing assurance status."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-EVIDENCE-DIGEST-001"
+path = "src/constructionsight/assurance_certification.py"
+search = '''    if actual_digest != raw_digest:'''
+replacement = '''    if False and actual_digest != raw_digest:'''
+tests = ["tests/test_assurance_certification.py::test_assurance_rejects_evidence_digest_mismatch"]
+expected_output = "test_assurance_rejects_evidence_digest_mismatch"
+risk = "Pass or gate evidence could be changed after review without invalidating its assurance claim."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-COVERAGE-GAP-001"
+path = "src/constructionsight/assurance_certification.py"
+search = '''    if payload.get("coverage_complete") is not True or payload.get("coverage_gaps") != []:'''
+replacement = '''    if False and (payload.get("coverage_complete") is not True or payload.get("coverage_gaps") != []):'''
+tests = ["tests/test_assurance_certification.py::test_assurance_rejects_candidate_union_coverage_gap"]
+expected_output = "test_assurance_rejects_candidate_union_coverage_gap"
+risk = "A partial scan could make a complete-coverage claim while known paths remain unreviewed."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-SURVIVING-MUTANT-001"
+path = "src/constructionsight/assurance_certification.py"
+search = '''    if report.get("surviving_security_mutants") != contract.get(
+        "surviving_security_mutants_allowed"
+    ):'''
+replacement = '''    if False and report.get("surviving_security_mutants") != contract.get(
+        "surviving_security_mutants_allowed"
+    ):'''
+tests = ["tests/test_assurance_certification.py::test_assurance_rejects_surviving_security_mutant"]
+expected_output = "test_assurance_rejects_surviving_security_mutant"
+risk = "Known security mutants could survive while the native maximum artifact still reports a pass."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-PASS-EVIDENCE-001"
+path = "src/constructionsight/assurance_certification.py"
+search = '''                if payload.get(field) != raw.get(field):'''
+replacement = '''                if False and payload.get(field) != raw.get(field):'''
+tests = ["tests/test_assurance_certification.py::test_assurance_rejects_pass_evidence_disagreement"]
+expected_output = "test_assurance_rejects_pass_evidence_disagreement"
+risk = "A normalized pass wrapper could claim different coverage or review counts than the canonical assurance report."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-GATE-EVIDENCE-001"
+path = "src/constructionsight/assurance_certification.py"
+search = '''            if bound_result is None or bound_result.get("status") != raw.get("status"):'''
+replacement = '''            if False and (bound_result is None or bound_result.get("status") != raw.get("status")):'''
+tests = ["tests/test_assurance_certification.py::test_assurance_rejects_quality_gate_evidence_disagreement"]
+expected_output = "test_assurance_rejects_quality_gate_evidence_disagreement"
+risk = "A main artifact could report a passed quality gate whose normalized source evidence records failure or omission."

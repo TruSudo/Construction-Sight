@@ -25,6 +25,7 @@ from constructionsight.dependency_certification import (
 from constructionsight.governance_certification_core import (
     _ACTIVE_DEFECT_SCHEMA,
     _ARCHITECTURE_SCHEMA,
+    _ASSURANCE_CONTRACT_SCHEMA,
     _AUTHORIZATION_SCHEMA,
     _CAPABILITY_SCHEMA,
     _DEPENDENCY_SCHEMA,
@@ -123,6 +124,12 @@ def audit_governance(root: Path, tracked_files: Sequence[Path]) -> GovernanceRep
         _VULNERABILITY_EXCEPTION_SCHEMA,
         findings,
     )
+    assurance = _read_toml(
+        repository_root,
+        "governance/assurance_contract.toml",
+        _ASSURANCE_CONTRACT_SCHEMA,
+        findings,
+    )
     contracts = {
         "governance/architecture_contract.toml": architecture,
         "governance/capability_contract.toml": capability,
@@ -135,6 +142,7 @@ def audit_governance(root: Path, tracked_files: Sequence[Path]) -> GovernanceRep
         "governance/resolved_defects.toml": resolved_defects,
         "governance/open_work.toml": open_work,
         "governance/vulnerability_exceptions.toml": vulnerability_exceptions,
+        "governance/assurance_contract.toml": assurance,
     }
     audit_governance_contract_shapes(repository_root, contracts, findings)
     audit_governance_links(contracts, findings)
@@ -180,7 +188,11 @@ def audit_governance(root: Path, tracked_files: Sequence[Path]) -> GovernanceRep
         findings,
     )
     _audit_test_obligations(repository_root, tests, findings)
-    _audit_defects_and_review(repository_root, findings)
+    _audit_defects_and_review(
+        repository_root,
+        findings,
+        assurance_contract=assurance,
+    )
 
     ordered = tuple(
         sorted(

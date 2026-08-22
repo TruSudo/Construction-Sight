@@ -20,18 +20,23 @@ def test_ci_checks_out_and_enforces_exact_event_head() -> None:
     assert "'${{ steps.checkout-identity.outcome }}'" in workflow
 
 
-def test_ci_revalidates_external_github_review_before_finalization() -> None:
+def test_ci_revalidates_only_claimed_independent_human_review() -> None:
     workflow = _workflow()
 
     assert "pull-requests: read" in workflow
-    assert "name: Verify independent GitHub review" in workflow
+    assert "name: Verify optional independent human GitHub review" in workflow
     assert "id: github-review" in workflow
+    assert "constructionsight.assurance_certification mode" in workflow
+    assert "'independent_human'" in workflow
+    assert "constructionsight.assurance_certification pull-request-number" in workflow
     assert "constructionsight.github_review_certification review-id" in workflow
+    assert "pulls/{pr_number}" in workflow
     assert "pulls/{pr_number}/reviews/{review_id}" in workflow
     assert "constructionsight.github_review_certification verify" in workflow
-    assert "PR_AUTHOR: ${{ github.event.pull_request.user.login }}" in workflow
+    assert "--github-pull-request" in workflow
     assert "REPOSITORY_OWNER: ${{ github.repository_owner }}" in workflow
     assert "'${{ steps.github-review.outcome }}'" in workflow
     assert (
-        "Independent review artifact absent; repository certification remains blocking." in workflow
+        "Assurance artifact absent; repository certification remains blocking." in workflow
     )
+    assert "makes no independent-human claim" in workflow

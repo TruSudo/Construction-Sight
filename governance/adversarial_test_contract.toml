@@ -27,6 +27,7 @@ tests = [
   "tests/test_adversarial_contract_certification.py",
   "tests/test_adversarial_semantic_witnesses.py",
   "tests/test_architecture_boundary_certification.py",
+  "tests/test_assurance_certification.py",
   "tests/test_audit_package_cli.py",
   "tests/test_authorization_decision.py",
   "tests/test_ceqanet_adapter.py",

@@ -9,6 +9,11 @@ from datetime import date
 from pathlib import Path
 from typing import Any, Final
 
+from constructionsight.assurance_certification import (
+    ASSURANCE_CONTRACT_FIELDS,
+    CANONICAL_ASSURANCE_ARTIFACT,
+    audit_assurance_contract,
+)
 from constructionsight.governance_certification_core import GovernanceFinding, _finding
 from constructionsight.repository_path_certification import (
     RepositoryPathError,
@@ -96,6 +101,10 @@ _CONTRACT_FIELDS: Final = {
         {"schema_version", "exceptions"},
         set(),
     ),
+    "governance/assurance_contract.toml": (
+        set(ASSURANCE_CONTRACT_FIELDS),
+        set(),
+    ),
 }
 _ACTIVE_DEFECT_FIELDS: Final = {
     "id",
@@ -135,7 +144,7 @@ _VULNERABILITY_EXCEPTION_FIELDS: Final = {
     "expires_on",
     "review_evidence",
 }
-_CANONICAL_REVIEW_ARTIFACT: Final = "governance/reviews/independent_review.json"
+_CANONICAL_REVIEW_ARTIFACT: Final = CANONICAL_ASSURANCE_ARTIFACT
 
 
 def _nonblank(value: object) -> bool:
@@ -474,7 +483,7 @@ def _audit_resolved_defects(
                     "GOV-RESOLVED-012",
                     path,
                     f"resolved defect {defect_id} must reference the existing canonical "
-                    "independent-review artifact",
+                    "assurance artifact",
                 )
             )
         reviewed_tree_digest = defect.get("reviewed_tree_digest")
@@ -498,7 +507,7 @@ def _audit_resolved_defects(
                         "GOV-RESOLVED-014",
                         path,
                         f"resolved defect {defect_id} cannot verify malformed "
-                        "independent-review evidence",
+                        "assurance evidence",
                     )
                 )
             else:
@@ -696,5 +705,9 @@ def audit_governance_contract_shapes(
     _audit_vulnerability_exceptions(
         contracts["governance/vulnerability_exceptions.toml"],
         root,
+        findings,
+    )
+    audit_assurance_contract(
+        contracts["governance/assurance_contract.toml"],
         findings,
     )
