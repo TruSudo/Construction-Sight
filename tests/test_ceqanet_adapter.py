@@ -1,3 +1,4 @@
+import constructionsight.adapters.ceqanet as ceqanet_adapter_module
 from constructionsight.adapters.ceqanet import (
     CEQANET_ADVANCED_SEARCH_URL,
     CeqanetAdapter,
@@ -120,6 +121,13 @@ def test_ceqanet_adapter_runs_fixture_rows_through_runner() -> None:
     record = result.records[0]
     assert record.ceqa_key == "ceqanet:sch:2026000001"
     assert record.is_high_signal_document is True
+
+
+def test_ceqanet_adapter_namespace_does_not_reexport_live_transport() -> None:
+    assert not hasattr(ceqanet_adapter_module, "CeqanetLiveDiscovery")
+    assert not hasattr(ceqanet_adapter_module, "CeqanetDiscoveryResult")
+    assert "CeqanetLiveDiscovery" not in ceqanet_adapter_module.__all__
+    assert "CeqanetDiscoveryResult" not in ceqanet_adapter_module.__all__
 
 
 def test_ceqanet_live_discovery_detects_public_search_fields() -> None:
