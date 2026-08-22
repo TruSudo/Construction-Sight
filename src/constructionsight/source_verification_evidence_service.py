@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from datetime import datetime
 from urllib.parse import urlparse
 
 from constructionsight.adapters.specs import (
     AdapterFamilySpec,
     AdapterImplementationStatus,
 )
-from constructionsight.authorization_decision import AuthorizationUseLedger
 from constructionsight.models import PlatformFamily, PublicSource
 from constructionsight.source_readiness_models import (
     SourceReadinessReport,
@@ -53,8 +50,6 @@ def build_authorized_source_verification_evidence_package(
     caller_confirmation: bool,
     authorization_reason: str,
     operator_id: str | None = None,
-    now: Callable[[], datetime] | None = None,
-    ledger: AuthorizationUseLedger | None = None,
 ) -> SourceVerificationEvidencePackage:
     """Authorize exact bounded readiness checks and construct their evidence package."""
 
@@ -64,8 +59,6 @@ def build_authorized_source_verification_evidence_package(
         caller_confirmation=caller_confirmation,
         authorization_reason=authorization_reason,
         operator_id=operator_id,
-        now=now,
-        ledger=ledger,
     )
     return _package_from_readiness(readiness_report)
 

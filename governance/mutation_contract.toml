@@ -13,13 +13,109 @@ expected_output = "test_preflight_rejects_expiry_revocation_scope_and_stale_stat
 risk = "An authorization valid exactly at its exclusive expiry boundary could execute."
 
 [[cases]]
-id = "CS-MUT-AUTH-REUSE-001"
-path = "src/constructionsight/authorization_decision.py"
-search = "raise AuthorizationDeniedError(\"single-use authorization was already consumed\")"
-replacement = "return \"exact_replay\""
-tests = ["tests/test_authorization_decision.py::test_single_use_claim_allows_only_one_concurrent_caller"]
-expected_output = "test_single_use_claim_allows_only_one_concurrent_caller"
-risk = "Concurrent callers could reuse a single-use high-impact authorization."
+id = "CS-MUT-CONSUME-RESERVATION-001"
+path = "src/constructionsight/effect_consumption.py"
+search = '''    store = _owned_store()
+    reservation = store.reserve(operation, reserved_at=reserved_at)'''
+replacement = '''    return effect(reserved_at)'''
+tests = ["tests/test_effect_consumption.py::test_concurrent_duplicate_cannot_cross_effect_boundary_twice"]
+expected_output = "test_concurrent_duplicate_cannot_cross_effect_boundary_twice"
+risk = "The owned runner could invoke a protected effect without first creating a durable reservation."
+
+[[cases]]
+id = "CS-MUT-CONSUME-CHECK-THEN-ACT-001"
+path = "src/constructionsight/storage/effect_consumption_store.py"
+search = "                    INSERT INTO effect_consumptions ("
+replacement = "                    INSERT OR REPLACE INTO effect_consumptions ("
+tests = ["tests/test_lead_workflow_transition_authorization.py::test_concurrent_database_writers_apply_exact_transition_at_most_once"]
+expected_output = "test_concurrent_database_writers_apply_exact_transition_at_most_once"
+risk = "A last-writer-wins reservation could replace durable consumed state and reopen an effect after a check-then-act race."
+
+[[cases]]
+id = "CS-MUT-CONSUME-PROCESS-LOCAL-001"
+path = "src/constructionsight/effect_consumption.py"
+search = "    return EffectConsumptionStore(_CONSUMPTION_DATABASE_PATH)"
+replacement = '''    return EffectConsumptionStore(
+        _CONSUMPTION_DATABASE_PATH.with_name(
+            f"{_CONSUMPTION_DATABASE_PATH.stem}-{__import__('os').getpid()}.sqlite3"
+        )
+    )'''
+tests = ["tests/test_effect_consumption.py::test_cross_process_daily_file_effect_is_written_at_most_once"]
+expected_output = "test_cross_process_daily_file_effect_is_written_at_most_once"
+risk = "Consumption uniqueness could silently degrade to one independent database per process."
+
+[[cases]]
+id = "CS-MUT-CONSUME-DUPLICATE-SEQUENCE-001"
+path = "src/constructionsight/operator_services/ceqanet_recurring_run_service.py"
+search = "        allowance_identity=attempt_identity,"
+replacement = '''        allowance_identity=(
+            f"{attempt_identity}:{authorization.decision.decision_id}"
+        ),'''
+tests = ["tests/test_ceqanet_recurring_run_operator_service.py::test_exact_replay_returns_attempt_without_repeating_execution"]
+expected_output = "test_exact_replay_returns_attempt_without_repeating_execution"
+risk = "A repeated recurring-run sequence could receive a fresh invocation-specific allowance and execute twice."
+
+[[cases]]
+id = "CS-MUT-CONSUME-DAILY-ALLOWANCE-001"
+path = "src/constructionsight/ceqanet_csv_evidence_series_service.py"
+search = '''                "policy_digest": policy.policy_digest,
+                "source_name": series.source_name,
+                "utc_date": authorized_at.date().isoformat(),'''
+replacement = '''                "policy_digest": policy.policy_digest,
+                "series_digest": series.series_digest,
+                "source_name": series.source_name,
+                "utc_date": authorized_at.date().isoformat(),'''
+tests = ["tests/test_ceqanet_csv_evidence_series.py::test_stale_series_snapshot_cannot_reopen_spent_utc_date_allowance"]
+expected_output = "test_stale_series_snapshot_cannot_reopen_spent_utc_date_allowance"
+risk = "A stale but valid evidence-series snapshot could mint a second per-UTC-date allowance by changing the snapshot digest."
+
+[[cases]]
+id = "CS-MUT-CONSUME-TERMINAL-FAILURE-001"
+path = "src/constructionsight/storage/effect_consumption_store.py"
+search = '''                if record.status in {
+                    EffectConsumptionStatus.RESERVED,
+                    EffectConsumptionStatus.IN_PROGRESS,
+                }:'''
+replacement = '''                if record.status in {
+                    EffectConsumptionStatus.RESERVED,
+                    EffectConsumptionStatus.SUCCEEDED,
+                }:'''
+tests = ["tests/test_effect_consumption.py::test_crash_after_effect_start_remains_indeterminate_after_restart"]
+expected_output = "test_crash_after_effect_start_remains_indeterminate_after_restart"
+risk = "A crash-retained in-progress operation could lose its explicit indeterminate classification after restart."
+
+[[cases]]
+id = "CS-MUT-CONSUME-TERMINAL-PERSIST-001"
+path = "src/constructionsight/effect_consumption.py"
+search = "            effect_started=effect_started,"
+replacement = "            effect_started=False,"
+tests = ["tests/test_effect_consumption.py::test_terminal_result_persistence_failure_blocks_reexecution"]
+expected_output = "test_terminal_result_persistence_failure_blocks_reexecution"
+risk = "A failure after the effect boundary could fail to persist the correct terminal phase."
+
+[[cases]]
+id = "CS-MUT-CONSUME-CONTENT-001"
+path = "src/constructionsight/effect_consumption.py"
+search = '''        "revocation_identity": decision.revocation_identity,
+        "allowance_identity": allowance_identity,
+        "content_identity": content_identity,
+        "implementation_id": implementation_id,'''
+replacement = '''        "revocation_identity": decision.revocation_identity,
+        "allowance_identity": allowance_identity,
+        "content_identity": "content:ignored",
+        "implementation_id": implementation_id,'''
+tests = ["tests/test_effect_consumption.py::test_changed_content_conflicts_with_consumed_allowance"]
+expected_output = "test_changed_content_conflicts_with_consumed_allowance"
+risk = "Changed protected content could inherit the retained result of a different consumed operation."
+
+[[cases]]
+id = "CS-MUT-CONSUME-STALE-AUTH-001"
+path = "src/constructionsight/effect_consumption.py"
+search = "    if trusted_at < decision.not_before or trusted_at >= decision.expires_at:"
+replacement = "    if False and (trusted_at < decision.not_before or trusted_at >= decision.expires_at):"
+tests = ["tests/test_effect_consumption.py::test_stale_authorization_fails_before_reservation_or_effect"]
+expected_output = "test_stale_authorization_fails_before_reservation_or_effect"
+risk = "An expired authorization could reserve and execute under stale authority."
 
 [[cases]]
 id = "CS-MUT-AUTH-BOOLEAN-001"
@@ -49,13 +145,14 @@ expected_output = "test_direct_resolved_effect_is_rejected_without_authorization
 risk = "An imported or aliased canonical effect target could disappear from the resolved authorization graph."
 
 [[cases]]
-id = "CS-MUT-AUTH-DOMINANCE-001"
+id = "CS-MUT-CONSUME-CALLER-LEDGER-001"
 path = "src/constructionsight/semantic_authorization_certification.py"
-search = "            if state.phase is not _AuthorizationPhase.AUTHORIZED:"
-replacement = "            if False and state.phase is not _AuthorizationPhase.AUTHORIZED:"
-tests = ["tests/test_semantic_authorization_certification.py::test_branch_bypass_is_rejected", "tests/test_semantic_authorization_certification.py::test_effect_before_authorization_is_rejected"]
-expected_output = "test_effect_before_authorization_is_rejected"
-risk = "An effect could execute on a branch where canonical authorization or preflight did not dominate it."
+search = '''        "ledger",
+        "persister",'''
+replacement = '''        "persister",'''
+tests = ["tests/test_semantic_authorization_certification.py::test_authorized_service_cannot_expose_caller_consumption_or_time_seams"]
+expected_output = "test_authorized_service_cannot_expose_caller_consumption_or_time_seams"
+risk = "A production service could reacquire caller-selected consumption state through a ledger parameter."
 
 [[cases]]
 id = "CS-MUT-AUTH-LEAD-CONFIRM-001"
@@ -232,10 +329,10 @@ risk = "A forged listing query could become its own transport authority instead 
 [[cases]]
 id = "CS-MUT-PERSIST-SNAPSHOT-001"
 path = "src/constructionsight/operator_services/ceqanet_persistence_service.py"
-search = "    execution = active_executor(execution_payload, database_url)"
-replacement = "    execution = active_executor(write_plan_payload, database_url)"
-tests = ["tests/test_ceqanet_persistence_operator_service.py::test_persistence_facade_executes_only_a_deeply_detached_snapshot", "tests/test_ceqanet_persistence_operator_service.py::test_authorization_callback_mutation_cannot_change_snapshot_or_effect"]
-expected_output = "test_authorization_callback_mutation_cannot_change_snapshot_or_effect"
+search = "    execution_payload = _verified_execution_payload(snapshot)"
+replacement = "    execution_payload = write_plan_payload"
+tests = ["tests/test_ceqanet_persistence_operator_service.py::test_persistence_facade_executes_only_a_deeply_detached_snapshot"]
+expected_output = "test_persistence_facade_executes_only_a_deeply_detached_snapshot"
 risk = "Caller-owned nested write-plan content could change after authorization and reach the persistence effect."
 
 [[cases]]
@@ -479,13 +576,13 @@ expected_output = "test_mid_transaction_failure_rolls_back_partial_writes"
 risk = "An interrupted multi-record persistence operation could commit its partial prefix instead of rolling it back."
 
 [[cases]]
-id = "CS-MUT-AUTH-REPLAY-IDENTITY-001"
-path = "src/constructionsight/authorization_decision.py"
-search = "                and existing == replay_identity"
-replacement = "                and existing != replay_identity"
-tests = ["tests/test_authorization_decision.py::test_exact_replay_requires_same_replay_identity_and_repeats_no_effect"]
-expected_output = "test_exact_replay_requires_same_replay_identity_and_repeats_no_effect"
-risk = "Exact replay could accept a conflicting replay identity and reject the true idempotent replay."
+id = "CS-MUT-CONSUME-REPLAY-001"
+path = "src/constructionsight/effect_consumption.py"
+search = "    if reservation.exact_replay:"
+replacement = "    if False and reservation.exact_replay:"
+tests = ["tests/test_effect_consumption.py::test_sequential_exact_replay_returns_retained_result_without_effect"]
+expected_output = "test_sequential_exact_replay_returns_retained_result_without_effect"
+risk = "An exact duplicate could skip its retained result path and attempt to cross the protected effect boundary again."
 
 [[cases]]
 id = "CS-MUT-AUTH-NAIVE-PREFLIGHT-001"

@@ -86,6 +86,7 @@ def test_import_and_local_aliases_resolve_to_authorization_and_effect(
         tmp_path,
         """
         import constructionsight.http_transport as transport
+        from constructionsight.effect_consumption import _execute_owned_effect as consume
         from constructionsight.local_operator_authorization import (
             authorize_local_operator_operation as grant,
         )
@@ -93,7 +94,7 @@ def test_import_and_local_aliases_resolve_to_authorization_and_effect(
         def execute(execute_live: bool) -> None:
             send = transport.execute_bounded_http
             grant()
-            send()
+            consume(effect=send)
         """,
     )
 
@@ -188,7 +189,7 @@ def test_indirect_effect_selection_is_rejected_even_after_authorization(
     )
 
     assert "AUTH-INDIRECT-001" in _codes(findings)
-    assert "AUTH-BYPASS-001" not in _codes(findings)
+    assert "AUTH-BYPASS-001" in _codes(findings)
 
 
 def test_branch_bypass_is_rejected(tmp_path: Path) -> None:
@@ -251,23 +252,23 @@ def test_swallowed_authorization_failure_does_not_dominate_effect(
     assert "AUTH-BYPASS-001" in _codes(findings)
 
 
-def test_preflight_without_resolved_decision_builder_is_rejected(
+def test_validation_without_resolved_decision_builder_is_rejected(
     tmp_path: Path,
 ) -> None:
     findings = _audit(
         tmp_path,
         """
-        from constructionsight.authorization_decision import authorize_and_claim
-        from constructionsight.http_transport import execute_bounded_http as send
+        from constructionsight.authorization_decision import validate_authorization_decision
+        from constructionsight.effect_consumption import _execute_owned_effect as consume
 
         def execute(execute_live: bool) -> None:
-            authorize_and_claim()
-            send()
+            validate_authorization_decision()
+            consume()
         """,
     )
 
     assert "AUTH-PREFLIGHT-001" in _codes(findings)
-    assert "AUTH-BYPASS-001" in _codes(findings)
+    assert "AUTH-CONSUMPTION-001" in _codes(findings)
     assert "AUTH-BOOLEAN-002" in _codes(findings)
 
 
@@ -278,15 +279,16 @@ def test_resolved_decision_preflight_and_effect_order_is_accepted(
         tmp_path,
         """
         from constructionsight.authorization_decision import (
-            authorize_and_claim as claim,
             build_authorization_decision as build,
+            validate_authorization_decision as validate,
         )
+        from constructionsight.effect_consumption import _execute_owned_effect as consume
         from constructionsight.http_transport import execute_bounded_http as send
 
         def execute(execute_live: bool) -> None:
             build()
-            claim()
-            send()
+            validate()
+            consume(effect=send)
         """,
     )
 
@@ -304,6 +306,7 @@ def test_interprocedural_authorization_path_is_accepted(tmp_path: Path) -> None:
                     perform()
             """,
             "src/constructionsight/example_service.py": """
+                from constructionsight.effect_consumption import _execute_owned_effect
                 from constructionsight.http_transport import execute_bounded_http
                 from constructionsight.local_operator_authorization import (
                     authorize_local_operator_operation,
@@ -311,7 +314,7 @@ def test_interprocedural_authorization_path_is_accepted(tmp_path: Path) -> None:
 
                 def perform() -> None:
                     authorize_local_operator_operation()
-                    execute_bounded_http()
+                    _execute_owned_effect(effect=execute_bounded_http)
             """,
         },
     )
@@ -345,6 +348,62 @@ def test_interprocedural_effect_before_authorization_is_rejected(
     )
 
     assert "AUTH-BYPASS-001" in _codes(findings)
+
+
+def test_direct_effect_after_authorization_still_bypasses_atomic_consumption(
+    tmp_path: Path,
+) -> None:
+    findings = _audit(
+        tmp_path,
+        """
+        from constructionsight.http_transport import execute_bounded_http as send
+        from constructionsight.local_operator_authorization import (
+            authorize_local_operator_operation as grant,
+        )
+
+        def execute(execute_live: bool) -> None:
+            grant()
+            send()
+        """,
+    )
+
+    assert "AUTH-BYPASS-001" in _codes(findings)
+    assert "AUTH-BOOLEAN-002" in _codes(findings)
+
+
+def test_owned_consumption_without_authorization_is_rejected(tmp_path: Path) -> None:
+    findings = _audit(
+        tmp_path,
+        """
+        from constructionsight.effect_consumption import _execute_owned_effect
+
+        def execute(execute_live: bool) -> None:
+            _execute_owned_effect()
+        """,
+    )
+
+    assert "AUTH-CONSUMPTION-001" in _codes(findings)
+    assert "AUTH-BOOLEAN-002" in _codes(findings)
+
+
+def test_authorized_service_cannot_expose_caller_consumption_or_time_seams(
+    tmp_path: Path,
+) -> None:
+    findings = _audit_sources(
+        tmp_path,
+        {
+            _CLI_PATH: """
+                def execute(execute_live: bool) -> None:
+                    return None
+            """,
+            "src/constructionsight/example_service.py": """
+                def execute_authorized_example(*, ledger) -> None:
+                    return None
+            """,
+        },
+    )
+
+    assert "AUTH-CONSUMPTION-002" in _codes(findings)
 
 
 def test_registry_apply_confirmation_is_high_impact(tmp_path: Path) -> None:

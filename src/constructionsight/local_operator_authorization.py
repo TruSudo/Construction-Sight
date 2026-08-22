@@ -7,16 +7,15 @@ import json
 import os
 import sys
 import unicodedata
-from collections.abc import Callable, Iterable
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import TextIO
 
 from constructionsight.authorization_decision import (
     AuthorizationDeniedError,
-    AuthorizationUseLedger,
-    authorize_and_claim,
     build_authorization_decision,
+    validate_authorization_decision,
 )
 from constructionsight.authorization_decision_models import (
     AuthorizationDecision,
@@ -26,6 +25,12 @@ from constructionsight.authorization_decision_models import (
 )
 
 _AUTHORIZATION_TTL = timedelta(minutes=5)
+
+
+def _trusted_authorization_time() -> datetime:
+    """Acquire authorization time without production caller injection."""
+
+    return datetime.now(UTC)
 
 
 @dataclass(frozen=True)
@@ -130,11 +135,9 @@ def authorize_local_operator_operation(
     limitations: Iterable[str],
     operator_id: str | None = None,
     current_revocation_identity: str | None = None,
-    now: Callable[[], datetime] | None = None,
-    ledger: AuthorizationUseLedger | None = None,
     audit_stream: TextIO | None = None,
 ) -> LocalAuthorizationResult:
-    """Issue, verify, claim, and audit one exact local-process authorization."""
+    """Issue, validate, and audit one exact local operator authorization."""
 
     if not caller_confirmation:
         raise AuthorizationDeniedError(
@@ -162,7 +165,7 @@ def authorize_local_operator_operation(
     denials = _canonical_values(denied_authority, field="denied_authority")
     normalized_limitations = _canonical_values(limitations, field="limitations")
 
-    checked_at = (now or (lambda: datetime.now(UTC)))()
+    checked_at = _trusted_authorization_time()
     if checked_at.tzinfo is None or checked_at.utcoffset() is None:
         raise ValueError("authorization clock must return a timezone-aware datetime")
 
@@ -205,15 +208,7 @@ def authorize_local_operator_operation(
         caller_confirmation=True,
         limitations=normalized_limitations,
     )
-    replay_identity = authorization_digest(
-        "local-operator-attempt",
-        {
-            "decision_id": decision.decision_id,
-            "resource_id": normalized_resource_id,
-            "scope": scope,
-        },
-    )
-    preflight = authorize_and_claim(
+    preflight = validate_authorization_decision(
         decision,
         actor_id=actor,
         action=normalized_action,
@@ -222,9 +217,7 @@ def authorize_local_operator_operation(
         exact_scope=scope,
         current_state_identity=normalized_state,
         current_revocation_identity=revocation_identity,
-        replay_identity=replay_identity,
         checked_at=checked_at,
-        ledger=ledger if ledger is not None else AuthorizationUseLedger(),
     )
     result = LocalAuthorizationResult(decision=decision, preflight=preflight)
     _emit_audit_event(

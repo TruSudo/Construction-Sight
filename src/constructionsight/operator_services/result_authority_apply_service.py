@@ -2,18 +2,15 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import date, datetime
-from typing import Protocol
+from datetime import date
 
 from sqlalchemy.orm import Session
 
-from constructionsight.authorization_decision import (
-    AuthorizationDeniedError,
-    AuthorizationUseLedger,
-)
+from constructionsight.authorization_decision import AuthorizationDeniedError
 from constructionsight.authorization_decision_models import authorization_digest
+from constructionsight.effect_consumption import _execute_owned_effect
+from constructionsight.effect_consumption_models import EffectReplayPolicy
 from constructionsight.lead_operator_service import load_persisted_lead_workflow
 from constructionsight.local_operator_authorization import (
     LocalAuthorizationResult,
@@ -26,25 +23,6 @@ from constructionsight.result_authority_service import (
     load_result_authority_snapshot,
 )
 from constructionsight.result_ledger_models import ResultLedgerStatus
-
-
-class ResultAuthorityExecutor(Protocol):
-    """Exact serialized result mutation interface used after authorization."""
-
-    def __call__(
-        self,
-        session: Session,
-        *,
-        workflow_id: str,
-        expected_current_ledger_id: str | None,
-        status: ResultLedgerStatus,
-        authority_reason: str,
-        decided_date: date | None = None,
-        gross_value: float | None = None,
-        share_rate: float | None = None,
-        outcome_reasons: list[str] | None = None,
-    ) -> ResultAuthorityApplyReport:
-        """Create or correct one authoritative result."""
 
 
 @dataclass(frozen=True)
@@ -68,9 +46,6 @@ def apply_authorized_authoritative_result(
     share_rate: float | None = None,
     outcome_reasons: list[str] | None = None,
     operator_id: str | None = None,
-    now: Callable[[], datetime] | None = None,
-    ledger: AuthorizationUseLedger | None = None,
-    executor: ResultAuthorityExecutor | None = None,
 ) -> AuthorizedResultAuthorityApplyResult:
     """Authorize and apply one exact initial result or correction."""
 
@@ -164,27 +139,44 @@ def apply_authorized_authoritative_result(
                 {
                     "local operator identity is not authentication",
                     "result authority does not authorize payment or outreach",
-                    "single local-process result mutation only",
+                    "one durable exact-result allowance across processes",
                 },
                 key=str.casefold,
             )
         ),
         operator_id=operator_id,
         current_revocation_identity=state_identity,
-        now=now,
-        ledger=ledger,
     )
-    active_executor: ResultAuthorityExecutor = executor or apply_authoritative_result
-    report = active_executor(
-        session,
-        workflow_id=workflow_id,
-        expected_current_ledger_id=expected_current_ledger_id,
-        status=status,
-        authority_reason=normalized_reason,
-        decided_date=decided_date,
-        gross_value=gross_value,
-        share_rate=share_rate,
-        outcome_reasons=normalized_outcome_reasons,
+
+    def execute(_trusted_at: object) -> ResultAuthorityApplyReport:
+        report = apply_authoritative_result(
+            session,
+            workflow_id=workflow_id,
+            expected_current_ledger_id=expected_current_ledger_id,
+            status=status,
+            authority_reason=normalized_reason,
+            decided_date=decided_date,
+            gross_value=gross_value,
+            share_rate=share_rate,
+            outcome_reasons=normalized_outcome_reasons,
+        )
+        session.commit()
+        return report
+
+    report = _execute_owned_effect(
+        authorization,
+        allowance_identity=authorization_digest(
+            "result-authority-apply-allowance",
+            {"resource_id": resource_id, "state_identity": state_identity},
+        ),
+        content_identity=desired_outcome_identity,
+        implementation_id=(
+            "constructionsight.result_authority_service.apply_authoritative_result"
+        ),
+        replay_policy=EffectReplayPolicy.EXACT,
+        effect=execute,
+        encode_result=lambda result: result.model_dump(mode="json"),
+        decode_result=lambda payload: ResultAuthorityApplyReport.model_validate(payload),
     )
     return AuthorizedResultAuthorityApplyResult(
         report=report,

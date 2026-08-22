@@ -2,14 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
 
-from constructionsight.authorization_decision import (
-    AuthorizationDeniedError,
-    AuthorizationUseLedger,
-)
+from constructionsight.authorization_decision import AuthorizationDeniedError
 from constructionsight.authorization_decision_models import authorization_digest
 from constructionsight.ceqanet_recurring_run_models import (
     CeqanetRecurringRunDefinition,
@@ -21,6 +16,8 @@ from constructionsight.ceqanet_recurring_run_service import (
     assert_ceqanet_definition_evidence_current,
     execute_ceqanet_recurring_run,
 )
+from constructionsight.effect_consumption import _execute_owned_effect
+from constructionsight.effect_consumption_models import EffectReplayPolicy
 from constructionsight.local_operator_authorization import (
     LocalAuthorizationResult,
     authorize_local_operator_operation,
@@ -49,8 +46,6 @@ def execute_authorized_ceqanet_recurring_run(
     caller_confirmation: bool,
     authorization_reason: str,
     operator_id: str | None = None,
-    now: Callable[[], datetime] | None = None,
-    ledger: AuthorizationUseLedger | None = None,
 ) -> AuthorizedRecurringRunResult:
     """Authorize one exact, foreground, manually initiated manifest attempt."""
 
@@ -147,27 +142,49 @@ def execute_authorized_ceqanet_recurring_run(
         limitations=tuple(
             sorted(
                 {
-                    "attempt uniqueness is local-process only until a durable "
-                    "attempt ledger exists",
+                    "attempt uniqueness is enforced by a durable cross-process "
+                    "consumption reservation",
                     "local operator identity is not authentication",
                     "manual execution does not authorize scheduling or recurrence",
-                    "single local-process use only",
+                    "one durable manifest-attempt allowance across processes",
                 },
                 key=str.casefold,
             )
         ),
         operator_id=operator_id,
         current_revocation_identity=current_state_identity,
-        now=now,
-        ledger=ledger,
     )
-    execution = execute_ceqanet_recurring_run(
-        definition,
-        manifest,
-        sources,
-        checklist_report,
-        attempt_sequence=attempt_sequence,
-        execute_live=True,
+    attempt_identity = authorization_digest(
+        "ceqanet-recurring-run-attempt",
+        {
+            "run_id": manifest.run_id,
+            "manifest_digest": manifest.manifest_digest,
+            "attempt_sequence": attempt_sequence,
+        },
+    )
+
+    def execute_owned_recurring_run(_trusted_at: object) -> CeqanetRecurringRunExecution:
+        return execute_ceqanet_recurring_run(
+            definition,
+            manifest,
+            sources,
+            checklist_report,
+            attempt_sequence=attempt_sequence,
+            execute_live=True,
+        )
+
+    execution = _execute_owned_effect(
+        authorization,
+        allowance_identity=attempt_identity,
+        content_identity=current_state_identity,
+        implementation_id=(
+            "constructionsight.ceqanet_recurring_run_service."
+            "execute_ceqanet_recurring_run"
+        ),
+        replay_policy=EffectReplayPolicy.EXACT,
+        effect=execute_owned_recurring_run,
+        encode_result=lambda result: result.model_dump(mode="json"),
+        decode_result=lambda payload: CeqanetRecurringRunExecution.model_validate(payload),
     )
     return AuthorizedRecurringRunResult(
         execution=execution,

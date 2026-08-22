@@ -2,16 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Protocol
 
-from constructionsight.authorization_decision import (
-    AuthorizationDeniedError,
-    AuthorizationUseLedger,
-)
+from constructionsight.authorization_decision import AuthorizationDeniedError
 from constructionsight.authorization_decision_models import authorization_digest
+from constructionsight.effect_consumption import _execute_owned_effect
+from constructionsight.effect_consumption_models import EffectReplayPolicy
 from constructionsight.local_operator_authorization import (
     LocalAuthorizationResult,
     authorize_local_operator_operation,
@@ -33,9 +31,6 @@ from constructionsight.parcel_source_acquisition_http import (
 )
 from constructionsight.parcel_source_acquisition_models import (
     ParcelArcGISAcquisitionAssessment,
-    ParcelArcGISCapabilitySnapshot,
-    ParcelArcGISProbeObservation,
-    ParcelArcGISProbePlan,
 )
 from constructionsight.parcel_source_probe_http import execute_arcgis_bounded_probe
 from constructionsight.parcel_source_verification_models import (
@@ -64,34 +59,6 @@ _MAX_TIMEOUT_SECONDS = 30.0
 
 class ParcelArcGISOperatorServiceError(RuntimeError):
     """Raised when an authorized parcel operation fails after preflight."""
-
-
-class ArcGISProbeExecutor(Protocol):
-    """Bounded transport interface consumed by the application service."""
-
-    def __call__(
-        self,
-        profile: ParcelSourceVerificationProfile,
-        *,
-        sample_size: int,
-        timeout_seconds: float,
-    ) -> tuple[
-        ParcelArcGISCapabilitySnapshot,
-        ParcelArcGISProbePlan,
-        tuple[ParcelArcGISProbeObservation, ...],
-    ]:
-        """Execute the exact bounded ArcGIS proof plan."""
-
-
-class ArcGISBundlePersister(Protocol):
-    """Transactional persistence interface consumed by the application service."""
-
-    def __call__(
-        self,
-        bundle: ParcelArcGISBoundedProofBundle,
-        database_url: str | None,
-    ) -> None:
-        """Persist one exact bundle chain or identical replay."""
 
 
 @dataclass(frozen=True)
@@ -135,9 +102,6 @@ def execute_authorized_arcgis_probe(
     authorization_reason: str,
     caller_confirmation: bool,
     operator_id: str | None = None,
-    now: Callable[[], datetime] | None = None,
-    ledger: AuthorizationUseLedger | None = None,
-    executor: ArcGISProbeExecutor | None = None,
 ) -> AuthorizedArcGISProbe:
     """Authorize and execute one exact metadata/count/page/replay probe."""
 
@@ -203,36 +167,60 @@ def execute_authorized_arcgis_probe(
             "local operator identity is not authentication",
             "probe evidence cannot establish countywide completeness",
             "probe evidence cannot authorize bulk acquisition or persistence",
-            "single local-process use only",
+            "one durable bounded-probe allowance across processes",
         ),
         operator_id=operator_id,
         current_revocation_identity=state_identity,
-        now=now,
-        ledger=ledger,
     )
-    active_executor: ArcGISProbeExecutor = executor or execute_arcgis_bounded_probe
-    try:
-        snapshot, plan, observations = active_executor(
-            profile,
-            sample_size=sample_size,
-            timeout_seconds=timeout_seconds,
-        )
-        assessment = build_arcgis_acquisition_assessment(
-            snapshot,
-            plan,
-            observations,
-        )
-        bundle = build_arcgis_bounded_proof_bundle(
-            profile,
-            evidence,
-            snapshot,
-            plan,
-            observations,
-            assessment,
-            created_at=(now() if now is not None else None),
-        )
-    except (ValueError, ParcelArcGISProbeExecutionError) as exc:
-        raise ParcelArcGISOperatorServiceError(str(exc)) from exc
+    def execute(trusted_at: datetime) -> tuple[
+        ParcelArcGISAcquisitionAssessment,
+        ParcelArcGISBoundedProofBundle,
+    ]:
+        try:
+            snapshot, plan, observations = execute_arcgis_bounded_probe(
+                profile,
+                sample_size=sample_size,
+                timeout_seconds=timeout_seconds,
+            )
+            assessment = build_arcgis_acquisition_assessment(
+                snapshot,
+                plan,
+                observations,
+            )
+            bundle = build_arcgis_bounded_proof_bundle(
+                profile,
+                evidence,
+                snapshot,
+                plan,
+                observations,
+                assessment,
+                created_at=trusted_at,
+            )
+        except (ValueError, ParcelArcGISProbeExecutionError) as exc:
+            raise ParcelArcGISOperatorServiceError(str(exc)) from exc
+        return assessment, bundle
+
+    assessment, bundle = _execute_owned_effect(
+        authorization,
+        allowance_identity=authorization_digest(
+            "parcel-arcgis-probe-manual-allowance",
+            {"profile_id": profile.profile_id, "state_identity": state_identity},
+        ),
+        content_identity=state_identity,
+        implementation_id=(
+            "constructionsight.parcel_source_probe_http.execute_arcgis_bounded_probe"
+        ),
+        replay_policy=EffectReplayPolicy.EXACT,
+        effect=execute,
+        encode_result=lambda result: {
+            "assessment": result[0].model_dump(mode="json"),
+            "bundle": result[1].model_dump(mode="json"),
+        },
+        decode_result=lambda payload: (
+            ParcelArcGISAcquisitionAssessment.model_validate(payload["assessment"]),
+            ParcelArcGISBoundedProofBundle.model_validate(payload["bundle"]),
+        ),
+    )
     return AuthorizedArcGISProbe(
         assessment=assessment,
         bundle=bundle,
@@ -248,9 +236,6 @@ def persist_authorized_arcgis_bundle(
     authorization_reason: str,
     caller_confirmation: bool,
     operator_id: str | None = None,
-    now: Callable[[], datetime] | None = None,
-    ledger: AuthorizationUseLedger | None = None,
-    persister: ArcGISBundlePersister | None = None,
 ) -> AuthorizedArcGISPersistence:
     """Authorize and persist one independently verified exact bundle chain."""
 
@@ -304,22 +289,39 @@ def persist_authorized_arcgis_bundle(
             "database credentials are not granted by this decision",
             "local operator identity is not authentication",
             "persistence does not authorize acquisition or profile promotion",
-            "single local-process transaction only",
+            "one durable exact-bundle allowance across processes",
         ),
         operator_id=operator_id,
         current_revocation_identity=state_identity,
-        now=now,
-        ledger=ledger,
     )
-    active_persister = persister or _persist_bundle
-    try:
-        active_persister(bundle, database_url)
-        receipt = build_arcgis_proof_persistence_receipt(
-            bundle,
-            persisted_at=(now() if now is not None else None),
-        )
-    except ValueError as exc:
-        raise ParcelArcGISOperatorServiceError(str(exc)) from exc
+    def persist(trusted_at: datetime) -> ParcelArcGISProofPersistenceReceipt:
+        try:
+            _persist_bundle(bundle, database_url)
+            return build_arcgis_proof_persistence_receipt(
+                bundle,
+                persisted_at=trusted_at,
+            )
+        except ValueError as exc:
+            raise ParcelArcGISOperatorServiceError(str(exc)) from exc
+
+    receipt = _execute_owned_effect(
+        authorization,
+        allowance_identity=authorization_digest(
+            "parcel-arcgis-persistence-allowance",
+            {
+                "bundle_id": bundle.bundle_id,
+                "destination_identity": destination_identity,
+            },
+        ),
+        content_identity=state_identity,
+        implementation_id=(
+            "constructionsight.operator_services.parcel_arcgis_service._persist_bundle"
+        ),
+        replay_policy=EffectReplayPolicy.EXACT,
+        effect=persist,
+        encode_result=lambda result: result.model_dump(mode="json"),
+        decode_result=lambda payload: ParcelArcGISProofPersistenceReceipt.model_validate(payload),
+    )
     return AuthorizedArcGISPersistence(
         receipt=receipt,
         authorization=authorization,

@@ -1,15 +1,10 @@
 from __future__ import annotations
 
 import inspect
-from datetime import UTC, datetime
 
 import pytest
 
-from constructionsight.authorization_decision import (
-    AuthorizationDeniedError,
-    AuthorizationUseLedger,
-)
-from constructionsight.authorization_decision_models import authorization_digest
+from constructionsight.authorization_decision import AuthorizationDeniedError
 from constructionsight.ceqanet_persistence_execute import (
     CeqanetPersistenceExecutionResult,
 )
@@ -17,8 +12,6 @@ from constructionsight.operator_services import ceqanet_persistence_service
 from constructionsight.operator_services.ceqanet_persistence_service import (
     execute_authorized_ceqanet_write_plan,
 )
-
-_NOW = datetime(2026, 7, 15, 12, 0, tzinfo=UTC)
 
 
 def _plan() -> dict[str, object]:
@@ -74,7 +67,6 @@ def _execute(
     executor: _Executor,
     *,
     confirmation: bool = True,
-    ledger: AuthorizationUseLedger | None = None,
 ):
     monkeypatch.setattr(
         ceqanet_persistence_service,
@@ -87,15 +79,15 @@ def _execute(
         caller_confirmation=confirmation,
         authorization_reason="Apply one reviewed plan atomically.",
         operator_id="operator:tyler",
-        now=lambda: _NOW,
-        ledger=ledger,
     )
 
 
 def test_persistence_facade_does_not_accept_executor_injection() -> None:
-    assert "executor" not in inspect.signature(
-        execute_authorized_ceqanet_write_plan
-    ).parameters
+    parameters = inspect.signature(execute_authorized_ceqanet_write_plan).parameters
+    assert "executor" not in parameters
+    assert "ledger" not in parameters
+    assert "now" not in parameters
+    assert "consumption_store" not in parameters
 
 
 def test_persistence_facade_binds_plan_destination_and_atomicity(
@@ -126,17 +118,15 @@ def test_boolean_confirmation_cannot_authorize_persistence(
     assert executor.calls == []
 
 
-def test_shared_ledger_rejects_repeated_persistence(
+def test_exact_replay_returns_persistence_result_without_repeating_write(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     executor = _Executor()
-    ledger = AuthorizationUseLedger()
-
-    first = _execute(monkeypatch, executor, ledger=ledger)
+    first = _execute(monkeypatch, executor)
     assert first.execution.applied_count == 1
-    with pytest.raises(AuthorizationDeniedError, match="already consumed"):
-        _execute(monkeypatch, executor, ledger=ledger)
+    replay = _execute(monkeypatch, executor)
 
+    assert replay.execution == first.execution
     assert len(executor.calls) == 1
 
 
@@ -161,7 +151,6 @@ def test_invalid_plan_is_rejected_before_authorization_or_database_effect(
             caller_confirmation=True,
             authorization_reason="Attempt a drifted plan.",
             operator_id="operator:tyler",
-            now=lambda: _NOW,
         )
 
     assert executor.calls == []
@@ -212,7 +201,6 @@ def test_persistence_facade_executes_only_a_deeply_detached_snapshot(
         caller_confirmation=True,
         authorization_reason="Apply a detached reviewed plan.",
         operator_id="operator:tyler",
-        now=lambda: _NOW,
     )
 
     assert result.execution.applied_count == 1
@@ -220,65 +208,6 @@ def test_persistence_facade_executes_only_a_deeply_detached_snapshot(
     assert observed["operations"] is not caller_operations
     assert observed["operation"] is not caller_operation
     assert observed["payload"] is not caller_payload
-
-
-def test_authorization_callback_mutation_cannot_change_snapshot_or_effect(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    caller_plan = _plan()
-    reviewed_plan = _plan()
-    operations = caller_plan["operations"]
-    assert isinstance(operations, list)
-    operation = operations[0]
-    assert isinstance(operation, dict)
-    payload = operation["payload"]
-    assert isinstance(payload, dict)
-    observed: dict[str, object] = {}
-
-    def mutating_clock() -> datetime:
-        operation["operation_id"] = "sites:site:ceqanet:callback-mutation"
-        payload["city"] = "Callback mutation"
-        return _NOW
-
-    def executor(write_plan_payload, database_url: str):
-        del database_url
-        execution_operation = write_plan_payload["operations"][0]
-        observed["operation_id"] = execution_operation["operation_id"]
-        observed["city"] = execution_operation["payload"]["city"]
-        return CeqanetPersistenceExecutionResult(
-            applied_operations=(
-                {
-                    "operation_id": execution_operation["operation_id"],
-                    "source_index": execution_operation["source_index"],
-                    "target_collection": execution_operation["target_collection"],
-                    "target_key": execution_operation["target_key"],
-                    "action": execution_operation["action"],
-                },
-            )
-        )
-
-    monkeypatch.setattr(
-        ceqanet_persistence_service,
-        "_execute_persistence",
-        executor,
-    )
-    result = execute_authorized_ceqanet_write_plan(
-        write_plan_payload=caller_plan,
-        database_url="sqlite+pysqlite:///:memory:",
-        caller_confirmation=True,
-        authorization_reason="Apply the pre-callback reviewed plan.",
-        operator_id="operator:tyler",
-        now=mutating_clock,
-    )
-
-    assert observed == {
-        "operation_id": "sites:site:ceqanet:2017101033",
-        "city": "San Bernardino",
-    }
-    assert result.authorization.decision.resource_id == authorization_digest(
-        "ceqanet-write-plan",
-        reviewed_plan,
-    )
 
 
 def test_persistence_facade_rechecks_snapshot_identity_before_effect(

@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+import inspect
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+from threading import Barrier
 
 import pytest
 
-from constructionsight.authorization_decision import (
-    AuthorizationDeniedError,
-    AuthorizationUseLedger,
-)
+import constructionsight.operator_services.lead_workflow_transition_service as transition_service
+from constructionsight.authorization_decision import AuthorizationDeniedError
 from constructionsight.lead_operator_models import LeadWorkflowTransitionReport
 from constructionsight.lead_operator_service import LeadOperatorError
 from constructionsight.lead_workflow_models import (
@@ -24,9 +25,10 @@ from constructionsight.storage.database import (
     managed_session,
     session_factory,
 )
+from constructionsight.storage.effect_consumption_store import (
+    EffectOutcomeUnavailableError,
+)
 from constructionsight.storage.lead_workflow_store import store_lead_workflow_record
-
-_NOW = datetime(2026, 7, 16, 12, 0, tzinfo=UTC)
 
 
 def _workflow() -> LeadWorkflowRecord:
@@ -47,8 +49,8 @@ def _workflow() -> LeadWorkflowRecord:
     )
 
 
-def _factory():
-    engine = create_database_engine("sqlite+pysqlite:///:memory:")
+def _factory(database_url: str = "sqlite+pysqlite:///:memory:"):
+    engine = create_database_engine(database_url)
     initialize_database(engine)
     factory = session_factory(engine)
     with managed_session(factory) as session:
@@ -82,9 +84,16 @@ class _Executor:
         )
 
 
-def test_transition_requires_scope_bound_confirmation() -> None:
+def test_transition_requires_scope_bound_confirmation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     factory = _factory()
     executor = _Executor()
+    monkeypatch.setattr(
+        transition_service,
+        "transition_persisted_lead_workflow",
+        executor,
+    )
 
     with (
         managed_session(factory) as session,
@@ -98,16 +107,21 @@ def test_transition_requires_scope_bound_confirmation() -> None:
             reason="review new evidence",
             caller_confirmation=False,
             operator_id="operator:tyler",
-            now=lambda: _NOW,
-            executor=executor,
         )
 
     assert executor.calls == []
 
 
-def test_transition_rejects_stale_state_before_mutation() -> None:
+def test_transition_rejects_stale_state_before_mutation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     factory = _factory()
     executor = _Executor()
+    monkeypatch.setattr(
+        transition_service,
+        "transition_persisted_lead_workflow",
+        executor,
+    )
 
     with (
         managed_session(factory) as session,
@@ -121,17 +135,21 @@ def test_transition_rejects_stale_state_before_mutation() -> None:
             reason="attempt stale transition",
             caller_confirmation=True,
             operator_id="operator:tyler",
-            now=lambda: _NOW,
-            executor=executor,
         )
 
     assert executor.calls == []
 
 
-def test_shared_ledger_rejects_repeated_exact_transition() -> None:
+def test_exact_replay_returns_transition_without_repeating_database_writer(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     factory = _factory()
     executor = _Executor()
-    ledger = AuthorizationUseLedger()
+    monkeypatch.setattr(
+        transition_service,
+        "transition_persisted_lead_workflow",
+        executor,
+    )
 
     with managed_session(factory) as session:
         first = apply_authorized_lead_workflow_transition(
@@ -142,25 +160,19 @@ def test_shared_ledger_rejects_repeated_exact_transition() -> None:
             reason="review new evidence",
             caller_confirmation=True,
             operator_id="operator:tyler",
-            now=lambda: _NOW,
-            ledger=ledger,
-            executor=executor,
         )
         assert first.report.current_status == "review"
-        with pytest.raises(AuthorizationDeniedError, match="already consumed"):
-            apply_authorized_lead_workflow_transition(
-                session,
-                workflow_id="lead-workflow:test",
-                expected_current_status=LeadWorkflowStatus.MONITOR,
-                next_status=LeadWorkflowStatus.REVIEW,
-                reason="review new evidence",
-                caller_confirmation=True,
-                operator_id="operator:tyler",
-                now=lambda: _NOW,
-                ledger=ledger,
-                executor=executor,
-            )
+        replay = apply_authorized_lead_workflow_transition(
+            session,
+            workflow_id="lead-workflow:test",
+            expected_current_status=LeadWorkflowStatus.MONITOR,
+            next_status=LeadWorkflowStatus.REVIEW,
+            reason="review new evidence",
+            caller_confirmation=True,
+            operator_id="operator:tyler",
+        )
 
+    assert replay.report == first.report
     assert len(executor.calls) == 1
 
 
@@ -176,9 +188,65 @@ def test_authorized_transition_preserves_existing_mutation_service() -> None:
             reason="review new evidence",
             caller_confirmation=True,
             operator_id="operator:tyler",
-            now=lambda: _NOW,
         )
 
     assert result.report.previous_status == "monitor"
     assert result.report.current_status == "review"
     assert result.authorization.decision.action == "transition-lead-workflow"
+
+
+def test_transition_facade_rejects_effect_and_consumption_injection() -> None:
+    parameters = inspect.signature(apply_authorized_lead_workflow_transition).parameters
+    assert "executor" not in parameters
+    assert "ledger" not in parameters
+    assert "now" not in parameters
+    assert "consumption_store" not in parameters
+
+
+def test_concurrent_database_writers_apply_exact_transition_at_most_once(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database_path = tmp_path / "workflow.sqlite3"
+    factory = _factory(f"sqlite+pysqlite:///{database_path}")
+    rendezvous = Barrier(2)
+    real_load = transition_service.load_persisted_lead_workflow
+
+    def synchronized_load(session, workflow_id: str):
+        workflow = real_load(session, workflow_id)
+        rendezvous.wait(timeout=10)
+        return workflow
+
+    monkeypatch.setattr(
+        transition_service,
+        "load_persisted_lead_workflow",
+        synchronized_load,
+    )
+
+    def attempt():
+        try:
+            with managed_session(factory) as session:
+                result = apply_authorized_lead_workflow_transition(
+                    session,
+                    workflow_id="lead-workflow:test",
+                    expected_current_status=LeadWorkflowStatus.MONITOR,
+                    next_status=LeadWorkflowStatus.REVIEW,
+                    reason="review concurrent evidence",
+                    caller_confirmation=True,
+                    operator_id="operator:tyler",
+                )
+            return result.report
+        except EffectOutcomeUnavailableError as exc:
+            return exc
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        outcomes = [future.result(timeout=15) for future in [
+            executor.submit(attempt),
+            executor.submit(attempt),
+        ]]
+
+    with managed_session(factory) as session:
+        persisted = real_load(session, "lead-workflow:test")
+    assert persisted.status is LeadWorkflowStatus.REVIEW
+    assert len(persisted.events) == 2
+    assert sum(isinstance(item, LeadWorkflowTransitionReport) for item in outcomes) >= 1

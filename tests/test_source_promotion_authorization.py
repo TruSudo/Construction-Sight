@@ -1,16 +1,13 @@
 from __future__ import annotations
 
 import inspect
-from datetime import UTC, date, datetime
+from datetime import date
 
 import pytest
 
 import constructionsight.source_verification_checklist_service as checklist_service
 from constructionsight.adapters import default_adapter_family_specs
-from constructionsight.authorization_decision import (
-    AuthorizationDeniedError,
-    AuthorizationUseLedger,
-)
+from constructionsight.authorization_decision import AuthorizationDeniedError
 from constructionsight.models import (
     ExtractionDifficulty,
     Jurisdiction,
@@ -27,8 +24,6 @@ from constructionsight.source_readiness_models import HttpReachabilityResult
 from constructionsight.source_verification_checklist_models import (
     SourceVerificationObservation,
 )
-
-_NOW = datetime(2026, 7, 15, 12, 0, tzinfo=UTC)
 
 
 def _source() -> PublicSource:
@@ -95,7 +90,6 @@ def test_authorized_promotion_plan_is_report_only_and_source_bound(
         caller_confirmation=True,
         authorization_reason="Build one reviewed promotion plan.",
         operator_id="operator:tyler",
-        now=lambda: _NOW,
     )
 
     assert report.source_count == 1
@@ -117,19 +111,16 @@ def test_boolean_confirmation_cannot_authorize_promotion_plan(
             caller_confirmation=False,
             authorization_reason="Attempt a live promotion plan without confirmation.",
             operator_id="operator:tyler",
-            now=lambda: _NOW,
         )
 
     assert checker.calls == []
 
 
-def test_shared_ledger_rejects_repeated_promotion_plan(
+def test_exact_replay_returns_promotion_plan_without_repeating_check(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     checker = _Checker()
     monkeypatch.setattr(checklist_service, "_check_source_verification", checker)
-    ledger = AuthorizationUseLedger()
-
     first = build_authorized_source_promotion_plan(
         [_source()],
         default_adapter_family_specs(),
@@ -137,26 +128,23 @@ def test_shared_ledger_rejects_repeated_promotion_plan(
         caller_confirmation=True,
         authorization_reason="Build one reviewed promotion plan.",
         operator_id="operator:tyler",
-        now=lambda: _NOW,
-        ledger=ledger,
     )
     assert first.source_count == 1
-    with pytest.raises(AuthorizationDeniedError, match="already consumed"):
-        build_authorized_source_promotion_plan(
-            [_source()],
-            default_adapter_family_specs(),
-            observations=[_observation()],
-            caller_confirmation=True,
-            authorization_reason="Build one reviewed promotion plan.",
-            operator_id="operator:tyler",
-            now=lambda: _NOW,
-            ledger=ledger,
-        )
+    replay = build_authorized_source_promotion_plan(
+        [_source()],
+        default_adapter_family_specs(),
+        observations=[_observation()],
+        caller_confirmation=True,
+        authorization_reason="Build one reviewed promotion plan.",
+        operator_id="operator:tyler",
+    )
 
+    assert replay == first
     assert checker.calls == ["https://ceqanet.opr.ca.gov/"]
 
 
 def test_authorized_promotion_plan_does_not_accept_http_checker() -> None:
-    assert "http_checker" not in inspect.signature(
-        build_authorized_source_promotion_plan
-    ).parameters
+    parameters = inspect.signature(build_authorized_source_promotion_plan).parameters
+    assert "http_checker" not in parameters
+    assert "ledger" not in parameters
+    assert "now" not in parameters

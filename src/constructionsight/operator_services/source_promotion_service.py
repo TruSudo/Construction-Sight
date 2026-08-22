@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable
-from datetime import datetime
+from collections.abc import Iterable
 
 from constructionsight.adapters.specs import AdapterFamilySpec
-from constructionsight.authorization_decision import AuthorizationUseLedger
 from constructionsight.authorization_decision_models import authorization_digest
+from constructionsight.effect_consumption import _execute_owned_effect
+from constructionsight.effect_consumption_models import EffectReplayPolicy
 from constructionsight.local_operator_authorization import (
     authorize_local_operator_operation,
 )
@@ -33,8 +33,6 @@ def build_authorized_source_promotion_plan(
     caller_confirmation: bool,
     authorization_reason: str,
     operator_id: str | None = None,
-    now: Callable[[], datetime] | None = None,
-    ledger: AuthorizationUseLedger | None = None,
 ) -> SourcePromotionPlanReport:
     """Authorize exact-source HTTP evidence used by one report-only promotion plan."""
 
@@ -82,7 +80,7 @@ def build_authorized_source_promotion_plan(
             key=str.casefold,
         )
     )
-    authorize_local_operator_operation(
+    authorization = authorize_local_operator_operation(
         action="build-source-promotion-plan-live-evidence",
         resource_type="public-source-registry-snapshot",
         resource_id=registry_identity,
@@ -119,19 +117,35 @@ def build_authorized_source_promotion_plan(
                     "a generated plan is not authority to apply registry changes",
                     "HTTP evidence does not replace manual verification observations",
                     "local operator identity is not authentication",
-                    "single local-process use only",
+                    "one durable exact-plan allowance across processes",
                 },
                 key=str.casefold,
             )
         ),
         operator_id=operator_id,
         current_revocation_identity=state_identity,
-        now=now,
-        ledger=ledger,
     )
-    checklist = _build_source_verification_checklist_report_with_owned_http(
-        sources,
-        adapter_specs,
-        observations=normalized_observations,
+
+    def execute(_trusted_at: object) -> SourcePromotionPlanReport:
+        checklist = _build_source_verification_checklist_report_with_owned_http(
+            sources,
+            adapter_specs,
+            observations=normalized_observations,
+        )
+        return _build_source_promotion_plan_from_checklist(checklist)
+
+    return _execute_owned_effect(
+        authorization,
+        allowance_identity=authorization_digest(
+            "source-promotion-plan-manual-allowance",
+            {"state_identity": state_identity},
+        ),
+        content_identity=state_identity,
+        implementation_id=(
+            "constructionsight.source_verification_http.fetch_source_verification"
+        ),
+        replay_policy=EffectReplayPolicy.EXACT,
+        effect=execute,
+        encode_result=lambda result: result.model_dump(mode="json"),
+        decode_result=lambda payload: SourcePromotionPlanReport.model_validate(payload),
     )
-    return _build_source_promotion_plan_from_checklist(checklist)

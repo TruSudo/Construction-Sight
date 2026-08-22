@@ -28,7 +28,12 @@ _COMBINED_AUTHORIZER: Final = (
     "constructionsight.local_operator_authorization.authorize_local_operator_operation"
 )
 _DECISION_BUILDER: Final = "constructionsight.authorization_decision.build_authorization_decision"
-_AUTHORIZATION_PREFLIGHT: Final = "constructionsight.authorization_decision.authorize_and_claim"
+_AUTHORIZATION_PREFLIGHT: Final = (
+    "constructionsight.authorization_decision.validate_authorization_decision"
+)
+_OWNED_EFFECT_CONSUMER: Final = (
+    "constructionsight.effect_consumption._execute_owned_effect"
+)
 _EFFECT_TARGETS: Final = frozenset(
     {
         "constructionsight.adapters.ceqanet_listing_executor.execute_ceqanet_listing_plan",
@@ -47,7 +52,25 @@ _EFFECT_TARGETS: Final = frozenset(
         "store_arcgis_bounded_proof_bundle_chain",
     }
 )
-_DYNAMIC_EFFECT_PARAMETERS: Final = frozenset({"executor", "http_checker", "persister"})
+_DYNAMIC_EFFECT_PARAMETERS: Final = frozenset(
+    {
+        "consumption_store",
+        "executor",
+        "http_checker",
+        "ledger",
+        "persister",
+        "reservation_store",
+        "used_authorization_ids",
+        "verifier",
+    }
+)
+_FORBIDDEN_AUTHORIZED_SERVICE_PARAMETERS: Final = frozenset(
+    {
+        *_DYNAMIC_EFFECT_PARAMETERS,
+        "clock",
+        "now",
+    }
+)
 _AUTHORIZED_SERVICE_PREFIXES: Final = (
     "apply_authorized_",
     "build_authorized_",
@@ -64,6 +87,7 @@ class _AuthorizationPhase(Enum):
     NONE = "none"
     DECISION = "decision"
     AUTHORIZED = "authorized"
+    CONSUMED = "consumed"
 
 
 @dataclass
@@ -340,6 +364,24 @@ class _AuthorizationGraphAudit:
         self._cache: dict[tuple[object, ...], tuple[tuple[_AuthorizationPhase, bool], ...]] = {}
 
     def run(self) -> None:
+        for function in sorted(
+            self._program.functions.values(),
+            key=lambda item: item.target,
+        ):
+            leaf = function.target.rpartition(".")[2]
+            if not leaf.startswith(_AUTHORIZED_SERVICE_PREFIXES):
+                continue
+            forbidden = sorted(
+                set(function.parameters) & _FORBIDDEN_AUTHORIZED_SERVICE_PARAMETERS
+            )
+            if forbidden:
+                self._record(
+                    "AUTH-CONSUMPTION-002",
+                    function,
+                    function.node,
+                    "authorized production service exposes caller-selected effect, "
+                    "time, or consumption state: " + ", ".join(forbidden),
+                )
         for function in sorted(
             self._program.functions.values(),
             key=lambda item: item.target,
@@ -747,7 +789,6 @@ class _AuthorizationGraphAudit:
         target = self._program.normalize_target(raw_target)
         if target == _COMBINED_AUTHORIZER:
             state.phase = _AuthorizationPhase.AUTHORIZED
-            state.authorized_once = True
             return [state]
         if target == _DECISION_BUILDER:
             state.phase = _AuthorizationPhase.DECISION
@@ -763,18 +804,29 @@ class _AuthorizationGraphAudit:
                 )
             else:
                 state.phase = _AuthorizationPhase.AUTHORIZED
+            return [state]
+        if target == _OWNED_EFFECT_CONSUMER:
+            if state.phase is not _AuthorizationPhase.AUTHORIZED:
+                self._record(
+                    "AUTH-CONSUMPTION-001",
+                    caller,
+                    call,
+                    "ConstructionSight-owned durable effect consumption is not "
+                    "dominated by completed canonical authorization and preflight",
+                )
+            else:
+                state.phase = _AuthorizationPhase.CONSUMED
                 state.authorized_once = True
             return [state]
         if target == _DYNAMIC_EFFECT or target in _EFFECT_TARGETS:
-            if state.phase is not _AuthorizationPhase.AUTHORIZED:
-                detail = "dynamic injected effect boundary" if target == _DYNAMIC_EFFECT else target
-                self._record(
-                    "AUTH-BYPASS-001",
-                    caller,
-                    call,
-                    "reachable effect is not dominated by completed canonical "
-                    f"authorization and preflight: {detail}",
-                )
+            detail = "dynamic injected effect boundary" if target == _DYNAMIC_EFFECT else target
+            self._record(
+                "AUTH-BYPASS-001",
+                caller,
+                call,
+                "reachable effect bypasses the ConstructionSight-owned atomic "
+                f"consumption runner: {detail}",
+            )
             return [state]
         callee = self._program.functions.get(target)
         if callee is not None:

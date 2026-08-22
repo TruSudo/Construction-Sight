@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable
+from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import datetime
 
 from constructionsight.adapters.specs import AdapterFamilySpec
-from constructionsight.authorization_decision import AuthorizationUseLedger
 from constructionsight.authorization_decision_models import authorization_digest
+from constructionsight.effect_consumption import _execute_owned_effect
+from constructionsight.effect_consumption_models import EffectReplayPolicy
 from constructionsight.local_operator_authorization import (
     LocalAuthorizationResult,
     authorize_local_operator_operation,
@@ -53,8 +53,6 @@ def build_authorized_source_registry_update_plan(
     caller_confirmation: bool,
     authorization_reason: str,
     operator_id: str | None = None,
-    now: Callable[[], datetime] | None = None,
-    ledger: AuthorizationUseLedger | None = None,
 ) -> SourceRegistryUpdatePlanReport:
     """Authorize exact-source HTTP evidence used to build one report-only plan."""
 
@@ -102,7 +100,7 @@ def build_authorized_source_registry_update_plan(
             key=str.casefold,
         )
     )
-    authorize_local_operator_operation(
+    authorization = authorize_local_operator_operation(
         action="build-source-registry-update-plan-live-evidence",
         resource_type="public-source-registry-snapshot",
         resource_id=registry_identity,
@@ -139,25 +137,41 @@ def build_authorized_source_registry_update_plan(
                     "a generated plan is not authority to apply registry changes",
                     "HTTP evidence does not replace manual verification observations",
                     "local operator identity is not authentication",
-                    "single local-process use only",
+                    "one durable exact-plan allowance across processes",
                 },
                 key=str.casefold,
             )
         ),
         operator_id=operator_id,
         current_revocation_identity=state_identity,
-        now=now,
-        ledger=ledger,
     )
-    checklist = _build_source_verification_checklist_report_with_owned_http(
-        sources,
-        adapter_specs,
-        observations=normalized_observations,
-    )
-    promotion_plan = _build_source_promotion_plan_from_checklist(checklist)
-    return _build_source_registry_update_plan_from_promotion_plan(
-        sources,
-        promotion_plan,
+
+    def execute(_trusted_at: object) -> SourceRegistryUpdatePlanReport:
+        checklist = _build_source_verification_checklist_report_with_owned_http(
+            sources,
+            adapter_specs,
+            observations=normalized_observations,
+        )
+        promotion_plan = _build_source_promotion_plan_from_checklist(checklist)
+        return _build_source_registry_update_plan_from_promotion_plan(
+            sources,
+            promotion_plan,
+        )
+
+    return _execute_owned_effect(
+        authorization,
+        allowance_identity=authorization_digest(
+            "source-registry-plan-manual-allowance",
+            {"state_identity": state_identity},
+        ),
+        content_identity=state_identity,
+        implementation_id=(
+            "constructionsight.source_verification_http.fetch_source_verification"
+        ),
+        replay_policy=EffectReplayPolicy.EXACT,
+        effect=execute,
+        encode_result=lambda result: result.model_dump(mode="json"),
+        decode_result=lambda payload: SourceRegistryUpdatePlanReport.model_validate(payload),
     )
 
 
@@ -171,8 +185,6 @@ def apply_authorized_source_registry_update_plan(
     caller_confirmation: bool,
     authorization_reason: str,
     operator_id: str | None = None,
-    now: Callable[[], datetime] | None = None,
-    ledger: AuthorizationUseLedger | None = None,
 ) -> AuthorizedSourceRegistryApplyResult:
     """Authorize and apply one exact reviewed registry plan in memory."""
 
@@ -249,24 +261,51 @@ def apply_authorized_source_registry_update_plan(
         limitations=tuple(
             sorted(
                 {
-                    "authorization covers one local-process in-memory apply result",
+                    "the exact apply result is retained for cross-process replay",
                     "caller must persist only the returned registry and report "
                     "to the bound target",
                     "local operator identity is not authentication",
-                    "single local-process use only",
+                    "one durable exact-apply allowance across processes",
                 },
                 key=str.casefold,
             )
         ),
         operator_id=operator_id,
         current_revocation_identity=current_state_identity,
-        now=now,
-        ledger=ledger,
     )
-    updated_sources, report = apply_source_registry_update_plan(
-        sources,
-        plan,
-        approved_plan_digest=expected_plan_digest,
+    def execute_owned_registry_apply(
+        _trusted_at: object,
+    ) -> tuple[list[PublicSource], SourceRegistryApplyReport]:
+        return apply_source_registry_update_plan(
+            sources,
+            plan,
+            approved_plan_digest=expected_plan_digest,
+        )
+
+    updated_sources, report = _execute_owned_effect(
+        authorization,
+        allowance_identity=authorization_digest(
+            "source-registry-apply-allowance",
+            {
+                "resource_id": resource_id,
+                "target_path_identity": target_identity,
+            },
+        ),
+        content_identity=current_state_identity,
+        implementation_id=(
+            "constructionsight.source_registry_apply_service."
+            "apply_source_registry_update_plan"
+        ),
+        replay_policy=EffectReplayPolicy.EXACT,
+        effect=execute_owned_registry_apply,
+        encode_result=lambda result: {
+            "sources": [source.model_dump(mode="json") for source in result[0]],
+            "report": result[1].model_dump(mode="json"),
+        },
+        decode_result=lambda payload: (
+            [PublicSource.model_validate(item) for item in payload["sources"]],
+            SourceRegistryApplyReport.model_validate(payload["report"]),
+        ),
     )
     return AuthorizedSourceRegistryApplyResult(
         sources=tuple(updated_sources),

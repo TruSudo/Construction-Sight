@@ -10,9 +10,8 @@ import constructionsight.ceqanet_persistence_execute as ceqanet_persistence_exec
 import constructionsight.result_authority_service as result_authority_service
 from constructionsight.authorization_decision import (
     AuthorizationDeniedError,
-    AuthorizationUseLedger,
-    authorize_and_claim,
     build_authorization_decision,
+    validate_authorization_decision,
 )
 from constructionsight.authorization_decision_models import (
     AuthorizationDecision,
@@ -269,7 +268,7 @@ def test_preflight_rejects_naive_checked_at() -> None:
     decision = _authorization_decision()
 
     with pytest.raises(AuthorizationDeniedError, match="preflight time must be aware"):
-        authorize_and_claim(
+        validate_authorization_decision(
             decision,
             actor_id=decision.actor_id,
             action=decision.action,
@@ -278,7 +277,5 @@ def test_preflight_rejects_naive_checked_at() -> None:
             exact_scope=decision.exact_scope,
             current_state_identity=decision.expected_identity,
             current_revocation_identity=decision.revocation_identity,
-            replay_identity="result:semantic-witness",
             checked_at=datetime(2026, 7, 15, 12, 5),
-            ledger=AuthorizationUseLedger(),
         )

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -113,7 +114,7 @@ def test_preflight_proves_current_unused_exact_authorization() -> None:
     assert preflight.production_bulk_run_authorized is False
 
 
-def test_preflight_rejects_wrong_identity_future_expired_and_consumed() -> None:
+def test_preflight_rejects_wrong_identity_future_and_expired_window() -> None:
     authorization = _authorization()
 
     with pytest.raises(ValueError, match="expected.*identity"):
@@ -142,15 +143,16 @@ def test_preflight_rejects_wrong_identity_future_expired_and_consumed() -> None:
             expected_authorization_id=authorization.authorization_id,
             checked_at=_EXPIRES_AT,
         )
-    with pytest.raises(ValueError, match="already been consumed"):
-        preflight_arcgis_bulk_rehearsal_authorization(
-            _snapshot(),
-            _plan(),
-            authorization,
-            expected_authorization_id=authorization.authorization_id,
-            checked_at=_NOT_BEFORE,
-            used_authorization_ids={authorization.authorization_id},
-        )
+
+
+def test_preflight_rejects_caller_supplied_consumption_state() -> None:
+    parameters = inspect.signature(
+        preflight_arcgis_bulk_rehearsal_authorization
+    ).parameters
+
+    assert "used_authorization_ids" not in parameters
+    assert "ledger" not in parameters
+    assert "consumption_store" not in parameters
 
 
 def test_authorization_rejects_long_window_and_plan_mismatch() -> None:

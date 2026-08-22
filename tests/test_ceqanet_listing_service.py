@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from unittest.mock import patch
 
 import pytest
 
+import constructionsight.ceqanet_listing_service as listing_service
 from constructionsight.adapters.ceqanet_listing import (
     CeqanetListingPlan,
     CeqanetListingQuery,
@@ -15,10 +17,7 @@ from constructionsight.adapters.ceqanet_listing_executor import (
     CeqanetListingExecutionReport,
     CeqanetListingResponseSnapshot,
 )
-from constructionsight.authorization_decision import (
-    AuthorizationDeniedError,
-    AuthorizationUseLedger,
-)
+from constructionsight.authorization_decision import AuthorizationDeniedError
 from constructionsight.ceqanet_listing_service import (
     CeqanetListingServiceError,
     execute_authorized_ceqanet_listing,
@@ -94,21 +93,18 @@ def _execute(
     plan: CeqanetListingPlan | None = None,
     profile: SourceAccessProfile | None = None,
     confirmation: bool = True,
-    ledger: AuthorizationUseLedger | None = None,
 ) -> dict[str, object]:
     active_profile = profile or _profile()
-    return execute_authorized_ceqanet_listing(
-        plan=plan or _plan(active_profile),
-        access_profile=active_profile,
-        operator_id="operator:tyler",
-        authorization_reason="Execute one reviewed CEQAnet listing plan.",
-        caller_confirmation=confirmation,
-        timeout_seconds=20.0,
-        max_response_bytes=50_000,
-        now=lambda: _NOW,
-        ledger=ledger,
-        executor=executor,
-    )
+    with patch.object(listing_service, "execute_ceqanet_listing_plan", executor):
+        return execute_authorized_ceqanet_listing(
+            plan=plan or _plan(active_profile),
+            access_profile=active_profile,
+            operator_id="operator:tyler",
+            authorization_reason="Execute one reviewed CEQAnet listing plan.",
+            caller_confirmation=confirmation,
+            timeout_seconds=20.0,
+            max_response_bytes=50_000,
+        )
 
 
 def _metadata(payload: dict[str, object]) -> dict[str, object]:
@@ -158,16 +154,15 @@ def test_current_access_state_must_match_immutable_plan() -> None:
     assert executor.calls == []
 
 
-def test_shared_ledger_rejects_repeated_listing_execution() -> None:
+def test_exact_replay_returns_listing_result_without_repeating_execution() -> None:
     executor = _Executor()
-    ledger = AuthorizationUseLedger()
     plan = _plan()
 
-    first = _execute(executor, plan=plan, ledger=ledger)
+    first = _execute(executor, plan=plan)
     assert _metadata(first)["authorization"]
-    with pytest.raises(AuthorizationDeniedError, match="already consumed"):
-        _execute(executor, plan=plan, ledger=ledger)
+    replay = _execute(executor, plan=plan)
 
+    assert replay["snapshots"] == first["snapshots"]
     assert executor.calls == [(1, 1, 50_000)]
 
 

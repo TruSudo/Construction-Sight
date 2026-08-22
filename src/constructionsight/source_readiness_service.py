@@ -4,15 +4,14 @@ from __future__ import annotations
 
 import hashlib
 from collections import Counter
-from collections.abc import Callable
-from datetime import datetime
 
 from constructionsight.adapters.specs import (
     AdapterFamilySpec,
     AdapterImplementationStatus,
 )
-from constructionsight.authorization_decision import AuthorizationUseLedger
 from constructionsight.authorization_decision_models import authorization_digest
+from constructionsight.effect_consumption import _execute_owned_effect
+from constructionsight.effect_consumption_models import EffectReplayPolicy
 from constructionsight.local_operator_authorization import (
     authorize_local_operator_operation,
 )
@@ -54,8 +53,6 @@ def build_authorized_source_readiness_report(
     caller_confirmation: bool,
     authorization_reason: str,
     operator_id: str | None = None,
-    now: Callable[[], datetime] | None = None,
-    ledger: AuthorizationUseLedger | None = None,
 ) -> SourceReadinessReport:
     """Authorize bounded HEAD/405-GET reachability for the exact source set."""
 
@@ -104,7 +101,7 @@ def build_authorized_source_readiness_report(
             key=str.casefold,
         )
     )
-    authorize_local_operator_operation(
+    authorization = authorize_local_operator_operation(
         action="check-source-http-readiness",
         resource_type="public-source-registry-snapshot",
         resource_id=resource_id,
@@ -137,21 +134,38 @@ def build_authorized_source_readiness_report(
                 {
                     "local operator identity is not authentication",
                     "reachability does not establish source completeness or maturity",
-                    "single local-process use only",
+                    "one durable source-set allowance across processes",
                 },
                 key=str.casefold,
             )
         ),
         operator_id=operator_id,
         current_revocation_identity=state_identity,
-        now=now,
-        ledger=ledger,
     )
-    http_results = tuple(_check_source_http_reachability(source) for source in sources)
-    return _build_source_readiness_report_with_results(
-        sources,
-        adapter_specs,
-        http_results=http_results,
+
+    def execute(_trusted_at: object) -> SourceReadinessReport:
+        http_results = tuple(_check_source_http_reachability(source) for source in sources)
+        return _build_source_readiness_report_with_results(
+            sources,
+            adapter_specs,
+            http_results=http_results,
+        )
+
+    return _execute_owned_effect(
+        authorization,
+        allowance_identity=authorization_digest(
+            "source-readiness-manual-allowance",
+            {"state_identity": state_identity},
+        ),
+        content_identity=state_identity,
+        implementation_id=(
+            "constructionsight.source_readiness_http."
+            "check_source_http_reachability"
+        ),
+        replay_policy=EffectReplayPolicy.EXACT,
+        effect=execute,
+        encode_result=lambda result: result.model_dump(mode="json"),
+        decode_result=lambda payload: SourceReadinessReport.model_validate(payload),
     )
 
 

@@ -4,21 +4,18 @@ from __future__ import annotations
 
 import json
 import math
-from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
 from typing import Any, cast
 
-from constructionsight.authorization_decision import (
-    AuthorizationDeniedError,
-    AuthorizationUseLedger,
-)
+from constructionsight.authorization_decision import AuthorizationDeniedError
 from constructionsight.authorization_decision_models import authorization_digest
 from constructionsight.ceqanet_persistence_execute import (
     CeqanetPersistenceExecutionResult,
     execute_ceqanet_write_plan,
     validate_ceqanet_write_plan,
 )
+from constructionsight.effect_consumption import _execute_owned_effect
+from constructionsight.effect_consumption_models import EffectReplayPolicy
 from constructionsight.local_operator_authorization import (
     LocalAuthorizationResult,
     authorize_local_operator_operation,
@@ -146,6 +143,14 @@ def _execute_persistence(
     return execute_ceqanet_write_plan(write_plan_payload, engine=engine)
 
 
+def _decode_persistence_result(payload: dict[str, Any]) -> CeqanetPersistenceExecutionResult:
+    return CeqanetPersistenceExecutionResult(
+        applied_operations=tuple(cast(list[dict[str, object]], payload["applied_operations"])),
+        failed_operations=tuple(cast(list[dict[str, object]], payload["failed_operations"])),
+        skipped_operations=tuple(cast(list[dict[str, object]], payload["skipped_operations"])),
+    )
+
+
 def execute_authorized_ceqanet_write_plan(
     *,
     write_plan_payload: dict[str, Any],
@@ -153,8 +158,6 @@ def execute_authorized_ceqanet_write_plan(
     caller_confirmation: bool,
     authorization_reason: str,
     operator_id: str | None = None,
-    now: Callable[[], datetime] | None = None,
-    ledger: AuthorizationUseLedger | None = None,
 ) -> AuthorizedPersistenceResult:
     """Authorize and atomically apply one exact reviewed write plan."""
 
@@ -227,19 +230,38 @@ def execute_authorized_ceqanet_write_plan(
                     "database credentials are not granted by this decision",
                     "local operator identity is not authentication",
                     "persistence does not authorize network execution or source promotion",
-                    "single local-process transaction only",
+                    "one durable exact-plan allowance across processes",
                 },
                 key=str.casefold,
             )
         ),
         operator_id=operator_id,
         current_revocation_identity=current_state_identity,
-        now=now,
-        ledger=ledger,
     )
-    active_executor = _execute_persistence
     execution_payload = _verified_execution_payload(snapshot)
-    execution = active_executor(execution_payload, database_url)
+
+    def execute_owned_persistence(_trusted_at: object) -> CeqanetPersistenceExecutionResult:
+        return _execute_persistence(execution_payload, database_url)
+
+    execution = _execute_owned_effect(
+        authorization,
+        allowance_identity=authorization_digest(
+            "ceqanet-write-plan-allowance",
+            {
+                "plan_digest": plan_digest,
+                "destination_identity": destination_identity,
+            },
+        ),
+        content_identity=plan_digest,
+        implementation_id=(
+            "constructionsight.operator_services.ceqanet_persistence_service."
+            "_execute_persistence"
+        ),
+        replay_policy=EffectReplayPolicy.EXACT,
+        effect=execute_owned_persistence,
+        encode_result=lambda result: result.to_dict(),
+        decode_result=lambda payload: _decode_persistence_result(dict(payload)),
+    )
     if execution.failed_count or execution.skipped_count:
         raise RuntimeError(
             "atomic persistence executor returned a partial result contract violation"

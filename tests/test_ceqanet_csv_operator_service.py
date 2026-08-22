@@ -3,13 +3,12 @@ from __future__ import annotations
 import base64
 import hashlib
 from datetime import UTC, datetime
+from unittest.mock import patch
 
 import pytest
 
-from constructionsight.authorization_decision import (
-    AuthorizationDeniedError,
-    AuthorizationUseLedger,
-)
+import constructionsight.operator_services.ceqanet_csv_service as csv_operator_service
+from constructionsight.authorization_decision import AuthorizationDeniedError
 from constructionsight.ceqanet_csv_live_models import (
     CeqanetCsvLiveExecution,
     CeqanetCsvLiveVerification,
@@ -104,22 +103,29 @@ def _execute(
     *,
     confirmation: bool = True,
     profile: SourceAccessProfile | None = None,
-    ledger: AuthorizationUseLedger | None = None,
 ):
-    return execute_authorized_ceqanet_csv(
-        request=build_ceqanet_csv_export_request(sch_number="2026030377"),
-        access_profile=profile or _profile(),
-        authorization_reason="Execute one reviewed CEQAnet CSV evidence request.",
-        caller_confirmation=confirmation,
-        timeout_seconds=20.0,
-        max_body_bytes=10_000_000,
-        max_retained_rows=1_000,
-        operator_id="operator:tyler",
-        now=lambda: _NOW,
-        ledger=ledger,
-        executor=executor,
-        verifier=verifier,
-    )
+    with (
+        patch.object(
+            csv_operator_service,
+            "execute_ceqanet_csv_live_request",
+            executor,
+        ),
+        patch.object(
+            csv_operator_service,
+            "verify_ceqanet_csv_live_execution",
+            verifier,
+        ),
+    ):
+        return execute_authorized_ceqanet_csv(
+            request=build_ceqanet_csv_export_request(sch_number="2026030377"),
+            access_profile=profile or _profile(),
+            authorization_reason="Execute one reviewed CEQAnet CSV evidence request.",
+            caller_confirmation=confirmation,
+            timeout_seconds=20.0,
+            max_body_bytes=10_000_000,
+            max_retained_rows=1_000,
+            operator_id="operator:tyler",
+        )
 
 
 def test_csv_service_binds_exact_request_policy_and_negative_authority() -> None:
@@ -169,16 +175,15 @@ def test_lawful_access_state_blocks_csv_execution_before_transport() -> None:
     assert verifier.calls == []
 
 
-def test_shared_ledger_rejects_repeated_csv_execution() -> None:
+def test_exact_replay_returns_csv_result_without_repeating_execution() -> None:
     executor = _Executor()
     verifier = _Verifier()
-    ledger = AuthorizationUseLedger()
-
-    first = _execute(executor, verifier, ledger=ledger)
+    first = _execute(executor, verifier)
     assert first.verification.passed is True
-    with pytest.raises(AuthorizationDeniedError, match="already consumed"):
-        _execute(executor, verifier, ledger=ledger)
+    replay = _execute(executor, verifier)
 
+    assert replay.execution == first.execution
+    assert replay.verification == first.verification
     assert len(executor.calls) == 1
     assert len(verifier.calls) == 1
 
@@ -197,9 +202,6 @@ def test_csv_service_rejects_scope_expansion_beyond_policy() -> None:
             max_body_bytes=10_000_000,
             max_retained_rows=1_001,
             operator_id="operator:tyler",
-            now=lambda: _NOW,
-            executor=executor,
-            verifier=verifier,
         )
 
     assert executor.calls == []

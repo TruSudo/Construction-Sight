@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable
-from datetime import datetime
+from collections.abc import Iterable
 
 from constructionsight.adapters.specs import AdapterFamilySpec
-from constructionsight.authorization_decision import AuthorizationUseLedger
 from constructionsight.authorization_decision_models import authorization_digest
+from constructionsight.effect_consumption import _execute_owned_effect
+from constructionsight.effect_consumption_models import EffectReplayPolicy
 from constructionsight.local_operator_authorization import (
     authorize_local_operator_operation,
 )
@@ -62,8 +62,6 @@ def build_authorized_source_verification_checklist_report(
     caller_confirmation: bool,
     authorization_reason: str,
     operator_id: str | None = None,
-    now: Callable[[], datetime] | None = None,
-    ledger: AuthorizationUseLedger | None = None,
 ) -> SourceVerificationChecklistReport:
     """Authorize exact-source verification GET evidence before checklist building."""
 
@@ -114,7 +112,7 @@ def build_authorized_source_verification_checklist_report(
             key=str.casefold,
         )
     )
-    authorize_local_operator_operation(
+    authorization = authorize_local_operator_operation(
         action="build-source-verification-checklist-live-evidence",
         resource_type="public-source-verification-snapshot",
         resource_id=resource_id,
@@ -150,20 +148,38 @@ def build_authorized_source_verification_checklist_report(
                     "HTTP evidence does not complete manual query, list, detail, "
                     "barrier, or terms review",
                     "local operator identity is not authentication",
-                    "single local-process use only",
+                    "one durable source-set allowance across processes",
                 },
                 key=str.casefold,
             )
         ),
         operator_id=operator_id,
         current_revocation_identity=state_identity,
-        now=now,
-        ledger=ledger,
     )
-    return _build_source_verification_checklist_report_with_owned_http(
-        sources,
-        adapter_specs,
-        observations=normalized_observations,
+
+    def execute_owned_checklist(
+        _trusted_at: object,
+    ) -> SourceVerificationChecklistReport:
+        return _build_source_verification_checklist_report_with_owned_http(
+            sources,
+            adapter_specs,
+            observations=normalized_observations,
+        )
+
+    return _execute_owned_effect(
+        authorization,
+        allowance_identity=authorization_digest(
+            "source-verification-checklist-manual-allowance",
+            {"state_identity": state_identity},
+        ),
+        content_identity=state_identity,
+        implementation_id=(
+            "constructionsight.source_verification_http.fetch_source_verification"
+        ),
+        replay_policy=EffectReplayPolicy.EXACT,
+        effect=execute_owned_checklist,
+        encode_result=lambda result: result.model_dump(mode="json"),
+        decode_result=lambda payload: SourceVerificationChecklistReport.model_validate(payload),
     )
 
 

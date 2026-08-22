@@ -1,16 +1,13 @@
 from __future__ import annotations
 
 import inspect
-from datetime import UTC, date, datetime
+from datetime import date
 
 import pytest
 
 import constructionsight.source_verification_checklist_service as checklist_service
 from constructionsight.adapters import default_adapter_family_specs
-from constructionsight.authorization_decision import (
-    AuthorizationDeniedError,
-    AuthorizationUseLedger,
-)
+from constructionsight.authorization_decision import AuthorizationDeniedError
 from constructionsight.models import (
     ExtractionDifficulty,
     Jurisdiction,
@@ -31,8 +28,6 @@ from constructionsight.source_registry_update_plan_service import (
 from constructionsight.source_verification_checklist_models import (
     SourceVerificationObservation,
 )
-
-_NOW = datetime(2026, 7, 15, 12, 0, tzinfo=UTC)
 
 
 def _source() -> PublicSource:
@@ -100,7 +95,6 @@ def test_authorized_registry_plan_binds_exact_sources_and_observations(
         caller_confirmation=True,
         authorization_reason="Build one reviewed registry update plan.",
         operator_id="operator:tyler",
-        now=lambda: _NOW,
     )
 
     assert report.source_count == 1
@@ -122,19 +116,16 @@ def test_boolean_confirmation_cannot_authorize_live_registry_plan(
             caller_confirmation=False,
             authorization_reason="Attempt a live plan without confirmation.",
             operator_id="operator:tyler",
-            now=lambda: _NOW,
         )
 
     assert checker.calls == []
 
 
-def test_shared_ledger_rejects_repeated_live_registry_plan(
+def test_exact_replay_returns_registry_plan_without_repeating_check(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     checker = _Checker()
     monkeypatch.setattr(checklist_service, "_check_source_verification", checker)
-    ledger = AuthorizationUseLedger()
-
     first = build_authorized_source_registry_update_plan(
         [_source()],
         default_adapter_family_specs(),
@@ -142,29 +133,26 @@ def test_shared_ledger_rejects_repeated_live_registry_plan(
         caller_confirmation=True,
         authorization_reason="Build one reviewed registry update plan.",
         operator_id="operator:tyler",
-        now=lambda: _NOW,
-        ledger=ledger,
     )
     assert first.update_count == 1
-    with pytest.raises(AuthorizationDeniedError, match="already consumed"):
-        build_authorized_source_registry_update_plan(
-            [_source()],
-            default_adapter_family_specs(),
-            observations=[_observation()],
-            caller_confirmation=True,
-            authorization_reason="Build one reviewed registry update plan.",
-            operator_id="operator:tyler",
-            now=lambda: _NOW,
-            ledger=ledger,
-        )
+    replay = build_authorized_source_registry_update_plan(
+        [_source()],
+        default_adapter_family_specs(),
+        observations=[_observation()],
+        caller_confirmation=True,
+        authorization_reason="Build one reviewed registry update plan.",
+        operator_id="operator:tyler",
+    )
 
+    assert replay == first
     assert checker.calls == ["https://ceqanet.opr.ca.gov/"]
 
 
 def test_authorized_registry_plan_does_not_accept_http_checker() -> None:
-    assert "http_checker" not in inspect.signature(
-        build_authorized_source_registry_update_plan
-    ).parameters
+    parameters = inspect.signature(build_authorized_source_registry_update_plan).parameters
+    assert "http_checker" not in parameters
+    assert "ledger" not in parameters
+    assert "now" not in parameters
 
 
 def test_registry_apply_binds_exact_plan_registry_and_target() -> None:
@@ -184,7 +172,6 @@ def test_registry_apply_binds_exact_plan_registry_and_target() -> None:
         caller_confirmation=True,
         authorization_reason="Apply one reviewed registry update plan.",
         operator_id="operator:tyler",
-        now=lambda: _NOW,
     )
 
     authorization = result.authorization.to_dict()
@@ -212,7 +199,6 @@ def test_boolean_confirmation_cannot_authorize_registry_apply() -> None:
             caller_confirmation=False,
             authorization_reason="Attempt registry apply without confirmation.",
             operator_id="operator:tyler",
-            now=lambda: _NOW,
         )
 
 
@@ -234,5 +220,4 @@ def test_registry_apply_rejects_stale_expected_registry_before_authorization() -
             caller_confirmation=True,
             authorization_reason="Attempt stale registry apply.",
             operator_id="operator:tyler",
-            now=lambda: _NOW,
         )

@@ -49,6 +49,8 @@ The current locks certify GitHub-hosted Ubuntu x86_64 environments only. Support
 
 A high-impact operation is never authorized by a bare Boolean. Caller confirmation may be an additional gate, but the operative decision binds actor/operator, action, resource, exact scope, current state, granted and denied authority, issuance and validity, reuse, revocation, reason, expected identity, stale-state rule, audit identity, audit event, and failure posture.
 
+Authorization validation is not effect consumption. The protected operation must be atomically reserved in the ConstructionSight-owned SQLite consumption store immediately before its statically owned implementation runs. The durable record binds authority, scope, state, trusted time, allowance, content, implementation, replay policy, and terminal outcome. Exact replay returns the retained committed result; it never repeats the effect. A missing store, concurrent reservation, changed content, terminal failure, or crash-retained in-progress state blocks automatic execution. Caller-selected ledgers, used-ID sets, clocks, stores, and effect implementations are prohibited from production authorized-service signatures.
+
 The current product is a local CLI. An explicit operator identifier is sufficient for current audit identity, but it is not authentication. Hosted authentication, delegation, impersonation, temporary access, elevation, and tenant isolation are mandatory entry conditions for any production hosted GUI.
 
 ## Defect invalidation
@@ -61,4 +63,4 @@ Changes involving authorization, dependency identity, Actions, network execution
 
 ## Unsupported boundaries
 
-ConstructionSight does not currently claim production recurring scheduling, concurrent live integration, outreach sending, hosted multiuser identity, tenant isolation, delegation, impersonation, or temporary elevation. Those are contractually prohibited until their stated entry conditions and tests exist.
+ConstructionSight does not currently claim production recurring scheduling, concurrent live acquisition throughput, outreach sending, hosted multiuser identity, tenant isolation, delegation, impersonation, or temporary elevation. Cross-process duplicate prevention for already-governed protected operations is implemented; it does not itself grant scheduling or broader concurrency authority.

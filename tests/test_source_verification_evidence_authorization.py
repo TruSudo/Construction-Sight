@@ -2,17 +2,13 @@ from __future__ import annotations
 
 import inspect
 import json
-from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
 
 import constructionsight.source_readiness_service as readiness_service
 from constructionsight.adapters import default_adapter_family_specs
-from constructionsight.authorization_decision import (
-    AuthorizationDeniedError,
-    AuthorizationUseLedger,
-)
+from constructionsight.authorization_decision import AuthorizationDeniedError
 from constructionsight.models import PublicSource
 from constructionsight.source_readiness_models import HttpReachabilityResult
 from constructionsight.source_verification_evidence_service import (
@@ -20,9 +16,6 @@ from constructionsight.source_verification_evidence_service import (
 )
 
 ROOT = Path(__file__).resolve().parents[1]
-_NOW = datetime(2026, 7, 16, 12, 0, tzinfo=UTC)
-
-
 def _sources() -> list[PublicSource]:
     payload = json.loads((ROOT / "data/source_registry.seed.json").read_text())
     assert isinstance(payload, list)
@@ -48,7 +41,6 @@ class _Checker:
 def _build(
     *,
     confirmation: bool = True,
-    ledger: AuthorizationUseLedger | None = None,
 ):
     return build_authorized_source_verification_evidence_package(
         _sources(),
@@ -56,8 +48,6 @@ def _build(
         caller_confirmation=confirmation,
         authorization_reason="Build one reviewed source evidence package.",
         operator_id="operator:tyler",
-        now=lambda: _NOW,
-        ledger=ledger,
     )
 
 
@@ -86,21 +76,26 @@ def test_evidence_package_requires_scope_bound_confirmation(
     assert checker.calls == []
 
 
-def test_shared_ledger_rejects_repeated_evidence_package_check(
+def test_exact_replay_returns_evidence_without_repeating_checks(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     checker = _Checker()
     monkeypatch.setattr(readiness_service, "_check_source_http_reachability", checker)
-    ledger = AuthorizationUseLedger()
+    first = _build()
+    replay = _build()
 
-    _build(ledger=ledger)
-    with pytest.raises(AuthorizationDeniedError, match="already consumed"):
-        _build(ledger=ledger)
-
+    assert replay.source_count == first.source_count
+    assert [row.source_key for row in replay.rows] == [
+        row.source_key for row in first.rows
+    ]
+    assert all(row.http_checked for row in replay.rows)
     assert len(checker.calls) == 2
 
 
 def test_authorized_evidence_package_does_not_accept_http_checker() -> None:
-    assert "http_checker" not in inspect.signature(
+    parameters = inspect.signature(
         build_authorized_source_verification_evidence_package
     ).parameters
+    assert "http_checker" not in parameters
+    assert "ledger" not in parameters
+    assert "now" not in parameters

@@ -1,15 +1,14 @@
 from __future__ import annotations
 
+import inspect
 import io
 import json
 from datetime import UTC, datetime
 
 import pytest
 
-from constructionsight.authorization_decision import (
-    AuthorizationDeniedError,
-    AuthorizationUseLedger,
-)
+import constructionsight.local_operator_authorization as authorization_module
+from constructionsight.authorization_decision import AuthorizationDeniedError
 from constructionsight.local_operator_authorization import (
     authorize_local_operator_operation,
 )
@@ -21,7 +20,6 @@ def _authorize(
     *,
     confirmation: bool = True,
     operator_id: str = "operator:Cafe\u0301",
-    ledger: AuthorizationUseLedger | None = None,
     audit_stream: io.StringIO | None = None,
 ):
     return authorize_local_operator_operation(
@@ -37,8 +35,6 @@ def _authorize(
         caller_confirmation=confirmation,
         limitations=("local identity is not authentication",),
         operator_id=operator_id,
-        now=lambda: _NOW,
-        ledger=ledger,
         audit_stream=audit_stream,
     )
 
@@ -62,16 +58,30 @@ def test_boolean_confirmation_is_not_authority() -> None:
         _authorize(confirmation=False)
 
 
-def test_shared_ledger_rejects_repeated_local_authorization() -> None:
-    ledger = AuthorizationUseLedger()
+def test_repeated_validation_does_not_consume_the_protected_effect() -> None:
+    first = _authorize()
+    second = _authorize()
 
-    first = _authorize(ledger=ledger)
     assert first.preflight.use_available is True
-    with pytest.raises(AuthorizationDeniedError, match="already consumed"):
-        _authorize(ledger=ledger)
+    assert second.preflight.use_available is True
 
 
-def test_naive_authorization_clock_is_rejected() -> None:
+def test_production_authorizer_exposes_no_clock_or_consumption_backend() -> None:
+    parameters = inspect.signature(authorize_local_operator_operation).parameters
+
+    assert "now" not in parameters
+    assert "ledger" not in parameters
+    assert "consumption_store" not in parameters
+
+
+def test_naive_owned_authorization_clock_is_rejected(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        authorization_module,
+        "_trusted_authorization_time",
+        lambda: datetime(2026, 7, 15, 12, 0),
+    )
     with pytest.raises(ValueError, match="timezone-aware"):
         authorize_local_operator_operation(
             action="execute-test-operation",
@@ -86,6 +96,5 @@ def test_naive_authorization_clock_is_rejected() -> None:
             caller_confirmation=True,
             limitations=("local identity is not authentication",),
             operator_id="operator:test",
-            now=lambda: datetime(2026, 7, 15, 12, 0),
             audit_stream=io.StringIO(),
         )

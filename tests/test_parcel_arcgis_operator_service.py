@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from unittest.mock import patch
 
 import pytest
 
-from constructionsight.authorization_decision import (
-    AuthorizationDeniedError,
-    AuthorizationUseLedger,
-)
+import constructionsight.operator_services.parcel_arcgis_service as parcel_operator_service
+from constructionsight.authorization_decision import AuthorizationDeniedError
 from constructionsight.operator_services.parcel_arcgis_service import (
     execute_authorized_arcgis_probe,
     persist_authorized_arcgis_bundle,
@@ -128,21 +127,18 @@ def _execute_probe(
     executor: _ProbeExecutor,
     *,
     confirmation: bool = True,
-    ledger: AuthorizationUseLedger | None = None,
 ):
     profile, evidence = _profile_and_evidence()
-    return execute_authorized_arcgis_probe(
-        profile=profile,
-        source_evidence=evidence,
-        sample_size=2,
-        timeout_seconds=30.0,
-        authorization_reason="Execute one reviewed bounded ArcGIS proof.",
-        caller_confirmation=confirmation,
-        operator_id="operator:tyler",
-        now=lambda: _NOW,
-        ledger=ledger,
-        executor=executor,
-    )
+    with patch.object(parcel_operator_service, "execute_arcgis_bounded_probe", executor):
+        return execute_authorized_arcgis_probe(
+            profile=profile,
+            source_evidence=evidence,
+            sample_size=2,
+            timeout_seconds=30.0,
+            authorization_reason="Execute one reviewed bounded ArcGIS proof.",
+            caller_confirmation=confirmation,
+            operator_id="operator:tyler",
+        )
 
 
 def test_probe_service_binds_scope_and_denies_bulk_authority() -> None:
@@ -167,15 +163,14 @@ def test_boolean_confirmation_cannot_authorize_probe() -> None:
     assert executor.calls == []
 
 
-def test_shared_ledger_rejects_repeated_probe() -> None:
+def test_exact_replay_returns_probe_without_repeating_transport() -> None:
     executor = _ProbeExecutor()
-    ledger = AuthorizationUseLedger()
 
-    first = _execute_probe(executor, ledger=ledger)
+    first = _execute_probe(executor)
     assert first.bundle.bundle_id
-    with pytest.raises(AuthorizationDeniedError, match="already consumed"):
-        _execute_probe(executor, ledger=ledger)
+    replay = _execute_probe(executor)
 
+    assert replay.bundle == first.bundle
     assert len(executor.calls) == 1
 
 
@@ -183,16 +178,15 @@ def test_persistence_requires_exact_bundle_identity_and_scope_bound_authority() 
     result = _execute_probe(_ProbeExecutor())
     persister = _Persister()
 
-    persisted = persist_authorized_arcgis_bundle(
-        bundle=result.bundle,
-        expected_bundle_id=result.bundle.bundle_id,
-        database_url="sqlite+pysqlite:///:memory:",
-        authorization_reason="Persist one reviewed bounded proof bundle.",
-        caller_confirmation=True,
-        operator_id="operator:tyler",
-        now=lambda: _NOW,
-        persister=persister,
-    )
+    with patch.object(parcel_operator_service, "_persist_bundle", persister):
+        persisted = persist_authorized_arcgis_bundle(
+            bundle=result.bundle,
+            expected_bundle_id=result.bundle.bundle_id,
+            database_url="sqlite+pysqlite:///:memory:",
+            authorization_reason="Persist one reviewed bounded proof bundle.",
+            caller_confirmation=True,
+            operator_id="operator:tyler",
+        )
 
     authorization = persisted.authorization.to_dict()
     assert authorization["action"] == "persist-parcel-arcgis-bounded-proof"
@@ -216,8 +210,6 @@ def test_persistence_rejects_identity_substitution_before_write() -> None:
             authorization_reason="Attempt a mismatched persistence operation.",
             caller_confirmation=True,
             operator_id="operator:tyler",
-            now=lambda: _NOW,
-            persister=persister,
         )
 
     assert persister.calls == []

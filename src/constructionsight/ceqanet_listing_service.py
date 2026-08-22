@@ -2,10 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from datetime import datetime
-from typing import Protocol
-
 from constructionsight.adapters.ceqanet_listing import CeqanetListingPlan
 from constructionsight.adapters.ceqanet_listing_dry_run import CeqanetListingDryRunExecutor
 from constructionsight.adapters.ceqanet_listing_executor import (
@@ -14,11 +10,10 @@ from constructionsight.adapters.ceqanet_listing_executor import (
     CeqanetListingExecutionReport,
     execute_ceqanet_listing_plan,
 )
-from constructionsight.authorization_decision import (
-    AuthorizationDeniedError,
-    AuthorizationUseLedger,
-)
+from constructionsight.authorization_decision import AuthorizationDeniedError
 from constructionsight.authorization_decision_models import authorization_digest
+from constructionsight.effect_consumption import _execute_owned_effect
+from constructionsight.effect_consumption_models import EffectReplayPolicy
 from constructionsight.legal import AccessDecision, SourceAccessProfile, evaluate_access
 from constructionsight.local_operator_authorization import (
     LocalAuthorizationResult,
@@ -31,18 +26,6 @@ _RESOURCE_TYPE = "ceqanet-listing-plan"
 
 class CeqanetListingServiceError(RuntimeError):
     """Raised when an authorized listing plan cannot complete transport execution."""
-
-
-class CeqanetListingExecutor(Protocol):
-    """Operation-specific listing transport interface."""
-
-    def __call__(
-        self,
-        plan: CeqanetListingPlan,
-        *,
-        policy: CeqanetListingExecutionPolicy,
-    ) -> CeqanetListingExecutionReport:
-        """Execute one immutable listing plan."""
 
 
 def _canonical_tuple(*values: str) -> tuple[str, ...]:
@@ -202,9 +185,6 @@ def execute_authorized_ceqanet_listing(
     timeout_seconds: float = 20.0,
     max_response_bytes: int = 50_000,
     operator_id: str | None = None,
-    now: Callable[[], datetime] | None = None,
-    ledger: AuthorizationUseLedger | None = None,
-    executor: CeqanetListingExecutor | None = None,
 ) -> dict[str, object]:
     """Authorize and execute one exact immutable CEQAnet listing plan."""
 
@@ -277,22 +257,38 @@ def execute_authorized_ceqanet_listing(
             "no credential use or access-control bypass is authorized",
             "no persistence, promotion, recurrence, retry, or concurrent execution is authorized",
             "partial page results remain incomplete evidence",
-            "single local-process use only",
+            "one durable exact-plan allowance across processes",
         ),
         operator_id=operator_id,
         current_revocation_identity=state_identity,
-        now=now,
-        ledger=ledger,
     )
-    active_executor: CeqanetListingExecutor = executor or execute_ceqanet_listing_plan
-    try:
-        report = active_executor(plan, policy=policy)
-    except CeqanetListingExecutionError as exc:
-        raise CeqanetListingServiceError(str(exc)) from exc
-    return _report_payload(
-        report,
-        plan=plan,
-        authorization=authorization,
-        plan_id=plan_id,
-        state_identity=state_identity,
+
+    def execute(_trusted_at: object) -> dict[str, object]:
+        try:
+            report = execute_ceqanet_listing_plan(plan, policy=policy)
+        except CeqanetListingExecutionError as exc:
+            raise CeqanetListingServiceError(str(exc)) from exc
+        return _report_payload(
+            report,
+            plan=plan,
+            authorization=authorization,
+            plan_id=plan_id,
+            state_identity=state_identity,
+        )
+
+    return _execute_owned_effect(
+        authorization,
+        allowance_identity=authorization_digest(
+            "ceqanet-listing-manual-allowance",
+            {"plan_id": plan_id, "state_identity": state_identity},
+        ),
+        content_identity=state_identity,
+        implementation_id=(
+            "constructionsight.adapters.ceqanet_listing_executor."
+            "execute_ceqanet_listing_plan"
+        ),
+        replay_policy=EffectReplayPolicy.EXACT,
+        effect=execute,
+        encode_result=lambda result: result,
+        decode_result=lambda payload: dict(payload),
     )

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Collection
 from datetime import datetime
 
 from constructionsight.parcel_source_acquisition_models import (
@@ -91,14 +90,15 @@ def preflight_arcgis_bulk_rehearsal_authorization(
     *,
     expected_authorization_id: str,
     checked_at: datetime,
-    used_authorization_ids: Collection[str] = (),
 ) -> ParcelArcGISBulkRehearsalPreflight:
-    """Prove one exact authorization is current, unused, and scope-matched."""
+    """Prove one exact authorization is current and scope-matched.
+
+    Consumption is intentionally not caller-asserted here. The protected execution
+    boundary must reserve this authorization in the owned durable consumption store.
+    """
 
     if expected_authorization_id != authorization.authorization_id:
         raise ValueError("expected ArcGIS rehearsal authorization identity does not match")
-    if authorization.authorization_id in used_authorization_ids:
-        raise ValueError("ArcGIS rehearsal authorization has already been consumed")
     _require_plan_scope(snapshot, plan)
     _require_authorization_scope(snapshot, plan, authorization)
     if checked_at.tzinfo is None or checked_at.utcoffset() is None:

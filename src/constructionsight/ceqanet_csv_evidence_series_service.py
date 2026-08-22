@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime
 
-from constructionsight.authorization_decision import AuthorizationUseLedger
 from constructionsight.authorization_decision_models import authorization_digest
 from constructionsight.ceqanet_csv_access_policy_models import (
     CeqanetCsvAccessPolicy,
@@ -35,6 +34,8 @@ from constructionsight.ceqanet_maturity_proposal_models import (
     CeqanetSourceMaturityProposal,
     CeqanetSourceMaturityProposalVerification,
 )
+from constructionsight.effect_consumption import _execute_owned_effect, trusted_utc_now
+from constructionsight.effect_consumption_models import EffectReplayPolicy
 from constructionsight.local_operator_authorization import (
     authorize_local_operator_operation,
 )
@@ -163,13 +164,11 @@ def execute_ceqanet_csv_evidence_request(
     request: CeqanetCsvExportRequest,
     *,
     execute_live: bool,
-    authorization_granted_at: datetime | None = None,
     max_retained_rows: int = 1_000,
     operator_id: str | None = None,
     authorization_reason: str = (
         "Execute one policy-bound CEQAnet CSV evidence request."
     ),
-    ledger: AuthorizationUseLedger | None = None,
 ) -> CeqanetCsvEvidenceExecution:
     """Authorize one policy-bound GET after independently verifying the ledger."""
 
@@ -177,10 +176,7 @@ def execute_ceqanet_csv_evidence_request(
         raise ValueError(
             "explicit live confirmation is required for CEQAnet CSV evidence"
         )
-    authorized_at = authorization_granted_at or datetime.now(UTC)
-    if authorized_at.tzinfo is None or authorized_at.utcoffset() is None:
-        raise ValueError("authorization_granted_at must be timezone-aware")
-    authorized_at = authorized_at.astimezone(UTC)
+    authorized_at = trusted_utc_now()
 
     series_verification = verify_ceqanet_csv_evidence_series(
         sources,
@@ -240,8 +236,7 @@ def execute_ceqanet_csv_evidence_request(
         "ceqanet-csv-evidence-resource",
         {
             "policy_digest": policy.policy_digest,
-            "series_digest": series.series_digest,
-            "request_url": request.source_url,
+            "source_name": series.source_name,
         },
     )
     exact_scope = tuple(
@@ -263,7 +258,7 @@ def execute_ceqanet_csv_evidence_request(
             key=str.casefold,
         )
     )
-    authorize_local_operator_operation(
+    authorization = authorize_local_operator_operation(
         action="execute-ceqanet-csv-evidence-request",
         resource_type="ceqanet-csv-evidence-series",
         resource_id=resource_id,
@@ -300,42 +295,63 @@ def execute_ceqanet_csv_evidence_request(
                     "local operator identity is not authentication",
                     "the execution artifact does not itself advance the series",
                     "the request cannot authorize maturity promotion or recurrence",
-                    "single local-process use only",
+                    "one durable UTC-date allowance across processes",
                 },
                 key=str.casefold,
             )
         ),
         operator_id=operator_id,
         current_revocation_identity=state_identity,
-        now=lambda: authorized_at,
-        ledger=ledger,
     )
 
-    live_execution = execute_ceqanet_csv_live_request(
-        request,
-        execute_live=True,
-        timeout_seconds=policy.timeout_seconds,
-        max_body_bytes=policy.max_body_bytes,
-        max_retained_rows=max_retained_rows,
-        executed_at=authorized_at,
+    def execute(trusted_at: datetime) -> CeqanetCsvEvidenceExecution:
+        live_execution = execute_ceqanet_csv_live_request(
+            request,
+            execute_live=True,
+            timeout_seconds=policy.timeout_seconds,
+            max_body_bytes=policy.max_body_bytes,
+            max_retained_rows=max_retained_rows,
+            executed_at=trusted_at,
+        )
+        live_verification = verify_ceqanet_csv_live_execution(live_execution)
+        draft = CeqanetCsvEvidenceExecution(
+            policy_digest=policy.policy_digest,
+            authorization_granted_at=authorized_at,
+            authorized_utc_date=trusted_at.date(),
+            timeout_seconds=policy.timeout_seconds,
+            max_body_bytes=policy.max_body_bytes,
+            max_retained_rows=max_retained_rows,
+            live_execution=live_execution,
+            live_verification=live_verification,
+            evidence_execution_digest="0" * 64,
+        )
+        evidence_execution = draft.model_copy(
+            update={"evidence_execution_digest": draft.computed_digest()}
+        )
+        evidence_execution.assert_integrity()
+        return evidence_execution
+
+    return _execute_owned_effect(
+        authorization,
+        allowance_identity=authorization_digest(
+            "ceqanet-csv-daily-allowance",
+            {
+                "policy_digest": policy.policy_digest,
+                "source_name": series.source_name,
+                "utc_date": authorized_at.date().isoformat(),
+            },
+        ),
+        content_identity=state_identity,
+        implementation_id=(
+            "constructionsight.ceqanet_csv_live_service."
+            "execute_ceqanet_csv_live_request"
+        ),
+        replay_policy=EffectReplayPolicy.EXACT,
+        effect=execute,
+        encode_result=lambda result: result.model_dump(mode="json"),
+        decode_result=lambda payload: CeqanetCsvEvidenceExecution.model_validate(payload),
+        required_utc_date=authorized_at.date(),
     )
-    live_verification = verify_ceqanet_csv_live_execution(live_execution)
-    draft = CeqanetCsvEvidenceExecution(
-        policy_digest=policy.policy_digest,
-        authorization_granted_at=authorized_at,
-        authorized_utc_date=authorized_at.date(),
-        timeout_seconds=policy.timeout_seconds,
-        max_body_bytes=policy.max_body_bytes,
-        max_retained_rows=max_retained_rows,
-        live_execution=live_execution,
-        live_verification=live_verification,
-        evidence_execution_digest="0" * 64,
-    )
-    evidence_execution = draft.model_copy(
-        update={"evidence_execution_digest": draft.computed_digest()}
-    )
-    evidence_execution.assert_integrity()
-    return evidence_execution
 
 
 def _build_series_snapshot(

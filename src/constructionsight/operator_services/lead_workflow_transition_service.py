@@ -2,18 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
-from typing import Protocol
 
 from sqlalchemy.orm import Session
 
-from constructionsight.authorization_decision import (
-    AuthorizationDeniedError,
-    AuthorizationUseLedger,
-)
+from constructionsight.authorization_decision import AuthorizationDeniedError
 from constructionsight.authorization_decision_models import authorization_digest
+from constructionsight.effect_consumption import _execute_owned_effect
+from constructionsight.effect_consumption_models import EffectReplayPolicy
 from constructionsight.lead_operator_models import LeadWorkflowTransitionReport
 from constructionsight.lead_operator_service import (
     LeadOperatorError,
@@ -25,21 +21,6 @@ from constructionsight.local_operator_authorization import (
     LocalAuthorizationResult,
     authorize_local_operator_operation,
 )
-
-
-class LeadWorkflowTransitionExecutor(Protocol):
-    """Exact mutation interface used after authorization preflight."""
-
-    def __call__(
-        self,
-        session: Session,
-        *,
-        workflow_id: str,
-        expected_current_status: LeadWorkflowStatus,
-        next_status: LeadWorkflowStatus,
-        reason: str,
-    ) -> LeadWorkflowTransitionReport:
-        """Apply one stale-state-protected workflow transition."""
 
 
 @dataclass(frozen=True)
@@ -59,9 +40,6 @@ def apply_authorized_lead_workflow_transition(
     reason: str,
     caller_confirmation: bool,
     operator_id: str | None = None,
-    now: Callable[[], datetime] | None = None,
-    ledger: AuthorizationUseLedger | None = None,
-    executor: LeadWorkflowTransitionExecutor | None = None,
 ) -> AuthorizedLeadWorkflowTransitionResult:
     """Authorize and apply one exact persisted workflow transition."""
 
@@ -139,7 +117,7 @@ def apply_authorized_lead_workflow_transition(
             sorted(
                 {
                     "local operator identity is not authentication",
-                    "single local-process transition only",
+                    "one durable exact-transition allowance across processes",
                     "transition authority does not grant result or outreach authority",
                 },
                 key=str.casefold,
@@ -147,18 +125,34 @@ def apply_authorized_lead_workflow_transition(
         ),
         operator_id=operator_id,
         current_revocation_identity=state_identity,
-        now=now,
-        ledger=ledger,
     )
-    active_executor: LeadWorkflowTransitionExecutor = (
-        executor or transition_persisted_lead_workflow
-    )
-    report = active_executor(
-        session,
-        workflow_id=workflow_id,
-        expected_current_status=expected_current_status,
-        next_status=next_status,
-        reason=normalized_reason,
+
+    def execute(_trusted_at: object) -> LeadWorkflowTransitionReport:
+        report = transition_persisted_lead_workflow(
+            session,
+            workflow_id=workflow_id,
+            expected_current_status=expected_current_status,
+            next_status=next_status,
+            reason=normalized_reason,
+        )
+        session.commit()
+        return report
+
+    report = _execute_owned_effect(
+        authorization,
+        allowance_identity=authorization_digest(
+            "lead-workflow-transition-allowance",
+            {"resource_id": resource_id, "state_identity": state_identity},
+        ),
+        content_identity=state_identity,
+        implementation_id=(
+            "constructionsight.lead_operator_service."
+            "transition_persisted_lead_workflow"
+        ),
+        replay_policy=EffectReplayPolicy.EXACT,
+        effect=execute,
+        encode_result=lambda result: result.model_dump(mode="json"),
+        decode_result=lambda payload: LeadWorkflowTransitionReport.model_validate(payload),
     )
     return AuthorizedLeadWorkflowTransitionResult(
         report=report,

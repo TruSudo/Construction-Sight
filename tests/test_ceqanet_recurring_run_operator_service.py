@@ -5,10 +5,7 @@ from datetime import UTC, date, datetime
 import pytest
 from pydantic import HttpUrl
 
-from constructionsight.authorization_decision import (
-    AuthorizationDeniedError,
-    AuthorizationUseLedger,
-)
+from constructionsight.authorization_decision import AuthorizationDeniedError
 from constructionsight.ceqanet_recurring_run_models import (
     CeqanetRecurringQueryTemplate,
     CeqanetRecurringRunExecution,
@@ -38,8 +35,6 @@ from constructionsight.source_verification_checklist_models import (
     SourceVerificationChecklistRow,
     SourceVerificationChecklistStatus,
 )
-
-_NOW = datetime(2026, 7, 15, 12, 0, tzinfo=UTC)
 
 
 def _source() -> PublicSource:
@@ -158,7 +153,7 @@ def _execute(
     executor: _Executor,
     *,
     confirmation: bool = True,
-    ledger: AuthorizationUseLedger | None = None,
+    attempt_sequence: int = 1,
 ):
     monkeypatch.setattr(
         ceqanet_recurring_run_service,
@@ -171,12 +166,10 @@ def _execute(
         manifest=manifest,
         sources=sources,
         checklist_report=checklist,
-        attempt_sequence=1,
+        attempt_sequence=attempt_sequence,
         caller_confirmation=confirmation,
         authorization_reason="Execute one reviewed recurring-run attempt.",
         operator_id="operator:tyler",
-        now=lambda: _NOW,
-        ledger=ledger,
     )
 
 
@@ -206,15 +199,28 @@ def test_boolean_confirmation_cannot_authorize_recurring_run(
     assert executor.calls == []
 
 
-def test_shared_ledger_rejects_repeated_recurring_attempt(
+def test_exact_replay_returns_attempt_without_repeating_execution(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     executor = _Executor()
-    ledger = AuthorizationUseLedger()
-
-    first = _execute(monkeypatch, executor, ledger=ledger)
+    first = _execute(monkeypatch, executor)
     assert first.execution.attempt_sequence == 1
-    with pytest.raises(AuthorizationDeniedError, match="already consumed"):
-        _execute(monkeypatch, executor, ledger=ledger)
+    replay = _execute(monkeypatch, executor)
 
+    assert replay.execution == first.execution
     assert len(executor.calls) == 1
+
+
+def test_distinct_attempt_sequence_receives_a_distinct_durable_allowance(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    executor = _Executor()
+
+    first = _execute(monkeypatch, executor, attempt_sequence=1)
+    second = _execute(monkeypatch, executor, attempt_sequence=2)
+    replay = _execute(monkeypatch, executor, attempt_sequence=2)
+
+    assert first.execution.attempt_sequence == 1
+    assert second.execution.attempt_sequence == 2
+    assert replay.execution == second.execution
+    assert [attempt for _run, attempt, _live in executor.calls] == [1, 2]

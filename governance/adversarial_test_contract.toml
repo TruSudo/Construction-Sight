@@ -41,6 +41,7 @@ tests = [
   "tests/test_ceqanet_recurring_run_operator_service.py",
   "tests/test_ci_exact_head_contract.py",
   "tests/test_dependency_certification.py",
+  "tests/test_effect_consumption.py",
   "tests/test_github_review_certification.py",
   "tests/test_governance_certification.py",
   "tests/test_governance_contract_schema.py",
@@ -145,8 +146,8 @@ mutation_id = "CS-MUT-PERSIST-INTERRUPT-ROLLBACK-001"
 
 [[matrices.witnesses]]
 category = "replay-conflicting-replay-idempotency"
-test = "tests/test_authorization_decision.py::test_exact_replay_requires_same_replay_identity_and_repeats_no_effect"
-mutation_id = "CS-MUT-AUTH-REPLAY-IDENTITY-001"
+test = "tests/test_effect_consumption.py::test_sequential_exact_replay_returns_retained_result_without_effect"
+mutation_id = "CS-MUT-CONSUME-REPLAY-001"
 
 [[matrices.witnesses]]
 category = "retry-exhaustion-cancellation"
@@ -155,8 +156,8 @@ mutation_id = "CS-MUT-LISTING-RETRY-001"
 
 [[matrices.witnesses]]
 category = "stale-concurrent-writers"
-test = "tests/test_authorization_decision.py::test_single_use_claim_allows_only_one_concurrent_caller"
-mutation_id = "CS-MUT-AUTH-REUSE-001"
+test = "tests/test_lead_workflow_transition_authorization.py::test_concurrent_database_writers_apply_exact_transition_at_most_once"
+mutation_id = "CS-MUT-CONSUME-CHECK-THEN-ACT-001"
 
 [[matrices.witnesses]]
 category = "stale-future-naive-time"

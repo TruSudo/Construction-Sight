@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from unittest.mock import patch
 
 import pytest
 
-from constructionsight.authorization_decision import (
-    AuthorizationDeniedError,
-    AuthorizationUseLedger,
-)
+import constructionsight.ceqanet_detail_service as detail_service
+from constructionsight.authorization_decision import AuthorizationDeniedError
 from constructionsight.ceqanet_detail_service import execute_authorized_ceqanet_detail
 from constructionsight.legal import SourceAccessProfile
 
@@ -58,22 +57,19 @@ def _execute(
     *,
     profile: SourceAccessProfile | None = None,
     confirmation: bool = True,
-    ledger: AuthorizationUseLedger | None = None,
     timeout_seconds: float = 20.0,
     max_body_bytes: int = 50_000,
 ) -> dict[str, object]:
-    return execute_authorized_ceqanet_detail(
-        detail_url=_DETAIL_URL,
-        access_profile=profile or _profile(),
-        operator_id="operator:tyler",
-        authorization_reason="Review one exact public project page.",
-        caller_confirmation=confirmation,
-        timeout_seconds=timeout_seconds,
-        max_body_bytes=max_body_bytes,
-        now=lambda: _NOW,
-        ledger=ledger,
-        executor=executor,
-    )
+    with patch.object(detail_service, "execute_ceqanet_detail_request", executor):
+        return execute_authorized_ceqanet_detail(
+            detail_url=_DETAIL_URL,
+            access_profile=profile or _profile(),
+            operator_id="operator:tyler",
+            authorization_reason="Review one exact public project page.",
+            caller_confirmation=confirmation,
+            timeout_seconds=timeout_seconds,
+            max_body_bytes=max_body_bytes,
+        )
 
 
 def test_detail_service_emits_scope_bound_authorization_and_snapshot() -> None:
@@ -154,20 +150,17 @@ def test_detail_service_rejects_non_ceqanet_or_credentialed_url() -> None:
                 caller_confirmation=True,
                 timeout_seconds=20.0,
                 max_body_bytes=50_000,
-                now=lambda: _NOW,
-                executor=executor,
             )
 
     assert executor.calls == []
 
 
-def test_shared_ledger_rejects_repeated_identical_execution() -> None:
+def test_exact_replay_returns_detail_without_repeating_execution() -> None:
     executor = _Executor()
-    ledger = AuthorizationUseLedger()
 
-    first = _execute(executor, ledger=ledger)
+    first = _execute(executor)
     assert first["metadata"]
-    with pytest.raises(AuthorizationDeniedError, match="already consumed"):
-        _execute(executor, ledger=ledger)
+    replay = _execute(executor)
 
+    assert replay["snapshots"] == first["snapshots"]
     assert executor.calls == [(_DETAIL_URL, 20.0, 50_000)]

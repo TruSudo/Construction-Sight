@@ -2,15 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Protocol
 
-from constructionsight.authorization_decision import (
-    AuthorizationDeniedError,
-    AuthorizationUseLedger,
-)
+from constructionsight.authorization_decision import AuthorizationDeniedError
 from constructionsight.authorization_decision_models import authorization_digest
 from constructionsight.ceqanet_csv_live_models import (
     CeqanetCsvLiveExecution,
@@ -22,6 +17,8 @@ from constructionsight.ceqanet_csv_live_service import (
 )
 from constructionsight.ceqanet_csv_models import CeqanetCsvExportRequest
 from constructionsight.ceqanet_csv_service import parse_ceqanet_csv_export_url
+from constructionsight.effect_consumption import _execute_owned_effect
+from constructionsight.effect_consumption_models import EffectReplayPolicy
 from constructionsight.legal import AccessDecision, SourceAccessProfile, evaluate_access
 from constructionsight.local_operator_authorization import (
     LocalAuthorizationResult,
@@ -34,32 +31,6 @@ _POLICY_ID = "CS-NET-003"
 _MAX_TIMEOUT_SECONDS = 20.0
 _MAX_BODY_BYTES = 10_000_000
 _MAX_RETAINED_ROWS = 1_000
-
-
-class CeqanetCsvExecutor(Protocol):
-    """Operation-specific transport interface consumed by the application facade."""
-
-    def __call__(
-        self,
-        request: CeqanetCsvExportRequest,
-        *,
-        execute_live: bool,
-        timeout_seconds: float,
-        max_body_bytes: int,
-        max_retained_rows: int,
-        executed_at: datetime | None = None,
-    ) -> CeqanetCsvLiveExecution:
-        """Execute one exact request and retain its response evidence."""
-
-
-class CeqanetCsvVerifier(Protocol):
-    """Independent verification interface for retained execution evidence."""
-
-    def __call__(
-        self,
-        execution: CeqanetCsvLiveExecution,
-    ) -> CeqanetCsvLiveVerification:
-        """Verify one execution without another network request."""
 
 
 @dataclass(frozen=True)
@@ -125,10 +96,6 @@ def execute_authorized_ceqanet_csv(
     max_body_bytes: int,
     max_retained_rows: int,
     operator_id: str | None = None,
-    now: Callable[[], datetime] | None = None,
-    ledger: AuthorizationUseLedger | None = None,
-    executor: CeqanetCsvExecutor | None = None,
-    verifier: CeqanetCsvVerifier | None = None,
 ) -> AuthorizedCeqanetCsvExecution:
     """Authorize, execute, and independently verify one exact CSV GET."""
 
@@ -201,24 +168,46 @@ def execute_authorized_ceqanet_csv(
             "local operator identity is not authentication",
             "no document attachment download is authorized",
             "no persistence, promotion, recurrence, or retry is authorized",
-            "single local-process use only",
+            "one durable exact-request allowance across processes",
         ),
         operator_id=operator_id,
         current_revocation_identity=state_identity,
-        now=now,
-        ledger=ledger,
     )
-    active_executor: CeqanetCsvExecutor = executor or execute_ceqanet_csv_live_request
-    active_verifier: CeqanetCsvVerifier = verifier or verify_ceqanet_csv_live_execution
-    execution = active_executor(
-        request,
-        execute_live=True,
-        timeout_seconds=timeout_seconds,
-        max_body_bytes=max_body_bytes,
-        max_retained_rows=max_retained_rows,
-        executed_at=(now() if now is not None else None),
+    def execute(
+        trusted_at: datetime,
+    ) -> tuple[CeqanetCsvLiveExecution, CeqanetCsvLiveVerification]:
+        execution = execute_ceqanet_csv_live_request(
+            request,
+            execute_live=True,
+            timeout_seconds=timeout_seconds,
+            max_body_bytes=max_body_bytes,
+            max_retained_rows=max_retained_rows,
+            executed_at=trusted_at,
+        )
+        return execution, verify_ceqanet_csv_live_execution(execution)
+
+    execution, verification = _execute_owned_effect(
+        authorization,
+        allowance_identity=authorization_digest(
+            "ceqanet-csv-manual-allowance",
+            {"state_identity": state_identity},
+        ),
+        content_identity=state_identity,
+        implementation_id=(
+            "constructionsight.ceqanet_csv_live_service."
+            "execute_ceqanet_csv_live_request"
+        ),
+        replay_policy=EffectReplayPolicy.EXACT,
+        effect=execute,
+        encode_result=lambda result: {
+            "execution": result[0].model_dump(mode="json"),
+            "verification": result[1].model_dump(mode="json"),
+        },
+        decode_result=lambda payload: (
+            CeqanetCsvLiveExecution.model_validate(payload["execution"]),
+            CeqanetCsvLiveVerification.model_validate(payload["verification"]),
+        ),
     )
-    verification = active_verifier(execution)
     return AuthorizedCeqanetCsvExecution(
         execution=execution,
         verification=verification,

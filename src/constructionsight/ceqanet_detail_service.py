@@ -2,45 +2,23 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from datetime import UTC, datetime, timedelta
-from typing import Protocol
 from urllib.parse import urlsplit
 
-from constructionsight.authorization_decision import (
-    AuthorizationDeniedError,
-    AuthorizationUseLedger,
-    authorize_and_claim,
-    build_authorization_decision,
-)
-from constructionsight.authorization_decision_models import (
-    AuthorizationReusePolicy,
-    authorization_digest,
-)
+from constructionsight.authorization_decision import AuthorizationDeniedError
+from constructionsight.authorization_decision_models import authorization_digest
 from constructionsight.ceqanet_detail_http import (
     CEQANET_DETAIL_POLICY,
     execute_ceqanet_detail_request,
 )
+from constructionsight.effect_consumption import _execute_owned_effect
+from constructionsight.effect_consumption_models import EffectReplayPolicy
 from constructionsight.legal import AccessDecision, SourceAccessProfile, evaluate_access
+from constructionsight.local_operator_authorization import (
+    authorize_local_operator_operation,
+)
 
 _ACTION = "execute-ceqanet-detail-read"
 _RESOURCE_TYPE = "public-ceqanet-detail-page"
-_AUTHORIZATION_TTL = timedelta(minutes=5)
-
-
-class CeqanetDetailExecutor(Protocol):
-    """Operation-specific transport interface consumed by the application service."""
-
-    def __call__(
-        self,
-        url: str,
-        *,
-        timeout_seconds: float,
-        max_body_bytes: int,
-    ) -> dict[str, object]:
-        """Execute one policy-bound read and return a classified snapshot."""
-
-
 def _canonical_tuple(*values: str) -> tuple[str, ...]:
     return tuple(sorted(set(values), key=str.casefold))
 
@@ -94,9 +72,6 @@ def execute_authorized_ceqanet_detail(
     caller_confirmation: bool,
     timeout_seconds: float,
     max_body_bytes: int,
-    now: Callable[[], datetime] | None = None,
-    ledger: AuthorizationUseLedger | None = None,
-    executor: CeqanetDetailExecutor | None = None,
 ) -> dict[str, object]:
     """Authorize and execute one exact CEQAnet GET without persistence or retry."""
 
@@ -134,9 +109,6 @@ def execute_authorized_ceqanet_detail(
             f"{access.decision.value}: {access.reason}"
         )
 
-    checked_at = (now or (lambda: datetime.now(UTC)))()
-    if checked_at.tzinfo is None or checked_at.utcoffset() is None:
-        raise ValueError("authorization clock must return a timezone-aware datetime")
     state_identity = _access_state(
         access_profile,
         decision=access.decision,
@@ -154,19 +126,8 @@ def execute_authorized_ceqanet_detail(
         f"timeout-seconds:{timeout_seconds:g}",
         f"url:{resolved_url}",
     )
-    audit_identity = authorization_digest(
-        "ceqanet-detail-audit",
-        {
-            "operator_id": operator_id,
-            "action": _ACTION,
-            "resource_id": resource_id,
-            "exact_scope": exact_scope,
-            "reason": authorization_reason,
-            "state_identity": state_identity,
-        },
-    )
-    decision = build_authorization_decision(
-        actor_id=operator_id,
+    authorization = authorize_local_operator_operation(
+        operator_id=operator_id,
         action=_ACTION,
         resource_type=_RESOURCE_TYPE,
         resource_id=resource_id,
@@ -184,12 +145,6 @@ def execute_authorized_ceqanet_detail(
             "source promotion",
         ),
         reason=authorization_reason,
-        issued_at=checked_at,
-        not_before=checked_at,
-        expires_at=checked_at + _AUTHORIZATION_TTL,
-        reuse_policy=AuthorizationReusePolicy.SINGLE_USE,
-        revocation_identity=state_identity,
-        audit_identity=audit_identity,
         caller_confirmation=True,
         limitations=_canonical_tuple(
             "local operator identity is not authentication",
@@ -198,38 +153,19 @@ def execute_authorized_ceqanet_detail(
                 "no persistence, source promotion, recurrence, or concurrent "
                 "execution is authorized"
             ),
-            "single local-process use only",
+            "one durable exact-request allowance across processes",
         ),
-    )
-    active_ledger = ledger or AuthorizationUseLedger()
-    replay_identity = authorization_digest(
-        "ceqanet-detail-attempt",
-        {
-            "decision_id": decision.decision_id,
-            "resource_id": resource_id,
-            "exact_scope": exact_scope,
-        },
-    )
-    preflight = authorize_and_claim(
-        decision,
-        actor_id=operator_id,
-        action=_ACTION,
-        resource_type=_RESOURCE_TYPE,
-        resource_id=resource_id,
-        exact_scope=exact_scope,
-        current_state_identity=state_identity,
         current_revocation_identity=state_identity,
-        replay_identity=replay_identity,
-        checked_at=checked_at,
-        ledger=active_ledger,
     )
-    snapshot = (executor or execute_ceqanet_detail_request)(
-        resolved_url,
-        timeout_seconds=timeout_seconds,
-        max_body_bytes=max_body_bytes,
-    )
-    reachable = snapshot.get("reachable") is True
-    return {
+
+    def execute(_trusted_at: object) -> dict[str, object]:
+        snapshot = execute_ceqanet_detail_request(
+            resolved_url,
+            timeout_seconds=timeout_seconds,
+            max_body_bytes=max_body_bytes,
+        )
+        reachable = snapshot.get("reachable") is True
+        return {
         "metadata": {
             "schema_version": "ceqanet_detail_execution.v2",
             "allowed": True,
@@ -247,19 +183,35 @@ def execute_authorized_ceqanet_detail(
                 "state_identity": state_identity,
             },
             "authorization": {
-                "decision_id": decision.decision_id,
-                "preflight_id": preflight.preflight_id,
-                "actor_id": decision.actor_id,
-                "action": decision.action,
-                "resource_id": decision.resource_id,
-                "audit_identity": decision.audit_identity,
-                "claim_audit_identity": preflight.audit_identity,
-                "valid_until": preflight.valid_until.isoformat(),
-                "granted_authority": list(decision.granted_authority),
-                "denied_authority": list(decision.denied_authority),
-                "limitations": list(decision.limitations),
+                "decision_id": authorization.decision.decision_id,
+                "preflight_id": authorization.preflight.preflight_id,
+                "actor_id": authorization.decision.actor_id,
+                "action": authorization.decision.action,
+                "resource_id": authorization.decision.resource_id,
+                "audit_identity": authorization.decision.audit_identity,
+                "claim_audit_identity": authorization.preflight.audit_identity,
+                "valid_until": authorization.preflight.valid_until.isoformat(),
+                "granted_authority": list(authorization.decision.granted_authority),
+                "denied_authority": list(authorization.decision.denied_authority),
+                "limitations": list(authorization.decision.limitations),
             },
             "requested_url": resolved_url,
         },
         "snapshots": [snapshot],
     }
+
+    return _execute_owned_effect(
+        authorization,
+        allowance_identity=authorization_digest(
+            "ceqanet-detail-manual-allowance",
+            {"resource_id": resource_id, "state_identity": state_identity},
+        ),
+        content_identity=state_identity,
+        implementation_id=(
+            "constructionsight.ceqanet_detail_http.execute_ceqanet_detail_request"
+        ),
+        replay_policy=EffectReplayPolicy.EXACT,
+        effect=execute,
+        encode_result=lambda result: result,
+        decode_result=lambda payload: dict(payload),
+    )

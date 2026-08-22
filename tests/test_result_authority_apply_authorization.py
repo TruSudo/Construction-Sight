@@ -1,13 +1,12 @@
 from __future__ import annotations
 
+import inspect
 from datetime import UTC, datetime
 
 import pytest
 
-from constructionsight.authorization_decision import (
-    AuthorizationDeniedError,
-    AuthorizationUseLedger,
-)
+import constructionsight.operator_services.result_authority_apply_service as result_apply_service
+from constructionsight.authorization_decision import AuthorizationDeniedError
 from constructionsight.lead_workflow_models import (
     LeadWorkflowEvent,
     LeadWorkflowRecord,
@@ -109,13 +108,15 @@ class _Executor:
 
 
 def _apply(
+    monkeypatch: pytest.MonkeyPatch,
     session,
     executor=None,
     *,
     confirmation: bool = True,
     expected_current_ledger_id: str | None = None,
-    ledger: AuthorizationUseLedger | None = None,
 ):
+    if executor is not None:
+        monkeypatch.setattr(result_apply_service, "apply_authoritative_result", executor)
     return apply_authorized_authoritative_result(
         session,
         workflow_id="lead-workflow:test",
@@ -126,13 +127,12 @@ def _apply(
         gross_value=2500.0,
         outcome_reasons=["operator confirmed contract result"],
         operator_id="operator:tyler",
-        now=lambda: _NOW,
-        ledger=ledger,
-        executor=executor,
     )
 
 
-def test_result_authority_requires_scope_bound_confirmation() -> None:
+def test_result_authority_requires_scope_bound_confirmation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     factory = _factory()
     executor = _Executor()
 
@@ -140,12 +140,14 @@ def test_result_authority_requires_scope_bound_confirmation() -> None:
         managed_session(factory) as session,
         pytest.raises(AuthorizationDeniedError, match="in addition"),
     ):
-        _apply(session, executor, confirmation=False)
+        _apply(monkeypatch, session, executor, confirmation=False)
 
     assert executor.calls == []
 
 
-def test_result_authority_rejects_stale_expected_ledger_before_mutation() -> None:
+def test_result_authority_rejects_stale_expected_ledger_before_mutation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     factory = _factory()
     executor = _Executor()
 
@@ -154,6 +156,7 @@ def test_result_authority_rejects_stale_expected_ledger_before_mutation() -> Non
         pytest.raises(ResultAuthorityError, match="operator expectation"),
     ):
         _apply(
+            monkeypatch,
             session,
             executor,
             expected_current_ledger_id="result-ledger:missing",
@@ -162,26 +165,36 @@ def test_result_authority_rejects_stale_expected_ledger_before_mutation() -> Non
     assert executor.calls == []
 
 
-def test_shared_ledger_rejects_repeated_exact_result_mutation() -> None:
+def test_exact_replay_returns_result_without_repeating_database_writer(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     factory = _factory()
     executor = _Executor()
-    ledger = AuthorizationUseLedger()
-
     with managed_session(factory) as session:
-        first = _apply(session, executor, ledger=ledger)
+        first = _apply(monkeypatch, session, executor)
         assert first.report.current.status is ResultLedgerStatus.WON
-        with pytest.raises(AuthorizationDeniedError, match="already consumed"):
-            _apply(session, executor, ledger=ledger)
+        replay = _apply(monkeypatch, session, executor)
 
+    assert replay.report == first.report
     assert len(executor.calls) == 1
 
 
-def test_authorized_result_preserves_serialized_mutation_service() -> None:
+def test_authorized_result_preserves_serialized_mutation_service(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     factory = _factory()
 
     with managed_session(factory) as session:
-        result = _apply(session)
+        result = _apply(monkeypatch, session)
 
     assert result.report.previous_ledger_id is None
     assert result.report.current.status is ResultLedgerStatus.WON
     assert result.authorization.decision.action == "apply-authoritative-result"
+
+
+def test_result_facade_rejects_effect_and_consumption_injection() -> None:
+    parameters = inspect.signature(apply_authorized_authoritative_result).parameters
+    assert "executor" not in parameters
+    assert "ledger" not in parameters
+    assert "now" not in parameters
+    assert "consumption_store" not in parameters

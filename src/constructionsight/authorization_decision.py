@@ -1,10 +1,9 @@
-"""Fail-closed preflight and atomic use-claim for semantic authorization."""
+"""Fail-closed decision construction and preflight validation."""
 
 from __future__ import annotations
 
 from datetime import datetime
-from threading import Lock
-from typing import Any, Literal
+from typing import Any
 
 from constructionsight.authorization_decision_models import (
     AuthorizationDecision,
@@ -15,55 +14,7 @@ from constructionsight.authorization_decision_models import (
 
 
 class AuthorizationDeniedError(RuntimeError):
-    """Raised when exact authority is absent, stale, expired, revoked, or consumed."""
-
-
-AuthorizationClaimResult = Literal["claimed", "exact_replay"]
-
-
-class AuthorizationUseLedger:
-    """Thread-safe local-process claim ledger for current CLI execution.
-
-    This ledger prevents concurrent reuse inside one process. It is not a hosted,
-    multi-process, or tenant-isolation claim. Persistent cross-process consumption is
-    a mandatory entry condition before a scheduler or hosted GUI may use this model.
-    """
-
-    def __init__(self) -> None:
-        self._lock = Lock()
-        self._claims: dict[str, str] = {}
-
-    def claim(
-        self,
-        decision: AuthorizationDecision,
-        *,
-        replay_identity: str,
-    ) -> AuthorizationClaimResult:
-        """Atomically claim one decision or recognize its exact idempotent replay."""
-
-        if not replay_identity.strip() or replay_identity != replay_identity.strip():
-            raise AuthorizationDeniedError("replay identity must be nonblank and trimmed")
-        with self._lock:
-            existing = self._claims.get(decision.decision_id)
-            if existing is None:
-                self._claims[decision.decision_id] = replay_identity
-                return "claimed"
-            if (
-                decision.reuse_policy is AuthorizationReusePolicy.EXACT_REPLAY
-                and existing == replay_identity
-            ):
-                return "exact_replay"
-            if decision.reuse_policy is AuthorizationReusePolicy.EXACT_REPLAY:
-                raise AuthorizationDeniedError(
-                    "authorization was already consumed by a conflicting replay identity"
-                )
-            raise AuthorizationDeniedError("single-use authorization was already consumed")
-
-    def is_claimed(self, decision_id: str) -> bool:
-        """Return whether the local process has consumed the decision."""
-
-        with self._lock:
-            return decision_id in self._claims
+    """Raised when exact authority is absent, stale, expired, or revoked."""
 
 
 def _decision_identity_payload(payload: dict[str, Any]) -> dict[str, Any]:
@@ -139,7 +90,7 @@ def build_authorization_decision(
     return AuthorizationDecision.model_validate(payload)
 
 
-def authorize_and_claim(
+def validate_authorization_decision(
     decision: AuthorizationDecision,
     *,
     actor_id: str,
@@ -149,11 +100,9 @@ def authorize_and_claim(
     exact_scope: tuple[str, ...],
     current_state_identity: str,
     current_revocation_identity: str,
-    replay_identity: str,
     checked_at: datetime,
-    ledger: AuthorizationUseLedger,
 ) -> AuthorizationPreflight:
-    """Validate exact authority and atomically claim its local-process use."""
+    """Validate exact authority without conflating validation with consumption."""
 
     if checked_at.tzinfo is None or checked_at.utcoffset() is None:
         raise AuthorizationDeniedError("authorization preflight time must be aware")
@@ -189,7 +138,6 @@ def authorize_and_claim(
         raise AuthorizationDeniedError("authorization is not yet valid")
     if checked_at >= decision.expires_at:
         raise AuthorizationDeniedError("authorization is expired")
-    claim_result = ledger.claim(decision, replay_identity=replay_identity)
     payload: dict[str, Any] = {
         "schema_version": "constructionsight.authorization-preflight/v1",
         "decision_id": decision.decision_id,
@@ -206,17 +154,17 @@ def authorize_and_claim(
         "revocation_verified": True,
         "use_available": True,
         "audit_identity": authorization_digest(
-            "authorization-claim",
+            "authorization-validation",
             {
                 "decision_id": decision.decision_id,
-                "replay_identity": replay_identity,
-                "claim_result": claim_result,
+                "checked_at": checked_at,
+                "current_state_identity": current_state_identity,
+                "current_revocation_identity": current_revocation_identity,
             },
         ),
         "next_action": (
-            "return the previously committed exact result without repeating effects"
-            if claim_result == "exact_replay"
-            else "execute only the exact granted operation and persist its audit event"
+            "atomically reserve the exact operation in the ConstructionSight-owned "
+            "durable consumption store immediately before the protected effect"
         ),
     }
     payload["preflight_id"] = authorization_digest(

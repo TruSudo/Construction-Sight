@@ -3,6 +3,7 @@ from __future__ import annotations
 import inspect
 import json
 import re
+from contextlib import ExitStack
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -16,7 +17,10 @@ from pydantic import ValidationError
 from typer.testing import CliRunner
 
 import constructionsight.ceqanet_csv_evidence_series_cli as series_cli
+import constructionsight.ceqanet_csv_evidence_series_service as evidence_series_service
+import constructionsight.effect_consumption as effect_consumption
 import constructionsight.http_transport as http_transport_module
+import constructionsight.local_operator_authorization as local_authorization
 from constructionsight.ceqanet_csv_access_policy_models import (
     CeqanetCsvAccessPolicy,
     CeqanetCsvAccessPolicyVerification,
@@ -49,6 +53,9 @@ from constructionsight.ceqanet_maturity_proposal_models import (
     CeqanetSourceMaturityProposalVerification,
 )
 from constructionsight.models import PublicSource
+from constructionsight.storage.effect_consumption_store import (
+    EffectReplayConflictError,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 EVIDENCE_DIR = ROOT / "evidence/source_verification"
@@ -211,18 +218,49 @@ def execute_ceqanet_csv_evidence_request(
 ) -> CeqanetCsvEvidenceExecution:
     """Test-only adapter that patches the private owned HTTP-client constructor."""
 
-    if client is None:
+    authorized_at = kwargs.pop("authorization_granted_at", None)
+    if client is None and authorized_at is None:
         return _execute_owned_csv_evidence_request(*args, **kwargs)
-    with patch.object(
-        http_transport_module,
-        "_build_http_client",
-        client.build_owned_client,
-    ):
+    with ExitStack() as stack:
+        if client is not None:
+            stack.enter_context(
+                patch.object(
+                    http_transport_module,
+                    "_build_http_client",
+                    client.build_owned_client,
+                )
+            )
+        if authorized_at is not None:
+            stack.enter_context(
+                patch.object(
+                    evidence_series_service,
+                    "trusted_utc_now",
+                    return_value=authorized_at,
+                )
+            )
+            stack.enter_context(
+                patch.object(
+                    effect_consumption,
+                    "trusted_utc_now",
+                    return_value=authorized_at,
+                )
+            )
+            stack.enter_context(
+                patch.object(
+                    local_authorization,
+                    "_trusted_authorization_time",
+                    return_value=authorized_at,
+                )
+            )
         return _execute_owned_csv_evidence_request(*args, **kwargs)
 
 
 def test_production_csv_evidence_boundary_rejects_client_injection() -> None:
-    assert "client" not in inspect.signature(_execute_owned_csv_evidence_request).parameters
+    parameters = inspect.signature(_execute_owned_csv_evidence_request).parameters
+    assert "client" not in parameters
+    assert "authorization_granted_at" not in parameters
+    assert "ledger" not in parameters
+    assert "now" not in parameters
 
 
 def _execute(
@@ -363,6 +401,47 @@ def test_preflight_rejects_second_execution_on_same_utc_day() -> None:
 
     with pytest.raises(ValueError, match="at most one execution per UTC day"):
         _execute(series, existing, day=14, document=True)
+
+
+def test_stale_series_snapshot_cannot_reopen_spent_utc_date_allowance() -> None:
+    empty = _build_series([])
+    first_ref, first, _ = _execute(empty, [], day=14)
+    existing = [(first_ref, first)]
+    current = _build_series(existing)
+    _execute(current, existing, day=15)
+
+    request = build_ceqanet_csv_export_request(sch_number="2026030377")
+    client = _Client(
+        _Response(
+            status_code=200,
+            content=PROJECT_FIXTURE.read_bytes(),
+            url=request.source_url,
+            headers={"content-type": "text/csv"},
+        )
+    )
+    with client, pytest.raises(
+        EffectReplayConflictError,
+        match="changed scope, state, content, authority, or implementation",
+    ):
+        execute_ceqanet_csv_evidence_request(
+            _sources(),
+            _original_execution(),
+            _replay(),
+            _replay_verification(),
+            _maturity(),
+            _maturity_verification(),
+            _policy(),
+            _policy_verification(),
+            empty,
+            [],
+            request,
+            execute_live=True,
+            client=client,
+            authorization_granted_at=datetime(2026, 7, 15, 12, tzinfo=UTC),
+            max_retained_rows=1_000,
+        )
+
+    assert client.calls == []
 
 
 def test_access_control_response_halts_series_and_blocks_later_execution() -> None:

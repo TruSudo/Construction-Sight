@@ -1,16 +1,12 @@
 from __future__ import annotations
 
 import inspect
-from datetime import UTC, datetime
 
 import pytest
 
 import constructionsight.source_verification_checklist_service as checklist_service
 from constructionsight.adapters.specs import default_adapter_family_specs
-from constructionsight.authorization_decision import (
-    AuthorizationDeniedError,
-    AuthorizationUseLedger,
-)
+from constructionsight.authorization_decision import AuthorizationDeniedError
 from constructionsight.models import (
     Jurisdiction,
     PlatformFamily,
@@ -26,8 +22,6 @@ from constructionsight.source_verification_checklist_service import (
     build_authorized_source_verification_checklist_report,
     build_source_verification_checklist_report,
 )
-
-_NOW = datetime(2026, 7, 15, 12, 0, tzinfo=UTC)
 
 
 def _source() -> PublicSource:
@@ -112,7 +106,6 @@ def test_authorized_checklist_binds_exact_source_and_observation_set(
         caller_confirmation=True,
         authorization_reason="Perform one reviewed source verification check.",
         operator_id="operator:tyler",
-        now=lambda: _NOW,
     )
 
     assert report.source_count == 1
@@ -135,19 +128,16 @@ def test_boolean_confirmation_cannot_authorize_live_checklist(
             caller_confirmation=False,
             authorization_reason="Attempt a live checklist without confirmation.",
             operator_id="operator:tyler",
-            now=lambda: _NOW,
         )
 
     assert checker.calls == []
 
 
-def test_shared_ledger_rejects_repeated_live_checklist(
+def test_exact_replay_returns_checklist_without_repeating_live_check(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     checker = _Checker()
     monkeypatch.setattr(checklist_service, "_check_source_verification", checker)
-    ledger = AuthorizationUseLedger()
-
     first = build_authorized_source_verification_checklist_report(
         [_source()],
         default_adapter_family_specs(),
@@ -155,26 +145,25 @@ def test_shared_ledger_rejects_repeated_live_checklist(
         caller_confirmation=True,
         authorization_reason="Perform one reviewed source verification check.",
         operator_id="operator:tyler",
-        now=lambda: _NOW,
-        ledger=ledger,
     )
     assert first.source_count == 1
-    with pytest.raises(AuthorizationDeniedError, match="already consumed"):
-        build_authorized_source_verification_checklist_report(
-            [_source()],
-            default_adapter_family_specs(),
-            observations=_observations(),
-            caller_confirmation=True,
-            authorization_reason="Perform one reviewed source verification check.",
-            operator_id="operator:tyler",
-            now=lambda: _NOW,
-            ledger=ledger,
-        )
+    replay = build_authorized_source_verification_checklist_report(
+        [_source()],
+        default_adapter_family_specs(),
+        observations=_observations(),
+        caller_confirmation=True,
+        authorization_reason="Perform one reviewed source verification check.",
+        operator_id="operator:tyler",
+    )
 
+    assert replay == first
     assert checker.calls == ["https://example.invalid/source"]
 
 
 def test_authorized_checklist_does_not_accept_caller_selected_http_checker() -> None:
-    assert "http_checker" not in inspect.signature(
+    parameters = inspect.signature(
         build_authorized_source_verification_checklist_report
     ).parameters
+    assert "http_checker" not in parameters
+    assert "ledger" not in parameters
+    assert "now" not in parameters

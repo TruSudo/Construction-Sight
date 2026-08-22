@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -8,9 +7,8 @@ from pydantic import ValidationError
 
 from constructionsight.authorization_decision import (
     AuthorizationDeniedError,
-    AuthorizationUseLedger,
-    authorize_and_claim,
     build_authorization_decision,
+    validate_authorization_decision,
 )
 from constructionsight.authorization_decision_models import (
     AuthorizationDecision,
@@ -59,13 +57,8 @@ def _decision(
     )
 
 
-def _claim(
-    decision: AuthorizationDecision,
-    ledger: AuthorizationUseLedger,
-    *,
-    replay_identity: str = "result:1",
-):
-    return authorize_and_claim(
+def _validate(decision: AuthorizationDecision):
+    return validate_authorization_decision(
         decision,
         actor_id="operator:tyler",
         action="apply-status",
@@ -74,9 +67,7 @@ def _claim(
         exact_scope=("field:status", "transition:verified-candidate"),
         current_state_identity="state:abc123",
         current_revocation_identity="revocation:none:v1",
-        replay_identity=replay_identity,
         checked_at=datetime(2026, 7, 15, 12, 5, tzinfo=UTC),
-        ledger=ledger,
     )
 
 
@@ -91,7 +82,7 @@ def test_builder_constructs_digest_bound_decision_without_placeholder_validation
 
 
 def test_preflight_constructs_digest_bound_identity_without_placeholder_validation() -> None:
-    preflight = _claim(_decision(), AuthorizationUseLedger())
+    preflight = _validate(_decision())
 
     assert preflight.preflight_id == authorization_digest(
         "authorization-preflight",
@@ -153,9 +144,7 @@ def test_preflight_rejects_expiry_revocation_scope_and_stale_state() -> None:
         exact_scope=("field:status", "transition:verified-candidate"),
         current_state_identity="state:abc123",
         current_revocation_identity="revocation:none:v1",
-        replay_identity="result:1",
         checked_at=datetime(2026, 7, 15, 12, 5, tzinfo=UTC),
-        ledger=AuthorizationUseLedger(),
     )
     cases = (
         ({"checked_at": decision.expires_at}, "expired"),
@@ -165,40 +154,17 @@ def test_preflight_rejects_expiry_revocation_scope_and_stale_state() -> None:
     )
     for update, message in cases:
         with pytest.raises(AuthorizationDeniedError, match=message):
-            authorize_and_claim(**{**base, **update})
+            validate_authorization_decision(**{**base, **update})
 
 
-def test_single_use_claim_allows_only_one_concurrent_caller() -> None:
+def test_validation_does_not_claim_or_consume_authority() -> None:
     decision = _decision()
-    ledger = AuthorizationUseLedger()
 
-    def attempt() -> str:
-        try:
-            return _claim(decision, ledger).preflight_id
-        except AuthorizationDeniedError as exc:
-            return str(exc)
+    first = _validate(decision)
+    second = _validate(decision)
 
-    with ThreadPoolExecutor(max_workers=8) as executor:
-        results = list(executor.map(lambda _: attempt(), range(24)))
-
-    successful = [value for value in results if value.startswith("authorization-preflight:")]
-    denied = [value for value in results if "already consumed" in value]
-    assert len(successful) == 1
-    assert len(denied) == 23
-    assert ledger.is_claimed(decision.decision_id) is True
-
-
-def test_exact_replay_requires_same_replay_identity_and_repeats_no_effect() -> None:
-    decision = _decision(reuse_policy=AuthorizationReusePolicy.EXACT_REPLAY)
-    ledger = AuthorizationUseLedger()
-
-    first = _claim(decision, ledger, replay_identity="result:immutable")
-    replay = _claim(decision, ledger, replay_identity="result:immutable")
-
-    assert "execute only the exact granted operation" in first.next_action
-    assert "without repeating effects" in replay.next_action
-    with pytest.raises(AuthorizationDeniedError, match="conflicting replay"):
-        _claim(decision, ledger, replay_identity="result:conflict")
+    assert first.preflight_id == second.preflight_id
+    assert "atomically reserve" in first.next_action
 
 
 def test_tampering_after_validation_is_detected_before_claim() -> None:
@@ -206,4 +172,4 @@ def test_tampering_after_validation_is_detected_before_claim() -> None:
     tampered = decision.model_copy(update={"resource_id": "source:other"})
 
     with pytest.raises(AuthorizationDeniedError, match="integrity"):
-        _claim(tampered, AuthorizationUseLedger())
+        _validate(tampered)
