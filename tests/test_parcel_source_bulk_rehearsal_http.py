@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import inspect
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-import inspect
 from pathlib import Path
 
 import httpx
