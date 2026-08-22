@@ -218,7 +218,7 @@ def execute_bounded_http(
         canonical_method,
         outbound_url,
         headers={
-            "Accept": ", ".join(policy.accepted_media_types),
+            "Accept": policy.request_accept or ", ".join(policy.accepted_media_types),
             "Accept-Encoding": "identity",
             "User-Agent": policy.user_agent,
         },
