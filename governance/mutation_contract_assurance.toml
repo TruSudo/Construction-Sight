@@ -68,3 +68,25 @@ replacement = '''        if False and prior is not None and prior != label:'''
 tests = ["tests/test_assurance_certification.py::test_assurance_rejects_reused_source_artifact"]
 expected_output = "source artifact is reused"
 risk = "One retained raw source could be presented as evidence for multiple supposedly distinct analytical or quality-gate contexts."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-GOV-WIRING-001"
+path = "src/constructionsight/governance_certification.py"
+search = '''    mutation = _merge_mutation_contracts(
+        primary_mutation,
+        assurance_mutation,
+        findings,
+    )'''
+replacement = '''    mutation = dict(primary_mutation)'''
+tests = ["tests/test_mutation_governance_overlay.py::test_canonical_governance_audit_invokes_mutation_overlay_merge"]
+expected_output = "test_canonical_governance_audit_invokes_mutation_overlay_merge"
+risk = "The supplemental assurance mutation surface could execute in CI while disappearing from canonical governance certification."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-GOV-DUPLICATE-001"
+path = "src/constructionsight/governance_certification.py"
+search = '''        if case_id in primary_ids and case_id not in _MUTATION_OVERRIDES:'''
+replacement = '''        if False and case_id in primary_ids and case_id not in _MUTATION_OVERRIDES:'''
+tests = ["tests/test_mutation_governance_overlay.py::test_governance_merge_rejects_undeclared_duplicate_case_id"]
+expected_output = "test_governance_merge_rejects_undeclared_duplicate_case_id"
+risk = "An undeclared duplicate mutation identity could override an existing focused witness without a governance finding."
