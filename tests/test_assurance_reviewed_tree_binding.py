@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from constructionsight.authority_certification import _reviewed_tree_digest
+from constructionsight.authority_certification import (
+    _audit_defects_and_review,
+    _reviewed_tree_digest,
+)
 from constructionsight.governance_certification import (
     _audit_assurance_reviewed_tree_binding,
 )
@@ -48,6 +51,27 @@ def test_assurance_rejects_rebinding_old_review_to_newer_covered_tree(
     assert "ASSURANCE-026" in _codes(findings)
 
 
+def test_assurance_rejects_ordinary_covered_tree_change_after_review(
+    tmp_path: Path,
+) -> None:
+    initialize_repository(tmp_path)
+    reviewed_commit = git(tmp_path, "rev-parse", "HEAD")
+    write_assurance(
+        tmp_path,
+        reviewed_commit=reviewed_commit,
+        reviewed_tree_digest=_reviewed_tree_digest(tmp_path),
+    )
+
+    write(tmp_path, "src/constructionsight/reviewed.py", "VALUE = 'unreviewed-change'\n")
+    git(tmp_path, "add", "src/constructionsight/reviewed.py")
+    git(tmp_path, "commit", "-m", "change covered tree without rebinding digest")
+
+    findings: list[GovernanceFinding] = []
+    _audit_defects_and_review(tmp_path, findings)
+
+    assert "ASSURANCE-021" in _codes(findings)
+
+
 def test_assurance_allows_only_permitted_finalization_tree_drift(tmp_path: Path) -> None:
     initialize_repository(tmp_path)
     reviewed_commit = git(tmp_path, "rev-parse", "HEAD")
@@ -80,3 +104,19 @@ def test_assurance_allows_only_permitted_finalization_tree_drift(tmp_path: Path)
     _audit_assurance_reviewed_tree_binding(tmp_path, findings)
 
     assert "ASSURANCE-026" not in _codes(findings)
+
+
+def test_assurance_exact_reviewed_tree_has_no_tree_binding_findings(tmp_path: Path) -> None:
+    initialize_repository(tmp_path)
+    reviewed_commit = git(tmp_path, "rev-parse", "HEAD")
+    write_assurance(
+        tmp_path,
+        reviewed_commit=reviewed_commit,
+        reviewed_tree_digest=_reviewed_tree_digest(tmp_path),
+    )
+
+    findings: list[GovernanceFinding] = []
+    _audit_defects_and_review(tmp_path, findings)
+    _audit_assurance_reviewed_tree_binding(tmp_path, findings)
+
+    assert not ({"ASSURANCE-021", "ASSURANCE-026"} & _codes(findings))
