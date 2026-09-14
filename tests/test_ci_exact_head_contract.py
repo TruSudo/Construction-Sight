@@ -40,3 +40,21 @@ def test_ci_revalidates_only_claimed_independent_human_review() -> None:
         "Assurance artifact absent; repository certification remains blocking." in workflow
     )
     assert "makes no independent-human claim" in workflow
+
+
+def test_ci_revalidates_quality_gates_against_github_actions_api() -> None:
+    workflow = _workflow()
+
+    assert "actions: read" in workflow
+    assert "name: Native assurance preflight certification" in workflow
+    assert "id: assurance-preflight" in workflow
+    assert "constructionsight.assurance_preflight_certification" in workflow
+    assert "'${{ steps.assurance-preflight.outcome }}'" in workflow
+    assert "name: Verify GitHub Actions quality provenance" in workflow
+    assert "id: github-actions-provenance" in workflow
+    assert "constructionsight.github_actions_certification run-ids" in workflow
+    assert "/actions/runs/{run_id}" in workflow
+    assert "/actions/runs/{run_id}/jobs?per_page=100" in workflow
+    assert "constructionsight.github_actions_certification verify" in workflow
+    assert "'${{ steps.github-actions-provenance.outcome }}'" in workflow
+    assert "GitHub Actions provenance revalidation is not yet applicable" in workflow

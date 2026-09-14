@@ -9,6 +9,7 @@ from typing import Any
 from constructionsight.defect_closure_certification import (
     reviewed_active_defects_digest,
 )
+from constructionsight.github_actions_certification import quality_gate_binding
 
 QUALITY_GATES = (
     "adapter-audit",
@@ -207,6 +208,15 @@ def _pass(
     }
 
 
+def _quality_job_id(job_name: str) -> int:
+    return {
+        "Python 3.11 quality gate": 11001,
+        "Python 3.12 quality gate": 11002,
+        "Python 3.11 isolated vulnerability audit": 11003,
+        "Python 3.12 isolated vulnerability audit": 11004,
+    }[job_name]
+
+
 def write_assurance(
     root: Path,
     *,
@@ -330,6 +340,10 @@ def write_assurance(
 
     gate_results: list[dict[str, object]] = []
     for gate_id in QUALITY_GATES:
+        binding = quality_gate_binding(gate_id)
+        if binding is None:
+            raise AssertionError(f"missing test quality-gate binding: {gate_id}")
+        job_name, step_name = binding
         source_path, source_digest = _raw_source(
             root,
             reviewed_commit=reviewed_commit,
@@ -340,6 +354,14 @@ def write_assurance(
                 "gate_id": gate_id,
                 "status": "passed",
                 "result": "test retained quality-gate source evidence",
+                "run_id": 9001,
+                "job_id": _quality_job_id(job_name),
+                "job_name": job_name,
+                "step_name": step_name,
+                "head_sha": reviewed_commit,
+                "workflow_name": "CI",
+                "event": "pull_request",
+                "pull_request_number": 117,
             },
         )
         gate_results.append(

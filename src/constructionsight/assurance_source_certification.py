@@ -7,6 +7,13 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any, Final
 
+from constructionsight.github_actions_certification import (
+    GITHUB_ACTIONS_SOURCE_PRODUCER,
+    QUALITY_GATE_SOURCE_FIELDS,
+    WORKFLOW_EVENT,
+    WORKFLOW_NAME,
+    quality_gate_binding,
+)
 from constructionsight.governance_certification_core import (
     GovernanceFinding,
     _finding,
@@ -19,7 +26,6 @@ from constructionsight.repository_path_certification import (
 _CANONICAL_ASSURANCE_ARTIFACT: Final = "governance/reviews/assurance_review.json"
 _ASSURANCE_EVIDENCE_PREFIX: Final = "governance/reviews/evidence"
 _ASSURANCE_SOURCE_PREFIX: Final = "governance/reviews/evidence/raw"
-_QUALITY_GATE_SOURCE_PRODUCER: Final = "github-actions"
 _ANALYTICAL_SOURCE_FIELDS: Final = frozenset(
     {
         "reviewer",
@@ -36,15 +42,17 @@ _ANALYTICAL_SOURCE_FIELDS: Final = frozenset(
         "result",
     }
 )
-_QUALITY_GATE_SOURCE_FIELDS: Final = frozenset({"gate_id", "status", "result"})
 _ANALYTICAL_BOUND_FIELDS: Final = tuple(
     field for field in sorted(_ANALYTICAL_SOURCE_FIELDS) if field != "result"
 )
-_QUALITY_GATE_BOUND_FIELDS: Final = ("gate_id", "status")
 
 
 def _nonblank(value: object) -> bool:
     return isinstance(value, str) and bool(value.strip()) and value == value.strip()
+
+
+def _positive_integer(value: object) -> bool:
+    return not isinstance(value, bool) and isinstance(value, int) and value > 0
 
 
 def _record(findings: list[GovernanceFinding], message: str) -> None:
@@ -164,6 +172,26 @@ def _audit_analytical_sources(
         )
 
 
+def _quality_expected_values(
+    gate_id: object,
+    status: object,
+    reviewed_commit: object,
+) -> dict[str, object] | None:
+    binding = quality_gate_binding(gate_id)
+    if binding is None:
+        return None
+    job_name, step_name = binding
+    return {
+        "gate_id": gate_id,
+        "status": status,
+        "job_name": job_name,
+        "step_name": step_name,
+        "head_sha": reviewed_commit,
+        "workflow_name": WORKFLOW_NAME,
+        "event": WORKFLOW_EVENT,
+    }
+
+
 def _audit_quality_gate_sources(
     root: Path,
     report: Mapping[str, Any],
@@ -173,6 +201,8 @@ def _audit_quality_gate_sources(
     if not isinstance(raw_gates, list):
         return
     seen_evidence: set[str] = set()
+    run_ids: set[int] = set()
+    pull_request_numbers: set[int] = set()
     for raw_gate in raw_gates:
         if not isinstance(raw_gate, dict):
             continue
@@ -201,17 +231,52 @@ def _audit_quality_gate_sources(
             )
             if source is None:
                 continue
-            expected_values = {
-                field: raw_result.get(field) for field in _QUALITY_GATE_BOUND_FIELDS
-            }
+            expected_values = _quality_expected_values(
+                gate_id,
+                raw_result.get("status"),
+                report.get("reviewed_commit"),
+            )
+            if expected_values is None:
+                _record(findings, f"quality gate {gate_id} has no canonical CI binding")
+                continue
             _audit_source_payload(
                 source,
-                expected_producer=_QUALITY_GATE_SOURCE_PRODUCER,
-                expected_fields=_QUALITY_GATE_SOURCE_FIELDS,
+                expected_producer=GITHUB_ACTIONS_SOURCE_PRODUCER,
+                expected_fields=QUALITY_GATE_SOURCE_FIELDS,
                 expected_values=expected_values,
                 label=f"quality gate {gate_id}",
                 findings=findings,
             )
+            source_payload = source.get("payload")
+            if not isinstance(source_payload, dict):
+                continue
+            run_id = source_payload.get("run_id")
+            job_id = source_payload.get("job_id")
+            pr_number = source_payload.get("pull_request_number")
+            if not _positive_integer(run_id) or not _positive_integer(job_id):
+                _record(
+                    findings,
+                    f"quality gate {gate_id} run_id and job_id must be positive integers",
+                )
+            else:
+                run_ids.add(run_id)
+            if not _positive_integer(pr_number):
+                _record(
+                    findings,
+                    f"quality gate {gate_id} pull_request_number must be a positive integer",
+                )
+            else:
+                pull_request_numbers.add(pr_number)
+    if len(run_ids) > 1:
+        _record(
+            findings,
+            "quality-gate raw sources must bind one canonical GitHub Actions run",
+        )
+    if len(pull_request_numbers) > 1:
+        _record(
+            findings,
+            "quality-gate raw sources must bind one pull request",
+        )
 
 
 def audit_assurance_source_semantics(

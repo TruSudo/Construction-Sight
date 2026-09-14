@@ -42,6 +42,25 @@ context identity, producer, and retained payload. The certifier recomputes the
 source digest, rejects placeholder hashes, missing or unsafe source paths,
 cross-commit evidence, and source reuse across distinct evidence owners.
 
+Retained raw payloads are semantic evidence, not opaque hash targets. Analytical
+sources must agree with the normalized reviewer, provider, model, pass status,
+context cardinality, candidate count, and coverage/disposition counts. Quality-gate
+sources must agree with the normalized gate identity and status and must bind the
+canonical CI workflow, exact reviewed SHA, pull request, GitHub Actions run, job,
+and step identities. Finalization CI re-fetches the bound run and job data through
+the read-only GitHub Actions API and requires the canonical bound step to have
+completed successfully. A locally authored `producer = "github-actions"` string is
+not sufficient provenance.
+
+Because the aggregate repository certification intentionally remains blocked by
+active defects and missing assurance before finalization, the frozen candidate also
+runs a pre-assurance structural certification. That preflight may disregard only
+`ASSURANCE-001` and `DEFECT-ACTIVE-001`; every other architecture, capability,
+governance, authorization, test, dependency, or semantic finding remains fatal.
+The finalization transaction can therefore bind structural quality gates to a real
+successful candidate-run step without circularly requiring completed assurance to
+prove the candidate was structurally clean.
+
 The assurance modes are cumulative and exact:
 
 - `native_maximum` makes no independence claim.
