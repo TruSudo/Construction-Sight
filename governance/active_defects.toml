@@ -512,3 +512,11 @@ area = "assurance-source-provenance-integrity"
 root_cause = "Pass and quality-gate evidence treats source_artifact_sha256 as a syntax-only 64-hex assertion without a resolvable source artifact, so fabricated or stale raw-review and CI provenance, including all-zero hashes, can satisfy Native Maximum Assurance."
 discovered_against = "3ba40fd4b6c4e4524af3eb258459425a4b0045a3"
 required_resolution = "Require every source artifact identity to resolve to immutable retained bytes or an externally authenticated CI artifact identity; verify SHA-256 against those bytes or identity and exact reviewed commit or run metadata; reject placeholders and unresolvable hashes; preserve safe containment and unique ownership; and add zero-hash, missing-source, digest-mismatch, cross-commit, reused-source regression, and focused mutation coverage."
+
+[[defects]]
+id = "CS-SR-065"
+severity = "P2"
+area = "assurance-quality-gate-compliance"
+root_cause = "Assurance provenance and mutation-overlay hardening introduced six overlong Python lines, an unsorted import block, and a nested conditional rejected by the mandatory Ruff rules. Exact-head CI 1146 on 7c302bc925884d5c6aa3d9fc0191e68672c2a37a reports eight Ruff errors and a failed lint outcome, so that candidate does not satisfy the Native Maximum Assurance quality baseline even though tests and focused mutants pass."
+discovered_against = "7c302bc925884d5c6aa3d9fc0191e68672c2a37a"
+required_resolution = "Correct all eight Ruff violations without suppressions, rule changes, or weakened predicates; preserve behavior and mutation anchors; rerun the complete exact-head Python 3.11 and 3.12 matrix; and verify the retained raw Ruff output and actual gate outcomes rather than a continue-on-error step conclusion before making any clean-quality claim."
