@@ -6,8 +6,9 @@ import hashlib
 import json
 import re
 import subprocess
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
+from typing import Any, Final
 
 from constructionsight.adversarial_contract_certification import (
     audit_adversarial_contract,
@@ -58,6 +59,13 @@ from constructionsight.traceability_certification import _audit_capabilities
 
 _ADVERSARIAL_TEST_SCHEMA = "constructionsight.adversarial-test-contract/v2"
 _MUTATION_SCHEMA = "constructionsight.mutation-contract/v1"
+_MUTATION_SUPPLEMENT_PATH = "governance/mutation_contract_assurance.toml"
+_MUTATION_FIELDS: Final = frozenset(
+    {"schema_version", "contract_id", "execution", "timeout_seconds", "cases"}
+)
+_MUTATION_OVERRIDES: Final = frozenset(
+    {"CS-MUT-ASSURANCE-EVIDENCE-DIGEST-001"}
+)
 _OPEN_WORK_SCHEMA = "constructionsight.open-work/v1"
 _VULNERABILITY_EXCEPTION_SCHEMA = "constructionsight.vulnerability-exceptions/v1"
 _COMMIT_PATTERN = re.compile(r"[0-9a-f]{40}")
@@ -160,6 +168,117 @@ def _audit_assurance_reviewed_tree_binding(
         )
 
 
+def _mutation_case_id(raw: object) -> str | None:
+    if not isinstance(raw, dict):
+        return None
+    value = raw.get("id")
+    return value if isinstance(value, str) and value.strip() == value and value else None
+
+
+def _merge_mutation_contracts(
+    primary: Mapping[str, Any],
+    supplement: Mapping[str, Any],
+    findings: list[GovernanceFinding],
+) -> dict[str, Any]:
+    """Return the canonical mutation surface after one explicit governed overlay."""
+
+    path = _MUTATION_SUPPLEMENT_PATH
+    missing = _MUTATION_FIELDS - set(supplement)
+    unknown = set(supplement) - _MUTATION_FIELDS
+    if missing or unknown:
+        findings.append(
+            _finding(
+                "GOV-MUTATION-001",
+                path,
+                "supplement fields disagree with mutation schema; "
+                f"missing={sorted(missing)}, unknown={sorted(unknown)}",
+            )
+        )
+    if supplement.get("schema_version") != _MUTATION_SCHEMA:
+        findings.append(
+            _finding("GOV-MUTATION-002", path, "unsupported mutation supplement schema")
+        )
+    contract_id = supplement.get("contract_id")
+    if not isinstance(contract_id, str) or not contract_id.strip() or contract_id != contract_id.strip():
+        findings.append(
+            _finding("GOV-MUTATION-003", path, "supplement contract_id must be nonblank")
+        )
+    for field in ("execution", "timeout_seconds"):
+        if supplement.get(field) != primary.get(field):
+            findings.append(
+                _finding(
+                    "GOV-MUTATION-004",
+                    path,
+                    f"supplement {field} must exactly match the canonical mutation contract",
+                )
+            )
+
+    primary_cases = primary.get("cases")
+    supplement_cases = supplement.get("cases")
+    if not isinstance(primary_cases, list) or not isinstance(supplement_cases, list) or not supplement_cases:
+        findings.append(
+            _finding(
+                "GOV-MUTATION-005",
+                path,
+                "primary and supplemental mutation cases must be nonempty arrays",
+            )
+        )
+        return dict(primary)
+
+    combined: dict[str, object] = {}
+    primary_ids: set[str] = set()
+    for raw in primary_cases:
+        case_id = _mutation_case_id(raw)
+        if case_id is None or case_id in primary_ids:
+            findings.append(
+                _finding(
+                    "GOV-MUTATION-006",
+                    "governance/mutation_contract.toml",
+                    "primary mutation case IDs must be unique nonblank strings",
+                )
+            )
+            continue
+        primary_ids.add(case_id)
+        combined[case_id] = raw
+
+    supplement_ids: set[str] = set()
+    for raw in supplement_cases:
+        case_id = _mutation_case_id(raw)
+        if case_id is None or case_id in supplement_ids:
+            findings.append(
+                _finding(
+                    "GOV-MUTATION-006",
+                    path,
+                    "supplement mutation case IDs must be unique nonblank strings",
+                )
+            )
+            continue
+        supplement_ids.add(case_id)
+        if case_id in primary_ids and case_id not in _MUTATION_OVERRIDES:
+            findings.append(
+                _finding(
+                    "GOV-MUTATION-007",
+                    path,
+                    f"unauthorized mutation-case override: {case_id}",
+                )
+            )
+            continue
+        combined[case_id] = raw
+
+    missing_overrides = _MUTATION_OVERRIDES - supplement_ids
+    if missing_overrides:
+        findings.append(
+            _finding(
+                "GOV-MUTATION-008",
+                path,
+                f"required scoped mutation override is missing: {sorted(missing_overrides)}",
+            )
+        )
+    merged = dict(primary)
+    merged["cases"] = list(combined.values())
+    return merged
+
+
 def audit_governance(root: Path, tracked_files: Sequence[Path]) -> GovernanceReport:
     """Audit semantic governance for one exact tracked tree."""
 
@@ -202,10 +321,21 @@ def audit_governance(root: Path, tracked_files: Sequence[Path]) -> GovernanceRep
         _ADVERSARIAL_TEST_SCHEMA,
         findings,
     )
-    mutation = _read_toml(
+    primary_mutation = _read_toml(
         repository_root,
         "governance/mutation_contract.toml",
         _MUTATION_SCHEMA,
+        findings,
+    )
+    assurance_mutation = _read_toml(
+        repository_root,
+        _MUTATION_SUPPLEMENT_PATH,
+        _MUTATION_SCHEMA,
+        findings,
+    )
+    mutation = _merge_mutation_contracts(
+        primary_mutation,
+        assurance_mutation,
         findings,
     )
     active_defects = _read_toml(
