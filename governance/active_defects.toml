@@ -496,3 +496,19 @@ area = "assurance-reviewed-tree-binding"
 root_cause = "Native assurance permits reviewed_commit to be any ancestor of HEAD, while reviewed_tree_digest is verified only against the current assurance-covered index tree and is not recomputed from the reviewed commit. An assurance report can therefore bind analytical passes and quality evidence to an older commit while rebinding the digest to a newer non-finalization implementation tree."
 discovered_against = "65b2ef5e726d8ab810776d1774edc74b1b70bc4c"
 required_resolution = "Compute the assurance-covered tree digest directly from reviewed_commit using canonical Git object identities and the same finalization exclusions; require it to equal reviewed_tree_digest and the current covered tree digest; preserve permitted post-review finalization paths; and add stale-reviewed-commit, covered-tree-change, allowed-finalization, and exact-tree regression coverage."
+
+[[defects]]
+id = "CS-SR-063"
+severity = "P0"
+area = "assurance-context-isolation-integrity"
+root_cause = "Native assurance counts caller-authored completed_reviews values toward minimum context-isolated and deep-review thresholds, so one analytical pass and evidence artifact can claim multiple supposedly fresh contexts; the canonical test helper satisfies three deep reviews with one native-deep artifact."
+discovered_against = "3ba40fd4b6c4e4524af3eb258459425a4b0045a3"
+required_resolution = "Require each context-isolated review to be a distinct pass ID and distinct evidence artifact with completed_reviews exactly 1; require at least five native pass records and at least three distinct deep_repository records, bind each to a unique execution or context identity, and add aggregation, duplicate-context, exact-count regression, and focused mutation coverage."
+
+[[defects]]
+id = "CS-SR-064"
+severity = "P0"
+area = "assurance-source-provenance-integrity"
+root_cause = "Pass and quality-gate evidence treats source_artifact_sha256 as a syntax-only 64-hex assertion without a resolvable source artifact, so fabricated or stale raw-review and CI provenance, including all-zero hashes, can satisfy Native Maximum Assurance."
+discovered_against = "3ba40fd4b6c4e4524af3eb258459425a4b0045a3"
+required_resolution = "Require every source artifact identity to resolve to immutable retained bytes or an externally authenticated CI artifact identity; verify SHA-256 against those bytes or identity and exact reviewed commit or run metadata; reject placeholders and unresolvable hashes; preserve safe containment and unique ownership; and add zero-hash, missing-source, digest-mismatch, cross-commit, reused-source regression, and focused mutation coverage."
