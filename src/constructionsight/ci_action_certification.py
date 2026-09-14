@@ -114,7 +114,10 @@ def audit_ci_actions(root: Path) -> tuple[CertificationFinding, ...]:
         expected = _REVIEWED_ACTIONS.get(repository)
         if expected is None:
             findings.append(
-                _finding(f"unreviewed GitHub Action repository: {repository}", line_number)
+                _finding(
+                    f"unreviewed GitHub Action repository: {repository}",
+                    line_number,
+                )
             )
             continue
         counts[repository] += 1
@@ -128,7 +131,10 @@ def audit_ci_actions(root: Path) -> tuple[CertificationFinding, ...]:
         if review != _review_comment(expected):
             findings.append(
                 _finding(
-                    f"{repository} review annotation must bind release, date, and runtime={expected.runtime}",
+                    (
+                        f"{repository} review annotation must bind release, date, "
+                        f"and runtime={expected.runtime}"
+                    ),
                     line_number,
                 )
             )
