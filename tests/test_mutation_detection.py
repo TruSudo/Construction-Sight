@@ -231,13 +231,16 @@ def test_mutation_runner_rejects_failed_baseline(tmp_path: Path) -> None:
         ),
         (
             "VALUE = False",
-            "def test_target():\n"
+            "@pytest.fixture\n"
+            "def ready():\n"
+            "    yield\n"
             "    if not mutation_sample.VALUE:\n"
-            "        pytest.skip('test_target skipped')\n"
-            "    assert True\n",
+            "        raise RuntimeError('test_target teardown')\n"
+            "def test_target(ready):\n"
+            "    assert mutation_sample.VALUE is True\n",
         ),
     ],
-    ids=["syntax", "import", "setup", "teardown", "runtime", "skip"],
+    ids=["syntax", "import", "setup", "teardown", "runtime", "failure-and-error"],
 )
 def test_mutation_runner_rejects_nonsemantic_failures(
     tmp_path: Path, replacement: str, body: str,
@@ -291,7 +294,7 @@ def test_mutation_verdict_rejects_changed_parameter_selection(tmp_path: Path) ->
 
 @pytest.mark.parametrize(
     "damage",
-    ["malformed", "empty", "count", "wrong-node", "duplicate", "runtime", "doctype"],
+    ["malformed", "empty", "count", "wrong-node", "duplicate", "runtime", "doctype", "skipped"],
 )
 def test_mutation_report_rejects_invalid_evidence(tmp_path: Path, damage: str) -> None:
     case = _verdict_case()
@@ -313,6 +316,9 @@ def test_mutation_report_rejects_invalid_evidence(tmp_path: Path, damage: str) -
         suite.append(ET.fromstring(ET.tostring(testcase)))
         suite.set("tests", "2")
         suite.set("failures", "2")
+    elif damage == "skipped":
+        suite.set("skipped", "1")
+        ET.SubElement(testcase, "skipped", message="skipped result fixture")
     elif damage == "runtime":
         failure = testcase.find("failure")
         assert failure is not None

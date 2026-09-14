@@ -94,7 +94,7 @@ A certification result is valid only for the exact Git tree that passed all gate
 
 ## Mutation verdict integrity
 
-The recorded CS-SR-017 mutation-verdict manifestation is corrected by proving a
+The implementation addresses the recorded CS-SR-017 manifestation by proving a
 passing control run for each declared test selection before applying its mutation.
 Control and changed runs use separate full tracked-source copies and temporary
 Git indexes; neither index claims to preserve the reviewed repository history.
@@ -115,7 +115,8 @@ malicious test code.
 
 Regression fixtures exercise real pytest subprocesses for passing controls,
 semantic failures, surviving mutations, syntax/import faults, fixture failures,
-runtime faults, skips, and an isolated Git index. Focused mutants also enforce
+runtime faults, and an isolated Git index. Structured-report fixtures reject
+skipped outcomes without skipping any repository test. Focused mutants also enforce
 control-run admission, exit status, and structured evidence requirements.
 
 A passing mutation result is test counterevidence. It is not a Codex Security
