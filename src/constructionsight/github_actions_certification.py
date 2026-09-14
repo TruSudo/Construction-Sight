@@ -86,8 +86,10 @@ QUALITY_GATE_BINDINGS: Final = {
 }
 
 
-def _positive_integer(value: object) -> bool:
-    return not isinstance(value, bool) and isinstance(value, int) and value > 0
+def _positive_int(value: object) -> int | None:
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        return None
+    return value
 
 
 def _read_json_object(path: Path) -> dict[str, Any]:
@@ -100,7 +102,12 @@ def _read_json_object(path: Path) -> dict[str, Any]:
     return payload
 
 
-def _repository_json(root: Path, raw_path: object, *, prefix: str) -> dict[str, Any]:
+def _repository_json(
+    root: Path,
+    raw_path: object,
+    *,
+    prefix: str,
+) -> dict[str, Any]:
     if not isinstance(raw_path, str):
         raise ValueError("assurance evidence path must be text")
     try:
@@ -111,14 +118,18 @@ def _repository_json(root: Path, raw_path: object, *, prefix: str) -> dict[str, 
             required_suffix=".json",
         )
     except RepositoryPathError as exc:
-        raise ValueError(f"unsafe or missing assurance evidence path: {raw_path}") from exc
+        raise ValueError(
+            f"unsafe or missing assurance evidence path: {raw_path}"
+        ) from exc
     return _read_json_object(path)
 
 
 def quality_gate_binding(gate_id: object) -> tuple[str, str] | None:
     """Return the canonical GitHub job/step binding for one required quality gate."""
 
-    return QUALITY_GATE_BINDINGS.get(gate_id) if isinstance(gate_id, str) else None
+    if not isinstance(gate_id, str):
+        return None
+    return QUALITY_GATE_BINDINGS.get(gate_id)
 
 
 def quality_source_payloads(
@@ -142,7 +153,11 @@ def quality_source_payloads(
         if evidence_path in evidence_paths:
             continue
         evidence_paths.add(evidence_path)
-        evidence = _repository_json(root, evidence_path, prefix=ASSURANCE_EVIDENCE_PREFIX)
+        evidence = _repository_json(
+            root,
+            evidence_path,
+            prefix=ASSURANCE_EVIDENCE_PREFIX,
+        )
         results = evidence.get("gates")
         if not isinstance(results, list) or not results:
             raise ValueError("quality-gate evidence must contain gate results")
@@ -159,22 +174,33 @@ def quality_source_payloads(
                 prefix=ASSURANCE_SOURCE_PREFIX,
             )
             if source.get("producer") != GITHUB_ACTIONS_SOURCE_PRODUCER:
-                raise ValueError(f"quality gate {gate_id} source producer is not GitHub Actions")
+                raise ValueError(
+                    f"quality gate {gate_id} source producer is not GitHub Actions"
+                )
             payload = source.get("payload")
             if not isinstance(payload, dict):
-                raise ValueError(f"quality gate {gate_id} raw source payload must be an object")
+                raise ValueError(
+                    f"quality gate {gate_id} raw source payload must be an object"
+                )
             payloads.append(payload)
     return tuple(payloads)
 
 
-def bound_run_ids(root: Path, assurance_report: Mapping[str, Any]) -> tuple[int, ...]:
-    payloads = quality_source_payloads(root, assurance_report)
-    run_ids = {payload.get("run_id") for payload in payloads}
-    if not run_ids or not all(_positive_integer(value) for value in run_ids):
-        raise ValueError("quality-gate source run IDs must be positive integers")
+def bound_run_ids(
+    root: Path,
+    assurance_report: Mapping[str, Any],
+) -> tuple[int, ...]:
+    run_ids: set[int] = set()
+    for payload in quality_source_payloads(root, assurance_report):
+        run_id = _positive_int(payload.get("run_id"))
+        if run_id is None:
+            raise ValueError("quality-gate source run IDs must be positive integers")
+        run_ids.add(run_id)
     if len(run_ids) != 1:
-        raise ValueError("all quality-gate sources must bind one canonical GitHub Actions run")
-    return tuple(sorted(int(value) for value in run_ids))
+        raise ValueError(
+            "all quality-gate sources must bind one canonical GitHub Actions run"
+        )
+    return tuple(sorted(run_ids))
 
 
 def _source_file(source_dir: Path, prefix: str, run_id: int) -> dict[str, Any]:
@@ -185,11 +211,14 @@ def _pull_request_numbers(run: Mapping[str, Any]) -> set[int]:
     values = run.get("pull_requests")
     if not isinstance(values, list):
         return set()
-    return {
-        int(item["number"])
-        for item in values
-        if isinstance(item, dict) and _positive_integer(item.get("number"))
-    }
+    numbers: set[int] = set()
+    for item in values:
+        if not isinstance(item, dict):
+            continue
+        number = _positive_int(item.get("number"))
+        if number is not None:
+            numbers.add(number)
+    return numbers
 
 
 def verify_github_actions_bindings(
@@ -214,24 +243,31 @@ def verify_github_actions_bindings(
         findings.append(str(exc))
         return tuple(findings)
 
-    run_ids = {payload.get("run_id") for payload in payloads}
-    pr_numbers = {payload.get("pull_request_number") for payload in payloads}
-    if not run_ids or not all(_positive_integer(value) for value in run_ids):
-        findings.append("quality-gate source run IDs must be positive integers")
-        return tuple(findings)
+    run_ids: set[int] = set()
+    pr_numbers: set[int] = set()
+    for payload in payloads:
+        run_id = _positive_int(payload.get("run_id"))
+        if run_id is None:
+            findings.append("quality-gate source run IDs must be positive integers")
+        else:
+            run_ids.add(run_id)
+        pr_number = _positive_int(payload.get("pull_request_number"))
+        if pr_number is None:
+            findings.append(
+                "quality-gate pull-request numbers must be positive integers"
+            )
+        else:
+            pr_numbers.add(pr_number)
     if len(run_ids) != 1:
-        findings.append("all quality-gate sources must bind one canonical GitHub Actions run")
-    if not pr_numbers or not all(_positive_integer(value) for value in pr_numbers):
-        findings.append("quality-gate pull-request numbers must be positive integers")
-    elif len(pr_numbers) != 1:
+        findings.append(
+            "all quality-gate sources must bind one canonical GitHub Actions run"
+        )
+    if len(pr_numbers) != 1:
         findings.append("all quality-gate sources must bind one pull request")
 
     run_sources: dict[int, dict[str, Any]] = {}
     jobs_sources: dict[int, dict[str, Any]] = {}
-    for raw_run_id in run_ids:
-        if not _positive_integer(raw_run_id):
-            continue
-        run_id = int(raw_run_id)
+    for run_id in run_ids:
         try:
             run_sources[run_id] = _source_file(source_dir, "run", run_id)
             jobs_sources[run_id] = _source_file(source_dir, "jobs", run_id)
@@ -261,19 +297,23 @@ def verify_github_actions_bindings(
             findings.append(f"{label} does not bind the canonical CI workflow")
         if payload.get("event") != WORKFLOW_EVENT:
             findings.append(f"{label} does not bind a pull_request workflow run")
-        if payload.get("job_name") != expected_job or payload.get("step_name") != expected_step:
+        if (
+            payload.get("job_name") != expected_job
+            or payload.get("step_name") != expected_step
+        ):
             findings.append(f"{label} uses a noncanonical job or step binding")
-        run_id = payload.get("run_id")
-        job_id = payload.get("job_id")
-        pr_number = payload.get("pull_request_number")
-        if not _positive_integer(run_id) or not _positive_integer(job_id):
+
+        run_id = _positive_int(payload.get("run_id"))
+        job_id = _positive_int(payload.get("job_id"))
+        pr_number = _positive_int(payload.get("pull_request_number"))
+        if run_id is None or job_id is None:
             findings.append(f"{label} run_id and job_id must be positive integers")
             continue
-        if not _positive_integer(pr_number):
+        if pr_number is None:
             findings.append(f"{label} pull_request_number must be a positive integer")
             continue
-        run = run_sources.get(int(run_id))
-        jobs = jobs_sources.get(int(run_id))
+        run = run_sources.get(run_id)
+        jobs = jobs_sources.get(run_id)
         if run is None or jobs is None:
             continue
         repository_object = run.get("repository")
@@ -289,9 +329,13 @@ def verify_github_actions_bindings(
             or run.get("event") != WORKFLOW_EVENT
             or run_repository != repository
         ):
-            findings.append(f"{label} GitHub workflow run does not match exact provenance")
-        if int(pr_number) not in _pull_request_numbers(run):
-            findings.append(f"{label} GitHub workflow run is not bound to the claimed pull request")
+            findings.append(
+                f"{label} GitHub workflow run does not match exact provenance"
+            )
+        if pr_number not in _pull_request_numbers(run):
+            findings.append(
+                f"{label} GitHub workflow run is not bound to the claimed pull request"
+            )
 
         raw_jobs = jobs.get("jobs")
         if not isinstance(raw_jobs, list):
@@ -307,7 +351,9 @@ def verify_github_actions_bindings(
             continue
         job = matching_jobs[0]
         if job.get("run_id") != run_id or job.get("name") != expected_job:
-            findings.append(f"{label} GitHub job does not match the canonical binding")
+            findings.append(
+                f"{label} GitHub job does not match the canonical binding"
+            )
         if job.get("status") != "completed":
             findings.append(f"{label} GitHub job was not completed")
         raw_steps = job.get("steps")
@@ -320,11 +366,18 @@ def verify_github_actions_bindings(
             if isinstance(step, dict) and step.get("name") == expected_step
         ]
         if len(matching_steps) != 1:
-            findings.append(f"{label} canonical GitHub step is missing or duplicated")
+            findings.append(
+                f"{label} canonical GitHub step is missing or duplicated"
+            )
             continue
         step = matching_steps[0]
-        if step.get("status") != "completed" or step.get("conclusion") != "success":
-            findings.append(f"{label} authoritative GitHub step did not succeed")
+        if (
+            step.get("status") != "completed"
+            or step.get("conclusion") != "success"
+        ):
+            findings.append(
+                f"{label} authoritative GitHub step did not succeed"
+            )
     return tuple(findings)
 
 
@@ -352,7 +405,10 @@ def build_report(
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Verify ConstructionSight quality gates against GitHub Actions API evidence."
+        description=(
+            "Verify ConstructionSight quality gates against GitHub Actions API "
+            "evidence."
+        )
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -370,7 +426,8 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    args = _parser().parse_args(argv)
+    parser = _parser()
+    args = parser.parse_args(argv)
     try:
         assurance = _read_json_object(args.review_artifact)
         if args.command == "run-ids":

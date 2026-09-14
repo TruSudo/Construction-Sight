@@ -51,8 +51,10 @@ def _nonblank(value: object) -> bool:
     return isinstance(value, str) and bool(value.strip()) and value == value.strip()
 
 
-def _positive_integer(value: object) -> bool:
-    return not isinstance(value, bool) and isinstance(value, int) and value > 0
+def _positive_int(value: object) -> int | None:
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        return None
+    return value
 
 
 def _record(findings: list[GovernanceFinding], message: str) -> None:
@@ -130,7 +132,10 @@ def _audit_source_payload(
             f"{sorted(mismatched)}",
         )
     if not _nonblank(source_payload.get("result")):
-        _record(findings, f"{label} raw source result must be nonblank retained evidence")
+        _record(
+            findings,
+            f"{label} raw source result must be nonblank retained evidence",
+        )
 
 
 def _audit_analytical_sources(
@@ -237,7 +242,10 @@ def _audit_quality_gate_sources(
                 report.get("reviewed_commit"),
             )
             if expected_values is None:
-                _record(findings, f"quality gate {gate_id} has no canonical CI binding")
+                _record(
+                    findings,
+                    f"quality gate {gate_id} has no canonical CI binding",
+                )
                 continue
             _audit_source_payload(
                 source,
@@ -250,17 +258,17 @@ def _audit_quality_gate_sources(
             source_payload = source.get("payload")
             if not isinstance(source_payload, dict):
                 continue
-            run_id = source_payload.get("run_id")
-            job_id = source_payload.get("job_id")
-            pr_number = source_payload.get("pull_request_number")
-            if not _positive_integer(run_id) or not _positive_integer(job_id):
+            run_id = _positive_int(source_payload.get("run_id"))
+            job_id = _positive_int(source_payload.get("job_id"))
+            pr_number = _positive_int(source_payload.get("pull_request_number"))
+            if run_id is None or job_id is None:
                 _record(
                     findings,
                     f"quality gate {gate_id} run_id and job_id must be positive integers",
                 )
             else:
                 run_ids.add(run_id)
-            if not _positive_integer(pr_number):
+            if pr_number is None:
                 _record(
                     findings,
                     f"quality gate {gate_id} pull_request_number must be a positive integer",

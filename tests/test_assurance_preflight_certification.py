@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from constructionsight.assurance_preflight_certification import preflight_findings
+from pathlib import Path
+from types import SimpleNamespace
+
+import constructionsight.assurance_preflight_certification as preflight
 from constructionsight.governance_certification_core import _finding
 
 
@@ -18,7 +21,7 @@ def test_preflight_allows_only_assurance_transaction_blockers() -> None:
         ),
     )
 
-    assert preflight_findings(findings) == ()
+    assert preflight.preflight_findings(findings) == ()
 
 
 def test_preflight_retains_any_other_governance_finding() -> None:
@@ -35,7 +38,36 @@ def test_preflight_retains_any_other_governance_finding() -> None:
         ),
     )
 
-    blockers = preflight_findings(findings)
+    blockers = preflight.preflight_findings(findings)
 
     assert len(blockers) == 1
     assert blockers[0].code == "ARCH-CAP-001"
+
+
+def test_preflight_retains_repository_findings(monkeypatch) -> None:
+    repository_finding = _finding(
+        "CERT-CI-003",
+        ".github/workflows/ci.yml",
+        "CI permissions must remain read-only",
+    )
+    monkeypatch.setattr(
+        preflight,
+        "audit_repository",
+        lambda root, require_clean_worktree: SimpleNamespace(
+            findings=(repository_finding,),
+            finding_count=1,
+        ),
+    )
+    monkeypatch.setattr(
+        preflight,
+        "audit_governance",
+        lambda root, tracked: SimpleNamespace(findings=(), finding_count=0),
+    )
+    monkeypatch.setattr(preflight, "_tracked_files", lambda root: ())
+
+    report = preflight.build_report(Path("."))
+
+    assert report["passed"] is False
+    findings = report["findings"]
+    assert isinstance(findings, list)
+    assert findings[0]["code"] == "CERT-CI-003"

@@ -10,7 +10,10 @@ from typing import Final
 
 from constructionsight.governance_certification import audit_governance
 from constructionsight.governance_certification_core import GovernanceFinding
-from constructionsight.repository_certification import _tracked_files
+from constructionsight.repository_certification import (
+    _tracked_files,
+    audit_repository,
+)
 
 _SCHEMA_VERSION: Final = "constructionsight.assurance-preflight/v1"
 _ALLOWED_TRANSACTION_BLOCKERS: Final = frozenset(
@@ -18,47 +21,51 @@ _ALLOWED_TRANSACTION_BLOCKERS: Final = frozenset(
 )
 
 
+def _is_transaction_blocker(code: str) -> bool:
+    return code in _ALLOWED_TRANSACTION_BLOCKERS
+
+
 def preflight_findings(
     findings: Sequence[GovernanceFinding],
 ) -> tuple[GovernanceFinding, ...]:
-    """Return findings that are not expected pre-assurance transaction blockers."""
+    """Return governance findings not expected during assurance finalization."""
 
     return tuple(
-        finding
-        for finding in findings
-        if finding.code not in _ALLOWED_TRANSACTION_BLOCKERS
+        finding for finding in findings if not _is_transaction_blocker(finding.code)
     )
 
 
 def build_report(root: Path) -> dict[str, object]:
     """Build a fail-closed report for the assurance-covered candidate tree."""
 
+    repository = audit_repository(root, require_clean_worktree=True)
     governance = audit_governance(root, _tracked_files(root))
-    blockers = preflight_findings(governance.findings)
+    repository_blockers = tuple(repository.findings)
+    governance_blockers = preflight_findings(governance.findings)
+    finding_rows = [
+        {
+            "code": finding.code,
+            "path": finding.path,
+            "line": finding.line,
+            "message": finding.message,
+        }
+        for finding in (*repository_blockers, *governance_blockers)
+    ]
+    allowed_count = governance.finding_count - len(governance_blockers)
     return {
         "schema_version": _SCHEMA_VERSION,
-        "passed": not blockers,
-        "allowed_transaction_blocker_count": (
-            governance.finding_count - len(blockers)
-        ),
-        "finding_count": len(blockers),
-        "findings": [
-            {
-                "code": finding.code,
-                "path": finding.path,
-                "line": finding.line,
-                "message": finding.message,
-            }
-            for finding in blockers
-        ],
+        "passed": not finding_rows,
+        "allowed_transaction_blocker_count": allowed_count,
+        "finding_count": len(finding_rows),
+        "findings": finding_rows,
     }
 
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
-            "Certify architecture, capability, governance, and semantic invariants "
-            "before final assurance artifacts and defect closure exist."
+            "Certify repository, architecture, capability, governance, and semantic "
+            "invariants before final assurance artifacts and defect closure exist."
         )
     )
     parser.add_argument("--root", type=Path, default=Path("."))

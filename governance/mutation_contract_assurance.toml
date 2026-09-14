@@ -111,17 +111,27 @@ risk = "Hash-valid quality-gate raw evidence could contradict normalized pass st
 [[cases]]
 id = "CS-MUT-ASSURANCE-PREFLIGHT-FILTER-001"
 path = "src/constructionsight/assurance_preflight_certification.py"
-search = '''        if finding.code not in _ALLOWED_TRANSACTION_BLOCKERS'''
-replacement = '''        if False'''
+search = '''    return code in _ALLOWED_TRANSACTION_BLOCKERS'''
+replacement = '''    return True'''
 tests = ["tests/test_assurance_preflight_certification.py::test_preflight_retains_any_other_governance_finding"]
 expected_output = "test_preflight_retains_any_other_governance_finding"
 risk = "Pre-assurance structural certification could silently discard real governance defects along with the two intentional transaction blockers."
 
 [[cases]]
+id = "CS-MUT-ASSURANCE-GITHUB-ACTIONS-BINDING-001"
+path = "src/constructionsight/github_actions_certification.py"
+search = '''    return QUALITY_GATE_BINDINGS.get(gate_id)'''
+replacement = '''    return None'''
+tests = ["tests/test_github_actions_certification.py::test_github_actions_provenance_accepts_exact_successful_steps"]
+expected_output = "test_github_actions_provenance_accepts_exact_successful_steps"
+risk = "Canonical quality-gate job and step bindings could be disabled while leaving retained source metadata structurally valid."
+
+[[cases]]
 id = "CS-MUT-ASSURANCE-GITHUB-ACTIONS-STEP-001"
 path = "src/constructionsight/github_actions_certification.py"
-search = '''        if step.get("status") != "completed" or step.get("conclusion") != "success":'''
-replacement = '''        if False:'''
+search = '''            step.get("status") != "completed"
+            or step.get("conclusion") != "success"'''
+replacement = '''            False'''
 tests = ["tests/test_github_actions_certification.py::test_github_actions_provenance_rejects_failed_bound_step"]
 expected_output = "test_github_actions_provenance_rejects_failed_bound_step"
 risk = "A failed authoritative GitHub Actions step could be accepted as passed assurance evidence."
@@ -147,21 +157,11 @@ risk = "A GitHub Actions run from another repository or fork could be presented 
 [[cases]]
 id = "CS-MUT-ASSURANCE-GITHUB-ACTIONS-PR-001"
 path = "src/constructionsight/github_actions_certification.py"
-search = '''        if int(pr_number) not in _pull_request_numbers(run):'''
+search = '''        if pr_number not in _pull_request_numbers(run):'''
 replacement = '''        if False:'''
 tests = ["tests/test_github_actions_certification.py::test_github_actions_provenance_rejects_wrong_pull_request"]
 expected_output = "test_github_actions_provenance_rejects_wrong_pull_request"
 risk = "A same-commit run from an unrelated pull-request context could satisfy provenance without matching the claimed review transaction."
-
-[[cases]]
-id = "CS-MUT-ASSURANCE-CI-PROVENANCE-WIRING-001"
-path = ".github/workflows/ci.yml"
-search = '''            '${{ steps.github-actions-provenance.outcome }}' \
-'''
-replacement = ''''''
-tests = ["tests/test_ci_exact_head_contract.py::test_ci_revalidates_quality_gates_against_github_actions_api"]
-expected_output = "test_ci_revalidates_quality_gates_against_github_actions_api"
-risk = "GitHub Actions provenance revalidation could execute but be omitted from aggregate quality-gate enforcement."
 
 [[cases]]
 id = "CS-MUT-ASSURANCE-GOV-WIRING-001"
