@@ -55,9 +55,37 @@ def _candidate_union(root: Path, report: dict[str, Any]) -> dict[str, Any]:
     return payload
 
 
-def test_native_maximum_complete_evidence_passes(tmp_path: Path) -> None:
-    _valid_assurance(tmp_path)
+def _pass_evidence(
+    root: Path,
+    report: dict[str, Any],
+    index: int,
+) -> tuple[dict[str, Any], dict[str, Any], str]:
+    review_pass = report["passes"][index]
+    assert isinstance(review_pass, dict)
+    path = str(review_pass["artifact_path"])
+    payload = json.loads((root / path).read_text(encoding="utf-8"))
+    assert isinstance(payload, dict)
+    return review_pass, payload, path
 
+
+def _quality_gate_evidence(
+    root: Path,
+    report: dict[str, Any],
+) -> tuple[dict[str, Any], str]:
+    gate = report["quality_gates"][0]
+    assert isinstance(gate, dict)
+    path = str(gate["artifact_path"])
+    payload = json.loads((root / path).read_text(encoding="utf-8"))
+    assert isinstance(payload, dict)
+    return payload, path
+
+
+def test_native_maximum_complete_evidence_passes(tmp_path: Path) -> None:
+    report = _valid_assurance(tmp_path)
+
+    assert len(report["passes"]) == 5
+    assert sum(value["kind"] == "deep_repository" for value in report["passes"]) == 3
+    assert all(value["completed_reviews"] == 1 for value in report["passes"])
     assert _codes(_audit(tmp_path)) == set()
 
 
@@ -69,10 +97,19 @@ def test_assurance_rejects_non_fresh_pass(tmp_path: Path) -> None:
     assert "ASSURANCE-009" in _codes(_audit(tmp_path))
 
 
+def test_assurance_rejects_aggregated_completed_reviews(tmp_path: Path) -> None:
+    report = _valid_assurance(tmp_path)
+    report["passes"][0]["completed_reviews"] = 3
+    rewrite_assurance(tmp_path, report)
+
+    assert "ASSURANCE-009" in _codes(_audit(tmp_path))
+
+
 def test_assurance_rejects_insufficient_deep_passes(tmp_path: Path) -> None:
     report = _valid_assurance(tmp_path)
-    report["passes"][0]["completed_reviews"] = 2
-    report["passes"][1]["completed_reviews"] = 2
+    report["passes"] = [
+        value for value in report["passes"] if value["pass_id"] != "native-deep-3"
+    ]
     rewrite_assurance(tmp_path, report)
 
     assert "ASSURANCE-009" in _codes(_audit(tmp_path))
@@ -80,7 +117,10 @@ def test_assurance_rejects_insufficient_deep_passes(tmp_path: Path) -> None:
 
 def test_assurance_rejects_deferred_candidate(tmp_path: Path) -> None:
     report = _valid_assurance(tmp_path)
-    report["passes"][1]["candidate_count"] = 1
+    for review_pass in report["passes"]:
+        if review_pass["pass_id"] == "native-diff":
+            review_pass["candidate_count"] = 1
+            break
     union = _candidate_union(tmp_path, report)
     union["candidates"] = [
         {
@@ -108,14 +148,72 @@ def test_assurance_rejects_evidence_digest_mismatch(tmp_path: Path) -> None:
 
 def test_assurance_rejects_pass_evidence_disagreement(tmp_path: Path) -> None:
     report = _valid_assurance(tmp_path)
-    review_pass = report["passes"][0]
-    path = str(review_pass["artifact_path"])
-    payload = json.loads((tmp_path / path).read_text(encoding="utf-8"))
+    review_pass, payload, path = _pass_evidence(tmp_path, report, 0)
     payload["completed_reviews"] = 99
     review_pass["artifact_sha256"] = write_json(tmp_path, path, payload)
     rewrite_assurance(tmp_path, report)
 
     assert "ASSURANCE-010" in _codes(_audit(tmp_path))
+
+
+def test_assurance_rejects_placeholder_source_hash(tmp_path: Path) -> None:
+    report = _valid_assurance(tmp_path)
+    review_pass, payload, path = _pass_evidence(tmp_path, report, 0)
+    payload["source_artifact_sha256"] = "0" * 64
+    review_pass["artifact_sha256"] = write_json(tmp_path, path, payload)
+    rewrite_assurance(tmp_path, report)
+
+    assert "ASSURANCE-027" in _codes(_audit(tmp_path))
+
+
+def test_assurance_rejects_missing_source_artifact(tmp_path: Path) -> None:
+    report = _valid_assurance(tmp_path)
+    _review_pass, payload, _path = _pass_evidence(tmp_path, report, 0)
+    (tmp_path / str(payload["source_artifact_path"])).unlink()
+
+    assert "ASSURANCE-027" in _codes(_audit(tmp_path))
+
+
+def test_assurance_rejects_source_digest_mismatch(tmp_path: Path) -> None:
+    report = _valid_assurance(tmp_path)
+    _review_pass, payload, _path = _pass_evidence(tmp_path, report, 0)
+    write(tmp_path, str(payload["source_artifact_path"]), "{}\n")
+
+    assert "ASSURANCE-027" in _codes(_audit(tmp_path))
+
+
+def test_assurance_rejects_cross_commit_source_artifact(tmp_path: Path) -> None:
+    report = _valid_assurance(tmp_path)
+    review_pass, payload, path = _pass_evidence(tmp_path, report, 0)
+    source_path = str(payload["source_artifact_path"])
+    source = json.loads((tmp_path / source_path).read_text(encoding="utf-8"))
+    source["reviewed_commit"] = "1" * 40
+    payload["source_artifact_sha256"] = write_json(tmp_path, source_path, source)
+    review_pass["artifact_sha256"] = write_json(tmp_path, path, payload)
+    rewrite_assurance(tmp_path, report)
+
+    assert "ASSURANCE-027" in _codes(_audit(tmp_path))
+
+
+def test_assurance_rejects_reused_source_artifact(tmp_path: Path) -> None:
+    report = _valid_assurance(tmp_path)
+    _first_pass, first_payload, _first_path = _pass_evidence(tmp_path, report, 0)
+    second_pass, second_payload, second_path = _pass_evidence(tmp_path, report, 1)
+    second_payload["source_artifact_path"] = first_payload["source_artifact_path"]
+    second_payload["source_artifact_sha256"] = first_payload["source_artifact_sha256"]
+    second_pass["artifact_sha256"] = write_json(tmp_path, second_path, second_payload)
+    rewrite_assurance(tmp_path, report)
+
+    assert "ASSURANCE-027" in _codes(_audit(tmp_path))
+
+
+def test_assurance_rejects_quality_gate_source_digest_mismatch(tmp_path: Path) -> None:
+    report = _valid_assurance(tmp_path)
+    payload, _path = _quality_gate_evidence(tmp_path, report)
+    first_result = payload["gates"][0]
+    write(tmp_path, str(first_result["source_artifact_path"]), "{}\n")
+
+    assert "ASSURANCE-027" in _codes(_audit(tmp_path))
 
 
 def test_assurance_rejects_candidate_union_coverage_gap(tmp_path: Path) -> None:
