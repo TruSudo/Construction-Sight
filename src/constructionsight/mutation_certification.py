@@ -27,6 +27,9 @@ CONTRACT_PATHS: Final = (
     "governance/mutation_contract.toml",
     "governance/mutation_contract_assurance.toml",
 )
+OVERRIDABLE_CASE_IDS: Final = frozenset(
+    {"CS-MUT-ASSURANCE-EVIDENCE-DIGEST-001"}
+)
 
 
 @dataclass(frozen=True)
@@ -131,39 +134,42 @@ def _load_contract_file(
             raise MutationContractError(
                 f"mutation case {case_id} requires explicit tests/ targets"
             )
-        case = MutationCase(
-            id=case_id,
-            path=str(raw["path"]),
-            search=str(raw["search"]),
-            replacement=str(raw["replacement"]),
-            tests=tuple(tests),
-            expected_output=str(raw["expected_output"]),
-            risk=str(raw["risk"]),
+        cases.append(
+            MutationCase(
+                id=case_id,
+                path=str(raw["path"]),
+                search=str(raw["search"]),
+                replacement=str(raw["replacement"]),
+                tests=tuple(tests),
+                expected_output=str(raw["expected_output"]),
+                risk=str(raw["risk"]),
+            )
         )
-        _validate_case_path(root, case)
-        cases.append(case)
     return timeout, tuple(cases)
 
 
 def _load_contract(root: Path) -> tuple[int, tuple[MutationCase, ...]]:
     timeouts: set[int] = set()
-    combined: list[MutationCase] = []
-    ids: set[str] = set()
-    for relative_path in CONTRACT_PATHS:
+    combined: dict[str, MutationCase] = {}
+    for contract_index, relative_path in enumerate(CONTRACT_PATHS):
         timeout, cases = _load_contract_file(root, relative_path)
         timeouts.add(timeout)
         for case in cases:
-            if case.id in ids:
-                raise MutationContractError(
-                    f"duplicate mutation case ID across contracts: {case.id}"
-                )
-            ids.add(case.id)
-            combined.append(case)
+            prior = combined.get(case.id)
+            if prior is not None:
+                if contract_index == 0 or case.id not in OVERRIDABLE_CASE_IDS:
+                    raise MutationContractError(
+                        f"duplicate mutation case ID across contracts: {case.id}"
+                    )
+            combined[case.id] = case
     if len(timeouts) != 1:
         raise MutationContractError(
             f"mutation contract timeouts disagree: {sorted(timeouts)}"
         )
-    return next(iter(timeouts)), tuple(combined)
+    cases = tuple(combined.values())
+    for case in cases:
+        _validate_case_path(root, case)
+    return next(iter(timeouts)), cases
 
 
 def _validate_case_path(root: Path, case: MutationCase) -> None:
