@@ -107,9 +107,7 @@ def test_assurance_rejects_aggregated_completed_reviews(tmp_path: Path) -> None:
 
 def test_assurance_rejects_insufficient_deep_passes(tmp_path: Path) -> None:
     report = _valid_assurance(tmp_path)
-    report["passes"] = [
-        value for value in report["passes"] if value["pass_id"] != "native-deep-3"
-    ]
+    report["passes"][2]["kind"] = "exact_diff"
     rewrite_assurance(tmp_path, report)
 
     assert "ASSURANCE-009" in _codes(_audit(tmp_path))
@@ -177,7 +175,11 @@ def test_assurance_rejects_missing_source_artifact(tmp_path: Path) -> None:
 def test_assurance_rejects_source_digest_mismatch(tmp_path: Path) -> None:
     report = _valid_assurance(tmp_path)
     _review_pass, payload, _path = _pass_evidence(tmp_path, report, 0)
-    write(tmp_path, str(payload["source_artifact_path"]), "{}\n")
+    source_path = str(payload["source_artifact_path"])
+    source = json.loads((tmp_path / source_path).read_text(encoding="utf-8"))
+    assert isinstance(source, dict)
+    source["payload"] = {"tampered": True}
+    write_json(tmp_path, source_path, source)
 
     assert "ASSURANCE-027" in _codes(_audit(tmp_path))
 
