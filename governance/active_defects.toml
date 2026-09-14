@@ -520,3 +520,11 @@ area = "assurance-quality-gate-compliance"
 root_cause = "Assurance provenance and mutation-overlay hardening introduced six overlong Python lines, an unsorted import block, and a nested conditional rejected by the mandatory Ruff rules. Exact-head CI 1146 on 7c302bc925884d5c6aa3d9fc0191e68672c2a37a reports eight Ruff errors and a failed lint outcome, so that candidate does not satisfy the Native Maximum Assurance quality baseline even though tests and focused mutants pass."
 discovered_against = "7c302bc925884d5c6aa3d9fc0191e68672c2a37a"
 required_resolution = "Correct all eight Ruff violations without suppressions, rule changes, or weakened predicates; preserve behavior and mutation anchors; rerun the complete exact-head Python 3.11 and 3.12 matrix; and verify the retained raw Ruff output and actual gate outcomes rather than a continue-on-error step conclusion before making any clean-quality claim."
+
+[[defects]]
+id = "CS-SR-066"
+severity = "P0"
+area = "assurance-owner-acceptance-authenticity"
+root_cause = "Native Maximum Assurance requires explicit owner acceptance, but the canonical report currently treats owner_acceptance as a repository-controlled Boolean with nonblank owner and review_method text; no externally authenticated owner action binds the decision to the exact frozen commit, reviewed tree, and complete material assurance evidence set, so a committer or automation capable of writing permitted finalization artifacts can self-assert owner acceptance."
+discovered_against = "6402f0a49f80099c46c8bb37a392e740783a92b4"
+required_resolution = "Bind owner acceptance to the repository owner's real GitHub User identity, exact pull-request review ID, exact reviewed commit and tree, and a deterministic SHA-256 digest of all material assurance claims; have canonical CI re-fetch and verify the owner review with read-only GitHub authority; require exact acceptance text, COMMENTED state, OWNER association, and human User identity; keep owner acceptance distinct from independent-human review; and add spoofed-owner, stale-commit, changed-evidence, wrong-body/state, wiring, and focused-mutation regressions."
