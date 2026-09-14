@@ -23,6 +23,10 @@ from constructionsight.repository_path_certification import (
 
 SCHEMA_VERSION: Final = "constructionsight.mutation-report/v1"
 CONTRACT_SCHEMA_VERSION: Final = "constructionsight.mutation-contract/v1"
+CONTRACT_PATHS: Final = (
+    "governance/mutation_contract.toml",
+    "governance/mutation_contract_assurance.toml",
+)
 
 
 @dataclass(frozen=True)
@@ -51,20 +55,26 @@ class MutationContractError(RuntimeError):
     """Raised when the mutation contract cannot be evaluated safely."""
 
 
-def _load_contract(root: Path) -> tuple[int, tuple[MutationCase, ...]]:
+def _load_contract_file(
+    root: Path,
+    relative_path: str,
+) -> tuple[int, tuple[MutationCase, ...]]:
     try:
-        _relative, path = resolve_repository_file(
-            root,
-            "governance/mutation_contract.toml",
-        )
+        _relative, path = resolve_repository_file(root, relative_path)
     except RepositoryPathError as exc:
-        raise MutationContractError("mutation contract is missing") from exc
+        raise MutationContractError(
+            f"mutation contract is missing: {relative_path}"
+        ) from exc
     try:
         payload = tomllib.loads(path.read_text(encoding="utf-8"))
     except (OSError, UnicodeError, tomllib.TOMLDecodeError) as exc:
-        raise MutationContractError(f"mutation contract is malformed: {exc}") from exc
+        raise MutationContractError(
+            f"mutation contract is malformed at {relative_path}: {exc}"
+        ) from exc
     if payload.get("schema_version") != CONTRACT_SCHEMA_VERSION:
-        raise MutationContractError("unsupported mutation contract schema")
+        raise MutationContractError(
+            f"unsupported mutation contract schema at {relative_path}"
+        )
     allowed_top = {
         "schema_version",
         "contract_id",
@@ -75,14 +85,18 @@ def _load_contract(root: Path) -> tuple[int, tuple[MutationCase, ...]]:
     unknown_top = set(payload) - allowed_top
     if unknown_top:
         raise MutationContractError(
-            f"unknown mutation contract fields: {sorted(unknown_top)}"
+            f"unknown mutation contract fields at {relative_path}: {sorted(unknown_top)}"
         )
     timeout = payload.get("timeout_seconds")
     if not isinstance(timeout, int) or timeout < 1 or timeout > 600:
-        raise MutationContractError("mutation timeout must be between 1 and 600 seconds")
+        raise MutationContractError(
+            f"mutation timeout must be between 1 and 600 seconds at {relative_path}"
+        )
     raw_cases = payload.get("cases")
     if not isinstance(raw_cases, list) or not raw_cases:
-        raise MutationContractError("mutation contract requires at least one case")
+        raise MutationContractError(
+            f"mutation contract requires at least one case at {relative_path}"
+        )
     required = {
         "id",
         "path",
@@ -93,7 +107,7 @@ def _load_contract(root: Path) -> tuple[int, tuple[MutationCase, ...]]:
         "risk",
     }
     cases: list[MutationCase] = []
-    ids: set[str] = set()
+    local_ids: set[str] = set()
     for raw in raw_cases:
         if not isinstance(raw, dict):
             raise MutationContractError("mutation cases must be tables")
@@ -107,9 +121,9 @@ def _load_contract(root: Path) -> tuple[int, tuple[MutationCase, ...]]:
         case_id = raw["id"]
         if not isinstance(case_id, str) or not case_id.startswith("CS-MUT-"):
             raise MutationContractError("mutation case ID must begin with CS-MUT-")
-        if case_id in ids:
+        if case_id in local_ids:
             raise MutationContractError(f"duplicate mutation case ID: {case_id}")
-        ids.add(case_id)
+        local_ids.add(case_id)
         tests = raw["tests"]
         if not isinstance(tests, list) or not tests or not all(
             isinstance(value, str) and value.startswith("tests/") for value in tests
@@ -129,6 +143,27 @@ def _load_contract(root: Path) -> tuple[int, tuple[MutationCase, ...]]:
         _validate_case_path(root, case)
         cases.append(case)
     return timeout, tuple(cases)
+
+
+def _load_contract(root: Path) -> tuple[int, tuple[MutationCase, ...]]:
+    timeouts: set[int] = set()
+    combined: list[MutationCase] = []
+    ids: set[str] = set()
+    for relative_path in CONTRACT_PATHS:
+        timeout, cases = _load_contract_file(root, relative_path)
+        timeouts.add(timeout)
+        for case in cases:
+            if case.id in ids:
+                raise MutationContractError(
+                    f"duplicate mutation case ID across contracts: {case.id}"
+                )
+            ids.add(case.id)
+            combined.append(case)
+    if len(timeouts) != 1:
+        raise MutationContractError(
+            f"mutation contract timeouts disagree: {sorted(timeouts)}"
+        )
+    return next(iter(timeouts)), tuple(combined)
 
 
 def _validate_case_path(root: Path, case: MutationCase) -> None:
