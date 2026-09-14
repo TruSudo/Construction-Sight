@@ -27,6 +27,21 @@ adjudication; complete coverage; zero gaps, deferred or unresolved candidates, a
 surviving security mutants; all exact-environment quality gates; hash-bound
 artifacts; immutable defect facts; and explicit owner acceptance.
 
+A context-isolated review is one distinct pass record, not an integer claim inside
+another pass. Every pass has `completed_reviews = 1`, its own unique pass identity,
+and its own retained source artifact. The native baseline therefore contains at
+least five distinct native pass records, including at least three distinct
+`deep_repository` records. Aggregating several alleged reviews into one pass is
+prohibited.
+
+Normalized pass and quality-gate evidence is not permitted to assert an orphaned
+SHA-256 value. Every `source_artifact_sha256` must bind actual retained JSON bytes
+under `governance/reviews/evidence/raw/`. Those source artifacts bind the exact
+reviewed commit, pass kind or `quality_gate` classification, unique pass/gate
+context identity, producer, and retained payload. The certifier recomputes the
+source digest, rejects placeholder hashes, missing or unsafe source paths,
+cross-commit evidence, and source reuse across distinct evidence owners.
+
 The assurance modes are cumulative and exact:
 
 - `native_maximum` makes no independence claim.
@@ -42,8 +57,9 @@ post-review finalization paths invalidates every assurance artifact.
 
 The canonical artifact is `governance/reviews/assurance_review.json`. Its evidence
 is confined to `governance/reviews/evidence/`, is SHA-256 bound, and must account
-exactly for every file in that directory. Candidate-union evidence must account for
-every pass and every pass's candidate count before defect closure can run.
+exactly for every file in that directory, including retained raw-source artifacts.
+Candidate-union evidence must account for every pass and every pass's candidate
+count before defect closure can run.
 
 ## Consequences
 
