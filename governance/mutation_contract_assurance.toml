@@ -61,6 +61,54 @@ expected_output = "source artifact is reused"
 risk = "One retained raw source could be presented as evidence for multiple supposedly distinct analytical or quality-gate contexts."
 
 [[cases]]
+id = "CS-MUT-ASSURANCE-SOURCE-SEMANTIC-PRODUCER-001"
+path = "src/constructionsight/assurance_source_certification.py"
+search = '''    if source.get("producer") != expected_producer:'''
+replacement = '''    if False and source.get("producer") != expected_producer:'''
+tests = ["tests/test_assurance_source_certification.py::test_assurance_rejects_raw_source_producer_mismatch"]
+expected_output = "test_assurance_rejects_raw_source_producer_mismatch"
+risk = "A retained raw source could claim a different producer than the normalized analytical evidence while remaining hash-consistent."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-SOURCE-SEMANTIC-PAYLOAD-001"
+path = "src/constructionsight/assurance_source_certification.py"
+search = '''        if source_payload.get(field) != expected'''
+replacement = '''        if False and source_payload.get(field) != expected'''
+tests = ["tests/test_assurance_source_certification.py::test_assurance_rejects_raw_provider_mismatch"]
+expected_output = "test_assurance_rejects_raw_provider_mismatch"
+risk = "Normalized provider, model, status, coverage, or count claims could contradict the retained raw source payload."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-SOURCE-SEMANTIC-SHAPE-001"
+path = "src/constructionsight/assurance_source_certification.py"
+search = '''    if not isinstance(source_payload, dict):
+        _record(findings, f"{label} raw source payload must be an object")
+        return'''
+replacement = '''    if not isinstance(source_payload, dict):
+        return'''
+tests = ["tests/test_assurance_source_certification.py::test_assurance_rejects_nonobject_raw_payload"]
+expected_output = "test_assurance_rejects_nonobject_raw_payload"
+risk = "A non-object raw source payload could avoid semantic reconciliation entirely."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-SOURCE-SEMANTIC-WIRING-001"
+path = "src/constructionsight/authority_certification.py"
+search = '''    audit_assurance_source_semantics(root, findings)'''
+replacement = '''    pass'''
+tests = ["tests/test_assurance_source_certification.py::test_assurance_rejects_raw_provider_mismatch"]
+expected_output = "test_assurance_rejects_raw_provider_mismatch"
+risk = "The semantic source-provenance certifier could be disconnected from the canonical defect-and-assurance audit."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-QUALITY-SOURCE-WIRING-001"
+path = "src/constructionsight/assurance_source_certification.py"
+search = '''    _audit_quality_gate_sources(root, report, findings)'''
+replacement = '''    pass'''
+tests = ["tests/test_assurance_source_certification.py::test_assurance_rejects_raw_quality_gate_failure"]
+expected_output = "test_assurance_rejects_raw_quality_gate_failure"
+risk = "Hash-valid quality-gate raw evidence could contradict normalized pass status if quality-source semantic reconciliation were skipped."
+
+[[cases]]
 id = "CS-MUT-ASSURANCE-GOV-WIRING-001"
 path = "src/constructionsight/governance_certification.py"
 search = '''    mutation = _merge_mutation_contracts(

@@ -10,6 +10,9 @@ from constructionsight.assurance_certification import (
     assured_tree_digest,
     audit_assurance_review,
 )
+from constructionsight.assurance_source_certification import (
+    audit_assurance_source_semantics,
+)
 from constructionsight.governance_certification_core import (
     _ACTIVE_DEFECT_SCHEMA,
     _ASSURANCE_CONTRACT_SCHEMA,
@@ -421,3 +424,4 @@ def _audit_defects_and_review(
         )
     )
     audit_assurance_review(root, contract, active, resolved, findings)
+    audit_assurance_source_semantics(root, findings)
