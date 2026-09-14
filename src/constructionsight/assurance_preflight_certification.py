@@ -17,6 +17,7 @@ from constructionsight.repository_certification import (
     _tracked_files,
     audit_repository,
 )
+from constructionsight.vulnerability_ci_certification import audit_vulnerability_job
 
 _SCHEMA_VERSION: Final = "constructionsight.assurance-preflight/v1"
 _ALLOWED_TRANSACTION_BLOCKERS: Final = frozenset(
@@ -55,6 +56,7 @@ def build_report(root: Path) -> dict[str, object]:
     repository = audit_repository(root, require_clean_worktree=True)
     permission_blockers = audit_ci_permissions(root)
     action_blockers = audit_ci_actions(root)
+    vulnerability_findings = audit_vulnerability_job(root)
     governance = audit_governance(root, _tracked_files(root))
     governance_blockers = preflight_findings(governance.findings)
 
@@ -62,6 +64,8 @@ def build_report(root: Path) -> dict[str, object]:
     finding_rows.extend(_finding_row(finding) for finding in permission_blockers)
     finding_rows.extend(_finding_row(finding) for finding in action_blockers)
     finding_rows.extend(_finding_row(finding) for finding in governance_blockers)
+
+    finding_rows.extend(_finding_row(finding) for finding in vulnerability_findings)
 
     allowed_count = governance.finding_count - len(governance_blockers)
     return {

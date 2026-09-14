@@ -69,6 +69,8 @@ tests = [
   "tests/test_source_verification_evidence_authorization.py",
   "tests/test_source_verifier.py",
   "tests/test_supply_chain.py",
+  "tests/test_vulnerability_certification.py",
+  "tests/test_vulnerability_collection.py",
 ]
 categories = [
   "audit-failure-rollback",

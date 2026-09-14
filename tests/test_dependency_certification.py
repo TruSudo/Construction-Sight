@@ -16,7 +16,7 @@ jobs:
   vulnerability:
     steps:
       - run: git ls-files --stage
-      - uses: pypa/gh-action-pip-audit@2222222222222222222222222222222222222222 # reviewed
+      - run: python -m constructionsight.vulnerability_certification
   quality:
     steps:
       - uses: actions/checkout@1111111111111111111111111111111111111111 # v1
@@ -363,14 +363,12 @@ def test_canonical_dependency_audit_rejects_scanner_in_quality_job(
     shared_job = _REQUIRED_CI.replace(
         "  vulnerability:\n"
         "    steps:\n"
-        "      - uses: pypa/gh-action-"
-        "pip-audit@2222222222222222222222222222222222222222 # reviewed\n",
+        "      - run: python -m constructionsight.vulnerability_certification\n",
         "",
     ).replace(
         "      - uses: actions/checkout@1111111111111111111111111111111111111111 # v1\n",
         "      - uses: actions/checkout@1111111111111111111111111111111111111111 # v1\n"
-        "      - uses: pypa/gh-action-"
-        "pip-audit@2222222222222222222222222222222222222222 # reviewed\n",
+        "      - run: python -m constructionsight.vulnerability_certification\n",
     )
     _write(tmp_path, ".github/workflows/ci.yml", shared_job)
     findings: list[GovernanceFinding] = []

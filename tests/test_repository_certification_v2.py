@@ -36,6 +36,7 @@ def _isolate(monkeypatch) -> None:
         lambda root, require_clean_worktree: _base_report(),
     )
     monkeypatch.setattr(certification_v2, "audit_ci_permissions", lambda root: ())
+    monkeypatch.setattr(certification_v2, "audit_vulnerability_job", lambda root: ())
     monkeypatch.setattr(certification_v2, "audit_ci_actions", lambda root: ())
     monkeypatch.setattr(
         certification_v2,
@@ -89,3 +90,14 @@ def test_v2_includes_action_runtime_findings(monkeypatch) -> None:
     repository = report["repository"]
     assert repository["finding_count"] == 1
     assert repository["findings"][0]["code"] == "CERT-CI-006"
+
+
+def test_v2_retains_native_vulnerability_job_findings(monkeypatch) -> None:
+    _isolate(monkeypatch)
+    finding = CertificationFinding(
+        code="CERT-CI-007", path=".github/workflows/ci.yml", line=None, message="scanner disabled"
+    )
+    monkeypatch.setattr(certification_v2, "audit_vulnerability_job", lambda root: (finding,))
+    report = certification_v2.certify_repository(Path("."))
+    assert report["passed"] is False
+    assert report["repository"]["findings"][0]["code"] == "CERT-CI-007"

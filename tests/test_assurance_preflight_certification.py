@@ -47,6 +47,7 @@ def test_preflight_retains_any_other_governance_finding() -> None:
 
 def _isolate_action_audits(monkeypatch) -> None:
     monkeypatch.setattr(preflight, "audit_ci_permissions", lambda root: ())
+    monkeypatch.setattr(preflight, "audit_vulnerability_job", lambda root: ())
     monkeypatch.setattr(preflight, "audit_ci_actions", lambda root: ())
 
 
@@ -102,6 +103,7 @@ def test_preflight_retains_semantic_permission_findings(monkeypatch) -> None:
         lambda root: (permission_finding,),
     )
     monkeypatch.setattr(preflight, "audit_ci_actions", lambda root: ())
+    monkeypatch.setattr(preflight, "audit_vulnerability_job", lambda root: ())
     monkeypatch.setattr(
         preflight,
         "audit_governance",
@@ -133,6 +135,7 @@ def test_preflight_retains_action_runtime_findings(monkeypatch) -> None:
         ),
     )
     monkeypatch.setattr(preflight, "audit_ci_permissions", lambda root: ())
+    monkeypatch.setattr(preflight, "audit_vulnerability_job", lambda root: ())
     monkeypatch.setattr(
         preflight,
         "audit_ci_actions",
@@ -151,3 +154,23 @@ def test_preflight_retains_action_runtime_findings(monkeypatch) -> None:
     findings = report["findings"]
     assert isinstance(findings, list)
     assert findings[0]["code"] == "CERT-CI-006"
+
+
+def test_preflight_retains_native_vulnerability_job_findings(monkeypatch) -> None:
+    monkeypatch.setattr(
+        preflight,
+        "audit_repository",
+        lambda *args, **kwargs: SimpleNamespace(findings=(), finding_count=0),
+    )
+    _isolate_action_audits(monkeypatch)
+    finding = CertificationFinding(
+        code="CERT-CI-007", path=".github/workflows/ci.yml", line=None, message="scanner disabled"
+    )
+    monkeypatch.setattr(preflight, "audit_vulnerability_job", lambda root: (finding,))
+    monkeypatch.setattr(
+        preflight, "audit_governance", lambda *args: SimpleNamespace(findings=(), finding_count=0)
+    )
+    monkeypatch.setattr(preflight, "_tracked_files", lambda root: ())
+    report = preflight.build_report(Path("."))
+    assert report["passed"] is False
+    assert report["findings"][0]["code"] == "CERT-CI-007"

@@ -18,6 +18,7 @@ from constructionsight.repository_certification import (
     _tracked_files,
     audit_repository,
 )
+from constructionsight.vulnerability_ci_certification import audit_vulnerability_job
 
 SCHEMA_VERSION: Final = "constructionsight.repository-certification/v2"
 
@@ -47,9 +48,13 @@ def certify_repository(
     )
     permission_findings = audit_ci_permissions(repository_root)
     action_findings = audit_ci_actions(repository_root)
+    vulnerability_findings = audit_vulnerability_job(repository_root)
     repository_findings = tuple(
         sorted(
-            (*base_report.findings, *permission_findings, *action_findings),
+            (
+                *base_report.findings, *permission_findings,
+                *action_findings, *vulnerability_findings,
+            ),
             key=lambda item: (item.code, item.path, item.line or 0, item.message),
         )
     )

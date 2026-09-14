@@ -62,26 +62,23 @@ jobs:
       - name: Vulnerability audit
         id: vulnerability-audit
         continue-on-error: true
-        uses: pypa/gh-action-pip-audit@fb241f581674a1bb995061d62504857a9ea4b69e # immutable-reviewed-commit; reviewed 2026-07-15; runtime=composite
-        with:
-          inputs: ${{ matrix.lock-file }}
-          no-deps: true
-          summary: true
-          vulnerability-service: PyPI
-
-      - name: Retain vulnerability report
-        if: always()
         shell: bash
         env:
-          AUDIT_OUTPUT: ${{ steps.vulnerability-audit.outputs.internal-be-careful-output }}
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           set -euo pipefail
           mkdir -p "${REPORT_DIR}"
-          if [ -n "${AUDIT_OUTPUT}" ]; then
-            printf '%s' "${AUDIT_OUTPUT}" | base64 --decode > "${REPORT_DIR}/pip-audit-${{ matrix.lock-tag }}.txt"
-          else
-            printf '%s\n' 'pip-audit produced no report output' > "${REPORT_DIR}/pip-audit-${{ matrix.lock-tag }}.txt"
-          fi
+          test "$(git rev-parse HEAD)" = "${EXPECTED_SHA}"
+          export PYTHONPATH="${GITHUB_WORKSPACE}/src"
+          python scripts/acquire_vulnerability_sources.py \
+            --root . --lock "${{ matrix.lock-file }}" --commit "${EXPECTED_SHA}" \
+            --source-dir "${REPORT_DIR}/vulnerability-sources-${{ matrix.lock-tag }}" \
+            2>&1 | tee "${REPORT_DIR}/vulnerability-collection-${{ matrix.lock-tag }}.txt"
+          python -m constructionsight.vulnerability_certification \
+            --root . --lock "${{ matrix.lock-file }}" --commit "${EXPECTED_SHA}" \
+            --source-dir "${REPORT_DIR}/vulnerability-sources-${{ matrix.lock-tag }}" \
+            --output "${REPORT_DIR}/vulnerability-${{ matrix.lock-tag }}.json" \
+            2>&1 | tee "${REPORT_DIR}/vulnerability-${{ matrix.lock-tag }}.txt"
 
       - name: Enforce vulnerability audit
         if: always()

@@ -49,13 +49,7 @@ _REVIEWED_ACTIONS: Final = {
         reviewed_on="2026-09-14",
         occurrences=2,
     ),
-    "pypa/gh-action-pip-audit": _ReviewedAction(
-        commit="fb241f581674a1bb995061d62504857a9ea4b69e",
-        release="immutable-reviewed-commit",
-        runtime="composite",
-        reviewed_on="2026-07-15",
-        occurrences=1,
-    ),
+
 }
 
 
@@ -102,7 +96,8 @@ def audit_ci_actions(root: Path) -> tuple[CertificationFinding, ...]:
         if match is None:
             findings.append(
                 _finding(
-                    "every Action use must bind an exact 40-hex commit and reviewed runtime comment",
+                    "every Action use must bind an exact 40-hex commit "
+                    "and reviewed runtime comment",
                     line_number,
                 )
             )

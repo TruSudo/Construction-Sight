@@ -80,7 +80,7 @@ _REQUIRED_CI_SNIPPETS: Final = {
     "git ls-files --stage",
     "python -m constructionsight.supply_chain verify-lock",
     "python -m pip check",
-    "pypa/gh-action-pip-audit@",
+    "python -m constructionsight.vulnerability_certification",
     "python -m constructionsight.supply_chain sbom",
     "python -m constructionsight.mutation_certification",
     "python -m constructionsight.repository_certification_v2",
@@ -255,7 +255,8 @@ def _audit_ci_environment_identity(
                 line for line in block.splitlines() if not line.lstrip().startswith("#")
             )
             if re.search(
-                r"^\s*(?:-\s*)?uses:\s*pypa/gh-action-pip-audit@[0-9a-f]{40}",
+                r"^\s*(?:-\s*run:\s*)?python -m "
+                r"constructionsight\.vulnerability_certification(?:\s|$)",
                 effective,
                 flags=re.MULTILINE,
             ):

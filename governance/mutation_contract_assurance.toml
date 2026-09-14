@@ -292,3 +292,102 @@ replacement = '''        if False and case_id in primary_ids and case_id not in 
 tests = ["tests/test_mutation_governance_overlay.py::test_governance_merge_rejects_undeclared_duplicate_case_id"]
 expected_output = "test_governance_merge_rejects_undeclared_duplicate_case_id"
 risk = "An undeclared duplicate mutation identity could override an existing focused witness without a governance finding."
+
+[[cases]]
+id = "CS-MUT-VULNERABILITY-ACTIVE-001"
+path = "src/constructionsight/vulnerability_certification.py"
+search = "\"passed\": active_count == 0,"
+replacement = "\"passed\": True,"
+tests = ["tests/test_vulnerability_certification.py::test_active_advisory_is_fatal"]
+expected_output = "test_active_advisory_is_fatal"
+risk = "Active known vulnerabilities must fail the audit."
+
+[[cases]]
+id = "CS-MUT-VULNERABILITY-DIGEST-001"
+path = "src/constructionsight/vulnerability_certification.py"
+search = "        if sha256(body) != digest:"
+replacement = "        if False:"
+tests = ["tests/test_vulnerability_certification.py::test_source_digest_tampering_is_fatal"]
+expected_output = "test_source_digest_tampering_is_fatal"
+risk = "Retained source content must agree with its digest."
+
+[[cases]]
+id = "CS-MUT-VULNERABILITY-RELEASE-001"
+path = "src/constructionsight/vulnerability_certification.py"
+search = "        or info.get(\"version\") != version"
+replacement = "        or False"
+tests = ["tests/test_vulnerability_certification.py::test_release_identity_must_match_exact_lock"]
+expected_output = "test_release_identity_must_match_exact_lock"
+risk = "An advisory source from another release must not certify the lock."
+
+[[cases]]
+id = "CS-MUT-VULNERABILITY-MANIFEST-001"
+path = "src/constructionsight/vulnerability_certification.py"
+search = "        if manifest[key] != expected:"
+replacement = "        if False:"
+tests = ["tests/test_vulnerability_certification.py::test_complete_source_binding_is_required"]
+expected_output = "test_complete_source_binding_is_required"
+risk = "The source manifest must bind the complete exact commit and lock."
+
+[[cases]]
+id = "CS-MUT-VULNERABILITY-DUPLICATE-001"
+path = "src/constructionsight/vulnerability_certification.py"
+search = "        if key in result:"
+replacement = "        if False:"
+tests = ["tests/test_vulnerability_certification.py::test_ambiguous_json_rejected"]
+expected_output = "test_ambiguous_json_rejected"
+risk = "Duplicate JSON keys must not silently replace vulnerability claims."
+
+[[cases]]
+id = "CS-MUT-VULNERABILITY-HTTP-STATUS-001"
+path = "src/constructionsight/vulnerability_certification.py"
+search = "    if status != 200:"
+replacement = "    if False:"
+tests = ["tests/test_vulnerability_collection.py::test_redirect_access_and_http_failures_are_terminal"]
+expected_output = "test_redirect_access_and_http_failures_are_terminal"
+risk = "HTTP redirects, denials, and failed responses must never become clean evidence."
+
+[[cases]]
+id = "CS-MUT-VULNERABILITY-SIZE-001"
+path = "src/constructionsight/vulnerability_certification.py"
+search = "    if size > MAX_SOURCE_BYTES:"
+replacement = "    if False:"
+tests = ["tests/test_vulnerability_collection.py::test_undeclared_oversized_stream_is_bounded"]
+expected_output = "test_undeclared_oversized_stream_is_bounded"
+risk = "Acquisition must reject oversized streamed responses even without a declared length."
+
+[[cases]]
+id = "CS-MUT-VULNERABILITY-INVENTORY-001"
+path = "src/constructionsight/vulnerability_certification.py"
+search = "    if {path.name for path in source_dir.iterdir()} != expected_files:"
+replacement = "    if False:"
+tests = ["tests/test_vulnerability_certification.py::test_complete_source_binding_is_required"]
+expected_output = "test_complete_source_binding_is_required"
+risk = "Unexpected source files must invalidate the retained evidence inventory."
+
+[[cases]]
+id = "CS-MUT-VULNERABILITY-CI-001"
+path = "src/constructionsight/vulnerability_ci_certification.py"
+search = "        if actual.rstrip() != EXPECTED_VULNERABILITY_JOB:"
+replacement = "        if False:"
+tests = ["tests/test_vulnerability_certification.py::test_modified_vulnerability_job_fails_closed"]
+expected_output = "test_modified_vulnerability_job_fails_closed"
+risk = "The reviewed acquisition and enforcement job must not be silently weakened."
+
+[[cases]]
+id = "CS-MUT-VULNERABILITY-PREFLIGHT-001"
+path = "src/constructionsight/assurance_preflight_certification.py"
+search = "    vulnerability_findings = audit_vulnerability_job(root)"
+replacement = "    vulnerability_findings = ()"
+tests = ["tests/test_assurance_preflight_certification.py::test_preflight_retains_native_vulnerability_job_findings"]
+expected_output = "test_preflight_retains_native_vulnerability_job_findings"
+risk = "Native vulnerability CI wiring must be enforced before assurance freeze."
+
+[[cases]]
+id = "CS-MUT-VULNERABILITY-FINAL-001"
+path = "src/constructionsight/repository_certification_v2.py"
+search = "    vulnerability_findings = audit_vulnerability_job(repository_root)"
+replacement = "    vulnerability_findings = ()"
+tests = ["tests/test_repository_certification_v2.py::test_v2_retains_native_vulnerability_job_findings"]
+expected_output = "test_v2_retains_native_vulnerability_job_findings"
+risk = "Native vulnerability CI wiring must remain enforced at final certification."

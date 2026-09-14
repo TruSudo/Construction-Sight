@@ -12,11 +12,6 @@ _SETUP = (
     "    uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97"
     " # v7.0.0; reviewed 2026-09-14; runtime=node24"
 )
-_AUDIT = (
-    "    uses: pypa/gh-action-pip-audit@"
-    "fb241f581674a1bb995061d62504857a9ea4b69e"
-    " # immutable-reviewed-commit; reviewed 2026-07-15; runtime=composite"
-)
 _UPLOAD = (
     "    uses: actions/upload-artifact@"
     "043fb46d1a93c77aae656e7c1c64a875d1fc6a0a"
@@ -34,8 +29,6 @@ _EXACT = "\n".join(
         _SETUP,
         "  - name: setup two",
         _SETUP,
-        "  - name: audit",
-        _AUDIT,
         "  - name: upload one",
         _UPLOAD,
         "  - name: upload two",
