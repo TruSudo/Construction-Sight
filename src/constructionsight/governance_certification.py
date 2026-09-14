@@ -18,8 +18,8 @@ from constructionsight.architecture_boundary_certification import (
 )
 from constructionsight.architecture_certification import _audit_architecture
 from constructionsight.assurance_certification import (
-    CANONICAL_ASSURANCE_ARTIFACT,
     _ASSURED_TREE_DOMAIN,
+    CANONICAL_ASSURANCE_ARTIFACT,
     _allowed_after_assurance,
 )
 from constructionsight.authority_certification import (
@@ -199,7 +199,11 @@ def _merge_mutation_contracts(
             _finding("GOV-MUTATION-002", path, "unsupported mutation supplement schema")
         )
     contract_id = supplement.get("contract_id")
-    if not isinstance(contract_id, str) or not contract_id.strip() or contract_id != contract_id.strip():
+    if (
+        not isinstance(contract_id, str)
+        or not contract_id.strip()
+        or contract_id != contract_id.strip()
+    ):
         findings.append(
             _finding("GOV-MUTATION-003", path, "supplement contract_id must be nonblank")
         )
@@ -215,7 +219,11 @@ def _merge_mutation_contracts(
 
     primary_cases = primary.get("cases")
     supplement_cases = supplement.get("cases")
-    if not isinstance(primary_cases, list) or not isinstance(supplement_cases, list) or not supplement_cases:
+    if (
+        not isinstance(primary_cases, list)
+        or not isinstance(supplement_cases, list)
+        or not supplement_cases
+    ):
         findings.append(
             _finding(
                 "GOV-MUTATION-005",

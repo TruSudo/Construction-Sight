@@ -156,11 +156,12 @@ def _load_contract(root: Path) -> tuple[int, tuple[MutationCase, ...]]:
         timeouts.add(timeout)
         for case in cases:
             prior = combined.get(case.id)
-            if prior is not None:
-                if contract_index == 0 or case.id not in OVERRIDABLE_CASE_IDS:
-                    raise MutationContractError(
-                        f"duplicate mutation case ID across contracts: {case.id}"
-                    )
+            if prior is not None and (
+                contract_index == 0 or case.id not in OVERRIDABLE_CASE_IDS
+            ):
+                raise MutationContractError(
+                    f"duplicate mutation case ID across contracts: {case.id}"
+                )
             combined[case.id] = case
     if len(timeouts) != 1:
         raise MutationContractError(

@@ -644,7 +644,8 @@ def _source_artifact(
             findings,
             "ASSURANCE-027",
             report_path,
-            f"{label} source artifact does not bind exact commit, kind, context, producer, and payload",
+            f"{label} source artifact does not bind exact commit, kind, context, "
+            "producer, and payload",
         )
     canonical = canonical_path.as_posix()
     for identity in (f"path:{canonical}", f"sha256:{raw_digest}"):
@@ -729,7 +730,8 @@ def _audit_passes(
                 findings,
                 "ASSURANCE-009",
                 path,
-                f"{pass_id}.completed_reviews must equal 1; each context requires its own pass record",
+                f"{pass_id}.completed_reviews must equal 1; "
+                "each context requires its own pass record",
             )
         if raw.get("status") != "passed":
             _record(findings, "ASSURANCE-009", path, f"{pass_id} has not passed")
@@ -874,7 +876,8 @@ def _audit_passes(
             findings,
             "ASSURANCE-009",
             path,
-            f"only {native_review_count} distinct context-isolated native pass records are evidenced",
+            f"only {native_review_count} distinct context-isolated native pass records "
+            "are evidenced",
         )
     minimum_deep = contract.get("minimum_deep_standard_passes")
     if not _positive_integer(minimum_deep) or deep_review_count < cast(

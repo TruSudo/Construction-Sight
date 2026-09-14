@@ -15,7 +15,9 @@ def _case(case_id: str) -> dict[str, object]:
         "path": "src/constructionsight/assurance_certification.py",
         "search": "needle",
         "replacement": "replacement",
-        "tests": ["tests/test_assurance_certification.py::test_native_maximum_complete_evidence_passes"],
+        "tests": [
+            "tests/test_assurance_certification.py::test_native_maximum_complete_evidence_passes"
+        ],
         "expected_output": "test_native_maximum_complete_evidence_passes",
         "risk": "test risk",
     }
