@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
+import re
+import subprocess
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -12,6 +16,11 @@ from constructionsight.architecture_boundary_certification import (
     audit_architecture_boundaries,
 )
 from constructionsight.architecture_certification import _audit_architecture
+from constructionsight.assurance_certification import (
+    CANONICAL_ASSURANCE_ARTIFACT,
+    _ASSURED_TREE_DOMAIN,
+    _allowed_after_assurance,
+)
 from constructionsight.authority_certification import (
     _audit_authorization,
     _audit_defects_and_review,
@@ -35,6 +44,7 @@ from constructionsight.governance_certification_core import (
     GovernanceFinding,
     GovernanceMetrics,
     GovernanceReport,
+    _finding,
     _read_toml,
 )
 from constructionsight.governance_contract_schema import (
@@ -50,6 +60,104 @@ _ADVERSARIAL_TEST_SCHEMA = "constructionsight.adversarial-test-contract/v2"
 _MUTATION_SCHEMA = "constructionsight.mutation-contract/v1"
 _OPEN_WORK_SCHEMA = "constructionsight.open-work/v1"
 _VULNERABILITY_EXCEPTION_SCHEMA = "constructionsight.vulnerability-exceptions/v1"
+_COMMIT_PATTERN = re.compile(r"[0-9a-f]{40}")
+_DIGEST_PATTERN = re.compile(r"[0-9a-f]{64}")
+
+
+def _assured_commit_tree_digest(root: Path, commit: str) -> str:
+    """Digest one committed assurance-covered tree with canonical Git identities."""
+
+    try:
+        completed = subprocess.run(
+            ["git", "-C", str(root), "ls-tree", "-r", "-z", "--full-tree", commit],
+            check=False,
+            capture_output=True,
+        )
+    except OSError as exc:
+        raise ValueError(f"cannot execute git for reviewed-tree binding: {exc}") from exc
+    if completed.returncode != 0:
+        error = (
+            completed.stderr.decode("utf-8", errors="replace").strip()
+            or completed.stdout.decode("utf-8", errors="replace").strip()
+            or "unknown git error"
+        )
+        raise ValueError(f"cannot enumerate reviewed commit tree: {error}")
+
+    entries: list[tuple[bytes, bytes, bytes]] = []
+    for raw_entry in completed.stdout.split(b"\0"):
+        if not raw_entry:
+            continue
+        metadata, separator, path = raw_entry.partition(b"\t")
+        fields = metadata.split()
+        if not separator or len(fields) != 3:
+            raise ValueError("reviewed commit tree entry has an unexpected shape")
+        mode, object_type, object_id = fields
+        if object_type not in {b"blob", b"commit"}:
+            raise ValueError("reviewed commit tree contains an unsupported object type")
+        if _allowed_after_assurance(path):
+            continue
+        entries.append((path, mode, object_id))
+
+    digest = hashlib.sha256()
+    digest.update(_ASSURED_TREE_DOMAIN)
+    for path, mode, object_id in sorted(entries, key=lambda entry: entry[0]):
+        digest.update(len(path).to_bytes(8, byteorder="big"))
+        digest.update(path)
+        digest.update(b"\0")
+        digest.update(mode)
+        digest.update(b"\0")
+        digest.update(object_id)
+        digest.update(b"\0")
+    return digest.hexdigest()
+
+
+def _audit_assurance_reviewed_tree_binding(
+    root: Path,
+    findings: list[GovernanceFinding],
+) -> None:
+    """Prove assurance evidence and the reviewed commit describe one covered tree."""
+
+    report_path = root / CANONICAL_ASSURANCE_ARTIFACT
+    if not report_path.is_file():
+        return
+    try:
+        payload = json.loads(report_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return
+    if not isinstance(payload, dict):
+        return
+
+    reviewed_commit = payload.get("reviewed_commit")
+    reviewed_tree_digest = payload.get("reviewed_tree_digest")
+    if (
+        not isinstance(reviewed_commit, str)
+        or _COMMIT_PATTERN.fullmatch(reviewed_commit) is None
+        or not isinstance(reviewed_tree_digest, str)
+        or _DIGEST_PATTERN.fullmatch(reviewed_tree_digest) is None
+    ):
+        return
+
+    try:
+        committed_digest = _assured_commit_tree_digest(root, reviewed_commit)
+    except ValueError as exc:
+        findings.append(
+            _finding(
+                "ASSURANCE-026",
+                CANONICAL_ASSURANCE_ARTIFACT,
+                f"cannot prove reviewed-commit tree binding: {exc}",
+            )
+        )
+        return
+    if committed_digest != reviewed_tree_digest:
+        findings.append(
+            _finding(
+                "ASSURANCE-026",
+                CANONICAL_ASSURANCE_ARTIFACT,
+                "reviewed_commit assurance-covered tree does not match "
+                "reviewed_tree_digest; analytical evidence cannot be rebound to a "
+                "different implementation tree",
+            )
+        )
 
 
 def audit_governance(root: Path, tracked_files: Sequence[Path]) -> GovernanceReport:
@@ -193,6 +301,7 @@ def audit_governance(root: Path, tracked_files: Sequence[Path]) -> GovernanceRep
         findings,
         assurance_contract=assurance,
     )
+    _audit_assurance_reviewed_tree_binding(repository_root, findings)
 
     ordered = tuple(
         sorted(
