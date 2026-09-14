@@ -27,6 +27,7 @@ from constructionsight.repository_path_certification import (
 
 CANONICAL_ASSURANCE_ARTIFACT: Final = "governance/reviews/assurance_review.json"
 ASSURANCE_EVIDENCE_PREFIX: Final = "governance/reviews/evidence"
+ASSURANCE_SOURCE_PREFIX: Final = "governance/reviews/evidence/raw"
 
 ASSURANCE_CONTRACT_FIELDS: Final = frozenset(
     {
@@ -114,6 +115,7 @@ _PASS_EVIDENCE_FIELDS: Final = frozenset(
         "unresolved_candidate_count",
         "deferred_candidate_count",
         "tool",
+        "source_artifact_path",
         "source_artifact_sha256",
     }
 )
@@ -149,7 +151,10 @@ _QUALITY_GATE_EVIDENCE_FIELDS: Final = frozenset(
     {"schema_version", "reviewed_commit", "gates"}
 )
 _QUALITY_GATE_RESULT_FIELDS: Final = frozenset(
-    {"gate_id", "status", "source_artifact_sha256"}
+    {"gate_id", "status", "source_artifact_path", "source_artifact_sha256"}
+)
+_SOURCE_ARTIFACT_FIELDS: Final = frozenset(
+    {"schema_version", "reviewed_commit", "kind", "context_id", "producer", "payload"}
 )
 
 _ALLOWED_MODES: Final = frozenset(
@@ -214,8 +219,9 @@ _DIGEST_PATTERN: Final = re.compile(r"[0-9a-f]{64}")
 _PASS_ID_PATTERN: Final = re.compile(r"[a-z][a-z0-9-]{2,79}")
 _CANDIDATE_ID_PATTERN: Final = re.compile(r"CS-AC-[0-9]{3}")
 _CANDIDATE_UNION_SCHEMA: Final = "constructionsight.assurance-candidate-union/v1"
-_PASS_EVIDENCE_SCHEMA: Final = "constructionsight.assurance-pass-evidence/v1"
-_QUALITY_GATE_EVIDENCE_SCHEMA: Final = "constructionsight.assurance-quality-gates/v1"
+_PASS_EVIDENCE_SCHEMA: Final = "constructionsight.assurance-pass-evidence/v2"
+_QUALITY_GATE_EVIDENCE_SCHEMA: Final = "constructionsight.assurance-quality-gates/v2"
+_SOURCE_ARTIFACT_SCHEMA: Final = "constructionsight.assurance-source-artifact/v1"
 
 
 def _nonblank(value: object) -> bool:
@@ -548,11 +554,119 @@ def _evidence_artifact(
     return canonical_path.as_posix(), payload
 
 
+def _source_artifact(
+    root: Path,
+    raw_path: object,
+    raw_digest: object,
+    *,
+    reviewed_commit: object,
+    expected_kind: object,
+    expected_context_id: object,
+    source_owners: dict[str, str],
+    findings: list[GovernanceFinding],
+    label: str,
+) -> str | None:
+    report_path = CANONICAL_ASSURANCE_ARTIFACT
+    if (
+        not _nonblank(raw_path)
+        or not isinstance(raw_digest, str)
+        or _DIGEST_PATTERN.fullmatch(raw_digest) is None
+        or raw_digest == "0" * 64
+    ):
+        _record(
+            findings,
+            "ASSURANCE-027",
+            report_path,
+            f"{label} must bind a real retained source path and non-placeholder SHA-256",
+        )
+        return None
+    assert isinstance(raw_path, str)
+    try:
+        canonical_path, path = resolve_repository_file(
+            root,
+            raw_path,
+            required_prefix=ASSURANCE_SOURCE_PREFIX,
+            required_suffix=".json",
+        )
+    except RepositoryPathError:
+        _record(
+            findings,
+            "ASSURANCE-027",
+            report_path,
+            f"{label} source artifact is missing or unsafe: {raw_path}",
+        )
+        return None
+    try:
+        content = path.read_bytes()
+        payload = json.loads(content.decode("utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        _record(
+            findings,
+            "ASSURANCE-027",
+            report_path,
+            f"{label} source artifact is unreadable: {exc}",
+        )
+        return None
+    if not isinstance(payload, dict):
+        _record(
+            findings,
+            "ASSURANCE-027",
+            report_path,
+            f"{label} source artifact must be a JSON object",
+        )
+        return None
+    actual_digest = hashlib.sha256(content).hexdigest()
+    if actual_digest != raw_digest:
+        _record(
+            findings,
+            "ASSURANCE-027",
+            report_path,
+            f"{label} source digest does not match retained bytes",
+        )
+        return None
+    _exact_fields(
+        payload,
+        _SOURCE_ARTIFACT_FIELDS,
+        findings=findings,
+        code="ASSURANCE-027",
+        path=report_path,
+        label=f"{label} source artifact",
+    )
+    if (
+        payload.get("schema_version") != _SOURCE_ARTIFACT_SCHEMA
+        or payload.get("reviewed_commit") != reviewed_commit
+        or payload.get("kind") != expected_kind
+        or payload.get("context_id") != expected_context_id
+        or not _nonblank(payload.get("producer"))
+        or payload.get("payload") is None
+    ):
+        _record(
+            findings,
+            "ASSURANCE-027",
+            report_path,
+            f"{label} source artifact does not bind exact commit, kind, context, producer, and payload",
+        )
+    canonical = canonical_path.as_posix()
+    for identity in (f"path:{canonical}", f"sha256:{raw_digest}"):
+        prior = source_owners.get(identity)
+        if prior is not None and prior != label:
+            _record(
+                findings,
+                "ASSURANCE-027",
+                report_path,
+                f"source artifact is reused by {prior} and {label}",
+            )
+        else:
+            source_owners[identity] = label
+    return canonical
+
+
 def _audit_passes(
     root: Path,
     raw_passes: object,
     contract: Mapping[str, Any],
     reviewed_commit: object,
+    source_owners: dict[str, str],
     findings: list[GovernanceFinding],
 ) -> tuple[dict[str, Mapping[str, Any]], set[str]]:
     path = CANONICAL_ASSURANCE_ARTIFACT
@@ -610,16 +724,13 @@ def _audit_passes(
                 f"{pass_id} was not a fresh-context pass",
             )
         completed_reviews = raw.get("completed_reviews")
-        if not _positive_integer(completed_reviews):
+        if completed_reviews != 1:
             _record(
                 findings,
-                "ASSURANCE-008",
+                "ASSURANCE-009",
                 path,
-                f"{pass_id}.completed_reviews must be positive",
+                f"{pass_id}.completed_reviews must equal 1; each context requires its own pass record",
             )
-            completed_count = 0
-        else:
-            completed_count = cast(int, completed_reviews)
         if raw.get("status") != "passed":
             _record(findings, "ASSURANCE-009", path, f"{pass_id} has not passed")
         if raw.get("coverage_complete") is not True:
@@ -650,7 +761,7 @@ def _audit_passes(
                     f"{pass_id}.{field} must be zero",
                 )
         if kind in _NATIVE_PASS_KINDS:
-            native_review_count += completed_count
+            native_review_count += 1
             if str(raw.get("provider")).casefold() != "openai":
                 _record(
                     findings,
@@ -659,7 +770,7 @@ def _audit_passes(
                     f"{pass_id} must identify the native OpenAI provider honestly",
                 )
         if kind == "deep_repository":
-            deep_review_count += completed_count
+            deep_review_count += 1
         evidence = _evidence_artifact(
             root,
             raw.get("artifact_path"),
@@ -720,17 +831,26 @@ def _audit_passes(
                     path,
                     f"{pass_id} evidence does not bind reviewed_commit",
                 )
-            if not _nonblank(payload.get("tool")) or not isinstance(
-                payload.get("source_artifact_sha256"), str
-            ) or _DIGEST_PATTERN.fullmatch(
-                str(payload.get("source_artifact_sha256"))
-            ) is None:
+            if not _nonblank(payload.get("tool")):
                 _record(
                     findings,
                     "ASSURANCE-010",
                     path,
-                    f"{pass_id} evidence lacks tool or source-artifact identity",
+                    f"{pass_id} evidence lacks tool identity",
                 )
+            source_path = _source_artifact(
+                root,
+                payload.get("source_artifact_path"),
+                payload.get("source_artifact_sha256"),
+                reviewed_commit=reviewed_commit,
+                expected_kind=kind,
+                expected_context_id=pass_id,
+                source_owners=source_owners,
+                findings=findings,
+                label=f"analytical pass {pass_id}",
+            )
+            if source_path is not None:
+                evidence_paths.add(source_path)
 
     present_native = {
         str(raw.get("kind"))
@@ -754,7 +874,7 @@ def _audit_passes(
             findings,
             "ASSURANCE-009",
             path,
-            f"only {native_review_count} context-isolated native reviews are evidenced",
+            f"only {native_review_count} distinct context-isolated native pass records are evidenced",
         )
     minimum_deep = contract.get("minimum_deep_standard_passes")
     if not _positive_integer(minimum_deep) or deep_review_count < cast(
@@ -764,7 +884,7 @@ def _audit_passes(
             findings,
             "ASSURANCE-009",
             path,
-            f"only {deep_review_count} complete deep Standard reviews are evidenced",
+            f"only {deep_review_count} distinct complete deep Standard pass records are evidenced",
         )
     return passes, evidence_paths
 
@@ -979,6 +1099,7 @@ def _audit_quality_gates(
     raw_gates: object,
     contract: Mapping[str, Any],
     reviewed_commit: object,
+    source_owners: dict[str, str],
     findings: list[GovernanceFinding],
 ) -> set[str]:
     path = CANONICAL_ASSURANCE_ARTIFACT
@@ -1085,17 +1206,26 @@ def _audit_quality_gates(
                             continue
                         assert isinstance(result_id, str)
                         results[result_id] = raw_result
-                        if raw_result.get("status") != "passed" or not isinstance(
-                            raw_result.get("source_artifact_sha256"), str
-                        ) or _DIGEST_PATTERN.fullmatch(
-                            str(raw_result.get("source_artifact_sha256"))
-                        ) is None:
+                        if raw_result.get("status") != "passed":
                             _record(
                                 findings,
                                 "ASSURANCE-015",
                                 path,
-                                f"quality-gate evidence {result_id} is not a hash-bound pass",
+                                f"quality-gate evidence {result_id} is not a passed result",
                             )
+                        source_path = _source_artifact(
+                            root,
+                            raw_result.get("source_artifact_path"),
+                            raw_result.get("source_artifact_sha256"),
+                            reviewed_commit=reviewed_commit,
+                            expected_kind="quality_gate",
+                            expected_context_id=result_id,
+                            source_owners=source_owners,
+                            findings=findings,
+                            label=f"quality gate {result_id}",
+                        )
+                        if source_path is not None:
+                            evidence_paths.add(source_path)
                 evidence_results[evidence_path] = results
             bound_result = evidence_results[evidence_path].get(gate_id)
             if bound_result is None or bound_result.get("status") != raw.get("status"):
@@ -1389,11 +1519,13 @@ def audit_assurance_review(
             "reviewed_active_defects_digest must be a lowercase SHA-256 digest",
         )
 
+    source_owners: dict[str, str] = {}
     passes, referenced_paths = _audit_passes(
         root,
         report.get("passes"),
         contract,
         reviewed_commit,
+        source_owners,
         findings,
     )
     _audit_mode(report, passes, contract, findings)
@@ -1412,6 +1544,7 @@ def audit_assurance_review(
             report.get("quality_gates"),
             contract,
             reviewed_commit,
+            source_owners,
             findings,
         )
     )
