@@ -544,3 +544,19 @@ area = "supply-chain-action-runtime-provenance"
 root_cause = "Canonical CI pins third-party GitHub Action source commits, but the pinned checkout, setup-python, and upload-artifact commits declare Node 20 while current GitHub-hosted runners forcibly execute those bundles under Node 24. The immutable source SHA therefore no longer fixes the interpreter semantics actually executing in CI, and the workflow lacks a native binding from Action identity to a reviewed runtime class."
 discovered_against = "99081b3cd2f4d6dc1916f13c36e09ecda76ac7e1"
 required_resolution = "Review and pin Node-24-native checkout, setup-python, and upload-artifact releases by immutable commit; preserve existing least-privilege and quality semantics; machine-certify the exact Action repositories, commits, occurrence counts, and reviewed runtime annotations; retain the composite pip-audit identity; rerun the complete exact-head matrix; and require the Node-20 forced-runtime warning to disappear before assurance freeze."
+
+[[defects]]
+id = "CS-SR-069"
+severity = "P1"
+area = "supply-chain-vulnerability-toolchain-reproducibility"
+root_cause = "The immutable pypa/gh-action-pip-audit composite source does not pin the scanner implementation it executes: its requirements allow resolver-selected pip-audit and transitive versions, so the mandatory vulnerability gate can change without a ConstructionSight tree or Action-SHA change."
+discovered_against = "7fe708e1ea49044b2b847a9624da5c80c765a679"
+required_resolution = "Remove the resolver-selected vulnerability-scanner bootstrap; use a repository-owned deterministic vulnerability certifier with explicit fail-closed advisory provenance or a fully artifact-hashed exact scanner environment; preserve isolated zero-known-vulnerability enforcement and retained evidence; add negative network, schema, advisory, and mutation coverage; and rerun the complete supported-runtime matrix."
+
+[[defects]]
+id = "CS-SR-070"
+severity = "P2"
+area = "assurance-quality-gate-compliance"
+root_cause = "CS-SR-068 Action-provenance hardening introduced two overlong expressions in src/constructionsight/ci_action_certification.py. Retained CI #1155 evidence reports Ruff E501, so exact head 7fe708e1ea49044b2b847a9624da5c80c765a679 is not a clean-quality or assurance-freeze candidate."
+discovered_against = "7fe708e1ea49044b2b847a9624da5c80c765a679"
+required_resolution = "Split both overlong expressions without suppression, rule changes, or weakened predicates; preserve Action identity/runtime semantics and mutation anchors; rerun the complete Python 3.11 and 3.12 matrix; and verify retained raw Ruff output is clean before assurance freeze."
