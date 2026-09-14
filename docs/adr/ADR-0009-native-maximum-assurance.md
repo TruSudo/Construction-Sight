@@ -52,6 +52,26 @@ the read-only GitHub Actions API and requires the canonical bound step to have
 completed successfully. A locally authored `producer = "github-actions"` string is
 not sufficient provenance.
 
+Owner acceptance is also external authority, not a repository-authored Boolean.
+The assurance report must encode the repository owner's GitHub login, pull-request
+number, and GitHub review ID. Its `review_method` must bind a deterministic SHA-256
+over every material assurance claim: mode and status, exact reviewed commit and
+tree, reviewed active-defect digest, surviving-mutant count, all analytical pass
+records, candidate-union reference, quality-gate references, tier-specific pull
+request binding, and limitations. Owner/reviewer identity, the acceptance Boolean,
+and the later review ID are excluded from that digest so the owner can authenticate
+an already-frozen evidence set without circular hashing.
+
+The owner then submits an explicit GitHub COMMENT review on the exact frozen
+`reviewed_commit`. The review body must state the exact reviewed commit, reviewed
+tree digest, material-assurance digest, and `decision=accepted`. Finalization CI
+re-fetches that review and pull request through read-only GitHub API authority and
+requires the review to come from a human `User` whose login equals the repository
+owner and whose author association is `OWNER`, with exact COMMENTED state, review
+ID, commit, and body. General implementation authorization, self-authored JSON, or
+an assistant-created acceptance without an explicit owner decision does not satisfy
+this requirement.
+
 Because the aggregate repository certification intentionally remains blocked by
 active defects and missing assurance before finalization, the frozen candidate also
 runs a pre-assurance structural certification. That preflight may disregard only
@@ -70,9 +90,11 @@ The assurance modes are cumulative and exact:
   and binds to the exact reviewed commit.
 
 External-model and human review never replace or reduce the native baseline.
-Self-approval cannot satisfy independent-human review. There is no absent, bypass,
-waiver, partial-coverage, or unresolved-finding mode. Any change outside the fixed
-post-review finalization paths invalidates every assurance artifact.
+Self-approval cannot satisfy independent-human review. Owner acceptance is a
+separate authenticated decision and never counts as independent-human review.
+There is no absent, bypass, waiver, partial-coverage, or unresolved-finding mode.
+Any change outside the fixed post-review finalization paths invalidates every
+assurance artifact.
 
 The canonical artifact is `governance/reviews/assurance_review.json`. Its evidence
 is confined to `governance/reviews/evidence/`, is SHA-256 bound, and must account

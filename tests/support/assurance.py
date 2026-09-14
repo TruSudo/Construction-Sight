@@ -10,6 +10,7 @@ from constructionsight.defect_closure_certification import (
     reviewed_active_defects_digest,
 )
 from constructionsight.github_actions_certification import quality_gate_binding
+from constructionsight.owner_acceptance_certification import expected_review_method
 
 QUALITY_GATES = (
     "adapter-audit",
@@ -231,6 +232,8 @@ def write_assurance(
         for pass_id in candidate["source_pass_ids"]:
             pass_sources[str(pass_id)] = pass_sources.get(str(pass_id), 0) + 1
 
+    owner = "github:TestOwner@pr-117#5151"
+    reviewer = owner
     passes = [
         _pass(
             root,
@@ -283,8 +286,6 @@ def write_assurance(
             candidate_count=pass_sources.get("native-invariant", 0),
         ),
     ]
-    owner = "owner:test"
-    reviewer = owner
     pull_request_number: int | None = None
     independence_claim = "native_context_isolated_not_independent"
     limitation = "no_independent_external_model_or_human_review"
@@ -391,7 +392,7 @@ def write_assurance(
         "owner": owner,
         "owner_acceptance": True,
         "reviewer": reviewer,
-        "review_method": "frozen exact-tree cumulative adversarial assurance",
+        "review_method": "pending evidence digest",
         "reviewed_commit": reviewed_commit,
         "reviewed_active_defects_digest": reviewed_active_defects_digest(
             root,
@@ -416,6 +417,7 @@ def write_assurance(
         ],
         "limitations": [limitation],
     }
+    report["review_method"] = expected_review_method(report)
     write_json(root, "governance/reviews/assurance_review.json", report)
     return report
 
@@ -433,4 +435,5 @@ def rewrite_candidate_union(
     assert isinstance(reference, dict)
     path = str(reference["artifact_path"])
     reference["artifact_sha256"] = write_json(root, path, payload)
+    report["review_method"] = expected_review_method(report)
     rewrite_assurance(root, report)

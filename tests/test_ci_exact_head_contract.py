@@ -58,3 +58,18 @@ def test_ci_revalidates_quality_gates_against_github_actions_api() -> None:
     assert "constructionsight.github_actions_certification verify" in workflow
     assert "'${{ steps.github-actions-provenance.outcome }}'" in workflow
     assert "GitHub Actions provenance revalidation is not yet applicable" in workflow
+
+
+def test_ci_revalidates_authenticated_owner_acceptance() -> None:
+    workflow = _workflow()
+
+    assert "name: Verify authenticated GitHub owner acceptance" in workflow
+    assert "id: github-owner-acceptance" in workflow
+    assert "constructionsight.owner_acceptance_certification pr-number" in workflow
+    assert "constructionsight.owner_acceptance_certification review-id" in workflow
+    assert "github-owner-review-source-${LOCK_TAG}.json" in workflow
+    assert "github-owner-pull-request-source-${LOCK_TAG}.json" in workflow
+    assert "constructionsight.owner_acceptance_certification verify" in workflow
+    assert "--repository-owner \"${REPOSITORY_OWNER}\"" in workflow
+    assert "'${{ steps.github-owner-acceptance.outcome }}'" in workflow
+    assert "owner acceptance revalidation is not yet applicable" in workflow

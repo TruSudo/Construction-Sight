@@ -145,6 +145,51 @@ expected_output = "test_v2_includes_semantic_ci_permission_findings"
 risk = "Semantic CI permission certification could be disconnected from final canonical repository certification."
 
 [[cases]]
+id = "CS-MUT-ASSURANCE-OWNER-EVIDENCE-DIGEST-001"
+path = "src/constructionsight/owner_acceptance_certification.py"
+search = '''    if report.get("review_method") != expected_review_method(report):'''
+replacement = '''    if False:'''
+tests = ["tests/test_owner_acceptance_certification.py::test_owner_acceptance_rejects_changed_evidence"]
+expected_output = "test_owner_acceptance_rejects_changed_evidence"
+risk = "Material assurance evidence could change after owner review while the local acceptance claim remains apparently valid."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-OWNER-IDENTITY-001"
+path = "src/constructionsight/owner_acceptance_certification.py"
+search = '''    elif bound_login.casefold() != repository_owner.casefold():'''
+replacement = '''    elif False:'''
+tests = ["tests/test_owner_acceptance_certification.py::test_owner_acceptance_rejects_spoofed_owner"]
+expected_output = "test_owner_acceptance_rejects_spoofed_owner"
+risk = "A GitHub user other than the repository owner could be presented as the owner acceptance authority."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-OWNER-COMMIT-001"
+path = "src/constructionsight/owner_acceptance_certification.py"
+search = '''    elif github_review.get("commit_id") != reviewed_commit:'''
+replacement = '''    elif False:'''
+tests = ["tests/test_owner_acceptance_certification.py::test_owner_acceptance_rejects_stale_commit"]
+expected_output = "test_owner_acceptance_rejects_stale_commit"
+risk = "An owner acceptance from a different candidate commit could be rebound to the assured tree."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-OWNER-BODY-001"
+path = "src/constructionsight/owner_acceptance_certification.py"
+search = '''    if github_review.get("body") != expected_acceptance_body(assurance_report):'''
+replacement = '''    if False:'''
+tests = ["tests/test_owner_acceptance_certification.py::test_owner_acceptance_rejects_wrong_body_state_or_association"]
+expected_output = "test_owner_acceptance_rejects_wrong_body_state_or_association"
+risk = "A generic or unrelated owner comment could satisfy acceptance without binding the exact tree and assurance evidence digest."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-OWNER-GOV-WIRING-001"
+path = "src/constructionsight/authority_certification.py"
+search = '''    audit_owner_acceptance_binding(root, findings)'''
+replacement = '''    pass'''
+tests = ["tests/test_owner_acceptance_certification.py::test_canonical_governance_rejects_unbound_owner"]
+expected_output = "test_canonical_governance_rejects_unbound_owner"
+risk = "Authenticated-owner acceptance semantics could be disconnected from the canonical governance audit."
+
+[[cases]]
 id = "CS-MUT-ASSURANCE-GITHUB-ACTIONS-BINDING-001"
 path = "src/constructionsight/github_actions_certification.py"
 search = '''    return QUALITY_GATE_BINDINGS.get(gate_id)'''

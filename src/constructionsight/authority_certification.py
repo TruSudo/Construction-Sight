@@ -21,6 +21,9 @@ from constructionsight.governance_certification_core import (
     _finding,
     _read_toml,
 )
+from constructionsight.owner_acceptance_certification import (
+    audit_owner_acceptance_binding,
+)
 from constructionsight.repository_path_certification import (
     RepositoryPathError,
     resolve_repository_file,
@@ -425,3 +428,4 @@ def _audit_defects_and_review(
     )
     audit_assurance_review(root, contract, active, resolved, findings)
     audit_assurance_source_semantics(root, findings)
+    audit_owner_acceptance_binding(root, findings)
