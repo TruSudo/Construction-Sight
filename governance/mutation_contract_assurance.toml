@@ -4,6 +4,21 @@ execution = "Every case runs in a temporary full source overlay. The tracked tre
 timeout_seconds = 120
 
 [[cases]]
+id = "CS-MUT-ASSURANCE-EVIDENCE-DIGEST-001"
+path = "src/constructionsight/assurance_certification.py"
+search = '''    if actual_digest != raw_digest:
+        _record(
+            findings,
+            "ASSURANCE-010",'''
+replacement = '''    if False and actual_digest != raw_digest:
+        _record(
+            findings,
+            "ASSURANCE-010",'''
+tests = ["tests/test_assurance_certification.py::test_assurance_rejects_evidence_digest_mismatch"]
+expected_output = "test_assurance_rejects_evidence_digest_mismatch"
+risk = "Pass or gate evidence could be changed after review without invalidating its assurance claim."
+
+[[cases]]
 id = "CS-MUT-ASSURANCE-CONTEXT-AGGREGATION-001"
 path = "src/constructionsight/assurance_certification.py"
 search = '''        if completed_reviews != 1:'''
