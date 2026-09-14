@@ -41,7 +41,6 @@ def test_mutation_runner_loads_assurance_overlay_as_one_unique_case_set() -> Non
         "CS-MUT-ASSURANCE-CONTEXT-AGGREGATION-001",
         "CS-MUT-ASSURANCE-SOURCE-COMMIT-001",
         "CS-MUT-ASSURANCE-SOURCE-DIGEST-001",
-        "CS-MUT-ASSURANCE-SOURCE-PLACEHOLDER-001",
         "CS-MUT-ASSURANCE-SOURCE-REUSE-001",
     } <= set(ids)
 

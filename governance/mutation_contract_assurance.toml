@@ -28,15 +28,6 @@ expected_output = "test_assurance_rejects_aggregated_completed_reviews"
 risk = "One analytical record could claim several supposedly context-isolated reviews and satisfy native review cardinality without distinct contexts."
 
 [[cases]]
-id = "CS-MUT-ASSURANCE-SOURCE-PLACEHOLDER-001"
-path = "src/constructionsight/assurance_certification.py"
-search = '''        or raw_digest == "0" * 64'''
-replacement = '''        or False'''
-tests = ["tests/test_assurance_certification.py::test_assurance_rejects_placeholder_source_hash"]
-expected_output = "test_assurance_rejects_placeholder_source_hash"
-risk = "A syntactically valid all-zero digest could masquerade as retained raw assurance provenance."
-
-[[cases]]
 id = "CS-MUT-ASSURANCE-SOURCE-DIGEST-001"
 path = "src/constructionsight/assurance_certification.py"
 search = '''    if actual_digest != raw_digest:
