@@ -109,37 +109,75 @@ def initialize_repository(root: Path) -> None:
     git(root, "commit", "-m", "base")
 
 
+def _raw_source(
+    root: Path,
+    *,
+    reviewed_commit: str,
+    kind: str,
+    context_id: str,
+    producer: str,
+    payload: object,
+) -> tuple[str, str]:
+    artifact_path = f"governance/reviews/evidence/raw/{context_id}.json"
+    digest = write_json(
+        root,
+        artifact_path,
+        {
+            "schema_version": "constructionsight.assurance-source-artifact/v1",
+            "reviewed_commit": reviewed_commit,
+            "kind": kind,
+            "context_id": context_id,
+            "producer": producer,
+            "payload": payload,
+        },
+    )
+    return artifact_path, digest
+
+
 def _pass(
     root: Path,
     *,
     reviewed_commit: str,
     pass_id: str,
     kind: str,
-    completed_reviews: int,
     reviewer: str,
     provider: str,
     model: str,
     candidate_count: int,
 ) -> dict[str, object]:
+    source_path, source_digest = _raw_source(
+        root,
+        reviewed_commit=reviewed_commit,
+        kind=kind,
+        context_id=pass_id,
+        producer="codex-security",
+        payload={
+            "reviewer": reviewer,
+            "provider": provider,
+            "model": model,
+            "result": "test raw analytical evidence",
+        },
+    )
     artifact_path = f"governance/reviews/evidence/{pass_id}.json"
     digest = write_json(
         root,
         artifact_path,
         {
-            "schema_version": "constructionsight.assurance-pass-evidence/v1",
+            "schema_version": "constructionsight.assurance-pass-evidence/v2",
             "pass_id": pass_id,
             "kind": kind,
             "reviewed_commit": reviewed_commit,
             "status": "passed",
             "fresh_context": True,
-            "completed_reviews": completed_reviews,
+            "completed_reviews": 1,
             "candidate_count": candidate_count,
             "coverage_complete": True,
             "coverage_gap_count": 0,
             "unresolved_candidate_count": 0,
             "deferred_candidate_count": 0,
             "tool": "codex-security",
-            "source_artifact_sha256": "0" * 64,
+            "source_artifact_path": source_path,
+            "source_artifact_sha256": source_digest,
         },
     )
     return {
@@ -149,7 +187,7 @@ def _pass(
         "provider": provider,
         "model": model,
         "fresh_context": True,
-        "completed_reviews": completed_reviews,
+        "completed_reviews": 1,
         "status": "passed",
         "artifact_path": artifact_path,
         "artifact_sha256": digest,
@@ -179,20 +217,38 @@ def write_assurance(
         _pass(
             root,
             reviewed_commit=reviewed_commit,
-            pass_id="native-deep",
+            pass_id="native-deep-1",
             kind="deep_repository",
-            completed_reviews=3,
-            reviewer="codex-security:deep",
+            reviewer="codex-security:deep-1",
             provider="openai",
             model="codex-security",
-            candidate_count=pass_sources.get("native-deep", 0),
+            candidate_count=pass_sources.get("native-deep-1", 0),
+        ),
+        _pass(
+            root,
+            reviewed_commit=reviewed_commit,
+            pass_id="native-deep-2",
+            kind="deep_repository",
+            reviewer="codex-security:deep-2",
+            provider="openai",
+            model="codex-security",
+            candidate_count=pass_sources.get("native-deep-2", 0),
+        ),
+        _pass(
+            root,
+            reviewed_commit=reviewed_commit,
+            pass_id="native-deep-3",
+            kind="deep_repository",
+            reviewer="codex-security:deep-3",
+            provider="openai",
+            model="codex-security",
+            candidate_count=pass_sources.get("native-deep-3", 0),
         ),
         _pass(
             root,
             reviewed_commit=reviewed_commit,
             pass_id="native-diff",
             kind="exact_diff",
-            completed_reviews=1,
             reviewer="codex-security:diff",
             provider="openai",
             model="codex-security",
@@ -203,7 +259,6 @@ def write_assurance(
             reviewed_commit=reviewed_commit,
             pass_id="native-invariant",
             kind="adversarial_invariant",
-            completed_reviews=1,
             reviewer="codex-security:invariant",
             provider="openai",
             model="codex-security",
@@ -223,7 +278,6 @@ def write_assurance(
                 reviewed_commit=reviewed_commit,
                 pass_id="external-model",
                 kind="external_model",
-                completed_reviews=1,
                 reviewer=reviewer,
                 provider="anthropic",
                 model="claude",
@@ -241,7 +295,6 @@ def write_assurance(
                 reviewed_commit=reviewed_commit,
                 pass_id="human-review",
                 kind="independent_human",
-                completed_reviews=1,
                 reviewer=reviewer,
                 provider="github",
                 model="not-applicable",
@@ -266,21 +319,38 @@ def write_assurance(
             "candidates": candidate_entries,
         },
     )
+
+    gate_results: list[dict[str, object]] = []
+    for gate_id in QUALITY_GATES:
+        source_path, source_digest = _raw_source(
+            root,
+            reviewed_commit=reviewed_commit,
+            kind="quality_gate",
+            context_id=gate_id,
+            producer="github-actions",
+            payload={
+                "gate_id": gate_id,
+                "status": "passed",
+                "result": "test retained quality-gate source evidence",
+            },
+        )
+        gate_results.append(
+            {
+                "gate_id": gate_id,
+                "status": "passed",
+                "source_artifact_path": source_path,
+                "source_artifact_sha256": source_digest,
+            }
+        )
+
     gate_path = "governance/reviews/evidence/quality-gates.json"
     gate_digest = write_json(
         root,
         gate_path,
         {
-            "schema_version": "constructionsight.assurance-quality-gates/v1",
+            "schema_version": "constructionsight.assurance-quality-gates/v2",
             "reviewed_commit": reviewed_commit,
-            "gates": [
-                {
-                    "gate_id": gate_id,
-                    "status": "passed",
-                    "source_artifact_sha256": "0" * 64,
-                }
-                for gate_id in QUALITY_GATES
-            ],
+            "gates": gate_results,
         },
     )
     report: dict[str, Any] = {
