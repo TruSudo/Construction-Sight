@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import constructionsight.governance_certification as governance_certification
 from constructionsight.governance_certification import _merge_mutation_contracts
 from constructionsight.governance_certification_core import GovernanceFinding
 from constructionsight.mutation_certification import _load_contract
+from constructionsight.repository_certification import _tracked_files
 
 
 def _case(case_id: str) -> dict[str, object]:
@@ -91,3 +93,19 @@ def test_governance_merge_rejects_execution_or_timeout_drift() -> None:
 
     codes = {finding.code for finding in findings}
     assert "GOV-MUTATION-004" in codes
+
+
+def test_canonical_governance_audit_invokes_mutation_overlay_merge(monkeypatch) -> None:
+    called = False
+    original = governance_certification._merge_mutation_contracts
+
+    def wrapped(primary, supplement, findings):
+        nonlocal called
+        called = True
+        return original(primary, supplement, findings)
+
+    monkeypatch.setattr(governance_certification, "_merge_mutation_contracts", wrapped)
+
+    governance_certification.audit_governance(Path.cwd(), _tracked_files(Path.cwd()))
+
+    assert called
