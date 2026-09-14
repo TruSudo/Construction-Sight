@@ -8,9 +8,11 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Final
 
+from constructionsight.ci_permissions_certification import audit_ci_permissions
 from constructionsight.governance_certification import audit_governance
 from constructionsight.governance_certification_core import GovernanceFinding
 from constructionsight.repository_certification import (
+    CertificationFinding,
     _tracked_files,
     audit_repository,
 )
@@ -35,22 +37,29 @@ def preflight_findings(
     )
 
 
+def _finding_row(
+    finding: CertificationFinding | GovernanceFinding,
+) -> dict[str, object]:
+    return {
+        "code": finding.code,
+        "path": finding.path,
+        "line": finding.line,
+        "message": finding.message,
+    }
+
+
 def build_report(root: Path) -> dict[str, object]:
     """Build a fail-closed report for the assurance-covered candidate tree."""
 
     repository = audit_repository(root, require_clean_worktree=True)
+    permission_blockers = audit_ci_permissions(root)
     governance = audit_governance(root, _tracked_files(root))
-    repository_blockers = tuple(repository.findings)
     governance_blockers = preflight_findings(governance.findings)
-    finding_rows = [
-        {
-            "code": finding.code,
-            "path": finding.path,
-            "line": finding.line,
-            "message": finding.message,
-        }
-        for finding in (*repository_blockers, *governance_blockers)
-    ]
+
+    finding_rows = [_finding_row(finding) for finding in repository.findings]
+    finding_rows.extend(_finding_row(finding) for finding in permission_blockers)
+    finding_rows.extend(_finding_row(finding) for finding in governance_blockers)
+
     allowed_count = governance.finding_count - len(governance_blockers)
     return {
         "schema_version": _SCHEMA_VERSION,

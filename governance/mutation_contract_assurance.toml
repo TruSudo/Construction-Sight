@@ -118,6 +118,33 @@ expected_output = "test_preflight_retains_any_other_governance_finding"
 risk = "Pre-assurance structural certification could silently discard real governance defects along with the two intentional transaction blockers."
 
 [[cases]]
+id = "CS-MUT-ASSURANCE-CI-PERMISSIONS-001"
+path = "src/constructionsight/ci_permissions_certification.py"
+search = '''    if permissions != _EXPECTED_TOP_LEVEL_PERMISSIONS:'''
+replacement = '''    if False:'''
+tests = ["tests/test_ci_permissions_certification.py::test_write_permission_fails"]
+expected_output = "test_write_permission_fails"
+risk = "A write-capable or extra GitHub token permission could be accepted as the canonical read-only CI permission set."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-CI-PERMISSIONS-PREFLIGHT-WIRING-001"
+path = "src/constructionsight/assurance_preflight_certification.py"
+search = '''    permission_blockers = audit_ci_permissions(root)'''
+replacement = '''    permission_blockers = ()'''
+tests = ["tests/test_assurance_preflight_certification.py::test_preflight_retains_semantic_permission_findings"]
+expected_output = "test_preflight_retains_semantic_permission_findings"
+risk = "Semantic CI permission certification could be disconnected from the pre-assurance structural gate."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-CI-PERMISSIONS-V2-WIRING-001"
+path = "src/constructionsight/repository_certification_v2.py"
+search = '''    permission_findings = audit_ci_permissions(repository_root)'''
+replacement = '''    permission_findings = ()'''
+tests = ["tests/test_repository_certification_v2.py::test_v2_includes_semantic_ci_permission_findings"]
+expected_output = "test_v2_includes_semantic_ci_permission_findings"
+risk = "Semantic CI permission certification could be disconnected from final canonical repository certification."
+
+[[cases]]
 id = "CS-MUT-ASSURANCE-GITHUB-ACTIONS-BINDING-001"
 path = "src/constructionsight/github_actions_certification.py"
 search = '''    return QUALITY_GATE_BINDINGS.get(gate_id)'''

@@ -9,9 +9,11 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, Final
 
+from constructionsight.ci_permissions_certification import audit_ci_permissions
 from constructionsight.governance_certification import audit_governance
 from constructionsight.repository_certification import (
     CertificationError,
+    CertificationReport,
     _tracked_files,
     audit_repository,
 )
@@ -42,15 +44,32 @@ def certify_repository(
         repository_root,
         require_clean_worktree=require_clean_worktree,
     )
+    permission_findings = audit_ci_permissions(repository_root)
+    repository_findings = tuple(
+        sorted(
+            (*base_report.findings, *permission_findings),
+            key=lambda item: (item.code, item.path, item.line or 0, item.message),
+        )
+    )
+    repository_report = CertificationReport(
+        schema_version=base_report.schema_version,
+        tracked_file_count=base_report.tracked_file_count,
+        source_python_count=base_report.source_python_count,
+        test_python_count=base_report.test_python_count,
+        finding_count=len(repository_findings),
+        findings=repository_findings,
+    )
     governance_report = audit_governance(
         repository_root,
         _tracked_files(repository_root),
     )
     return {
         "schema_version": SCHEMA_VERSION,
-        "passed": base_report.passed and governance_report.passed,
-        "finding_count": base_report.finding_count + governance_report.finding_count,
-        "repository": base_report.to_dict(),
+        "passed": repository_report.passed and governance_report.passed,
+        "finding_count": (
+            repository_report.finding_count + governance_report.finding_count
+        ),
+        "repository": repository_report.to_dict(),
         "governance": governance_report.to_dict(),
     }
 
