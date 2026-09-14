@@ -204,7 +204,9 @@ def test_assurance_rejects_reused_source_artifact(tmp_path: Path) -> None:
     second_pass["artifact_sha256"] = write_json(tmp_path, second_path, second_payload)
     rewrite_assurance(tmp_path, report)
 
-    assert "ASSURANCE-027" in _codes(_audit(tmp_path))
+    findings = _audit(tmp_path)
+    assert "ASSURANCE-027" in _codes(findings)
+    assert any("source artifact is reused" in finding.message for finding in findings)
 
 
 def test_assurance_rejects_quality_gate_source_digest_mismatch(tmp_path: Path) -> None:
