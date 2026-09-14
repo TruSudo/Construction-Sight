@@ -45,6 +45,11 @@ def test_preflight_retains_any_other_governance_finding() -> None:
     assert blockers[0].code == "ARCH-CAP-001"
 
 
+def _isolate_action_audits(monkeypatch) -> None:
+    monkeypatch.setattr(preflight, "audit_ci_permissions", lambda root: ())
+    monkeypatch.setattr(preflight, "audit_ci_actions", lambda root: ())
+
+
 def test_preflight_retains_repository_findings(monkeypatch) -> None:
     repository_finding = CertificationFinding(
         code="CERT-CI-003",
@@ -60,7 +65,7 @@ def test_preflight_retains_repository_findings(monkeypatch) -> None:
             finding_count=1,
         ),
     )
-    monkeypatch.setattr(preflight, "audit_ci_permissions", lambda root: ())
+    _isolate_action_audits(monkeypatch)
     monkeypatch.setattr(
         preflight,
         "audit_governance",
@@ -96,6 +101,7 @@ def test_preflight_retains_semantic_permission_findings(monkeypatch) -> None:
         "audit_ci_permissions",
         lambda root: (permission_finding,),
     )
+    monkeypatch.setattr(preflight, "audit_ci_actions", lambda root: ())
     monkeypatch.setattr(
         preflight,
         "audit_governance",
@@ -109,3 +115,39 @@ def test_preflight_retains_semantic_permission_findings(monkeypatch) -> None:
     findings = report["findings"]
     assert isinstance(findings, list)
     assert findings[0]["code"] == "CERT-CI-005"
+
+
+def test_preflight_retains_action_runtime_findings(monkeypatch) -> None:
+    action_finding = CertificationFinding(
+        code="CERT-CI-006",
+        path=".github/workflows/ci.yml",
+        line=12,
+        message="stale action runtime",
+    )
+    monkeypatch.setattr(
+        preflight,
+        "audit_repository",
+        lambda root, require_clean_worktree: SimpleNamespace(
+            findings=(),
+            finding_count=0,
+        ),
+    )
+    monkeypatch.setattr(preflight, "audit_ci_permissions", lambda root: ())
+    monkeypatch.setattr(
+        preflight,
+        "audit_ci_actions",
+        lambda root: (action_finding,),
+    )
+    monkeypatch.setattr(
+        preflight,
+        "audit_governance",
+        lambda root, tracked: SimpleNamespace(findings=(), finding_count=0),
+    )
+    monkeypatch.setattr(preflight, "_tracked_files", lambda root: ())
+
+    report = preflight.build_report(Path("."))
+
+    assert report["passed"] is False
+    findings = report["findings"]
+    assert isinstance(findings, list)
+    assert findings[0]["code"] == "CERT-CI-006"

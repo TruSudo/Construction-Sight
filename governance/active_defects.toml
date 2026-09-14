@@ -528,3 +528,19 @@ area = "assurance-owner-acceptance-authenticity"
 root_cause = "Native Maximum Assurance requires explicit owner acceptance, but the canonical report currently treats owner_acceptance as a repository-controlled Boolean with nonblank owner and review_method text; no externally authenticated owner action binds the decision to the exact frozen commit, reviewed tree, and complete material assurance evidence set, so a committer or automation capable of writing permitted finalization artifacts can self-assert owner acceptance."
 discovered_against = "6402f0a49f80099c46c8bb37a392e740783a92b4"
 required_resolution = "Bind owner acceptance to the repository owner's real GitHub User identity, exact pull-request review ID, exact reviewed commit and tree, and a deterministic SHA-256 digest of all material assurance claims; have canonical CI re-fetch and verify the owner review with read-only GitHub authority; require exact acceptance text, COMMENTED state, OWNER association, and human User identity; keep owner acceptance distinct from independent-human review; and add spoofed-owner, stale-commit, changed-evidence, wrong-body/state, wiring, and focused-mutation regressions."
+
+[[defects]]
+id = "CS-SR-067"
+severity = "P2"
+area = "assurance-quality-gate-compliance"
+root_cause = "The semantic CI-permission regression helper creates its workflow directory without exist_ok=True, but test_scalar_or_duplicate_permissions_fail_closed rewrites the same temporary workflow twice. Exact-head CI #1153 on 99081b3cd2f4d6dc1916f13c36e09ecda76ac7e1 therefore fails full pytest on both Python 3.11 and 3.12 with FileExistsError despite the production permission certifier, focused mutations, preflight, and repository certification otherwise behaving as intended."
+discovered_against = "99081b3cd2f4d6dc1916f13c36e09ecda76ac7e1"
+required_resolution = "Make the test workflow helper idempotently create its parent directory, rerun the complete exact-head Python 3.11 and 3.12 matrix, require all 1323 tests to pass, preserve 92/92 focused mutation results, and confirm canonical repository certification contains only ASSURANCE-001 plus the active-defect blockers."
+
+[[defects]]
+id = "CS-SR-068"
+severity = "P1"
+area = "supply-chain-action-runtime-provenance"
+root_cause = "Canonical CI pins third-party GitHub Action source commits, but the pinned checkout, setup-python, and upload-artifact commits declare Node 20 while current GitHub-hosted runners forcibly execute those bundles under Node 24. The immutable source SHA therefore no longer fixes the interpreter semantics actually executing in CI, and the workflow lacks a native binding from Action identity to a reviewed runtime class."
+discovered_against = "99081b3cd2f4d6dc1916f13c36e09ecda76ac7e1"
+required_resolution = "Review and pin Node-24-native checkout, setup-python, and upload-artifact releases by immutable commit; preserve existing least-privilege and quality semantics; machine-certify the exact Action repositories, commits, occurrence counts, and reviewed runtime annotations; retain the composite pip-audit identity; rerun the complete exact-head matrix; and require the Node-20 forced-runtime warning to disappear before assurance freeze."

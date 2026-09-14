@@ -9,6 +9,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, Final
 
+from constructionsight.ci_action_certification import audit_ci_actions
 from constructionsight.ci_permissions_certification import audit_ci_permissions
 from constructionsight.governance_certification import audit_governance
 from constructionsight.repository_certification import (
@@ -45,9 +46,10 @@ def certify_repository(
         require_clean_worktree=require_clean_worktree,
     )
     permission_findings = audit_ci_permissions(repository_root)
+    action_findings = audit_ci_actions(repository_root)
     repository_findings = tuple(
         sorted(
-            (*base_report.findings, *permission_findings),
+            (*base_report.findings, *permission_findings, *action_findings),
             key=lambda item: (item.code, item.path, item.line or 0, item.message),
         )
     )

@@ -145,6 +145,42 @@ expected_output = "test_v2_includes_semantic_ci_permission_findings"
 risk = "Semantic CI permission certification could be disconnected from final canonical repository certification."
 
 [[cases]]
+id = "CS-MUT-ASSURANCE-CI-ACTION-COMMIT-001"
+path = "src/constructionsight/ci_action_certification.py"
+search = '''        if commit != expected.commit:'''
+replacement = '''        if False:'''
+tests = ["tests/test_ci_action_certification.py::test_stale_action_commit_fails"]
+expected_output = "test_stale_action_commit_fails"
+risk = "A stale or unreviewed immutable Action commit could satisfy the reviewed Action inventory."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-CI-ACTION-REVIEW-001"
+path = "src/constructionsight/ci_action_certification.py"
+search = '''        if review != _review_comment(expected):'''
+replacement = '''        if False:'''
+tests = ["tests/test_ci_action_certification.py::test_runtime_review_annotation_drift_fails"]
+expected_output = "test_runtime_review_annotation_drift_fails"
+risk = "The workflow could claim a different reviewed release/runtime class for an otherwise allowed Action identity."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-CI-ACTION-PREFLIGHT-WIRING-001"
+path = "src/constructionsight/assurance_preflight_certification.py"
+search = '''    action_blockers = audit_ci_actions(root)'''
+replacement = '''    action_blockers = ()'''
+tests = ["tests/test_assurance_preflight_certification.py::test_preflight_retains_action_runtime_findings"]
+expected_output = "test_preflight_retains_action_runtime_findings"
+risk = "Action source/runtime provenance certification could be disconnected from the pre-assurance gate."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-CI-ACTION-V2-WIRING-001"
+path = "src/constructionsight/repository_certification_v2.py"
+search = '''    action_findings = audit_ci_actions(repository_root)'''
+replacement = '''    action_findings = ()'''
+tests = ["tests/test_repository_certification_v2.py::test_v2_includes_action_runtime_findings"]
+expected_output = "test_v2_includes_action_runtime_findings"
+risk = "Action source/runtime provenance certification could be disconnected from canonical repository certification."
+
+[[cases]]
 id = "CS-MUT-ASSURANCE-OWNER-EVIDENCE-DIGEST-001"
 path = "src/constructionsight/owner_acceptance_certification.py"
 search = '''    if report.get("review_method") != expected_review_method(report):'''
