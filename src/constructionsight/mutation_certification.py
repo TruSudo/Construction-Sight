@@ -11,9 +11,11 @@ import subprocess
 import sys
 import tempfile
 import tomllib
+import xml.etree.ElementTree as ET
 from collections.abc import Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from time import monotonic
 from typing import Any, Final
 
 from constructionsight.repository_path_certification import (
@@ -250,66 +252,227 @@ def _timeout_output(value: bytes | str | None) -> str:
     return value
 
 
-def _run_case(root: Path, case: MutationCase, timeout: int) -> MutationResult:
-    with tempfile.TemporaryDirectory(prefix="constructionsight-mutant-") as directory:
-        temporary_root = Path(directory)
-        _copy_tracked_tree(root, temporary_root)
-        target = temporary_root / case.path
-        content = target.read_text(encoding="utf-8")
-        target.write_text(
-            content.replace(case.search, case.replacement, 1),
-            encoding="utf-8",
-        )
-        environment = os.environ.copy()
-        original_pythonpath = environment.get("PYTHONPATH")
-        values = [str(temporary_root / "src")]
-        if original_pythonpath:
-            values.append(original_pythonpath)
-        environment["PYTHONPATH"] = os.pathsep.join(values)
-        command = [
-            sys.executable,
-            "-m",
-            "pytest",
-            "--strict-config",
-            "--strict-markers",
-            "-W",
-            "error",
-            "-q",
-            *case.tests,
-        ]
-        try:
-            completed = subprocess.run(
-                command,
-                cwd=temporary_root,
-                env=environment,
-                check=False,
-                capture_output=True,
-                text=True,
-                timeout=timeout,
+@dataclass(frozen=True)
+class _TestEvidence:
+    identities: tuple[tuple[str, str, str], ...]
+    failures: tuple[str, ...]
+
+
+def _matches_test_target(identity: tuple[str, str, str], target: str) -> bool:
+    file_name, class_name, test_name = identity
+    parts = target.split("::")
+    if file_name != parts[0]:
+        return False
+    if len(parts) == 1:
+        return True
+    expected_class = parts[0][:-3].replace("/", ".")
+    if len(parts) > 2:
+        expected_class += "." + ".".join(parts[1:-1])
+    selected = parts[-1]
+    return class_name == expected_class and (
+        test_name == selected
+        or ("[" not in selected and test_name.startswith(selected + "["))
+    )
+
+
+def _read_test_evidence(path: Path, case: MutationCase) -> _TestEvidence | None:
+    """Validate pytest's structured results; console text is not a verdict."""
+
+    limit = 4 * 1024 * 1024
+    try:
+        with path.open("rb") as stream:
+            content = stream.read(limit + 1)
+        if len(content) > limit or b"<!DOCTYPE" in content or b"<!ENTITY" in content:
+            return None
+        report = ET.fromstring(content)
+    except (OSError, UnicodeError, ET.ParseError):
+        return None
+    if report.tag != "testsuites":
+        return None
+    suites = list(report)
+    if len(suites) != 1 or suites[0].tag != "testsuite":
+        return None
+    suite = suites[0]
+    try:
+        counts = {
+            name: int(suite.attrib[name])
+            for name in ("tests", "failures", "errors", "skipped")
+        }
+    except (KeyError, ValueError):
+        return None
+    if counts["errors"] != 0 or counts["skipped"] != 0:
+        return None
+    testcases = suite.findall("testcase")
+    if not testcases or counts["tests"] != len(testcases):
+        return None
+    identities: list[tuple[str, str, str]] = []
+    failures: list[str] = []
+    for testcase in testcases:
+        identity = tuple(testcase.get(key, "") for key in ("file", "classname", "name"))
+        file_name, class_name, test_name = identity
+        exact_identity = (file_name, class_name, test_name)
+        if (
+            not all(exact_identity)
+            or exact_identity in identities
+            or not any(_matches_test_target(exact_identity, target) for target in case.tests)
+            or testcase.find("error") is not None
+            or testcase.find("skipped") is not None
+        ):
+            return None
+        identities.append(exact_identity)
+        failed = testcase.findall("failure")
+        if len(failed) > 1:
+            return None
+        if failed:
+            message = failed[0].get("message", "")
+            if not message.startswith(("assert ", "AssertionError", "Failed: DID NOT RAISE")):
+                return None
+            failures.append(
+                f"{file_name}::{class_name}::{test_name}\n"
+                f"{message}\n{failed[0].text or ''}"
             )
-            output = completed.stdout + completed.stderr
-            if completed.returncode == 0:
-                status = "survived"
-            elif case.expected_output not in output:
-                status = "invalid_failure"
-            else:
-                status = "killed"
-            return_code: int | None = completed.returncode
-        except subprocess.TimeoutExpired as exc:
-            output = _timeout_output(exc.stdout) + _timeout_output(exc.stderr)
-            status = "timeout"
-            return_code = None
-        digest = hashlib.sha256(output.encode("utf-8", errors="replace")).hexdigest()
-        excerpt = output[-4000:]
-        return MutationResult(
-            id=case.id,
-            path=case.path,
-            status=status,
-            return_code=return_code,
-            output_sha256=digest,
-            output_excerpt=excerpt,
-            risk=case.risk,
+    if counts["failures"] != len(failures):
+        return None
+    if not all(
+        any(_matches_test_target(identity, target) for identity in identities)
+        for target in case.tests
+    ):
+        return None
+    return _TestEvidence(tuple(sorted(identities)), tuple(failures))
+
+
+def _classify_mutant(
+    return_code: int,
+    baseline: _TestEvidence,
+    evidence: _TestEvidence | None,
+    case: MutationCase,
+) -> str:
+    if evidence is None or evidence.identities != baseline.identities:
+        return "invalid_failure"
+    if return_code == 0:
+        return "survived" if not evidence.failures else "invalid_failure"
+    if return_code != 1:
+        return "invalid_failure"
+    if not evidence.failures or case.expected_output not in "\n".join(evidence.failures):
+        return "invalid_failure"
+    return "killed"
+
+
+def _execute_test_run(
+    temporary_root: Path,
+    case: MutationCase,
+    report_path: Path,
+    deadline: float,
+) -> subprocess.CompletedProcess[str]:
+    environment = os.environ.copy()
+    values = [str(temporary_root / "src")]
+    original_pythonpath = environment.get("PYTHONPATH")
+    if original_pythonpath:
+        values.append(original_pythonpath)
+    environment["PYTHONPATH"] = os.pathsep.join(values)
+    environment["PYTHONDONTWRITEBYTECODE"] = "1"
+    command = [
+        sys.executable,
+        "-B",
+        "-m",
+        "pytest",
+        "--strict-config",
+        "--strict-markers",
+        "-W",
+        "error",
+        "-q",
+        "--junitxml",
+        str(report_path),
+        "-o",
+        "junit_family=xunit1",
+        "-o",
+        "junit_logging=no",
+        *case.tests,
+    ]
+    for git_command in (
+        ["git", "init", "-q", str(temporary_root)],
+        ["git", "-C", str(temporary_root), "add", "--force", "--all"],
+    ):
+        remaining = deadline - monotonic()
+        if remaining <= 0:
+            raise subprocess.TimeoutExpired(git_command, 0)
+        indexed = subprocess.run(
+            git_command, check=False, capture_output=True, text=True, timeout=remaining,
         )
+        if indexed.returncode != 0:
+            raise OSError(f"cannot initialize overlay index: {indexed.stderr}")
+    remaining = deadline - monotonic()
+    if remaining <= 0:
+        raise subprocess.TimeoutExpired(command, 0)
+    return subprocess.run(
+        command,
+        cwd=temporary_root,
+        env=environment,
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=remaining,
+    )
+
+
+def _mutation_result(
+    case: MutationCase,
+    status: str,
+    return_code: int | None,
+    output: str,
+) -> MutationResult:
+    return MutationResult(
+        id=case.id,
+        path=case.path,
+        status=status,
+        return_code=return_code,
+        output_sha256=hashlib.sha256(output.encode("utf-8", errors="replace")).hexdigest(),
+        output_excerpt=output[-4000:],
+        risk=case.risk,
+    )
+
+
+def _run_case(root: Path, case: MutationCase, timeout: int) -> MutationResult:
+    deadline = monotonic() + timeout
+    output = ""
+    with tempfile.TemporaryDirectory(prefix="constructionsight-mutant-") as directory:
+        evidence_root = Path(directory)
+        baseline_root = evidence_root / "baseline"
+        mutant_root = evidence_root / "mutant"
+        _copy_tracked_tree(root, baseline_root)
+        try:
+            baseline_path = evidence_root / "baseline.xml"
+            baseline = _execute_test_run(baseline_root, case, baseline_path, deadline)
+            output = "baseline:\n" + baseline.stdout + baseline.stderr
+            baseline_evidence = _read_test_evidence(baseline_path, case)
+            if (
+                baseline.returncode != 0
+                or baseline_evidence is None
+                or baseline_evidence.failures
+            ):
+                return _mutation_result(case, "invalid_failure", baseline.returncode, output)
+
+            # A fresh copy prevents baseline test side effects and bytecode from
+            # contaminating the changed run.
+            _copy_tracked_tree(root, mutant_root)
+            target = mutant_root / case.path
+            content = target.read_text(encoding="utf-8")
+            target.write_text(
+                content.replace(case.search, case.replacement, 1),
+                encoding="utf-8",
+            )
+            mutant_path = evidence_root / "mutant.xml"
+            completed = _execute_test_run(mutant_root, case, mutant_path, deadline)
+            output += "\nmutant:\n" + completed.stdout + completed.stderr
+            evidence = _read_test_evidence(mutant_path, case)
+            status = _classify_mutant(completed.returncode, baseline_evidence, evidence, case)
+            return _mutation_result(case, status, completed.returncode, output)
+        except subprocess.TimeoutExpired as exc:
+            output += "\ntimeout:\n" + _timeout_output(exc.stdout) + _timeout_output(exc.stderr)
+            return _mutation_result(case, "timeout", None, output)
+        except (OSError, UnicodeError) as exc:
+            output += f"\nrunner error: {exc}"
+            return _mutation_result(case, "invalid_failure", None, output)
 
 
 def run_mutation_certification(

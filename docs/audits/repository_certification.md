@@ -90,3 +90,34 @@ GitHub metadata is reconciled through the GitHub API because it is not part of t
 ## Certification result
 
 A certification result is valid only for the exact Git tree that passed all gates. A later commit requires a new complete run. Passing certification does not promote source maturity, establish recurring live coverage, make geometry survey-grade, authorize outreach, or imply that planned capabilities exist.
+
+
+## Mutation verdict integrity
+
+The recorded CS-SR-017 mutation-verdict manifestation is corrected by proving a
+passing control run for each declared test selection before applying its mutation.
+Control and changed runs use separate full tracked-source copies and temporary
+Git indexes; neither index claims to preserve the reviewed repository history.
+Both subprocesses share the declared case time budget and disable bytecode
+generation so a control run cannot supply stale bytecode or changed files to the
+mutated run.
+
+The runner requests pytest's JUnit XML in xunit1 form and binds the selected file,
+class, test, and parameter identities across the two runs. A killed verdict
+requires exit code 1, at least one assertion or missing-expected-exception failure,
+and the declared witness marker within failing test evidence. Collection errors,
+setup/teardown errors, arbitrary runtime exceptions, skips, inconsistent counts,
+duplicate or changed test identities, missing/malformed reports, and other exit
+codes cannot establish a kill. A changed run with no failures is a survivor.
+Timeouts remain blockers. The result's output hash covers the labelled control
+and changed process output; it does not authenticate the Python processes against
+malicious test code.
+
+Regression fixtures exercise real pytest subprocesses for passing controls,
+semantic failures, surviving mutations, syntax/import faults, fixture failures,
+runtime faults, skips, and an isolated Git index. Focused mutants also enforce
+control-run admission, exit status, and structured evidence requirements.
+
+A passing mutation result is test counterevidence. It is not a Codex Security
+review, external review, owner acceptance, or final Native Maximum Assurance.
+CS-SR-017 and the remaining defect ledger stay active until governed closure.

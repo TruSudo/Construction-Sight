@@ -718,3 +718,43 @@ replacement = '''            if False and (bound_result is None or bound_result.
 tests = ["tests/test_assurance_certification.py::test_assurance_rejects_quality_gate_evidence_disagreement"]
 expected_output = "test_assurance_rejects_quality_gate_evidence_disagreement"
 risk = "A main artifact could report a passed quality gate whose normalized source evidence records failure or omission."
+
+
+[[cases]]
+id = "CS-MUT-RUNNER-BASELINE-001"
+path = "src/constructionsight/mutation_certification.py"
+search = '''            if (
+                baseline.returncode != 0
+                or baseline_evidence is None
+                or baseline_evidence.failures
+            ):'''
+replacement = '''            if False and (
+                baseline.returncode != 0
+                or baseline_evidence is None
+                or baseline_evidence.failures
+            ):'''
+tests = ["tests/test_mutation_detection.py::test_mutation_runner_rejects_failed_baseline"]
+expected_output = "test_mutation_runner_rejects_failed_baseline"
+risk = "A test that already fails on unchanged source could be reported as detecting the mutation."
+
+[[cases]]
+id = "CS-MUT-RUNNER-EXIT-001"
+path = "src/constructionsight/mutation_certification.py"
+search = '''    if return_code != 1:
+        return "invalid_failure"'''
+replacement = '''    if False and return_code != 1:
+        return "invalid_failure"'''
+tests = ["tests/test_mutation_detection.py::test_mutation_verdict_rejects_non_test_exit_codes"]
+expected_output = "test_mutation_verdict_rejects_non_test_exit_codes"
+risk = "Collection, internal, usage, no-test, warning, or signal exits could be counted as killed mutants."
+
+[[cases]]
+id = "CS-MUT-RUNNER-EVIDENCE-001"
+path = "src/constructionsight/mutation_certification.py"
+search = '''    if evidence is None or evidence.identities != baseline.identities:
+        return "invalid_failure"'''
+replacement = '''    if evidence is None or evidence.identities != baseline.identities:
+        return "killed"'''
+tests = ["tests/test_mutation_detection.py::test_mutation_verdict_requires_retained_report", "tests/test_mutation_detection.py::test_mutation_verdict_rejects_changed_parameter_selection"]
+expected_output = "test_mutation_verdict_requires_retained_report"
+risk = "Missing structured evidence or a different parameter selection could masquerade as a valid mutation witness."
