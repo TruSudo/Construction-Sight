@@ -464,7 +464,7 @@ search = '''        ("      - name: Set up isolated audit interpreter"),
         ('          mkdir -p "${REPORT_DIR}"'),
         ('          test "$(git rev-parse HEAD)" = "${EXPECTED_SHA}"'),
         ('          export PYTHONPATH="${GITHUB_WORKSPACE}/src"'),
-        ("          python scripts/acquire_vulnerability_sources.py \\"),
+        ("          python scripts/acquire_vulnerability_sources.py \\\"),
         ('            --root . --lock "${{ matrix.lock-file }}" --commit "${EXPECTED_SHA}" \\'),
         (
             '            --source-dir "${REPORT_DIR}/vulnerability-sources-${{ matrix.loc'
@@ -474,7 +474,7 @@ search = '''        ("      - name: Set up isolated audit interpreter"),
             '            2>&1 | tee "${REPORT_DIR}/vulnerability-collection-${{ matrix.lo'
             'ck-tag }}.txt"'
         ),
-        ("          python -m constructionsight.vulnerability_certification \\"),
+        ("          python -m constructionsight.vulnerability_certification \\\"),
         ('            --root . --lock "${{ matrix.lock-file }}" --commit "${EXPECTED_SHA}" \\'),
         (
             '            --source-dir "${REPORT_DIR}/vulnerability-sources-${{ matrix.loc'
@@ -505,7 +505,7 @@ replacement = '''        ("      - name: Set up isolated audit interpreter"),
         ('          mkdir -p "${REPORT_DIR}"'),
         ('          test "$(git rev-parse HEAD)" = "${EXPECTED_SHA}"'),
         ('          export PYTHONPATH="${GITHUB_WORKSPACE}/src"'),
-        ("          python scripts/acquire_vulnerability_sources.py \\"),
+        ("          python scripts/acquire_vulnerability_sources.py \\\"),
         ('            --root . --lock "${{ matrix.lock-file }}" --commit "${EXPECTED_SHA}" \\'),
         (
             '            --source-dir "${REPORT_DIR}/vulnerability-sources-${{ matrix.loc'
@@ -515,7 +515,7 @@ replacement = '''        ("      - name: Set up isolated audit interpreter"),
             '            2>&1 | tee "${REPORT_DIR}/vulnerability-collection-${{ matrix.lo'
             'ck-tag }}.txt"'
         ),
-        ("          python -m constructionsight.vulnerability_certification \\"),
+        ("          python -m constructionsight.vulnerability_certification \\\"),
         ('            --root . --lock "${{ matrix.lock-file }}" --commit "${EXPECTED_SHA}" \\'),
         (
             '            --source-dir "${REPORT_DIR}/vulnerability-sources-${{ matrix.loc'
@@ -582,6 +582,15 @@ replacement = "        if False:"
 tests = ["tests/test_ci_execution_certification.py::test_changes_outside_vulnerability_job_fail_closed"]
 expected_output = "test_changes_outside_vulnerability_job_fail_closed"
 risk = "Unreviewed workflow-wide or quality-job settings could change execution without altering the separately certified vulnerability job."
+
+[[cases]]
+id = "CS-MUT-CI-PRE-GATE-PROJECT-INSTALL-001"
+path = "src/constructionsight/ci_execution_certification.py"
+search = '''    if workflow_text.count("python -m pip install") != 1:'''
+replacement = '''    if False:'''
+tests = ["tests/test_ci_execution_certification.py::test_digest_refresh_cannot_authorize_project_install"]
+expected_output = "test_digest_refresh_cannot_authorize_project_install"
+risk = "A reviewed workflow digest could be refreshed around a second pip command that reinstalls the candidate project and executes repository-controlled build code before assurance gates."
 
 [[cases]]
 id = "CS-MUT-CI-EXECUTION-PREFLIGHT-001"
