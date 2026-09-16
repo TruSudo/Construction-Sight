@@ -112,8 +112,8 @@ _REQUIRED_CI_SNIPPETS = (
     "python -m mypy src",
     "python -m compileall -q src tests",
     "python -m pytest --strict-config --strict-markers -ra",
-    "constructionsight audit-adapters",
-    "constructionsight audit-source-coverage data/source_registry.seed.json",
+    "python -c 'from constructionsight.cli import app; app()' audit-adapters",
+    "audit-source-coverage data/source_registry.seed.json",
     "python -m constructionsight.repository_certification_v2",
     "git diff --check",
 )
