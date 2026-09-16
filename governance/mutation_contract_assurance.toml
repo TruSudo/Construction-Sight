@@ -391,3 +391,185 @@ replacement = "    vulnerability_findings = ()"
 tests = ["tests/test_repository_certification_v2.py::test_v2_retains_native_vulnerability_job_findings"]
 expected_output = "test_v2_retains_native_vulnerability_job_findings"
 risk = "Native vulnerability CI wiring must remain enforced at final certification."
+
+[[cases]]
+id = "CS-MUT-VULNERABILITY-BASH-ENV-SYMLINK-PLACEMENT-001"
+path = "src/constructionsight/vulnerability_ci_certification.py"
+search = '''        ("      - name: Check out exact repository candidate"),
+        (
+            "        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7"
+            ".0.1; reviewed 2026-09-14; runtime=node24"
+        ),
+        ("        with:"),
+        ("          persist-credentials: false"),
+        ("          ref: ${{ github.event.pull_request.head.sha || github.sha }}"),
+        (""),
+        ("      - name: Reject tracked symbolic links"),
+        ("        shell: bash"),
+        ("        env:"),
+        ("          BASH_ENV: /dev/null"),
+        ("        run: |"),
+        ("          set -euo pipefail"),
+        ("          if git ls-files --stage | grep -q '^120000 '; then"),
+        ("            git ls-files --stage | grep '^120000 ' >&2"),
+        ("            exit 1"),
+        ("          fi"),
+        (""),
+'''
+replacement = '''        ("      - name: Check out exact repository candidate"),
+        (
+            "        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7"
+            ".0.1; reviewed 2026-09-14; runtime=node24"
+        ),
+        ("        env:"),
+        ("          BASH_ENV: /dev/null"),
+        ("        with:"),
+        ("          persist-credentials: false"),
+        ("          ref: ${{ github.event.pull_request.head.sha || github.sha }}"),
+        (""),
+        ("      - name: Reject tracked symbolic links"),
+        ("        shell: bash"),
+        ("        run: |"),
+        ("          set -euo pipefail"),
+        ("          if git ls-files --stage | grep -q '^120000 '; then"),
+        ("            git ls-files --stage | grep '^120000 ' >&2"),
+        ("            exit 1"),
+        ("          fi"),
+        (""),
+'''
+tests = ["tests/test_vulnerability_ci_startup.py::test_startup_neutralizer_must_protect_the_executing_step"]
+expected_output = "test_startup_neutralizer_must_protect_the_executing_step"
+risk = "A startup neutralizer moved from the symlink Bash step to an Action step preserves the workflow-wide count while leaving the executing shell exposed to inherited BASH_ENV."
+
+[[cases]]
+id = "CS-MUT-VULNERABILITY-BASH-ENV-AUDIT-PLACEMENT-001"
+path = "src/constructionsight/vulnerability_ci_certification.py"
+search = '''        ("      - name: Set up isolated audit interpreter"),
+        (
+            "        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 "
+            "# v7.0.0; reviewed 2026-09-14; runtime=node24"
+        ),
+        ("        with:"),
+        ("          python-version: ${{ matrix.python-version }}"),
+        (""),
+        ("      - name: Vulnerability audit"),
+        ("        id: vulnerability-audit"),
+        ("        continue-on-error: true"),
+        ("        shell: bash"),
+        ("        env:"),
+        ("          BASH_ENV: /dev/null"),
+        ("          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}"),
+        ("        run: |"),
+        ("          set -euo pipefail"),
+        ('          mkdir -p "${REPORT_DIR}"'),
+        ('          test "$(git rev-parse HEAD)" = "${EXPECTED_SHA}"'),
+        ('          export PYTHONPATH="${GITHUB_WORKSPACE}/src"'),
+        ("          python scripts/acquire_vulnerability_sources.py \\"),
+        ('            --root . --lock "${{ matrix.lock-file }}" --commit "${EXPECTED_SHA}" \\'),
+        (
+            '            --source-dir "${REPORT_DIR}/vulnerability-sources-${{ matrix.loc'
+            'k-tag }}" \\'
+        ),
+        (
+            '            2>&1 | tee "${REPORT_DIR}/vulnerability-collection-${{ matrix.lo'
+            'ck-tag }}.txt"'
+        ),
+        ("          python -m constructionsight.vulnerability_certification \\"),
+        ('            --root . --lock "${{ matrix.lock-file }}" --commit "${EXPECTED_SHA}" \\'),
+        (
+            '            --source-dir "${REPORT_DIR}/vulnerability-sources-${{ matrix.loc'
+            'k-tag }}" \\'
+        ),
+        ('            --output "${REPORT_DIR}/vulnerability-${{ matrix.lock-tag }}.json" \\'),
+        ('            2>&1 | tee "${REPORT_DIR}/vulnerability-${{ matrix.lock-tag }}.txt"'),
+        (""),
+'''
+replacement = '''        ("      - name: Set up isolated audit interpreter"),
+        (
+            "        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 "
+            "# v7.0.0; reviewed 2026-09-14; runtime=node24"
+        ),
+        ("        env:"),
+        ("          BASH_ENV: /dev/null"),
+        ("        with:"),
+        ("          python-version: ${{ matrix.python-version }}"),
+        (""),
+        ("      - name: Vulnerability audit"),
+        ("        id: vulnerability-audit"),
+        ("        continue-on-error: true"),
+        ("        shell: bash"),
+        ("        env:"),
+        ("          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}"),
+        ("        run: |"),
+        ("          set -euo pipefail"),
+        ('          mkdir -p "${REPORT_DIR}"'),
+        ('          test "$(git rev-parse HEAD)" = "${EXPECTED_SHA}"'),
+        ('          export PYTHONPATH="${GITHUB_WORKSPACE}/src"'),
+        ("          python scripts/acquire_vulnerability_sources.py \\"),
+        ('            --root . --lock "${{ matrix.lock-file }}" --commit "${EXPECTED_SHA}" \\'),
+        (
+            '            --source-dir "${REPORT_DIR}/vulnerability-sources-${{ matrix.loc'
+            'k-tag }}" \\'
+        ),
+        (
+            '            2>&1 | tee "${REPORT_DIR}/vulnerability-collection-${{ matrix.lo'
+            'ck-tag }}.txt"'
+        ),
+        ("          python -m constructionsight.vulnerability_certification \\"),
+        ('            --root . --lock "${{ matrix.lock-file }}" --commit "${EXPECTED_SHA}" \\'),
+        (
+            '            --source-dir "${REPORT_DIR}/vulnerability-sources-${{ matrix.loc'
+            'k-tag }}" \\'
+        ),
+        ('            --output "${REPORT_DIR}/vulnerability-${{ matrix.lock-tag }}.json" \\'),
+        ('            2>&1 | tee "${REPORT_DIR}/vulnerability-${{ matrix.lock-tag }}.txt"'),
+        (""),
+'''
+tests = ["tests/test_vulnerability_ci_startup.py::test_startup_neutralizer_must_protect_the_executing_step"]
+expected_output = "test_startup_neutralizer_must_protect_the_executing_step"
+risk = "A startup neutralizer moved from the audit Bash step to an Action step preserves the workflow-wide count while leaving the executing shell exposed to inherited BASH_ENV."
+
+[[cases]]
+id = "CS-MUT-VULNERABILITY-BASH-ENV-ENFORCEMENT-PLACEMENT-001"
+path = "src/constructionsight/vulnerability_ci_certification.py"
+search = '''        ("      - name: Enforce vulnerability audit"),
+        ("        if: always()"),
+        ("        shell: bash"),
+        ("        env:"),
+        ("          BASH_ENV: /dev/null"),
+        ("        run: test '${{ steps.vulnerability-audit.outcome }}' = 'success'"),
+        (""),
+        ("      - name: Retain vulnerability evidence"),
+        ("        if: always()"),
+        (
+            "        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a"
+            "0a # v7.0.1; reviewed 2026-09-14; runtime=node24"
+        ),
+        ("        with:"),
+        ("          name: vulnerability-${{ matrix.lock-tag }}"),
+        ("          path: ${{ env.REPORT_DIR }}/"),
+        ("          if-no-files-found: error"),
+        ("          retention-days: 7"),
+'''
+replacement = '''        ("      - name: Enforce vulnerability audit"),
+        ("        if: always()"),
+        ("        shell: bash"),
+        ("        run: test '${{ steps.vulnerability-audit.outcome }}' = 'success'"),
+        (""),
+        ("      - name: Retain vulnerability evidence"),
+        ("        if: always()"),
+        (
+            "        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a"
+            "0a # v7.0.1; reviewed 2026-09-14; runtime=node24"
+        ),
+        ("        env:"),
+        ("          BASH_ENV: /dev/null"),
+        ("        with:"),
+        ("          name: vulnerability-${{ matrix.lock-tag }}"),
+        ("          path: ${{ env.REPORT_DIR }}/"),
+        ("          if-no-files-found: error"),
+        ("          retention-days: 7"),
+'''
+tests = ["tests/test_vulnerability_ci_startup.py::test_startup_neutralizer_must_protect_the_executing_step"]
+expected_output = "test_startup_neutralizer_must_protect_the_executing_step"
+risk = "A startup neutralizer moved from the enforcement Bash step to an Action step preserves the workflow-wide count while leaving the executing shell exposed to inherited BASH_ENV."
