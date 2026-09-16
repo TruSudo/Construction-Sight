@@ -464,7 +464,7 @@ search = '''        ("      - name: Set up isolated audit interpreter"),
         ('          mkdir -p "${REPORT_DIR}"'),
         ('          test "$(git rev-parse HEAD)" = "${EXPECTED_SHA}"'),
         ('          export PYTHONPATH="${GITHUB_WORKSPACE}/src"'),
-        ("          python scripts/acquire_vulnerability_sources.py \\\"),
+        ("          python scripts/acquire_vulnerability_sources.py \\"),
         ('            --root . --lock "${{ matrix.lock-file }}" --commit "${EXPECTED_SHA}" \\'),
         (
             '            --source-dir "${REPORT_DIR}/vulnerability-sources-${{ matrix.loc'
@@ -474,7 +474,7 @@ search = '''        ("      - name: Set up isolated audit interpreter"),
             '            2>&1 | tee "${REPORT_DIR}/vulnerability-collection-${{ matrix.lo'
             'ck-tag }}.txt"'
         ),
-        ("          python -m constructionsight.vulnerability_certification \\\"),
+        ("          python -m constructionsight.vulnerability_certification \\"),
         ('            --root . --lock "${{ matrix.lock-file }}" --commit "${EXPECTED_SHA}" \\'),
         (
             '            --source-dir "${REPORT_DIR}/vulnerability-sources-${{ matrix.loc'
@@ -505,7 +505,7 @@ replacement = '''        ("      - name: Set up isolated audit interpreter"),
         ('          mkdir -p "${REPORT_DIR}"'),
         ('          test "$(git rev-parse HEAD)" = "${EXPECTED_SHA}"'),
         ('          export PYTHONPATH="${GITHUB_WORKSPACE}/src"'),
-        ("          python scripts/acquire_vulnerability_sources.py \\\"),
+        ("          python scripts/acquire_vulnerability_sources.py \\"),
         ('            --root . --lock "${{ matrix.lock-file }}" --commit "${EXPECTED_SHA}" \\'),
         (
             '            --source-dir "${REPORT_DIR}/vulnerability-sources-${{ matrix.loc'
@@ -515,7 +515,7 @@ replacement = '''        ("      - name: Set up isolated audit interpreter"),
             '            2>&1 | tee "${REPORT_DIR}/vulnerability-collection-${{ matrix.lo'
             'ck-tag }}.txt"'
         ),
-        ("          python -m constructionsight.vulnerability_certification \\\"),
+        ("          python -m constructionsight.vulnerability_certification \\"),
         ('            --root . --lock "${{ matrix.lock-file }}" --commit "${EXPECTED_SHA}" \\'),
         (
             '            --source-dir "${REPORT_DIR}/vulnerability-sources-${{ matrix.loc'
