@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Final
 
 from constructionsight.ci_action_certification import audit_ci_actions
+from constructionsight.ci_execution_certification import audit_ci_execution
 from constructionsight.ci_permissions_certification import audit_ci_permissions
 from constructionsight.governance_certification import audit_governance
 from constructionsight.governance_certification_core import GovernanceFinding
@@ -56,6 +57,7 @@ def build_report(root: Path) -> dict[str, object]:
     repository = audit_repository(root, require_clean_worktree=True)
     permission_blockers = audit_ci_permissions(root)
     action_blockers = audit_ci_actions(root)
+    execution_blockers = audit_ci_execution(root)
     vulnerability_findings = audit_vulnerability_job(root)
     governance = audit_governance(root, _tracked_files(root))
     governance_blockers = preflight_findings(governance.findings)
@@ -63,6 +65,7 @@ def build_report(root: Path) -> dict[str, object]:
     finding_rows = [_finding_row(finding) for finding in repository.findings]
     finding_rows.extend(_finding_row(finding) for finding in permission_blockers)
     finding_rows.extend(_finding_row(finding) for finding in action_blockers)
+    finding_rows.extend(_finding_row(finding) for finding in execution_blockers)
     finding_rows.extend(_finding_row(finding) for finding in governance_blockers)
 
     finding_rows.extend(_finding_row(finding) for finding in vulnerability_findings)

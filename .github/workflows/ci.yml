@@ -46,7 +46,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Reject tracked symbolic links
-        shell: bash
+        shell: /bin/bash --noprofile --norc -p -e -o pipefail {0}
         env:
           BASH_ENV: /dev/null
         run: |
@@ -64,7 +64,7 @@ jobs:
       - name: Vulnerability audit
         id: vulnerability-audit
         continue-on-error: true
-        shell: bash
+        shell: /bin/bash --noprofile --norc -p -e -o pipefail {0}
         env:
           BASH_ENV: /dev/null
           EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -85,7 +85,7 @@ jobs:
 
       - name: Enforce vulnerability audit
         if: always()
-        shell: bash
+        shell: /bin/bash --noprofile --norc -p -e -o pipefail {0}
         env:
           BASH_ENV: /dev/null
         run: test '${{ steps.vulnerability-audit.outcome }}' = 'success'
@@ -127,7 +127,7 @@ jobs:
       - name: Verify exact checkout
         id: checkout-identity
         continue-on-error: true
-        shell: bash
+        shell: /bin/bash --noprofile --norc -p -e -o pipefail {0}
         env:
           EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
@@ -139,7 +139,7 @@ jobs:
           test "${actual}" = "${EXPECTED_SHA}"
 
       - name: Reject tracked symbolic links
-        shell: bash
+        shell: /bin/bash --noprofile --norc -p -e -o pipefail {0}
         run: |
           set -euo pipefail
           if git ls-files --stage | grep -q '^120000 '; then
@@ -157,7 +157,7 @@ jobs:
       - name: Install exact supported environment
         id: install
         continue-on-error: true
-        shell: bash
+        shell: /bin/bash --noprofile --norc -p -e -o pipefail {0}
         run: |
           set -o pipefail
           mkdir -p "${REPORT_DIR}"
@@ -178,7 +178,7 @@ jobs:
       - name: Verify exact lock
         id: lock-verification
         continue-on-error: true
-        shell: bash
+        shell: /bin/bash --noprofile --norc -p -e -o pipefail {0}
         run: |
           set -euo pipefail
           mkdir -p "${REPORT_DIR}"
@@ -190,7 +190,7 @@ jobs:
       - name: Dependency integrity
         id: pip-check
         continue-on-error: true
-        shell: bash
+        shell: /bin/bash --noprofile --norc -p -e -o pipefail {0}
         run: |
           set -o pipefail
           mkdir -p "${REPORT_DIR}"
@@ -200,7 +200,7 @@ jobs:
       - name: Generate deterministic SBOM
         id: sbom
         continue-on-error: true
-        shell: bash
+        shell: /bin/bash --noprofile --norc -p -e -o pipefail {0}
         run: |
           set -o pipefail
           mkdir -p "${REPORT_DIR}"
@@ -212,7 +212,7 @@ jobs:
       - name: Verify pre-gate exact environment identity
         id: pre-gate-lock-verification
         continue-on-error: true
-        shell: bash
+        shell: /bin/bash --noprofile --norc -p -e -o pipefail {0}
         run: |
           set -euo pipefail
           mkdir -p "${REPORT_DIR}"
@@ -224,7 +224,7 @@ jobs:
       - name: Ruff
         id: ruff
         continue-on-error: true
-        shell: bash
+        shell: /bin/bash --noprofile --norc -p -e -o pipefail {0}
         run: |
           set -o pipefail
           mkdir -p "${REPORT_DIR}"
@@ -234,7 +234,7 @@ jobs:
       - name: Mypy
         id: mypy
         continue-on-error: true
-        shell: bash
+        shell: /bin/bash --noprofile --norc -p -e -o pipefail {0}
         run: |
           set -o pipefail
           mkdir -p "${REPORT_DIR}"
@@ -244,7 +244,7 @@ jobs:
       - name: Compile source and tests
         id: compile
         continue-on-error: true
-        shell: bash
+        shell: /bin/bash --noprofile --norc -p -e -o pipefail {0}
         run: |
           set -o pipefail
           mkdir -p "${REPORT_DIR}"
@@ -254,7 +254,7 @@ jobs:
       - name: Pytest
         id: pytest
         continue-on-error: true
-        shell: bash
+        shell: /bin/bash --noprofile --norc -p -e -o pipefail {0}
         run: |
           set -o pipefail
           mkdir -p "${REPORT_DIR}"
@@ -264,7 +264,7 @@ jobs:
       - name: Focused mutation certification
         id: mutation-certification
         continue-on-error: true
-        shell: bash
+        shell: /bin/bash --noprofile --norc -p -e -o pipefail {0}
         run: |
           set -o pipefail
           mkdir -p "${REPORT_DIR}"
@@ -276,7 +276,7 @@ jobs:
       - name: Adapter contract audit
         id: adapter-audit
         continue-on-error: true
-        shell: bash
+        shell: /bin/bash --noprofile --norc -p -e -o pipefail {0}
         run: |
           set -o pipefail
           mkdir -p "${REPORT_DIR}"
@@ -286,7 +286,7 @@ jobs:
       - name: Source adapter coverage audit
         id: source-audit
         continue-on-error: true
-        shell: bash
+        shell: /bin/bash --noprofile --norc -p -e -o pipefail {0}
         run: |
           set -o pipefail
           mkdir -p "${REPORT_DIR}"
@@ -296,7 +296,7 @@ jobs:
       - name: Native assurance preflight certification
         id: assurance-preflight
         continue-on-error: true
-        shell: bash
+        shell: /bin/bash --noprofile --norc -p -e -o pipefail {0}
         run: |
           set -o pipefail
           mkdir -p "${REPORT_DIR}"
@@ -308,7 +308,7 @@ jobs:
       - name: Verify optional independent human GitHub review
         id: github-review
         continue-on-error: true
-        shell: bash
+        shell: /bin/bash --noprofile --norc -p -e -o pipefail {0}
         env:
           GITHUB_API_ROOT: ${{ github.api_url }}
           GITHUB_TOKEN: ${{ github.token }}
@@ -386,7 +386,7 @@ jobs:
       - name: Verify GitHub Actions quality provenance
         id: github-actions-provenance
         continue-on-error: true
-        shell: bash
+        shell: /bin/bash --noprofile --norc -p -e -o pipefail {0}
         env:
           GITHUB_API_ROOT: ${{ github.api_url }}
           GITHUB_TOKEN: ${{ github.token }}
@@ -448,7 +448,7 @@ jobs:
       - name: Verify authenticated GitHub owner acceptance
         id: github-owner-acceptance
         continue-on-error: true
-        shell: bash
+        shell: /bin/bash --noprofile --norc -p -e -o pipefail {0}
         env:
           GITHUB_API_ROOT: ${{ github.api_url }}
           GITHUB_TOKEN: ${{ github.token }}
@@ -516,7 +516,7 @@ jobs:
       - name: Repository and semantic certification audit
         id: repository-certification
         continue-on-error: true
-        shell: bash
+        shell: /bin/bash --noprofile --norc -p -e -o pipefail {0}
         run: |
           set -o pipefail
           mkdir -p "${REPORT_DIR}"
@@ -530,7 +530,7 @@ jobs:
       - name: Diff hygiene
         id: diff-hygiene
         continue-on-error: true
-        shell: bash
+        shell: /bin/bash --noprofile --norc -p -e -o pipefail {0}
         run: |
           set -o pipefail
           mkdir -p "${REPORT_DIR}"
@@ -540,7 +540,7 @@ jobs:
       - name: Verify post-gate exact environment identity
         id: post-gate-lock-verification
         continue-on-error: true
-        shell: bash
+        shell: /bin/bash --noprofile --norc -p -e -o pipefail {0}
         run: |
           set -euo pipefail
           mkdir -p "${REPORT_DIR}"
@@ -551,7 +551,7 @@ jobs:
 
       - name: Enforce all quality gates
         if: always()
-        shell: bash
+        shell: /bin/bash --noprofile --norc -p -e -o pipefail {0}
         run: |
           set -euo pipefail
           failed=0

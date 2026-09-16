@@ -38,6 +38,7 @@ def _isolate(monkeypatch) -> None:
     monkeypatch.setattr(certification_v2, "audit_ci_permissions", lambda root: ())
     monkeypatch.setattr(certification_v2, "audit_vulnerability_job", lambda root: ())
     monkeypatch.setattr(certification_v2, "audit_ci_actions", lambda root: ())
+    monkeypatch.setattr(certification_v2, "audit_ci_execution", lambda root: ())
     monkeypatch.setattr(
         certification_v2,
         "audit_governance",
@@ -101,3 +102,14 @@ def test_v2_retains_native_vulnerability_job_findings(monkeypatch) -> None:
     report = certification_v2.certify_repository(Path("."))
     assert report["passed"] is False
     assert report["repository"]["findings"][0]["code"] == "CERT-CI-007"
+
+
+def test_v2_retains_complete_ci_execution_findings(monkeypatch) -> None:
+    _isolate(monkeypatch)
+    finding = CertificationFinding(
+        code="CERT-CI-008", path=".github/workflows/ci.yml", line=None, message="execution drift"
+    )
+    monkeypatch.setattr(certification_v2, "audit_ci_execution", lambda root: (finding,))
+    report = certification_v2.certify_repository(Path("."))
+    assert report["passed"] is False
+    assert [row["code"] for row in report["repository"]["findings"]] == ["CERT-CI-008"]

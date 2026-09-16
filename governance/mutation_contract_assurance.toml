@@ -405,7 +405,7 @@ search = '''        ("      - name: Check out exact repository candidate"),
         ("          ref: ${{ github.event.pull_request.head.sha || github.sha }}"),
         (""),
         ("      - name: Reject tracked symbolic links"),
-        ("        shell: bash"),
+        ("        shell: /bin/bash --noprofile --norc -p -e -o pipefail {0}"),
         ("        env:"),
         ("          BASH_ENV: /dev/null"),
         ("        run: |"),
@@ -428,7 +428,7 @@ replacement = '''        ("      - name: Check out exact repository candidate"),
         ("          ref: ${{ github.event.pull_request.head.sha || github.sha }}"),
         (""),
         ("      - name: Reject tracked symbolic links"),
-        ("        shell: bash"),
+        ("        shell: /bin/bash --noprofile --norc -p -e -o pipefail {0}"),
         ("        run: |"),
         ("          set -euo pipefail"),
         ("          if git ls-files --stage | grep -q '^120000 '; then"),
@@ -455,7 +455,7 @@ search = '''        ("      - name: Set up isolated audit interpreter"),
         ("      - name: Vulnerability audit"),
         ("        id: vulnerability-audit"),
         ("        continue-on-error: true"),
-        ("        shell: bash"),
+        ("        shell: /bin/bash --noprofile --norc -p -e -o pipefail {0}"),
         ("        env:"),
         ("          BASH_ENV: /dev/null"),
         ("          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}"),
@@ -497,7 +497,7 @@ replacement = '''        ("      - name: Set up isolated audit interpreter"),
         ("      - name: Vulnerability audit"),
         ("        id: vulnerability-audit"),
         ("        continue-on-error: true"),
-        ("        shell: bash"),
+        ("        shell: /bin/bash --noprofile --norc -p -e -o pipefail {0}"),
         ("        env:"),
         ("          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}"),
         ("        run: |"),
@@ -534,7 +534,7 @@ id = "CS-MUT-VULNERABILITY-BASH-ENV-ENFORCEMENT-PLACEMENT-001"
 path = "src/constructionsight/vulnerability_ci_certification.py"
 search = '''        ("      - name: Enforce vulnerability audit"),
         ("        if: always()"),
-        ("        shell: bash"),
+        ("        shell: /bin/bash --noprofile --norc -p -e -o pipefail {0}"),
         ("        env:"),
         ("          BASH_ENV: /dev/null"),
         ("        run: test '${{ steps.vulnerability-audit.outcome }}' = 'success'"),
@@ -553,7 +553,7 @@ search = '''        ("      - name: Enforce vulnerability audit"),
 '''
 replacement = '''        ("      - name: Enforce vulnerability audit"),
         ("        if: always()"),
-        ("        shell: bash"),
+        ("        shell: /bin/bash --noprofile --norc -p -e -o pipefail {0}"),
         ("        run: test '${{ steps.vulnerability-audit.outcome }}' = 'success'"),
         (""),
         ("      - name: Retain vulnerability evidence"),
@@ -573,3 +573,30 @@ replacement = '''        ("      - name: Enforce vulnerability audit"),
 tests = ["tests/test_vulnerability_ci_startup.py::test_startup_neutralizer_must_protect_the_executing_step"]
 expected_output = "test_startup_neutralizer_must_protect_the_executing_step"
 risk = "A startup neutralizer moved from the enforcement Bash step to an Action step preserves the workflow-wide count while leaving the executing shell exposed to inherited BASH_ENV."
+
+[[cases]]
+id = "CS-MUT-CI-EXECUTION-DIGEST-001"
+path = "src/constructionsight/ci_execution_certification.py"
+search = "        if actual_digest != _REVIEWED_WORKFLOW_SHA256:"
+replacement = "        if False:"
+tests = ["tests/test_ci_execution_certification.py::test_changes_outside_vulnerability_job_fail_closed"]
+expected_output = "test_changes_outside_vulnerability_job_fail_closed"
+risk = "Unreviewed workflow-wide or quality-job settings could change execution without altering the separately certified vulnerability job."
+
+[[cases]]
+id = "CS-MUT-CI-EXECUTION-PREFLIGHT-001"
+path = "src/constructionsight/assurance_preflight_certification.py"
+search = "    execution_blockers = audit_ci_execution(root)"
+replacement = "    execution_blockers = ()"
+tests = ["tests/test_assurance_preflight_certification.py::test_preflight_retains_complete_ci_execution_findings"]
+expected_output = "test_preflight_retains_complete_ci_execution_findings"
+risk = "Complete CI execution binding must block assurance preflight when workflow settings drift."
+
+[[cases]]
+id = "CS-MUT-CI-EXECUTION-FINAL-001"
+path = "src/constructionsight/repository_certification_v2.py"
+search = "    execution_findings = audit_ci_execution(repository_root)"
+replacement = "    execution_findings = ()"
+tests = ["tests/test_repository_certification_v2.py::test_v2_retains_complete_ci_execution_findings"]
+expected_output = "test_v2_retains_complete_ci_execution_findings"
+risk = "Complete CI execution binding must remain enforced during final repository certification."

@@ -568,3 +568,11 @@ area = "assurance-execution-integrity"
 root_cause = "The isolated vulnerability job invokes three noninteractive Bash steps without step-local BASH_ENV neutralization. A workflow, job, runner, or inherited environment can therefore point BASH_ENV at attacker-controlled startup content that Bash evaluates before the canonically certified step body, allowing the execution semantics to diverge from the text the vulnerability CI certifier binds."
 discovered_against = "235b322da599bcb8ff34ff5d20b18893fc487b14"
 required_resolution = "Set BASH_ENV to /dev/null at each security-critical vulnerability Bash step, bind all occurrences and their placement into the exact vulnerability-job execution contract, add missing-or-weakened neutralizer regressions and focused mutation coverage, rerun the complete exact-head supported-runtime matrix, and retain CS-SR-071 as active until exact-tree Native Maximum Assurance legitimately closes the reviewed defect history."
+
+[[defects]]
+id = "CS-SR-072"
+severity = "P0"
+area = "ci-inherited-execution-controls"
+root_cause = "The canonical CI workflow launches noninteractive Bash without suppressing inherited shell options and exported functions. SHELLOPTS=noexec skips a failing script and exits successfully even with BASH_ENV=/dev/null; an imported test function can also turn failed enforcement into success. A workflow-level noexec setting outside the literal vulnerability-job block passes the complete existing structural preflight, and quality-job shells remain exposed to inherited startup hooks."
+discovered_against = "71c34f275a8d6fa99692e730ff7254b932da7983"
+required_resolution = "Use an explicit reviewed Bash executable and startup-isolated launch flags for every canonical CI run step, preserving errexit and pipefail; bind all workflow bytes including global settings and quality-job controls into structural and final certification; preserve the existing BASH_ENV neutralizers and vulnerability-job contract; add real inherited-option, exported-function, startup-hook, command-resolution, and failure-propagation regressions plus digest and integration mutation witnesses; rerun the complete supported-runtime matrix; and retain the defect until exact-tree Native Maximum Assurance closure."

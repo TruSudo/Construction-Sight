@@ -49,6 +49,7 @@ def _isolate_action_audits(monkeypatch) -> None:
     monkeypatch.setattr(preflight, "audit_ci_permissions", lambda root: ())
     monkeypatch.setattr(preflight, "audit_vulnerability_job", lambda root: ())
     monkeypatch.setattr(preflight, "audit_ci_actions", lambda root: ())
+    monkeypatch.setattr(preflight, "audit_ci_execution", lambda root: ())
 
 
 def test_preflight_retains_repository_findings(monkeypatch) -> None:
@@ -103,6 +104,7 @@ def test_preflight_retains_semantic_permission_findings(monkeypatch) -> None:
         lambda root: (permission_finding,),
     )
     monkeypatch.setattr(preflight, "audit_ci_actions", lambda root: ())
+    monkeypatch.setattr(preflight, "audit_ci_execution", lambda root: ())
     monkeypatch.setattr(preflight, "audit_vulnerability_job", lambda root: ())
     monkeypatch.setattr(
         preflight,
@@ -174,3 +176,21 @@ def test_preflight_retains_native_vulnerability_job_findings(monkeypatch) -> Non
     report = preflight.build_report(Path("."))
     assert report["passed"] is False
     assert report["findings"][0]["code"] == "CERT-CI-007"
+
+
+def test_preflight_retains_complete_ci_execution_findings(monkeypatch) -> None:
+    monkeypatch.setattr(
+        preflight, "audit_repository", lambda *args, **kwargs: SimpleNamespace(findings=())
+    )
+    _isolate_action_audits(monkeypatch)
+    finding = CertificationFinding(
+        code="CERT-CI-008", path=".github/workflows/ci.yml", line=None, message="execution drift"
+    )
+    monkeypatch.setattr(preflight, "audit_ci_execution", lambda root: (finding,))
+    monkeypatch.setattr(
+        preflight, "audit_governance", lambda *args: SimpleNamespace(findings=(), finding_count=0)
+    )
+    monkeypatch.setattr(preflight, "_tracked_files", lambda root: ())
+    report = preflight.build_report(Path("."))
+    assert report["passed"] is False
+    assert [row["code"] for row in report["findings"]] == ["CERT-CI-008"]
