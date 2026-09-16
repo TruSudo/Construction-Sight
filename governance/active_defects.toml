@@ -560,3 +560,11 @@ area = "assurance-quality-gate-compliance"
 root_cause = "CS-SR-068 Action-provenance hardening introduced two overlong expressions in src/constructionsight/ci_action_certification.py. Retained CI #1155 evidence reports Ruff E501, so exact head 7fe708e1ea49044b2b847a9624da5c80c765a679 is not a clean-quality or assurance-freeze candidate."
 discovered_against = "7fe708e1ea49044b2b847a9624da5c80c765a679"
 required_resolution = "Split both overlong expressions without suppression, rule changes, or weakened predicates; preserve Action identity/runtime semantics and mutation anchors; rerun the complete Python 3.11 and 3.12 matrix; and verify retained raw Ruff output is clean before assurance freeze."
+
+[[defects]]
+id = "CS-SR-071"
+severity = "P0"
+area = "assurance-execution-integrity"
+root_cause = "The isolated vulnerability job invokes three noninteractive Bash steps without step-local BASH_ENV neutralization. A workflow, job, runner, or inherited environment can therefore point BASH_ENV at attacker-controlled startup content that Bash evaluates before the canonically certified step body, allowing the execution semantics to diverge from the text the vulnerability CI certifier binds."
+discovered_against = "235b322da599bcb8ff34ff5d20b18893fc487b14"
+required_resolution = "Set BASH_ENV to /dev/null at each security-critical vulnerability Bash step, bind all occurrences and their placement into the exact vulnerability-job execution contract, add missing-or-weakened neutralizer regressions and focused mutation coverage, rerun the complete exact-head supported-runtime matrix, and retain CS-SR-071 as active until exact-tree Native Maximum Assurance legitimately closes the reviewed defect history."

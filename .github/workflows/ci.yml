@@ -47,6 +47,8 @@ jobs:
 
       - name: Reject tracked symbolic links
         shell: bash
+        env:
+          BASH_ENV: /dev/null
         run: |
           set -euo pipefail
           if git ls-files --stage | grep -q '^120000 '; then
@@ -64,6 +66,7 @@ jobs:
         continue-on-error: true
         shell: bash
         env:
+          BASH_ENV: /dev/null
           EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           set -euo pipefail
@@ -83,6 +86,8 @@ jobs:
       - name: Enforce vulnerability audit
         if: always()
         shell: bash
+        env:
+          BASH_ENV: /dev/null
         run: test '${{ steps.vulnerability-audit.outcome }}' = 'success'
 
       - name: Retain vulnerability evidence

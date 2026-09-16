@@ -718,3 +718,12 @@ replacement = '''            if False and (bound_result is None or bound_result.
 tests = ["tests/test_assurance_certification.py::test_assurance_rejects_quality_gate_evidence_disagreement"]
 expected_output = "test_assurance_rejects_quality_gate_evidence_disagreement"
 risk = "A main artifact could report a passed quality gate whose normalized source evidence records failure or omission."
+
+[[cases]]
+id = "CS-MUT-VULNERABILITY-BASH-ENV-001"
+path = "src/constructionsight/vulnerability_ci_certification.py"
+search = '''        if actual.count("          BASH_ENV: /dev/null") != 3:'''
+replacement = '''        if actual.count("          BASH_ENV: /dev/null") != 2:'''
+tests = ["tests/test_vulnerability_ci_certification.py::test_canonical_vulnerability_job_neutralizes_shell_startup"]
+expected_output = "test_canonical_vulnerability_job_neutralizes_shell_startup"
+risk = "A vulnerability Bash step could execute an inherited startup hook before the reviewed scanner command body."
