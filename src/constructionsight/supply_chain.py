@@ -8,6 +8,7 @@ import importlib.metadata
 import json
 import re
 import sys
+import tomllib
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -37,6 +38,16 @@ class LockedRequirement:
     version: str
     hashes: tuple[str, ...]
     line: int
+
+
+@dataclass(frozen=True)
+class SourceProject:
+    """Non-executable project metadata bound to the reviewed source tree."""
+
+    name: str
+    version: str
+    license_expression: str
+    root: Path
 
 
 def canonical_name(value: str) -> str:
@@ -168,10 +179,55 @@ def installed_inventory() -> dict[str, importlib.metadata.Distribution]:
     return inventory
 
 
+def _source_project(root: Path) -> SourceProject:
+    """Load project identity from reviewed source metadata without invoking a backend."""
+
+    resolved_root = root.resolve(strict=True)
+    pyproject = resolved_root / "pyproject.toml"
+    package_init = resolved_root / "src/constructionsight/__init__.py"
+    certifier = resolved_root / "src/constructionsight/supply_chain.py"
+    for path in (pyproject, package_init, certifier):
+        if not path.is_file() or path.is_symlink():
+            raise ValueError(f"source project path is missing or symbolic: {path}")
+    if Path(__file__).resolve() != certifier.resolve():
+        raise ValueError("supply-chain certifier is not executing from the reviewed source tree")
+    try:
+        payload = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, tomllib.TOMLDecodeError) as exc:
+        raise ValueError(f"cannot parse source project metadata: {exc}") from exc
+    project = payload.get("project")
+    if not isinstance(project, dict):
+        raise ValueError("source project metadata is missing [project]")
+    raw_name = project.get("name")
+    raw_version = project.get("version")
+    if not isinstance(raw_name, str) or canonical_name(raw_name) != "constructionsight":
+        raise ValueError("source project name is not constructionsight")
+    if not isinstance(raw_version, str) or raw_version != __version__:
+        raise ValueError("source project version disagrees with package version")
+    license_field = project.get("license")
+    if isinstance(license_field, dict):
+        raw_license = license_field.get("text")
+    else:
+        raw_license = license_field
+    license_expression = (
+        raw_license.strip()
+        if isinstance(raw_license, str) and raw_license.strip()
+        else "NOASSERTION"
+    )
+    return SourceProject(
+        name="constructionsight",
+        version=raw_version,
+        license_expression=license_expression,
+        root=resolved_root,
+    )
+
+
 def _verification_report(
     path: Path,
     expected: dict[str, str],
     installed: dict[str, importlib.metadata.Distribution],
+    *,
+    source_project: SourceProject | None = None,
 ) -> dict[str, Any]:
     findings: list[dict[str, str]] = []
     for name, version in expected.items():
@@ -191,7 +247,26 @@ def _verification_report(
             )
     for name, version in _EXPECTED_UNLOCKED_DISTRIBUTIONS.items():
         distribution = installed.get(name)
-        if distribution is None:
+        if source_project is not None:
+            if source_project.name != name or source_project.version != version:
+                findings.append(
+                    {
+                        "code": "SUPPLY-PROJECT-SOURCE-IDENTITY-001",
+                        "package": name,
+                        "expected": version,
+                        "actual": source_project.version,
+                    }
+                )
+            if distribution is not None:
+                findings.append(
+                    {
+                        "code": "SUPPLY-PROJECT-SHADOW-001",
+                        "package": name,
+                        "expected": "absent-installed-distribution",
+                        "actual": distribution.version,
+                    }
+                )
+        elif distribution is None:
             findings.append(
                 {
                     "code": "SUPPLY-PROJECT-MISSING-001",
@@ -221,22 +296,34 @@ def _verification_report(
             }
         )
     findings.sort(key=lambda item: (item["code"], item["package"]))
-    return {
+    report: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
         "lock": path.as_posix(),
         "locked_distribution_count": len(expected),
         "expected_project_distributions": dict(_EXPECTED_UNLOCKED_DISTRIBUTIONS),
         "installed_distribution_count": len(installed),
+        "project_execution_mode": (
+            "reviewed-source-tree" if source_project is not None else "installed-distribution"
+        ),
         "finding_count": len(findings),
         "passed": not findings,
         "findings": findings,
     }
+    if source_project is not None:
+        report["source_project_root"] = source_project.root.as_posix()
+    return report
 
 
-def verify_lock(path: Path) -> dict[str, Any]:
+def verify_lock(path: Path, *, source_root: Path | None = None) -> dict[str, Any]:
     """Verify exact versions and reject every undeclared installed distribution."""
 
-    return _verification_report(path, load_lock(path), installed_inventory())
+    source_project = _source_project(source_root) if source_root is not None else None
+    return _verification_report(
+        path,
+        load_lock(path),
+        installed_inventory(),
+        source_project=source_project,
+    )
 
 
 def _license_expression(distribution: importlib.metadata.Distribution) -> str:
@@ -303,27 +390,46 @@ def _component(
     return component
 
 
-def build_sbom(lock_path: Path) -> dict[str, Any]:
+def _source_component(project: SourceProject) -> dict[str, Any]:
+    purl = f"pkg:generic/{project.name}@{project.version}"
+    return {
+        "type": "application",
+        "bom-ref": purl,
+        "name": project.name,
+        "version": project.version,
+        "purl": purl,
+        "licenses": [{"expression": project.license_expression}],
+    }
+
+
+def build_sbom(lock_path: Path, *, source_root: Path | None = None) -> dict[str, Any]:
     """Build a deterministic CycloneDX 1.5 inventory for the exact environment."""
 
     entries = load_lock_entries(lock_path)
     expected = {entry.name: entry.version for entry in entries}
     installed = installed_inventory()
-    verification = _verification_report(lock_path, expected, installed)
+    source_project = _source_project(source_root) if source_root is not None else None
+    verification = _verification_report(
+        lock_path,
+        expected,
+        installed,
+        source_project=source_project,
+    )
     if not verification["passed"]:
         raise RuntimeError(
             "cannot generate an exact-environment SBOM from a mismatched lock"
         )
-    project_name, project_version = next(
-        iter(_EXPECTED_UNLOCKED_DISTRIBUTIONS.items())
-    )
-    project_component = _component(
-        installed[project_name],
-        name=project_name,
-        version=project_version,
-        component_type="application",
-        purl_type="generic",
-    )
+    project_name, project_version = next(iter(_EXPECTED_UNLOCKED_DISTRIBUTIONS.items()))
+    if source_project is None:
+        project_component = _component(
+            installed[project_name],
+            name=project_name,
+            version=project_version,
+            component_type="application",
+            purl_type="generic",
+        )
+    else:
+        project_component = _source_component(source_project)
     components = [
         _component(
             installed[entry.name],
@@ -364,6 +470,10 @@ def build_sbom(lock_path: Path) -> dict[str, Any]:
                     "name": "constructionsight.environmentVerified",
                     "value": "true",
                 },
+                {
+                    "name": "constructionsight.projectExecutionMode",
+                    "value": verification["project_execution_mode"],
+                },
             ],
         },
         "components": components,
@@ -376,6 +486,15 @@ def _write_json(path: Path, payload: dict[str, Any]) -> None:
         json.dumps(payload, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
+
+
+def _source_root_for_cli() -> Path | None:
+    root = Path.cwd()
+    if (root / "pyproject.toml").is_file() and (
+        root / "src/constructionsight/supply_chain.py"
+    ).is_file():
+        return root
+    return None
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -396,14 +515,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     """Run supply-chain commands and fail visibly on disagreement."""
 
     arguments = _parser().parse_args(argv)
+    source_root = _source_root_for_cli()
     try:
         if arguments.command == "verify-lock":
-            payload = verify_lock(arguments.lock)
+            payload = verify_lock(arguments.lock, source_root=source_root)
             if arguments.output is not None:
                 _write_json(arguments.output, payload)
             print(json.dumps(payload, indent=2, sort_keys=True))
             return 0 if payload["passed"] else 1
-        payload = build_sbom(arguments.lock)
+        payload = build_sbom(arguments.lock, source_root=source_root)
         _write_json(arguments.output, payload)
         print(
             f"Wrote {len(payload['components'])} locked components "
