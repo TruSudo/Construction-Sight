@@ -1,7 +1,8 @@
-"""CS-SR-072: bind the full workflow and exercise the declared shell at launch."""
+"""CS-SR-072/073: bind canonical CI launch and pre-gate bootstrap semantics."""
 
 from __future__ import annotations
 
+import hashlib
 import os
 import re
 import shlex
@@ -10,6 +11,7 @@ from pathlib import Path
 
 import pytest
 
+import constructionsight.ci_execution_certification as ci_execution
 from constructionsight.ci_execution_certification import audit_ci_execution
 from constructionsight.vulnerability_ci_certification import audit_vulnerability_job
 
@@ -46,6 +48,48 @@ def _run(script: Path, shell: str, environment: dict[str, str]) -> subprocess.Co
 def test_complete_reviewed_workflow_passes(tmp_path: Path) -> None:
     _write(tmp_path, _workflow())
     assert audit_ci_execution(tmp_path) == ()
+
+
+def test_quality_bootstrap_uses_reviewed_source_without_project_install() -> None:
+    workflow = _workflow()
+    assert workflow.count("python -m pip install") == 1
+    assert "Install exact supported dependency environment" in workflow
+    assert "PYTHONPATH: ${{ github.workspace }}/src" in workflow
+    assert "--require-hashes" in workflow
+    assert "--only-binary=:all:" in workflow
+    assert "--no-build-isolation" not in workflow
+    assert "-e ." not in workflow
+    assert "--editable" not in workflow
+    assert "python -c 'from constructionsight.cli import app; app()' audit-adapters" in workflow
+    assert (
+        "python -c 'from constructionsight.cli import app; app()' \\\n"
+        "            audit-source-coverage data/source_registry.seed.json"
+    ) in workflow
+
+
+def test_digest_refresh_cannot_authorize_project_install(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workflow = _workflow()
+    marker = '            -r "${{ matrix.lock-file }}" \\\n'
+    assert marker in workflow
+    mutated = workflow.replace(
+        marker,
+        marker
+        + "          python -m pip install --disable-pip-version-check --no-deps -e . \\\n"
+        + '            2>&1 | tee "${REPORT_DIR}/project-install.txt"\n',
+        1,
+    )
+    _write(tmp_path, mutated)
+    monkeypatch.setattr(
+        ci_execution,
+        "_REVIEWED_WORKFLOW_SHA256",
+        hashlib.sha256(mutated.encode("utf-8")).hexdigest(),
+    )
+    codes = [finding.code for finding in audit_ci_execution(tmp_path)]
+    assert "CERT-CI-008" not in codes
+    assert "CERT-CI-010" in codes
+    assert "CERT-CI-011" in codes
 
 
 def test_every_ci_run_step_uses_the_reviewed_isolated_shell() -> None:
