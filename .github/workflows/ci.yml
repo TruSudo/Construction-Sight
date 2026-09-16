@@ -103,6 +103,8 @@ jobs:
     name: Python ${{ matrix.python-version }} quality gate
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    env:
+      PYTHONPATH: ${{ github.workspace }}/src
 
     strategy:
       fail-fast: false
@@ -154,26 +156,20 @@ jobs:
           cache: pip
           cache-dependency-path: ${{ matrix.lock-file }}
 
-      - name: Install exact supported environment
+      - name: Install exact supported dependency environment
         id: install
         continue-on-error: true
         shell: /bin/bash --noprofile --norc -p -e -o pipefail {0}
         run: |
           set -o pipefail
           mkdir -p "${REPORT_DIR}"
-          {
-            python -m pip install \
-              --disable-pip-version-check \
-              --require-hashes \
-              --only-binary=:all: \
-              --no-deps \
-              -r "${{ matrix.lock-file }}"
-            python -m pip install \
-              --disable-pip-version-check \
-              --no-deps \
-              --no-build-isolation \
-              -e .
-          } 2>&1 | tee "${REPORT_DIR}/install-${{ matrix.lock-tag }}.txt"
+          python -m pip install \
+            --disable-pip-version-check \
+            --require-hashes \
+            --only-binary=:all: \
+            --no-deps \
+            -r "${{ matrix.lock-file }}" \
+            2>&1 | tee "${REPORT_DIR}/install-${{ matrix.lock-tag }}.txt"
 
       - name: Verify exact lock
         id: lock-verification
@@ -280,7 +276,7 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p "${REPORT_DIR}"
-          constructionsight audit-adapters \
+          python -c 'from constructionsight.cli import app; app()' audit-adapters \
             2>&1 | tee "${REPORT_DIR}/adapter-audit-${{ matrix.lock-tag }}.txt"
 
       - name: Source adapter coverage audit
@@ -290,7 +286,8 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p "${REPORT_DIR}"
-          constructionsight audit-source-coverage data/source_registry.seed.json \
+          python -c 'from constructionsight.cli import app; app()' \
+            audit-source-coverage data/source_registry.seed.json \
             2>&1 | tee "${REPORT_DIR}/source-audit-${{ matrix.lock-tag }}.txt"
 
       - name: Native assurance preflight certification
