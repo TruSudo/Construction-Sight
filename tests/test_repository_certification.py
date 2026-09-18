@@ -56,8 +56,8 @@ jobs:
       - run: >-
           python -m constructionsight.repository_certification_v2
           --root . --require-clean-worktree
-      - run: constructionsight audit-adapters
-      - run: constructionsight audit-source-coverage data/source_registry.seed.json
+      - run: python -c 'from constructionsight.cli import app; app()' audit-adapters
+      - run: python -c 'from constructionsight.cli import app; app()' audit-source-coverage data/source_registry.seed.json
 """
 
 
