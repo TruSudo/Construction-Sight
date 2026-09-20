@@ -19,6 +19,7 @@ from constructionsight.operator_dashboard_models import (
     DashboardPoint,
     DashboardProject,
     DashboardSnapshot,
+    EntityNeighborhoodSnapshot,
     FootprintPoint,
     GeographicFootprintSnapshot,
     RecordKind,
@@ -109,6 +110,57 @@ def build_geographic_footprint(
         mapped_in_scan=len(points),
         scan_limit=FOOTPRINT_SCAN_LIMIT,
         truncated=total > len(projects),
+    )
+
+
+ENTITY_SCAN_LIMIT = 5_000
+ENTITY_RESULT_LIMIT = 100
+
+
+def build_entity_neighborhood(
+    session: Session,
+    *,
+    entity_key: str,
+    kind: RecordSelection = "all",
+    county: str = "",
+) -> EntityNeighborhoodSnapshot:
+    """Inspect exact persisted key co-occurrence; do not infer real-world identity."""
+
+    if not entity_key or entity_key != entity_key.strip() or len(entity_key) > 255:
+        raise ValueError("invalid entity key")
+    if kind not in {"all", "ceqa", "permit"}:
+        raise ValueError("kind must be all, ceqa or permit")
+    if county not in {"", "San Bernardino", "Riverside"}:
+        raise ValueError("invalid county filter")
+    records, total = read_project_page(
+        session,
+        kind=kind,
+        query="",
+        county=county,
+        limit=ENTITY_SCAN_LIMIT,
+        offset=0,
+    )
+    matches: list[DashboardProject] = []
+    matching_records_in_scan = 0
+    for record in records:
+        if not any(entity.entity_key == entity_key for entity in record.entities):
+            continue
+        matching_records_in_scan += 1
+        if len(matches) < ENTITY_RESULT_LIMIT:
+            matches.append(_project(record))
+    return EntityNeighborhoodSnapshot(
+        entity_key=entity_key,
+        selection=kind,
+        county_filter=county,
+        records=matches,
+        scanned_source_records=len(records),
+        total_source_records=total,
+        matching_records_in_scan=matching_records_in_scan,
+        returned=len(matches),
+        scan_limit=ENTITY_SCAN_LIMIT,
+        result_limit=ENTITY_RESULT_LIMIT,
+        source_scan_truncated=total > len(records),
+        matching_records_truncated=matching_records_in_scan > len(matches),
     )
 
 
