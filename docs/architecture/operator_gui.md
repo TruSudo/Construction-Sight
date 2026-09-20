@@ -23,9 +23,17 @@ Populate the database through existing governed intake/persistence commands.
 - Project records read the typed CEQA and permit domain tables, including embedded
   site, named-party, and provenance records. They do not guess project information
   from workflow or enrichment payloads, or join unrelated sites by position.
-- Search and county filtering run before pagination. Matching totals cover the
-  query; returned and mapped counts describe only the current page. The GUI uses
-  50 records per page. The API accepts 1–500 and explicit offsets.
+- The default **All source records** view reads both CEQA and permit families
+  in stable order (CEQA by persisted ID, then permits by persisted ID). Source
+  type is retained on every record; records with equal IDs across families
+  remain separate. Source-specific views are also available. No cross-source
+  deduplication or identity resolution is implied by combining the list.
+- Search and county filtering apply to both families before pagination.
+  Matching totals cover the entire filtered query across the selected families;
+  returned and mapped counts describe only the current page. The GUI uses
+  50 records per page. The API accepts 1–500 and explicit offsets. The map
+  shows **only the current page**; the all-types option does not fetch or
+  represent every mapped record in the database.
 - The detail panel exposes exact record identity, recorded status/document type,
   address/APN, named parties and their stated roles, source URLs, evidence text,
   capture dates where recorded, location evidence, and limitations.
@@ -70,7 +78,7 @@ read model and HTTP service alone do not establish visual quality or browser
 interaction correctness. Packaging must include `operator_ui.html`,
 `operator_ui.js`, and `operator_ui.css`.
 
-The next product increments remain source-to-opportunity conversion through the
+The next product increments remain a separately bounded all-record geographic footprint, source-to-opportunity conversion through the
 existing scoring/review controls, governed operator actions, actual county/parcel
 layers, relationship/history views, and the established commercial workflow.
 This slice does not complete those requirements or the private operational release.

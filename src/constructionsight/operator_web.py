@@ -36,10 +36,10 @@ def _parameters(query: str, *, workflow: bool = False) -> dict[str, Any]:
         raise ValueError("invalid page bounds")
     if workflow:
         return {"limit": limit, "offset": offset}
-    kind = values.get("kind", ["ceqa"])[0]
+    kind = values.get("kind", ["all"])[0]
     query_text = values.get("q", [""])[0]
     county = values.get("county", [""])[0]
-    if kind not in {"ceqa", "permit"} or len(query_text) > 200:
+    if kind not in {"all", "ceqa", "permit"} or len(query_text) > 200:
         raise ValueError("invalid record kind or search length")
     if county not in {"", "San Bernardino", "Riverside"}:
         raise ValueError("unsupported county filter")

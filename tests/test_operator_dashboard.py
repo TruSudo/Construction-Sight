@@ -304,6 +304,62 @@ def test_workflow_uses_exact_review_not_newest_for_candidate(database):
         build_workflow_snapshot(session)
 
 
+def test_combined_source_pagination_search_and_identity(database):
+    path, engine = database
+    with Session(engine) as session, session.begin():
+        CeqaStore(session).upsert(_record("shared", title="Cross-family project"))
+        CeqaStore(session).upsert(_record("ceqa:second", title="Second CEQA project"))
+        PermitStore(session).upsert(
+            PermitRecord(
+                permit_key="shared",
+                permit_number="Cross-family permit",
+                jurisdiction="Fontana",
+                county="San Bernardino",
+                provenance=_provenance(),
+            )
+        )
+        PermitStore(session).upsert(
+            PermitRecord(
+                permit_key="permit:second",
+                permit_number="OTHER-2",
+                jurisdiction="Riverside",
+                county="Riverside",
+                provenance=_provenance(),
+            )
+        )
+    with Session(engine) as session:
+        first = build_dashboard_snapshot(session, kind="all", limit=2)
+        crossing = build_dashboard_snapshot(session, kind="all", limit=2, offset=1)
+        last = build_dashboard_snapshot(session, kind="all", limit=2, offset=3)
+        assert first.selection == "all"
+        assert (first.total, first.returned, first.has_more) == (4, 2, True)
+        assert [(p.record_kind, p.record_id) for p in crossing.projects] == [
+            ("ceqa", "ceqa:second"),
+            ("permit", "shared"),
+        ]
+        assert (last.total, last.returned, last.has_more) == (4, 1, False)
+        assert last.projects[0].record_id == "permit:second"
+        assert build_dashboard_snapshot(session, kind="permit").total == 2
+        matching = build_dashboard_snapshot(session, kind="all", query="Cross-family")
+        assert matching.total == 2
+        assert {p.record_kind for p in matching.projects} == {"ceqa", "permit"}
+        county = build_dashboard_snapshot(session, kind="all", county="Riverside")
+        assert [(p.record_kind, p.record_id) for p in county.projects] == [
+            ("permit", "permit:second")
+        ]
+        assert first.mapped_on_page == 2
+        assert crossing.mapped_on_page == 1
+    with _server(path) as port:
+        status, _, body = _get(port, "/api/snapshot?kind=all&limit=2&offset=1")
+        assert status == 200
+        payload = json.loads(body)
+        assert (payload["selection"], payload["total"], payload["returned"]) == (
+            "all", 4, 2
+        )
+        assert [p["record_kind"] for p in payload["projects"]] == ["ceqa", "permit"]
+        assert json.loads(_get(port, "/api/snapshot")[2])["selection"] == "all"
+
+
 def test_read_only_database_cannot_write_and_missing_path_is_not_created(tmp_path):
     path = tmp_path / "space # ? café.sqlite3"
     original = tmp_path / "original.sqlite3"

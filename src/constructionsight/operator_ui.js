@@ -2,10 +2,10 @@
 const $ = id => document.getElementById(id);
 const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let mode = "records", snapshot = null, selected = null, offset = 0, requestId = 0, controller;
-let query = "", kind = "ceqa", county = "";
+let query = "", kind = "all", county = "";
 const LIMIT = 50;
 const rows = () => snapshot ? (mode === "records" ? snapshot.projects : snapshot.leads) : [];
-const rowId = row => row.record_id ?? row.workflow_id;
+const rowId = row => row.record_kind ? `${row.record_kind}:${row.record_id}` : row.workflow_id;
 function bullets(items) { return items?.length ? "<ul>" + items.map(x => "<li>" + esc(x) + "</li>").join("") + "</ul>" : '<p class="empty">None recorded.</p>'; }
 function datum(label, value) { return '<div class="datum"><span>' + esc(label) + '</span>' + esc(value ?? "Not recorded") + '</div>'; }
 function evidence(items) {
@@ -104,7 +104,7 @@ function renderMap() {
     const [x,y] = xy(row.point.latitude, row.point.longitude);
     if (x < 0 || x > width || y < 0 || y > height) continue;
     inView++;
-    content += `<circle class="pin ${selected === row.record_id ? 'selected' : ''}" cx="${x}" cy="${y}" r="7" tabindex="0" role="button" aria-label="${esc(row.title)}" data-id="${esc(row.record_id)}"><title>${esc(row.title)} · source-claimed location</title></circle>`;
+    content += `<circle class="pin ${selected === rowId(row) ? 'selected' : ''}" cx="${x}" cy="${y}" r="7" tabindex="0" role="button" aria-label="${esc(row.title)}" data-id="${esc(rowId(row))}"><title>${esc(row.title)} · source-claimed location</title></circle>`;
   }
   svg.innerHTML = content;
   svg.querySelectorAll(".pin").forEach(el => { el.onclick = () => selectRecord(el.dataset.id); el.onkeydown = e => { if (["Enter"," "].includes(e.key)) { e.preventDefault(); selectRecord(el.dataset.id); } }; });

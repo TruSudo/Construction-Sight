@@ -20,6 +20,7 @@ from constructionsight.operator_dashboard_models import (
     DashboardProject,
     DashboardSnapshot,
     RecordKind,
+    RecordSelection,
 )
 from constructionsight.permit_models import PermitRecord
 from constructionsight.site_models import Site
@@ -30,7 +31,7 @@ from constructionsight.storage.operator_read_store import read_project_page
 def build_dashboard_snapshot(
     session: Session,
     *,
-    kind: RecordKind = "ceqa",
+    kind: RecordSelection = "all",
     query: str = "",
     county: str = "",
     limit: int = 100,
@@ -38,8 +39,8 @@ def build_dashboard_snapshot(
 ) -> DashboardSnapshot:
     """Present exact typed source records without generating commercial authority."""
 
-    if kind not in {"ceqa", "permit"}:
-        raise ValueError("kind must be ceqa or permit")
+    if kind not in {"all", "ceqa", "permit"}:
+        raise ValueError("kind must be all, ceqa or permit")
     if not 1 <= limit <= 500 or offset < 0 or offset > 1_000_000:
         raise ValueError("invalid page bounds")
     if len(query) > 200 or county not in {"", "San Bernardino", "Riverside"}:
@@ -49,6 +50,7 @@ def build_dashboard_snapshot(
     )
     projects = [_project(record) for record in records]
     return DashboardSnapshot(
+        selection=kind,
         projects=projects,
         total=total,
         returned=len(projects),

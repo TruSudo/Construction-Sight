@@ -10,6 +10,7 @@ from constructionsight.entity_models import Entity
 from constructionsight.provenance import Provenance
 
 RecordKind = Literal["ceqa", "permit"]
+RecordSelection = Literal["all", "ceqa", "permit"]
 
 
 class DashboardPoint(BaseModel):
@@ -47,6 +48,7 @@ class DashboardProject(BaseModel):
 class DashboardSnapshot(BaseModel):
     """Bounded source-record page with honest whole-query and page counts."""
 
+    selection: RecordSelection
     projects: list[DashboardProject]
     total: int
     returned: int

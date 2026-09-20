@@ -10,7 +10,7 @@ from sqlalchemy.pool import NullPool
 from sqlalchemy.sql.elements import ColumnElement
 
 from constructionsight.ceqa_models import CeqaRecord
-from constructionsight.operator_dashboard_models import RecordKind
+from constructionsight.operator_dashboard_models import RecordKind, RecordSelection
 from constructionsight.permit_models import PermitRecord
 from constructionsight.storage.domain_orm import CeqaDomainRecord, PermitDomainRecord
 from constructionsight.storage.domain_store import CeqaStore, PermitStore
@@ -32,13 +32,44 @@ def create_operator_read_engine(database_path: Path) -> Engine:
 def read_project_page(
     session: Session,
     *,
+    kind: RecordSelection,
+    query: str,
+    county: str,
+    limit: int,
+    offset: int,
+) -> tuple[list[CeqaRecord | PermitRecord], int]:
+    """Page across both source families without conflating their record identities."""
+
+    if kind != "all":
+        return _read_source_page(
+            session, kind=kind, query=query, county=county, limit=limit, offset=offset
+        )
+    # Stable order: CEQA records by persisted ID, then permits by persisted ID.
+    # Count both families even when CEQA completely fills the requested page.
+    ceqa_records, ceqa_total = _read_source_page(
+        session, kind="ceqa", query=query, county=county, limit=limit, offset=offset
+    )
+    permit_records, permit_total = _read_source_page(
+        session,
+        kind="permit",
+        query=query,
+        county=county,
+        limit=limit - len(ceqa_records),
+        offset=max(0, offset - ceqa_total),
+    )
+    return [*ceqa_records, *permit_records], ceqa_total + permit_total
+
+
+def _read_source_page(
+    session: Session,
+    *,
     kind: RecordKind,
     query: str,
     county: str,
     limit: int,
     offset: int,
 ) -> tuple[list[CeqaRecord | PermitRecord], int]:
-    """Filter before limiting; retain stable source identity and embedded evidence."""
+    """Apply identical filters and count semantics to one typed source family."""
 
     row_type = CeqaDomainRecord if kind == "ceqa" else PermitDomainRecord
     title_column = CeqaDomainRecord.title if kind == "ceqa" else PermitDomainRecord.permit_number
