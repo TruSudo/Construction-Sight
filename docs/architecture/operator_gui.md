@@ -104,8 +104,10 @@ existing scoring/review controls, governed operator actions, actual county/parce
 layers, relationship/history views, and the established commercial workflow.
 This slice does not complete those requirements or the private operational release.
 
-PR #119 remains stacked on draft PR #117. The 73 inherited active defects and
-Native Maximum Assurance requirements are unchanged. Local integration results are
+PR #119 remains stacked on draft PR #117. The 73 inherited active defect
+records (`CS-SR-001` through `CS-SR-073`) and the separate missing Native
+Maximum Assurance report remain outstanding; the September 18 hardening-branch
+CI reported 74 certification findings at its own exact head. Local integration results are
 not assurance artifacts, owner acceptance, authenticated CI evidence, or permission
 to merge. The inherited canonical CI workflow only runs automatically for pull
 requests targeting `main`; this stacked PR does not have an automatic run. Its
