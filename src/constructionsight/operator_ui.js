@@ -3,7 +3,7 @@ const $ = id => document.getElementById(id);
 const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let mode = "records", snapshot = null, footprint = null, selected = null, pendingSelection = null, offset = 0, requestId = 0, controller;
 let query = "", kind = "all", county = "";
-let entityRequestId = 0, relatedIds = new Set();
+let entityRequestId = 0, candidateRequestId = 0, relatedIds = new Set();
 const LIMIT = 50;
 const rows = () => snapshot ? (mode === "records" ? snapshot.projects : snapshot.leads) : [];
 const rowId = row => row.record_kind ? `${row.record_kind}:${row.record_id}` : row.workflow_id;
@@ -34,15 +34,17 @@ function evidence(items) {
   }).join("");
 }
 function selectRecord(id) {
-  entityRequestId++; relatedIds = new Set();
+  entityRequestId++; candidateRequestId++; relatedIds = new Set();
   selected = id;
   const row = rows().find(x => rowId(x) === id);
   if (!row) { $("detail").innerHTML = '<p class="empty">Select a record to inspect its evidence.</p>'; return; }
   if (mode === "records") {
-    $("detail").innerHTML = '<div class="eyebrow">' + esc(row.record_kind) + ' · source record</div><h2>' + esc(row.title) + '</h2><p>' + esc(row.description || "No description recorded.") + '</p><div class="detail-grid">' + datum("County", row.county) + datum("Jurisdiction / agency", row.jurisdiction) + datum("Source status / document", row.source_status) + datum("Source record number", row.source_record_number) + datum("Address", row.address) + datum("APN", row.apn) + datum("Record identity", row.record_id) + datum("Coordinates", row.point ? `${row.point.latitude.toFixed(6)}, ${row.point.longitude.toFixed(6)}` : null) + '</div><p>' + esc(row.map_reason) + '</p><h3>Recorded milestones · historical source claims</h3>' + milestoneHistory(row.milestones) + '<p class="entity-warning">Recorded dates do not verify site activity, construction start, or a current project phase.</p><h3>Named parties · source claims</h3>' + (row.entities.map(e => '<div class="party"><b>' + esc(e.name) + '</b> · ' + esc(e.role) + ' <button type="button" class="entity-link" data-entity-key="' + esc(e.entity_key) + '">Find shared-key source records</button>' + evidence(e.provenance) + '</div>').join("") || '<p class="empty">No named parties recorded.</p>') + '<div id="entity-related" class="entity-related" aria-live="polite"></div><h3>Record evidence</h3>' + evidence(row.provenance) + (row.point ? '<h3>Location evidence</h3>' + evidence(row.point.provenance) : '') + '<h3>Limitations</h3>' + bullets(row.limitations);
+    $("detail").innerHTML = '<div class="eyebrow">' + esc(row.record_kind) + ' · source record</div><h2>' + esc(row.title) + '</h2><p>' + esc(row.description || "No description recorded.") + '</p><div class="detail-grid">' + datum("County", row.county) + datum("Jurisdiction / agency", row.jurisdiction) + datum("Source status / document", row.source_status) + datum("Source record number", row.source_record_number) + datum("Address", row.address) + datum("APN", row.apn) + datum("Record identity", row.record_id) + datum("Coordinates", row.point ? `${row.point.latitude.toFixed(6)}, ${row.point.longitude.toFixed(6)}` : null) + '</div><p>' + esc(row.map_reason) + '</p><h3>Candidate review · no commercial authorization</h3><button type="button" id="preview-candidate">Inspect review gaps</button><div id="candidate-preview" class="candidate-preview" aria-live="polite"></div><h3>Recorded milestones · historical source claims</h3>' + milestoneHistory(row.milestones) + '<p class="entity-warning">Recorded dates do not verify site activity, construction start, or a current project phase.</p><h3>Named parties · source claims</h3>' + (row.entities.map(e => '<div class="party"><b>' + esc(e.name) + '</b> · ' + esc(e.role) + ' <button type="button" class="entity-link" data-entity-key="' + esc(e.entity_key) + '">Find shared-key source records</button>' + evidence(e.provenance) + '</div>').join("") || '<p class="empty">No named parties recorded.</p>') + '<div id="entity-related" class="entity-related" aria-live="polite"></div><h3>Record evidence</h3>' + evidence(row.provenance) + (row.point ? '<h3>Location evidence</h3>' + evidence(row.point.provenance) : '') + '<h3>Limitations</h3>' + bullets(row.limitations);
   } else {
     $("detail").innerHTML = '<div class="eyebrow">' + esc(row.status) + ' · persisted workflow</div><h2>' + esc(row.summary || row.base_candidate_id) + '</h2><div class="detail-grid">' + datum("Workflow", row.workflow_id) + datum("Exact review package", row.package_id) + datum("Candidate", row.base_candidate_id) + datum("Recorded score", row.lead_score) + '</div><h3>Evidence notes</h3>' + bullets(row.evidence_notes) + '<h3>Workflow notes</h3>' + bullets(row.notes) + '<h3>Limitations</h3>' + bullets(row.limitations) + '<h3>Recorded history</h3>' + bullets(row.events.map(e => `${e.created_at}: ${e.current_status} — ${e.reason}`));
   }
+  const previewButton = $("preview-candidate");
+  if (previewButton && mode === "records") previewButton.onclick = inspectCandidate;
   $("detail").querySelectorAll("button[data-entity-key]").forEach(button => {
     button.onclick = () => inspectEntity(button.dataset.entityKey);
   });
@@ -53,7 +55,7 @@ function renderList() {
   $("records").querySelectorAll("button[data-id]").forEach(el => el.onclick = () => selectRecord(el.dataset.id));
 }
 async function load() {
-  entityRequestId++; relatedIds = new Set();
+  entityRequestId++; candidateRequestId++; relatedIds = new Set();
   const id = ++requestId;
   controller?.abort(); controller = new AbortController(); snapshot = null; footprint = null; selected = null;
   $("error").hidden = true; $("status").textContent = "Reading stored data…";
@@ -90,6 +92,43 @@ async function load() {
     if (id !== requestId || error.name === "AbortError") return;
     $("error").textContent = error.message; $("error").hidden = false; $("status").textContent = "Data unavailable.";
     $("records").innerHTML = '<p class="empty">Check the selected database, then refresh.</p>';
+  }
+}
+async function inspectCandidate() {
+  if (mode !== "records" || !selected) return;
+  const row = rows().find(item => rowId(item) === selected);
+  const target = $("candidate-preview");
+  if (!row || !target) return;
+  const token = ++candidateRequestId, sourceSelection = selected;
+  target.textContent = "Checking exact retained source for review gaps…";
+  try {
+    const parameters = new URLSearchParams({
+      kind: row.record_kind, record_id: row.record_id
+    });
+    const response = await fetch("/api/candidate-preview?" + parameters);
+    const result = await response.json();
+    if (token !== candidateRequestId || selected !== sourceSelection || mode !== "records") return;
+    if (!response.ok) throw Error(result.error || "Candidate review preview unavailable.");
+    if (rowId(result.source_record) !== sourceSelection) throw Error("Source identity mismatch.");
+    if (result.source_record.title !== row.title ||
+        result.source_record.source_status !== row.source_status) {
+      throw Error("The source record changed since this page was loaded. Refresh before reviewing.");
+    }
+    const checks = result.checks.map(check =>
+      '<li><b>' + esc(check.key.replaceAll("_", " ")) + '</b> · ' +
+      esc(check.state.replaceAll("_", " ")) + ': ' + esc(check.detail) + '</li>'
+    ).join("");
+    target.innerHTML =
+      '<p class="entity-warning">Read-only preview. No lead, score, approval, deduplication, outreach or bid has been created or authorized.</p>' +
+      '<div class="detail-grid">' +
+      datum("Review state", result.state) +
+      datum("Candidate review key", result.candidate_key) +
+      datum("Normalized stored-source SHA-256", result.normalized_source_sha256) + '</div>' +
+      '<h3>Required verification and review</h3><ul>' + checks +
+      '</ul><h3>Candidate limitations</h3>' + bullets(result.limitations);
+  } catch (error) {
+    if (token !== candidateRequestId || selected !== sourceSelection || mode !== "records") return;
+    target.textContent = error.message || "Candidate review preview unavailable.";
   }
 }
 async function inspectEntity(entityKey) {
