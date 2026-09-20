@@ -205,10 +205,7 @@ def _source_project(root: Path) -> SourceProject:
     if not isinstance(raw_version, str) or raw_version != __version__:
         raise ValueError("source project version disagrees with package version")
     license_field = project.get("license")
-    if isinstance(license_field, dict):
-        raw_license = license_field.get("text")
-    else:
-        raw_license = license_field
+    raw_license = license_field.get("text") if isinstance(license_field, dict) else license_field
     license_expression = (
         raw_license.strip()
         if isinstance(raw_license, str) and raw_license.strip()
