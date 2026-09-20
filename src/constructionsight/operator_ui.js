@@ -3,6 +3,7 @@ const $ = id => document.getElementById(id);
 const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let mode = "records", snapshot = null, footprint = null, selected = null, pendingSelection = null, offset = 0, requestId = 0, controller;
 let query = "", kind = "all", county = "";
+let entityRequestId = 0, relatedIds = new Set();
 const LIMIT = 50;
 const rows = () => snapshot ? (mode === "records" ? snapshot.projects : snapshot.leads) : [];
 const rowId = row => row.record_kind ? `${row.record_kind}:${row.record_id}` : row.workflow_id;
@@ -17,14 +18,18 @@ function evidence(items) {
   }).join("");
 }
 function selectRecord(id) {
+  entityRequestId++; relatedIds = new Set();
   selected = id;
   const row = rows().find(x => rowId(x) === id);
   if (!row) { $("detail").innerHTML = '<p class="empty">Select a record to inspect its evidence.</p>'; return; }
   if (mode === "records") {
-    $("detail").innerHTML = '<div class="eyebrow">' + esc(row.record_kind) + ' · source record</div><h2>' + esc(row.title) + '</h2><p>' + esc(row.description || "No description recorded.") + '</p><div class="detail-grid">' + datum("County", row.county) + datum("Jurisdiction / agency", row.jurisdiction) + datum("Source status / document", row.source_status) + datum("Source record number", row.source_record_number) + datum("Address", row.address) + datum("APN", row.apn) + datum("Record identity", row.record_id) + datum("Coordinates", row.point ? `${row.point.latitude.toFixed(6)}, ${row.point.longitude.toFixed(6)}` : null) + '</div><p>' + esc(row.map_reason) + '</p><h3>Named parties · source claims</h3>' + (row.entities.map(e => '<div class="party"><b>' + esc(e.name) + '</b> · ' + esc(e.role) + evidence(e.provenance) + '</div>').join("") || '<p class="empty">No named parties recorded.</p>') + '<h3>Record evidence</h3>' + evidence(row.provenance) + (row.point ? '<h3>Location evidence</h3>' + evidence(row.point.provenance) : '') + '<h3>Limitations</h3>' + bullets(row.limitations);
+    $("detail").innerHTML = '<div class="eyebrow">' + esc(row.record_kind) + ' · source record</div><h2>' + esc(row.title) + '</h2><p>' + esc(row.description || "No description recorded.") + '</p><div class="detail-grid">' + datum("County", row.county) + datum("Jurisdiction / agency", row.jurisdiction) + datum("Source status / document", row.source_status) + datum("Source record number", row.source_record_number) + datum("Address", row.address) + datum("APN", row.apn) + datum("Record identity", row.record_id) + datum("Coordinates", row.point ? `${row.point.latitude.toFixed(6)}, ${row.point.longitude.toFixed(6)}` : null) + '</div><p>' + esc(row.map_reason) + '</p><h3>Named parties · source claims</h3>' + (row.entities.map(e => '<div class="party"><b>' + esc(e.name) + '</b> · ' + esc(e.role) + ' <button type="button" class="entity-link" data-entity-key="' + esc(e.entity_key) + '">Find shared-key source records</button>' + evidence(e.provenance) + '</div>').join("") || '<p class="empty">No named parties recorded.</p>') + '<div id="entity-related" class="entity-related" aria-live="polite"></div><h3>Record evidence</h3>' + evidence(row.provenance) + (row.point ? '<h3>Location evidence</h3>' + evidence(row.point.provenance) : '') + '<h3>Limitations</h3>' + bullets(row.limitations);
   } else {
     $("detail").innerHTML = '<div class="eyebrow">' + esc(row.status) + ' · persisted workflow</div><h2>' + esc(row.summary || row.base_candidate_id) + '</h2><div class="detail-grid">' + datum("Workflow", row.workflow_id) + datum("Exact review package", row.package_id) + datum("Candidate", row.base_candidate_id) + datum("Recorded score", row.lead_score) + '</div><h3>Evidence notes</h3>' + bullets(row.evidence_notes) + '<h3>Workflow notes</h3>' + bullets(row.notes) + '<h3>Limitations</h3>' + bullets(row.limitations) + '<h3>Recorded history</h3>' + bullets(row.events.map(e => `${e.created_at}: ${e.current_status} — ${e.reason}`));
   }
+  $("detail").querySelectorAll("button[data-entity-key]").forEach(button => {
+    button.onclick = () => inspectEntity(button.dataset.entityKey);
+  });
   renderList(); renderMap();
 }
 function renderList() {
@@ -32,6 +37,7 @@ function renderList() {
   $("records").querySelectorAll("button[data-id]").forEach(el => el.onclick = () => selectRecord(el.dataset.id));
 }
 async function load() {
+  entityRequestId++; relatedIds = new Set();
   const id = ++requestId;
   controller?.abort(); controller = new AbortController(); snapshot = null; footprint = null; selected = null;
   $("error").hidden = true; $("status").textContent = "Reading stored data…";
@@ -70,6 +76,52 @@ async function load() {
     $("records").innerHTML = '<p class="empty">Check the selected database, then refresh.</p>';
   }
 }
+async function inspectEntity(entityKey) {
+  if (mode !== "records" || !entityKey) return;
+  const target = $("entity-related");
+  if (!target) return;
+  const token = ++entityRequestId, sourceSelection = selected;
+  const kindSelection = kind, countySelection = county;
+  target.textContent = "Scanning retained source records for exact stored entity-key co-occurrence…";
+  relatedIds = new Set(); renderMap();
+  try {
+    const parameters = new URLSearchParams({
+      entity_key: entityKey, kind: kindSelection, county: countySelection
+    });
+    const response = await fetch("/api/entity-neighborhood?" + parameters);
+    const data = await response.json();
+    if (token !== entityRequestId || selected !== sourceSelection || mode !== "records") return;
+    if (!response.ok) throw Error(data.error || "Unable to inspect recorded entity co-occurrence.");
+    relatedIds = new Set(data.records.map(rowId));
+    const scope = data.source_scan_truncated
+      ? `Only the first ${data.scanned_source_records} of ${data.total_source_records} source records were scanned; additional matches may exist.`
+      : `All ${data.total_source_records} matching-scope source records were scanned.`;
+    const cap = data.matching_records_truncated
+      ? `Only the first ${data.returned} of ${data.matching_records_in_scan} key matches are listed.`
+      : `${data.matching_records_in_scan} exact-key matches in the scanned records.`;
+    const mapped = points().filter(point => relatedIds.has(rowId(point))).length;
+    const results = data.records.map(record =>
+      '<li><b>' + esc(record.title) + '</b> · ' + esc(record.record_kind) +
+      ' · ' + esc(record.county || "County unknown") + ' · ' +
+      esc(record.record_id) + (record.point ? ' · source coordinates recorded' : ' · unmapped') +
+      '</li>'
+    ).join("");
+    target.innerHTML =
+      '<h3>Recorded shared entity key</h3><p class="entity-warning">These are exact stored-key co-occurrences, not proof that names identify the same real-world party. No projects are deduplicated or qualified.</p>' +
+      '<p>' + esc(scope) + ' ' + esc(cap) + ' ' +
+      esc(mapped) + ' matching mapped records appear in the current footprint.</p>' +
+      (mapped ? '<button type="button" id="fit-related">Fit visible related locations</button>' : '') +
+      (results ? '<ul class="entity-records">' + results + '</ul>' : '<p class="empty">No matching records were found within the scanned scope.</p>');
+    const fitButton = $("fit-related");
+    if (fitButton) fitButton.onclick = () => fitMap(true);
+    renderMap();
+  } catch (error) {
+    if (token !== entityRequestId || selected !== sourceSelection || mode !== "records") return;
+    relatedIds = new Set();
+    target.textContent = error.message || "Unable to inspect recorded entity co-occurrence.";
+    renderMap();
+  }
+}
 function switchMode(next) {
   mode = next; offset = 0;
   $("filters").hidden = mode !== "records"; $("map-card").hidden = mode !== "records";
@@ -93,8 +145,8 @@ function selectMapPoint(id) {
   offset = Math.floor(point.ordinal / LIMIT) * LIMIT;
   load();
 }
-function fitMap() {
-  const available = points();
+function fitMap(onlyRelated = false) {
+  const available = onlyRelated === true ? points().filter(point => relatedIds.has(rowId(point))) : points();
   if (available.length) {
     const coords = available.map(r => project(r.point.latitude, r.point.longitude));
     const xs = coords.map(v => v[0]), ys = coords.map(v => v[1]);
@@ -127,7 +179,7 @@ function renderMap() {
     const [x,y] = xy(row.point.latitude, row.point.longitude);
     if (x < 0 || x > width || y < 0 || y > height) continue;
     inView++;
-    content += `<circle class="pin ${selected === rowId(row) ? 'selected' : ''}" cx="${x}" cy="${y}" r="7" tabindex="0" role="button" aria-label="${esc(row.title)}" data-id="${esc(rowId(row))}"><title>${esc(row.title)} · ${esc(row.record_kind)} source-claimed location</title></circle>`;
+    content += `<circle class="pin ${selected === rowId(row) ? 'selected' : relatedIds.has(rowId(row)) ? 'related' : ''}" cx="${x}" cy="${y}" r="7" tabindex="0" role="button" aria-label="${esc(row.title)}" data-id="${esc(rowId(row))}"><title>${esc(row.title)} · ${esc(row.record_kind)} source-claimed location</title></circle>`;
   }
   svg.innerHTML = content;
   svg.querySelectorAll(".pin").forEach(el => { el.onclick = () => selectMapPoint(el.dataset.id); el.onkeydown = e => { if (["Enter"," "].includes(e.key)) { e.preventDefault(); selectMapPoint(el.dataset.id); } }; });
