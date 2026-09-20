@@ -9,7 +9,7 @@ binary_only = true
 reject_unexpected_installed_distributions = true
 expected_project_distribution = "constructionsight==0.1.0"
 bootstrap_distributions = ["pip==26.2", "setuptools==83.0.0", "wheel==0.47.0"]
-install_policy = "Install the exact artifact-hashed environment lock with --require-hashes, --only-binary=:all:, and --no-deps; then install ConstructionSight editable with --no-deps and --no-build-isolation."
+install_policy = "CI installs only the exact artifact-hashed third-party environment lock with --require-hashes, --only-binary=:all:, and --no-deps; the candidate project is not installed or built; the canonical checked-out source is executed using the reviewed PYTHONPATH binding, with source project identity verified without running a build backend and installed-project shadowing rejected."
 hash_policy = "Every logical lock row must bind one exact version to reviewed SHA-256 wheel identities for the declared Python and runner environment. Unhashed, source, alternate, malformed, duplicate, or noncanonical rows fail certification."
 vulnerability_tool = "Repository-owned standard-library offline certifier; bounded isolated collector; release-specific PyPI JSON sources retained and hashed"
 vulnerability_failure_policy = "Fail on every known vulnerability unless a narrow owned expiring exception is present. Scanner or advisory failure is itself fatal."
