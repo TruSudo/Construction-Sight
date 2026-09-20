@@ -15,7 +15,11 @@ from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from constructionsight.operator_dashboard import build_dashboard_snapshot, build_workflow_snapshot
+from constructionsight.operator_dashboard import (
+    build_dashboard_snapshot,
+    build_geographic_footprint,
+    build_workflow_snapshot,
+)
 from constructionsight.storage.operator_read_store import create_operator_read_engine
 
 _ASSETS = {
@@ -25,9 +29,17 @@ _ASSETS = {
 }
 
 
-def _parameters(query: str, *, workflow: bool = False) -> dict[str, Any]:
+def _parameters(
+    query: str, *, workflow: bool = False, footprint: bool = False
+) -> dict[str, Any]:
     values = parse_qs(query, keep_blank_values=True, max_num_fields=5)
-    allowed = {"limit", "offset"} if workflow else {"kind", "q", "county", "limit", "offset"}
+    allowed = (
+        {"limit", "offset"}
+        if workflow
+        else {"kind", "q", "county"}
+        if footprint
+        else {"kind", "q", "county", "limit", "offset"}
+    )
     if set(values) - allowed or any(len(value) != 1 for value in values.values()):
         raise ValueError("unsupported or repeated query parameter")
     limit = int(values.get("limit", ["100"])[0])
@@ -43,7 +55,10 @@ def _parameters(query: str, *, workflow: bool = False) -> dict[str, Any]:
         raise ValueError("invalid record kind or search length")
     if county not in {"", "San Bernardino", "Riverside"}:
         raise ValueError("unsupported county filter")
-    return {"kind": kind, "query": query_text, "county": county, "limit": limit, "offset": offset}
+    parameters = {"kind": kind, "query": query_text, "county": county}
+    if not footprint:
+        parameters.update({"limit": limit, "offset": offset})
+    return parameters
 
 
 def create_handler(database_path: Path) -> type[BaseHTTPRequestHandler]:
@@ -83,10 +98,14 @@ def create_handler(database_path: Path) -> type[BaseHTTPRequestHandler]:
                         HTTPStatus.OK, content_type, Path(__file__).with_name(name).read_bytes()
                     )
                     return
-                if path not in {"/api/health", "/api/snapshot", "/api/workflows"}:
+                if path not in {"/api/health", "/api/snapshot", "/api/footprint", "/api/workflows"}:
                     self._send_json({"error": "Not found."}, status=HTTPStatus.NOT_FOUND)
                     return
-                parameters = _parameters(parsed.query, workflow=path == "/api/workflows")
+                parameters = _parameters(
+                    parsed.query,
+                    workflow=path == "/api/workflows",
+                    footprint=path == "/api/footprint",
+                )
             except ValueError as exc:
                 self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
                 return
@@ -101,6 +120,10 @@ def create_handler(database_path: Path) -> type[BaseHTTPRequestHandler]:
                         }
                     elif path == "/api/workflows":
                         payload = build_workflow_snapshot(session, **parameters)
+                    elif path == "/api/footprint":
+                        payload = build_geographic_footprint(session, **parameters).model_dump(
+                            mode="json"
+                        )
                     else:
                         payload = build_dashboard_snapshot(session, **parameters).model_dump(
                             mode="json"

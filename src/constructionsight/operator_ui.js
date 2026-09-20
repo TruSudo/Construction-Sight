@@ -1,7 +1,7 @@
 "use strict";
 const $ = id => document.getElementById(id);
 const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-let mode = "records", snapshot = null, selected = null, offset = 0, requestId = 0, controller;
+let mode = "records", snapshot = null, footprint = null, selected = null, pendingSelection = null, offset = 0, requestId = 0, controller;
 let query = "", kind = "all", county = "";
 const LIMIT = 50;
 const rows = () => snapshot ? (mode === "records" ? snapshot.projects : snapshot.leads) : [];
@@ -33,23 +33,37 @@ function renderList() {
 }
 async function load() {
   const id = ++requestId;
-  controller?.abort(); controller = new AbortController(); snapshot = null; selected = null;
+  controller?.abort(); controller = new AbortController(); snapshot = null; footprint = null; selected = null;
   $("error").hidden = true; $("status").textContent = "Reading stored data…";
   $("records").innerHTML = '<p class="empty">Loading…</p>'; $("detail").innerHTML = '<p class="empty">Select a record to inspect its evidence.</p>';
   $("previous").disabled = true; $("next").disabled = true; $("visible").textContent = ""; $("page-count").textContent = ""; renderMap();
   const parameters = new URLSearchParams({limit: LIMIT, offset});
   if (mode === "records") { parameters.set("kind", kind); parameters.set("q", query); parameters.set("county", county); }
   try {
-    const response = await fetch((mode === "records" ? "/api/snapshot?" : "/api/workflows?") + parameters, {signal: controller.signal});
-    const data = await response.json();
-    if (!response.ok) throw Error(data.error || "Unable to read stored data.");
+    const requests = [fetch((mode === "records" ? "/api/snapshot?" : "/api/workflows?") + parameters, {signal: controller.signal})];
+    if (mode === "records") {
+      const mapParameters = new URLSearchParams({kind, q: query, county});
+      requests.push(fetch("/api/footprint?" + mapParameters, {signal: controller.signal}));
+    }
+    const responses = await Promise.all(requests);
+    const payloads = await Promise.all(responses.map(response => response.json()));
+    if (!responses[0].ok) throw Error(payloads[0].error || "Unable to read stored data.");
+    if (responses[1] && !responses[1].ok) throw Error(payloads[1].error || "Unable to read geographic footprint.");
+    const data = payloads[0];
     if (id !== requestId) return;
     snapshot = data;
+    footprint = payloads[1] || null;
     $("visible").textContent = data.total + " matching";
     $("page-count").textContent = data.returned ? `${offset + 1}–${offset + data.returned} of ${data.total}` : `0 of ${data.total}`;
     $("previous").disabled = offset === 0; $("next").disabled = !data.has_more;
     $("status").textContent = mode === "records" ? `${data.returned} source records on this page · ${data.mapped_on_page} mapped · ${data.returned - data.mapped_on_page} unmapped. Records and historical status do not establish qualified leads or current construction activity.` : `${data.returned} workflows on this page. Status and scores are retained values; external actions remain unavailable.`;
-    renderList(); fitMap();
+    renderList();
+    if (pendingSelection) {
+      const target = pendingSelection;
+      pendingSelection = null;
+      if (rows().some(row => rowId(row) === target)) selectRecord(target);
+    }
+    fitMap();
   } catch (error) {
     if (id !== requestId || error.name === "AbortError") return;
     $("error").textContent = error.message; $("error").hidden = false; $("status").textContent = "Data unavailable.";
@@ -69,7 +83,16 @@ function project(lat, lon) { return [(lon + 180) / 360, (1 - Math.asinh(Math.tan
 function unproject(x, y) { return [Math.atan(Math.sinh(Math.PI * (1 - 2 * y))) * 180 / Math.PI, x * 360 - 180]; }
 let center = project(34.0, -116.8), scale = 12000;
 const svg = $("map");
-const points = () => mode === "records" ? rows().filter(x => x.point) : [];
+const points = () => mode === "records" && footprint ? footprint.points : [];
+function selectMapPoint(id) {
+  const row = rows().find(item => rowId(item) === id);
+  if (row) { selectRecord(id); return; }
+  const point = points().find(item => rowId(item) === id);
+  if (!point) return;
+  pendingSelection = id;
+  offset = Math.floor(point.ordinal / LIMIT) * LIMIT;
+  load();
+}
 function fitMap() {
   const available = points();
   if (available.length) {
@@ -104,12 +127,13 @@ function renderMap() {
     const [x,y] = xy(row.point.latitude, row.point.longitude);
     if (x < 0 || x > width || y < 0 || y > height) continue;
     inView++;
-    content += `<circle class="pin ${selected === rowId(row) ? 'selected' : ''}" cx="${x}" cy="${y}" r="7" tabindex="0" role="button" aria-label="${esc(row.title)}" data-id="${esc(rowId(row))}"><title>${esc(row.title)} · source-claimed location</title></circle>`;
+    content += `<circle class="pin ${selected === rowId(row) ? 'selected' : ''}" cx="${x}" cy="${y}" r="7" tabindex="0" role="button" aria-label="${esc(row.title)}" data-id="${esc(rowId(row))}"><title>${esc(row.title)} · ${esc(row.record_kind)} source-claimed location</title></circle>`;
   }
   svg.innerHTML = content;
-  svg.querySelectorAll(".pin").forEach(el => { el.onclick = () => selectRecord(el.dataset.id); el.onkeydown = e => { if (["Enter"," "].includes(e.key)) { e.preventDefault(); selectRecord(el.dataset.id); } }; });
+  svg.querySelectorAll(".pin").forEach(el => { el.onclick = () => selectMapPoint(el.dataset.id); el.onkeydown = e => { if (["Enter"," "].includes(e.key)) { e.preventDefault(); selectMapPoint(el.dataset.id); } }; });
   $("map-empty").hidden = points().length > 0;
-  $("map-count").textContent = `${inView} in view / ${points().length} on page`;
+  const coverage = footprint?.truncated ? `first ${footprint.records_scanned} of ${footprint.matching_total} matching records scanned` : `${footprint?.matching_total || 0} matching records fully scanned`;
+  $("map-count").textContent = `${inView} in view / ${points().length} mapped · ${coverage}`;
 }
 function zoom(factor, x = svg.clientWidth / 2, y = svg.clientHeight / 2) {
   const next = Math.max(150, Math.min(2000000, scale * factor));

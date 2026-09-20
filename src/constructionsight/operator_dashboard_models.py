@@ -67,3 +67,34 @@ class DashboardSnapshot(BaseModel):
             "This offline coordinate map has no street basemap or county boundary layer.",
         ]
     )
+
+
+class FootprintPoint(BaseModel):
+    """Lightweight map identity for one source record in stable query order."""
+
+    ordinal: int = Field(ge=0)
+    record_id: str
+    record_kind: RecordKind
+    title: str
+    county: str | None
+    point: DashboardPoint
+
+
+class GeographicFootprintSnapshot(BaseModel):
+    """Bounded whole-query geographic view with explicit completeness semantics."""
+
+    selection: RecordSelection
+    points: list[FootprintPoint]
+    matching_total: int
+    records_scanned: int
+    mapped_in_scan: int
+    scan_limit: int
+    truncated: bool
+    read_only: Literal[True] = True
+    limitations: list[str] = Field(
+        default_factory=lambda: [
+            "Points are source records, not deduplicated projects or qualified leads.",
+            "Coordinates are source claims; no geocoding or spatial verification is performed.",
+            "When truncated is true, this response is not the complete matching footprint.",
+        ]
+    )

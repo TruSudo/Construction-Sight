@@ -19,6 +19,8 @@ from constructionsight.operator_dashboard_models import (
     DashboardPoint,
     DashboardProject,
     DashboardSnapshot,
+    FootprintPoint,
+    GeographicFootprintSnapshot,
     RecordKind,
     RecordSelection,
 )
@@ -58,6 +60,55 @@ def build_dashboard_snapshot(
         offset=offset,
         limit=limit,
         has_more=offset + len(projects) < total,
+    )
+
+
+
+FOOTPRINT_SCAN_LIMIT = 5_000
+
+
+def build_geographic_footprint(
+    session: Session,
+    *,
+    kind: RecordSelection = "all",
+    query: str = "",
+    county: str = "",
+) -> GeographicFootprintSnapshot:
+    """Map a bounded whole query without presenting a result page as complete coverage."""
+
+    if kind not in {"all", "ceqa", "permit"}:
+        raise ValueError("kind must be all, ceqa or permit")
+    if len(query) > 200 or county not in {"", "San Bernardino", "Riverside"}:
+        raise ValueError("invalid search or county filter")
+    records, total = read_project_page(
+        session,
+        kind=kind,
+        query=query.strip(),
+        county=county,
+        limit=FOOTPRINT_SCAN_LIMIT,
+        offset=0,
+    )
+    projects = [_project(record) for record in records]
+    points = [
+        FootprintPoint(
+            ordinal=ordinal,
+            record_id=project.record_id,
+            record_kind=project.record_kind,
+            title=project.title,
+            county=project.county,
+            point=project.point,
+        )
+        for ordinal, project in enumerate(projects)
+        if project.point is not None
+    ]
+    return GeographicFootprintSnapshot(
+        selection=kind,
+        points=points,
+        matching_total=total,
+        records_scanned=len(projects),
+        mapped_in_scan=len(points),
+        scan_limit=FOOTPRINT_SCAN_LIMIT,
+        truncated=total > len(projects),
     )
 
 

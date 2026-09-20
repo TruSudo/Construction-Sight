@@ -20,7 +20,12 @@ from constructionsight.ceqanet_write_plan import build_ceqanet_write_plan
 from constructionsight.entity_models import Entity
 from constructionsight.lead_review_models import LeadReviewPackage, LeadReviewStatus
 from constructionsight.lead_workflow_models import LeadWorkflowRecord, LeadWorkflowStatus
-from constructionsight.operator_dashboard import build_dashboard_snapshot, build_workflow_snapshot
+from constructionsight.operator_dashboard import (
+    FOOTPRINT_SCAN_LIMIT,
+    build_dashboard_snapshot,
+    build_geographic_footprint,
+    build_workflow_snapshot,
+)
 from constructionsight.operator_services.ceqanet_persistence_service import (
     execute_authorized_ceqanet_write_plan,
 )
@@ -358,6 +363,32 @@ def test_combined_source_pagination_search_and_identity(database):
         )
         assert [p["record_kind"] for p in payload["projects"]] == ["ceqa", "permit"]
         assert json.loads(_get(port, "/api/snapshot")[2])["selection"] == "all"
+        footprint = json.loads(
+            _get(port, "/api/footprint?kind=all&q=Cross-family&county=San+Bernardino")[2]
+        )
+        assert footprint["matching_total"] == footprint["records_scanned"] == 2
+        assert footprint["mapped_in_scan"] == 1
+        assert footprint["truncated"] is False
+        assert [(p["ordinal"], p["record_kind"], p["record_id"]) for p in footprint["points"]] == [
+            (0, "ceqa", "shared")
+        ]
+
+
+def test_geographic_footprint_discloses_scan_truncation(database, monkeypatch):
+    _, engine = database
+    monkeypatch.setattr("constructionsight.operator_dashboard.FOOTPRINT_SCAN_LIMIT", 2)
+    with Session(engine) as session, session.begin():
+        for i in range(3):
+            CeqaStore(session).upsert(_record(f"fixture:{i}"))
+    with Session(engine) as session:
+        footprint = build_geographic_footprint(session)
+        assert footprint.matching_total == 3
+        assert footprint.records_scanned == 2
+        assert footprint.mapped_in_scan == 2
+        assert footprint.scan_limit == 2
+        assert footprint.truncated is True
+        assert [point.ordinal for point in footprint.points] == [0, 1]
+    assert FOOTPRINT_SCAN_LIMIT == 5_000
 
 
 def test_read_only_database_cannot_write_and_missing_path_is_not_created(tmp_path):
@@ -426,3 +457,10 @@ def test_http_errors_do_not_expose_database_paths_or_repair_data(database):
         assert b"corrupted" not in body
         assert _get(port, "/api/snapshot", method="POST")[0] == 501
     assert path.read_bytes() == before
+
+
+@pytest.mark.parametrize("query", ["limit=5", "offset=1", "unknown=1", "county=Orange"])
+def test_footprint_rejects_paging_and_invalid_filters(database, query):
+    path, _ = database
+    with _server(path) as port:
+        assert _get(port, "/api/footprint?" + query)[0] == 400

@@ -30,10 +30,16 @@ Populate the database through existing governed intake/persistence commands.
   deduplication or identity resolution is implied by combining the list.
 - Search and county filtering apply to both families before pagination.
   Matching totals cover the entire filtered query across the selected families;
-  returned and mapped counts describe only the current page. The GUI uses
-  50 records per page. The API accepts 1–500 and explicit offsets. The map
-  shows **only the current page**; the all-types option does not fetch or
-  represent every mapped record in the database.
+  returned and page-mapped counts describe only the current list page. The GUI
+  uses 50 records per page. The API accepts 1–500 and explicit offsets.
+- The separate geographic-footprint read scans up to 5,000 matching source
+  records in stable combined order and maps every supported coordinate in that
+  scan. It reports the whole-query total, records scanned, mapped count, cap and
+  truncation flag. When the total exceeds the cap, the GUI expressly labels the
+  map incomplete. Map identities retain source family and record ID; selecting
+  a point outside the current list page navigates to its stable query page.
+  Combining points does not deduplicate or assert that two source records are
+  one real-world project.
 - The detail panel exposes exact record identity, recorded status/document type,
   address/APN, named parties and their stated roles, source URLs, evidence text,
   capture dates where recorded, location evidence, and limitations.
@@ -78,7 +84,7 @@ read model and HTTP service alone do not establish visual quality or browser
 interaction correctness. Packaging must include `operator_ui.html`,
 `operator_ui.js`, and `operator_ui.css`.
 
-The next product increments remain a separately bounded all-record geographic footprint, source-to-opportunity conversion through the
+The next product increments remain source-to-opportunity conversion through the
 existing scoring/review controls, governed operator actions, actual county/parcel
 layers, relationship/history views, and the established commercial workflow.
 This slice does not complete those requirements or the private operational release.
