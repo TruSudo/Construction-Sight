@@ -43,6 +43,19 @@ Populate the database through existing governed intake/persistence commands.
 - The detail panel exposes exact record identity, recorded status/document type,
   address/APN, named parties and their stated roles, source URLs, evidence text,
   capture dates where recorded, location evidence, and limitations.
+- An operator may inspect the exact stored `entity_key` of a named party across
+  CEQA and permit source records. The read scans at most 5,000 records in the
+  selected source-family/county scope and lists up to 100 exact-key matches.
+  Returned metadata separately discloses total source records, scanned records,
+  matches within the scan, displayed matches, and whether either cap was reached.
+  Repeated names with different entity keys are not joined. Equal record IDs in
+  different source families remain distinct. An equal stored entity key is only
+  a co-occurrence of stored source assertions, **not** independent verification
+  that the named real-world party is the same. The selected key can highlight
+  related markers already present in the current footprint and fit those visible
+  markers; records outside the footprint/search or either scan cap are not
+  represented as mapped relations. No new map coordinates or confidence claims
+  are generated.
 - The offline coordinate map uses a common Web Mercator scale for both axes, a
   geographic graticule, pan/zoom, fit-to-page, keyboard controls, and selectable
   source locations. It has **no street basemap, county boundaries, parcel polygons,
@@ -79,7 +92,9 @@ permit/site/entity evidence, search beyond the first page, exact review joins,
 unmapped cases, rejected requests, and database immutability. Its records are
 **synthetic fixtures**, not live discoveries or commercial opportunities.
 
-The graphical map still requires real-browser visual verification. Tests of the
+The new typed HTTP dispatch and bounded entity-neighborhood regression cases have
+been committed but have **not** been executed against the current head; no CI
+or type-check success is claimed for the new integration commits. The graphical map still requires real-browser visual verification. Tests of the
 read model and HTTP service alone do not establish visual quality or browser
 interaction correctness. Packaging must include `operator_ui.html`,
 `operator_ui.js`, and `operator_ui.css`.
