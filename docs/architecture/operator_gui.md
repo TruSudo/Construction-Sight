@@ -84,6 +84,12 @@ Populate the database through existing governed intake/persistence commands.
   outreach-ready. It performs no source reinspection, score fabrication, network
   access, persistence, lead conversion, approval or external action. A separate
   explicitly authorized persistence/review workflow is still required.
+- The record detail panel exposes an explicit **Inspect review gaps** button. It
+  requests the exact selected source-family/key pair and renders the review
+  state, digest, observations and unresolved checks. Responses from superseded
+  selections are ignored and all supplied source text is HTML-escaped. The
+  button is read-only: it does not persist a lead, authorize commercial action,
+  or claim browser acceptance before actual browser verification.
 - Lead workflow reads persisted workflow records and the exact `package_id` each
   workflow references. It does not substitute the newest review for the same
   candidate. Missing exact reviews remain visible as limitations; contradictory
