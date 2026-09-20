@@ -2,7 +2,7 @@
 
 ConstructionSight is a lawful public-record construction intelligence platform focused initially on San Bernardino County and Riverside County, California.
 
-The system is designed to discover, preserve, normalize, resolve, score, review, and track public construction signals across CEQA, permits, contractors, parcels, planning decisions, and related government records. The current implementation is strongest in governed backend architecture, evidence preservation, domain models, persistence, operator CLI surfaces, parcel/site reasoning, workflow controls, and repository certification. Production recurring source collection, outreach, and the graphical operator application remain planned work unless explicitly stated otherwise.
+The system is designed to discover, preserve, normalize, resolve, score, review, and track public construction signals across CEQA, permits, contractors, parcels, planning decisions, and related government records. The current implementation is strongest in governed backend architecture, evidence preservation, domain models, persistence, operator CLI surfaces, parcel/site reasoning, workflow controls, and repository certification. A local read-only graphical operator application is implemented on draft integration PR #119 but is not yet in main or browser-verified. Production recurring source collection and commercial outreach remain planned integration work. See docs/architecture/operator_gui.md for exact limitations.
 
 ## Operating boundary
 
