@@ -74,7 +74,7 @@ def _parameters(
         raise ValueError("invalid record kind or search length")
     if county not in {"", "San Bernardino", "Riverside"}:
         raise ValueError("unsupported county filter")
-    entity_key = values.get("entity_key", [None])[0]
+    entity_key = values["entity_key"][0] if "entity_key" in values else None
     if entity and (
         entity_key is None
         or not entity_key
