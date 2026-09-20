@@ -142,3 +142,53 @@ not assurance artifacts, owner acceptance, authenticated CI evidence, or permiss
 to merge. The inherited canonical CI workflow only runs automatically for pull
 requests targeting `main`; this stacked PR does not have an automatic run. Its
 hashed workflow is deliberately unchanged by this integration slice.
+
+
+## Explicit unapproved source-review docket (local CLI)
+
+The operator HTTP application intentionally remains **GET-only**. To retain a
+source-review snapshot, first preview the exact persisted record:
+
+```bash
+constructionsight-candidate-docket preview --database /absolute/path/to/constructionsight.sqlite3 --kind ceqa --record-id '<exact ceqa_key>'
+```
+
+Use the returned `preview_id` and `normalized_source_sha256` in a separate
+explicitly confirmed local staging request:
+
+```bash
+constructionsight-candidate-docket stage --database /absolute/path/to/constructionsight.sqlite3 --kind ceqa --record-id '<exact ceqa_key>' --expected-preview-id '<exact preview_id>' --expected-source-sha256 '<exact normalized_source_sha256>' --reason 'Retain for further review' --operator-id 'operator:local' --confirm
+```
+
+The append-only `source_candidate_review_docket` table is registered with
+`constructionsight init-db --database-url 'sqlite+pysqlite:////absolute/path/to/constructionsight.sqlite3'`.
+For a legacy database, run the existing explicit operator maintenance command
+before staging; staging and GUI reads do not initialize or silently migrate
+a database.
+
+Under one SQLite `BEGIN IMMEDIATE` transaction, staging reloads the exact
+source-family/key pair, recomputes the preview ID and normalized source digest,
+rejects stale source revisions and inserts only a unique content-bound, unapproved
+review snapshot. Existing exact previews are not overwritten. Changed source
+content creates a separate revision and prior snapshots remain inspectable.
+The preview retention limit is 1 MB of canonical UTF-8 JSON, verified before
+local authorization and inside the protected transaction so an oversized
+result cannot commit a stage then fail the separate effect-ledger retention.
+A successful effect-ledger replay also verifies the exact staged database row
+still exists and matches the retained result; it cannot silently claim a lost
+or altered local docket entry is present.
+The application uses scope-bound local confirmation and the existing durable
+effect-reservation ledger; neither these controls nor source hashes defeat
+malicious direct SQLite file modification. Operator ID is an **audit label, not
+authentication**. The docket is not an independently signed source artifact,
+scored/qualified commercial lead, outreach authorization, bid or approval.
+
+Read back retained revisions with
+`constructionsight-candidate-docket list --database /absolute/path/to/constructionsight.sqlite3 --kind ceqa --record-id '<exact ceqa_key>'`.
+Readback verifies the normalized-source digest, preview/payload identities and
+a receipt digest over the staged row's source and operator audit metadata;
+these unkeyed digests detect inconsistent stored data but are **not**
+cryptographic evidence of who wrote a record or a substitute for independent
+source verification. Readback
+the list is bounded at 100. This increment does not promote records into the
+separately governed commercial lead workflow or change the GUI's GET-only scope.
