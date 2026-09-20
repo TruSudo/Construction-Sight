@@ -5,10 +5,11 @@ from __future__ import annotations
 import argparse
 import json
 from contextlib import suppress
+from dataclasses import dataclass
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any
+from typing import cast
 from urllib.parse import parse_qs, urlparse
 
 from sqlalchemy import select
@@ -20,6 +21,7 @@ from constructionsight.operator_dashboard import (
     build_geographic_footprint,
     build_workflow_snapshot,
 )
+from constructionsight.operator_dashboard_models import RecordSelection
 from constructionsight.storage.operator_read_store import create_operator_read_engine
 
 _ASSETS = {
@@ -29,9 +31,20 @@ _ASSETS = {
 }
 
 
+@dataclass(frozen=True)
+class _RequestParameters:
+    """Validated HTTP query arguments; never forward arbitrary dictionaries to services."""
+
+    kind: RecordSelection
+    query: str
+    county: str
+    limit: int
+    offset: int
+
+
 def _parameters(
     query: str, *, workflow: bool = False, footprint: bool = False
-) -> dict[str, Any]:
+) -> _RequestParameters:
     values = parse_qs(query, keep_blank_values=True, max_num_fields=5)
     allowed = (
         {"limit", "offset"}
@@ -47,18 +60,21 @@ def _parameters(
     if not 1 <= limit <= 500 or not 0 <= offset <= 1_000_000:
         raise ValueError("invalid page bounds")
     if workflow:
-        return {"limit": limit, "offset": offset}
-    kind = values.get("kind", ["all"])[0]
+        return _RequestParameters(kind="all", query="", county="", limit=limit, offset=offset)
+    raw_kind = values.get("kind", ["all"])[0]
     query_text = values.get("q", [""])[0]
     county = values.get("county", [""])[0]
-    if kind not in {"all", "ceqa", "permit"} or len(query_text) > 200:
+    if raw_kind not in {"all", "ceqa", "permit"} or len(query_text) > 200:
         raise ValueError("invalid record kind or search length")
     if county not in {"", "San Bernardino", "Riverside"}:
         raise ValueError("unsupported county filter")
-    parameters = {"kind": kind, "query": query_text, "county": county}
-    if not footprint:
-        parameters.update({"limit": limit, "offset": offset})
-    return parameters
+    return _RequestParameters(
+        kind=cast(RecordSelection, raw_kind),
+        query=query_text,
+        county=county,
+        limit=limit,
+        offset=offset,
+    )
 
 
 def create_handler(database_path: Path) -> type[BaseHTTPRequestHandler]:
@@ -119,15 +135,25 @@ def create_handler(database_path: Path) -> type[BaseHTTPRequestHandler]:
                             "live_collection_enabled": False,
                         }
                     elif path == "/api/workflows":
-                        payload = build_workflow_snapshot(session, **parameters)
+                        payload = build_workflow_snapshot(
+                            session, limit=parameters.limit, offset=parameters.offset
+                        )
                     elif path == "/api/footprint":
-                        payload = build_geographic_footprint(session, **parameters).model_dump(
-                            mode="json"
-                        )
+                        payload = build_geographic_footprint(
+                            session,
+                            kind=parameters.kind,
+                            query=parameters.query,
+                            county=parameters.county,
+                        ).model_dump(mode="json")
                     else:
-                        payload = build_dashboard_snapshot(session, **parameters).model_dump(
-                            mode="json"
-                        )
+                        payload = build_dashboard_snapshot(
+                            session,
+                            kind=parameters.kind,
+                            query=parameters.query,
+                            county=parameters.county,
+                            limit=parameters.limit,
+                            offset=parameters.offset,
+                        ).model_dump(mode="json")
                 self._send_json(payload)
             except (SQLAlchemyError, ValueError, TypeError, KeyError):
                 self._send_json(
