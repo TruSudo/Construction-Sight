@@ -151,6 +151,14 @@ def test_cli_preview_stage_list_and_explicit_confirmation(target: Path):
     accepted = runner.invoke(app, [*params, "--confirm"])
     assert accepted.exit_code == 0
     assert json.loads(accepted.stdout)["recorded_new"] is True
+    changed_reason = params.copy()
+    changed_reason[changed_reason.index("--reason") + 1] = (
+        "A later attempt to relabel the same content snapshot"
+    )
+    conflict = runner.invoke(app, [*changed_reason, "--confirm"])
+    assert conflict.exit_code == 2
+    assert "EffectReplayConflictError" in conflict.stderr
+    assert "Traceback" not in conflict.stderr
     listed = runner.invoke(app, ["list", *args])
     assert listed.exit_code == 0
     assert len(json.loads(listed.stdout)) == 1

@@ -110,8 +110,7 @@ async function inspectCandidate() {
     if (token !== candidateRequestId || selected !== sourceSelection || mode !== "records") return;
     if (!response.ok) throw Error(result.error || "Candidate review preview unavailable.");
     if (rowId(result.source_record) !== sourceSelection) throw Error("Source identity mismatch.");
-    if (result.source_record.title !== row.title ||
-        result.source_record.source_status !== row.source_status) {
+    if (JSON.stringify(result.source_record) !== JSON.stringify(row)) {
       throw Error("The source record changed since this page was loaded. Refresh before reviewing.");
     }
     const checks = result.checks.map(check =>

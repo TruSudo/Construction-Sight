@@ -10,6 +10,7 @@ import typer
 
 from constructionsight.authorization_decision import AuthorizationDeniedError
 from constructionsight.operator_dashboard_models import RecordKind
+from constructionsight.storage.effect_consumption_store import EffectConsumptionError
 from constructionsight.source_candidate_docket_service import (
     list_staged_source_candidates,
     preview_source_for_docket,
@@ -76,7 +77,9 @@ def stage(
             reason=reason,
             operator_id=operator_id,
         )
-    except (AuthorizationDeniedError, OSError, ValueError, LookupError) as exc:
+    except (
+        AuthorizationDeniedError, EffectConsumptionError, OSError, ValueError, LookupError
+    ) as exc:
         _fail(exc)
     typer.echo(json.dumps(outcome.entry.model_dump(mode="json"), sort_keys=True, indent=2))
 

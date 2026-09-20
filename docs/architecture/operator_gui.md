@@ -88,7 +88,11 @@ Populate the database through existing governed intake/persistence commands.
 - The record detail panel exposes an explicit **Inspect review gaps** button. It
   requests the exact selected source-family/key pair and renders the review
   state, digest, observations and unresolved checks. Responses from superseded
-  selections are ignored and all supplied source text is HTML-escaped. The
+  selections are ignored, and the preview is suppressed if its complete
+  currently projected source record differs from the already displayed record.
+  Changes to normalized source fields not included in the display are still
+  separately bound to the preview's source digest; the read-only UI does not
+  attempt to certify those field histories. All supplied source text is HTML-escaped. The
   button is read-only: it does not persist a lead, authorize commercial action,
   or claim browser acceptance before actual browser verification.
 - Lead workflow reads persisted workflow records and the exact `package_id` each
@@ -117,12 +121,22 @@ permit/site/entity evidence, search beyond the first page, exact review joins,
 unmapped cases, rejected requests, and database immutability. Its records are
 **synthetic fixtures**, not live discoveries or commercial opportunities.
 
-The new typed HTTP dispatch and bounded entity-neighborhood regression cases have
-been committed but have **not** been executed against the current head; no CI
-or type-check success is claimed for the new integration commits. The graphical map still requires real-browser visual verification. Tests of the
-read model and HTTP service alone do not establish visual quality or browser
-interaction correctness. Packaging must include `operator_ui.html`,
-`operator_ui.js`, and `operator_ui.css`.
+The typed HTTP dispatch, bounded entity-neighborhood, source-history, exact
+candidate-preview, and operator read models have synthetic test coverage.
+At historical exact-head commit `76473db5542d328623c7afa1c8bdfb45b8a564f3`,
+GitHub Actions run 35528627344 passed 1,542 pytest cases in **each** supported
+Python runtime, strict mypy, compilation and 115/115 focused mutation checks.
+That predecessor CI run also reported eight Ruff import issues; they were
+corrected in a subsequent development commit. The full repository certification
+remains blocked by active defects and the missing Native Maximum Assurance
+artifact. Historical results must not be reused to claim a newer source tree
+passed its exact-head checks.
+
+The graphical map and the new staging CLI still require real operator/browser
+acceptance against appropriately sourced populated local data. Synthetic read
+models, HTTP tests and CLI fixtures do not establish visual quality, reliable
+live-source operation or production fitness. Packaging must include
+`operator_ui.html`, `operator_ui.js`, and `operator_ui.css`.
 
 The next product increments remain source-to-opportunity conversion through the
 existing scoring/review controls, governed operator actions, actual county/parcel
@@ -182,6 +196,8 @@ integrity digest. Direct database edits remain outside this application's
 threat model. A successful effect-ledger replay also verifies the exact staged database row
 still exists and matches the retained result; it cannot silently claim a lost
 or altered local docket entry is present.
+Conflicting repeat staging attempts (including changes to the actor's rationale)
+are reported as controlled CLI denials rather than uncaught Python tracebacks.
 The application uses scope-bound local confirmation and the existing durable
 effect-reservation ledger; neither these controls nor source hashes defeat
 malicious direct SQLite file modification. Operator ID is an **audit label, not

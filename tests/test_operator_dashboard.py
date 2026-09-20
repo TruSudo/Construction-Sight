@@ -778,3 +778,31 @@ def test_candidate_preview_rejects_broad_or_ambiguous_http_parameters(database, 
     path, _ = database
     with _server(path) as port:
         assert _get(port, "/api/candidate-preview?" + query)[0] == 400
+
+
+
+def test_candidate_preview_reinspect_after_projected_source_evidence_change(database):
+    path, engine = database
+    with Session(engine) as session, session.begin():
+        CeqaStore(session).upsert(_record("fixture:stale-display"))
+    with _server(path) as port:
+        first = json.loads(
+            _get(port, "/api/snapshot?kind=ceqa")[2]
+        )["projects"][0]
+    with Session(engine) as session, session.begin():
+        CeqaStore(session).upsert(
+            _record(
+                "fixture:stale-display",
+                description="Newly amended source evidence after snapshot render.",
+            )
+        )
+    with _server(path) as port:
+        current = json.loads(
+            _get(
+                port,
+                "/api/candidate-preview?kind=ceqa&record_id=fixture%3Astale-display",
+            )[2]
+        )["source_record"]
+    assert current["record_id"] == first["record_id"]
+    assert current["description"] != first["description"]
+    assert current != first
