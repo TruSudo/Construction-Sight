@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from typing import Literal
 
 from sqlalchemy.orm import Session
 
@@ -60,7 +61,9 @@ def build_source_candidate_preview(
         and site.county.strip().lower().removesuffix(" county")
         != record.county.strip().lower().removesuffix(" county")
     )
-    county_state = (
+    county_state: Literal[
+        "conflict", "missing", "out_of_scope", "source_claim_only"
+    ] = (
         "conflict" if site_conflict else
         "missing" if project.coverage == "unknown" else
         "out_of_scope" if project.coverage == "outside_target_counties" else

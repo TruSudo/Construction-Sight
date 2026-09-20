@@ -22,7 +22,7 @@ from constructionsight.operator_dashboard import (
     build_geographic_footprint,
     build_workflow_snapshot,
 )
-from constructionsight.operator_dashboard_models import RecordKind, RecordSelection
+from constructionsight.operator_dashboard_models import RecordSelection
 from constructionsight.operator_source_candidate import (
     SourceRecordNotFound,
     build_source_candidate_preview,
@@ -183,7 +183,7 @@ def create_handler(database_path: Path) -> type[BaseHTTPRequestHandler]:
                         if parameters.record_id is None or parameters.kind == "all":
                             raise ValueError("missing exact source record selection")
                         payload = build_source_candidate_preview(
-                            session, kind=cast(RecordKind, parameters.kind),
+                            session, kind=parameters.kind,
                             record_id=parameters.record_id,
                         ).model_dump(mode="json")
                     elif path == "/api/entity-neighborhood":
