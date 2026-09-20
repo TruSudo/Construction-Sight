@@ -55,7 +55,7 @@ A planned capability is not an active defect when the current supported boundary
 | Result ledger/share authority | Yes | Yes | Yes | Yes | Yes | No | Immutable revisions, serialized exact-state authority heads, and append-only operator events govern result entry and correction. |
 | Repository certification | Yes | Yes | Yes | N/A | Yes | N/A | Every tracked file is scanned; CI enforces dependency integrity, strict lint/type/test gates, warning failure, clean worktree, and diff hygiene. |
 | Outreach preview | No | No | No | No | No | No | Planned product capability; no external action is implied. |
-| UI/operator app | No | No | No | No | No | No | Planned product capability. |
+| UI/operator app | Partial (draft) | Partial (synthetic) | Yes | Read-only existing tables | Yes | No | Draft PR #119 serves a loopback-only GUI over retained CEQA/permit records and exact lead reviews. It provides bounded source-claimed map points, exact stored-key entity co-occurrence, and recorded source-event dates. No real-browser acceptance, verified current construction stage, production collection, outreach, bids, or release authority exists. |
 
 ## Active defect ledger
 
@@ -105,7 +105,7 @@ These entries are future product scope, not defects in the current supported imp
 | CS-PLAN-004 | Domain-specific upstream corrections | Generic upstream mutation is blocked. | Define source-aware stale-state, correction, supersession, and audit semantics per record family. |
 | CS-PLAN-005 | Workflow reopen or override | Final states remain immutable. | Introduce explicit authority, reason, stale-state, and append-only event doctrine. |
 | CS-PLAN-006 | Outreach preview and sending | No external sending behavior exists. | Implement preview, approval, dedupe, compliance, evidence, and delivery audit boundaries first. |
-| CS-PLAN-007 | GUI/operator application | CLI and persisted services remain the supported operator surface. | Build only after underlying workflows and source maturity justify UI exposure. |
+| CS-PLAN-007 | Complete GUI/operator application | CLI/persisted services remain the supported operator surface; draft PR #119 contains a separate, read-only local development GUI. | Validate the GUI against populated local evidence in a real browser, connect governed source-to-opportunity persistence, implement safe operator actions and historical relationship views, and obtain exact-head CI plus required Native Maximum Assurance before any operational release. |
 | CS-PLAN-008 | Countywide parcel evidence ingestion | Exact metadata, retained bounded proofs, an exact-response executor, official HTTP adapter, portable proof bundle, and an exact-plan expiring single-use authorization/preflight contract exist. Both sources remain `bounded_query_verified`; no authorization has been issued and no consumption ledger or live rehearsal exists. | Implement append-only authorization-consumption evidence; separately issue and consume one authorization per county; execute, save, and independently verify each portable rehearsal bundle; then review profile promotion and recurring observation orchestration as distinct later phases. |
 
 ## Forward cleanup rule
