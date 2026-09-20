@@ -31,4 +31,5 @@ class SourceCandidateDocketRow(Base):
     authorization_decision_id: Mapped[str] = mapped_column(String(128), nullable=False)
     authorization_audit_identity: Mapped[str] = mapped_column(Text, nullable=False)
     reason_digest: Mapped[str] = mapped_column(String(128), nullable=False)
+    reason_text: Mapped[str] = mapped_column(Text, nullable=False)
     recorded_at: Mapped[str] = mapped_column(String(64), nullable=False)

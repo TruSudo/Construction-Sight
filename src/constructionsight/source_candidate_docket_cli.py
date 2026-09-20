@@ -11,7 +11,6 @@ import typer
 from constructionsight.authorization_decision import AuthorizationDeniedError
 from constructionsight.operator_dashboard_models import RecordKind
 from constructionsight.source_candidate_docket_service import (
-    CandidateDocketError,
     list_staged_source_candidates,
     preview_source_for_docket,
     stage_authorized_source_candidate,

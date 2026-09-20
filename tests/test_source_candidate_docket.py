@@ -7,6 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
+from sqlalchemy import delete, inspect, update
 from sqlalchemy.orm import Session
 from typer.testing import CliRunner
 
@@ -24,14 +25,14 @@ from constructionsight.source_candidate_docket_service import (
     preview_source_for_docket,
     stage_authorized_source_candidate,
 )
-from constructionsight.storage.database import (
-    create_database_engine, initialize_database,
-)
+from constructionsight.storage.database import create_database_engine, initialize_database
+from constructionsight.storage.domain_orm import CeqaDomainRecord
 from constructionsight.storage.domain_store import CeqaStore, PermitStore
 from constructionsight.storage.effect_consumption_store import (
     EffectConsumptionStore,
     EffectOutcomeUnavailableError,
 )
+from constructionsight.storage.source_candidate_docket_orm import SourceCandidateDocketRow
 
 
 @pytest.fixture
@@ -76,6 +77,7 @@ def test_exact_source_staging_is_append_only_and_not_a_commercial_lead(target: P
     assert not first.entry.commercial_lead_created
     assert not first.entry.outreach_authorized and not first.entry.bid_authorized
     assert first.authorization.decision.action == "stage-source-candidate-review"
+    assert first.entry.reason_text == "Preserve one synthetic record for further review"
     again = _stage(target)
     assert again.entry == first.entry
     assert len(list_staged_source_candidates(target, kind="ceqa", record_id="shared")) == 1
@@ -159,7 +161,6 @@ def test_existing_schema_is_required_and_absent_schema_is_not_created(
 ):
     path = tmp_path / "old.sqlite3"
     engine = create_database_engine(f"sqlite+pysqlite:///{path}")
-    from constructionsight.storage.domain_orm import CeqaDomainRecord
 
     CeqaDomainRecord.__table__.create(engine)
     with Session(engine) as session, session.begin():
@@ -177,7 +178,6 @@ def test_existing_schema_is_required_and_absent_schema_is_not_created(
             caller_confirmation=True, reason="Schema missing",
         )
     engine = create_database_engine(f"sqlite+pysqlite:///{path}")
-    from sqlalchemy import inspect
 
     assert not inspect(engine).has_table("source_candidate_review_docket")
     engine.dispose()
@@ -209,10 +209,6 @@ def test_amended_source_keeps_prior_snapshot_and_appends_review_revision(target:
 def test_altered_staged_payload_digest_fails_integrity_verification(target: Path):
     original = _stage(target)
     engine = create_database_engine(f"sqlite+pysqlite:///{target}")
-    from sqlalchemy import update
-    from constructionsight.storage.source_candidate_docket_orm import (
-        SourceCandidateDocketRow,
-    )
 
     with Session(engine) as session, session.begin():
         session.execute(
@@ -244,10 +240,6 @@ def test_concurrent_exact_staging_never_inserts_twice(target: Path):
 def test_missing_staged_row_is_not_silently_replayed_as_durable(target: Path):
     first = _stage(target)
     engine = create_database_engine(f"sqlite+pysqlite:///{target}")
-    from sqlalchemy import delete
-    from constructionsight.storage.source_candidate_docket_orm import (
-        SourceCandidateDocketRow,
-    )
 
     with Session(engine) as session, session.begin():
         session.execute(
@@ -289,10 +281,6 @@ def test_oversized_source_review_is_rejected_before_authorization(
 def test_altered_operator_audit_identity_fails_docket_integrity(target: Path):
     original = _stage(target)
     engine = create_database_engine(f"sqlite+pysqlite:///{target}")
-    from sqlalchemy import update
-    from constructionsight.storage.source_candidate_docket_orm import (
-        SourceCandidateDocketRow,
-    )
 
     with Session(engine) as session, session.begin():
         session.execute(
@@ -303,3 +291,52 @@ def test_altered_operator_audit_identity_fails_docket_integrity(target: Path):
     engine.dispose()
     with pytest.raises(CandidateDocketError, match="identity or payload changed"):
         list_staged_source_candidates(target, kind="ceqa", record_id="shared")
+
+
+
+def test_altered_reason_text_is_detected_on_docket_readback(target: Path):
+    original = _stage(target)
+    engine = create_database_engine(f"sqlite+pysqlite:///{target}")
+
+    with Session(engine) as session, session.begin():
+        session.execute(
+            update(SourceCandidateDocketRow)
+            .where(SourceCandidateDocketRow.stage_id == original.entry.stage_id)
+            .values(reason_text="An unrecorded reason")
+        )
+    engine.dispose()
+    with pytest.raises(CandidateDocketError, match="identity or payload changed"):
+        list_staged_source_candidates(target, kind="ceqa", record_id="shared")
+
+
+def test_unbounded_reason_is_denied_before_effect(target: Path):
+    current = preview_source_for_docket(target, kind="ceqa", record_id="shared")
+    with pytest.raises(CandidateDocketError, match="stage reason"):
+        stage_authorized_source_candidate(
+            target, kind="ceqa", record_id="shared",
+            expected_preview_id=current.preview_id,
+            expected_source_sha256=current.normalized_source_sha256,
+            caller_confirmation=True, reason="x" * 1_001,
+        )
+    assert list_staged_source_candidates(target, kind="ceqa", record_id="shared") == []
+
+
+
+def test_existing_source_stage_cannot_be_relabelled_by_another_actor(
+    target: Path,
+):
+    first = _stage(target)
+    current = preview_source_for_docket(target, kind="ceqa", record_id="shared")
+    with pytest.raises(CandidateDocketError, match="another actor or reason"):
+        stage_authorized_source_candidate(
+            target, kind="ceqa", record_id="shared",
+            expected_preview_id=current.preview_id,
+            expected_source_sha256=current.normalized_source_sha256,
+            caller_confirmation=True,
+            reason="Preserve one synthetic record for further review",
+            operator_id="operator:another-reviewer",
+        )
+    retained = list_staged_source_candidates(target, kind="ceqa", record_id="shared")
+    assert len(retained) == 1
+    assert retained[0].actor_id == first.entry.actor_id
+    assert retained[0].reason_text == first.entry.reason_text

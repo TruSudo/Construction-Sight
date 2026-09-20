@@ -16,7 +16,7 @@ from typing import cast
 
 from pydantic import BaseModel, Field
 from sqlalchemy import create_engine, inspect, select
-from sqlalchemy.engine import URL, Engine
+from sqlalchemy.engine import Engine, URL
 from sqlalchemy.orm import Session
 
 from constructionsight.authorization_decision import AuthorizationDeniedError
@@ -61,6 +61,7 @@ class CandidateDocketEntry(BaseModel):
     authorization_decision_id: str = Field(min_length=1)
     authorization_audit_identity: str = Field(min_length=1)
     reason_digest: str = Field(min_length=1)
+    reason_text: str = Field(min_length=1, max_length=1_000)
     recorded_at: datetime
     preview: SourceCandidatePreview
     recorded_new: bool
@@ -108,6 +109,7 @@ def _row_integrity(row: SourceCandidateDocketRow) -> str:
         "authorization_decision_id": row.authorization_decision_id,
         "authorization_audit_identity": row.authorization_audit_identity,
         "reason_digest": row.reason_digest,
+        "reason_text": row.reason_text,
         "recorded_at": row.recorded_at,
     }
     return _sha256(
@@ -139,6 +141,9 @@ def _read_entry(row: SourceCandidateDocketRow, *, recorded_new: bool) -> Candida
         row.preview_json != payload
         or _sha256(payload) != row.preview_payload_sha256
         or _row_integrity(row) != row.entry_integrity_sha256
+        or authorization_digest(
+            "source-candidate-docket-reason", {"reason": row.reason_text}
+        ) != row.reason_digest
         or _sha256(source_json) != row.normalized_source_sha256
         or row.candidate_key != expected_candidate
         or row.preview_id != expected_preview
@@ -173,6 +178,7 @@ def _read_entry(row: SourceCandidateDocketRow, *, recorded_new: bool) -> Candida
         authorization_decision_id=row.authorization_decision_id,
         authorization_audit_identity=row.authorization_audit_identity,
         reason_digest=row.reason_digest,
+        reason_text=row.reason_text,
         recorded_at=datetime.fromisoformat(row.recorded_at),
         preview=preview,
         recorded_new=recorded_new,
@@ -245,6 +251,7 @@ def _append_exact_entry(
     expected_source_sha256: str,
     authority: LocalAuthorizationResult,
     reason_digest: str,
+    reason_text: str,
     trusted_at: datetime,
 ) -> CandidateDocketEntry:
     """Serialize source read and unique insert under one SQLite writer lock."""
@@ -271,6 +278,14 @@ def _append_exact_entry(
                     )
                 )
                 if existing is not None:
+                    if (
+                        existing.actor_id != authority.decision.actor_id
+                        or existing.reason_digest != reason_digest
+                    ):
+                        raise CandidateDocketError(
+                            "exact preview was staged under another actor or reason; "
+                            "review its original docket entry instead of relabeling it"
+                        )
                     if existing.preview_payload_sha256 != payload_digest:
                         raise CandidateDocketError(
                             "existing staged preview has conflicting payload identity"
@@ -293,6 +308,7 @@ def _append_exact_entry(
                         authorization_decision_id=authority.decision.decision_id,
                         authorization_audit_identity=authority.decision.audit_identity,
                         reason_digest=reason_digest,
+                        reason_text=reason_text,
                         recorded_at=trusted_at.isoformat(),
                     )
                     row.entry_integrity_sha256 = _row_integrity(row)
@@ -323,7 +339,7 @@ def stage_authorized_source_candidate(
         raise AuthorizationDeniedError(
             "caller confirmation is required in addition to scope-bound authority"
         )
-    if not reason.strip() or reason != reason.strip():
+    if not reason.strip() or reason != reason.strip() or len(reason) > 1_000:
         raise CandidateDocketError("stage reason must be nonblank and trimmed")
     if not re.fullmatch(r"[0-9a-f]{64}", expected_source_sha256):
         raise CandidateDocketError("expected normalized source SHA-256 must be exact")
@@ -408,6 +424,7 @@ def stage_authorized_source_candidate(
                 expected_source_sha256=expected_source_sha256,
                 authority=authority,
                 reason_digest=reason_digest,
+                reason_text=reason,
                 trusted_at=trusted_at,
             )
 

@@ -33,11 +33,11 @@ from constructionsight.operator_dashboard import (
 from constructionsight.operator_services.ceqanet_persistence_service import (
     execute_authorized_ceqanet_write_plan,
 )
-from constructionsight.operator_web import _parameters, create_handler
 from constructionsight.operator_source_candidate import (
     SourceRecordNotFound,
     build_source_candidate_preview,
 )
+from constructionsight.operator_web import _parameters, create_handler
 from constructionsight.permit_models import PermitRecord
 from constructionsight.provenance import Provenance
 from constructionsight.site_models import Site

@@ -169,12 +169,17 @@ a database.
 Under one SQLite `BEGIN IMMEDIATE` transaction, staging reloads the exact
 source-family/key pair, recomputes the preview ID and normalized source digest,
 rejects stale source revisions and inserts only a unique content-bound, unapproved
-review snapshot. Existing exact previews are not overwritten. Changed source
+review snapshot. Existing exact previews are not overwritten or relabeled to another actor or
+rationale; a separate operator attempting to stage an already-present exact
+content identity must inspect its original docket entry. Changed source
 content creates a separate revision and prior snapshots remain inspectable.
 The preview retention limit is 1 MB of canonical UTF-8 JSON, verified before
 local authorization and inside the protected transaction so an oversized
 result cannot commit a stage then fail the separate effect-ledger retention.
-A successful effect-ledger replay also verifies the exact staged database row
+The operator's exact bounded staging rationale is retained in the local docket,
+its independent digest is rechecked on read and its text is bound to the row
+integrity digest. Direct database edits remain outside this application's
+threat model. A successful effect-ledger replay also verifies the exact staged database row
 still exists and matches the retained result; it cannot silently claim a lost
 or altered local docket entry is present.
 The application uses scope-bound local confirmation and the existing durable

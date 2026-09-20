@@ -25,8 +25,8 @@ from constructionsight.operator_dashboard_models import (
     GeographicFootprintSnapshot,
     MilestoneKind,
     RecordKind,
-    SourceMilestone,
     RecordSelection,
+    SourceMilestone,
 )
 from constructionsight.permit_models import PermitRecord
 from constructionsight.site_models import Site
