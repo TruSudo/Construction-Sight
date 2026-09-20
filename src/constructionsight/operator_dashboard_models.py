@@ -118,10 +118,13 @@ class EntityNeighborhoodSnapshot(BaseModel):
     read_only: Literal[True] = True
     limitations: list[str] = Field(
         default_factory=lambda: [
-            "An exact stored entity key is a source co-occurrence, not independently verified identity.",
-            "Different source-family IDs remain separate records; no project deduplication is performed.",
+            "An exact stored entity key is a source co-occurrence, not independently "
+            "verified identity.",
+            "Different source-family IDs remain separate records; no project deduplication "
+            "is performed.",
             "Counts cover only the scanned source records when source_scan_truncated is true.",
             "Records shown are a bounded subset when matching_records_truncated is true.",
-            "Source claims do not establish current construction activity or commercial qualification.",
+            "Source claims do not establish current construction activity or commercial "
+            "qualification.",
         ]
     )
