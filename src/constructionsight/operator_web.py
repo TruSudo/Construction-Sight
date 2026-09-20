@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 
 from constructionsight.operator_dashboard import (
     build_dashboard_snapshot,
+    build_entity_neighborhood,
     build_geographic_footprint,
     build_workflow_snapshot,
 )
@@ -40,15 +41,18 @@ class _RequestParameters:
     county: str
     limit: int
     offset: int
+    entity_key: str | None
 
 
 def _parameters(
-    query: str, *, workflow: bool = False, footprint: bool = False
+    query: str, *, workflow: bool = False, footprint: bool = False, entity: bool = False
 ) -> _RequestParameters:
     values = parse_qs(query, keep_blank_values=True, max_num_fields=5)
     allowed = (
         {"limit", "offset"}
         if workflow
+        else {"kind", "county", "entity_key"}
+        if entity
         else {"kind", "q", "county"}
         if footprint
         else {"kind", "q", "county", "limit", "offset"}
@@ -60,7 +64,9 @@ def _parameters(
     if not 1 <= limit <= 500 or not 0 <= offset <= 1_000_000:
         raise ValueError("invalid page bounds")
     if workflow:
-        return _RequestParameters(kind="all", query="", county="", limit=limit, offset=offset)
+        return _RequestParameters(
+            kind="all", query="", county="", limit=limit, offset=offset, entity_key=None
+        )
     raw_kind = values.get("kind", ["all"])[0]
     query_text = values.get("q", [""])[0]
     county = values.get("county", [""])[0]
@@ -68,12 +74,21 @@ def _parameters(
         raise ValueError("invalid record kind or search length")
     if county not in {"", "San Bernardino", "Riverside"}:
         raise ValueError("unsupported county filter")
+    entity_key = values.get("entity_key", [None])[0]
+    if entity and (
+        entity_key is None
+        or not entity_key
+        or entity_key != entity_key.strip()
+        or len(entity_key) > 255
+    ):
+        raise ValueError("invalid or missing entity key")
     return _RequestParameters(
         kind=cast(RecordSelection, raw_kind),
         query=query_text,
         county=county,
         limit=limit,
         offset=offset,
+        entity_key=entity_key,
     )
 
 
@@ -114,13 +129,20 @@ def create_handler(database_path: Path) -> type[BaseHTTPRequestHandler]:
                         HTTPStatus.OK, content_type, Path(__file__).with_name(name).read_bytes()
                     )
                     return
-                if path not in {"/api/health", "/api/snapshot", "/api/footprint", "/api/workflows"}:
+                if path not in {
+                    "/api/health",
+                    "/api/snapshot",
+                    "/api/footprint",
+                    "/api/entity-neighborhood",
+                    "/api/workflows",
+                }:
                     self._send_json({"error": "Not found."}, status=HTTPStatus.NOT_FOUND)
                     return
                 parameters = _parameters(
                     parsed.query,
                     workflow=path == "/api/workflows",
                     footprint=path == "/api/footprint",
+                    entity=path == "/api/entity-neighborhood",
                 )
             except ValueError as exc:
                 self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
@@ -138,6 +160,15 @@ def create_handler(database_path: Path) -> type[BaseHTTPRequestHandler]:
                         payload = build_workflow_snapshot(
                             session, limit=parameters.limit, offset=parameters.offset
                         )
+                    elif path == "/api/entity-neighborhood":
+                        if parameters.entity_key is None:
+                            raise ValueError("missing entity key")
+                        payload = build_entity_neighborhood(
+                            session,
+                            entity_key=parameters.entity_key,
+                            kind=parameters.kind,
+                            county=parameters.county,
+                        ).model_dump(mode="json")
                     elif path == "/api/footprint":
                         payload = build_geographic_footprint(
                             session,
