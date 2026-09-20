@@ -21,15 +21,18 @@ from constructionsight.entity_models import Entity
 from constructionsight.lead_review_models import LeadReviewPackage, LeadReviewStatus
 from constructionsight.lead_workflow_models import LeadWorkflowRecord, LeadWorkflowStatus
 from constructionsight.operator_dashboard import (
+    ENTITY_RESULT_LIMIT,
+    ENTITY_SCAN_LIMIT,
     FOOTPRINT_SCAN_LIMIT,
     build_dashboard_snapshot,
+    build_entity_neighborhood,
     build_geographic_footprint,
     build_workflow_snapshot,
 )
 from constructionsight.operator_services.ceqanet_persistence_service import (
     execute_authorized_ceqanet_write_plan,
 )
-from constructionsight.operator_web import create_handler
+from constructionsight.operator_web import _parameters, create_handler
 from constructionsight.permit_models import PermitRecord
 from constructionsight.provenance import Provenance
 from constructionsight.site_models import Site
@@ -464,3 +467,118 @@ def test_footprint_rejects_paging_and_invalid_filters(database, query):
     path, _ = database
     with _server(path) as port:
         assert _get(port, "/api/footprint?" + query)[0] == 400
+
+
+def test_http_parameter_dispatch_is_typed_and_scoped() -> None:
+    records = _parameters("kind=permit&q=fixture&county=Riverside&limit=7&offset=2")
+    assert (records.kind, records.query, records.county) == ("permit", "fixture", "Riverside")
+    assert (records.limit, records.offset, records.entity_key) == (7, 2, None)
+    workflow = _parameters("limit=2&offset=1", workflow=True)
+    assert (workflow.kind, workflow.query, workflow.limit, workflow.offset) == (
+        "all", "", 2, 1
+    )
+    assert workflow.entity_key is None
+    entity = _parameters("kind=ceqa&entity_key=fixture%3Aparty", entity=True)
+    assert (entity.kind, entity.entity_key) == ("ceqa", "fixture:party")
+    with pytest.raises(ValueError, match="unsupported"):
+        _parameters("kind=ceqa&limit=1&entity_key=fixture%3Aparty", entity=True)
+
+
+def test_exact_entity_key_neighborhood_preserves_family_identity_and_source_claims(database):
+    path, engine = database
+    with Session(engine) as session, session.begin():
+        original = _record("shared")
+        CeqaStore(session).upsert(original)
+        CeqaStore(session).upsert(
+            _record(
+                "fixture:unrelated",
+                entities=[
+                    Entity(
+                        entity_key="fixture:party-other",
+                        name="Fixture Builder",
+                        role="contractor",
+                        provenance=_provenance(),
+                    )
+                ],
+            )
+        )
+        PermitStore(session).upsert(
+            PermitRecord(
+                permit_key="shared",
+                permit_number="TEST-ENTITY",
+                county="San Bernardino",
+                jurisdiction="Fontana",
+                site=original.site,
+                entities=original.entities,
+                provenance=original.provenance,
+            )
+        )
+    with Session(engine) as session:
+        result = build_entity_neighborhood(session, entity_key="fixture:party")
+        assert result.total_source_records == result.scanned_source_records == 3
+        assert result.matching_records_in_scan == result.returned == 2
+        assert not result.source_scan_truncated and not result.matching_records_truncated
+        assert {(row.record_kind, row.record_id) for row in result.records} == {
+            ("ceqa", "shared"), ("permit", "shared")
+        }
+        assert all(row.entities[0].provenance == _provenance() for row in result.records)
+        assert all(row.point is not None for row in result.records)
+        assert build_entity_neighborhood(
+            session, entity_key="fixture:party", kind="permit"
+        ).returned == 1
+        assert build_entity_neighborhood(
+            session, entity_key="fixture:party", county="Riverside"
+        ).returned == 0
+        assert build_entity_neighborhood(
+            session, entity_key="fixture:party-other"
+        ).returned == 1
+    with _server(path) as port:
+        status, _, body = _get(
+            port, "/api/entity-neighborhood?entity_key=fixture%3Aparty&county=San+Bernardino"
+        )
+        assert status == 200
+        payload = json.loads(body)
+        assert payload["entity_key"] == "fixture:party"
+        assert payload["returned"] == payload["matching_records_in_scan"] == 2
+        assert {row["record_kind"] for row in payload["records"]} == {"ceqa", "permit"}
+        assert payload["read_only"] is True
+
+
+def test_entity_neighborhood_discloses_source_scan_and_result_caps(database, monkeypatch):
+    _, engine = database
+    with Session(engine) as session, session.begin():
+        for index in range(3):
+            CeqaStore(session).upsert(_record(f"fixture:{index}"))
+    with Session(engine) as session:
+        monkeypatch.setattr("constructionsight.operator_dashboard.ENTITY_SCAN_LIMIT", 1)
+        first = build_entity_neighborhood(session, entity_key="fixture:party")
+        assert (first.total_source_records, first.scanned_source_records) == (3, 1)
+        assert first.source_scan_truncated is True
+        assert first.matching_records_truncated is False
+        monkeypatch.setattr("constructionsight.operator_dashboard.ENTITY_SCAN_LIMIT", 3)
+        monkeypatch.setattr("constructionsight.operator_dashboard.ENTITY_RESULT_LIMIT", 1)
+        second = build_entity_neighborhood(session, entity_key="fixture:party")
+        assert second.matching_records_in_scan == 3
+        assert second.returned == 1
+        assert second.source_scan_truncated is False
+        assert second.matching_records_truncated is True
+    assert ENTITY_SCAN_LIMIT == 5_000 and ENTITY_RESULT_LIMIT == 100
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "",
+        "entity_key=",
+        "entity_key=%20name",
+        "entity_key=x&entity_key=x",
+        "entity_key=x&q=unrelated",
+        "entity_key=x&limit=1",
+        "entity_key=x&offset=1",
+        "entity_key=" + "x" * 256,
+    ],
+)
+def test_entity_neighborhood_denies_missing_repeated_and_broad_parameters(database, query):
+    path, _ = database
+    with _server(path) as port:
+        assert _get(port, "/api/entity-neighborhood?" + query)[0] == 400
