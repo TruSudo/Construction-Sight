@@ -75,7 +75,8 @@ Populate the database through existing governed intake/persistence commands.
   independent verification of location or current construction activity.
 - The exact-record read-only `/api/candidate-preview?kind=ceqa|permit&record_id=...`
   bridge derives a deterministic source-family-specific candidate key and a
-  revision-specific SHA-256 digest of the stored normalized record. The digest
+  revision-specific SHA-256 digest of the stored normalized record, including
+  its complete typed CEQA/permit source snapshot and nested site evidence. The digest
   is **not** a hash of original raw source bytes. It retains the full normalized
   source evidence in the typed preview, separates provenance, scope, site,
   named-party, current-activity, deduplication and commercial-review checks,

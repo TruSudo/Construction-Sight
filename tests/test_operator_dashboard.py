@@ -698,6 +698,7 @@ def test_exact_source_candidate_preview_is_read_only_and_family_scoped(database)
         assert first.source_record.record_kind == "ceqa"
         assert other.source_record.record_kind == "permit"
         assert first.source_record.provenance == _provenance()
+        assert first.source_snapshot == _record("shared")
         assert first.read_only and not first.persisted and not first.commercial_lead_created
         assert not first.outreach_authorized and not first.bid_authorized
         assert len(first.normalized_source_sha256) == 64
@@ -712,6 +713,10 @@ def test_exact_source_candidate_preview_is_read_only_and_family_scoped(database)
         payload = json.loads(body)
         assert payload["preview_id"] == first.preview_id
         assert payload["source_record"]["record_kind"] == "ceqa"
+        assert payload["source_snapshot"]["ceqa_key"] == "shared"
+        assert payload["source_snapshot"]["site"]["provenance"][0]["source_name"] == (
+            "Synthetic integration fixture"
+        )
         assert _get(port, "/api/candidate-preview?kind=permit&record_id=shared")[0] == 200
         assert _get(port, "/api/candidate-preview?kind=ceqa&record_id=missing")[0] == 404
     assert hashlib.sha256(path.read_bytes()).hexdigest() == before

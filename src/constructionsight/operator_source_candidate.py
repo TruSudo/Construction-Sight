@@ -113,6 +113,7 @@ def build_source_candidate_preview(
         preview_id="source-candidate-preview:" + preview_digest,
         normalized_source_sha256=source_digest,
         source_record=project,
+        source_snapshot=record,
         state="hold" if hold else "review_required",
         checks=checks,
     )

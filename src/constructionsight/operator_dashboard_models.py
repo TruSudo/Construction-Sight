@@ -7,7 +7,9 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from constructionsight.ceqa_models import CeqaRecord
 from constructionsight.entity_models import Entity
+from constructionsight.permit_models import PermitRecord
 from constructionsight.provenance import Provenance
 
 RecordKind = Literal["ceqa", "permit"]
@@ -164,6 +166,7 @@ class SourceCandidatePreview(BaseModel):
     preview_id: str = Field(min_length=1)
     normalized_source_sha256: str = Field(min_length=64, max_length=64)
     source_record: DashboardProject
+    source_snapshot: CeqaRecord | PermitRecord
     state: Literal["hold", "review_required"]
     checks: list[SourceCandidateReviewCheck]
     read_only: Literal[True] = True
