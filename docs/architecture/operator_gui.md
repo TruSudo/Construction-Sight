@@ -104,10 +104,15 @@ existing scoring/review controls, governed operator actions, actual county/parce
 layers, relationship/history views, and the established commercial workflow.
 This slice does not complete those requirements or the private operational release.
 
-PR #119 remains stacked on draft PR #117. The 73 inherited active defect
-records (`CS-SR-001` through `CS-SR-073`) and the separate missing Native
-Maximum Assurance report remain outstanding; the September 18 hardening-branch
-CI reported 74 certification findings at its own exact head. Local integration results are
+PR #119 remains stacked on draft PR #117. The inherited active ledger now
+contains 74 records (`CS-SR-001` through `CS-SR-074`) plus the separate missing
+Native Maximum Assurance report, which prevents certification. The historical
+September 18 hardening-branch CI reported 74 findings at its earlier exact head
+(73 active defects plus the missing assurance report), not this current tree.
+The September 20 integration CI originally identified active AnyIO advisories
+in both locks. A reviewed fixed-wheel candidate was propagated from PR #117;
+fresh exact-head isolated vulnerability audits passed in both supported runtimes,
+but that is not defect closure or full assurance certification. Local integration results are
 not assurance artifacts, owner acceptance, authenticated CI evidence, or permission
 to merge. The inherited canonical CI workflow only runs automatically for pull
 requests targeting `main`; this stacked PR does not have an automatic run. Its
