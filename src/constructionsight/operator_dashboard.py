@@ -90,18 +90,21 @@ def build_geographic_footprint(
         offset=0,
     )
     projects = [_project(record) for record in records]
-    points = [
-        FootprintPoint(
-            ordinal=ordinal,
-            record_id=project.record_id,
-            record_kind=project.record_kind,
-            title=project.title,
-            county=project.county,
-            point=project.point,
+    points: list[FootprintPoint] = []
+    for ordinal, project in enumerate(projects):
+        point = project.point
+        if point is None:
+            continue
+        points.append(
+            FootprintPoint(
+                ordinal=ordinal,
+                record_id=project.record_id,
+                record_kind=project.record_kind,
+                title=project.title,
+                county=project.county,
+                point=point,
+            )
         )
-        for ordinal, project in enumerate(projects)
-        if project.point is not None
-    ]
     return GeographicFootprintSnapshot(
         selection=kind,
         points=points,
