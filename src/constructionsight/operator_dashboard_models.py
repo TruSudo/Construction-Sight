@@ -98,3 +98,30 @@ class GeographicFootprintSnapshot(BaseModel):
             "When truncated is true, this response is not the complete matching footprint.",
         ]
     )
+
+
+class EntityNeighborhoodSnapshot(BaseModel):
+    """Bounded exact-key co-occurrence in persisted source claims, never identity proof."""
+
+    entity_key: str
+    selection: RecordSelection
+    county_filter: str
+    records: list[DashboardProject]
+    scanned_source_records: int
+    total_source_records: int
+    matching_records_in_scan: int
+    returned: int
+    scan_limit: int
+    result_limit: int
+    source_scan_truncated: bool
+    matching_records_truncated: bool
+    read_only: Literal[True] = True
+    limitations: list[str] = Field(
+        default_factory=lambda: [
+            "An exact stored entity key is a source co-occurrence, not independently verified identity.",
+            "Different source-family IDs remain separate records; no project deduplication is performed.",
+            "Counts cover only the scanned source records when source_scan_truncated is true.",
+            "Records shown are a bounded subset when matching_records_truncated is true.",
+            "Source claims do not establish current construction activity or commercial qualification.",
+        ]
+    )
