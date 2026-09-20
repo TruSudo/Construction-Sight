@@ -43,6 +43,13 @@ Populate the database through existing governed intake/persistence commands.
 - The detail panel exposes exact record identity, recorded status/document type,
   address/APN, named parties and their stated roles, source URLs, evidence text,
   capture dates where recorded, location evidence, and limitations.
+- CEQA received/posted and permit applied/issued/finaled dates are displayed as
+  individual, source-claimed historical milestones when recorded. Each single
+  record's dates are sorted chronologically; contradictory source event order
+  receives an explicit limitation, and missing dates are never manufactured.
+  Dates and status do not prove actual construction start or present phase, nor
+  do coincident dates prove records concern the same project. Original record
+  provenance remains available in the evidence panel.
 - An operator may inspect the exact stored `entity_key` of a named party across
   CEQA and permit source records. The read scans at most 5,000 records in the
   selected source-family/county scope and lists up to 100 exact-key matches.

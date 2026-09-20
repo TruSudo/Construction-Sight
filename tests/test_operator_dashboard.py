@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from contextlib import contextmanager
+from datetime import date
 from http.client import HTTPConnection
 from http.server import ThreadingHTTPServer
 from threading import Thread
@@ -582,3 +583,92 @@ def test_entity_neighborhood_denies_missing_repeated_and_broad_parameters(databa
     path, _ = database
     with _server(path) as port:
         assert _get(port, "/api/entity-neighborhood?" + query)[0] == 400
+
+
+
+def test_record_milestones_are_source_claims_and_preserve_family_and_dates(database):
+    path, engine = database
+    with Session(engine) as session, session.begin():
+        CeqaStore(session).upsert(
+            _record(
+                "fixture:dated-ceqa",
+                received_date=date(2025, 1, 3),
+                posted_date=date(2025, 1, 4),
+            )
+        )
+        PermitStore(session).upsert(
+            PermitRecord(
+                permit_key="fixture:dated-permit",
+                permit_number="TEST-HISTORY",
+                jurisdiction="Fontana",
+                county="San Bernardino",
+                applied_date=date(2025, 2, 1),
+                issued_date=date(2025, 2, 8),
+                status="Issued",
+                provenance=_provenance(),
+            )
+        )
+    with Session(engine) as session:
+        records = {
+            project.record_kind: project
+            for project in build_dashboard_snapshot(session).projects
+        }
+        ceqa, permit = records["ceqa"], records["permit"]
+        assert [(m.event_kind, m.recorded_date.isoformat()) for m in ceqa.milestones] == [
+            ("ceqa_received", "2025-01-03"), ("ceqa_posted", "2025-01-04")
+        ]
+        assert [m.classification for m in ceqa.milestones] == [
+            "source_claimed", "source_claimed"
+        ]
+        assert [(m.event_kind, m.recorded_date.isoformat()) for m in permit.milestones] == [
+            ("permit_applied", "2025-02-01"), ("permit_issued", "2025-02-08")
+        ]
+        assert permit.source_status == "Issued" and permit.provenance == _provenance()
+    with _server(path) as port:
+        payload = json.loads(_get(port, "/api/snapshot?kind=permit")[2])
+        assert payload["projects"][0]["milestones"] == [
+            {
+                "event_kind": "permit_applied",
+                "recorded_date": "2025-02-01",
+                "classification": "source_claimed",
+            },
+            {
+                "event_kind": "permit_issued",
+                "recorded_date": "2025-02-08",
+                "classification": "source_claimed",
+            },
+        ]
+
+
+def test_source_date_conflicts_are_not_silently_normalized(database):
+    _, engine = database
+    with Session(engine) as session, session.begin():
+        CeqaStore(session).upsert(
+            _record(
+                "fixture:bad-ceqa-dates",
+                received_date=date(2025, 5, 4),
+                posted_date=date(2025, 5, 2),
+            )
+        )
+        PermitStore(session).upsert(
+            PermitRecord(
+                permit_key="fixture:bad-permit-dates",
+                permit_number="TEST-CONFLICT",
+                jurisdiction="Fontana",
+                county="San Bernardino",
+                applied_date=date(2025, 5, 1),
+                issued_date=date(2025, 5, 6),
+                finaled_date=date(2025, 5, 3),
+                provenance=_provenance(),
+            )
+        )
+    with Session(engine) as session:
+        records = build_dashboard_snapshot(session).projects
+        assert len(records) == 2
+        for row in records:
+            assert any("dates conflict" in note for note in row.limitations)
+            assert len(row.milestones) >= 2
+            assert [m.recorded_date for m in row.milestones] == sorted(
+                m.recorded_date for m in row.milestones
+            )
+            assert all(m.classification == "source_claimed" for m in row.milestones)

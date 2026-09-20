@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -11,6 +12,9 @@ from constructionsight.provenance import Provenance
 
 RecordKind = Literal["ceqa", "permit"]
 RecordSelection = Literal["all", "ceqa", "permit"]
+MilestoneKind = Literal[
+    "ceqa_received", "ceqa_posted", "permit_applied", "permit_issued", "permit_finaled"
+]
 
 
 class DashboardPoint(BaseModel):
@@ -20,6 +24,14 @@ class DashboardPoint(BaseModel):
     longitude: float = Field(ge=-180, le=180, allow_inf_nan=False)
     site_key: str
     provenance: list[Provenance]
+    classification: Literal["source_claimed"] = "source_claimed"
+
+
+class SourceMilestone(BaseModel):
+    """Stored source-event date, never proof of a current construction phase."""
+
+    event_kind: MilestoneKind
+    recorded_date: date
     classification: Literal["source_claimed"] = "source_claimed"
 
 
@@ -34,6 +46,7 @@ class DashboardProject(BaseModel):
     source_status: str | None = None
     description: str | None = None
     source_record_number: str | None = None
+    milestones: list[SourceMilestone] = Field(default_factory=list)
     site_key: str | None = None
     address: str | None = None
     apn: str | None = None

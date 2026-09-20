@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from datetime import date
 from typing import Any, Literal
 
 from sqlalchemy import func, select
@@ -22,7 +23,9 @@ from constructionsight.operator_dashboard_models import (
     EntityNeighborhoodSnapshot,
     FootprintPoint,
     GeographicFootprintSnapshot,
+    MilestoneKind,
     RecordKind,
+    SourceMilestone,
     RecordSelection,
 )
 from constructionsight.permit_models import PermitRecord
@@ -186,9 +189,44 @@ def _site_point(site: Site | None) -> tuple[DashboardPoint | None, str]:
     ), "Source-claimed site coordinates; not independently verified."
 
 
+def _source_milestones(
+    record: CeqaRecord | PermitRecord,
+) -> tuple[list[SourceMilestone], bool]:
+    """Retain available dates and flag contradictions in source-event ordering."""
+
+    observations: list[tuple[MilestoneKind, date | None]]
+    if isinstance(record, CeqaRecord):
+        observations = [
+            ("ceqa_received", record.received_date),
+            ("ceqa_posted", record.posted_date),
+        ]
+        inconsistent = (
+            record.received_date is not None
+            and record.posted_date is not None
+            and record.posted_date < record.received_date
+        )
+    else:
+        observations = [
+            ("permit_applied", record.applied_date),
+            ("permit_issued", record.issued_date),
+            ("permit_finaled", record.finaled_date),
+        ]
+        dated = [value for _, value in observations if value is not None]
+        inconsistent = dated != sorted(dated)
+    milestones: list[SourceMilestone] = []
+    for event_kind, recorded_date in observations:
+        if recorded_date is not None:
+            milestones.append(
+                SourceMilestone(event_kind=event_kind, recorded_date=recorded_date)
+            )
+    milestones.sort(key=lambda item: item.recorded_date)
+    return milestones, inconsistent
+
+
 def _project(record: CeqaRecord | PermitRecord) -> DashboardProject:
     site = record.site
     point, reason = _site_point(site)
+    milestones, inconsistent_dates = _source_milestones(record)
     county = record.county
     normalized_county = (county or "").strip().lower().removesuffix(" county")
     coverage: Literal["unknown", "target_county", "outside_target_counties"] = (
@@ -204,6 +242,11 @@ def _project(record: CeqaRecord | PermitRecord) -> DashboardProject:
     ]
     if not record.provenance:
         limitations.append("Record provenance is missing.")
+    if inconsistent_dates:
+        limitations.append(
+            "Stored milestone dates conflict with source event order; "
+            "no construction phase conclusion is supported."
+        )
     if point is None:
         limitations.append(reason)
     if coverage == "outside_target_counties":
@@ -237,6 +280,7 @@ def _project(record: CeqaRecord | PermitRecord) -> DashboardProject:
         jurisdiction=jurisdiction,
         source_status=source_status,
         source_record_number=source_number,
+        milestones=milestones,
         description=record.description,
         site_key=site.site_key if site else None,
         address=site.address if site else None,
