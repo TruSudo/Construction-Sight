@@ -61,3 +61,32 @@ checks remain mandatory. CS-SR-068's historical composite-identity requirement i
 superseded by this explicit removal of that composite Action; its immutable
 ledger facts remain preserved. Action runtime pins for checkout, setup-python,
 and upload-artifact are unchanged.
+
+## 2026-09-20: CS-SR-074 AnyIO transitive-lock remediation candidate
+
+The canonical CI-only integration verification run 35525561087, bound to
+`3be6ee6529ed5d8cbb69d88c064de9fd6174c0a4`, retained fresh PyPI
+release-specific vulnerability evidence that `anyio==4.9.0` has two active
+advisories in both supported Python locks:
+`GHSA-5p39-cfhj-2xmp` (CVE-2026-64847) and
+`GHSA-82r6-8w77-94w6` (CVE-2026-63374). The September 18 historical
+checkpoint did not establish the absence of advisories discovered afterward.
+The source reports do not by themselves prove exploitation or reachability of
+these specific affected AnyIO code paths in ConstructionSight.
+
+Publisher identity and artifact selection: the AnyIO 4.14.2 release is at
+`https://pypi.org/project/anyio/4.14.2/`, which lists Python >=3.10,
+MIT license, a universal `anyio-4.14.2-py3-none-any.whl`, a PyPI-verified
+Trusted Publishing attestation, and wheel SHA-256
+`9f505dda5ac9f0c8309b5e8bd445a8c2bf7246f3ce950121e45ea15bc41d1494`.
+Both upstream advisories identify 4.14.2 as the first fixed release. No
+source distribution, alternate wheel, changed direct requirement, or scanner
+exception is admitted. Both supported environment locks now select only that
+exact publisher-reviewed wheel for AnyIO. The rest of each lock remains unchanged.
+
+This is an **implementation candidate**, not an exact-head verification,
+proof of library compatibility, completed Native Maximum Assurance review,
+closed defect, or release authorization. Collect fresh independent PyPI source
+reports and run the entire Python 3.11/3.12 gate matrix and network/TLS
+regressions at a frozen exact new head. Keep CS-SR-074 active until legitimate
+review, Native Maximum Assurance, and authenticated owner acceptance close it.

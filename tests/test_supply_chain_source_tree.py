@@ -104,3 +104,17 @@ def test_source_tree_sbom_uses_reviewed_project_metadata_without_install(
         item["name"]: item["value"] for item in sbom["metadata"]["properties"]
     }
     assert properties["constructionsight.projectExecutionMode"] == "reviewed-source-tree"
+
+
+def test_supported_locks_retain_reviewed_anyio_security_patch() -> None:
+    """Reject reversion of the reviewed AnyIO security fix in either runtime lock."""
+
+    root = Path(__file__).resolve().parents[1]
+    reviewed_wheel_hash = "9f505dda5ac9f0c8309b5e8bd445a8c2bf7246f3ce950121e45ea15bc41d1494"
+    for interpreter in ("311", "312"):
+        entries = supply_chain.load_lock_entries(
+            root / "requirements" / f"py{interpreter}.lock"
+        )
+        package = next(entry for entry in entries if entry.name == "anyio")
+        assert package.version == "4.14.2"
+        assert package.hashes == (reviewed_wheel_hash,)
