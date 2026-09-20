@@ -1,191 +1,196 @@
-"""Read-only application view model for the ConstructionSight operator dashboard."""
+"""Compose the persisted construction-record and lead-workflow read surfaces."""
 
 from __future__ import annotations
 
-from typing import Any
+import math
+from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from constructionsight.lead_operator_models import (
-    LeadOperatorRecord,
-    LeadOperatorRecordKind,
+from constructionsight.ceqa_models import CeqaRecord
+from constructionsight.lead_operator_models import LeadOperatorRecordKind
+from constructionsight.lead_operator_service import (
+    get_lead_operator_record,
+    load_persisted_lead_workflow,
 )
-from constructionsight.lead_operator_service import list_lead_operator_records
+from constructionsight.lead_review_models import LeadReviewPackage
+from constructionsight.operator_dashboard_models import (
+    DashboardPoint,
+    DashboardProject,
+    DashboardSnapshot,
+    RecordKind,
+)
+from constructionsight.permit_models import PermitRecord
+from constructionsight.site_models import Site
+from constructionsight.storage.lead_workflow_orm import LeadWorkflowRecordRow
+from constructionsight.storage.operator_read_store import read_project_page
 
 
-class DashboardPoint(BaseModel):
-    """One coordinate suitable for the initial operator map."""
+def build_dashboard_snapshot(
+    session: Session,
+    *,
+    kind: RecordKind = "ceqa",
+    query: str = "",
+    county: str = "",
+    limit: int = 100,
+    offset: int = 0,
+) -> DashboardSnapshot:
+    """Present exact typed source records without generating commercial authority."""
 
-    latitude: float = Field(ge=-90, le=90)
-    longitude: float = Field(ge=-180, le=180)
-
-
-class DashboardLead(BaseModel):
-    """Joined, read-only representation of one lead workflow."""
-
-    workflow_id: str
-    base_candidate_id: str
-    package_id: str | None = None
-    status: str
-    lead_score: int
-    title: str
-    jurisdiction: str | None = None
-    source_url: str | None = None
-    point: DashboardPoint | None = None
-    evidence_notes: list[str] = Field(default_factory=list)
-    limitations: list[str] = Field(default_factory=list)
-
-
-class DashboardSnapshot(BaseModel):
-    """Complete payload consumed by the first local GUI."""
-
-    leads: list[DashboardLead]
-    total: int
-    mapped: int
-    status_counts: dict[str, int]
-    crime_overlay_enabled: bool = False
-    read_only: bool = True
-
-
-def build_dashboard_snapshot(session: Session, *, limit: int = 500) -> DashboardSnapshot:
-    """Join persisted lead records into one operator-facing snapshot."""
-
-    workflows = list_lead_operator_records(
-        session,
-        LeadOperatorRecordKind.WORKFLOW,
-        limit=limit,
+    if kind not in {"ceqa", "permit"}:
+        raise ValueError("kind must be ceqa or permit")
+    if not 1 <= limit <= 500 or offset < 0 or offset > 1_000_000:
+        raise ValueError("invalid page bounds")
+    if len(query) > 200 or county not in {"", "San Bernardino", "Riverside"}:
+        raise ValueError("invalid search or county filter")
+    records, total = read_project_page(
+        session, kind=kind, query=query.strip(), county=county, limit=limit, offset=offset
     )
-    reviews = list_lead_operator_records(
-        session,
-        LeadOperatorRecordKind.REVIEW,
-        limit=limit,
-    )
-    enrichments = list_lead_operator_records(
-        session,
-        LeadOperatorRecordKind.ENRICHMENT,
-        limit=limit,
-    )
-    review_by_candidate = _newest_by_candidate(reviews)
-    enrichment_by_candidate = _newest_by_candidate(enrichments)
-
-    leads = [
-        _dashboard_lead(
-            workflow,
-            review_by_candidate.get(workflow.base_candidate_id or ""),
-            enrichment_by_candidate.get(workflow.base_candidate_id or ""),
-        )
-        for workflow in workflows
-    ]
-    status_counts: dict[str, int] = {}
-    for lead in leads:
-        status_counts[lead.status] = status_counts.get(lead.status, 0) + 1
+    projects = [_project(record) for record in records]
     return DashboardSnapshot(
-        leads=leads,
-        total=len(leads),
-        mapped=sum(lead.point is not None for lead in leads),
-        status_counts=status_counts,
+        projects=projects,
+        total=total,
+        returned=len(projects),
+        mapped_on_page=sum(project.point is not None for project in projects),
+        offset=offset,
+        limit=limit,
+        has_more=offset + len(projects) < total,
     )
 
 
-def _newest_by_candidate(
-    records: list[LeadOperatorRecord],
-) -> dict[str, LeadOperatorRecord]:
-    result: dict[str, LeadOperatorRecord] = {}
-    for record in records:
-        if record.base_candidate_id:
-            result.setdefault(record.base_candidate_id, record)
-    return result
+def _site_point(site: Site | None) -> tuple[DashboardPoint | None, str]:
+    if site is None:
+        return None, "No site is linked to this source record."
+    lat, lon = site.latitude, site.longitude
+    if lat is None or lon is None:
+        return None, "The linked site has no complete geographic coordinate pair."
+    if not math.isfinite(lat) or not math.isfinite(lon):
+        return None, "The linked site's coordinates are non-finite."
+    if not -90 <= lat <= 90 or not -180 <= lon <= 180:
+        return None, "The linked site's coordinates are outside geographic ranges."
+    if abs(lat) > 85.05112878:
+        return None, "The coordinate lies outside this Web Mercator map's latitude range."
+    if not site.provenance:
+        return None, "Coordinates withheld because the linked site has no source provenance."
+    return DashboardPoint(
+        latitude=lat, longitude=lon, site_key=site.site_key, provenance=site.provenance
+    ), "Source-claimed site coordinates; not independently verified."
 
 
-def _dashboard_lead(
-    workflow: LeadOperatorRecord,
-    review: LeadOperatorRecord | None,
-    enrichment: LeadOperatorRecord | None,
-) -> DashboardLead:
-    payloads = [
-        workflow.payload,
-        review.payload if review else {},
-        enrichment.payload if enrichment else {},
+def _project(record: CeqaRecord | PermitRecord) -> DashboardProject:
+    site = record.site
+    point, reason = _site_point(site)
+    county = record.county
+    normalized_county = (county or "").strip().lower().removesuffix(" county")
+    coverage: Literal["unknown", "target_county", "outside_target_counties"] = (
+        "unknown"
+        if not county
+        else "target_county"
+        if normalized_county in {"san bernardino", "riverside"}
+        and (site is None or site.state.upper() == "CA")
+        else "outside_target_counties"
+    )
+    limitations = [
+        "Source record only; not a qualified lead or verified current construction phase."
     ]
-    candidate_id = workflow.base_candidate_id or "unknown-candidate"
-    return DashboardLead(
-        workflow_id=workflow.workflow_id or workflow.record_id,
-        base_candidate_id=candidate_id,
-        package_id=workflow.package_id,
-        status=workflow.status or "unknown",
-        lead_score=workflow.lead_score or 0,
-        title=_first_text(payloads, ("title_hint", "title", "project_name"))
-        or candidate_id,
-        jurisdiction=_first_text(
-            payloads,
-            ("jurisdiction_hint", "jurisdiction", "county"),
-        ),
-        source_url=_first_text(payloads, ("source_url",)),
-        point=_find_point(payloads),
-        evidence_notes=_first_text_list(payloads, "evidence_notes"),
-        limitations=_first_text_list(payloads, "limitations"),
+    if not record.provenance:
+        limitations.append("Record provenance is missing.")
+    if point is None:
+        limitations.append(reason)
+    if coverage == "outside_target_counties":
+        limitations.append("The record is outside the stated two-county scope.")
+    if site and county and site.county.strip().lower().removesuffix(" county") != normalized_county:
+        limitations.append("Record and site counties disagree; location requires review.")
+        point = None
+        reason = "Coordinates withheld because record and site counties disagree."
+        limitations.append(reason)
+    if any(not entity.provenance for entity in record.entities):
+        limitations.append("Some named parties lack their own provenance; roles are unverified.")
+    if isinstance(record, CeqaRecord):
+        record_id = record.ceqa_key
+        kind: RecordKind = "ceqa"
+        title = record.title
+        jurisdiction = record.lead_agency
+        source_status = record.document_type
+        source_number = record.state_clearinghouse_number
+    else:
+        record_id = record.permit_key
+        kind = "permit"
+        title = f"Permit {record.permit_number}"
+        jurisdiction = record.jurisdiction
+        source_status = record.status
+        source_number = record.permit_number
+    return DashboardProject(
+        record_id=record_id,
+        record_kind=kind,
+        title=title,
+        county=county,
+        jurisdiction=jurisdiction,
+        source_status=source_status,
+        source_record_number=source_number,
+        description=record.description,
+        site_key=site.site_key if site else None,
+        address=site.address if site else None,
+        apn=site.apn if site else None,
+        point=point,
+        map_reason=reason,
+        coverage=coverage,
+        entities=record.entities,
+        provenance=record.provenance,
+        limitations=limitations,
     )
 
 
-def _find_point(payloads: list[dict[str, Any]]) -> DashboardPoint | None:
-    for payload in payloads:
-        for candidate in _walk_dicts(payload):
-            latitude = _number(candidate.get("latitude", candidate.get("lat")))
-            longitude = _number(
-                candidate.get("longitude", candidate.get("lon", candidate.get("lng")))
-            )
-            if latitude is None or longitude is None:
-                continue
-            if -90 <= latitude <= 90 and -180 <= longitude <= 180:
-                return DashboardPoint(latitude=latitude, longitude=longitude)
-    return None
+def build_workflow_snapshot(
+    session: Session, *, limit: int = 100, offset: int = 0
+) -> dict[str, Any]:
+    """Join the workflow's exact package ID, never the newest unrelated candidate review."""
 
-
-def _walk_dicts(value: Any) -> list[dict[str, Any]]:
-    found: list[dict[str, Any]] = []
-    if isinstance(value, dict):
-        found.append(value)
-        for child in value.values():
-            found.extend(_walk_dicts(child))
-    elif isinstance(value, list):
-        for child in value:
-            found.extend(_walk_dicts(child))
-    return found
-
-
-def _number(value: Any) -> float | None:
-    if isinstance(value, bool):
-        return None
-    if isinstance(value, int | float):
-        return float(value)
-    if isinstance(value, str):
-        try:
-            return float(value.strip())
-        except ValueError:
-            return None
-    return None
-
-
-def _first_text(
-    payloads: list[dict[str, Any]],
-    keys: tuple[str, ...],
-) -> str | None:
-    for payload in payloads:
-        for candidate in _walk_dicts(payload):
-            for key in keys:
-                value = candidate.get(key)
-                if isinstance(value, str) and value.strip():
-                    return value.strip()
-    return None
-
-
-def _first_text_list(
-    payloads: list[dict[str, Any]],
-    key: str,
-) -> list[str]:
-    for payload in payloads:
-        value = payload.get(key)
-        if isinstance(value, list):
-            return [item.strip() for item in value if isinstance(item, str) and item.strip()]
-    return []
+    if not 1 <= limit <= 500 or not 0 <= offset <= 1_000_000:
+        raise ValueError("invalid page bounds")
+    workflow_ids = session.scalars(
+        select(LeadWorkflowRecordRow.workflow_id)
+        .order_by(LeadWorkflowRecordRow.id)
+        .offset(offset)
+        .limit(limit)
+    ).all()
+    leads: list[dict[str, Any]] = []
+    for workflow_id in workflow_ids:
+        workflow = load_persisted_lead_workflow(session, workflow_id)
+        review_row = get_lead_operator_record(
+            session, LeadOperatorRecordKind.REVIEW, workflow.package_id
+        )
+        notes: list[str] = []
+        summary = None
+        limitations = list(workflow.limitations)
+        if review_row is None:
+            limitations.append("The workflow's exact review package is missing.")
+        else:
+            review = LeadReviewPackage.model_validate(review_row.payload)
+            if (
+                review.package_id != workflow.package_id
+                or review.base_candidate_id != workflow.base_candidate_id
+            ):
+                raise ValueError("workflow and review package identity disagree")
+            notes = list(review.evidence_notes)
+            summary = review.summary
+            limitations.extend(review.limitations)
+        leads.append(
+            {
+                **workflow.to_dict(),
+                "summary": summary,
+                "evidence_notes": notes,
+                "limitations": list(dict.fromkeys(limitations)),
+            }
+        )
+    total = session.scalar(select(func.count()).select_from(LeadWorkflowRecordRow)) or 0
+    return {
+        "leads": leads,
+        "total": total,
+        "returned": len(leads),
+        "has_more": offset + len(leads) < total,
+        "offset": offset,
+        "limit": limit,
+        "read_only": True,
+    }

@@ -263,9 +263,16 @@ The backend can represent and govern opportunities, leads, workflow state, resul
 - autonomously enrich all decision-maker contacts;
 - send outreach;
 - create or send bids; or
-- provide the planned graphical operator application.
+- provide the complete planned graphical operator application.
 
-No external communication behavior is implied by the existing models or CLI.
+A local read-only operator GUI now reads persisted CEQA/permit records and lead
+workflows. It provides database-backed search, source evidence, named parties,
+and an offline geographic coordinate map. Source records are not qualified leads;
+no automatic acquisition, outreach, or bid action is enabled. See
+[local operator application](docs/architecture/operator_gui.md) for the launch
+command, data requirements, precise boundaries, and remaining integration.
+
+No external communication behavior is implied by the existing models, CLI, or GUI.
 
 ## Known limitations
 
@@ -285,7 +292,7 @@ No external communication behavior is implied by the existing models or CLI.
 - Optional preview archives and nested child tables remain unimplemented.
 - Generic upstream corrections remain blocked pending record-family-specific doctrine.
 - Lead workflow reopen or override behavior is not implemented.
-- Outreach and GUI capabilities are not implemented.
+- Outreach and the full operator application remain incomplete; the local GUI is a read-only development view of retained records.
 - Geometry results are not survey-grade legal proof.
 
 ## Development doctrine

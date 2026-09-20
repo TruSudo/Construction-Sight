@@ -4,36 +4,46 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ConstructionSight</title>
-<style>
-:root{--ink:#070b10;--navy:#0b1119;--panel:#121a23;--panel2:#18232e;--line:#293845;--steel:#7890a3;--text:#f3f5f6;--muted:#9aa8b4;--orange:#f28c28;--orange2:#ffad4d;--danger:#dc4c4c;--shadow:0 16px 48px #0008}
-*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 70% 0,#172536 0,var(--ink) 42%);color:var(--text);font:14px Inter,system-ui,sans-serif;height:100vh;overflow:hidden}
-button,input{font:inherit}.shell{display:grid;grid-template-columns:250px 1fr;height:100vh}.rail{background:#090e14eF;border-right:1px solid var(--line);padding:22px 18px;display:flex;flex-direction:column}
-.brand{display:flex;gap:12px;align-items:center;margin-bottom:28px}.reticle{width:42px;height:42px;border:2px solid var(--orange);border-radius:50%;position:relative;box-shadow:0 0 22px #f28c2840}.reticle:before,.reticle:after{content:"";position:absolute;background:var(--orange)}.reticle:before{width:54px;height:2px;left:-8px;top:18px}.reticle:after{height:54px;width:2px;top:-8px;left:18px}.brand strong{font-size:18px;letter-spacing:.3px}.brand small{display:block;color:var(--steel);margin-top:2px}
-.nav{display:grid;gap:7px}.nav button{color:var(--muted);background:transparent;border:1px solid transparent;text-align:left;padding:11px 12px;border-radius:9px}.nav button.active{background:#f28c2818;color:var(--orange2);border-color:#f28c2845}.notice{margin-top:auto;border:1px solid var(--line);background:var(--panel);padding:12px;border-radius:10px;color:var(--muted);font-size:12px}.notice b{color:var(--text)}
-.main{min-width:0;display:grid;grid-template-rows:72px 1fr}.top{border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px;padding:0 22px;background:#0b1119cc;backdrop-filter:blur(14px)}.search{flex:1;max-width:720px;background:var(--panel);border:1px solid var(--line);border-radius:10px;color:var(--text);padding:11px 14px;outline:0}.search:focus{border-color:var(--orange)}.pulse{margin-left:auto;color:var(--orange2);font-size:12px}.pulse:before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--orange);margin-right:7px;box-shadow:0 0 11px var(--orange)}
-.workspace{padding:18px;display:grid;grid-template-columns:minmax(340px,44%) 1fr;gap:16px;min-height:0}.column{display:grid;grid-template-rows:auto 1fr;gap:14px;min-height:0}.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.metric,.card{background:linear-gradient(145deg,var(--panel),#0e151d);border:1px solid var(--line);border-radius:13px;box-shadow:var(--shadow)}.metric{padding:14px}.metric span{display:block;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:1px}.metric b{display:block;font-size:24px;margin-top:6px}.card{min-height:0;overflow:hidden}.cardhead{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}.cardhead h2{font-size:14px;margin:0}.count{color:var(--steel);font-size:12px}.leads{overflow:auto;height:calc(100vh - 190px)}.lead{padding:14px 16px;border-bottom:1px solid #23313c;cursor:pointer}.lead:hover,.lead.selected{background:#f28c2810}.lead.selected{box-shadow:inset 3px 0 var(--orange)}.leadtop{display:flex;gap:10px;align-items:start}.lead h3{font-size:14px;margin:0 0 5px;flex:1}.score{border:1px solid #f28c2860;color:var(--orange2);padding:3px 7px;border-radius:20px;font-size:11px}.meta{color:var(--muted);font-size:12px}.status{color:var(--steel);text-transform:uppercase;letter-spacing:.7px;font-size:10px}
-.right{display:grid;grid-template-rows:minmax(320px,58%) 1fr;gap:14px;min-height:0}.map{position:relative;background:linear-gradient(#17232d88 1px,transparent 1px),linear-gradient(90deg,#17232d88 1px,transparent 1px),radial-gradient(circle at 50% 50%,#172838,var(--navy));background-size:36px 36px,36px 36px,auto;overflow:hidden}.map:after{content:"SAN BERNARDINO + RIVERSIDE";position:absolute;right:15px;bottom:12px;color:#7890a35c;font-size:11px;letter-spacing:2px}.mapempty{position:absolute;inset:0;display:grid;place-content:center;text-align:center;color:var(--muted);padding:30px}.mapempty b{color:var(--text);font-size:17px;margin-bottom:7px}.pin{position:absolute;width:20px;height:20px;border:2px solid var(--orange);border-radius:50%;background:#f28c2820;transform:translate(-50%,-50%);box-shadow:0 0 18px #f28c2880}.pin:after{content:"";position:absolute;inset:5px;border-radius:50%;background:var(--orange)}
-.detail{padding:18px;overflow:auto}.detail h2{margin:0 0 7px}.eyebrow{color:var(--orange2);font-size:10px;letter-spacing:1.2px;text-transform:uppercase}.detailgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:15px 0}.datum{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:10px}.datum label{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;margin-bottom:5px}.empty{color:var(--muted)}@media(max-width:900px){.shell{grid-template-columns:78px 1fr}.brand div:last-child,.nav span,.notice{display:none}.workspace{grid-template-columns:1fr;overflow:auto}.right{min-height:700px}.leads{height:430px}}
-</style>
+<link rel="stylesheet" href="/operator_ui.css">
+<script defer src="/operator_ui.js"></script>
 </head>
 <body>
 <div class="shell">
-<aside class="rail"><div class="brand"><div class="reticle"></div><div><strong>ConstructionSight</strong><small>Targeted site intelligence</small></div></div>
-<div class="nav"><button class="active">◉ <span>Opportunity map</span></button><button>▤ <span>Lead workflow</span></button><button>⌁ <span>Relationships</span></button><button>✓ <span>Evidence</span></button></div>
-<div class="notice"><b>Development operation</b><br>Read-only local view. No outreach, bids, or external actions are sent.</div></aside>
-<main class="main"><header class="top"><input id="search" class="search" placeholder="Search projects, jurisdictions, workflow IDs…"><div class="pulse">LOCAL LIVE VIEW</div></header>
-<section class="workspace"><div class="column"><div class="metrics"><div class="metric"><span>Leads</span><b id="total">—</b></div><div class="metric"><span>Mapped</span><b id="mapped">—</b></div><div class="metric"><span>Ready</span><b id="ready">—</b></div></div>
-<div class="card"><div class="cardhead"><h2>Construction opportunities</h2><span id="visible" class="count"></span></div><div id="leads" class="leads"></div></div></div>
-<div class="right"><div id="map" class="card map"><div class="mapempty"><b>Loading operational data…</b><span>Coordinates appear only when supported by persisted evidence.</span></div></div><div id="detail" class="card detail"><div class="empty">Select an opportunity to inspect its evidence and workflow state.</div></div></div></section></main></div>
-<script>
-let snapshot={leads:[]},selected=null;
-const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-function filtered(){const q=document.querySelector("#search").value.trim().toLowerCase();return snapshot.leads.filter(x=>JSON.stringify(x).toLowerCase().includes(q))}
-function render(){const rows=filtered();document.querySelector("#visible").textContent=rows.length+" visible";document.querySelector("#leads").innerHTML=rows.map(x=>'<div class="lead '+(selected===x.workflow_id?"selected":"")+'" data-id="'+esc(x.workflow_id)+'"><div class="leadtop"><h3>'+esc(x.title)+'</h3><span class="score">'+x.lead_score+'</span></div><div class="status">'+esc(x.status)+'</div><div class="meta">'+esc(x.jurisdiction||"Jurisdiction pending")+'</div></div>').join("")||'<div class="lead empty">No matching leads.</div>';document.querySelectorAll(".lead[data-id]").forEach(el=>el.onclick=()=>select(el.dataset.id));renderMap(rows)}
-function renderMap(rows){const map=document.querySelector("#map"),points=rows.filter(x=>x.point);if(!points.length){map.innerHTML='<div class="mapempty"><b>No evidence-backed coordinates yet</b><span>The map will populate as parcel/site coordinates enter the integrated lead pipeline.</span></div>';return}const xs=points.map(x=>x.point.longitude),ys=points.map(x=>x.point.latitude),xmin=Math.min(...xs),xmax=Math.max(...xs),ymin=Math.min(...ys),ymax=Math.max(...ys);map.innerHTML=points.map(x=>{const left=8+84*(x.point.longitude-xmin)/(xmax-xmin||1),top=92-84*(x.point.latitude-ymin)/(ymax-ymin||1);return '<button class="pin" title="'+esc(x.title)+'" style="left:'+left+'%;top:'+top+'%" data-id="'+esc(x.workflow_id)+'"></button>'}).join("");map.querySelectorAll(".pin").forEach(el=>el.onclick=()=>select(el.dataset.id))}
-function select(id){selected=id;const x=snapshot.leads.find(v=>v.workflow_id===id);if(!x)return;document.querySelector("#detail").innerHTML='<div class="eyebrow">'+esc(x.status)+'</div><h2>'+esc(x.title)+'</h2><div class="detailgrid"><div class="datum"><label>Lead score</label>'+x.lead_score+'</div><div class="datum"><label>Jurisdiction</label>'+esc(x.jurisdiction||"Not established")+'</div><div class="datum"><label>Workflow</label>'+esc(x.workflow_id)+'</div><div class="datum"><label>Map evidence</label>'+(x.point?"Coordinate available":"Not yet available")+'</div></div><div class="datum"><label>Limitations</label>'+esc((x.limitations||[]).join(" • ")||"None recorded")+'</div>';render()}
-document.querySelector("#search").addEventListener("input",render);
-fetch("/api/snapshot").then(r=>{if(!r.ok)throw Error(r.status);return r.json()}).then(x=>{snapshot=x;document.querySelector("#total").textContent=x.total;document.querySelector("#mapped").textContent=x.mapped;document.querySelector("#ready").textContent=x.status_counts.ready||0;render()}).catch(()=>{document.querySelector("#map").innerHTML='<div class="mapempty"><b>Unable to load data</b><span>Check the local operator service and database path.</span></div>'});
-</script>
+<aside class="rail">
+  <div class="brand"><div class="reticle" aria-hidden="true"></div><div><strong>ConstructionSight</strong><small>Targeted site intelligence</small></div></div>
+  <nav aria-label="Workspace"><button id="records-tab" class="active" aria-pressed="true">Project records</button><button id="workflow-tab" aria-pressed="false">Lead workflow</button></nav>
+  <div class="notice"><b>Development operation</b><p>Browse retained data. Live collection is off. Crime overlay is off.</p><p>Source records require review before they become commercial opportunities.</p></div>
+</aside>
+<main>
+  <header class="top"><div><div class="eyebrow">San Bernardino + Riverside</div><h1 id="heading">Project records</h1></div><button id="refresh">Refresh data</button><span class="mode">LOCAL · READ ONLY</span></header>
+  <form id="filters" class="filters">
+    <label class="search-label">Search records<input id="search" type="search" maxlength="200" placeholder="Project, company, address, APN, or record number"></label>
+    <label>Source type<select id="kind"><option value="ceqa">CEQA records</option><option value="permit">Permit records</option></select></label>
+    <label>County<select id="county"><option value="">All recorded counties</option><option>San Bernardino</option><option>Riverside</option></select></label>
+    <button type="submit">Search</button>
+  </form>
+  <div id="error" class="error" role="alert" hidden></div>
+  <div id="status" class="status" role="status" aria-live="polite">Loading stored records…</div>
+  <section class="workspace">
+    <section class="card record-card" aria-label="Records">
+      <div class="cardhead"><h2 id="list-title">Source records</h2><span id="visible"></span></div>
+      <div id="records" class="records"></div>
+      <div class="pagination"><button id="previous" disabled>Previous</button><span id="page-count"></span><button id="next" disabled>Next</button></div>
+    </section>
+    <div class="right">
+      <section id="map-card" class="card" aria-label="Geographic coordinate map">
+        <div class="cardhead"><h2>Coordinate map</h2><span id="map-count"></span></div>
+        <div class="map-wrap">
+          <svg id="map" tabindex="0" role="group" aria-label="Source coordinates. Drag to pan; use plus and minus to zoom, arrow keys to pan."></svg>
+          <div class="map-controls"><button id="zoom-in" aria-label="Zoom in">+</button><button id="zoom-out" aria-label="Zoom out">−</button><button id="fit">Fit page</button><button id="region">Region</button></div>
+          <div id="map-empty" class="map-empty" hidden>No mappable coordinates on this page.<br>Unmapped records remain in the list.</div>
+        </div>
+        <div class="map-caption">Source-claimed locations · Web Mercator · No street or county boundary layer</div>
+      </section>
+      <section id="detail" class="card detail" aria-label="Selected record"><p class="empty">Select a record to inspect its location, named parties, and evidence.</p></section>
+    </div>
+  </section>
+</main>
+</div>
 </body>
 </html>
