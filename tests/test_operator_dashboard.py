@@ -34,6 +34,10 @@ from constructionsight.operator_services.ceqanet_persistence_service import (
     execute_authorized_ceqanet_write_plan,
 )
 from constructionsight.operator_web import _parameters, create_handler
+from constructionsight.operator_source_candidate import (
+    SourceRecordNotFound,
+    build_source_candidate_preview,
+)
 from constructionsight.permit_models import PermitRecord
 from constructionsight.provenance import Provenance
 from constructionsight.site_models import Site
@@ -672,3 +676,100 @@ def test_source_date_conflicts_are_not_silently_normalized(database):
                 m.recorded_date for m in row.milestones
             )
             assert all(m.classification == "source_claimed" for m in row.milestones)
+
+
+
+def test_exact_source_candidate_preview_is_read_only_and_family_scoped(database):
+    path, engine = database
+    with Session(engine) as session, session.begin():
+        CeqaStore(session).upsert(_record("shared"))
+        PermitStore(session).upsert(PermitRecord(
+            permit_key="shared", permit_number="TEST-COLLISION",
+            county="San Bernardino", jurisdiction="Fontana", provenance=_provenance(),
+        ))
+    with Session(engine) as session:
+        first = build_source_candidate_preview(session, kind="ceqa", record_id="shared")
+        repeated = build_source_candidate_preview(session, kind="ceqa", record_id="shared")
+        other = build_source_candidate_preview(session, kind="permit", record_id="shared")
+        assert first == repeated
+        assert first.state == "review_required"
+        assert first.candidate_key != other.candidate_key
+        assert first.preview_id != other.preview_id
+        assert first.source_record.record_kind == "ceqa"
+        assert other.source_record.record_kind == "permit"
+        assert first.source_record.provenance == _provenance()
+        assert first.read_only and not first.persisted and not first.commercial_lead_created
+        assert not first.outreach_authorized and not first.bid_authorized
+        assert len(first.normalized_source_sha256) == 64
+        with pytest.raises(SourceRecordNotFound):
+            build_source_candidate_preview(session, kind="ceqa", record_id="missing")
+    before = hashlib.sha256(path.read_bytes()).hexdigest()
+    with _server(path) as port:
+        status, _, body = _get(
+            port, "/api/candidate-preview?kind=ceqa&record_id=shared"
+        )
+        assert status == 200
+        payload = json.loads(body)
+        assert payload["preview_id"] == first.preview_id
+        assert payload["source_record"]["record_kind"] == "ceqa"
+        assert _get(port, "/api/candidate-preview?kind=permit&record_id=shared")[0] == 200
+        assert _get(port, "/api/candidate-preview?kind=ceqa&record_id=missing")[0] == 404
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == before
+
+
+def test_candidate_review_holds_missing_provenance_scope_and_conflicting_county(database):
+    _, engine = database
+    with Session(engine) as session, session.begin():
+        CeqaStore(session).upsert(_record("no-evidence", provenance=[]))
+        CeqaStore(session).upsert(_record("out-of-scope", county="Orange", site=None))
+        CeqaStore(session).upsert(_record(
+            "county-conflict", county="Riverside",
+            site=Site(site_key="conflict-site", county="San Bernardino",
+                      provenance=_provenance()),
+        ))
+    with Session(engine) as session:
+        for key, check_name in [
+            ("no-evidence", "provenance"),
+            ("out-of-scope", "county"),
+            ("county-conflict", "county"),
+        ]:
+            item = build_source_candidate_preview(
+                session, kind="ceqa", record_id=key
+            )
+            assert item.state == "hold"
+            assert any(
+                check.key == check_name
+                and check.state in {"missing", "conflict", "out_of_scope"}
+                for check in item.checks
+            )
+
+
+def test_candidate_preview_content_digest_changes_without_renaming_source(database):
+    _, engine = database
+    with Session(engine) as session, session.begin():
+        CeqaStore(session).upsert(_record("amended"))
+    with Session(engine) as session:
+        original = build_source_candidate_preview(
+            session, kind="ceqa", record_id="amended"
+        )
+    with Session(engine) as session, session.begin():
+        CeqaStore(session).upsert(_record("amended", description="Updated source text"))
+    with Session(engine) as session:
+        revised = build_source_candidate_preview(
+            session, kind="ceqa", record_id="amended"
+        )
+    assert original.candidate_key == revised.candidate_key
+    assert original.preview_id != revised.preview_id
+    assert original.normalized_source_sha256 != revised.normalized_source_sha256
+
+
+@pytest.mark.parametrize("query", [
+    "", "kind=all&record_id=x", "kind=ceqa", "kind=ceqa&record_id=",
+    "kind=ceqa&record_id=x&q=broad", "kind=ceqa&record_id=x&limit=2",
+    "kind=ceqa&record_id=x&record_id=x", "kind=ceqa&record_id=%20x",
+    "kind=ceqa&record_id=x%0A", "kind=ceqa&record_id=" + "x" * 256,
+])
+def test_candidate_preview_rejects_broad_or_ambiguous_http_parameters(database, query):
+    path, _ = database
+    with _server(path) as port:
+        assert _get(port, "/api/candidate-preview?" + query)[0] == 400

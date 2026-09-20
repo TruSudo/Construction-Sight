@@ -141,3 +141,39 @@ class EntityNeighborhoodSnapshot(BaseModel):
             "qualification.",
         ]
     )
+
+
+
+class SourceCandidateReviewCheck(BaseModel):
+    """A source observation or unresolved review gap; never an approval."""
+
+    key: Literal["provenance", "county", "site", "parties", "current_activity",
+                 "deduplication", "commercial_review"]
+    state: Literal["source_claim_only", "missing", "conflict",
+                   "out_of_scope", "review_required"]
+    detail: str = Field(min_length=1)
+
+
+class SourceCandidatePreview(BaseModel):
+    """Unpersisted, non-authoritative candidate review based on one exact source."""
+
+    schema_version: Literal["constructionsight.source-candidate-preview/v1"] = (
+        "constructionsight.source-candidate-preview/v1"
+    )
+    candidate_key: str = Field(min_length=1)
+    preview_id: str = Field(min_length=1)
+    normalized_source_sha256: str = Field(min_length=64, max_length=64)
+    source_record: DashboardProject
+    state: Literal["hold", "review_required"]
+    checks: list[SourceCandidateReviewCheck]
+    read_only: Literal[True] = True
+    persisted: Literal[False] = False
+    commercial_lead_created: Literal[False] = False
+    outreach_authorized: Literal[False] = False
+    bid_authorized: Literal[False] = False
+    limitations: list[str] = Field(default_factory=lambda: [
+        "This is a normalized stored-record digest, not a raw source document hash.",
+        "Source records do not prove independent entity/site identity or current activity.",
+        "No legacy scored OpportunityCandidate, persisted commercial lead, review "
+        "approval, outreach, or bid authorization was created.",
+    ])

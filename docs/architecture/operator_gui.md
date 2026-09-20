@@ -73,6 +73,17 @@ Populate the database through existing governed intake/persistence commands.
   produce an explicit unmapped reason. Even displayed coordinates remain
   `source_claimed`; a stored provenance verification flag is not promoted into
   independent verification of location or current construction activity.
+- The exact-record read-only `/api/candidate-preview?kind=ceqa|permit&record_id=...`
+  bridge derives a deterministic source-family-specific candidate key and a
+  revision-specific SHA-256 digest of the stored normalized record. The digest
+  is **not** a hash of original raw source bytes. It retains the full normalized
+  source evidence in the typed preview, separates provenance, scope, site,
+  named-party, current-activity, deduplication and commercial-review checks,
+  and marks absent provenance, unknown/out-of-scope county, or contradictory
+  record/site county as hold. All other previews are review-required, NEVER
+  outreach-ready. It performs no source reinspection, score fabrication, network
+  access, persistence, lead conversion, approval or external action. A separate
+  explicitly authorized persistence/review workflow is still required.
 - Lead workflow reads persisted workflow records and the exact `package_id` each
   workflow references. It does not substitute the newest review for the same
   candidate. Missing exact reviews remain visible as limitations; contradictory

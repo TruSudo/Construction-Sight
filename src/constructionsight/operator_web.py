@@ -22,7 +22,11 @@ from constructionsight.operator_dashboard import (
     build_geographic_footprint,
     build_workflow_snapshot,
 )
-from constructionsight.operator_dashboard_models import RecordSelection
+from constructionsight.operator_dashboard_models import RecordKind, RecordSelection
+from constructionsight.operator_source_candidate import (
+    SourceRecordNotFound,
+    build_source_candidate_preview,
+)
 from constructionsight.storage.operator_read_store import create_operator_read_engine
 
 _ASSETS = {
@@ -42,15 +46,19 @@ class _RequestParameters:
     limit: int
     offset: int
     entity_key: str | None
+    record_id: str | None = None
 
 
 def _parameters(
-    query: str, *, workflow: bool = False, footprint: bool = False, entity: bool = False
+    query: str, *, workflow: bool = False, footprint: bool = False,
+    entity: bool = False, candidate: bool = False
 ) -> _RequestParameters:
     values = parse_qs(query, keep_blank_values=True, max_num_fields=5)
     allowed = (
         {"limit", "offset"}
         if workflow
+        else {"kind", "record_id"}
+        if candidate
         else {"kind", "county", "entity_key"}
         if entity
         else {"kind", "q", "county"}
@@ -74,6 +82,14 @@ def _parameters(
         raise ValueError("invalid record kind or search length")
     if county not in {"", "San Bernardino", "Riverside"}:
         raise ValueError("unsupported county filter")
+    record_id = values["record_id"][0] if "record_id" in values else None
+    if candidate and (
+        raw_kind not in {"ceqa", "permit"}
+        or record_id is None or not record_id or len(record_id) > 255
+        or record_id != record_id.strip()
+        or any(ord(c) < 32 or ord(c) == 127 for c in record_id)
+    ):
+        raise ValueError("invalid exact source record selection")
     entity_key = values["entity_key"][0] if "entity_key" in values else None
     if entity and (
         entity_key is None
@@ -89,6 +105,7 @@ def _parameters(
         limit=limit,
         offset=offset,
         entity_key=entity_key,
+        record_id=record_id,
     )
 
 
@@ -134,6 +151,7 @@ def create_handler(database_path: Path) -> type[BaseHTTPRequestHandler]:
                     "/api/snapshot",
                     "/api/footprint",
                     "/api/entity-neighborhood",
+                    "/api/candidate-preview",
                     "/api/workflows",
                 }:
                     self._send_json({"error": "Not found."}, status=HTTPStatus.NOT_FOUND)
@@ -143,6 +161,7 @@ def create_handler(database_path: Path) -> type[BaseHTTPRequestHandler]:
                     workflow=path == "/api/workflows",
                     footprint=path == "/api/footprint",
                     entity=path == "/api/entity-neighborhood",
+                    candidate=path == "/api/candidate-preview",
                 )
             except ValueError as exc:
                 self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
@@ -160,6 +179,13 @@ def create_handler(database_path: Path) -> type[BaseHTTPRequestHandler]:
                         payload = build_workflow_snapshot(
                             session, limit=parameters.limit, offset=parameters.offset
                         )
+                    elif path == "/api/candidate-preview":
+                        if parameters.record_id is None or parameters.kind == "all":
+                            raise ValueError("missing exact source record selection")
+                        payload = build_source_candidate_preview(
+                            session, kind=cast(RecordKind, parameters.kind),
+                            record_id=parameters.record_id,
+                        ).model_dump(mode="json")
                     elif path == "/api/entity-neighborhood":
                         if parameters.entity_key is None:
                             raise ValueError("missing entity key")
@@ -186,6 +212,10 @@ def create_handler(database_path: Path) -> type[BaseHTTPRequestHandler]:
                             offset=parameters.offset,
                         ).model_dump(mode="json")
                 self._send_json(payload)
+            except SourceRecordNotFound:
+                self._send_json(
+                    {"error": "Source record not found."}, status=HTTPStatus.NOT_FOUND
+                )
             except (SQLAlchemyError, ValueError, TypeError, KeyError):
                 self._send_json(
                     {
