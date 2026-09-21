@@ -38,6 +38,11 @@ from constructionsight.operator_source_candidate import (
     SourceRecordNotFound,
     build_source_candidate_preview,
 )
+from constructionsight.parcel_core_models import (
+    ParcelCoreRecord,
+    ParcelGeometry,
+    ParcelGeometryKind,
+)
 from constructionsight.operator_web import _parameters, create_handler
 from constructionsight.permit_models import PermitRecord
 from constructionsight.provenance import Provenance
@@ -51,6 +56,8 @@ from constructionsight.storage.lead_workflow_store import (
     store_lead_workflow_record,
 )
 from constructionsight.storage.operator_read_store import create_operator_read_engine
+from constructionsight.storage.parcel_site_orm import ParcelCoreRecordRow
+from constructionsight.storage.parcel_site_store import store_parcel_core_record
 
 
 def _provenance():
@@ -1055,3 +1062,193 @@ def test_exact_entity_history_denies_invalid_or_repeated_identity(database, quer
     path, _ = database
     with _server(path) as port:
         assert _get(port, "/api/timeline?" + query)[0] == 400
+
+
+def _parcel_claim(
+    record_id: str,
+    *,
+    county: str = "San Bernardino",
+    apn: str = "123-456-789",
+    crs: str = "EPSG:4326",
+) -> ParcelCoreRecord:
+    return ParcelCoreRecord(
+        parcel_record_id=record_id,
+        source_key="fixture:assessor",
+        source_record_id=record_id,
+        apn=apn,
+        normalized_apn="".join(char for char in apn if char.isdigit()),
+        county=county,
+        state="CA",
+        address="123 Synthetic Ave",
+        geometry=ParcelGeometry(
+            geometry_kind=ParcelGeometryKind.POINT,
+            centroid_latitude=34.05,
+            centroid_longitude=-117.6,
+            spatial_reference=crs,
+        ),
+        limitations=["Synthetic fixture; not a surveyed or verified location."],
+    )
+
+
+def test_on_demand_parcel_claims_exact_source_apn_county_and_crs(database):
+    path, engine = database
+    source = _record(
+        "parcel-source:ceqa",
+        site=Site(
+            site_key="parcel-source:site",
+            county="San Bernardino",
+            apn="123-456-789",
+            latitude=34.05,
+            longitude=-117.6,
+            provenance=_provenance(),
+        ),
+    )
+    with Session(engine) as session, session.begin():
+        CeqaStore(session).upsert(source)
+        for parcel in [
+            _parcel_claim("parcel:matched:geodetic"),
+            _parcel_claim("parcel:matched:projected", crs="EPSG:3857"),
+            _parcel_claim("parcel:different-county", county="Riverside"),
+            _parcel_claim("parcel:different-apn", apn="987-654-321"),
+        ]:
+            store_parcel_core_record(session, parcel)
+    before = hashlib.sha256(path.read_bytes()).hexdigest()
+    with _server(path) as port:
+        status, _, body = _get(
+            port, "/api/parcel-candidates?kind=ceqa&record_id=parcel-source%3Aceqa"
+        )
+        html = _get(port, "/")[2].decode("utf-8")
+        script = _get(port, "/operator_ui.js")[2].decode("utf-8")
+    assert status == 200
+    payload = json.loads(body)
+    assert payload["source_kind"] == "ceqa"
+    assert payload["source_record_id"] == "parcel-source:ceqa"
+    assert payload["source_apn"] == "123-456-789"
+    assert payload["normalized_apn"] == "123456789"
+    assert payload["matching_total"] == payload["returned"] == 2
+    assert payload["truncated"] is False
+    assert payload["read_only"] is True
+    assert payload["linked_site_verified"] is False
+    assert payload["parcel_boundaries_rendered"] is False
+    assert [p["parcel_record_id"] for p in payload["matches"]] == [
+        "parcel:matched:geodetic", "parcel:matched:projected"
+    ]
+    assert payload["matches"][0]["point"] == {
+        "latitude": 34.05,
+        "longitude": -117.6,
+        "classification": "source_claimed_centroid",
+    }
+    assert payload["matches"][1]["point"] is None
+    assert "projected CRS" in payload["matches"][1]["map_reason"]
+    assert all("raw_geometry" not in match for match in payload["matches"])
+    assert 'id="inspect-parcels"' in script
+    assert "/api/parcel-candidates?" in script
+    assert "parcelOverlay = []" in script
+    assert "legend-parcel" in html
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == before
+
+
+def test_parcel_lookup_requires_record_apn_and_consistent_target_county(database):
+    path, engine = database
+    with Session(engine) as session, session.begin():
+        CeqaStore(session).upsert(_record("parcel:no-site", site=None))
+        CeqaStore(session).upsert(
+            _record(
+                "parcel:county-mismatch",
+                site=Site(
+                    site_key="parcel:county-site",
+                    county="Riverside",
+                    apn="123-456-789",
+                    provenance=_provenance(),
+                ),
+            )
+        )
+        store_parcel_core_record(session, _parcel_claim("parcel:stored"))
+    with _server(path) as port:
+        for record_id in ("parcel:no-site", "parcel:county-mismatch"):
+            status, _, body = _get(
+                port, "/api/parcel-candidates?kind=ceqa&record_id=" + record_id
+            )
+            assert status == 200
+            response = json.loads(body)
+            assert response["matches"] == [] and response["matching_total"] == 0
+            assert response["limitations"]
+        assert _get(
+            port, "/api/parcel-candidates?kind=permit&record_id=missing"
+        )[0] == 404
+
+
+@pytest.mark.parametrize("query", [
+    "", "kind=all&record_id=x", "kind=ceqa",
+    "kind=ceqa&record_id=", "kind=ceqa&record_id=x&county=Riverside",
+    "kind=ceqa&record_id=x&entity_key=e", "kind=ceqa&record_id=x&limit=2",
+    "kind=ceqa&record_id=x&record_id=y",
+    "kind=ceqa&record_id=%20x", "kind=ceqa&record_id=x%0A",
+    "kind=ceqa&record_id=" + "x" * 256,
+])
+def test_parcel_http_inspection_rejects_nonexact_requests(database, query):
+    path, _ = database
+    with _server(path) as port:
+        assert _get(port, "/api/parcel-candidates?" + query)[0] == 400
+
+
+def test_parcel_lookup_fails_closed_on_index_payload_geometry_drift(database):
+    path, engine = database
+    with Session(engine) as session, session.begin():
+        CeqaStore(session).upsert(
+            _record(
+                "parcel:drift-source",
+                site=Site(
+                    site_key="parcel:drift-site",
+                    county="San Bernardino",
+                    apn="123-456-789",
+                    provenance=_provenance(),
+                ),
+            )
+        )
+        store_parcel_core_record(session, _parcel_claim("parcel:drift"))
+    with Session(engine) as session, session.begin():
+        row = session.scalar(
+            select(ParcelCoreRecordRow).where(
+                ParcelCoreRecordRow.parcel_record_id == "parcel:drift"
+            )
+        )
+        assert row is not None
+        row.centroid_longitude = -118.8
+    with _server(path) as port:
+        status, _, body = _get(
+            port, "/api/parcel-candidates?kind=ceqa&record_id=parcel%3Adrift-source"
+        )
+    assert status == 503
+    assert "parcel:drift" not in body.decode("utf-8")
+
+
+def test_parcel_lookup_reports_bounded_candidate_results(database, monkeypatch):
+    monkeypatch.setattr(
+        "constructionsight.operator_parcel_candidates.PARCEL_CANDIDATE_LIMIT", 2
+    )
+    path, engine = database
+    with Session(engine) as session, session.begin():
+        CeqaStore(session).upsert(
+            _record(
+                "parcel:cap-source",
+                site=Site(
+                    site_key="parcel:cap-site",
+                    county="San Bernardino",
+                    apn="123-456-789",
+                    provenance=_provenance(),
+                ),
+            )
+        )
+        for index in range(3):
+            store_parcel_core_record(
+                session, _parcel_claim(f"parcel:cap:{index}")
+            )
+    with _server(path) as port:
+        status, _, body = _get(
+            port, "/api/parcel-candidates?kind=ceqa&record_id=parcel%3Acap-source"
+        )
+    assert status == 200
+    payload = json.loads(body)
+    assert payload["matching_total"] == 3 and payload["returned"] == 2
+    assert payload["result_limit"] == 2 and payload["truncated"] is True
