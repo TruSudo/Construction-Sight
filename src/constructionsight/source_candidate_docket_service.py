@@ -14,8 +14,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import cast
 
-from pydantic import BaseModel, Field
 import sqlalchemy
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from constructionsight.authorization_decision import AuthorizationDeniedError
