@@ -7,3 +7,16 @@
 .milestones{padding:0 0 0 22px;margin:10px 0}.milestones li{margin:8px 0;line-height:1.5;overflow-wrap:anywhere}.milestones time{font-variant-numeric:tabular-nums;color:var(--orange2)}.milestones small{display:block;color:var(--muted);font-size:11px}
 
 .candidate-preview{margin:14px 0 2px;overflow-wrap:anywhere}.candidate-preview ul{padding-left:22px}.candidate-preview li{margin:8px 0;line-height:1.45}
+
+/* Retained-record pulse counts only observed source records in the selected query. */
+.pulse{padding:14px 24px 12px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.pulse-card{background:var(--panel);border:1px solid var(--line);border-top:2px solid var(--orange);border-radius:9px;padding:15px;min-width:0;display:flex;flex-direction:column;gap:8px}
+.pulse-card>span{font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted)}
+.pulse-card strong{font-size:22px;line-height:1.2;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.pulse-card small{font-size:11px;color:var(--muted);line-height:1.45}
+.map-legend{display:flex;flex-wrap:wrap;align-items:center;gap:5px 8px;margin-top:7px}
+.legend-dot{height:10px;width:10px;display:inline-block;border:2px solid var(--orange);border-radius:50%;background:#f28c2840}
+.legend-related{border-color:var(--orange2);background:#f28c2870}
+.legend-selected{background:var(--orange);border-color:var(--text)}
+@media(max-width:1100px){.pulse{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){.pulse{padding:14px 16px 10px;gap:8px}.pulse-card{padding:11px}.pulse-card strong{font-size:18px}}
