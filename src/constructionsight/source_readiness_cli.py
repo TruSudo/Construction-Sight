@@ -17,6 +17,7 @@ from constructionsight.source_readiness_service import (
     build_authorized_source_readiness_report,
     build_source_readiness_report,
 )
+from constructionsight.storage.runtime_artifacts import read_runtime_text
 
 app = typer.Typer(help="ConstructionSight source-readiness tools.")
 console = Console()
@@ -25,7 +26,7 @@ console = Console()
 def _load_sources_from_json(registry_path: Path) -> list[PublicSource]:
     """Load source records from a JSON registry file."""
 
-    data: Any = json.loads(registry_path.read_text(encoding="utf-8"))
+    data: Any = json.loads(read_runtime_text(registry_path))
     if not isinstance(data, list):
         raise typer.BadParameter("Source registry JSON must be a list of source records.")
     return [PublicSource.model_validate(item) for item in data]

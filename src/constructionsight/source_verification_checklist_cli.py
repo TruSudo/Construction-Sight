@@ -21,13 +21,14 @@ from constructionsight.source_verification_checklist_service import (
     build_source_observation_templates,
     build_source_verification_checklist_report,
 )
+from constructionsight.storage.runtime_artifacts import read_runtime_text
 
 app = typer.Typer(help="ConstructionSight source verification checklist tools.")
 console = Console()
 
 
 def _load_sources_from_json(path: Path) -> list[PublicSource]:
-    data: Any = json.loads(path.read_text(encoding="utf-8"))
+    data: Any = json.loads(read_runtime_text(path))
     if not isinstance(data, list):
         raise typer.BadParameter("Registry JSON must be a list.")
     return [PublicSource.model_validate(item) for item in data]
@@ -36,7 +37,7 @@ def _load_sources_from_json(path: Path) -> list[PublicSource]:
 def _load_observations(path: Path | None) -> list[SourceVerificationObservation]:
     if path is None:
         return []
-    data: Any = json.loads(path.read_text(encoding="utf-8"))
+    data: Any = json.loads(read_runtime_text(path))
     if not isinstance(data, list):
         raise typer.BadParameter("Observation JSON must be a list.")
     return [SourceVerificationObservation.model_validate(item) for item in data]

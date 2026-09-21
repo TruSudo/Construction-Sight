@@ -28,6 +28,10 @@ from constructionsight.intake_models import (
     UniversalIntakeRecord,
     UnmappedEvidenceFragment,
 )
+from constructionsight.storage.runtime_artifacts import (
+    RuntimeArtifactLimitError,
+    read_runtime_artifact,
+)
 
 _MAX_INTAKE_BYTES = 16 * 1024 * 1024
 
@@ -182,10 +186,10 @@ def inspect_lawful_file(
 ) -> UniversalIntakeRecord:
     """Inspect one local lawful file as universal intake evidence."""
 
-    with path.open("rb") as source_file:
-        content = source_file.read(_MAX_INTAKE_BYTES + 1)
-    if len(content) > _MAX_INTAKE_BYTES:
-        raise ValueError("intake file exceeds bounded inspection byte limit")
+    try:
+        content = read_runtime_artifact(path, max_bytes=_MAX_INTAKE_BYTES)
+    except RuntimeArtifactLimitError as exc:
+        raise ValueError("intake file exceeds bounded inspection byte limit") from exc
 
     return inspect_lawful_input(
         IntakeInspectionInput(

@@ -22,13 +22,14 @@ from constructionsight.ceqanet_maturity_proposal_service import (
     verify_ceqanet_source_maturity_proposal,
 )
 from constructionsight.models import PublicSource
+from constructionsight.storage.runtime_artifacts import read_runtime_text
 
 app = typer.Typer(help="ConstructionSight offline CEQAnet maturity proposal tools.")
 console = Console()
 
 
 def _load_json(path: Path) -> Any:
-    return json.loads(path.read_text(encoding="utf-8"))
+    return json.loads(read_runtime_text(path))
 
 
 def _load_sources(path: Path) -> list[PublicSource]:

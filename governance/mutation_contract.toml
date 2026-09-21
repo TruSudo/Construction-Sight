@@ -848,3 +848,66 @@ replacement = '''read_bounded_artifact_stream(stream, max_bytes=_MAX_CHECKPOINT_
 tests = ["tests/test_runtime_artifact_publication.py::test_checkpoint_loader_bounds_input_before_json_materialization"]
 expected_output = "test_checkpoint_loader_bounds_input_before_json_materialization"
 risk = "An oversized retained checkpoint could reach JSON materialization before its governed byte ceiling rejects it."
+
+[[cases]]
+id = "CS-MUT-TEXT-READER-CONTAINMENT-001"
+path = "src/constructionsight/storage/runtime_artifacts.py"
+search = '''    return read_runtime_artifact(path, max_bytes=max_bytes).decode("utf-8")'''
+replacement = '''    return path.read_text(encoding="utf-8")'''
+tests = ["tests/test_runtime_evidence_loaders.py::test_json_loaders_reject_before_parsing"]
+expected_output = "test_json_loaders_reject_before_parsing"
+risk = "Operator JSON input could bypass the shared no-follow bounded reader."
+
+[[cases]]
+id = "CS-MUT-TEXT-READER-CEILING-001"
+path = "src/constructionsight/storage/runtime_artifacts.py"
+search = '''    return read_runtime_artifact(path, max_bytes=max_bytes).decode("utf-8")'''
+replacement = '''    return read_runtime_artifact(path, max_bytes=max_bytes * 1024).decode("utf-8")'''
+tests = ["tests/test_runtime_evidence_loaders.py::test_json_loaders_reject_before_parsing"]
+expected_output = "test_json_loaders_reject_before_parsing"
+risk = "Operator JSON could reach materialization before the 16-MiB ceiling rejects it."
+
+[[cases]]
+id = "CS-MUT-DETAIL-SNAPSHOT-BINDING-001"
+path = "src/constructionsight/ceqanet_detail_parse_cli.py"
+search = '''    return content,'''
+replacement = '''    return read_runtime_text(input_path),'''
+tests = ["tests/test_runtime_evidence_loaders.py::test_html_auto_detection_uses_one_byte_snapshot"]
+expected_output = "test_html_auto_detection_uses_one_byte_snapshot"
+risk = "HTML selected by format detection could be substituted before parsing."
+
+[[cases]]
+id = "CS-MUT-RESULT-SNAPSHOT-BINDING-001"
+path = "src/constructionsight/ceqanet_result_parse_cli.py"
+search = '''    return content,'''
+replacement = '''    return read_runtime_text(input_path),'''
+tests = ["tests/test_runtime_evidence_loaders.py::test_html_auto_detection_uses_one_byte_snapshot"]
+expected_output = "test_html_auto_detection_uses_one_byte_snapshot"
+risk = "HTML selected by format detection could be substituted before parsing."
+
+[[cases]]
+id = "CS-MUT-VOCABULARY-SNAPSHOT-BINDING-001"
+path = "src/constructionsight/ceqanet_vocabulary_export_cli.py"
+search = '''    return content,'''
+replacement = '''    return read_runtime_text(input_path),'''
+tests = ["tests/test_runtime_evidence_loaders.py::test_html_auto_detection_uses_one_byte_snapshot"]
+expected_output = "test_html_auto_detection_uses_one_byte_snapshot"
+risk = "HTML selected by format detection could be substituted before parsing."
+
+[[cases]]
+id = "CS-MUT-INTAKE-FILE-CONTAINMENT-001"
+path = "src/constructionsight/intake_service.py"
+search = '''        content = read_runtime_artifact(path, max_bytes=_MAX_INTAKE_BYTES)'''
+replacement = '''        content = path.read_bytes()'''
+tests = ["tests/test_runtime_evidence_loaders.py::test_intake_file_rejects_symlinks"]
+expected_output = "test_intake_file_rejects_symlinks"
+risk = "Universal intake could follow final or ancestor symlinks into outside evidence."
+
+[[cases]]
+id = "CS-MUT-CSV-FILE-CONTAINMENT-001"
+path = "src/constructionsight/ceqanet_csv_cli.py"
+search = '''        content = read_runtime_artifact(csv_path, max_bytes=10_000_000)'''
+replacement = '''        content = csv_path.read_bytes()'''
+tests = ["tests/test_runtime_evidence_loaders.py::test_csv_file_rejects_symlinks_before_inspection"]
+expected_output = "test_csv_file_rejects_symlinks_before_inspection"
+risk = "CSV inspection could parse bytes obtained by following a symlinked evidence path."

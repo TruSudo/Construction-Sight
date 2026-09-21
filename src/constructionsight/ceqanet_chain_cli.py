@@ -18,6 +18,7 @@ from rich.table import Table
 from constructionsight.adapters.ceqanet_detail_enrichment import enrich_ceqanet_result_records
 from constructionsight.adapters.ceqanet_detail_parser import parse_ceqanet_detail_page
 from constructionsight.adapters.ceqanet_result_parser import parse_ceqanet_result_page
+from constructionsight.storage.runtime_artifacts import read_runtime_text
 
 app = typer.Typer(help="Build offline CEQAnet chain reports from stored snapshots.")
 console = Console(width=240, color_system=None)
@@ -40,7 +41,7 @@ def _load_json_object(input_path: Path) -> dict[str, Any]:
     """Load a JSON object from disk."""
 
     try:
-        payload = json.loads(input_path.read_text(encoding="utf-8"))
+        payload = json.loads(read_runtime_text(input_path))
     except json.JSONDecodeError as exc:
         raise typer.BadParameter(f"{input_path} is not valid JSON.") from exc
 

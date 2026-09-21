@@ -39,6 +39,7 @@ from constructionsight.storage.database import (
     session_factory,
 )
 from constructionsight.storage.intelligence_store import IntelligenceStore
+from constructionsight.storage.runtime_artifacts import read_runtime_text
 from constructionsight.storage.source_registry import SourceRegistryStore
 from constructionsight.storage.verification_store import VerificationStore
 from constructionsight.verification.source_verifier import SourceVerifier
@@ -50,7 +51,7 @@ console = Console()
 def _load_sources_from_json(registry_path: Path) -> list[PublicSource]:
     """Load and validate source records from a JSON registry file."""
 
-    data = json.loads(registry_path.read_text(encoding="utf-8"))
+    data = json.loads(read_runtime_text(registry_path))
     if not isinstance(data, list):
         raise typer.BadParameter("Source registry JSON must be a list of source records.")
     return [PublicSource.model_validate(item) for item in data]
@@ -78,7 +79,7 @@ def _read_json_object_file(input_path: Path) -> dict[str, Any]:
     """Read a JSON object from disk for export verification."""
 
     try:
-        payload = json.loads(input_path.read_text(encoding="utf-8"))
+        payload = json.loads(read_runtime_text(input_path))
     except json.JSONDecodeError as exc:
         raise typer.BadParameter(f"Invalid JSON export: {exc}") from exc
     if not isinstance(payload, dict):
@@ -378,7 +379,7 @@ def _read_artifact_resolution_preview_input(
     """Read artifact-resolution preview input from a JSON object file."""
 
     try:
-        payload = json.loads(input_path.read_text(encoding="utf-8"))
+        payload = json.loads(read_runtime_text(input_path))
     except json.JSONDecodeError as exc:
         raise typer.BadParameter(f"Invalid artifact resolution JSON: {exc}") from exc
 

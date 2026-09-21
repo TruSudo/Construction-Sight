@@ -23,6 +23,7 @@ from constructionsight.adapters.ceqanet_query import (
     CeqanetFixtureQueryService,
 )
 from constructionsight.ceqa_models import CeqaRecord
+from constructionsight.storage.runtime_artifacts import read_runtime_text
 
 app = typer.Typer(help="Query deterministic CEQAnet fixture rows.")
 console = Console(width=240, color_system=None)
@@ -37,7 +38,7 @@ def _read_fixture_rows(input_path: Path) -> list[dict[str, Any]]:
     """Read CEQAnet-like fixture rows from a JSON array file."""
 
     try:
-        payload = json.loads(input_path.read_text(encoding="utf-8"))
+        payload = json.loads(read_runtime_text(input_path))
     except json.JSONDecodeError as exc:
         raise typer.BadParameter(f"Invalid CEQAnet fixture JSON: {exc}") from exc
     if not isinstance(payload, list):

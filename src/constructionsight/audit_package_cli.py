@@ -17,13 +17,14 @@ from constructionsight.source_verification_evidence_service import (
     build_authorized_source_verification_evidence_package,
     build_source_verification_evidence_package,
 )
+from constructionsight.storage.runtime_artifacts import read_runtime_text
 
 app = typer.Typer(help="ConstructionSight audit package tools.")
 console = Console()
 
 
 def _load_sources_from_json(path: Path) -> list[PublicSource]:
-    data: Any = json.loads(path.read_text(encoding="utf-8"))
+    data: Any = json.loads(read_runtime_text(path))
     if not isinstance(data, list):
         raise typer.BadParameter("Registry JSON must be a list.")
     return [PublicSource.model_validate(item) for item in data]

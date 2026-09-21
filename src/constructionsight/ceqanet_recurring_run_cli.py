@@ -36,6 +36,7 @@ from constructionsight.operator_services.ceqanet_recurring_run_service import (
 from constructionsight.source_verification_checklist_models import (
     SourceVerificationChecklistReport,
 )
+from constructionsight.storage.runtime_artifacts import read_runtime_text
 
 app = typer.Typer(help="Build and execute governed CEQAnet recurring-run manifests.")
 console = Console(width=240, color_system=None)
@@ -49,7 +50,7 @@ def main() -> None:
 
 def _load_json(path: Path) -> Any:
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        return json.loads(read_runtime_text(path))
     except (OSError, json.JSONDecodeError) as exc:
         raise typer.BadParameter(f"{path} is not valid readable JSON.") from exc
 
