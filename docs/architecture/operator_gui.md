@@ -259,3 +259,26 @@ issuances, and finalizations do not establish actual physical commencement,
 current site activity, independent entity identity, or qualified opportunities.
 This is not a live-ingestion schedule, deduplicated project growth replay,
 or a production-level authoritative project timeline.
+
+## Exact-key entity history in the relationship drawer (draft)
+
+Selecting a named party in a retained source record now loads two separately
+scoped read-only analyses: exact stored-entity-key co-occurrence and historical
+CEQA/permit events recorded on source records containing that same key. Both
+use the county and record-family scope, no free-text name join, the same
+5,000-record stable source scan ceiling, and independent mismatch checks. The
+historical event view is bounded at 80 events and states whether the source
+scan or displayed-event set was truncated. The count of matching source
+records is distinct from the count of individual dated events.
+
+The UI shows a source-claimed history beneath the entity's mapped footprint
+and record list. Matching names with different entity keys never contribute.
+A stored key is not independent verification of corporate or person identity;
+historical statuses do not establish physical construction or qualified
+commercial opportunities. The map highlights only mapped records available
+in its own query footprint, while the unfiltered exact-key entity history
+may include records outside the current free-text search. Both scopes are
+disclosed rather than represented as exhaustive county coverage.
+
+The browser remains GET-only; no new acquisition, geocoding, conversion,
+outreach, bid, entity merge, or workflow transition is authorized.
