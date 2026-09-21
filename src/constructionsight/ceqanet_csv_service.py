@@ -6,9 +6,9 @@ import csv
 import hashlib
 import io
 import re
-from itertools import chain
 from collections import Counter
 from collections.abc import Iterable
+from itertools import chain
 from typing import Any, Literal
 from urllib.parse import parse_qsl, urlencode, urlparse
 

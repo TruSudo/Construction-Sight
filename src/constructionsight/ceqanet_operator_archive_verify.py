@@ -8,18 +8,24 @@ mutation.
 from __future__ import annotations
 
 import hashlib
+import io
 import json
+import struct
 import zipfile
 from collections import Counter
 from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any, Literal, cast
+
+from constructionsight.storage.runtime_artifacts import read_runtime_artifact
 
 _ARCHIVE_TIMESTAMP = (2026, 1, 1, 0, 0, 0)
 _ARCHIVE_EXTERNAL_ATTR = 0o100644 << 16
 _MAX_ZIP_ARCHIVE_BYTES = 128 * 1024 * 1024
 _MAX_ZIP_ENTRIES = 128
+_MAX_ZIP_DIRECTORY_BYTES = 1024 * 1024
 _MAX_ZIP_ENTRY_BYTES = 16 * 1024 * 1024
 _MAX_ZIP_MANIFEST_BYTES = 1024 * 1024
 _MAX_ZIP_TOTAL_BYTES = 64 * 1024 * 1024
@@ -139,11 +145,8 @@ def verify_ceqanet_operator_archive(
 
     if not archive_path.is_file():
         raise ValueError(f"CEQAnet operator archive not found: {archive_path}")
-    if archive_path.stat().st_size > _MAX_ZIP_ARCHIVE_BYTES:
-        raise ValueError("CEQAnet operator archive exceeds the ZIP byte limit")
-
     try:
-        with zipfile.ZipFile(archive_path) as archive_file:
+        with _open_bounded_archive(archive_path) as archive_file:
             infos = archive_file.infolist()
             _require_bounded_archive_metadata(infos)
             remaining_bytes = [_MAX_ZIP_TOTAL_BYTES]
@@ -191,6 +194,63 @@ def verify_ceqanet_operator_archive(
         archive_issues=tuple(archive_issues),
         duplicate_filenames=duplicate_filenames,
     )
+
+
+@contextmanager
+def _open_bounded_archive(path: Path) -> Iterator[zipfile.ZipFile]:
+    """Bind bounded ZIP parsing and verification to one immutable byte snapshot."""
+
+    raw = read_runtime_artifact(path, max_bytes=_MAX_ZIP_ARCHIVE_BYTES)
+    _require_bounded_central_directory(raw)
+    with io.BytesIO(raw) as source, zipfile.ZipFile(source) as archive:
+        yield archive
+
+
+def _require_bounded_central_directory(raw: bytes) -> None:
+    """Bound directory allocation before ZipFile constructs any ZipInfo objects.
+
+    Operator archives fit ordinary single-disk ZIP limits. ZIP64, split archives,
+    appended data and inconsistent directory records fail closed. Entry headers
+    are counted independently of the end record, whose count is untrusted.
+    """
+
+    end = raw.rfind(b"PK\x05\x06", max(0, len(raw) - 65_557))
+    if end < 0 or len(raw) < end + 22:
+        raise ValueError("CEQAnet ZIP end record is missing or truncated")
+    _, disk, directory_disk, disk_count, count, size, offset, comment_size = struct.unpack(
+        "<4s4H2IH", raw[end : end + 22]
+    )
+    if (
+        disk != 0
+        or directory_disk != 0
+        or disk_count != count
+        or count == 65_535
+        or size == 0xFFFFFFFF
+        or offset == 0xFFFFFFFF
+        or end + 22 + comment_size != len(raw)
+        or offset + size != end
+    ):
+        raise ValueError("CEQAnet ZIP has unsupported or inconsistent directory metadata")
+    if count > _MAX_ZIP_ENTRIES:
+        raise ValueError("CEQAnet operator archive exceeds the ZIP entry limit")
+    if size > _MAX_ZIP_DIRECTORY_BYTES:
+        raise ValueError("CEQAnet operator archive exceeds the ZIP directory byte limit")
+    position = offset
+    observed = 0
+    while position < end:
+        if observed >= _MAX_ZIP_ENTRIES:
+            raise ValueError("CEQAnet operator archive exceeds the ZIP entry limit")
+        if position + 46 > end or raw[position : position + 4] != b"PK\x01\x02":
+            raise ValueError("CEQAnet ZIP directory entry is invalid or truncated")
+        name_size, extra_size, entry_comment_size = struct.unpack(
+            "<3H", raw[position + 28 : position + 34]
+        )
+        position += 46 + name_size + extra_size + entry_comment_size
+        if position > end:
+            raise ValueError("CEQAnet ZIP directory entry exceeds its declared boundary")
+        observed += 1
+    if observed != count:
+        raise ValueError("CEQAnet ZIP directory entry count is inconsistent")
 
 
 def _require_bounded_archive_metadata(infos: list[zipfile.ZipInfo]) -> None:

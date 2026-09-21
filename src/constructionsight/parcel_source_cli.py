@@ -28,8 +28,10 @@ from constructionsight.parcel_source_acquisition import (
     get_official_arcgis_probe_plans,
 )
 from constructionsight.parcel_source_acquisition_bundle import (
-    load_arcgis_bounded_proof_bundle,
     verify_arcgis_bounded_proof_bundle,
+)
+from constructionsight.parcel_source_acquisition_bundle_io import (
+    load_arcgis_bounded_proof_bundle,
 )
 from constructionsight.parcel_source_models import ParcelProviderKind
 from constructionsight.parcel_source_registry import (

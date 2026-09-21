@@ -482,7 +482,7 @@ def test_parallel_first_use_initializes_wal_without_lock_error(tmp_path: Path) -
         barrier = threading.Barrier(2)
         operation = _operation()
 
-        def reserve_once():
+        def reserve_once(barrier, store_path, operation):
             barrier.wait(timeout=10)
             try:
                 return EffectConsumptionStore(store_path).reserve(
@@ -492,7 +492,10 @@ def test_parallel_first_use_initializes_wal_without_lock_error(tmp_path: Path) -
                 return exc
 
         with ThreadPoolExecutor(max_workers=2) as executor:
-            futures = [executor.submit(reserve_once) for _ in range(2)]
+            futures = [
+                executor.submit(reserve_once, barrier, store_path, operation)
+                for _ in range(2)
+            ]
             outcomes = [future.result(timeout=20) for future in futures]
 
         assert sum(not isinstance(outcome, Exception) for outcome in outcomes) == 1
