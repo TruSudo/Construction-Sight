@@ -11,6 +11,8 @@ from typing import Any, Protocol
 
 from constructionsight.parcel_source_bulk_rehearsal_models import digest_json_payload
 
+_MAX_RETAINED_RESPONSE_BYTES = 16 * 1024 * 1024
+
 
 class ParcelArcGISBulkArtifactError(RuntimeError):
     """Raised when exact rehearsal response evidence cannot be retained."""
@@ -134,12 +136,16 @@ class JSONFileParcelArcGISBulkArtifactStore:
             raise ValueError("ArcGIS artifact sequence index cannot be negative")
         if not response_body:
             raise ValueError("ArcGIS artifact response body cannot be empty")
+        if len(response_body) > _MAX_RETAINED_RESPONSE_BYTES:
+            raise ParcelArcGISBulkArtifactError("ArcGIS response exceeds artifact byte limit")
         digest = digest_response_body(response_body)
         self._directory.mkdir(parents=True, exist_ok=True)
         filename = f"{sequence_index:08d}-{kind.value}-{digest}.json"
         path = self._directory / filename
         if path.exists():
-            if path.read_bytes() != response_body:
+            with path.open("rb") as retained_file:
+                retained_bytes = retained_file.read(len(response_body) + 1)
+            if retained_bytes != response_body:
                 raise ParcelArcGISBulkArtifactError(
                     "ArcGIS artifact digest conflicts with retained response bytes"
                 )
@@ -161,7 +167,10 @@ class JSONFileParcelArcGISBulkArtifactStore:
         path = self._directory / receipt.artifact_reference
         if not path.is_file():
             raise ParcelArcGISBulkArtifactError("ArcGIS response artifact was not retained")
-        response_body = path.read_bytes()
+        if receipt.response_size > _MAX_RETAINED_RESPONSE_BYTES:
+            raise ParcelArcGISBulkArtifactError("ArcGIS response exceeds artifact byte limit")
+        with path.open("rb") as retained_file:
+            response_body = retained_file.read(receipt.response_size + 1)
         if len(response_body) != receipt.response_size:
             raise ParcelArcGISBulkArtifactError("ArcGIS response artifact size changed")
         if digest_response_body(response_body) != receipt.response_digest:
