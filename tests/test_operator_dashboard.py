@@ -1080,6 +1080,7 @@ def _parcel_claim(
         county=county,
         state="CA",
         address="123 Synthetic Ave",
+        normalized_address="123 SYNTHETIC AVE",
         geometry=ParcelGeometry(
             geometry_kind=ParcelGeometryKind.POINT,
             centroid_latitude=34.05,
