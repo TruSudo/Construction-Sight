@@ -115,6 +115,45 @@ class GeographicFootprintSnapshot(BaseModel):
     )
 
 
+class HistoricalSourceEvent(BaseModel):
+    """One dated assertion retained within a specific source-family/key record."""
+
+    ordinal: int = Field(ge=0)
+    record_kind: RecordKind
+    record_id: str
+    title: str
+    county: str | None
+    event_kind: MilestoneKind
+    recorded_date: date
+    source_date_order_conflict: bool = False
+    classification: Literal["source_claimed"] = "source_claimed"
+
+
+class HistoricalTimelineSnapshot(BaseModel):
+    """Bounded historical event view, not live construction or distinct-project counts."""
+
+    selection: RecordSelection
+    events: list[HistoricalSourceEvent]
+    matching_total: int
+    records_scanned: int
+    dated_records_in_scan: int
+    milestones_in_scan: int
+    returned_events: int
+    scan_limit: int
+    result_limit: int
+    source_scan_truncated: bool
+    event_result_truncated: bool
+    read_only: Literal[True] = True
+    live_collection_enabled: Literal[False] = False
+    limitations: list[str] = Field(default_factory=lambda: [
+        "Dates and statuses are retained source claims, not a construction-site activity feed.",
+        "Events belong to source records, not deduplicated real-world projects.",
+        "When source_scan_truncated is true, newer events may exist outside the scan.",
+        "When event_result_truncated is true, events beyond the displayed set were omitted.",
+        "Absent dates are not inferred and source event ordering conflicts are flagged.",
+    ])
+
+
 class EntityNeighborhoodSnapshot(BaseModel):
     """Bounded exact-key co-occurrence in persisted source claims, never identity proof."""
 

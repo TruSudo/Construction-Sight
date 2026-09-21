@@ -234,3 +234,28 @@ or view-mode changes refit the corresponding footprint. Explicit Refresh
 refits to the current query. The interface is still a loopback browser GUI,
 not an installed PySide6 desktop shell, street basemap, or parcel/county
 geographic layer. Browser visual and interaction acceptance remains required.
+
+## Historical source-record timeline (draft)
+
+The read-only \`/api/timeline\` endpoint scans at most 5,000 stored source
+records in the same stable combined CEQA/permit ordering and current query,
+family, and county filter as the main list. It displays at most 80 individual,
+most-recent recorded CEQA received/posted and permit applied/issued/finaled
+events in the **scanned** set. Missing dates remain absent; contradictory
+intra-record date sequences remain visible and explicitly flagged. Source
+family and exact record key prevent same-string CEQA and permit identifiers
+from being conflated. The timeline retains the source record ordinal so its
+event can navigate to the original source record even when the record has no
+supported map coordinates or is outside the current 50-record page.
+
+The response separately reports matched source records, scanned source
+records, records with dates, total events in the scan, returned events, and
+both the source-scan and event-result truncation flags. If the scanned source
+records are truncated, more recent milestones **may exist outside the scan**:
+the panel must not claim to show the globally latest events. The list, map,
+and timeline use separate read-only requests, and a source-count mismatch
+disables timeline navigation pending a refresh. Recorded dates, phases,
+issuances, and finalizations do not establish actual physical commencement,
+current site activity, independent entity identity, or qualified opportunities.
+This is not a live-ingestion schedule, deduplicated project growth replay,
+or a production-level authoritative project timeline.

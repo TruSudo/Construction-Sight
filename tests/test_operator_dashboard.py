@@ -28,6 +28,7 @@ from constructionsight.operator_dashboard import (
     build_dashboard_snapshot,
     build_entity_neighborhood,
     build_geographic_footprint,
+    build_historical_timeline,
     build_workflow_snapshot,
 )
 from constructionsight.operator_services.ceqanet_persistence_service import (
@@ -840,3 +841,98 @@ def test_retained_source_pulse_ui_binds_to_bounded_read_models(database):
     assert page["total"] == footprint["matching_total"] == 1
     assert footprint["records_scanned"] == footprint["mapped_in_scan"] == 1
     assert footprint["truncated"] is False
+
+
+def test_historical_timeline_preserves_family_dates_scope_and_unmapped_sources(database):
+    """An undated record or missing coordinate never becomes a fabricated milestone."""
+
+    path, engine = database
+    with Session(engine) as session, session.begin():
+        CeqaStore(session).upsert(
+            _record(
+                "timeline:ceqa",
+                received_date=date(2025, 1, 3),
+                posted_date=date(2025, 1, 5),
+            )
+        )
+        CeqaStore(session).upsert(_record("timeline:undated", county="Riverside"))
+        PermitStore(session).upsert(
+            PermitRecord(
+                permit_key="timeline:permit",
+                permit_number="TEST-TIMELINE",
+                jurisdiction="Fontana",
+                county="San Bernardino",
+                applied_date=date(2025, 2, 1),
+                issued_date=date(2025, 2, 8),
+                status="Issued",
+                provenance=_provenance(),
+            )
+        )
+    with Session(engine) as session:
+        result = build_historical_timeline(session, county="San Bernardino")
+        assert result.matching_total == result.records_scanned == 2
+        assert result.dated_records_in_scan == 2
+        assert result.milestones_in_scan == result.returned_events == 4
+        assert [event.event_kind for event in result.events] == [
+            "permit_issued", "permit_applied", "ceqa_posted", "ceqa_received"
+        ]
+        assert [(event.record_kind, event.record_id) for event in result.events] == [
+            ("permit", "timeline:permit"), ("permit", "timeline:permit"),
+            ("ceqa", "timeline:ceqa"), ("ceqa", "timeline:ceqa")
+        ]
+        assert [event.classification for event in result.events] == [
+            "source_claimed"
+        ] * 4
+        assert result.source_scan_truncated is False
+        assert result.event_result_truncated is False
+        assert build_historical_timeline(session, kind="permit", county="Riverside").events == []
+    before = hashlib.sha256(path.read_bytes()).hexdigest()
+    with _server(path) as port:
+        response = _get(port, "/api/timeline?kind=all&county=San+Bernardino")
+        html = _get(port, "/")[2].decode("utf-8")
+        script = _get(port, "/operator_ui.js")[2].decode("utf-8")
+    assert response[0] == 200
+    data = json.loads(response[2])
+    assert data["matching_total"] == 2
+    assert data["events"][0]["recorded_date"] == "2025-02-08"
+    assert data["events"][0]["classification"] == "source_claimed"
+    assert data["read_only"] is True and data["live_collection_enabled"] is False
+    assert 'id="timeline-card"' in html
+    assert 'id="timeline-warning"' in html
+    assert "/api/timeline?" in script and "data-timeline-index" in script
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == before
+
+
+def test_historical_timeline_explicitly_discloses_scan_and_event_caps(database, monkeypatch):
+    monkeypatch.setattr("constructionsight.operator_dashboard.TIMELINE_SCAN_LIMIT", 2)
+    monkeypatch.setattr("constructionsight.operator_dashboard.TIMELINE_RESULT_LIMIT", 1)
+    _, engine = database
+    with Session(engine) as session, session.begin():
+        for index in range(3):
+            CeqaStore(session).upsert(
+                _record(
+                    f"timeline:cap:{index}",
+                    received_date=date(2025, 1, index + 1),
+                    posted_date=date(2025, 2, index + 1),
+                )
+            )
+    with Session(engine) as session:
+        result = build_historical_timeline(session)
+    assert result.matching_total == 3 and result.records_scanned == 2
+    assert result.dated_records_in_scan == 2
+    assert result.milestones_in_scan == 4
+    assert result.returned_events == 1
+    assert result.source_scan_truncated is True
+    assert result.event_result_truncated is True
+    assert result.events[0].recorded_date == date(2025, 2, 1)
+    assert result.events[0].record_id == "timeline:cap:0"
+
+
+@pytest.mark.parametrize("query", [
+    "kind=unknown", "limit=1", "offset=2", "county=Orange",
+    "q=" + "x" * 201, "kind=permit&kind=permit", "entity_key=fixture",
+])
+def test_historical_timeline_rejects_extra_or_invalid_parameters(database, query):
+    path, _ = database
+    with _server(path) as port:
+        assert _get(port, "/api/timeline?" + query)[0] == 400

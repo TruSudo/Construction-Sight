@@ -23,6 +23,8 @@ from constructionsight.operator_dashboard_models import (
     EntityNeighborhoodSnapshot,
     FootprintPoint,
     GeographicFootprintSnapshot,
+    HistoricalSourceEvent,
+    HistoricalTimelineSnapshot,
     MilestoneKind,
     RecordKind,
     RecordSelection,
@@ -116,6 +118,73 @@ def build_geographic_footprint(
         mapped_in_scan=len(points),
         scan_limit=FOOTPRINT_SCAN_LIMIT,
         truncated=total > len(projects),
+    )
+
+
+TIMELINE_SCAN_LIMIT = 5_000
+TIMELINE_RESULT_LIMIT = 80
+
+
+def build_historical_timeline(
+    session: Session,
+    *,
+    kind: RecordSelection = "all",
+    query: str = "",
+    county: str = "",
+) -> HistoricalTimelineSnapshot:
+    """Summarize only recorded historical dates in a bounded source-record query."""
+
+    if kind not in {"all", "ceqa", "permit"}:
+        raise ValueError("kind must be all, ceqa or permit")
+    if len(query) > 200 or county not in {"", "San Bernardino", "Riverside"}:
+        raise ValueError("invalid search or county filter")
+    records, total = read_project_page(
+        session,
+        kind=kind,
+        query=query.strip(),
+        county=county,
+        limit=TIMELINE_SCAN_LIMIT,
+        offset=0,
+    )
+    events: list[HistoricalSourceEvent] = []
+    dated_records = 0
+    for ordinal, record in enumerate(records):
+        milestones, conflict = _source_milestones(record)
+        if milestones:
+            dated_records += 1
+        is_ceqa = isinstance(record, CeqaRecord)
+        source_kind: RecordKind = "ceqa" if is_ceqa else "permit"
+        source_id = record.ceqa_key if is_ceqa else record.permit_key
+        title = record.title if is_ceqa else f"Permit {record.permit_number}"
+        for milestone in milestones:
+            events.append(
+                HistoricalSourceEvent(
+                    ordinal=ordinal,
+                    record_kind=source_kind,
+                    record_id=source_id,
+                    title=title,
+                    county=record.county,
+                    event_kind=milestone.event_kind,
+                    recorded_date=milestone.recorded_date,
+                    source_date_order_conflict=conflict,
+                )
+            )
+    events.sort(
+        key=lambda item: (-item.recorded_date.toordinal(), item.ordinal, item.event_kind)
+    )
+    count = len(events)
+    return HistoricalTimelineSnapshot(
+        selection=kind,
+        events=events[:TIMELINE_RESULT_LIMIT],
+        matching_total=total,
+        records_scanned=len(records),
+        dated_records_in_scan=dated_records,
+        milestones_in_scan=count,
+        returned_events=min(count, TIMELINE_RESULT_LIMIT),
+        scan_limit=TIMELINE_SCAN_LIMIT,
+        result_limit=TIMELINE_RESULT_LIMIT,
+        source_scan_truncated=total > len(records),
+        event_result_truncated=count > TIMELINE_RESULT_LIMIT,
     )
 
 

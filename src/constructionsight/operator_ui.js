@@ -1,7 +1,7 @@
 "use strict";
 const $ = id => document.getElementById(id);
 const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-let mode = "records", snapshot = null, footprint = null, selected = null, pendingSelection = null, offset = 0, requestId = 0, controller;
+let mode = "records", snapshot = null, footprint = null, timeline = null, selected = null, pendingSelection = null, offset = 0, requestId = 0, controller;
 let query = "", kind = "all", county = "";
 let entityRequestId = 0, candidateRequestId = 0, relatedIds = new Set();
 let lastLoadedScope = null;
@@ -79,10 +79,11 @@ async function load() {
   const id = ++requestId;
   const scope = JSON.stringify([mode, kind, query, county]);
   const shouldFit = scope !== lastLoadedScope;
-  controller?.abort(); controller = new AbortController(); snapshot = null; footprint = null; selected = null;
+  controller?.abort(); controller = new AbortController(); snapshot = null; footprint = null; timeline = null; selected = null;
   $("error").hidden = true; $("status").textContent = "Reading stored data…";
   resetPulse("Reading…");
   $("records").innerHTML = '<p class="empty">Loading…</p>'; $("detail").innerHTML = '<p class="empty">Select a record to inspect its evidence.</p>';
+  $("timeline-list").innerHTML = '<p class="empty">Loading retained historical milestones…</p>'; $("timeline-count").textContent = "Reading…";
   $("previous").disabled = true; $("next").disabled = true; $("visible").textContent = ""; $("page-count").textContent = ""; renderMap();
   const parameters = new URLSearchParams({limit: LIMIT, offset});
   if (mode === "records") { parameters.set("kind", kind); parameters.set("q", query); parameters.set("county", county); }
@@ -91,17 +92,21 @@ async function load() {
     if (mode === "records") {
       const mapParameters = new URLSearchParams({kind, q: query, county});
       requests.push(fetch("/api/footprint?" + mapParameters, {signal: controller.signal}));
+      requests.push(fetch("/api/timeline?" + mapParameters, {signal: controller.signal}));
     }
     const responses = await Promise.all(requests);
     const payloads = await Promise.all(responses.map(response => response.json()));
     if (!responses[0].ok) throw Error(payloads[0].error || "Unable to read stored data.");
     if (responses[1] && !responses[1].ok) throw Error(payloads[1].error || "Unable to read geographic footprint.");
+    if (responses[2] && !responses[2].ok) throw Error(payloads[2].error || "Unable to read historical milestones.");
     const data = payloads[0];
     if (id !== requestId) return;
     snapshot = data;
     footprint = payloads[1] || null;
+    timeline = payloads[2] || null;
     lastLoadedScope = scope;
     if (mode === "records" && footprint) renderPulse(data, footprint);
+    if (mode === "records") renderTimeline();
     $("visible").textContent = data.total + " matching";
     $("page-count").textContent = data.returned ? `${offset + 1}–${offset + data.returned} of ${data.total}` : `0 of ${data.total}`;
     $("previous").disabled = offset === 0; $("next").disabled = !data.has_more;
@@ -117,8 +122,60 @@ async function load() {
     if (id !== requestId || error.name === "AbortError") return;
     $("error").textContent = error.message; $("error").hidden = false; $("status").textContent = "Data unavailable.";
     lastLoadedScope = null; resetPulse("Unavailable");
+    $("timeline-count").textContent = "Unavailable"; $("timeline-list").textContent = "Historical milestones could not be read.";
     $("records").innerHTML = '<p class="empty">Check the selected database, then refresh.</p>';
   }
+}
+function renderTimeline() {
+  if (!timeline) {
+    $("timeline-count").textContent = "No retained events";
+    $("timeline-list").innerHTML = '<p class="empty">No dated source milestones recorded.</p>';
+    return;
+  }
+  const mismatch = !snapshot || snapshot.total !== timeline.matching_total ||
+    (footprint && footprint.matching_total !== timeline.matching_total);
+  const incomplete = timeline.source_scan_truncated || timeline.event_result_truncated;
+  $("timeline-count").textContent = timeline.returned_events.toLocaleString() +
+    " shown / " + timeline.milestones_in_scan.toLocaleString() + " dated events in scan";
+  $("timeline-warning").textContent = mismatch
+    ? "The list, map, and historical reads disagree. Refresh before navigating these events."
+    : timeline.source_scan_truncated
+      ? "Only the first " + timeline.records_scanned + " of " + timeline.matching_total +
+        " matching records were scanned; newer dates may exist beyond that scope."
+      : timeline.event_result_truncated
+        ? "Showing only the latest " + timeline.returned_events + " of " +
+          timeline.milestones_in_scan + " retained events in the scanned records."
+        : "All " + timeline.matching_total +
+          " matching source records were scanned. Dates are historical source claims, not current activity.";
+  const names = {
+    ceqa_received: "CEQA received", ceqa_posted: "CEQA posted",
+    permit_applied: "Permit applied", permit_issued: "Permit issued",
+    permit_finaled: "Permit finalized"
+  };
+  $("timeline-list").innerHTML = timeline.events.map((item, index) =>
+    '<button type="button" class="timeline-row" data-timeline-index="' + index + '"' +
+    (mismatch ? " disabled" : "") + '><time datetime="' + esc(item.recorded_date) + '">' +
+    esc(item.recorded_date) + '</time><span><strong>' + esc(item.title) +
+    '</strong><small>' + esc(names[item.event_kind] || "Unrecognized source event") +
+    ' · ' + esc(item.record_kind) + ' · ' + esc(item.county || "County unknown") +
+    (item.source_date_order_conflict ? ' · Contradictory date sequence: review required' : '') +
+    '</small></span></button>'
+  ).join("") || '<p class="empty">No dated source milestones recorded within the scan.</p>';
+  if (incomplete && !mismatch) $("timeline-list").setAttribute("data-incomplete", "true");
+  else $("timeline-list").removeAttribute("data-incomplete");
+  $("timeline-list").querySelectorAll("button[data-timeline-index]").forEach(button => {
+    button.onclick = () => {
+      const event = timeline?.events[Number(button.dataset.timelineIndex)];
+      if (!event || mismatch) return;
+      const identity = rowId(event);
+      if (rows().some(row => rowId(row) === identity)) selectRecord(identity);
+      else {
+        pendingSelection = identity;
+        offset = Math.floor(event.ordinal / LIMIT) * LIMIT;
+        load();
+      }
+    };
+  });
 }
 async function inspectCandidate() {
   if (mode !== "records" || !selected) return;
@@ -204,7 +261,7 @@ async function inspectEntity(entityKey) {
 }
 function switchMode(next) {
   mode = next; offset = 0;
-  $("filters").hidden = mode !== "records"; $("map-card").hidden = mode !== "records"; $("pulse").hidden = mode !== "records";
+  $("filters").hidden = mode !== "records"; $("map-card").hidden = mode !== "records"; $("timeline-card").hidden = mode !== "records"; $("pulse").hidden = mode !== "records";
   $("heading").textContent = mode === "records" ? "Project records" : "Lead workflow";
   $("list-title").textContent = mode === "records" ? "Source records" : "Persisted workflows";
   ["records", "workflow"].forEach(v => { const active = (v === "records") === (mode === "records"); $(v + "-tab").classList.toggle("active", active); $(v + "-tab").setAttribute("aria-pressed", active); });

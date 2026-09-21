@@ -20,6 +20,7 @@ from constructionsight.operator_dashboard import (
     build_dashboard_snapshot,
     build_entity_neighborhood,
     build_geographic_footprint,
+    build_historical_timeline,
     build_workflow_snapshot,
 )
 from constructionsight.operator_dashboard_models import RecordSelection
@@ -150,6 +151,7 @@ def create_handler(database_path: Path) -> type[BaseHTTPRequestHandler]:
                     "/api/health",
                     "/api/snapshot",
                     "/api/footprint",
+                    "/api/timeline",
                     "/api/entity-neighborhood",
                     "/api/candidate-preview",
                     "/api/workflows",
@@ -159,7 +161,7 @@ def create_handler(database_path: Path) -> type[BaseHTTPRequestHandler]:
                 parameters = _parameters(
                     parsed.query,
                     workflow=path == "/api/workflows",
-                    footprint=path == "/api/footprint",
+                    footprint=path in {"/api/footprint", "/api/timeline"},
                     entity=path == "/api/entity-neighborhood",
                     candidate=path == "/api/candidate-preview",
                 )
@@ -193,6 +195,13 @@ def create_handler(database_path: Path) -> type[BaseHTTPRequestHandler]:
                             session,
                             entity_key=parameters.entity_key,
                             kind=parameters.kind,
+                            county=parameters.county,
+                        ).model_dump(mode="json")
+                    elif path == "/api/timeline":
+                        payload = build_historical_timeline(
+                            session,
+                            kind=parameters.kind,
+                            query=parameters.query,
                             county=parameters.county,
                         ).model_dump(mode="json")
                     elif path == "/api/footprint":
