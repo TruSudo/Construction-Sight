@@ -44,6 +44,7 @@ from constructionsight.parcel_source_verification import (
     get_parcel_source_evidence,
     get_verified_parcel_source_profiles,
 )
+from constructionsight.storage.runtime_artifacts import write_runtime_text
 
 app = typer.Typer(help="Inspect parcel source targets and governed readiness.")
 console = Console(width=240, color_system=None)
@@ -61,10 +62,9 @@ def _reject_output_without_json(output_path: Path | None, json_output: bool) -> 
 
 
 def _write_json_file(output_path: Path, payload: object) -> None:
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(
+    write_runtime_text(
+        output_path,
         json.dumps(payload, indent=2, sort_keys=True, default=str) + "\n",
-        encoding="utf-8",
     )
 
 

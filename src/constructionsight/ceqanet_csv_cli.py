@@ -30,6 +30,7 @@ from constructionsight.storage.runtime_artifacts import (
     RuntimeArtifactLimitError,
     read_runtime_artifact,
     read_runtime_text,
+    write_runtime_text,
 )
 
 app = typer.Typer(help="Governed CEQAnet official CSV planning, inspection, and proof.")
@@ -331,17 +332,13 @@ def _write_json_file(path: Path, payload: object, *, overwrite: bool) -> None:
             f"output already exists: {path}; pass --overwrite to replace it"
         )
     rendered = json.dumps(payload, indent=2, sort_keys=True)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(f".{path.name}.tmp")
-    temporary.write_text(f"{rendered}\n", encoding="utf-8")
-    temporary.replace(path)
+    write_runtime_text(path, f"{rendered}\n", overwrite=overwrite)
 
 
 def _emit_json(payload: object, output: Path | None) -> None:
     rendered = json.dumps(payload, indent=2, sort_keys=True)
     if output is not None:
-        output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_text(f"{rendered}\n", encoding="utf-8")
+        write_runtime_text(output, f"{rendered}\n")
         console.print(f"Wrote CEQAnet CSV artifact to {output}")
         return
     console.print_json(rendered)

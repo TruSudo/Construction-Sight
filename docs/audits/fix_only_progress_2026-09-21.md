@@ -89,3 +89,73 @@ Detail, listing-result and vocabulary HTML extraction now consumes the same capt
 Local warning-strict full tests passed: **1,731 hardening and 1,835 GUI**. Ruff and strict mypy passed on both trees. Seven additional focused mutation witnesses were killed; the complete contract now contains 134 cases and requires new exact-head CI. These local checks remain diagnostic because the local environment is not the hash-locked release environment. The [loader-batch manifest](evidence/2026-09-21-loader-batch/manifest.json) retains authentic failing/passing outputs, mutation evidence, prior exact-head preflight and all eight second-batch CI logs.
 
 CS-SR-054/055 remain active pending their complete evidence and path inventory. Ordinary CLI output writes, CEQAnet bundle/archive publication, registry apply, deterministic orphan recovery and coupled success records remain corrective work under CS-SR-054/058/061. No finding is closed, no isolated assurance review is claimed, and no change is made to main.
+
+
+## Third batch qualified against its exact published heads
+
+Actual raw logs for hardening commit `49c79447491bd531299331ad6a5846e64eb1c08e`
+([run 35594264009](https://github.com/TruSudo/Construction-Sight/actions/runs/35594264009))
+and GUI commit `3fd888d714ca9a14d3a3c79eb71759a8a89988dd`
+([run 35594265573](https://github.com/TruSudo/Construction-Sight/actions/runs/35594265573))
+confirm 1,731 hardening / 1,835 GUI tests and 134/134 mutation witnesses killed on
+both Python 3.11 and 3.12. Ruff, strict typing, structural preflight, exact dependency
+controls and the isolated vulnerability audits passed. Release certification alone
+reported 75 active defects and missing Native Maximum Assurance (76 blockers).
+These are historical results for those exact commits, not results for the next batch.
+
+## Fourth correction batch: operator output and export containment
+
+Resumed from those published heads and the unfinished local output batch. Reproduced
+98 failures against the published hardening source: 31 JSON/text writer boundaries
+accepted ancestor symlinks, replaced/followed final symlinks, or exceeded the output
+ceiling; four create-only paths overwrote a concurrent winner; a registry-output
+parent swap escaped containment. An additional real registry-plan CLI regression
+caught missing propagation of `--overwrite` in the inherited partial correction.
+Six more failing cases reproduced bundle/ZIP ancestor, final-target and parent-swap
+publication faults. Original failures are retained, including the intermediate test
+failures corrected during this batch.
+
+The shared publisher now supports explicit atomic replacement through pinned directory
+handles while retaining create-only as its default. It rejects a nonregular existing
+replacement target, writes and syncs complete bounded content before publication,
+checks published identity, syncs the parent, and cleans staging through held handles.
+Replacement never writes through the old inode. The 33 affected CLI modules preserve
+their prior output encodings and replacement policies; commands with an overwrite
+option pass that authority to the atomic publication boundary, including registry
+plan, audit, backup and separate-target outputs. Generated text is limited to 16 MiB
+of UTF-8 bytes. Callers that render JSON first still hold that rendered text in memory;
+this batch does not establish a general pre-serialization allocation ceiling.
+
+CEQAnet bundle members use the same publisher with existing member/manifest limits
+and streamed hash accounting. ZIP generation keeps one anonymous temporary handle
+through creation and bounded hash/publication reads, removing pathname reopen and
+replacement races. ZIP input member/total limits remain enforced during generation.
+A preexisting test permitting replacement of a final symlink now requires rejection
+and preservation of the link, consistent with CS-SR-054; failure injection moved to
+the shared OS publication boundary, without weakening its preservation assertion.
+
+New coverage includes byte-accurate UTF-8 limits, exact empty/non-ASCII output,
+preservation of externally hardlinked prior content, unsupported primitives, durability
+ordering, injected data-sync/replacement/post-publication-sync failures, and the real
+registry-plan race. Post-publication failure reports an error and may leave a complete
+new artifact; it does not promise rollback. Before-publication failure retains the
+previous artifact. Eight new mutation witnesses were killed with zero survivors,
+invalid failures or timeouts; the complete contract now contains 142 cases.
+
+Local full-suite verification: 1,854 hardening / 1,958 GUI tests passed with warnings
+treated as errors. Ruff and strict
+mypy passed on both trees (263 / 273 source files). These are local diagnostic results,
+not hash-locked release evidence. Exact-commit structural preflight and new canonical
+Python 3.11/3.12 CI must qualify the published candidates. Raw commands/results,
+prior-head CI logs, mutation outputs and SHA-256 bindings are retained in the
+[output-batch evidence manifest](evidence/2026-09-21-output-batch/manifest.json).
+
+No active finding is closed. CS-SR-054 still needs complete path inventory and platform
+qualification; native Windows success is unestablished and missing atomic primitives
+fail closed. CS-SR-058 remains open for a coupled registry/bundle commit protocol,
+success evidence published only after authoritative commit, deterministic recovery
+and orphan cleanup. Registry apply still writes its audit before its target, so this
+batch must not be mistaken for a cross-artifact transaction fix. CS-SR-061 still needs
+filesystem effects coupled to owned durable authorization consumption. The remaining
+inventory, five genuine isolated assurance reviews, exact-candidate release gates and
+owner acceptance remain outstanding. Both PRs stay draft and main is unchanged.

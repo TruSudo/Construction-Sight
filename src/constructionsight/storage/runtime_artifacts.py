@@ -14,6 +14,7 @@ from typing import BinaryIO
 
 _DIRECTORY_RELATIVE_OPEN_SUPPORTED = os.open in os.supports_dir_fd
 _DIRECTORY_RELATIVE_STAT_SUPPORTED = os.stat in os.supports_dir_fd
+_DIRECTORY_RELATIVE_REPLACEMENT_SUPPORTED = os.rename in os.supports_dir_fd
 _DIRECTORY_RELATIVE_PUBLICATION_SUPPORTED = all(
     operation in os.supports_dir_fd for operation in (os.mkdir, os.rmdir, os.unlink, os.link)
 )
@@ -193,13 +194,15 @@ def _require_byte_limit(max_bytes: int) -> None:
 
 
 def publish_runtime_artifact(
-    path: Path, chunks: Iterable[bytes], *, max_bytes: int,
+    path: Path, chunks: Iterable[bytes], *, max_bytes: int, replace_existing: bool = False,
 ) -> None:
-    """Durably publish one complete artifact without replacing an existing entry.
+    """Durably publish one complete artifact, create-only unless replacement is explicit.
 
     Stage in an exclusively created private directory, hold its descriptor for
-    every write/link/cleanup, fsync the complete file, then create the final name
-    with an atomic no-replace link. FileExistsError delegates exact replay to the
+    every write/publication/cleanup, fsync the complete file, then create the final
+    name with an atomic no-replace link or explicitly requested replacement of a
+    regular file. Replacement changes the directory entry, never the old inode.
+    FileExistsError delegates exact replay to the
     caller's bounded semantic verifier. An error after publication never claims
     success; a retry can independently verify the complete existing artifact.
     """
@@ -207,8 +210,14 @@ def publish_runtime_artifact(
     directory_flags = _require_anchored_access()
     if not _DIRECTORY_RELATIVE_PUBLICATION_SUPPORTED:
         raise RuntimeArtifactError("atomic directory-relative publication is unavailable")
+    if not isinstance(replace_existing, bool):
+        raise ValueError("artifact replacement policy must be Boolean")
+    if replace_existing and not _DIRECTORY_RELATIVE_REPLACEMENT_SUPPORTED:
+        raise RuntimeArtifactError("atomic directory-relative replacement is unavailable")
     _require_byte_limit(max_bytes)
     with anchored_artifact_parent(path, create_parents=True) as (parent, name):
+        if replace_existing:
+            _require_regular_replacement_target(parent, name)
         staging_name = f".runtime-artifact-{secrets.token_hex(16)}"
         os.mkdir(staging_name, mode=0o700, dir_fd=parent)
         staging = os.open(staging_name, directory_flags, dir_fd=parent)
@@ -244,6 +253,12 @@ def publish_runtime_artifact(
                 os.fsync(staging)
                 _require_same_entry(parent, staging_name, staging)
                 _require_same_entry(staging, "content.tmp", stream.fileno())
+                if replace_existing:
+                    _require_regular_replacement_target(parent, name)
+                    os.replace("content.tmp", name, src_dir_fd=staging, dst_dir_fd=parent)
+                    _require_same_entry(parent, name, stream.fileno())
+                    os.fsync(parent)
+                    return
                 os.link(
                     "content.tmp", name,
                     src_dir_fd=staging, dst_dir_fd=parent, follow_symlinks=False,
@@ -262,6 +277,27 @@ def publish_runtime_artifact(
                     os.fsync(parent)
             finally:
                 os.close(staging)
+
+
+def _require_regular_replacement_target(parent: int, name: str) -> None:
+    try:
+        target = os.stat(name, dir_fd=parent, follow_symlinks=False)
+    except FileNotFoundError:
+        return
+    if not stat.S_ISREG(target.st_mode):
+        raise RuntimeArtifactError("artifact replacement target must be a regular file")
+
+
+def write_runtime_text(
+    path: Path, content: str, *, overwrite: bool = True, max_bytes: int = 16 * 1024 * 1024,
+) -> None:
+    """Write bounded UTF-8 through the same contained atomic publication protocol."""
+
+    chunks = (
+        content[start:start + 16_384].encode("utf-8")
+        for start in range(0, len(content), 16_384)
+    )
+    publish_runtime_artifact(path, chunks, max_bytes=max_bytes, replace_existing=overwrite)
 
 
 def runtime_json_chunks(value: object) -> Iterator[bytes]:

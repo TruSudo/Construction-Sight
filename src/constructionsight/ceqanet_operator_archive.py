@@ -8,17 +8,19 @@ persistence mutation.
 from __future__ import annotations
 
 import hashlib
-import os
 import tempfile
 import zipfile
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
+from typing import BinaryIO
 
 from constructionsight.ceqanet_operator_bundle_verify import (
     _open_regular_bundle_file,
     _require_contained_bundle_file,
     verify_ceqanet_operator_bundle,
 )
+from constructionsight.storage.runtime_artifacts import publish_runtime_artifact
 
 _ARCHIVE_TIMESTAMP = (2026, 1, 1, 0, 0, 0)
 _MAX_ARCHIVE_MEMBER_BYTES = 16 * 1024 * 1024
@@ -99,28 +101,24 @@ def build_ceqanet_operator_archive(
         manifest_size,
         manifest_digest.hexdigest(),
     )
-    archive_path.parent.mkdir(parents=True, exist_ok=True)
-    temporary_path: Path | None = None
-    try:
-        with tempfile.NamedTemporaryFile(
-            mode="wb",
-            prefix=".ceqanet-archive-",
-            suffix=".tmp",
-            dir=archive_path.parent,
-            delete=False,
-        ) as temporary_file:
-            temporary_path = Path(temporary_file.name)
+    archive_digest = hashlib.sha256()
+    archive_byte_count = 0
+    # ZIP needs random access while writing its directory. Keep one anonymous
+    # temporary handle through generation, hashing and publication; never reopen
+    # a pathname that an output-directory swap could redirect.
+    with tempfile.TemporaryFile(mode="w+b") as temporary_file:
         _write_zip(
             source_dir=source_dir,
-            archive_path=temporary_path,
+            archive_path=temporary_file,
             filenames=archived_files,
             expected_content=expected_content,
         )
-        archive_digest = hashlib.sha256()
-        archive_byte_count = 0
-        with temporary_path.open("rb") as archive_file:
+        temporary_file.seek(0)
+
+        def chunks() -> Iterator[bytes]:
+            nonlocal archive_byte_count
             while True:
-                chunk = archive_file.read(
+                chunk = temporary_file.read(
                     min(
                         _ARCHIVE_CHUNK_BYTES,
                         _MAX_ARCHIVE_FILE_BYTES - archive_byte_count + 1,
@@ -132,11 +130,11 @@ def build_ceqanet_operator_archive(
                 if archive_byte_count > _MAX_ARCHIVE_FILE_BYTES:
                     raise ValueError("CEQAnet ZIP output exceeds the archive byte limit")
                 archive_digest.update(chunk)
-        os.replace(temporary_path, archive_path)
-        temporary_path = None
-    finally:
-        if temporary_path is not None:
-            temporary_path.unlink(missing_ok=True)
+                yield chunk
+
+        publish_runtime_artifact(
+            archive_path, chunks(), max_bytes=_MAX_ARCHIVE_FILE_BYTES, replace_existing=True,
+        )
 
     return CeqanetOperatorArchive(
         archive_path=archive_path,
@@ -198,7 +196,7 @@ def _verified_content(verification: dict[str, object]) -> dict[str, tuple[int, s
 def _write_zip(
     *,
     source_dir: Path,
-    archive_path: Path,
+    archive_path: Path | BinaryIO,
     filenames: list[str],
     expected_content: dict[str, tuple[int, str]],
 ) -> None:

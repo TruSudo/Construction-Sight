@@ -36,7 +36,7 @@ from constructionsight.operator_services.ceqanet_recurring_run_service import (
 from constructionsight.source_verification_checklist_models import (
     SourceVerificationChecklistReport,
 )
-from constructionsight.storage.runtime_artifacts import read_runtime_text
+from constructionsight.storage.runtime_artifacts import read_runtime_text, write_runtime_text
 
 app = typer.Typer(help="Build and execute governed CEQAnet recurring-run manifests.")
 console = Console(width=240, color_system=None)
@@ -84,13 +84,7 @@ def _parse_date(value: str, field_name: str) -> date:
 
 
 def _write_json(path: Path, payload: dict[str, object]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(f".{path.name}.tmp")
-    temporary.write_text(
-        json.dumps(payload, indent=2, sort_keys=True, default=str) + "\n",
-        encoding="utf-8",
-    )
-    temporary.replace(path)
+    write_runtime_text(path, json.dumps(payload, indent=2, sort_keys=True, default=str) + "\n")
     typer.echo(f"Wrote {path}.")
 
 

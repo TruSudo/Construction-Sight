@@ -24,7 +24,7 @@ from constructionsight.adapters.ceqanet_search_vocabulary import (
     classify_ceqanet_lead_agency,
     parse_ceqanet_search_vocabulary,
 )
-from constructionsight.storage.runtime_artifacts import read_runtime_text
+from constructionsight.storage.runtime_artifacts import read_runtime_text, write_runtime_text
 
 InputFormat = Literal["auto", "execution-json", "html"]
 _INPUT_FORMATS = frozenset({"auto", "execution-json", "html"})
@@ -221,11 +221,9 @@ def _vocabulary_to_payload(
 
 def _write_json_file(output_path: Path, payload: dict[str, Any]) -> None:
     """Write deterministic UTF-8 JSON output."""
-
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(
+    write_runtime_text(
+        output_path,
         json.dumps(payload, indent=2, sort_keys=True, default=str) + "\n",
-        encoding="utf-8",
     )
 
 
