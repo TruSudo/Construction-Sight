@@ -15,8 +15,7 @@ from pathlib import Path
 from typing import cast
 
 from pydantic import BaseModel, Field
-from sqlalchemy import create_engine, inspect, select
-from sqlalchemy.engine import Engine, URL
+from sqlalchemy import Engine, URL, create_engine, inspect, select
 from sqlalchemy.orm import Session
 
 from constructionsight.authorization_decision import AuthorizationDeniedError

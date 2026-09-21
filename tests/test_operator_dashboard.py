@@ -924,8 +924,8 @@ def test_historical_timeline_explicitly_discloses_scan_and_event_caps(database, 
     assert result.returned_events == 1
     assert result.source_scan_truncated is True
     assert result.event_result_truncated is True
-    assert result.events[0].recorded_date == date(2025, 2, 1)
-    assert result.events[0].record_id == "timeline:cap:0"
+    assert result.events[0].recorded_date == date(2025, 2, 2)
+    assert result.events[0].record_id == "timeline:cap:1"
 
 
 @pytest.mark.parametrize("query", [

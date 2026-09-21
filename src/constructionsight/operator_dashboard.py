@@ -152,10 +152,15 @@ def build_historical_timeline(
         milestones, conflict = _source_milestones(record)
         if milestones:
             dated_records += 1
-        is_ceqa = isinstance(record, CeqaRecord)
-        source_kind: RecordKind = "ceqa" if is_ceqa else "permit"
-        source_id = record.ceqa_key if is_ceqa else record.permit_key
-        title = record.title if is_ceqa else f"Permit {record.permit_number}"
+        source_kind: RecordKind
+        if isinstance(record, CeqaRecord):
+            source_kind = "ceqa"
+            source_id = record.ceqa_key
+            title = record.title
+        else:
+            source_kind = "permit"
+            source_id = record.permit_key
+            title = f"Permit {record.permit_number}"
         for milestone in milestones:
             events.append(
                 HistoricalSourceEvent(
