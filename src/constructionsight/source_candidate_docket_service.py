@@ -16,7 +16,7 @@ from typing import cast
 
 from pydantic import BaseModel, Field
 from sqlalchemy import create_engine, inspect, select
-from sqlalchemy.engine import URL, Engine
+from sqlalchemy.engine import Engine, URL
 from sqlalchemy.orm import Session
 
 from constructionsight.authorization_decision import AuthorizationDeniedError
