@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import math
 import time
 from collections.abc import Callable, Mapping, Sequence
@@ -33,6 +32,14 @@ from constructionsight.parcel_source_bulk_rehearsal_models import (
     build_arcgis_bulk_resume_evidence,
     build_arcgis_bulk_retry_evidence,
 )
+from constructionsight.storage.runtime_artifacts import (
+    open_runtime_artifact,
+    publish_runtime_artifact,
+    read_bounded_artifact_stream,
+    runtime_json_chunks,
+)
+
+_MAX_CHECKPOINT_FILE_BYTES = 16 * 1024 * 1024
 
 
 class ParcelArcGISBulkRehearsalError(RuntimeError):
@@ -175,41 +182,34 @@ class JSONFileParcelArcGISCheckpointStore:
         return self._directory / f"{digest}.json"
 
     def save(self, checkpoint: ParcelArcGISBulkCheckpointEvidence) -> None:
-        self._directory.mkdir(parents=True, exist_ok=True)
         path = self.path_for(checkpoint.checkpoint_id)
-        canonical = (
-            json.dumps(
-                checkpoint.to_dict(),
-                sort_keys=True,
-                separators=(",", ":"),
+        try:
+            publish_runtime_artifact(
+                path, runtime_json_chunks(checkpoint.to_dict()),
+                max_bytes=_MAX_CHECKPOINT_FILE_BYTES,
             )
-            + "\n"
-        )
-        if path.exists():
-            existing = ParcelArcGISBulkCheckpointEvidence.model_validate_json(
-                path.read_text(encoding="utf-8")
-            )
+        except FileExistsError:
+            existing = self.load(checkpoint.checkpoint_id, durable=True)
             if existing != checkpoint:
                 raise ParcelArcGISBulkRehearsalError(
                     "ArcGIS checkpoint identity conflicts with retained content"
-                )
-            return
-        temporary = path.with_suffix(".tmp")
-        temporary.write_text(canonical, encoding="utf-8")
-        temporary.replace(path)
+                ) from None
 
-    def load(self, checkpoint_id: str) -> ParcelArcGISBulkCheckpointEvidence:
+    def load(
+        self, checkpoint_id: str, *, durable: bool = False,
+    ) -> ParcelArcGISBulkCheckpointEvidence:
         path = self.path_for(checkpoint_id)
-        if not path.is_file():
-            raise ParcelArcGISBulkRehearsalError("ArcGIS checkpoint was not retained")
-        checkpoint = ParcelArcGISBulkCheckpointEvidence.model_validate_json(
-            path.read_text(encoding="utf-8")
-        )
-        if checkpoint.checkpoint_id != checkpoint_id:
-            raise ParcelArcGISBulkRehearsalError(
-                "ArcGIS checkpoint reload returned a different identity"
-            )
-        return checkpoint
+        try:
+            with open_runtime_artifact(path, durable=durable) as stream:
+                raw = read_bounded_artifact_stream(stream, max_bytes=_MAX_CHECKPOINT_FILE_BYTES)
+                checkpoint = ParcelArcGISBulkCheckpointEvidence.model_validate_json(raw)
+                if checkpoint.checkpoint_id != checkpoint_id:
+                    raise ParcelArcGISBulkRehearsalError(
+                        "ArcGIS checkpoint reload returned a different identity"
+                    )
+                return checkpoint
+        except FileNotFoundError as exc:
+            raise ParcelArcGISBulkRehearsalError("ArcGIS checkpoint was not retained") from exc
 
 
 def execute_arcgis_complete_rehearsal(
