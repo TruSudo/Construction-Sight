@@ -147,9 +147,18 @@ def test_adapter_runner_applies_default_ceiling_without_explicit_max() -> None:
 
 
 def test_adapter_runner_rejects_invalid_and_unbounded_overrides() -> None:
-    for limit in (0, -1, 5_001):
+    for limit in (-1, 5_001):
         adapter = EndlessSyntheticAdapter(_source(), AdapterRunContext(max_records=limit))
         result = AdapterRunner().run_adapter(adapter)
         assert result.succeeded is False
         assert result.errors[0].details == {"exception_type": "ValueError"}
         assert adapter.produced == 0
+
+
+def test_adapter_runner_accepts_zero_as_deliberate_no_records_mode() -> None:
+    adapter = EndlessSyntheticAdapter(_source(), AdapterRunContext(max_records=0))
+    result = AdapterRunner().run_adapter(adapter)
+
+    assert result.succeeded is True
+    assert result.records == ()
+    assert adapter.produced == 0

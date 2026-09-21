@@ -53,9 +53,9 @@ class AdapterRunner:
                 limit = _MAX_ADAPTER_RECORDS
             if isinstance(limit, bool) or not isinstance(limit, int):
                 raise ValueError("adapter max_records must be an integer")
-            if not 1 <= limit <= _MAX_ADAPTER_RECORDS:
+            if not 0 <= limit <= _MAX_ADAPTER_RECORDS:
                 raise ValueError(
-                    f"adapter max_records must be between 1 and {_MAX_ADAPTER_RECORDS}"
+                    f"adapter max_records must be between 0 and {_MAX_ADAPTER_RECORDS}"
                 )
 
             normalized: list[BaseModel] = []
