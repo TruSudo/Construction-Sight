@@ -225,10 +225,22 @@ async function inspectEntity(entityKey) {
     const parameters = new URLSearchParams({
       entity_key: entityKey, kind: kindSelection, county: countySelection
     });
-    const response = await fetch("/api/entity-neighborhood?" + parameters);
-    const data = await response.json();
+    const historyParameters = new URLSearchParams({
+      entity_key: entityKey, kind: kindSelection, county: countySelection
+    });
+    const [response, historyResponse] = await Promise.all([
+      fetch("/api/entity-neighborhood?" + parameters),
+      fetch("/api/timeline?" + historyParameters)
+    ]);
+    const [data, history] = await Promise.all([response.json(), historyResponse.json()]);
     if (token !== entityRequestId || selected !== sourceSelection || mode !== "records") return;
     if (!response.ok) throw Error(data.error || "Unable to inspect recorded entity co-occurrence.");
+    if (!historyResponse.ok) throw Error(history.error || "Unable to inspect recorded entity history.");
+    if (history.entity_key !== entityKey ||
+        history.matching_total !== data.total_source_records ||
+        history.records_scanned !== data.scanned_source_records) {
+      throw Error("Entity history and relationship scans disagree. Refresh to inspect again.");
+    }
     relatedIds = new Set(data.records.map(rowId));
     const scope = data.source_scan_truncated
       ? `Only the first ${data.scanned_source_records} of ${data.total_source_records} source records were scanned; additional matches may exist.`
@@ -243,12 +255,38 @@ async function inspectEntity(entityKey) {
       esc(record.record_id) + (record.point ? ' · source coordinates recorded' : ' · unmapped') +
       '</li>'
     ).join("");
+    const eventLabels = {
+      ceqa_received: "CEQA received", ceqa_posted: "CEQA posted",
+      permit_applied: "Permit applied", permit_issued: "Permit issued",
+      permit_finaled: "Permit finalized"
+    };
+    const historicalItems = history.events.map(event =>
+      '<li><time datetime="' + esc(event.recorded_date) + '">' +
+      esc(event.recorded_date) + '</time> · ' +
+      esc(eventLabels[event.event_kind] || "Unrecognized source event") +
+      ' · ' + esc(event.title) + ' · ' + esc(event.record_kind) +
+      (event.source_date_order_conflict ? ' · Contradictory date sequence' : '') +
+      '</li>'
+    ).join("");
+    const historicalScope = history.source_scan_truncated
+      ? "Historical scan covered only the first " + history.records_scanned +
+        " of " + history.matching_total + " source records. Newer dates may be outside this scan."
+      : history.event_result_truncated
+        ? "Only " + history.returned_events + " of " + history.milestones_in_scan +
+          " source events for this exact key are displayed."
+        : "All source records in this county and family scope were scanned for this exact key.";
     target.innerHTML =
       '<h3>Recorded shared entity key</h3><p class="entity-warning">These are exact stored-key co-occurrences, not proof that names identify the same real-world party. No projects are deduplicated or qualified.</p>' +
       '<p>' + esc(scope) + ' ' + esc(cap) + ' ' +
       esc(mapped) + ' matching mapped records appear in the current footprint.</p>' +
       (mapped ? '<button type="button" id="fit-related">Fit visible related locations</button>' : '') +
-      (results ? '<ul class="entity-records">' + results + '</ul>' : '<p class="empty">No matching records were found within the scanned scope.</p>');
+      (results ? '<ul class="entity-records">' + results + '</ul>' : '<p class="empty">No matching records were found within the scanned scope.</p>') +
+      '<h3>Historical source events for this exact key</h3>' +
+      '<p class="entity-warning">' + esc(historicalScope) + ' ' +
+      esc(history.matching_entity_records_in_scan) +
+      ' records share this key within the scan. Recorded dates do not establish current site activity or independently verified entity identity.</p>' +
+      (historicalItems ? '<ol class="entity-records">' + historicalItems + '</ol>' :
+        '<p class="empty">No dated events for this key within the scanned source records.</p>');
     const fitButton = $("fit-related");
     if (fitButton) fitButton.onclick = () => fitMap(true);
     renderMap();
