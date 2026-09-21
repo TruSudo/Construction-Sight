@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
+import os
+import stat
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Annotated, Any, NoReturn
 
@@ -17,10 +22,12 @@ from constructionsight.operator_services.source_registry_service import (
     apply_authorized_source_registry_update_plan,
     build_authorized_source_registry_update_plan,
 )
+from constructionsight.source_registry_apply_models import SourceRegistryApplyReport
 from constructionsight.source_registry_apply_service import SourceRegistryApplyError
 from constructionsight.source_registry_update_plan_models import (
     SourceRegistryUpdatePlanReport,
 )
+from constructionsight.source_registry_integrity import source_registry_digest
 from constructionsight.source_registry_update_plan_service import (
     build_source_registry_update_plan,
 )
@@ -29,6 +36,8 @@ from constructionsight.source_verification_checklist_models import (
 )
 from constructionsight.storage.runtime_artifacts import (
     RuntimeArtifactError,
+    anchored_artifact_parent,
+    read_runtime_artifact,
     read_runtime_text,
     write_runtime_text,
 )
@@ -93,6 +102,178 @@ def _require_authorization_value(value: str | None, option: str) -> str:
     if value is None or not value.strip():
         _abort(f"{option} is required for this high-impact operation.")
     return value.strip()
+
+
+
+_TRANSACTION_JOURNAL_LIMIT = 32 * 1024 * 1024
+
+
+def _digest_bytes(content: bytes | None) -> str | None:
+    return hashlib.sha256(content).hexdigest() if content is not None else None
+
+
+def _optional_artifact(path: Path, *, limit: int = 16 * 1024 * 1024) -> bytes | None:
+    try:
+        return read_runtime_artifact(path, max_bytes=limit)
+    except FileNotFoundError:
+        return None
+
+
+@contextmanager
+def _serialized_registry_target(target: Path) -> Iterator[tuple[int, str]]:
+    """Serialize cooperating registry writers using an inode-stable, permanent lock."""
+    if os.name != "posix":
+        raise RuntimeArtifactError("native registry transaction locking is unavailable")
+    import fcntl
+
+    with anchored_artifact_parent(target, create_parents=True) as (parent, name):
+        identity = hashlib.sha256(name.encode("utf-8")).hexdigest()
+        lock_name = f".source-registry-{identity}.lock"
+        journal_name = f".source-registry-{identity}.pending.json"
+        fd = os.open(
+            lock_name,
+            os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0),
+            0o600, dir_fd=parent,
+        )
+        try:
+            opened = os.fstat(fd)
+            if (
+                not stat.S_ISREG(opened.st_mode)
+                or opened.st_uid != os.geteuid()
+                or opened.st_nlink != 1
+                or stat.S_IMODE(opened.st_mode) != 0o600
+            ):
+                raise RuntimeArtifactError("registry transaction lock must be private and owned")
+            fcntl.flock(fd, fcntl.LOCK_EX)
+            current = os.stat(lock_name, dir_fd=parent, follow_symlinks=False)
+            if (opened.st_dev, opened.st_ino) != (current.st_dev, current.st_ino):
+                raise RuntimeArtifactError("registry transaction lock entry was replaced")
+            os.fsync(parent)
+            yield parent, journal_name
+        finally:
+            os.close(fd)
+
+
+def _pending_identity(
+    *, source: Path, plan: Path, target: Path, audit: Path, backup: Path | None,
+    approved: str, operator: str, reason: str, overwrite: bool, in_place: bool,
+) -> dict[str, object]:
+    return {
+        "source": str(source.absolute()),
+        "plan": str(plan.absolute()),
+        "target": str(target.absolute()),
+        "audit": str(audit.absolute()),
+        "backup": str(backup.absolute()) if backup is not None else None,
+        "approved": approved, "operator": operator, "reason": reason,
+        "overwrite": overwrite, "in_place": in_place,
+    }
+
+
+def _pending_text(record: dict[str, object]) -> str:
+    return json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n"
+
+
+def _complete_pending_registry_apply(
+    record: dict[str, object],
+    *, target: Path, audit: Path, journal: Path, parent: int, journal_name: str,
+) -> SourceRegistryApplyReport:
+    """Complete only the audit of an already durably committed exact target."""
+    target_bytes = _optional_artifact(target)
+    target_sha = record["updated_target_sha"]
+    if _digest_bytes(target_bytes) != target_sha:
+        raise RuntimeArtifactError(
+            "pending registry target is not the exact committed result; "
+            "manual reconciliation required before any reapply"
+        )
+    report_text = record["audit_text"]
+    if not isinstance(report_text, str):
+        raise RuntimeArtifactError("pending registry audit content is invalid")
+    report = SourceRegistryApplyReport.model_validate_json(report_text)
+    if report.updated_registry_digest != (
+        source_registry_digest(_sources_from_json(target_bytes.decode("utf-8")))
+    ):
+        raise RuntimeArtifactError("pending audit does not describe the committed registry")
+    if report.plan_digest != record["approved"]:
+        raise RuntimeArtifactError("pending registry audit plan identity disagrees")
+    audit_sha = _digest_bytes(report_text.encode("utf-8"))
+    observed_audit = _digest_bytes(_optional_artifact(audit))
+    if observed_audit != audit_sha:
+        if observed_audit != record["audit_before"]:
+            raise RuntimeArtifactError("audit output changed outside the pending transaction")
+        _atomic_write_text(audit, report_text, overwrite=record["overwrite"] is True)
+        if _digest_bytes(_optional_artifact(audit)) != audit_sha:
+            raise RuntimeArtifactError("registry audit publication could not be verified")
+    if _digest_bytes(_optional_artifact(target)) != target_sha:
+        raise RuntimeArtifactError("registry target changed during audit publication")
+    current_journal = _optional_artifact(journal, limit=_TRANSACTION_JOURNAL_LIMIT)
+    if current_journal != _pending_text(record).encode("utf-8"):
+        raise RuntimeArtifactError("pending registry transaction journal changed")
+    os.unlink(journal_name, dir_fd=parent)
+    os.fsync(parent)
+    return report
+
+
+def _recover_pending_registry_apply(
+    *, source: Path, plan_path: Path, target: Path, audit: Path, backup: Path | None,
+    approved: str, operator: str, reason: str, overwrite: bool, in_place: bool,
+    journal: Path, parent: int, journal_name: str,
+) -> SourceRegistryApplyReport | None:
+    raw = _optional_artifact(journal, limit=_TRANSACTION_JOURNAL_LIMIT)
+    if raw is None:
+        return None
+    candidate: Any = json.loads(raw.decode("utf-8"))
+    expected = _pending_identity(
+        source=source, plan=plan_path, target=target, audit=audit, backup=backup,
+        approved=approved, operator=operator, reason=reason,
+        overwrite=overwrite, in_place=in_place,
+    )
+    if (
+        not isinstance(candidate, dict)
+        or set(candidate) != {*expected, "version", "updated_target_sha",
+                              "audit_before", "audit_text"}
+        or candidate.get("version") != 1
+        or any(type(candidate[key]) is not type(value) or candidate[key] != value
+               for key, value in expected.items())
+    ):
+        raise RuntimeArtifactError(
+            "pending registry transaction is not this exact apply; "
+            "manual reconciliation required before any reapply"
+        )
+    if (
+        not isinstance(candidate["updated_target_sha"], str)
+        or len(candidate["updated_target_sha"]) != 64
+        or candidate["audit_before"] is not None and (
+            not isinstance(candidate["audit_before"], str)
+            or len(candidate["audit_before"]) != 64
+        )
+    ):
+        raise RuntimeArtifactError("pending registry transaction contains invalid digests")
+    current_plan = _load_plan(plan_path)
+    if current_plan.plan_digest != approved:
+        raise RuntimeArtifactError("pending registry transaction plan changed")
+    return _complete_pending_registry_apply(
+        candidate, target=target, audit=audit,
+        journal=journal, parent=parent, journal_name=journal_name,
+    )
+
+
+def _finalize_registry_apply(
+    *, record: dict[str, object], target: Path, audit: Path,
+    journal: Path, parent: int, journal_name: str,
+) -> SourceRegistryApplyReport:
+    try:
+        return _complete_pending_registry_apply(
+            record, target=target, audit=audit,
+            journal=journal, parent=parent, journal_name=journal_name,
+        )
+    except (OSError, RuntimeArtifactError) as exc:
+        if _digest_bytes(_optional_artifact(target)) == record["updated_target_sha"]:
+            _abort(
+                "Registry target committed, but success audit publication failed; "
+                "do not reapply until the target and audit are reconciled by an "
+                f"exact retry: {exc}"
+            )
+        _abort(f"Registry apply incomplete; pending transaction requires reconciliation: {exc}")
 
 
 @app.callback()
