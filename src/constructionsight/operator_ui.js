@@ -4,6 +4,7 @@ const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;",
 let mode = "records", snapshot = null, footprint = null, selected = null, pendingSelection = null, offset = 0, requestId = 0, controller;
 let query = "", kind = "all", county = "";
 let entityRequestId = 0, candidateRequestId = 0, relatedIds = new Set();
+let lastLoadedScope = null;
 const LIMIT = 50;
 const rows = () => snapshot ? (mode === "records" ? snapshot.projects : snapshot.leads) : [];
 const rowId = row => row.record_kind ? `${row.record_kind}:${row.record_id}` : row.workflow_id;
@@ -54,11 +55,33 @@ function renderList() {
   $("records").innerHTML = rows().map(row => '<button class="record ' + (rowId(row) === selected ? 'selected' : '') + '" data-id="' + esc(rowId(row)) + '"><span class="tag">' + esc(mode === "records" ? row.record_kind : row.status) + '</span><strong>' + esc(row.title || row.summary || row.base_candidate_id) + '</strong><small>' + esc(mode === "records" ? (row.county || "County unknown") + ' · ' + (row.jurisdiction || "Agency unknown") : 'Score ' + row.lead_score + ' · ' + row.workflow_id) + '</small><small>' + esc(mode === "records" ? (row.point ? "Source coordinates available" : "Location not mapped") + (row.coverage === "outside_target_counties" ? " · Outside target counties" : "") : row.package_id) + '</small></button>').join("") || '<p class="empty">No stored records match this view. Use the existing intake commands to populate this database.</p>';
   $("records").querySelectorAll("button[data-id]").forEach(el => el.onclick = () => selectRecord(el.dataset.id));
 }
+function resetPulse(message = "—") {
+  ["pulse-matching", "pulse-mapped", "pulse-unmapped", "pulse-scan"].forEach(id => {
+    $(id).textContent = message;
+  });
+  $("pulse-scan-note").textContent = "Counts cover retained source records in the current filters.";
+}
+function renderPulse(data, mapData) {
+  $("pulse-matching").textContent = data.total.toLocaleString();
+  $("pulse-mapped").textContent = mapData.mapped_in_scan.toLocaleString();
+  $("pulse-unmapped").textContent = (mapData.records_scanned - mapData.mapped_in_scan).toLocaleString();
+  const mismatch = data.total !== mapData.matching_total;
+  $("pulse-scan").textContent = mismatch ? "Read mismatch"
+    : mapData.truncated ? "Capped" : "Complete";
+  $("pulse-scan-note").textContent = mismatch
+    ? "List and coordinate map were read separately and disagree. Refresh before using record positions."
+    : mapData.truncated
+      ? `${mapData.records_scanned.toLocaleString()} of ${mapData.matching_total.toLocaleString()} matching records scanned; additional records may be unmapped or uncounted.`
+      : `${mapData.records_scanned.toLocaleString()} of ${mapData.matching_total.toLocaleString()} matching retained records scanned. This is not jurisdictional source coverage.`;
+}
 async function load() {
   entityRequestId++; candidateRequestId++; relatedIds = new Set();
   const id = ++requestId;
+  const scope = JSON.stringify([mode, kind, query, county]);
+  const shouldFit = scope !== lastLoadedScope;
   controller?.abort(); controller = new AbortController(); snapshot = null; footprint = null; selected = null;
   $("error").hidden = true; $("status").textContent = "Reading stored data…";
+  resetPulse("Reading…");
   $("records").innerHTML = '<p class="empty">Loading…</p>'; $("detail").innerHTML = '<p class="empty">Select a record to inspect its evidence.</p>';
   $("previous").disabled = true; $("next").disabled = true; $("visible").textContent = ""; $("page-count").textContent = ""; renderMap();
   const parameters = new URLSearchParams({limit: LIMIT, offset});
@@ -77,6 +100,8 @@ async function load() {
     if (id !== requestId) return;
     snapshot = data;
     footprint = payloads[1] || null;
+    lastLoadedScope = scope;
+    if (mode === "records" && footprint) renderPulse(data, footprint);
     $("visible").textContent = data.total + " matching";
     $("page-count").textContent = data.returned ? `${offset + 1}–${offset + data.returned} of ${data.total}` : `0 of ${data.total}`;
     $("previous").disabled = offset === 0; $("next").disabled = !data.has_more;
@@ -87,10 +112,11 @@ async function load() {
       pendingSelection = null;
       if (rows().some(row => rowId(row) === target)) selectRecord(target);
     }
-    fitMap();
+    if (shouldFit) fitMap(); else renderMap();
   } catch (error) {
     if (id !== requestId || error.name === "AbortError") return;
     $("error").textContent = error.message; $("error").hidden = false; $("status").textContent = "Data unavailable.";
+    lastLoadedScope = null; resetPulse("Unavailable");
     $("records").innerHTML = '<p class="empty">Check the selected database, then refresh.</p>';
   }
 }
@@ -178,7 +204,7 @@ async function inspectEntity(entityKey) {
 }
 function switchMode(next) {
   mode = next; offset = 0;
-  $("filters").hidden = mode !== "records"; $("map-card").hidden = mode !== "records";
+  $("filters").hidden = mode !== "records"; $("map-card").hidden = mode !== "records"; $("pulse").hidden = mode !== "records";
   $("heading").textContent = mode === "records" ? "Project records" : "Lead workflow";
   $("list-title").textContent = mode === "records" ? "Source records" : "Persisted workflows";
   ["records", "workflow"].forEach(v => { const active = (v === "records") === (mode === "records"); $(v + "-tab").classList.toggle("active", active); $(v + "-tab").setAttribute("aria-pressed", active); });
@@ -263,7 +289,7 @@ $("zoom-in").onclick = () => zoom(1.5); $("zoom-out").onclick = () => zoom(1 / 1
 $("fit").onclick = fitMap; $("region").onclick = () => { center = project(34.0, -116.8); scale = 12000; renderMap(); };
 $("records-tab").onclick = () => switchMode("records"); $("workflow-tab").onclick = () => switchMode("workflow");
 $("filters").onsubmit = e => { e.preventDefault(); query = $("search").value.trim(); kind = $("kind").value; county = $("county").value; offset = 0; load(); };
-$("refresh").onclick = load;
+$("refresh").onclick = () => { lastLoadedScope = null; load(); };
 $("previous").onclick = () => { offset = Math.max(0, offset - LIMIT); load(); };
 $("next").onclick = () => { offset += LIMIT; load(); };
 load();
