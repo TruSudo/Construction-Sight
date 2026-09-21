@@ -3,6 +3,8 @@ import json
 import zipfile
 from pathlib import Path
 
+import constructionsight.ceqanet_operator_archive as archive_writer
+
 import pytest
 
 from constructionsight.ceqanet_operator_archive import build_ceqanet_operator_archive
@@ -108,3 +110,45 @@ def test_build_ceqanet_operator_archive_can_allow_unverified_bundle(tmp_path: Pa
 
     assert archive["metadata"]["verification_passed"] is False
     assert archive_path.exists()
+
+
+def test_archive_writer_streams_source_and_output_bytes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source_dir = tmp_path / "bundle"
+    _write_export_dir(source_dir)
+    archive_path = tmp_path / "bounded.zip"
+
+    def forbid_read_bytes(_self: Path) -> bytes:
+        raise AssertionError("archive writer must not materialize whole source/output files")
+
+    monkeypatch.setattr(Path, "read_bytes", forbid_read_bytes)
+    result = build_ceqanet_operator_archive(
+        source_dir=source_dir, archive_path=archive_path
+    )
+    assert result.byte_count == archive_path.stat().st_size
+    assert result.sha256
+
+
+def test_archive_writer_rejects_source_growth_during_archive_write(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source_dir = tmp_path / "bundle"
+    _write_export_dir(source_dir)
+    archive_path = tmp_path / "oversized.zip"
+    real_write_zip = archive_writer._write_zip
+
+    def grow_source_and_write(
+        *, source_dir: Path, archive_path: Path, filenames: list[str]
+    ) -> None:
+        with (source_dir / "operator-report.md").open("wb") as grown:
+            grown.truncate(16 * 1024 * 1024 + 1)
+        real_write_zip(
+            source_dir=source_dir, archive_path=archive_path, filenames=filenames
+        )
+
+    monkeypatch.setattr(archive_writer, "_write_zip", grow_source_and_write)
+    with pytest.raises(ValueError, match="member exceeds the byte limit"):
+        build_ceqanet_operator_archive(
+            source_dir=source_dir, archive_path=archive_path
+        )
