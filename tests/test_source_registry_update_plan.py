@@ -384,7 +384,109 @@ def test_source_registry_apply_cli_writes_separate_registry_and_audit(tmp_path) 
     assert original_payload[0]["verification_status"] == "unverified"
     assert updated_payload[0]["verification_status"] == "partial"
     assert audit_payload["applied_count"] == 1
-    assert audit_path.stat().st_mtime_ns <= updated_path.stat().st_mtime_ns
+    # Successful audit evidence must not predate the authoritative target.
+    assert updated_path.stat().st_mtime_ns <= audit_path.stat().st_mtime_ns
+
+
+
+def test_source_registry_apply_target_failure_does_not_publish_success_audit(
+    tmp_path, monkeypatch,
+) -> None:
+    import constructionsight.source_registry_update_plan_cli as cli
+
+    registry_path = tmp_path / "sources.json"
+    observations_path = tmp_path / "observations.json"
+    plan_path = tmp_path / "plan.json"
+    updated_path = tmp_path / "updated_sources.json"
+    audit_path = tmp_path / "apply_audit.json"
+    registry_path.write_text(_registry_json(), encoding="utf-8")
+    observations_path.write_text(_observation_json(), encoding="utf-8")
+    original_registry = registry_path.read_bytes()
+    runner = CliRunner()
+    plan_result = runner.invoke(
+        app,
+        [
+            "plan", str(registry_path), "--observations-path", str(observations_path),
+            "--output", str(plan_path),
+        ],
+    )
+    assert plan_result.exit_code == 0
+    digest = json.loads(plan_path.read_text(encoding="utf-8"))["plan_digest"]
+
+    original_write = cli._atomic_write_text
+
+    def fail_target(path, content, *, overwrite=True):
+        if path == updated_path:
+            raise OSError("injected authoritative registry publication failure")
+        return original_write(path, content, overwrite=overwrite)
+
+    monkeypatch.setattr(cli, "_atomic_write_text", fail_target)
+    result = runner.invoke(
+        app,
+        [
+            "apply", str(registry_path), str(plan_path),
+            "--approved-plan-digest", digest,
+            "--audit-output", str(audit_path),
+            "--output", str(updated_path),
+            "--apply", "--operator-id", "operator:test",
+            "--authorization-reason", "Exercise late authoritative publication failure.",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert not audit_path.exists()
+    assert not updated_path.exists()
+    assert registry_path.read_bytes() == original_registry
+
+
+def test_source_registry_apply_audit_failure_does_not_claim_success(
+    tmp_path, monkeypatch,
+) -> None:
+    import constructionsight.source_registry_update_plan_cli as cli
+
+    registry_path = tmp_path / "sources.json"
+    observations_path = tmp_path / "observations.json"
+    plan_path = tmp_path / "plan.json"
+    updated_path = tmp_path / "updated_sources.json"
+    audit_path = tmp_path / "apply_audit.json"
+    registry_path.write_text(_registry_json(), encoding="utf-8")
+    observations_path.write_text(_observation_json(), encoding="utf-8")
+    runner = CliRunner()
+    plan_result = runner.invoke(
+        app,
+        [
+            "plan", str(registry_path), "--observations-path", str(observations_path),
+            "--output", str(plan_path),
+        ],
+    )
+    assert plan_result.exit_code == 0
+    digest = json.loads(plan_path.read_text(encoding="utf-8"))["plan_digest"]
+
+    original_write = cli._atomic_write_text
+
+    def fail_audit(path, content, *, overwrite=True):
+        if path == audit_path:
+            raise OSError("injected success-audit publication failure")
+        return original_write(path, content, overwrite=overwrite)
+
+    monkeypatch.setattr(cli, "_atomic_write_text", fail_audit)
+    result = runner.invoke(
+        app,
+        [
+            "apply", str(registry_path), str(plan_path),
+            "--approved-plan-digest", digest,
+            "--audit-output", str(audit_path),
+            "--output", str(updated_path),
+            "--apply", "--operator-id", "operator:test",
+            "--authorization-reason", "Exercise late audit publication failure.",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert json.loads(updated_path.read_text(encoding="utf-8"))[0]["verification_status"] == "partial"
+    assert not audit_path.exists()
+    assert "Applied 1 source registry status update(s)." not in result.stdout
+
 
 
 def test_source_registry_apply_cli_refuses_output_equal_to_registry(tmp_path) -> None:
