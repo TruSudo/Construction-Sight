@@ -22,6 +22,12 @@
     <label>County<select id="county"><option value="">All recorded counties</option><option>San Bernardino</option><option>Riverside</option></select></label>
     <button type="submit">Search</button>
   </form>
+  <section id="pulse" class="pulse" aria-label="Retained source-record pulse for current filters">
+    <div class="pulse-card"><span>Matching source records</span><strong id="pulse-matching">—</strong><small>Source records, not deduplicated projects or qualified leads</small></div>
+    <div class="pulse-card"><span>Mapped in scanned records</span><strong id="pulse-mapped">—</strong><small>Source-claimed coordinates only</small></div>
+    <div class="pulse-card"><span>Unmapped in scanned records</span><strong id="pulse-unmapped">—</strong><small>Missing supported coordinates; not an absence of activity</small></div>
+    <div class="pulse-card"><span>Map scan coverage</span><strong id="pulse-scan">—</strong><small id="pulse-scan-note">Reading the retained query footprint.</small></div>
+  </section>
   <div id="error" class="error" role="alert" hidden></div>
   <div id="status" class="status" role="status" aria-live="polite">Loading stored records…</div>
   <section class="workspace">
@@ -38,7 +44,7 @@
           <div class="map-controls"><button id="zoom-in" aria-label="Zoom in">+</button><button id="zoom-out" aria-label="Zoom out">−</button><button id="fit">Fit footprint</button><button id="region">Region</button></div>
           <div id="map-empty" class="map-empty" hidden>No supported source coordinates in the scanned footprint.<br>Unmapped records remain searchable.</div>
         </div>
-        <div class="map-caption">Source-claimed locations · Web Mercator · No street or county boundary layer</div>
+        <div class="map-caption">Source-claimed locations · Web Mercator · No street or county boundary layer <span class="map-legend"><span class="legend-dot"></span>Source record <span class="legend-dot legend-related"></span>Shared-key source record <span class="legend-dot legend-selected"></span>Selected source record</span></div>
       </section>
       <section id="detail" class="card detail" aria-label="Selected record"><p class="empty">Select a record to inspect its location, named parties, and evidence.</p></section>
     </div>
