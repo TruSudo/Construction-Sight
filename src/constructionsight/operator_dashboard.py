@@ -131,6 +131,7 @@ def build_historical_timeline(
     kind: RecordSelection = "all",
     query: str = "",
     county: str = "",
+    entity_key: str | None = None,
 ) -> HistoricalTimelineSnapshot:
     """Summarize only recorded historical dates in a bounded source-record query."""
 
@@ -138,6 +139,11 @@ def build_historical_timeline(
         raise ValueError("kind must be all, ceqa or permit")
     if len(query) > 200 or county not in {"", "San Bernardino", "Riverside"}:
         raise ValueError("invalid search or county filter")
+    if entity_key is not None and (
+        not entity_key or entity_key != entity_key.strip() or len(entity_key) > 255
+        or any(ord(char) < 32 or ord(char) == 127 for char in entity_key)
+    ):
+        raise ValueError("invalid exact entity key for historical timeline")
     records, total = read_project_page(
         session,
         kind=kind,
@@ -148,7 +154,12 @@ def build_historical_timeline(
     )
     events: list[HistoricalSourceEvent] = []
     dated_records = 0
+    matching_entity_records = 0
     for ordinal, record in enumerate(records):
+        if entity_key is not None:
+            if not any(entity.entity_key == entity_key for entity in record.entities):
+                continue
+            matching_entity_records += 1
         milestones, conflict = _source_milestones(record)
         if milestones:
             dated_records += 1
@@ -181,6 +192,10 @@ def build_historical_timeline(
     return HistoricalTimelineSnapshot(
         selection=kind,
         events=events[:TIMELINE_RESULT_LIMIT],
+        entity_key=entity_key,
+        matching_entity_records_in_scan=(
+            matching_entity_records if entity_key is not None else None
+        ),
         matching_total=total,
         records_scanned=len(records),
         dated_records_in_scan=dated_records,

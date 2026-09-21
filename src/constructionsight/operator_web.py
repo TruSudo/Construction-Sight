@@ -52,7 +52,7 @@ class _RequestParameters:
 
 def _parameters(
     query: str, *, workflow: bool = False, footprint: bool = False,
-    entity: bool = False, candidate: bool = False
+    entity: bool = False, candidate: bool = False, timeline: bool = False
 ) -> _RequestParameters:
     values = parse_qs(query, keep_blank_values=True, max_num_fields=5)
     allowed = (
@@ -60,6 +60,8 @@ def _parameters(
         if workflow
         else {"kind", "record_id"}
         if candidate
+        else {"kind", "q", "county", "entity_key"}
+        if timeline
         else {"kind", "county", "entity_key"}
         if entity
         else {"kind", "q", "county"}
@@ -99,6 +101,11 @@ def _parameters(
         or len(entity_key) > 255
     ):
         raise ValueError("invalid or missing entity key")
+    if timeline and entity_key is not None and (
+        not entity_key or entity_key != entity_key.strip() or len(entity_key) > 255
+        or any(ord(char) < 32 or ord(char) == 127 for char in entity_key)
+    ):
+        raise ValueError("invalid timeline entity key")
     return _RequestParameters(
         kind=cast(RecordSelection, raw_kind),
         query=query_text,
@@ -161,7 +168,8 @@ def create_handler(database_path: Path) -> type[BaseHTTPRequestHandler]:
                 parameters = _parameters(
                     parsed.query,
                     workflow=path == "/api/workflows",
-                    footprint=path in {"/api/footprint", "/api/timeline"},
+                    footprint=path == "/api/footprint",
+                    timeline=path == "/api/timeline",
                     entity=path == "/api/entity-neighborhood",
                     candidate=path == "/api/candidate-preview",
                 )
@@ -203,6 +211,7 @@ def create_handler(database_path: Path) -> type[BaseHTTPRequestHandler]:
                             kind=parameters.kind,
                             query=parameters.query,
                             county=parameters.county,
+                            entity_key=parameters.entity_key,
                         ).model_dump(mode="json")
                     elif path == "/api/footprint":
                         payload = build_geographic_footprint(

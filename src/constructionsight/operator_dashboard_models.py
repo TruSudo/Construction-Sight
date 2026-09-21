@@ -135,6 +135,8 @@ class HistoricalTimelineSnapshot(BaseModel):
     selection: RecordSelection
     events: list[HistoricalSourceEvent]
     matching_total: int
+    entity_key: str | None = None
+    matching_entity_records_in_scan: int | None = None
     records_scanned: int
     dated_records_in_scan: int
     milestones_in_scan: int
