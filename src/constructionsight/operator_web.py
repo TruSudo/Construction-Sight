@@ -24,6 +24,7 @@ from constructionsight.operator_dashboard import (
     build_workflow_snapshot,
 )
 from constructionsight.operator_dashboard_models import RecordSelection
+from constructionsight.operator_parcel_candidates import inspect_parcel_candidates
 from constructionsight.operator_source_candidate import (
     SourceRecordNotFound,
     build_source_candidate_preview,
@@ -161,6 +162,7 @@ def create_handler(database_path: Path) -> type[BaseHTTPRequestHandler]:
                     "/api/timeline",
                     "/api/entity-neighborhood",
                     "/api/candidate-preview",
+                    "/api/parcel-candidates",
                     "/api/workflows",
                 }:
                     self._send_json({"error": "Not found."}, status=HTTPStatus.NOT_FOUND)
@@ -171,7 +173,7 @@ def create_handler(database_path: Path) -> type[BaseHTTPRequestHandler]:
                     footprint=path == "/api/footprint",
                     timeline=path == "/api/timeline",
                     entity=path == "/api/entity-neighborhood",
-                    candidate=path == "/api/candidate-preview",
+                    candidate=path in {"/api/candidate-preview", "/api/parcel-candidates"},
                 )
             except ValueError as exc:
                 self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
@@ -189,6 +191,13 @@ def create_handler(database_path: Path) -> type[BaseHTTPRequestHandler]:
                         payload = build_workflow_snapshot(
                             session, limit=parameters.limit, offset=parameters.offset
                         )
+                    elif path == "/api/parcel-candidates":
+                        if parameters.record_id is None or parameters.kind == "all":
+                            raise ValueError("missing exact source record selection")
+                        payload = inspect_parcel_candidates(
+                            session, kind=parameters.kind,
+                            record_id=parameters.record_id,
+                        ).model_dump(mode="json")
                     elif path == "/api/candidate-preview":
                         if parameters.record_id is None or parameters.kind == "all":
                             raise ValueError("missing exact source record selection")
