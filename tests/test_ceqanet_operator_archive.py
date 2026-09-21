@@ -139,12 +139,19 @@ def test_archive_writer_rejects_source_growth_during_archive_write(
     real_write_zip = archive_writer._write_zip
 
     def grow_source_and_write(
-        *, source_dir: Path, archive_path: Path, filenames: list[str]
+        *,
+        source_dir: Path,
+        archive_path: Path,
+        filenames: list[str],
+        expected_content: dict[str, tuple[int, str]],
     ) -> None:
         with (source_dir / "operator-report.md").open("wb") as grown:
             grown.truncate(16 * 1024 * 1024 + 1)
         real_write_zip(
-            source_dir=source_dir, archive_path=archive_path, filenames=filenames
+            source_dir=source_dir,
+            archive_path=archive_path,
+            filenames=filenames,
+            expected_content=expected_content,
         )
 
     monkeypatch.setattr(archive_writer, "_write_zip", grow_source_and_write)
@@ -152,3 +159,107 @@ def test_archive_writer_rejects_source_growth_during_archive_write(
         build_ceqanet_operator_archive(
             source_dir=source_dir, archive_path=archive_path
         )
+
+
+def test_archive_writer_rejects_same_length_mutation_after_verification(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source_dir = tmp_path / "bundle"
+    _write_export_dir(source_dir)
+    archive_path = tmp_path / "existing.zip"
+    archive_path.write_bytes(b"existing archive must survive failed rewrite")
+    real_write_zip = archive_writer._write_zip
+
+    def mutate_source_and_write(
+        *,
+        source_dir: Path,
+        archive_path: Path,
+        filenames: list[str],
+        expected_content: dict[str, tuple[int, str]],
+    ) -> None:
+        report = source_dir / "operator-report.md"
+        report.write_bytes(b"x" * report.stat().st_size)
+        real_write_zip(
+            source_dir=source_dir,
+            archive_path=archive_path,
+            filenames=filenames,
+            expected_content=expected_content,
+        )
+
+    monkeypatch.setattr(archive_writer, "_write_zip", mutate_source_and_write)
+    with pytest.raises(ValueError, match="changed since verification"):
+        build_ceqanet_operator_archive(
+            source_dir=source_dir,
+            archive_path=archive_path,
+        )
+    assert archive_path.read_bytes() == b"existing archive must survive failed rewrite"
+    assert list(tmp_path.glob(".ceqanet-archive-*.tmp")) == []
+
+
+def test_archive_writer_rejects_manifest_mutation_after_verification(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source_dir = tmp_path / "bundle"
+    _write_export_dir(source_dir)
+    archive_path = tmp_path / "operator-export.zip"
+    real_write_zip = archive_writer._write_zip
+
+    def mutate_manifest_and_write(
+        *,
+        source_dir: Path,
+        archive_path: Path,
+        filenames: list[str],
+        expected_content: dict[str, tuple[int, str]],
+    ) -> None:
+        manifest = source_dir / "manifest.json"
+        manifest.write_bytes(manifest.read_bytes() + b" ")
+        real_write_zip(
+            source_dir=source_dir,
+            archive_path=archive_path,
+            filenames=filenames,
+            expected_content=expected_content,
+        )
+
+    monkeypatch.setattr(archive_writer, "_write_zip", mutate_manifest_and_write)
+    with pytest.raises(ValueError, match="changed since verification"):
+        build_ceqanet_operator_archive(
+            source_dir=source_dir,
+            archive_path=archive_path,
+        )
+    assert not archive_path.exists()
+
+
+def test_archive_writer_rejects_symlink_swap_after_verification(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source_dir = tmp_path / "bundle"
+    _write_export_dir(source_dir)
+    archive_path = tmp_path / "operator-export.zip"
+    outside = tmp_path / "outside.txt"
+    outside.write_bytes((source_dir / "operator-report.md").read_bytes())
+    real_write_zip = archive_writer._write_zip
+
+    def swap_source_and_write(
+        *,
+        source_dir: Path,
+        archive_path: Path,
+        filenames: list[str],
+        expected_content: dict[str, tuple[int, str]],
+    ) -> None:
+        source = source_dir / "operator-report.md"
+        source.unlink()
+        source.symlink_to(outside)
+        real_write_zip(
+            source_dir=source_dir,
+            archive_path=archive_path,
+            filenames=filenames,
+            expected_content=expected_content,
+        )
+
+    monkeypatch.setattr(archive_writer, "_write_zip", swap_source_and_write)
+    with pytest.raises(ValueError, match="not a symlink"):
+        build_ceqanet_operator_archive(
+            source_dir=source_dir,
+            archive_path=archive_path,
+        )
+    assert not archive_path.exists()
