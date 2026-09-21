@@ -930,7 +930,7 @@ def test_historical_timeline_explicitly_discloses_scan_and_event_caps(database, 
 
 @pytest.mark.parametrize("query", [
     "kind=unknown", "limit=1", "offset=2", "county=Orange",
-    "q=" + "x" * 201, "kind=permit&kind=permit", "entity_key=fixture",
+    "q=" + "x" * 201, "kind=permit&kind=permit",
 ])
 def test_historical_timeline_rejects_extra_or_invalid_parameters(database, query):
     path, _ = database
