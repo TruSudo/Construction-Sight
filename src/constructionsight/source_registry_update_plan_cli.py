@@ -465,56 +465,86 @@ def source_registry_apply(
     else:
         apply_paths["updated registry output"] = target_path
     _require_distinct_paths(apply_paths)
-
-    if not in_place:
-        _require_available_output(target_path, overwrite=overwrite)
-    _require_available_output(audit_output, overwrite=overwrite)
-    if backup_output is not None:
-        _require_available_output(backup_output, overwrite=overwrite)
-
     resolved_operator = _require_authorization_value(operator_id, "--operator-id")
     resolved_reason = _require_authorization_value(
-        authorization_reason,
-        "--authorization-reason",
+        authorization_reason, "--authorization-reason",
     )
-    sources = _load_sources_from_json(registry_path)
-    plan = _load_plan(plan_path)
-    try:
-        authorized = apply_authorized_source_registry_update_plan(
-            sources,
-            plan,
-            expected_plan_digest=approved_plan_digest.strip(),
-            expected_registry_digest=plan.registry_digest,
-            target_path_identity=str(target_path.resolve()),
-            caller_confirmation=apply_changes,
-            authorization_reason=resolved_reason,
-            operator_id=resolved_operator,
+    with _serialized_registry_target(target_path) as (pinned_parent, journal_name):
+        journal = target_path.with_name(journal_name)
+        lock_path = target_path.with_name(journal_name.replace(".pending.json", ".lock"))
+        reserved = {journal.absolute(), lock_path.absolute()}
+        if any(path.absolute() in reserved for path in apply_paths.values()):
+            _abort("registry transaction metadata must not overlap an input or output")
+        recovered = _recover_pending_registry_apply(
+            source=registry_path, plan_path=plan_path, target=target_path,
+            audit=audit_output, backup=backup_output,
+            approved=approved_plan_digest.strip(), operator=resolved_operator,
+            reason=resolved_reason, overwrite=overwrite, in_place=in_place,
+            journal=journal, parent=pinned_parent, journal_name=journal_name,
         )
-    except (AuthorizationDeniedError, SourceRegistryApplyError, ValueError) as exc:
-        _abort(str(exc))
+        if recovered is not None:
+            report = recovered
+            console.print("Recovered exact pending source registry transaction.")
+        else:
+            if not in_place:
+                _require_available_output(target_path, overwrite=overwrite)
+            _require_available_output(audit_output, overwrite=overwrite)
+            if backup_output is not None:
+                _require_available_output(backup_output, overwrite=overwrite)
 
-    updated_sources = list(authorized.sources)
-    report = authorized.report
+            original_registry_text = read_runtime_text(registry_path)
+            sources = _sources_from_json(original_registry_text)
+            plan = _load_plan(plan_path)
+            try:
+                authorized = apply_authorized_source_registry_update_plan(
+                    sources,
+                    plan,
+                    expected_plan_digest=approved_plan_digest.strip(),
+                    expected_registry_digest=plan.registry_digest,
+                    target_path_identity=str(target_path.resolve()),
+                    caller_confirmation=apply_changes,
+                    authorization_reason=resolved_reason,
+                    operator_id=resolved_operator,
+                )
+            except (AuthorizationDeniedError, SourceRegistryApplyError, ValueError) as exc:
+                _abort(str(exc))
 
-    # Render both complete outputs before any persistent effect. A successful
-    # audit must never precede a failed authoritative registry publication.
-    updated_json = _registry_json(updated_sources)
-    audit_json = f"{json.dumps(report.to_dict(), indent=2)}\n"
-    if backup_output is not None:
-        _atomic_write_text(backup_output, read_runtime_text(registry_path), overwrite=overwrite)
-    _atomic_write_text(
-        target_path, updated_json, overwrite=in_place or overwrite,
-    )
-    # This is not yet a multi-artifact transaction: a late audit failure can
-    # leave a committed registry without the success report (CS-SR-058).
-    try:
-        _atomic_write_text(audit_output, audit_json, overwrite=overwrite)
-    except (OSError, RuntimeArtifactError) as exc:
-        _abort(
-            "Registry target committed, but success audit publication failed; "
-            "do not reapply until the target and audit are reconciled: "
-            f"{exc}"
-        )
+            updated_json = _registry_json(list(authorized.sources))
+            report = authorized.report
+            audit_json = f"{json.dumps(report.to_dict(), indent=2)}\n"
+            updated_sha = _digest_bytes(updated_json.encode("utf-8"))
+            if in_place and _digest_bytes(_optional_artifact(target_path)) != (
+                _digest_bytes(original_registry_text.encode("utf-8"))
+            ):
+                _abort("registry changed while preparing in-place publication")
+            record: dict[str, object] = {
+                **_pending_identity(
+                    source=registry_path, plan=plan_path, target=target_path,
+                    audit=audit_output, backup=backup_output,
+                    approved=approved_plan_digest.strip(), operator=resolved_operator,
+                    reason=resolved_reason, overwrite=overwrite, in_place=in_place,
+                ),
+                "version": 1,
+                "updated_target_sha": updated_sha,
+                "audit_before": _digest_bytes(_optional_artifact(audit_output)),
+                "audit_text": audit_json,
+            }
+            write_runtime_text(
+                journal, _pending_text(record),
+                overwrite=False, max_bytes=_TRANSACTION_JOURNAL_LIMIT,
+            )
+            if backup_output is not None:
+                _atomic_write_text(
+                    backup_output, original_registry_text, overwrite=overwrite,
+                )
+            _atomic_write_text(
+                target_path, updated_json, overwrite=in_place or overwrite,
+            )
+            report = _finalize_registry_apply(
+                record=record, target=target_path, audit=audit_output,
+                journal=journal, parent=pinned_parent, journal_name=journal_name,
+            )
+
     console.print(f"Applied {report.applied_count} source registry status update(s).")
     console.print(f"Updated registry: {target_path}")
     console.print(f"Audit report: {audit_output}")
