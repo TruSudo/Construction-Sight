@@ -348,10 +348,20 @@ def _finalize_registry_apply(
         )
     except (OSError, RuntimeArtifactError) as exc:
         if _digest_bytes(_optional_artifact(target)) == record["updated_target_sha"]:
+            report_text = record["audit_text"]
+            if isinstance(report_text, str) and _digest_bytes(_optional_artifact(audit)) == (
+                _digest_bytes(report_text.encode("utf-8"))
+            ):
+                _abort(
+                    "Registry and success audit contents are committed, but "
+                    "transaction cleanup or durability failed; inspect both "
+                    "artifacts and the pending journal before any new apply: "
+                    f"{exc}"
+                )
             _abort(
                 "Registry target committed, but success audit publication failed; "
                 "do not reapply until the target and audit are reconciled by an "
-                f"exact retry: {exc}"
+                f"exact retry using the retained journal: {exc}"
             )
         _abort(f"Registry apply incomplete; pending transaction requires reconciliation: {exc}")
 
