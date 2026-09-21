@@ -26,6 +26,11 @@ from constructionsight.operator_services.ceqanet_csv_service import (
     execute_authorized_ceqanet_csv,
     verify_retained_ceqanet_csv,
 )
+from constructionsight.storage.runtime_artifacts import (
+    RuntimeArtifactLimitError,
+    read_runtime_artifact,
+    read_runtime_text,
+)
 
 app = typer.Typer(help="Governed CEQAnet official CSV planning, inspection, and proof.")
 console = Console()
@@ -91,16 +96,15 @@ def inspect_csv_file(
 
     try:
         request = parse_ceqanet_csv_export_url(source_url)
-        with csv_path.open("rb") as csv_file:
-            content = csv_file.read(10_000_001)
-        if len(content) > 10_000_000:
-            raise ValueError("CEQAnet CSV file exceeds the 10000000-byte limit")
+        content = read_runtime_artifact(csv_path, max_bytes=10_000_000)
         inspection = inspect_ceqanet_csv_bytes(
             request,
             content,
             content_type=content_type,
             max_retained_rows=max_retained_rows,
         )
+    except RuntimeArtifactLimitError as exc:
+        raise typer.BadParameter("CEQAnet CSV file exceeds the 10000000-byte limit") from exc
     except (OSError, ValueError) as exc:
         raise typer.BadParameter(str(exc)) from exc
     _emit_json(inspection.model_dump(mode="json"), output)
@@ -244,7 +248,7 @@ def verify_live_csv_execution(
     """Verify a retained live execution artifact without network access."""
 
     try:
-        payload: Any = json.loads(execution_path.read_text(encoding="utf-8"))
+        payload: Any = json.loads(read_runtime_text(execution_path))
         execution = CeqanetCsvLiveExecution.model_validate(payload)
         verification = verify_retained_ceqanet_csv(execution)
     except (OSError, ValueError, json.JSONDecodeError) as exc:
@@ -273,7 +277,7 @@ def replay_csv_execution(
     """Replay retained response bytes offline using the current CSV parser."""
 
     try:
-        payload: Any = json.loads(execution_path.read_text(encoding="utf-8"))
+        payload: Any = json.loads(read_runtime_text(execution_path))
         execution = CeqanetCsvLiveExecution.model_validate(payload)
         replay = build_ceqanet_csv_encoding_replay(
             execution,
@@ -308,9 +312,9 @@ def verify_csv_replay(
 
     try:
         execution_payload: Any = json.loads(
-            execution_path.read_text(encoding="utf-8")
+            read_runtime_text(execution_path)
         )
-        replay_payload: Any = json.loads(replay_path.read_text(encoding="utf-8"))
+        replay_payload: Any = json.loads(read_runtime_text(replay_path))
         execution = CeqanetCsvLiveExecution.model_validate(execution_payload)
         replay = CeqanetCsvEncodingReplay.model_validate(replay_payload)
         verification = verify_ceqanet_csv_encoding_replay(execution, replay)

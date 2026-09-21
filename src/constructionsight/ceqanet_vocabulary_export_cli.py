@@ -24,6 +24,7 @@ from constructionsight.adapters.ceqanet_search_vocabulary import (
     classify_ceqanet_lead_agency,
     parse_ceqanet_search_vocabulary,
 )
+from constructionsight.storage.runtime_artifacts import read_runtime_text
 
 InputFormat = Literal["auto", "execution-json", "html"]
 _INPUT_FORMATS = frozenset({"auto", "execution-json", "html"})
@@ -54,11 +55,13 @@ def _reject_output_without_json(output_path: Path | None, json_output: bool) -> 
         raise typer.Exit(code=1)
 
 
-def _load_json_object(input_path: Path) -> dict[str, Any]:
+def _load_json_object(
+    input_path: Path, *, content: str | None = None,
+) -> dict[str, Any]:
     """Load a JSON object from disk."""
 
     try:
-        payload = json.loads(input_path.read_text(encoding="utf-8"))
+        payload = json.loads(read_runtime_text(input_path) if content is None else content)
     except json.JSONDecodeError as exc:
         raise typer.BadParameter(f"{input_path} is not valid JSON.") from exc
 
@@ -67,14 +70,16 @@ def _load_json_object(input_path: Path) -> dict[str, Any]:
     return cast(dict[str, Any], payload)
 
 
-def _detect_input_format(input_path: Path, input_format: InputFormat) -> InputFormat:
+def _detect_input_format(
+    input_path: Path, input_format: InputFormat, *, content: str | None = None,
+) -> InputFormat:
     """Resolve auto input format without executing network requests."""
 
     if input_format != "auto":
         return input_format
 
     try:
-        payload = json.loads(input_path.read_text(encoding="utf-8"))
+        payload = json.loads(read_runtime_text(input_path) if content is None else content)
     except json.JSONDecodeError:
         return "html"
 
@@ -87,10 +92,11 @@ def _extract_html_from_execution_json(
     input_path: Path,
     *,
     snapshot_index: int,
+    content: str | None = None,
 ) -> tuple[str, dict[str, Any]]:
     """Extract stored response HTML from CEQAnet listing-execution JSON."""
 
-    payload = _load_json_object(input_path)
+    payload = _load_json_object(input_path, content=content)
     snapshots = payload.get("snapshots")
     if not isinstance(snapshots, list) or not snapshots:
         raise typer.BadParameter("Execution JSON must contain a non-empty snapshots list.")
@@ -135,11 +141,14 @@ def _extract_html(
 ) -> tuple[str, dict[str, Any]]:
     """Extract HTML from raw HTML input or CEQAnet listing-execution JSON."""
 
-    resolved_format = _detect_input_format(input_path, input_format)
+    content = read_runtime_text(input_path)
+    resolved_format = _detect_input_format(input_path, input_format, content=content)
     if resolved_format == "execution-json":
-        return _extract_html_from_execution_json(input_path, snapshot_index=snapshot_index)
+        return _extract_html_from_execution_json(
+            input_path, snapshot_index=snapshot_index, content=content,
+        )
 
-    return input_path.read_text(encoding="utf-8"), {
+    return content, {
         "input_format": "html",
         "snapshot_index": None,
         "snapshot": None,

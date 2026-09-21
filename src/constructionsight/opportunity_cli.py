@@ -12,6 +12,7 @@ from rich.table import Table
 
 from constructionsight.intake_models import UniversalIntakeRecord
 from constructionsight.opportunity_service import build_opportunity_candidate
+from constructionsight.storage.runtime_artifacts import read_runtime_text
 
 app = typer.Typer(help="Convert universal intake records into opportunity candidates.")
 console = Console(width=240, color_system=None)
@@ -33,7 +34,7 @@ def _reject_output_without_json(output_path: Path | None, json_output: bool) -> 
 def _load_intake_record(input_path: Path) -> UniversalIntakeRecord:
     """Load a universal intake JSON file."""
 
-    payload = json.loads(input_path.read_text(encoding="utf-8"))
+    payload = json.loads(read_runtime_text(input_path))
     return UniversalIntakeRecord.model_validate(payload)
 
 

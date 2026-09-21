@@ -15,6 +15,7 @@ from rich.console import Console
 from rich.table import Table
 
 from constructionsight.ceqanet_operator_package import build_ceqanet_operator_package
+from constructionsight.storage.runtime_artifacts import read_runtime_text
 
 app = typer.Typer(help="Build CEQAnet operator review packages.")
 console = Console(width=240, color_system=None)
@@ -37,7 +38,7 @@ def _load_json_object(input_path: Path) -> dict[str, Any]:
     """Load a JSON object from disk."""
 
     try:
-        payload = json.loads(input_path.read_text(encoding="utf-8"))
+        payload = json.loads(read_runtime_text(input_path))
     except json.JSONDecodeError as exc:
         raise typer.BadParameter(f"{input_path} is not valid JSON.") from exc
 

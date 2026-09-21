@@ -15,6 +15,7 @@ from constructionsight.operator_services.ceqanet_persistence_service import (
     execute_authorized_ceqanet_write_plan,
 )
 from constructionsight.storage.database import database_url_from_path
+from constructionsight.storage.runtime_artifacts import read_runtime_text
 
 app = typer.Typer(help="Execute authorized atomic CEQAnet persistence write plans.")
 console = Console(width=240, color_system=None)
@@ -33,7 +34,7 @@ def _reject_output_without_json(output_path: Path | None, json_output: bool) -> 
 
 def _load_json_object(input_path: Path) -> dict[str, Any]:
     try:
-        payload = json.loads(input_path.read_text(encoding="utf-8"))
+        payload = json.loads(read_runtime_text(input_path))
     except (OSError, json.JSONDecodeError) as exc:
         raise typer.BadParameter(f"{input_path} is not valid readable JSON.") from exc
     if not isinstance(payload, dict):

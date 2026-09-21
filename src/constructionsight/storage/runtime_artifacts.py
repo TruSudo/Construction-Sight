@@ -28,6 +28,10 @@ class RuntimeArtifactError(ValueError):
     """Runtime evidence could not be accessed within its authorized path."""
 
 
+class RuntimeArtifactLimitError(RuntimeArtifactError):
+    """Runtime evidence exceeds its governed byte ceiling."""
+
+
 def runtime_artifact_parts(reference: str) -> tuple[str, ...]:
     """Validate portable canonical relative names before interpreting any path."""
 
@@ -161,15 +165,25 @@ def read_runtime_artifact(path: Path, *, max_bytes: int) -> bytes:
     return content
 
 
+def read_runtime_text(path: Path, *, max_bytes: int = 16 * 1024 * 1024) -> str:
+    """Decode one contained UTF-8 snapshot with a pre-materialization ceiling.
+
+    Operator JSON and stored HTML inputs share the 16-MiB evidence-file ceiling.
+    Specialized binary formats retain their own, potentially tighter limits.
+    """
+
+    return read_runtime_artifact(path, max_bytes=max_bytes).decode("utf-8")
+
+
 def read_bounded_artifact_stream(stream: BinaryIO, *, max_bytes: int) -> bytes:
     """Read bounded bytes while a caller holds and verifies the same artifact handle."""
 
     _require_byte_limit(max_bytes)
     if os.fstat(stream.fileno()).st_size > max_bytes:
-        raise RuntimeArtifactError("artifact evidence exceeds the file byte limit")
+        raise RuntimeArtifactLimitError("artifact evidence exceeds the file byte limit")
     content = stream.read(max_bytes + 1)
     if len(content) > max_bytes:
-        raise RuntimeArtifactError("artifact evidence exceeds the file byte limit")
+        raise RuntimeArtifactLimitError("artifact evidence exceeds the file byte limit")
     return content
 
 
@@ -221,7 +235,9 @@ def publish_runtime_artifact(
                         raise RuntimeArtifactError("artifact chunks must be nonempty bytes")
                     byte_count += len(chunk)
                     if byte_count > max_bytes:
-                        raise RuntimeArtifactError("artifact evidence exceeds the file byte limit")
+                        raise RuntimeArtifactLimitError(
+                            "artifact evidence exceeds the file byte limit"
+                        )
                     stream.write(chunk)
                 stream.flush()
                 os.fsync(stream.fileno())

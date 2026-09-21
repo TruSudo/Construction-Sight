@@ -30,6 +30,7 @@ from constructionsight.source_registry_update_plan_service import (
 from constructionsight.source_verification_checklist_models import (
     SourceVerificationObservation,
 )
+from constructionsight.storage.runtime_artifacts import read_runtime_text
 
 app = typer.Typer(help="ConstructionSight source registry update plan and apply tools.")
 console = Console()
@@ -43,7 +44,7 @@ def _abort(message: str) -> NoReturn:
 
 
 def _load_sources_from_json(path: Path) -> list[PublicSource]:
-    data: Any = json.loads(path.read_text(encoding="utf-8"))
+    data: Any = json.loads(read_runtime_text(path))
     if not isinstance(data, list):
         _abort("Registry JSON must be a list.")
     return [PublicSource.model_validate(item) for item in data]
@@ -52,14 +53,14 @@ def _load_sources_from_json(path: Path) -> list[PublicSource]:
 def _load_observations(path: Path | None) -> list[SourceVerificationObservation]:
     if path is None:
         return []
-    data: Any = json.loads(path.read_text(encoding="utf-8"))
+    data: Any = json.loads(read_runtime_text(path))
     if not isinstance(data, list):
         _abort("Observation JSON must be a list.")
     return [SourceVerificationObservation.model_validate(item) for item in data]
 
 
 def _load_plan(path: Path) -> SourceRegistryUpdatePlanReport:
-    data: Any = json.loads(path.read_text(encoding="utf-8"))
+    data: Any = json.loads(read_runtime_text(path))
     return SourceRegistryUpdatePlanReport.model_validate(data)
 
 
@@ -329,7 +330,7 @@ def source_registry_apply(
     updated_sources = list(authorized.sources)
     report = authorized.report
     if backup_output is not None:
-        _atomic_write_text(backup_output, registry_path.read_text(encoding="utf-8"))
+        _atomic_write_text(backup_output, read_runtime_text(registry_path))
     _atomic_write_text(
         audit_output,
         f"{json.dumps(report.to_dict(), indent=2)}\n",
