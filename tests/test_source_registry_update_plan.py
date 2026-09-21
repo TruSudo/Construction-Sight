@@ -544,6 +544,68 @@ def test_source_registry_apply_audit_failure_does_not_claim_success(
 
 
 
+
+@pytest.mark.parametrize("interrupted_at", ["backup", "audit"])
+def test_in_place_apply_replays_prepared_backup_and_committed_target(
+    tmp_path, monkeypatch, interrupted_at,
+) -> None:
+    import constructionsight.source_registry_update_plan_cli as cli
+
+    registry = tmp_path / "sources.json"
+    observations = tmp_path / "observations.json"
+    plan = tmp_path / "plan.json"
+    backup = tmp_path / "sources.backup.json"
+    audit = tmp_path / "sources.audit.json"
+    registry.write_text(_registry_json(), encoding="utf-8")
+    observations.write_text(_observation_json(), encoding="utf-8")
+    before = registry.read_bytes()
+    runner = CliRunner()
+    prepared = runner.invoke(
+        app,
+        [
+            "plan", str(registry), "--observations-path", str(observations),
+            "--output", str(plan),
+        ],
+    )
+    assert prepared.exit_code == 0
+    approved = json.loads(plan.read_text(encoding="utf-8"))["plan_digest"]
+    args = [
+        "apply", str(registry), str(plan),
+        "--approved-plan-digest", approved, "--audit-output", str(audit),
+        "--in-place", "--backup-output", str(backup), "--apply",
+        "--operator-id", "operator:test",
+        "--authorization-reason", "Rehearse recoverable in-place registry apply.",
+    ]
+    original_write = cli._atomic_write_text
+
+    def interrupted_write(path, content, *, overwrite=True):
+        if path == (backup if interrupted_at == "backup" else audit):
+            raise OSError("injected interruption before transaction finalization")
+        return original_write(path, content, overwrite=overwrite)
+
+    monkeypatch.setattr(cli, "_atomic_write_text", interrupted_write)
+    first = runner.invoke(app, args)
+    assert first.exit_code != 0
+    assert not audit.exists()
+    if interrupted_at == "backup":
+        assert registry.read_bytes() == before
+        assert not backup.exists()
+    else:
+        assert backup.read_bytes() == before
+        assert json.loads(registry.read_text(encoding="utf-8"))[0]["verification_status"] == "partial"
+    assert len(list(tmp_path.glob(".source-registry-*.pending.json"))) == 1
+
+    monkeypatch.setattr(cli, "_atomic_write_text", original_write)
+    recovered = runner.invoke(app, args)
+    assert recovered.exit_code == 0, str(recovered.exception)
+    assert "Recovered exact pending source registry transaction." in recovered.stdout
+    assert json.loads(registry.read_text(encoding="utf-8"))[0]["verification_status"] == "partial"
+    assert backup.read_bytes() == before
+    assert json.loads(audit.read_text(encoding="utf-8"))["applied_count"] == 1
+    assert not list(tmp_path.glob(".source-registry-*.pending.json"))
+
+
+
 def test_source_registry_apply_cli_refuses_output_equal_to_registry(tmp_path) -> None:
     registry_path = tmp_path / "sources.json"
     observations_path = tmp_path / "observations.json"
