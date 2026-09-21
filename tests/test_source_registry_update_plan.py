@@ -485,6 +485,8 @@ def test_source_registry_apply_audit_failure_does_not_claim_success(
     assert result.exit_code != 0
     assert json.loads(updated_path.read_text(encoding="utf-8"))[0]["verification_status"] == "partial"
     assert not audit_path.exists()
+    assert "Registry target committed, but success audit publication failed" in result.stderr
+    assert "do not reapply until the target and audit are reconciled" in result.stderr
     assert "Applied 1 source registry status update(s)." not in result.stdout
 
 
