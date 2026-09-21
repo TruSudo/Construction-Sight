@@ -11,12 +11,19 @@ import hashlib
 import json
 import zipfile
 from collections import Counter
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any, Literal, cast
 
 _ARCHIVE_TIMESTAMP = (2026, 1, 1, 0, 0, 0)
 _ARCHIVE_EXTERNAL_ATTR = 0o100644 << 16
+_MAX_ZIP_ARCHIVE_BYTES = 128 * 1024 * 1024
+_MAX_ZIP_ENTRIES = 128
+_MAX_ZIP_ENTRY_BYTES = 16 * 1024 * 1024
+_MAX_ZIP_MANIFEST_BYTES = 1024 * 1024
+_MAX_ZIP_TOTAL_BYTES = 64 * 1024 * 1024
+_ZIP_READ_CHUNK_BYTES = 64 * 1024
 
 ArchiveArtifactStatus = Literal["verified", "missing", "mismatch"]
 ManifestStatus = Literal["verified", "missing", "malformed"]
@@ -132,14 +139,20 @@ def verify_ceqanet_operator_archive(
 
     if not archive_path.is_file():
         raise ValueError(f"CEQAnet operator archive not found: {archive_path}")
+    if archive_path.stat().st_size > _MAX_ZIP_ARCHIVE_BYTES:
+        raise ValueError("CEQAnet operator archive exceeds the ZIP byte limit")
 
     try:
         with zipfile.ZipFile(archive_path) as archive_file:
             infos = archive_file.infolist()
+            _require_bounded_archive_metadata(infos)
+            remaining_bytes = [_MAX_ZIP_TOTAL_BYTES]
             filenames = [info.filename for info in infos]
             duplicate_filenames = _duplicate_filenames(filenames)
             archive_issues = _archive_entry_issues(infos)
-            manifest_status, manifest, manifest_issues = _load_manifest_from_archive(archive_file)
+            manifest_status, manifest, manifest_issues = _load_manifest_from_archive(
+                archive_file, remaining_bytes=remaining_bytes
+            )
             archive_issues.extend(manifest_issues)
 
             artifacts: list[CeqanetArchiveArtifactVerification] = []
@@ -154,6 +167,7 @@ def verify_ceqanet_operator_archive(
                     artifact = _verify_artifact_entry(
                         archive_file,
                         entry=cast(dict[str, Any], entry),
+                        remaining_bytes=remaining_bytes,
                     )
                     if artifact is None:
                         malformed_artifacts.append(
@@ -177,6 +191,50 @@ def verify_ceqanet_operator_archive(
         archive_issues=tuple(archive_issues),
         duplicate_filenames=duplicate_filenames,
     )
+
+
+def _require_bounded_archive_metadata(infos: list[zipfile.ZipInfo]) -> None:
+    """Reject excessive archive metadata before any member decompression."""
+
+    if len(infos) > _MAX_ZIP_ENTRIES:
+        raise ValueError("CEQAnet operator archive exceeds the ZIP entry limit")
+    total_size = 0
+    for info in infos:
+        if info.file_size < 0 or info.file_size > _MAX_ZIP_ENTRY_BYTES:
+            raise ValueError("CEQAnet ZIP member exceeds the entry byte limit")
+        total_size += info.file_size
+        if total_size > _MAX_ZIP_TOTAL_BYTES:
+            raise ValueError("CEQAnet operator archive exceeds the total ZIP byte limit")
+
+
+def _bounded_member_chunks(
+    archive_file: zipfile.ZipFile,
+    *,
+    filename: str,
+    member_byte_limit: int,
+    remaining_bytes: list[int],
+) -> Iterator[bytes]:
+    """Stream a ZIP member with actual decompressed and aggregate byte ceilings."""
+
+    actual_bytes = 0
+    with archive_file.open(filename) as entry_file:
+        while True:
+            chunk = entry_file.read(
+                min(
+                    _ZIP_READ_CHUNK_BYTES,
+                    member_byte_limit - actual_bytes + 1,
+                    remaining_bytes[0] + 1,
+                )
+            )
+            if not chunk:
+                break
+            actual_bytes += len(chunk)
+            if actual_bytes > member_byte_limit:
+                raise ValueError("CEQAnet ZIP member exceeds the decompressed byte limit")
+            remaining_bytes[0] -= len(chunk)
+            if remaining_bytes[0] < 0:
+                raise ValueError("CEQAnet ZIP exceeds the total decompressed byte limit")
+            yield chunk
 
 
 def _duplicate_filenames(filenames: list[str]) -> tuple[str, ...]:
@@ -224,6 +282,8 @@ def _is_safe_relative_posix_path(filename: str) -> bool:
 
 def _load_manifest_from_archive(
     archive_file: zipfile.ZipFile,
+    *,
+    remaining_bytes: list[int],
 ) -> tuple[ManifestStatus, dict[str, Any] | None, list[dict[str, object]]]:
     """Load and validate manifest JSON from an archive."""
 
@@ -231,7 +291,15 @@ def _load_manifest_from_archive(
         return "missing", None, [{"filename": "manifest.json", "reason": "manifest missing"}]
 
     try:
-        payload = json.loads(archive_file.read("manifest.json").decode("utf-8"))
+        raw_manifest = b"".join(
+            _bounded_member_chunks(
+                archive_file,
+                filename="manifest.json",
+                member_byte_limit=_MAX_ZIP_MANIFEST_BYTES,
+                remaining_bytes=remaining_bytes,
+            )
+        )
+        payload = json.loads(raw_manifest.decode("utf-8"))
     except UnicodeDecodeError:
         return "malformed", None, [{"filename": "manifest.json", "reason": "not UTF-8"}]
     except json.JSONDecodeError:
@@ -264,6 +332,7 @@ def _verify_artifact_entry(
     archive_file: zipfile.ZipFile,
     *,
     entry: dict[str, Any],
+    remaining_bytes: list[int],
 ) -> CeqanetArchiveArtifactVerification | None:
     """Verify one manifest-listed artifact against ZIP contents."""
 
@@ -274,8 +343,17 @@ def _verify_artifact_entry(
     if filename is None or artifact_type is None or expected_sha256 is None:
         return None
 
+    actual_digest = hashlib.sha256()
+    actual_byte_count = 0
     try:
-        data = archive_file.read(filename)
+        for chunk in _bounded_member_chunks(
+            archive_file,
+            filename=filename,
+            member_byte_limit=_MAX_ZIP_ENTRY_BYTES,
+            remaining_bytes=remaining_bytes,
+        ):
+            actual_digest.update(chunk)
+            actual_byte_count += len(chunk)
     except KeyError:
         return CeqanetArchiveArtifactVerification(
             filename=filename,
@@ -288,8 +366,7 @@ def _verify_artifact_entry(
             reason="not present in archive",
         )
 
-    actual_sha256 = hashlib.sha256(data).hexdigest()
-    actual_byte_count = len(data)
+    actual_sha256 = actual_digest.hexdigest()
     if actual_sha256 == expected_sha256 and (
         expected_byte_count is None or actual_byte_count == expected_byte_count
     ):

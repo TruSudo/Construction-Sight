@@ -3,6 +3,10 @@ import json
 import zipfile
 from pathlib import Path
 
+import pytest
+
+import constructionsight.ceqanet_operator_archive_verify as archive_verification
+
 from constructionsight.ceqanet_operator_archive import build_ceqanet_operator_archive
 from constructionsight.ceqanet_operator_archive_verify import verify_ceqanet_operator_archive
 
@@ -172,3 +176,72 @@ def test_verify_ceqanet_operator_archive_detects_nondeterministic_zip_metadata(
     assert verification["archive_issues"] == [
         {"filename": "manifest.json", "reason": "timestamp must be (2026, 1, 1, 0, 0, 0)"}
     ]
+
+
+def test_archive_verification_rejects_oversized_manifest_before_json(
+    tmp_path: Path,
+) -> None:
+    archive_path = tmp_path / "oversized-manifest.zip"
+    with zipfile.ZipFile(archive_path, mode="w") as archive_file:
+        _write_archive_entry(
+            archive_file,
+            filename="manifest.json",
+            data=b" " * (1024 * 1024 + 1),
+        )
+    with pytest.raises(ValueError, match="decompressed byte limit"):
+        verify_ceqanet_operator_archive(archive_path=archive_path)
+
+
+def test_archive_verification_rejects_too_many_entries_before_member_read(
+    tmp_path: Path,
+) -> None:
+    archive_path = tmp_path / "too-many-entries.zip"
+    with zipfile.ZipFile(archive_path, mode="w") as archive_file:
+        for index in range(129):
+            _write_archive_entry(
+                archive_file, filename=f"member-{index}.txt", data=b"x"
+            )
+    with pytest.raises(ValueError, match="ZIP entry limit"):
+        verify_ceqanet_operator_archive(archive_path=archive_path)
+
+
+def test_archive_verification_rejects_oversized_artifact_metadata(
+    tmp_path: Path,
+) -> None:
+    archive_path = tmp_path / "oversized-artifact.zip"
+    with zipfile.ZipFile(archive_path, mode="w") as archive_file:
+        _write_archive_entry(
+            archive_file,
+            filename="large.txt",
+            data=b"A" * (16 * 1024 * 1024 + 1),
+        )
+    with pytest.raises(ValueError, match="entry byte limit"):
+        verify_ceqanet_operator_archive(archive_path=archive_path)
+
+
+def test_archive_verification_rejects_cumulative_budget_before_decompression(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    export_dir = tmp_path / "export"
+    archive_path = tmp_path / "operator-export.zip"
+    _write_export_dir(export_dir)
+    _write_archive_from_export_dir(export_dir, archive_path)
+    monkeypatch.setattr(archive_verification, "_MAX_ZIP_TOTAL_BYTES", 100)
+    with pytest.raises(ValueError, match="total ZIP byte limit"):
+        verify_ceqanet_operator_archive(archive_path=archive_path)
+
+
+def test_archive_verification_streams_members_without_zipfile_read(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    export_dir = tmp_path / "export"
+    archive_path = tmp_path / "operator-export.zip"
+    _write_export_dir(export_dir)
+    _write_archive_from_export_dir(export_dir, archive_path)
+
+    def _forbid_unbounded_read(*_args: object, **_kwargs: object) -> bytes:
+        raise AssertionError("unbounded ZipFile.read is prohibited")
+
+    monkeypatch.setattr(zipfile.ZipFile, "read", _forbid_unbounded_read)
+    result = verify_ceqanet_operator_archive(archive_path=archive_path)
+    assert result.passed is True
