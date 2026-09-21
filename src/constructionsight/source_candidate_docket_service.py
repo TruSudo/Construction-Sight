@@ -14,8 +14,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import cast
 
+import sqlalchemy
 from pydantic import BaseModel, Field
-from sqlalchemy import create_engine, engine as sql_engine, inspect, select
 from sqlalchemy.orm import Session
 
 from constructionsight.authorization_decision import AuthorizationDeniedError
@@ -181,19 +181,19 @@ def _read_entry(row: SourceCandidateDocketRow, *, recorded_new: bool) -> Candida
     )
 
 
-def _engine_for_existing_sqlite(path: Path) -> sql_engine.Engine:
+def _engine_for_existing_sqlite(path: Path) -> sqlalchemy.Engine:
     """Never create a source database as a side effect of preview or staging."""
 
     resolved = path.resolve(strict=True)
     if not resolved.is_file():
         raise CandidateDocketError("source database must be an existing regular file")
-    return create_engine(
-        sql_engine.URL.create("sqlite+pysqlite", database=str(resolved)),
+    return sqlalchemy.create_engine(
+        sqlalchemy.URL.create("sqlite+pysqlite", database=str(resolved)),
         connect_args={"timeout": 30},
     )
 
 
-def _preflight(engine: sql_engine.Engine, *, kind: RecordKind, record_id: str) -> SourceCandidatePreview:
+def _preflight(engine: sqlalchemy.Engine, *, kind: RecordKind, record_id: str) -> SourceCandidatePreview:
     with Session(engine, autoflush=False) as session:
         return build_source_candidate_preview(session, kind=kind, record_id=record_id)
 
@@ -221,11 +221,11 @@ def list_staged_source_candidates(
         raise CandidateDocketError("list requires one exact source-family/key pair")
     engine = _engine_for_existing_sqlite(database_path)
     try:
-        if not inspect(engine).has_table(SourceCandidateDocketRow.__tablename__):
+        if not sqlalchemy.inspect(engine).has_table(SourceCandidateDocketRow.__tablename__):
             raise CandidateDocketError("docket table is absent; explicitly initialize the schema")
         with Session(engine, autoflush=False) as session:
             rows = session.scalars(
-                select(SourceCandidateDocketRow)
+                sqlalchemy.select(SourceCandidateDocketRow)
                 .where(
                     SourceCandidateDocketRow.record_kind == kind,
                     SourceCandidateDocketRow.source_record_id == record_id,
@@ -239,7 +239,7 @@ def list_staged_source_candidates(
 
 
 def _append_exact_entry(
-    engine: sql_engine.Engine,
+    engine: sqlalchemy.Engine,
     *,
     kind: RecordKind,
     record_id: str,
@@ -269,7 +269,7 @@ def _append_exact_entry(
                 payload = _canonical_preview(current)
                 payload_digest = _sha256(payload)
                 existing = session.scalar(
-                    select(SourceCandidateDocketRow).where(
+                    sqlalchemy.select(SourceCandidateDocketRow).where(
                         SourceCandidateDocketRow.preview_id == current.preview_id
                     )
                 )
@@ -344,7 +344,7 @@ def stage_authorized_source_candidate(
     resolved = database_path.resolve(strict=True)
     engine = _engine_for_existing_sqlite(resolved)
     try:
-        if not inspect(engine).has_table(SourceCandidateDocketRow.__tablename__):
+        if not sqlalchemy.inspect(engine).has_table(SourceCandidateDocketRow.__tablename__):
             raise CandidateDocketError(
                 "docket table is absent; use the existing explicit init-db command"
             )
@@ -445,7 +445,7 @@ def stage_authorized_source_candidate(
         # persisted exact entry after the owned effect returns.
         with Session(engine, autoflush=False) as session:
             row = session.scalar(
-                select(SourceCandidateDocketRow).where(
+                sqlalchemy.select(SourceCandidateDocketRow).where(
                     SourceCandidateDocketRow.stage_id == entry.stage_id
                 )
             )
