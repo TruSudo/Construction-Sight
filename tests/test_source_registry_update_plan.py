@@ -437,6 +437,27 @@ def test_source_registry_apply_target_failure_does_not_publish_success_audit(
     assert not audit_path.exists()
     assert not updated_path.exists()
     assert registry_path.read_bytes() == original_registry
+    assert len(list(tmp_path.glob(".source-registry-*.pending.json"))) == 1
+
+    # A retry rolls the prepared transaction forward without repeating the
+    # authorization/effect service or publishing an audit before target commit.
+    monkeypatch.setattr(cli, "_atomic_write_text", original_write)
+    args = [
+        "apply", str(registry_path), str(plan_path),
+        "--approved-plan-digest", digest, "--audit-output", str(audit_path),
+        "--output", str(updated_path), "--apply",
+        "--operator-id", "operator:test",
+        "--authorization-reason", "Exercise late authoritative publication failure.",
+    ]
+    retry = runner.invoke(app, args)
+    assert retry.exit_code == 0, str(retry.exception)
+    assert "Recovered exact pending source registry transaction." in retry.stdout
+    assert json.loads(updated_path.read_text(encoding="utf-8"))[0]["verification_status"] == "partial"
+    assert json.loads(audit_path.read_text(encoding="utf-8"))["applied_count"] == 1
+    assert not list(tmp_path.glob(".source-registry-*.pending.json"))
+    repeated = runner.invoke(app, args)
+    assert repeated.exit_code != 0
+    assert "Output path already exists" in repeated.stderr
 
 
 def test_source_registry_apply_audit_failure_does_not_claim_success(
