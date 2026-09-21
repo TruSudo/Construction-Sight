@@ -15,6 +15,10 @@ from pathlib import Path
 from constructionsight.ceqanet_operator_bundle_verify import verify_ceqanet_operator_bundle
 
 _ARCHIVE_TIMESTAMP = (2026, 1, 1, 0, 0, 0)
+_MAX_ARCHIVE_MEMBER_BYTES = 16 * 1024 * 1024
+_MAX_ARCHIVE_TOTAL_BYTES = 64 * 1024 * 1024
+_MAX_ARCHIVE_FILE_BYTES = 128 * 1024 * 1024
+_ARCHIVE_CHUNK_BYTES = 64 * 1024
 
 
 @dataclass(frozen=True)
@@ -70,14 +74,29 @@ def build_ceqanet_operator_archive(
     archived_files = _manifest_filenames(verification)
     archive_path.parent.mkdir(parents=True, exist_ok=True)
     _write_zip(source_dir=source_dir, archive_path=archive_path, filenames=archived_files)
-    archive_data = archive_path.read_bytes()
+    archive_digest = hashlib.sha256()
+    archive_byte_count = 0
+    with archive_path.open("rb") as archive_file:
+        while True:
+            chunk = archive_file.read(
+                min(
+                    _ARCHIVE_CHUNK_BYTES,
+                    _MAX_ARCHIVE_FILE_BYTES - archive_byte_count + 1,
+                )
+            )
+            if not chunk:
+                break
+            archive_byte_count += len(chunk)
+            if archive_byte_count > _MAX_ARCHIVE_FILE_BYTES:
+                raise ValueError("CEQAnet ZIP output exceeds the archive byte limit")
+            archive_digest.update(chunk)
 
     return CeqanetOperatorArchive(
         archive_path=archive_path,
         source_dir=source_dir,
         archived_files=tuple(archived_files),
-        byte_count=len(archive_data),
-        sha256=hashlib.sha256(archive_data).hexdigest(),
+        byte_count=archive_byte_count,
+        sha256=archive_digest.hexdigest(),
         verification=verification,
     )
 
@@ -106,16 +125,44 @@ def _manifest_filenames(verification: dict[str, object]) -> list[str]:
 def _write_zip(*, source_dir: Path, archive_path: Path, filenames: list[str]) -> None:
     """Write deterministic ZIP archive."""
 
+    if len(filenames) > 128:
+        raise ValueError("CEQAnet ZIP output exceeds the entry limit")
+    remaining_bytes = _MAX_ARCHIVE_TOTAL_BYTES
     with zipfile.ZipFile(archive_path, mode="w") as archive:
         for filename in filenames:
+            if (
+                filename in {".", ".."}
+                or filename != Path(filename).name
+                or "\\" in filename
+                or "\x00" in filename
+            ):
+                raise ValueError("CEQAnet ZIP source must be a safe basename")
             source_path = source_dir / filename
             if not source_path.is_file():
                 raise ValueError(f"Archive source file missing: {source_path}")
-            data = source_path.read_bytes()
             info = zipfile.ZipInfo(filename=filename, date_time=_ARCHIVE_TIMESTAMP)
             info.compress_type = zipfile.ZIP_DEFLATED
             info.external_attr = 0o100644 << 16
-            archive.writestr(info, data)
+            written = 0
+            with source_path.open("rb") as source_file:
+                with archive.open(info, mode="w") as archive_entry:
+                    while True:
+                        chunk = source_file.read(
+                            min(
+                                _ARCHIVE_CHUNK_BYTES,
+                                _MAX_ARCHIVE_MEMBER_BYTES - written + 1,
+                                remaining_bytes + 1,
+                            )
+                        )
+                        if not chunk:
+                            break
+                        written += len(chunk)
+                        if written > _MAX_ARCHIVE_MEMBER_BYTES:
+                            raise ValueError("CEQAnet archive member exceeds the byte limit")
+                        remaining_bytes -= len(chunk)
+                        if remaining_bytes < 0:
+                            raise ValueError("CEQAnet ZIP output exceeds the total byte limit")
+                        archive_entry.write(chunk)
 
 
 def _metadata_object(payload: dict[str, object], *, field_name: str) -> dict[str, object]:
