@@ -8,6 +8,7 @@ from contextlib import contextmanager
 from datetime import date
 from http.client import HTTPConnection
 from http.server import ThreadingHTTPServer
+from pathlib import Path
 from threading import Thread
 
 import pytest
@@ -15,6 +16,7 @@ from sqlalchemy import select, text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
+from constructionsight import operator_web
 from constructionsight.ceqa_models import CeqaRecord
 from constructionsight.ceqanet_persistence_preview import build_ceqanet_persistence_preview
 from constructionsight.ceqanet_write_plan import build_ceqanet_write_plan
@@ -1253,3 +1255,73 @@ def test_parcel_lookup_reports_bounded_candidate_results(database, monkeypatch):
     payload = json.loads(body)
     assert payload["matching_total"] == 3 and payload["returned"] == 2
     assert payload["result_limit"] == 2 and payload["truncated"] is True
+
+
+def test_explicit_desktop_launch_opens_only_bound_loopback_url(monkeypatch, tmp_path):
+    import sys
+
+    observed = []
+    class StubServer:
+        server_address = ("127.0.0.1", 9927)
+
+        def __init__(self, address, handler):
+            observed.append(("bind", address))
+            assert handler is not None
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *arguments):
+            return False
+
+        def serve_forever(self):
+            observed.append(("serve", None))
+
+    class StubTimer:
+        daemon = False
+
+        def __init__(self, seconds, callback, *, args):
+            assert seconds >= 0
+            self.callback = callback
+            self.arguments = args
+
+        def start(self):
+            observed.append(("timer_daemon", self.daemon))
+            self.callback(*self.arguments)
+
+    monkeypatch.setattr(operator_web, "create_handler", lambda path: object())
+    monkeypatch.setattr(operator_web, "ThreadingHTTPServer", StubServer)
+    monkeypatch.setattr(operator_web, "Timer", StubTimer)
+    monkeypatch.setattr(
+        operator_web.webbrowser, "open",
+        lambda url: observed.append(("open", url)),
+    )
+    database = tmp_path / "synthetic.sqlite3"
+    monkeypatch.setattr(
+        sys, "argv",
+        ["constructionsight-desktop", "--database", str(database), "--port", "9927"],
+    )
+    operator_web.desktop_main()
+    assert observed == [
+        ("bind", ("127.0.0.1", 9927)),
+        ("timer_daemon", True),
+        ("open", "http://127.0.0.1:9927"),
+        ("serve", None),
+    ]
+    observed.clear()
+    monkeypatch.setattr(
+        sys, "argv",
+        ["constructionsight-operator", "--database", str(database), "--port", "9927"],
+    )
+    operator_web.main()
+    assert observed == [
+        ("bind", ("127.0.0.1", 9927)),
+        ("serve", None),
+    ]
+    project = (Path(__file__).resolve().parents[1] / "pyproject.toml").read_text(
+        encoding="utf-8"
+    )
+    assert (
+        'constructionsight-desktop = "constructionsight.operator_web:desktop_main"'
+        in project
+    )
