@@ -16,7 +16,7 @@ from rich.console import Console
 from rich.table import Table
 
 from constructionsight.ceqanet_operator_bundle import build_ceqanet_operator_bundle
-from constructionsight.storage.runtime_artifacts import read_runtime_text
+from constructionsight.storage.runtime_artifacts import read_runtime_text, write_runtime_text
 
 app = typer.Typer(help="Build CEQAnet operator review bundles.")
 console = Console(width=240, color_system=None)
@@ -42,11 +42,9 @@ def _load_json_object(input_path: Path) -> dict[str, Any]:
 
 def _write_json_file(output_path: Path, payload: dict[str, object]) -> None:
     """Write deterministic UTF-8 JSON output."""
-
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(
+    write_runtime_text(
+        output_path,
         json.dumps(payload, indent=2, sort_keys=True, default=str) + "\n",
-        encoding="utf-8",
     )
 
 

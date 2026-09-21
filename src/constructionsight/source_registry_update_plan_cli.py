@@ -3,9 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
-import tempfile
-from contextlib import suppress
 from pathlib import Path
 from typing import Annotated, Any, NoReturn
 
@@ -30,7 +27,7 @@ from constructionsight.source_registry_update_plan_service import (
 from constructionsight.source_verification_checklist_models import (
     SourceVerificationObservation,
 )
-from constructionsight.storage.runtime_artifacts import read_runtime_text
+from constructionsight.storage.runtime_artifacts import read_runtime_text, write_runtime_text
 
 app = typer.Typer(help="ConstructionSight source registry update plan and apply tools.")
 console = Console()
@@ -69,24 +66,8 @@ def _registry_json(sources: list[PublicSource]) -> str:
     return f"{json.dumps(payload, indent=2)}\n"
 
 
-def _atomic_write_text(path: Path, content: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    descriptor, temporary_name = tempfile.mkstemp(
-        prefix=f".{path.name}.",
-        suffix=".tmp",
-        dir=path.parent,
-        text=True,
-    )
-    try:
-        with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as handle:
-            handle.write(content)
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(temporary_name, path)
-    except Exception:
-        with suppress(FileNotFoundError):
-            os.unlink(temporary_name)
-        raise
+def _atomic_write_text(path: Path, content: str, *, overwrite: bool = True) -> None:
+    write_runtime_text(path, content, overwrite=overwrite)
 
 
 def _require_available_output(path: Path, *, overwrite: bool) -> None:
@@ -186,7 +167,7 @@ def source_registry_update_plan(
             plan_paths["observations input"] = observations_path
         _require_distinct_paths(plan_paths)
         _require_available_output(output, overwrite=overwrite)
-        _atomic_write_text(output, f"{rendered}\n")
+        _atomic_write_text(output, f"{rendered}\n", overwrite=overwrite)
         console.print(f"Wrote source registry update plan to {output}")
         console.print(f"Registry digest: {report.registry_digest}")
         console.print(f"Plan digest: {report.plan_digest}")
@@ -330,12 +311,15 @@ def source_registry_apply(
     updated_sources = list(authorized.sources)
     report = authorized.report
     if backup_output is not None:
-        _atomic_write_text(backup_output, read_runtime_text(registry_path))
+        _atomic_write_text(backup_output, read_runtime_text(registry_path), overwrite=overwrite)
     _atomic_write_text(
         audit_output,
         f"{json.dumps(report.to_dict(), indent=2)}\n",
+        overwrite=overwrite,
     )
-    _atomic_write_text(target_path, _registry_json(updated_sources))
+    _atomic_write_text(
+        target_path, _registry_json(updated_sources), overwrite=in_place or overwrite,
+    )
     console.print(f"Applied {report.applied_count} source registry status update(s).")
     console.print(f"Updated registry: {target_path}")
     console.print(f"Audit report: {audit_output}")

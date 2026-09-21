@@ -39,7 +39,7 @@ from constructionsight.storage.database import (
     session_factory,
 )
 from constructionsight.storage.intelligence_store import IntelligenceStore
-from constructionsight.storage.runtime_artifacts import read_runtime_text
+from constructionsight.storage.runtime_artifacts import read_runtime_text, write_runtime_text
 from constructionsight.storage.source_registry import SourceRegistryStore
 from constructionsight.storage.verification_store import VerificationStore
 from constructionsight.verification.source_verifier import SourceVerifier
@@ -225,10 +225,8 @@ def _verification_export_payload(records: list[Any], *, limit: int) -> dict[str,
 def _write_json_file(output_path: Path, payload: dict[str, Any]) -> None:
     """Write deterministic UTF-8 JSON to disk."""
 
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(
-        json.dumps(payload, indent=2, sort_keys=True, default=str) + "\n",
-        encoding="utf-8",
+    write_runtime_text(
+        output_path, json.dumps(payload, indent=2, sort_keys=True, default=str) + "\n",
     )
 
 

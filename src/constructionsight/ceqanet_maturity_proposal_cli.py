@@ -22,7 +22,7 @@ from constructionsight.ceqanet_maturity_proposal_service import (
     verify_ceqanet_source_maturity_proposal,
 )
 from constructionsight.models import PublicSource
-from constructionsight.storage.runtime_artifacts import read_runtime_text
+from constructionsight.storage.runtime_artifacts import read_runtime_text, write_runtime_text
 
 app = typer.Typer(help="ConstructionSight offline CEQAnet maturity proposal tools.")
 console = Console()
@@ -42,10 +42,9 @@ def _load_sources(path: Path) -> list[PublicSource]:
 def _write_json(path: Path, payload: object, *, overwrite: bool) -> None:
     if path.exists() and not overwrite:
         raise ValueError(f"output already exists: {path}; pass --overwrite to replace it")
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps(payload, indent=2, sort_keys=True, default=str) + "\n",
-        encoding="utf-8",
+    write_runtime_text(
+        path,
+        json.dumps(payload, indent=2, sort_keys=True, default=str) + "\n", overwrite=overwrite,
     )
 
 

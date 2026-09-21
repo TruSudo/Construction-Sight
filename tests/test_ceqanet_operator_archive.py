@@ -9,6 +9,39 @@ import constructionsight.ceqanet_operator_archive as archive_writer
 from constructionsight.ceqanet_operator_archive import build_ceqanet_operator_archive
 
 
+@pytest.mark.parametrize("attack", ("ancestor", "final", "swap"))
+def test_archive_publication_never_writes_through_replaced_paths(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, attack: str,
+) -> None:
+    source = tmp_path / "source"
+    _write_export_dir(source)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    retained = outside / "retained.zip"
+    retained.write_bytes(b"prior archive")
+    output_dir = tmp_path / "output"
+    if attack == "ancestor":
+        output_dir.symlink_to(outside, target_is_directory=True)
+    else:
+        output_dir.mkdir()
+    archive_path = output_dir / "archive.zip"
+    if attack == "final":
+        archive_path.symlink_to(retained)
+    if attack == "swap":
+        write_zip = archive_writer._write_zip
+
+        def swap_then_write(**kwargs):
+            output_dir.rename(tmp_path / "parked")
+            output_dir.symlink_to(outside, target_is_directory=True)
+            write_zip(**kwargs)
+
+        monkeypatch.setattr(archive_writer, "_write_zip", swap_then_write)
+    with pytest.raises((OSError, ValueError)):
+        build_ceqanet_operator_archive(source_dir=source, archive_path=archive_path)
+    assert retained.read_bytes() == b"prior archive"
+    assert list(outside.iterdir()) == [retained]
+
+
 def _write_export_dir(export_dir: Path) -> None:
     export_dir.mkdir(parents=True, exist_ok=True)
     files = {

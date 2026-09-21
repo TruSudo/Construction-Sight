@@ -9,15 +9,14 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
-import tempfile
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from itertools import chain
 from pathlib import Path
 from typing import Any, cast
 
 from constructionsight.ceqanet_operator_report import build_ceqanet_operator_report
+from constructionsight.storage.runtime_artifacts import publish_runtime_artifact
 
 _MAX_BUNDLE_ARTIFACT_BYTES = 16 * 1024 * 1024
 _MAX_BUNDLE_MANIFEST_BYTES = 1024 * 1024
@@ -81,7 +80,6 @@ def build_ceqanet_operator_bundle(
 
     if output_dir.is_symlink():
         raise ValueError("CEQAnet bundle output must not be a symlinked directory")
-    output_dir.mkdir(parents=True, exist_ok=True)
     report = build_ceqanet_operator_report(operator_package).to_dict()
     persistence_preview = _object_field(operator_package, "persistence_preview")
     write_plan = _object_field(operator_package, "write_plan")
@@ -178,33 +176,19 @@ def _write_serialized_artifact(
     )
     byte_count = 0
     digest = hashlib.sha256()
-    temporary_path: Path | None = None
-    try:
-        with tempfile.NamedTemporaryFile(
-            mode="wb",
-            dir=path.parent,
-            prefix=".ceqanet-bundle-",
-            suffix=".tmp",
-            delete=False,
-        ) as temporary_file:
-            temporary_path = Path(temporary_file.name)
-            for fragment in fragments:
-                for index in range(0, len(fragment), 16_384):
-                    chunk = fragment[index:index + 16_384].encode("utf-8")
-                    if byte_count + len(chunk) > limit:
-                        raise ValueError(
-                            "CEQAnet bundle artifact exceeds the byte limit"
-                        )
-                    temporary_file.write(chunk)
-                    digest.update(chunk)
-                    byte_count += len(chunk)
-            temporary_file.flush()
-            os.fsync(temporary_file.fileno())
-        os.replace(temporary_path, path)
-        temporary_path = None
-    finally:
-        if temporary_path is not None:
-            temporary_path.unlink(missing_ok=True)
+
+    def chunks() -> Iterator[bytes]:
+        nonlocal byte_count
+        for fragment in fragments:
+            for index in range(0, len(fragment), 16_384):
+                chunk = fragment[index:index + 16_384].encode("utf-8")
+                if byte_count + len(chunk) > limit:
+                    raise ValueError("CEQAnet bundle artifact exceeds the byte limit")
+                digest.update(chunk)
+                byte_count += len(chunk)
+                yield chunk
+
+    publish_runtime_artifact(path, chunks(), max_bytes=limit, replace_existing=True)
     return CeqanetBundleArtifact(
         filename=path.name,
         artifact_type=artifact_type,

@@ -21,7 +21,7 @@ from constructionsight.source_verification_checklist_service import (
     build_source_observation_templates,
     build_source_verification_checklist_report,
 )
-from constructionsight.storage.runtime_artifacts import read_runtime_text
+from constructionsight.storage.runtime_artifacts import read_runtime_text, write_runtime_text
 
 app = typer.Typer(help="ConstructionSight source verification checklist tools.")
 console = Console()
@@ -62,8 +62,7 @@ def source_observation_template(
     payload = [template.model_dump(mode="json") for template in templates]
     rendered = json.dumps(payload, indent=2)
     if output is not None:
-        output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_text(f"{rendered}\n", encoding="utf-8")
+        write_runtime_text(output, f"{rendered}\n")
         console.print(f"Wrote source observation template to {output}")
         return
     console.print_json(rendered)

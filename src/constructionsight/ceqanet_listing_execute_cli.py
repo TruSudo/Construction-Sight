@@ -22,6 +22,7 @@ from constructionsight.ceqanet_listing_service import (
     execute_authorized_ceqanet_listing,
 )
 from constructionsight.legal import SourceAccessProfile, evaluate_access
+from constructionsight.storage.runtime_artifacts import write_runtime_text
 
 app = typer.Typer(help="Execute governed CEQAnet read-only listing plans.")
 console = Console(width=240, color_system=None)
@@ -98,8 +99,7 @@ def _write_or_print_json(
 ) -> None:
     rendered = json.dumps(payload, indent=2, sort_keys=True, default=str) + "\n"
     if output_path is not None:
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(rendered, encoding="utf-8")
+        write_runtime_text(output_path, rendered)
         typer.echo(f"Wrote CEQAnet listing execution JSON to {output_path}.")
         return
     typer.echo(rendered, nl=False)

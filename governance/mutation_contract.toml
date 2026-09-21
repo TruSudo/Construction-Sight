@@ -911,3 +911,75 @@ replacement = '''        content = csv_path.read_bytes()'''
 tests = ["tests/test_runtime_evidence_loaders.py::test_csv_file_rejects_symlinks_before_inspection"]
 expected_output = "test_csv_file_rejects_symlinks_before_inspection"
 risk = "CSV inspection could parse bytes obtained by following a symlinked evidence path."
+
+[[cases]]
+id = "CS-MUT-TEXT-WRITER-CONTAINMENT-001"
+path = "src/constructionsight/storage/runtime_artifacts.py"
+search = "    publish_runtime_artifact(path, chunks, max_bytes=max_bytes, replace_existing=overwrite)"
+replacement = "    path.write_text(content, encoding=\"utf-8\")"
+tests = ["tests/test_runtime_output_writers.py::test_operator_writers_reject_unsafe_or_oversized_output"]
+expected_output = "test_operator_writers_reject_unsafe_or_oversized_output"
+risk = "Operator output could bypass pinned no-follow publication."
+
+[[cases]]
+id = "CS-MUT-TEXT-WRITER-CEILING-001"
+path = "src/constructionsight/storage/runtime_artifacts.py"
+search = "    publish_runtime_artifact(path, chunks, max_bytes=max_bytes, replace_existing=overwrite)"
+replacement = "    publish_runtime_artifact(path, chunks, max_bytes=max_bytes * 1024, replace_existing=overwrite)"
+tests = ["tests/test_runtime_output_writers.py::test_text_output_ceiling_counts_utf8_bytes_before_replacement"]
+expected_output = "test_text_output_ceiling_counts_utf8_bytes_before_replacement"
+risk = "A UTF-8 output could exceed its byte ceiling before replacing retained evidence."
+
+[[cases]]
+id = "CS-MUT-TEXT-WRITER-NOREPLACE-001"
+path = "src/constructionsight/storage/runtime_artifacts.py"
+search = "    publish_runtime_artifact(path, chunks, max_bytes=max_bytes, replace_existing=overwrite)"
+replacement = "    publish_runtime_artifact(path, chunks, max_bytes=max_bytes, replace_existing=True)"
+tests = ["tests/test_runtime_output_writers.py::test_create_only_operator_output_preserves_racing_winner"]
+expected_output = "test_create_only_operator_output_preserves_racing_winner"
+risk = "A concurrent artifact could be overwritten without requested replacement authority."
+
+[[cases]]
+id = "CS-MUT-REPLACEMENT-TARGET-TYPE-001"
+path = "src/constructionsight/storage/runtime_artifacts.py"
+search = "    if not stat.S_ISREG(target.st_mode):"
+replacement = "    if False and not stat.S_ISREG(target.st_mode):"
+tests = ["tests/test_runtime_output_writers.py::test_operator_writers_reject_unsafe_or_oversized_output"]
+expected_output = "test_operator_writers_reject_unsafe_or_oversized_output"
+risk = "An explicitly unsafe final artifact entry could be silently replaced."
+
+[[cases]]
+id = "CS-MUT-REPLACEMENT-PRIMITIVE-001"
+path = "src/constructionsight/storage/runtime_artifacts.py"
+search = "    if replace_existing and not _DIRECTORY_RELATIVE_REPLACEMENT_SUPPORTED:"
+replacement = "    if False and replace_existing and not _DIRECTORY_RELATIVE_REPLACEMENT_SUPPORTED:"
+tests = ["tests/test_runtime_output_writers.py::test_unsupported_output_primitive_fails_before_touching_destination"]
+expected_output = "test_unsupported_output_primitive_fails_before_touching_destination"
+risk = "Unsupported atomic output primitives could silently downgrade containment."
+
+[[cases]]
+id = "CS-MUT-REGISTRY-OUTPUT-NOREPLACE-001"
+path = "src/constructionsight/source_registry_update_plan_cli.py"
+search = "        _atomic_write_text(output, f\"{rendered}\\n\", overwrite=overwrite)"
+replacement = "        _atomic_write_text(output, f\"{rendered}\\n\", overwrite=True)"
+tests = ["tests/test_runtime_output_writers.py::test_registry_plan_preserves_a_concurrent_output"]
+expected_output = "test_registry_plan_preserves_a_concurrent_output"
+risk = "The registry CLI could discard its no-overwrite policy at the actual publication boundary."
+
+[[cases]]
+id = "CS-MUT-BUNDLE-OUTPUT-CONTAINMENT-001"
+path = "src/constructionsight/ceqanet_operator_bundle.py"
+search = "    publish_runtime_artifact(path, chunks(), max_bytes=limit, replace_existing=True)"
+replacement = "    path.write_text(\"\".join(fragments), encoding=\"utf-8\")"
+tests = ["tests/test_ceqanet_operator_bundle.py::test_bundle_publication_rejects_unsafe_output"]
+expected_output = "test_bundle_publication_rejects_unsafe_output"
+risk = "Bundle output could follow a replaced ancestor or final symlink."
+
+[[cases]]
+id = "CS-MUT-ARCHIVE-OUTPUT-HANDLE-001"
+path = "src/constructionsight/ceqanet_operator_archive.py"
+search = "            archive_path=temporary_file,"
+replacement = "            archive_path=archive_path,"
+tests = ["tests/test_ceqanet_operator_archive.py::test_archive_publication_never_writes_through_replaced_paths"]
+expected_output = "test_archive_publication_never_writes_through_replaced_paths"
+risk = "ZIP staging could write through the unverified destination before safe publication."

@@ -1,5 +1,6 @@
 import hashlib
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -10,6 +11,41 @@ from constructionsight.ceqanet_operator_bundle import (
     _write_text_artifact,
     build_ceqanet_operator_bundle,
 )
+
+
+@pytest.mark.parametrize("attack", ("ancestor", "final", "swap"))
+def test_bundle_publication_rejects_unsafe_output(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, attack: str,
+) -> None:
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    output = tmp_path / "bundle"
+    if attack == "ancestor":
+        output.symlink_to(outside, target_is_directory=True)
+        output = output / "nested"
+    else:
+        output.mkdir()
+    original = outside / "original.json"
+    original.write_bytes(b"prior evidence")
+    if attack == "final":
+        (output / "operator-package.json").symlink_to(original)
+    if attack == "swap":
+        opened = os.open
+        swapped = False
+
+        def swap(path, flags, *args, **kwargs):
+            nonlocal swapped
+            if not swapped and flags & os.O_CREAT:
+                swapped = True
+                output.rename(tmp_path / "parked")
+                output.symlink_to(outside, target_is_directory=True)
+            return opened(path, flags, *args, **kwargs)
+
+        monkeypatch.setattr(os, "open", swap)
+    with pytest.raises((OSError, ValueError)):
+        build_ceqanet_operator_bundle(_operator_package(), output_dir=output)
+    assert original.read_bytes() == b"prior evidence"
+    assert list(outside.iterdir()) == [original]
 
 
 def _operator_package() -> dict[str, object]:
@@ -131,19 +167,18 @@ def test_bundle_artifact_rejects_oversize_before_touching_existing_file(
     assert list(tmp_path.glob(".ceqanet-bundle-*.tmp")) == []
 
 
-def test_bundle_artifact_replaces_symlink_without_writing_external_file(
+def test_bundle_artifact_rejects_symlink_without_writing_external_file(
     tmp_path: Path,
 ) -> None:
     outside = tmp_path / "external-artifact.txt"
     outside.write_bytes(b"external evidence must not be overwritten")
     output = tmp_path / "operator-report.md"
     output.symlink_to(outside)
-    record = _write_text_artifact(
-        output, "new verified artifact", artifact_type="operator_report_markdown"
-    )
-    assert not output.is_symlink()
-    assert output.read_text(encoding="utf-8") == "new verified artifact"
-    assert record.sha256
+    with pytest.raises(ValueError, match="regular file"):
+        _write_text_artifact(
+            output, "new verified artifact", artifact_type="operator_report_markdown"
+        )
+    assert output.is_symlink()
     assert outside.read_bytes() == b"external evidence must not be overwritten"
 
 
@@ -153,16 +188,16 @@ def test_bundle_artifact_failed_replace_preserves_old_and_cleans_temp(
     existing = tmp_path / "operator-report.md"
     existing.write_bytes(b"retain previous artifact")
 
-    def fail_replace(_source: Path, _target: Path) -> None:
+    def fail_replace(_source: str, _target: str, **_kwargs: int) -> None:
         raise OSError("synthetic artifact publication failure")
 
-    monkeypatch.setattr(bundle_writer.os, "replace", fail_replace)
+    monkeypatch.setattr(os, "replace", fail_replace)
     with pytest.raises(OSError, match="publication failure"):
         _write_text_artifact(
             existing, "new artifact", artifact_type="operator_report_markdown"
         )
     assert existing.read_bytes() == b"retain previous artifact"
-    assert list(tmp_path.glob(".ceqanet-bundle-*.tmp")) == []
+    assert list(tmp_path.iterdir()) == [existing]
 
 
 def test_bundle_output_rejects_symlinked_root(tmp_path: Path) -> None:
