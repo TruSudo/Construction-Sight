@@ -2,10 +2,9 @@ import hashlib
 import json
 from pathlib import Path
 
-import constructionsight.ceqanet_operator_bundle as bundle_writer
-
 import pytest
 
+import constructionsight.ceqanet_operator_bundle as bundle_writer
 from constructionsight.ceqanet_operator_bundle import (
     _write_json_artifact,
     _write_text_artifact,

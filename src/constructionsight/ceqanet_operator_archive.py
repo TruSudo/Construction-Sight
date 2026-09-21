@@ -229,26 +229,28 @@ def _write_zip(
             info.external_attr = 0o100644 << 16
             written = 0
             digest = hashlib.sha256()
-            with _open_regular_bundle_file(source_path) as source_file:
-                with archive.open(info, mode="w") as archive_entry:
-                    while True:
-                        chunk = source_file.read(
-                            min(
-                                _ARCHIVE_CHUNK_BYTES,
-                                _MAX_ARCHIVE_MEMBER_BYTES - written + 1,
-                                remaining_bytes + 1,
-                            )
+            with (
+                _open_regular_bundle_file(source_path) as source_file,
+                archive.open(info, mode="w") as archive_entry,
+            ):
+                while True:
+                    chunk = source_file.read(
+                        min(
+                            _ARCHIVE_CHUNK_BYTES,
+                            _MAX_ARCHIVE_MEMBER_BYTES - written + 1,
+                            remaining_bytes + 1,
                         )
-                        if not chunk:
-                            break
-                        written += len(chunk)
-                        if written > _MAX_ARCHIVE_MEMBER_BYTES:
-                            raise ValueError("CEQAnet archive member exceeds the byte limit")
-                        remaining_bytes -= len(chunk)
-                        if remaining_bytes < 0:
-                            raise ValueError("CEQAnet ZIP output exceeds the total byte limit")
-                        digest.update(chunk)
-                        archive_entry.write(chunk)
+                    )
+                    if not chunk:
+                        break
+                    written += len(chunk)
+                    if written > _MAX_ARCHIVE_MEMBER_BYTES:
+                        raise ValueError("CEQAnet archive member exceeds the byte limit")
+                    remaining_bytes -= len(chunk)
+                    if remaining_bytes < 0:
+                        raise ValueError("CEQAnet ZIP output exceeds the total byte limit")
+                    digest.update(chunk)
+                    archive_entry.write(chunk)
             if (written, digest.hexdigest()) != expected:
                 raise ValueError("CEQAnet archive source changed since verification")
 

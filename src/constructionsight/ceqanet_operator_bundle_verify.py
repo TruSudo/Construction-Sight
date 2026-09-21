@@ -9,13 +9,13 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
-import stat
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, BinaryIO, Literal, cast
+
+from constructionsight.storage.runtime_artifacts import open_runtime_artifact
 
 _MAX_BUNDLE_MANIFEST_BYTES = 1024 * 1024
 _MAX_BUNDLE_ARTIFACTS = 128
@@ -169,21 +169,10 @@ def _require_contained_bundle_file(path: Path, *, root: Path) -> None:
 
 @contextmanager
 def _open_regular_bundle_file(path: Path) -> Iterator[BinaryIO]:
-    """Open a regular file, using no-follow at the final component where supported."""
+    """Read bundle evidence through the shared complete-path no-follow boundary."""
 
-    flags = os.O_RDONLY | getattr(os, "O_BINARY", 0)
-    flags |= getattr(os, "O_NONBLOCK", 0)
-    flags |= getattr(os, "O_NOFOLLOW", 0)
-    descriptor = os.open(path, flags)
-    try:
-        with os.fdopen(descriptor, "rb") as stream:
-            descriptor = -1
-            if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
-                raise ValueError("Bundle evidence path must be a regular file")
-            yield stream
-    finally:
-        if descriptor >= 0:
-            os.close(descriptor)
+    with open_runtime_artifact(path) as stream:
+        yield stream
 
 
 def _load_manifest(manifest_path: Path) -> dict[str, Any]:

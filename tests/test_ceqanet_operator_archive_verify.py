@@ -6,7 +6,6 @@ from pathlib import Path
 import pytest
 
 import constructionsight.ceqanet_operator_archive_verify as archive_verification
-
 from constructionsight.ceqanet_operator_archive import build_ceqanet_operator_archive
 from constructionsight.ceqanet_operator_archive_verify import verify_ceqanet_operator_archive
 
@@ -245,3 +244,84 @@ def test_archive_verification_streams_members_without_zipfile_read(
     monkeypatch.setattr(zipfile.ZipFile, "read", _forbid_unbounded_read)
     result = verify_ceqanet_operator_archive(archive_path=archive_path)
     assert result.passed is True
+
+
+@pytest.mark.parametrize("linked_parent", [False, True])
+def test_archive_verification_rejects_symlink_traversal(
+    tmp_path: Path, linked_parent: bool,
+) -> None:
+    export_dir = tmp_path / "export"
+    actual = tmp_path / "actual"
+    actual.mkdir()
+    archive_path = actual / "proof.zip"
+    _write_export_dir(export_dir)
+    _write_archive_from_export_dir(export_dir, archive_path)
+    alias = tmp_path / "alias"
+    alias.symlink_to(
+        actual if linked_parent else archive_path, target_is_directory=linked_parent,
+    )
+
+    with pytest.raises((OSError, ValueError)):
+        verify_ceqanet_operator_archive(
+            archive_path=alias / "proof.zip" if linked_parent else alias,
+        )
+
+
+def test_archive_entry_limit_precedes_zip_directory_materialization(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = tmp_path / "many.zip"
+    with zipfile.ZipFile(path, mode="w") as archive:
+        for index in range(129):
+            _write_archive_entry(archive, filename=f"{index}.txt", data=b"x")
+
+    def forbidden_materialization(*args, **kwargs):
+        raise AssertionError("ZipFile materialized an excessive central directory")
+
+    monkeypatch.setattr(zipfile, "ZipFile", forbidden_materialization)
+    with pytest.raises(ValueError, match="ZIP entry limit"):
+        verify_ceqanet_operator_archive(archive_path=path)
+
+
+def test_archive_directory_count_cannot_hide_extra_entries(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = tmp_path / "forged-count.zip"
+    with zipfile.ZipFile(path, mode="w") as archive:
+        for index in range(129):
+            _write_archive_entry(archive, filename=f"{index}.txt", data=b"x")
+    content = bytearray(path.read_bytes())
+    end = content.rfind(b"PK\x05\x06")
+    content[end + 8 : end + 12] = b"\x00" * 4
+    path.write_bytes(content)
+
+    def forbidden_materialization(*args, **kwargs):
+        raise AssertionError("forged count bypassed the directory entry ceiling")
+
+    monkeypatch.setattr(zipfile, "ZipFile", forbidden_materialization)
+    with pytest.raises(ValueError, match="ZIP entry limit"):
+        verify_ceqanet_operator_archive(archive_path=path)
+
+
+def test_archive_verification_uses_bytes_bound_before_path_replacement(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    export = tmp_path / "export"
+    path = tmp_path / "archive.zip"
+    _write_export_dir(export)
+    _write_archive_from_export_dir(export, path)
+    original_zipfile = zipfile.ZipFile
+    substituted = False
+
+    def substitute_after_bounded_read(*args, **kwargs):
+        nonlocal substituted
+        substituted = True
+        path.write_bytes(b"substituted invalid archive")
+        return original_zipfile(*args, **kwargs)
+
+    monkeypatch.setattr(zipfile, "ZipFile", substitute_after_bounded_read)
+    result = verify_ceqanet_operator_archive(archive_path=path)
+    assert substituted
+    assert result.passed is True
+    assert len(result.artifacts) == 5
+    assert path.read_bytes() == b"substituted invalid archive"

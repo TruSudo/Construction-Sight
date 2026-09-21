@@ -3,10 +3,9 @@ import json
 import zipfile
 from pathlib import Path
 
-import constructionsight.ceqanet_operator_archive as archive_writer
-
 import pytest
 
+import constructionsight.ceqanet_operator_archive as archive_writer
 from constructionsight.ceqanet_operator_archive import build_ceqanet_operator_archive
 
 

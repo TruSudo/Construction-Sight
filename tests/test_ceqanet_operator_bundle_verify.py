@@ -5,7 +5,6 @@ from pathlib import Path
 
 import pytest
 
-import constructionsight.ceqanet_operator_bundle_verify as bundle_verify
 from constructionsight.ceqanet_operator_bundle_verify import verify_ceqanet_operator_bundle
 
 
@@ -187,10 +186,6 @@ def test_verify_bundle_rejects_symlinked_artifact(tmp_path: Path) -> None:
         verify_ceqanet_operator_bundle(bundle_dir=bundle)
 
 
-@pytest.mark.skipif(
-    not hasattr(os, "O_NOFOLLOW"),
-    reason="platform has no atomic final-component no-follow open",
-)
 def test_verify_bundle_rejects_artifact_swap_before_open(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -210,13 +205,77 @@ def test_verify_bundle_rejects_artifact_swap_before_open(
         **kwargs: object,
     ) -> int:
         nonlocal swapped
-        if Path(path) == artifact_path and not swapped:
+        if Path(path).name == artifact_path.name and not swapped:
             swapped = True
             artifact_path.unlink()
             artifact_path.symlink_to(outside)
         return original_open(path, flags, *args, **kwargs)
 
-    monkeypatch.setattr(bundle_verify.os, "open", swap_then_open)
+    monkeypatch.setattr(os, "open", swap_then_open)
     with pytest.raises(OSError):
         verify_ceqanet_operator_bundle(bundle_dir=bundle)
     assert swapped
+
+
+def test_verify_bundle_rejects_symlink_in_root_ancestry(tmp_path: Path) -> None:
+    parent = tmp_path / "actual"
+    bundle = parent / "bundle"
+    bundle.mkdir(parents=True)
+    _write_bundle_manifest(bundle)
+    alias = tmp_path / "alias"
+    alias.symlink_to(parent, target_is_directory=True)
+
+    with pytest.raises((OSError, ValueError)):
+        verify_ceqanet_operator_bundle(bundle_dir=alias / "bundle")
+
+
+def test_verify_bundle_rejects_parent_swap_at_artifact_open(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import shutil
+
+    bundle = tmp_path / "bundle"
+    bundle.mkdir()
+    _write_bundle_manifest(bundle)
+    outside = tmp_path / "outside"
+    shutil.copytree(bundle, outside)
+    parked = tmp_path / "parked"
+    original_open = os.open
+    swapped = False
+    outside_identity = (outside / "operator-report.md").stat()
+    opened_outside = False
+
+    def swap_parent_then_open(path, flags, *args, **kwargs):
+        nonlocal swapped, opened_outside
+        if Path(path).name == "operator-report.md" and not swapped:
+            swapped = True
+            bundle.rename(parked)
+            bundle.symlink_to(outside, target_is_directory=True)
+        descriptor = original_open(path, flags, *args, **kwargs)
+        opened = os.fstat(descriptor)
+        if (opened.st_dev, opened.st_ino) == (
+            outside_identity.st_dev, outside_identity.st_ino
+        ):
+            opened_outside = True
+        return descriptor
+
+    monkeypatch.setattr(os, "open", swap_parent_then_open)
+    with pytest.raises((OSError, ValueError)):
+        verify_ceqanet_operator_bundle(bundle_dir=bundle)
+    assert swapped
+    assert not opened_outside
+    assert (outside / "operator-report.md").read_bytes() == (
+        parked / "operator-report.md"
+    ).read_bytes()
+
+
+def test_verify_bundle_fails_closed_without_atomic_nofollow(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    bundle = tmp_path / "bundle"
+    bundle.mkdir()
+    _write_bundle_manifest(bundle)
+    monkeypatch.delattr(os, "O_NOFOLLOW", raising=False)
+
+    with pytest.raises((OSError, ValueError), match="no-follow|unsupported|unavailable"):
+        verify_ceqanet_operator_bundle(bundle_dir=bundle)
