@@ -685,6 +685,65 @@ def test_registry_apply_process_death_after_target_commit_replays_audit(tmp_path
 
 
 
+
+def test_registry_apply_cleanup_failure_does_not_misreport_audit_state(
+    tmp_path, monkeypatch,
+) -> None:
+    import constructionsight.source_registry_update_plan_cli as cli
+
+    registry = tmp_path / "sources.json"
+    observations = tmp_path / "observations.json"
+    plan = tmp_path / "plan.json"
+    target = tmp_path / "updated_sources.json"
+    audit = tmp_path / "apply_audit.json"
+    registry.write_text(_registry_json(), encoding="utf-8")
+    observations.write_text(_observation_json(), encoding="utf-8")
+    runner = CliRunner()
+    prepared = runner.invoke(
+        app,
+        [
+            "plan", str(registry), "--observations-path", str(observations),
+            "--output", str(plan),
+        ],
+    )
+    assert prepared.exit_code == 0
+    digest = json.loads(plan.read_text(encoding="utf-8"))["plan_digest"]
+    original_unlink, original_fsync = cli.os.unlink, cli.os.fsync
+    journal_removed = False
+    injected = False
+
+    def detect_journal_cleanup(path, *args, **kwargs):
+        nonlocal journal_removed
+        result = original_unlink(path, *args, **kwargs)
+        if isinstance(path, str) and path.endswith(".pending.json"):
+            journal_removed = True
+        return result
+
+    def fail_cleanup_fsync(fd):
+        nonlocal injected
+        if journal_removed and not injected:
+            injected = True
+            raise OSError("injected journal cleanup directory-sync error")
+        return original_fsync(fd)
+
+    monkeypatch.setattr(cli.os, "unlink", detect_journal_cleanup)
+    monkeypatch.setattr(cli.os, "fsync", fail_cleanup_fsync)
+    args = [
+        "apply", str(registry), str(plan),
+        "--approved-plan-digest", digest, "--audit-output", str(audit),
+        "--output", str(target), "--apply",
+        "--operator-id", "operator:test",
+        "--authorization-reason", "Report uncertain cleanup without a false audit failure.",
+    ]
+    result = runner.invoke(app, args)
+    assert result.exit_code != 0
+    assert injected
+    assert "Registry and success audit contents are committed" in result.stderr
+    assert json.loads(target.read_text(encoding="utf-8"))[0]["verification_status"] == "partial"
+    assert json.loads(audit.read_text(encoding="utf-8"))["applied_count"] == 1
+    assert not list(tmp_path.glob(".source-registry-*.pending.json"))
+
+
 def test_source_registry_apply_cli_refuses_output_equal_to_registry(tmp_path) -> None:
     registry_path = tmp_path / "sources.json"
     observations_path = tmp_path / "observations.json"
