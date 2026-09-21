@@ -127,6 +127,12 @@ def _serialized_registry_target(target: Path) -> Iterator[tuple[int, str]]:
     import fcntl
 
     with anchored_artifact_parent(target, create_parents=True) as (parent, name):
+        parent_stat = os.fstat(parent)
+        if (
+            parent_stat.st_uid != os.geteuid()
+            or stat.S_IMODE(parent_stat.st_mode) & 0o022
+        ):
+            raise RuntimeArtifactError("registry transaction target directory must be owned and private")
         identity = hashlib.sha256(name.encode("utf-8")).hexdigest()
         lock_name = f".source-registry-{identity}.lock"
         journal_name = f".source-registry-{identity}.pending.json"
@@ -149,7 +155,12 @@ def _serialized_registry_target(target: Path) -> Iterator[tuple[int, str]]:
             if (opened.st_dev, opened.st_ino) != (current.st_dev, current.st_ino):
                 raise RuntimeArtifactError("registry transaction lock entry was replaced")
             os.fsync(parent)
-            yield parent, journal_name
+            try:
+                yield parent, journal_name
+            finally:
+                observed = os.stat(lock_name, dir_fd=parent, follow_symlinks=False)
+                if (opened.st_dev, opened.st_ino) != (observed.st_dev, observed.st_ino):
+                    raise RuntimeArtifactError("registry transaction lock changed during apply")
         finally:
             os.close(fd)
 
