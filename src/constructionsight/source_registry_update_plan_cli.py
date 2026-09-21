@@ -578,9 +578,9 @@ def source_registry_apply(
             report = authorized.report
             audit_json = f"{json.dumps(report.to_dict(), indent=2)}\n"
             updated_sha = _digest_bytes(updated_json.encode("utf-8"))
-            if in_place and _digest_bytes(_optional_artifact(target_path)) != (
-                _digest_bytes(original_registry_text.encode("utf-8"))
-            ):
+            source_sha = _digest_bytes(original_registry_text.encode("utf-8"))
+            target_before = _digest_bytes(_optional_artifact(target_path))
+            if in_place and target_before != source_sha:
                 _abort("registry changed while preparing in-place publication")
             record: dict[str, object] = {
                 **_pending_identity(
@@ -591,22 +591,24 @@ def source_registry_apply(
                 ),
                 "version": 1,
                 "updated_target_sha": updated_sha,
+                "source_before": source_sha,
+                "target_before": target_before,
                 "audit_before": _digest_bytes(_optional_artifact(audit_output)),
+                "backup_before": (
+                    _digest_bytes(_optional_artifact(backup_output))
+                    if backup_output is not None else None
+                ),
+                "target_text": updated_json,
                 "audit_text": audit_json,
+                "backup_text": original_registry_text if backup_output is not None else None,
             }
             write_runtime_text(
                 journal, _pending_text(record),
                 overwrite=False, max_bytes=_TRANSACTION_JOURNAL_LIMIT,
             )
-            if backup_output is not None:
-                _atomic_write_text(
-                    backup_output, original_registry_text, overwrite=overwrite,
-                )
-            _atomic_write_text(
-                target_path, updated_json, overwrite=in_place or overwrite,
-            )
             report = _finalize_registry_apply(
-                record=record, target=target_path, audit=audit_output,
+                record=record, target=target_path, source=registry_path,
+                audit=audit_output, backup=backup_output,
                 journal=journal, parent=pinned_parent, journal_name=journal_name,
             )
 
