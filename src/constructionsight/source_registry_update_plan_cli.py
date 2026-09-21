@@ -27,7 +27,11 @@ from constructionsight.source_registry_update_plan_service import (
 from constructionsight.source_verification_checklist_models import (
     SourceVerificationObservation,
 )
-from constructionsight.storage.runtime_artifacts import read_runtime_text, write_runtime_text
+from constructionsight.storage.runtime_artifacts import (
+    RuntimeArtifactError,
+    read_runtime_text,
+    write_runtime_text,
+)
 
 app = typer.Typer(help="ConstructionSight source registry update plan and apply tools.")
 console = Console()
@@ -322,7 +326,14 @@ def source_registry_apply(
     )
     # This is not yet a multi-artifact transaction: a late audit failure can
     # leave a committed registry without the success report (CS-SR-058).
-    _atomic_write_text(audit_output, audit_json, overwrite=overwrite)
+    try:
+        _atomic_write_text(audit_output, audit_json, overwrite=overwrite)
+    except (OSError, RuntimeArtifactError) as exc:
+        _abort(
+            "Registry target committed, but success audit publication failed; "
+            "do not reapply until the target and audit are reconciled: "
+            f"{exc}"
+        )
     console.print(f"Applied {report.applied_count} source registry status update(s).")
     console.print(f"Updated registry: {target_path}")
     console.print(f"Audit report: {audit_output}")
