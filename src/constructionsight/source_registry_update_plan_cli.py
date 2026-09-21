@@ -53,11 +53,17 @@ def _abort(message: str) -> NoReturn:
     raise typer.Exit(code=2)
 
 
-def _load_sources_from_json(path: Path) -> list[PublicSource]:
-    data: Any = json.loads(read_runtime_text(path))
+def _sources_from_json(text: str) -> list[PublicSource]:
+    """Parse one already captured registry snapshot without reopening its path."""
+
+    data: Any = json.loads(text)
     if not isinstance(data, list):
         _abort("Registry JSON must be a list.")
     return [PublicSource.model_validate(item) for item in data]
+
+
+def _load_sources_from_json(path: Path) -> list[PublicSource]:
+    return _sources_from_json(read_runtime_text(path))
 
 
 def _load_observations(path: Path | None) -> list[SourceVerificationObservation]:
