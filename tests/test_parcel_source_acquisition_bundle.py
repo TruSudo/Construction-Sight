@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
+import constructionsight.parcel_source_acquisition_bundle as bounded_proof
 from pydantic import ValidationError
 
 from constructionsight.parcel_source_acquisition import (
@@ -200,3 +201,20 @@ def test_persistence_receipt_binds_exact_bundle_and_remains_bounded() -> None:
     assert receipt.replay_policy == "insert_or_exact_replay"
     assert receipt.bulk_run_authorized is False
     assert receipt.observation_ids == tuple(sorted(receipt.observation_ids))
+
+
+def test_bounded_proof_loader_stops_before_oversized_full_read(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = tmp_path / "oversized-proof.json"
+    path.write_bytes(b" " * 65)
+    monkeypatch.setattr(bounded_proof, "_MAX_BOUNDED_PROOF_FILE_BYTES", 64)
+    with pytest.raises(ValueError, match="file byte limit"):
+        load_arcgis_bounded_proof_bundle(path)
+
+
+def test_bounded_proof_loader_rejects_invalid_utf8(tmp_path: Path) -> None:
+    path = tmp_path / "invalid-utf8-proof.json"
+    path.write_bytes(b"\xff\xfe\xfa")
+    with pytest.raises(ValueError, match="cannot load ArcGIS bounded-proof bundle"):
+        load_arcgis_bounded_proof_bundle(path)

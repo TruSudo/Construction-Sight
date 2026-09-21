@@ -30,6 +30,8 @@ from constructionsight.parcel_source_verification_models import (
     ParcelSourceVerificationProfile,
 )
 
+_MAX_BOUNDED_PROOF_FILE_BYTES = 64 * 1024 * 1024
+
 _DEFAULT_LIMITATIONS = (
     "A bounded proof cannot authorize or establish complete parcel acquisition.",
     "A subsequent complete rehearsal requires separate checkpoints and authorization.",
@@ -179,8 +181,12 @@ def load_arcgis_bounded_proof_bundle(
     """Load and independently verify one JSON proof bundle from disk."""
 
     try:
-        payload: Any = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+        with path.open("rb") as proof_file:
+            raw = proof_file.read(_MAX_BOUNDED_PROOF_FILE_BYTES + 1)
+        if len(raw) > _MAX_BOUNDED_PROOF_FILE_BYTES:
+            raise ValueError("ArcGIS bounded-proof bundle exceeds the file byte limit")
+        payload: Any = json.loads(raw)
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError) as exc:
         raise ValueError(f"cannot load ArcGIS bounded-proof bundle: {path}") from exc
     if not isinstance(payload, dict):
         raise ValueError("ArcGIS bounded-proof bundle must be a JSON object")
