@@ -175,36 +175,87 @@ def _pending_text(record: dict[str, object]) -> str:
 
 def _complete_pending_registry_apply(
     record: dict[str, object],
-    *, target: Path, audit: Path, journal: Path, parent: int, journal_name: str,
+    *, target: Path, source: Path, audit: Path, backup: Path | None,
+    journal: Path, parent: int, journal_name: str,
 ) -> SourceRegistryApplyReport:
-    """Complete only the audit of an already durably committed exact target."""
-    target_bytes = _optional_artifact(target)
-    target_sha = record["updated_target_sha"]
-    if target_bytes is None or _digest_bytes(target_bytes) != target_sha:
-        raise RuntimeArtifactError(
-            "pending registry target is not the exact committed result; "
-            "manual reconciliation required before any reapply"
-        )
+    """Recover exact prepared bytes; publish success only after target verification."""
+    target_text = record["target_text"]
     report_text = record["audit_text"]
-    if not isinstance(report_text, str):
-        raise RuntimeArtifactError("pending registry audit content is invalid")
-    report = SourceRegistryApplyReport.model_validate_json(report_text)
-    if report.updated_registry_digest != (
-        source_registry_digest(_sources_from_json(target_bytes.decode("utf-8")))
+    backup_text = record["backup_text"]
+    if (
+        not isinstance(target_text, str)
+        or not isinstance(report_text, str)
+        or (backup_text is not None and not isinstance(backup_text, str))
+        or len(target_text.encode("utf-8")) > 16 * 1024 * 1024
+        or len(report_text.encode("utf-8")) > 16 * 1024 * 1024
+        or (
+            backup_text is not None
+            and len(backup_text.encode("utf-8")) > 16 * 1024 * 1024
+        )
     ):
-        raise RuntimeArtifactError("pending audit does not describe the committed registry")
-    if report.plan_digest != record["approved"]:
-        raise RuntimeArtifactError("pending registry audit plan identity disagrees")
+        raise RuntimeArtifactError("pending registry transaction output is invalid")
+    target_sha = _digest_bytes(target_text.encode("utf-8"))
+    if record["updated_target_sha"] != target_sha:
+        raise RuntimeArtifactError("pending target bytes disagree with transaction identity")
+    report = SourceRegistryApplyReport.model_validate_json(report_text)
+    if (
+        report.updated_registry_digest != source_registry_digest(
+            _sources_from_json(target_text)
+        )
+        or report.plan_digest != record["approved"]
+    ):
+        raise RuntimeArtifactError("pending audit does not describe the exact approved target")
+    if record["in_place"] is not True and _digest_bytes(_optional_artifact(source)) != (
+        record["source_before"]
+    ):
+        raise RuntimeArtifactError("registry input changed during pending publication")
+    target_before = record["target_before"]
+    observed_target = _digest_bytes(_optional_artifact(target))
+    if observed_target not in (target_before, target_sha):
+        raise RuntimeArtifactError(
+            "pending registry target diverged; manual reconciliation required before any reapply"
+        )
     audit_sha = _digest_bytes(report_text.encode("utf-8"))
     observed_audit = _digest_bytes(_optional_artifact(audit))
-    if observed_audit != audit_sha:
-        if observed_audit != record["audit_before"]:
-            raise RuntimeArtifactError("audit output changed outside the pending transaction")
+    if observed_audit not in (record["audit_before"], audit_sha):
+        raise RuntimeArtifactError("pending registry audit diverged; manual reconciliation required")
+    if observed_target != target_sha and observed_audit == audit_sha:
+        raise RuntimeArtifactError("success audit cannot precede authoritative registry commit")
+    if backup is not None:
+        if backup_text is None or _digest_bytes(backup_text.encode("utf-8")) != (
+            record["source_before"]
+        ):
+            raise RuntimeArtifactError("pending registry backup is not the original source")
+        backup_sha = _digest_bytes(backup_text.encode("utf-8"))
+        existing_backup = _digest_bytes(_optional_artifact(backup))
+        if existing_backup not in (record["backup_before"], backup_sha):
+            raise RuntimeArtifactError("pending registry backup diverged")
+        if existing_backup != backup_sha:
+            _atomic_write_text(
+                backup, backup_text, overwrite=record["overwrite"] is True,
+            )
+            if _digest_bytes(_optional_artifact(backup)) != backup_sha:
+                raise RuntimeArtifactError("registry backup publication could not be verified")
+    elif backup_text is not None:
+        raise RuntimeArtifactError("unrequested backup exists in transaction journal")
+    if observed_target != target_sha:
+        if _digest_bytes(_optional_artifact(target)) != target_before:
+            raise RuntimeArtifactError("registry target changed before commit")
+        _atomic_write_text(
+            target, target_text,
+            overwrite=record["in_place"] is True or record["overwrite"] is True,
+        )
+        if _digest_bytes(_optional_artifact(target)) != target_sha:
+            raise RuntimeArtifactError("registry target publication could not be verified")
+    if _digest_bytes(_optional_artifact(audit)) != audit_sha:
+        if _digest_bytes(_optional_artifact(audit)) != record["audit_before"]:
+            raise RuntimeArtifactError("registry audit changed before success publication")
         _atomic_write_text(audit, report_text, overwrite=record["overwrite"] is True)
-        if _digest_bytes(_optional_artifact(audit)) != audit_sha:
-            raise RuntimeArtifactError("registry audit publication could not be verified")
-    if _digest_bytes(_optional_artifact(target)) != target_sha:
-        raise RuntimeArtifactError("registry target changed during audit publication")
+    if (
+        _digest_bytes(_optional_artifact(target)) != target_sha
+        or _digest_bytes(_optional_artifact(audit)) != audit_sha
+    ):
+        raise RuntimeArtifactError("registry transaction could not verify its final artifacts")
     current_journal = _optional_artifact(journal, limit=_TRANSACTION_JOURNAL_LIMIT)
     if current_journal != _pending_text(record).encode("utf-8"):
         raise RuntimeArtifactError("pending registry transaction journal changed")
@@ -229,8 +280,11 @@ def _recover_pending_registry_apply(
     )
     if (
         not isinstance(candidate, dict)
-        or set(candidate) != {*expected, "version", "updated_target_sha",
-                              "audit_before", "audit_text"}
+        or set(candidate) != {
+            *expected, "version", "updated_target_sha", "source_before",
+            "target_before", "audit_before", "backup_before",
+            "target_text", "audit_text", "backup_text",
+        }
         or candidate.get("version") != 1
         or any(type(candidate[key]) is not type(value) or candidate[key] != value
                for key, value in expected.items())
@@ -239,31 +293,42 @@ def _recover_pending_registry_apply(
             "pending registry transaction is not this exact apply; "
             "manual reconciliation required before any reapply"
         )
-    if (
-        not isinstance(candidate["updated_target_sha"], str)
-        or len(candidate["updated_target_sha"]) != 64
-        or candidate["audit_before"] is not None and (
-            not isinstance(candidate["audit_before"], str)
-            or len(candidate["audit_before"]) != 64
-        )
+    for key in (
+        "updated_target_sha", "source_before", "target_before",
+        "audit_before", "backup_before",
     ):
-        raise RuntimeArtifactError("pending registry transaction contains invalid digests")
+        value = candidate[key]
+        if value is not None and (
+            not isinstance(value, str)
+            or len(value) != 64
+            or any(character not in "0123456789abcdef" for character in value)
+        ):
+            raise RuntimeArtifactError("pending registry transaction contains invalid digests")
+    if not isinstance(candidate["updated_target_sha"], str):
+        raise RuntimeArtifactError("pending registry updated target digest is absent")
     current_plan = _load_plan(plan_path)
-    if current_plan.plan_digest != approved:
+    report_text = candidate["audit_text"]
+    if not isinstance(report_text, str):
+        raise RuntimeArtifactError("pending registry audit is invalid")
+    report = SourceRegistryApplyReport.model_validate_json(report_text)
+    if (
+        current_plan.plan_digest != approved
+        or current_plan.registry_digest != report.original_registry_digest
+    ):
         raise RuntimeArtifactError("pending registry transaction plan changed")
     return _complete_pending_registry_apply(
-        candidate, target=target, audit=audit,
+        candidate, target=target, source=source, audit=audit, backup=backup,
         journal=journal, parent=parent, journal_name=journal_name,
     )
 
 
 def _finalize_registry_apply(
-    *, record: dict[str, object], target: Path, audit: Path,
-    journal: Path, parent: int, journal_name: str,
+    *, record: dict[str, object], target: Path, source: Path, audit: Path,
+    backup: Path | None, journal: Path, parent: int, journal_name: str,
 ) -> SourceRegistryApplyReport:
     try:
         return _complete_pending_registry_apply(
-            record, target=target, audit=audit,
+            record, target=target, source=source, audit=audit, backup=backup,
             journal=journal, parent=parent, journal_name=journal_name,
         )
     except (OSError, RuntimeArtifactError) as exc:
