@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import base64
 import json
+import os
+import tempfile
 from datetime import UTC, datetime
+from itertools import chain
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -179,20 +182,54 @@ def save_arcgis_bulk_rehearsal_proof_bundle(
     if expected_bundle_id != bundle.bundle_id:
         raise ValueError("ArcGIS rehearsal proof expected bundle identity does not match")
     verify_arcgis_bulk_rehearsal_proof_bundle(bundle)
+    if path.is_symlink():
+        raise ValueError("ArcGIS rehearsal proof output cannot be a symlink")
     path.parent.mkdir(parents=True, exist_ok=True)
-    serialized = json.dumps(
-        bundle.to_dict(),
-        sort_keys=True,
-        separators=(",", ":"),
-    ) + "\n"
     if path.exists():
         existing = load_arcgis_bulk_rehearsal_proof_bundle(path)
         if existing != bundle:
             raise ValueError("ArcGIS rehearsal proof path contains conflicting content")
         return
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    temporary.write_text(serialized, encoding="utf-8")
-    temporary.replace(path)
+
+    # A fresh unique temporary file prevents concurrent writers from sharing an
+    # intermediate path. No partial or oversized proof is published.
+    encoder = json.JSONEncoder(sort_keys=True, separators=(",", ":"))
+    byte_count = 0
+    temporary_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="wb",
+            dir=path.parent,
+            prefix=".arcgis-rehearsal-proof-",
+            suffix=".tmp",
+            delete=False,
+        ) as temporary:
+            temporary_path = Path(temporary.name)
+            for fragment in chain(encoder.iterencode(bundle.to_dict()), ("\n",)):
+                for start in range(0, len(fragment), 16_384):
+                    chunk = fragment[start : start + 16_384].encode("utf-8")
+                    byte_count += len(chunk)
+                    if byte_count > _MAX_PORTABLE_PROOF_FILE_BYTES:
+                        raise ValueError(
+                            "ArcGIS rehearsal proof exceeds the file byte limit"
+                        )
+                    temporary.write(chunk)
+            temporary.flush()
+            os.fsync(temporary.fileno())
+        if path.is_symlink():
+            raise ValueError("ArcGIS rehearsal proof output cannot be a symlink")
+        if path.exists():
+            existing = load_arcgis_bulk_rehearsal_proof_bundle(path)
+            if existing != bundle:
+                raise ValueError(
+                    "ArcGIS rehearsal proof path contains conflicting content"
+                )
+            return
+        os.replace(temporary_path, path)
+        temporary_path = None
+    finally:
+        if temporary_path is not None:
+            temporary_path.unlink(missing_ok=True)
 
 
 def load_arcgis_bulk_rehearsal_proof_bundle(

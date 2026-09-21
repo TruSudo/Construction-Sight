@@ -267,3 +267,63 @@ def test_rehearsal_proof_loader_rejects_invalid_utf8(tmp_path: Path) -> None:
     path.write_bytes(b"\xff\xfe\xfa")
     with pytest.raises(ValueError, match="cannot load ArcGIS rehearsal proof bundle"):
         load_arcgis_bulk_rehearsal_proof_bundle(path)
+
+
+def test_rehearsal_proof_save_rejects_oversize_without_publishing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    snapshot, plan, execution, artifact_store = _completed_rehearsal(tmp_path)
+    bundle = build_arcgis_bulk_rehearsal_proof_bundle(
+        snapshot, plan, execution, artifact_store,
+        created_at=_NOW + timedelta(minutes=1),
+    )
+    output = tmp_path / "bounded-output.json"
+    monkeypatch.setattr(bulk_proof, "_MAX_PORTABLE_PROOF_FILE_BYTES", 64)
+    with pytest.raises(ValueError, match="file byte limit"):
+        save_arcgis_bulk_rehearsal_proof_bundle(
+            bundle, output, expected_bundle_id=bundle.bundle_id,
+        )
+    assert not output.exists()
+    assert list(tmp_path.glob(".arcgis-rehearsal-proof-*.tmp")) == []
+
+
+def test_rehearsal_proof_save_does_not_write_through_output_symlink(
+    tmp_path: Path,
+) -> None:
+    snapshot, plan, execution, artifact_store = _completed_rehearsal(tmp_path)
+    bundle = build_arcgis_bulk_rehearsal_proof_bundle(
+        snapshot, plan, execution, artifact_store,
+        created_at=_NOW + timedelta(minutes=1),
+    )
+    outside = tmp_path / "outside.json"
+    outside.write_bytes(b"external content")
+    output = tmp_path / "output.json"
+    output.symlink_to(outside)
+    with pytest.raises(ValueError, match="symlink"):
+        save_arcgis_bulk_rehearsal_proof_bundle(
+            bundle, output, expected_bundle_id=bundle.bundle_id,
+        )
+    assert outside.read_bytes() == b"external content"
+    assert output.is_symlink()
+
+
+def test_rehearsal_proof_save_failed_publish_preserves_prior_state(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    snapshot, plan, execution, artifact_store = _completed_rehearsal(tmp_path)
+    bundle = build_arcgis_bulk_rehearsal_proof_bundle(
+        snapshot, plan, execution, artifact_store,
+        created_at=_NOW + timedelta(minutes=1),
+    )
+    output = tmp_path / "failed-publish.json"
+
+    def fail_replace(_source: Path, _target: Path) -> None:
+        raise OSError("synthetic publish failure")
+
+    monkeypatch.setattr(bulk_proof.os, "replace", fail_replace)
+    with pytest.raises(OSError, match="publish failure"):
+        save_arcgis_bulk_rehearsal_proof_bundle(
+            bundle, output, expected_bundle_id=bundle.bundle_id,
+        )
+    assert not output.exists()
+    assert list(tmp_path.glob(".arcgis-rehearsal-proof-*.tmp")) == []
