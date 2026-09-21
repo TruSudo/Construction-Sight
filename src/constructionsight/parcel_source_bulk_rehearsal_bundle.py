@@ -216,16 +216,24 @@ def save_arcgis_bulk_rehearsal_proof_bundle(
                     temporary.write(chunk)
             temporary.flush()
             os.fsync(temporary.fileno())
-        if path.is_symlink():
-            raise ValueError("ArcGIS rehearsal proof output cannot be a symlink")
-        if path.exists():
+        # An atomic create-only link refuses to replace a proof published by
+        # another writer after our earlier path.exists() check.
+        try:
+            os.link(temporary_path, path, follow_symlinks=False)
+        except FileExistsError:
+            if path.is_symlink():
+                raise ValueError(
+                    "ArcGIS rehearsal proof output cannot be a symlink"
+                ) from None
             existing = load_arcgis_bulk_rehearsal_proof_bundle(path)
             if existing != bundle:
                 raise ValueError(
                     "ArcGIS rehearsal proof path contains conflicting content"
-                )
+                ) from None
             return
-        os.replace(temporary_path, path)
+        # The linked proof now has an authoritative path; removing its original
+        # temporary name does not change the published inode.
+        temporary_path.unlink()
         temporary_path = None
     finally:
         if temporary_path is not None:
