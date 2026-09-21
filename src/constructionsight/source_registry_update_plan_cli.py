@@ -310,16 +310,19 @@ def source_registry_apply(
 
     updated_sources = list(authorized.sources)
     report = authorized.report
+
+    # Render both complete outputs before any persistent effect. A successful
+    # audit must never precede a failed authoritative registry publication.
+    updated_json = _registry_json(updated_sources)
+    audit_json = f"{json.dumps(report.to_dict(), indent=2)}\n"
     if backup_output is not None:
         _atomic_write_text(backup_output, read_runtime_text(registry_path), overwrite=overwrite)
     _atomic_write_text(
-        audit_output,
-        f"{json.dumps(report.to_dict(), indent=2)}\n",
-        overwrite=overwrite,
+        target_path, updated_json, overwrite=in_place or overwrite,
     )
-    _atomic_write_text(
-        target_path, _registry_json(updated_sources), overwrite=in_place or overwrite,
-    )
+    # This is not yet a multi-artifact transaction: a late audit failure can
+    # leave a committed registry without the success report (CS-SR-058).
+    _atomic_write_text(audit_output, audit_json, overwrite=overwrite)
     console.print(f"Applied {report.applied_count} source registry status update(s).")
     console.print(f"Updated registry: {target_path}")
     console.print(f"Audit report: {audit_output}")
