@@ -490,6 +490,38 @@ def test_source_registry_apply_audit_failure_does_not_claim_success(
     assert "Applied 1 source registry status update(s)." not in result.stdout
 
 
+    # Recover the exact committed transaction without reapplying its target.
+    committed_bytes = updated_path.read_bytes()
+    committed_mtime = updated_path.stat().st_mtime_ns
+    monkeypatch.setattr(cli, "_atomic_write_text", original_write)
+    args = [
+        "apply", str(registry_path), str(plan_path),
+        "--approved-plan-digest", digest,
+        "--audit-output", str(audit_path),
+        "--output", str(updated_path),
+        "--apply", "--operator-id", "operator:test",
+        "--authorization-reason", "Exercise late audit publication failure.",
+    ]
+
+    # A divergent target must not be reported as a successful recovery.
+    updated_path.write_bytes(b"[]\n")
+    bad_retry = runner.invoke(app, args)
+    assert bad_retry.exit_code != 0
+    assert "manual reconciliation required" in bad_retry.stderr
+    assert not audit_path.exists()
+    assert updated_path.read_bytes() == b"[]\n"
+
+    # Restoring the exact committed bytes permits audit-only replay.
+    updated_path.write_bytes(committed_bytes)
+    retry = runner.invoke(app, args)
+    assert retry.exit_code == 0, str(retry.exception)
+    assert "Recovered exact pending source registry transaction." in retry.stdout
+    assert updated_path.read_bytes() == committed_bytes
+    assert json.loads(audit_path.read_text(encoding="utf-8"))["applied_count"] == 1
+    assert not list(tmp_path.glob(".source-registry-*.pending.json"))
+    assert len(list(tmp_path.glob(".source-registry-*.lock"))) == 1
+
+
 
 def test_source_registry_apply_cli_refuses_output_equal_to_registry(tmp_path) -> None:
     registry_path = tmp_path / "sources.json"
