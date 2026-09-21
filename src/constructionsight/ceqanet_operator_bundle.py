@@ -11,7 +11,9 @@ import hashlib
 import json
 import os
 import tempfile
+from collections.abc import Iterable
 from dataclasses import dataclass
+from itertools import chain
 from pathlib import Path
 from typing import Any, cast
 
@@ -152,22 +154,30 @@ def _write_json_artifact(
 ) -> CeqanetBundleArtifact:
     """Write deterministic JSON and return artifact metadata."""
 
-    text = json.dumps(payload, indent=2, sort_keys=True, default=str) + "\n"
-    return _write_text_artifact(path, text, artifact_type=artifact_type)
+    encoder = json.JSONEncoder(indent=2, sort_keys=True, default=str)
+    return _write_serialized_artifact(
+        path, chain(encoder.iterencode(payload), ("\n",)), artifact_type=artifact_type
+    )
 
 
 def _write_text_artifact(path: Path, text: str, *, artifact_type: str) -> CeqanetBundleArtifact:
-    """Write text and return artifact metadata."""
+    """Write text with the same bounded publication and digest contract as JSON."""
 
-    data = text.encode("utf-8")
+    return _write_serialized_artifact(path, (text,), artifact_type=artifact_type)
+
+
+def _write_serialized_artifact(
+    path: Path, fragments: Iterable[str], *, artifact_type: str
+) -> CeqanetBundleArtifact:
+    """Incrementally serialize, hash, and publish one bounded output artifact."""
+
     limit = (
         _MAX_BUNDLE_MANIFEST_BYTES
         if path.name == "manifest.json"
         else _MAX_BUNDLE_ARTIFACT_BYTES
     )
-    if len(data) > limit:
-        raise ValueError("CEQAnet bundle artifact exceeds the byte limit")
-
+    byte_count = 0
+    digest = hashlib.sha256()
     temporary_path: Path | None = None
     try:
         with tempfile.NamedTemporaryFile(
@@ -178,7 +188,16 @@ def _write_text_artifact(path: Path, text: str, *, artifact_type: str) -> Ceqane
             delete=False,
         ) as temporary_file:
             temporary_path = Path(temporary_file.name)
-            temporary_file.write(data)
+            for fragment in fragments:
+                for index in range(0, len(fragment), 16_384):
+                    chunk = fragment[index:index + 16_384].encode("utf-8")
+                    if byte_count + len(chunk) > limit:
+                        raise ValueError(
+                            "CEQAnet bundle artifact exceeds the byte limit"
+                        )
+                    temporary_file.write(chunk)
+                    digest.update(chunk)
+                    byte_count += len(chunk)
             temporary_file.flush()
             os.fsync(temporary_file.fileno())
         os.replace(temporary_path, path)
@@ -189,6 +208,6 @@ def _write_text_artifact(path: Path, text: str, *, artifact_type: str) -> Ceqane
     return CeqanetBundleArtifact(
         filename=path.name,
         artifact_type=artifact_type,
-        byte_count=len(data),
-        sha256=hashlib.sha256(data).hexdigest(),
+        byte_count=byte_count,
+        sha256=digest.hexdigest(),
     )

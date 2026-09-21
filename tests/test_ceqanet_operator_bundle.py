@@ -1,3 +1,4 @@
+import hashlib
 import json
 from pathlib import Path
 
@@ -6,6 +7,7 @@ import constructionsight.ceqanet_operator_bundle as bundle_writer
 import pytest
 
 from constructionsight.ceqanet_operator_bundle import (
+    _write_json_artifact,
     _write_text_artifact,
     build_ceqanet_operator_bundle,
 )
@@ -172,3 +174,48 @@ def test_bundle_output_rejects_symlinked_root(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="symlinked directory"):
         build_ceqanet_operator_bundle(_operator_package(), output_dir=linked)
     assert list(real.iterdir()) == []
+
+
+def test_bundle_json_matches_canonical_indented_encoding(tmp_path: Path) -> None:
+    payload = {"z": ["Ω", {"b": 2, "a": 1}], "a": {"empty": None}}
+    destination = tmp_path / "operator-package.json"
+    result = _write_json_artifact(
+        destination, payload, artifact_type="operator_package_json"
+    )
+    expected = (json.dumps(payload, indent=2, sort_keys=True, default=str) + "\n").encode(
+        "utf-8"
+    )
+    assert destination.read_bytes() == expected
+    assert result.byte_count == len(expected)
+    assert result.sha256 == hashlib.sha256(expected).hexdigest()
+
+
+def test_bundle_json_streams_without_full_json_dumps(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def forbid_full_materialization(*_args: object, **_kwargs: object) -> str:
+        raise AssertionError("json.dumps must not materialize the artifact")
+
+    monkeypatch.setattr(bundle_writer.json, "dumps", forbid_full_materialization)
+    result = _write_json_artifact(
+        tmp_path / "operator-package.json",
+        {"a": ["value", "other"], "z": 1},
+        artifact_type="operator_package_json",
+    )
+    assert result.byte_count > 0
+    assert result.sha256
+
+
+def test_bundle_oversized_json_preserves_previous_artifact(
+    tmp_path: Path,
+) -> None:
+    destination = tmp_path / "operator-package.json"
+    destination.write_bytes(b"old output must remain")
+    with pytest.raises(ValueError, match="exceeds the byte limit"):
+        _write_json_artifact(
+            destination,
+            {"payload": "x" * (16 * 1024 * 1024 + 1)},
+            artifact_type="operator_package_json",
+        )
+    assert destination.read_bytes() == b"old output must remain"
+    assert list(tmp_path.glob(".ceqanet-bundle-*.tmp")) == []
