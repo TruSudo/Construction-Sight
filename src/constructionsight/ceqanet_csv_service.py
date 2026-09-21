@@ -6,6 +6,7 @@ import csv
 import hashlib
 import io
 import re
+from itertools import chain
 from collections import Counter
 from collections.abc import Iterable
 from typing import Any, Literal
@@ -172,21 +173,24 @@ def inspect_ceqanet_csv_bytes(
         raise ValueError(f"CEQAnet CSV body exceeds {_MAX_CSV_BYTES} bytes")
     if max_retained_rows < 0:
         raise ValueError("max_retained_rows cannot be negative")
+    if max_retained_rows > 5_000:
+        raise ValueError("max_retained_rows must not exceed 5000")
     normalized_content_type = _validate_content_type(content_type)
     text, encoding = _decode_csv_body(content)
     if "\x00" in text:
         raise ValueError("CEQAnet CSV body contains a NUL character")
 
     reader = csv.reader(io.StringIO(text, newline=""), strict=True)
+    nonblank_rows = (row for row in reader if any(cell.strip() for cell in row))
     try:
-        raw_rows = list(reader)
+        header_row = next(nonblank_rows, None)
+        first_data_row = next(nonblank_rows, None)
     except csv.Error as exc:
         raise ValueError(f"CEQAnet CSV syntax is invalid: {exc}") from exc
-    nonblank_rows = [row for row in raw_rows if any(cell.strip() for cell in row)]
-    if len(nonblank_rows) < 2:
+    if header_row is None or first_data_row is None:
         raise ValueError("CEQAnet CSV must contain a header and at least one data row")
 
-    header = [cell.strip() for cell in nonblank_rows[0]]
+    header = [cell.strip() for cell in header_row]
     title_role_suppressions = _title_role_suppressions(
         header,
         request.export_kind,
@@ -206,28 +210,31 @@ def inspect_ceqanet_csv_bytes(
 
     parsed_rows: list[dict[str, str]] = []
     row_count = 0
-    for row_number, row in enumerate(nonblank_rows[1:], start=2):
-        if len(row) != len(columns):
-            raise ValueError(
-                f"CEQAnet CSV row {row_number} has {len(row)} values; expected {len(columns)}"
-            )
-        values = [cell.strip() for cell in row]
-        observed_sch = values[sch_ordinal]
-        if not re.fullmatch(r"\d{10}", observed_sch):
-            raise ValueError(f"CEQAnet CSV row {row_number} contains an invalid SCH number")
-        if observed_sch != request.sch_number:
-            raise ValueError(
-                f"CEQAnet CSV row {row_number} SCH number does not match the request"
-            )
-        row_count += 1
-        if len(parsed_rows) < max_retained_rows:
-            parsed_rows.append(
-                {
-                    column.normalized_name: value
-                    for column, value in zip(columns, values, strict=True)
-                }
-            )
-
+    try:
+        for row in chain((first_data_row,), nonblank_rows):
+            row_number = row_count + 2
+            if len(row) != len(columns):
+                raise ValueError(
+                    f"CEQAnet CSV row {row_number} has {len(row)} values; expected {len(columns)}"
+                )
+            values = [cell.strip() for cell in row]
+            observed_sch = values[sch_ordinal]
+            if not re.fullmatch(r"\d{10}", observed_sch):
+                raise ValueError(f"CEQAnet CSV row {row_number} contains an invalid SCH number")
+            if observed_sch != request.sch_number:
+                raise ValueError(
+                    f"CEQAnet CSV row {row_number} SCH number does not match the request"
+                )
+            row_count += 1
+            if len(parsed_rows) < max_retained_rows:
+                parsed_rows.append(
+                    {
+                        column.normalized_name: value
+                        for column, value in zip(columns, values, strict=True)
+                    }
+                )
+    except csv.Error as exc:
+        raise ValueError(f"CEQAnet CSV syntax is invalid: {exc}") from exc
     unknown_columns = [
         column.normalized_name for column in columns if column.canonical_role is None
     ]
