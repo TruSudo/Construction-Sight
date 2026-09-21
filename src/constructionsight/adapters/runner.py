@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from itertools import islice
 from typing import Any
 
 from pydantic import BaseModel
@@ -16,6 +17,8 @@ from constructionsight.adapters.base import (
 from constructionsight.adapters.registry import AdapterRegistry, default_adapter_registry
 from constructionsight.legal import AccessDecision
 from constructionsight.models import PublicSource
+
+_MAX_ADAPTER_RECORDS = 5_000
 
 
 class AdapterRunner:
@@ -45,12 +48,18 @@ class AdapterRunner:
 
         try:
             adapter.discover_search()
-            raw_records = list(adapter.list_records())
-            if adapter.context.max_records is not None:
-                raw_records = raw_records[: adapter.context.max_records]
+            limit = adapter.context.max_records
+            if limit is None:
+                limit = _MAX_ADAPTER_RECORDS
+            if isinstance(limit, bool) or not isinstance(limit, int):
+                raise ValueError("adapter max_records must be an integer")
+            if not 1 <= limit <= _MAX_ADAPTER_RECORDS:
+                raise ValueError(
+                    f"adapter max_records must be between 1 and {_MAX_ADAPTER_RECORDS}"
+                )
 
             normalized: list[BaseModel] = []
-            for raw_record in raw_records:
+            for raw_record in islice(adapter.list_records(), limit):
                 detailed = adapter.extract_record_detail(raw_record)
                 normalized.append(adapter.normalize(detailed))
 
@@ -59,6 +68,10 @@ class AdapterRunner:
                 operation="run_adapter",
                 outcome=AdapterOutcome.SUCCESS,
                 records=tuple(normalized),
+                notes=(
+                    f"Processed at most {limit} raw records; "
+                    "source enumeration may contain further records."
+                ),
             )
         except Exception as exc:
             return AdapterOperationResult(
