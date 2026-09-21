@@ -14,8 +14,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import cast
 
-import sqlalchemy
 from pydantic import BaseModel, Field
+import sqlalchemy
 from sqlalchemy.orm import Session
 
 from constructionsight.authorization_decision import AuthorizationDeniedError
@@ -193,7 +193,9 @@ def _engine_for_existing_sqlite(path: Path) -> sqlalchemy.Engine:
     )
 
 
-def _preflight(engine: sqlalchemy.Engine, *, kind: RecordKind, record_id: str) -> SourceCandidatePreview:
+def _preflight(
+    engine: sqlalchemy.Engine, *, kind: RecordKind, record_id: str
+) -> SourceCandidatePreview:
     with Session(engine, autoflush=False) as session:
         return build_source_candidate_preview(session, kind=kind, record_id=record_id)
 
