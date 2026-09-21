@@ -132,7 +132,9 @@ def _serialized_registry_target(target: Path) -> Iterator[tuple[int, str]]:
             parent_stat.st_uid != os.geteuid()
             or stat.S_IMODE(parent_stat.st_mode) & 0o022
         ):
-            raise RuntimeArtifactError("registry transaction target directory must be owned and private")
+            raise RuntimeArtifactError(
+                "registry transaction target directory must be owned and private"
+            )
         identity = hashlib.sha256(name.encode("utf-8")).hexdigest()
         lock_name = f".source-registry-{identity}.lock"
         journal_name = f".source-registry-{identity}.pending.json"
@@ -229,7 +231,9 @@ def _complete_pending_registry_apply(
     audit_sha = _digest_bytes(report_text.encode("utf-8"))
     observed_audit = _digest_bytes(_optional_artifact(audit))
     if observed_audit not in (record["audit_before"], audit_sha):
-        raise RuntimeArtifactError("pending registry audit diverged; manual reconciliation required")
+        raise RuntimeArtifactError(
+            "pending registry audit diverged; manual reconciliation required"
+        )
     if observed_target != target_sha and observed_audit == audit_sha:
         raise RuntimeArtifactError("success audit cannot precede authoritative registry commit")
     if backup is not None:
