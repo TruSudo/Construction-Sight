@@ -180,7 +180,7 @@ def _complete_pending_registry_apply(
     """Complete only the audit of an already durably committed exact target."""
     target_bytes = _optional_artifact(target)
     target_sha = record["updated_target_sha"]
-    if _digest_bytes(target_bytes) != target_sha:
+    if target_bytes is None or _digest_bytes(target_bytes) != target_sha:
         raise RuntimeArtifactError(
             "pending registry target is not the exact committed result; "
             "manual reconciliation required before any reapply"
