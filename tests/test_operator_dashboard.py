@@ -936,3 +936,122 @@ def test_historical_timeline_rejects_extra_or_invalid_parameters(database, query
     path, _ = database
     with _server(path) as port:
         assert _get(port, "/api/timeline?" + query)[0] == 400
+
+
+def test_exact_entity_key_history_across_source_families_preserves_distinct_identity(database):
+    """Same names are not a join; dated history attaches to exact stored keys only."""
+
+    path, engine = database
+    same_name_different_key = Entity(
+        entity_key="fixture:other-key",
+        name="Fixture Builder",
+        role="contractor",
+        provenance=_provenance(),
+    )
+    with Session(engine) as session, session.begin():
+        CeqaStore(session).upsert(
+            _record(
+                "entity-history:ceqa",
+                received_date=date(2025, 1, 1),
+                posted_date=date(2025, 1, 3),
+            )
+        )
+        CeqaStore(session).upsert(
+            _record(
+                "entity-history:false-name",
+                entities=[same_name_different_key],
+                received_date=date(2025, 1, 5),
+            )
+        )
+        PermitStore(session).upsert(
+            PermitRecord(
+                permit_key="entity-history:permit",
+                permit_number="HISTORY",
+                jurisdiction="Fontana",
+                county="San Bernardino",
+                status="Issued",
+                applied_date=date(2025, 2, 1),
+                issued_date=date(2025, 2, 2),
+                entities=[
+                    Entity(
+                        entity_key="fixture:party",
+                        name="Fixture Builder",
+                        role="contractor",
+                        provenance=_provenance(),
+                    )
+                ],
+                provenance=_provenance(),
+            )
+        )
+    with Session(engine) as session:
+        result = build_historical_timeline(session, entity_key="fixture:party")
+        assert result.entity_key == "fixture:party"
+        assert result.matching_total == result.records_scanned == 3
+        assert result.matching_entity_records_in_scan == 2
+        assert result.milestones_in_scan == 4
+        assert {event.record_id for event in result.events} == {
+            "entity-history:ceqa", "entity-history:permit"
+        }
+        assert [event.event_kind for event in result.events] == [
+            "permit_issued", "permit_applied", "ceqa_posted", "ceqa_received"
+        ]
+        other = build_historical_timeline(session, entity_key="fixture:other-key")
+        assert [event.record_id for event in other.events] == [
+            "entity-history:false-name"
+        ]
+        assert other.matching_entity_records_in_scan == 1
+    before = hashlib.sha256(path.read_bytes()).hexdigest()
+    with _server(path) as port:
+        response = _get(
+            port,
+            "/api/timeline?kind=all&entity_key=fixture%3Aparty&county=San+Bernardino",
+        )
+        script = _get(port, "/operator_ui.js")[2].decode("utf-8")
+    assert response[0] == 200
+    payload = json.loads(response[2])
+    assert payload["entity_key"] == "fixture:party"
+    assert payload["matching_entity_records_in_scan"] == 2
+    assert len(payload["events"]) == 4
+    assert "history.matching_total !== data.total_source_records" in script
+    assert "Historical source events for this exact key" in script
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == before
+
+
+def test_exact_entity_history_retains_global_source_scan_cap(database, monkeypatch):
+    monkeypatch.setattr("constructionsight.operator_dashboard.TIMELINE_SCAN_LIMIT", 1)
+    _, engine = database
+    with Session(engine) as session, session.begin():
+        CeqaStore(session).upsert(
+            _record(
+                "entity-history:first",
+                entities=[Entity(
+                    entity_key="fixture:other",
+                    name="Fixture Builder",
+                    role="contractor",
+                    provenance=_provenance(),
+                )],
+                received_date=date(2025, 1, 1),
+            )
+        )
+        CeqaStore(session).upsert(
+            _record("entity-history:second", received_date=date(2025, 2, 2))
+        )
+    with Session(engine) as session:
+        result = build_historical_timeline(session, entity_key="fixture:party")
+    assert result.matching_total == 2 and result.records_scanned == 1
+    assert result.matching_entity_records_in_scan == 0
+    assert result.events == []
+    assert result.source_scan_truncated is True
+
+
+@pytest.mark.parametrize("query", [
+    "kind=ceqa&entity_key=",
+    "kind=ceqa&entity_key=%20fixture",
+    "kind=ceqa&entity_key=fixture%0A",
+    "kind=ceqa&entity_key=a&entity_key=b",
+    "kind=ceqa&entity_key=" + "x" * 256,
+])
+def test_exact_entity_history_denies_invalid_or_repeated_identity(database, query):
+    path, _ = database
+    with _server(path) as port:
+        assert _get(port, "/api/timeline?" + query)[0] == 400
