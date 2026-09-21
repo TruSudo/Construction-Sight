@@ -29,6 +29,8 @@ from constructionsight.parcel_source_bulk_rehearsal_http import (
     build_arcgis_bulk_rehearsal_plan,
 )
 
+_MAX_PORTABLE_PROOF_FILE_BYTES = 256 * 1024 * 1024
+
 _DEFAULT_LIMITATIONS = (
     "A complete rehearsal proof does not authorize parcel import or recurring collection.",
     "The bundle proves only the exact snapshot, plan, manifest, and response bytes it contains.",
@@ -199,8 +201,12 @@ def load_arcgis_bulk_rehearsal_proof_bundle(
     """Load and independently verify one portable proof bundle from disk."""
 
     try:
-        payload: Any = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+        with path.open("rb") as proof_file:
+            raw = proof_file.read(_MAX_PORTABLE_PROOF_FILE_BYTES + 1)
+        if len(raw) > _MAX_PORTABLE_PROOF_FILE_BYTES:
+            raise ValueError("ArcGIS rehearsal proof bundle exceeds the file byte limit")
+        payload: Any = json.loads(raw)
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError) as exc:
         raise ValueError(f"cannot load ArcGIS rehearsal proof bundle: {path}") from exc
     if not isinstance(payload, dict):
         raise ValueError("ArcGIS rehearsal proof bundle must be a JSON object")

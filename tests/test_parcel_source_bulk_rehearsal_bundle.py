@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+import constructionsight.parcel_source_bulk_rehearsal_bundle as bulk_proof
 from constructionsight.parcel_source_acquisition import (
     get_official_arcgis_capability_snapshots,
 )
@@ -249,3 +250,20 @@ def test_bundle_rejects_unsafe_artifact_reference(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="reference"):
         ParcelArcGISBulkRehearsalProofBundle.model_validate(payload)
+
+
+def test_rehearsal_proof_loader_stops_before_oversized_full_read(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = tmp_path / "oversized-rehearsal.json"
+    path.write_bytes(b" " * 65)
+    monkeypatch.setattr(bulk_proof, "_MAX_PORTABLE_PROOF_FILE_BYTES", 64)
+    with pytest.raises(ValueError, match="file byte limit"):
+        load_arcgis_bulk_rehearsal_proof_bundle(path)
+
+
+def test_rehearsal_proof_loader_rejects_invalid_utf8(tmp_path: Path) -> None:
+    path = tmp_path / "invalid-utf8-rehearsal.json"
+    path.write_bytes(b"\xff\xfe\xfa")
+    with pytest.raises(ValueError, match="cannot load ArcGIS rehearsal proof bundle"):
+        load_arcgis_bulk_rehearsal_proof_bundle(path)
