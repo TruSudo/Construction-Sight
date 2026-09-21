@@ -806,3 +806,37 @@ def test_candidate_preview_reinspect_after_projected_source_evidence_change(data
     assert current["record_id"] == first["record_id"]
     assert current["description"] != first["description"]
     assert current != first
+
+
+def test_retained_source_pulse_ui_binds_to_bounded_read_models(database):
+    """The UI must identify scan coverage instead of inventing live project totals."""
+
+    path, engine = database
+    with Session(engine) as session, session.begin():
+        CeqaStore(session).upsert(_record("pulse:synthetic"))
+    with _server(path) as port:
+        html_status, _, html_body = _get(port, "/")
+        script_status, _, script_body = _get(port, "/operator_ui.js")
+        page = json.loads(_get(port, "/api/snapshot?kind=all")[2])
+        footprint = json.loads(_get(port, "/api/footprint?kind=all")[2])
+    assert html_status == script_status == 200
+    html = html_body.decode("utf-8")
+    script = script_body.decode("utf-8")
+    for element_id in (
+        "pulse", "pulse-matching", "pulse-mapped", "pulse-unmapped",
+        "pulse-scan", "pulse-scan-note",
+    ):
+        assert f'id="{element_id}"' in html
+    assert "Source records, not deduplicated projects or qualified leads" in html
+    assert "Source-claimed coordinates only" in html
+    assert "not an absence of activity" in html
+    assert "No street or county boundary layer" in html
+    assert "mapData.mapped_in_scan" in script
+    assert "mapData.records_scanned - mapData.mapped_in_scan" in script
+    assert "data.total !== mapData.matching_total" in script
+    assert "mapData.truncated" in script
+    assert "const shouldFit = scope !== lastLoadedScope;" in script
+    assert "if (shouldFit) fitMap(); else renderMap();" in script
+    assert page["total"] == footprint["matching_total"] == 1
+    assert footprint["records_scanned"] == footprint["mapped_in_scan"] == 1
+    assert footprint["truncated"] is False
