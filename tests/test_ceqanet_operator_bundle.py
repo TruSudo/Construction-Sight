@@ -1,9 +1,14 @@
 import json
 from pathlib import Path
 
+import constructionsight.ceqanet_operator_bundle as bundle_writer
+
 import pytest
 
-from constructionsight.ceqanet_operator_bundle import build_ceqanet_operator_bundle
+from constructionsight.ceqanet_operator_bundle import (
+    _write_text_artifact,
+    build_ceqanet_operator_bundle,
+)
 
 
 def _operator_package() -> dict[str, object]:
@@ -108,3 +113,62 @@ def test_build_ceqanet_operator_bundle_rejects_missing_component(tmp_path: Path)
 
     with pytest.raises(ValueError, match="write_plan object"):
         build_ceqanet_operator_bundle(package, output_dir=tmp_path)
+
+
+def test_bundle_artifact_rejects_oversize_before_touching_existing_file(
+    tmp_path: Path,
+) -> None:
+    existing = tmp_path / "operator-report.md"
+    existing.write_bytes(b"keep the previous artifact")
+    with pytest.raises(ValueError, match="exceeds the byte limit"):
+        _write_text_artifact(
+            existing,
+            "x" * (16 * 1024 * 1024 + 1),
+            artifact_type="operator_report_markdown",
+        )
+    assert existing.read_bytes() == b"keep the previous artifact"
+    assert list(tmp_path.glob(".ceqanet-bundle-*.tmp")) == []
+
+
+def test_bundle_artifact_replaces_symlink_without_writing_external_file(
+    tmp_path: Path,
+) -> None:
+    outside = tmp_path / "external-artifact.txt"
+    outside.write_bytes(b"external evidence must not be overwritten")
+    output = tmp_path / "operator-report.md"
+    output.symlink_to(outside)
+    record = _write_text_artifact(
+        output, "new verified artifact", artifact_type="operator_report_markdown"
+    )
+    assert not output.is_symlink()
+    assert output.read_text(encoding="utf-8") == "new verified artifact"
+    assert record.sha256
+    assert outside.read_bytes() == b"external evidence must not be overwritten"
+
+
+def test_bundle_artifact_failed_replace_preserves_old_and_cleans_temp(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    existing = tmp_path / "operator-report.md"
+    existing.write_bytes(b"retain previous artifact")
+
+    def fail_replace(_source: Path, _target: Path) -> None:
+        raise OSError("synthetic artifact publication failure")
+
+    monkeypatch.setattr(bundle_writer.os, "replace", fail_replace)
+    with pytest.raises(OSError, match="publication failure"):
+        _write_text_artifact(
+            existing, "new artifact", artifact_type="operator_report_markdown"
+        )
+    assert existing.read_bytes() == b"retain previous artifact"
+    assert list(tmp_path.glob(".ceqanet-bundle-*.tmp")) == []
+
+
+def test_bundle_output_rejects_symlinked_root(tmp_path: Path) -> None:
+    real = tmp_path / "real-output"
+    real.mkdir()
+    linked = tmp_path / "linked-output"
+    linked.symlink_to(real, target_is_directory=True)
+    with pytest.raises(ValueError, match="symlinked directory"):
+        build_ceqanet_operator_bundle(_operator_package(), output_dir=linked)
+    assert list(real.iterdir()) == []
