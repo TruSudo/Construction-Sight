@@ -9,9 +9,13 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import stat
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal, cast
+from typing import Any, BinaryIO, Literal, cast
 
 _MAX_BUNDLE_MANIFEST_BYTES = 1024 * 1024
 _MAX_BUNDLE_ARTIFACTS = 128
@@ -115,7 +119,11 @@ def verify_ceqanet_operator_bundle(
 ) -> CeqanetBundleVerification:
     """Verify a CEQAnet operator bundle manifest against local files."""
 
+    if bundle_dir.is_symlink() or not bundle_dir.is_dir():
+        raise ValueError("Bundle root must be a real directory")
+    root = bundle_dir.resolve(strict=True)
     resolved_manifest_path = manifest_path or bundle_dir / "manifest.json"
+    _require_contained_bundle_file(resolved_manifest_path, root=root)
     manifest = _load_manifest(resolved_manifest_path)
     artifact_entries = _artifact_entries(manifest)
     if len(artifact_entries) > _MAX_BUNDLE_ARTIFACTS:
@@ -133,6 +141,7 @@ def verify_ceqanet_operator_bundle(
             bundle_dir,
             entry=cast(dict[str, Any], entry),
             remaining_bytes=remaining_bytes,
+            root=root,
         )
         if artifact is None:
             malformed_artifacts.append(
@@ -149,11 +158,39 @@ def verify_ceqanet_operator_bundle(
     )
 
 
+def _require_contained_bundle_file(path: Path, *, root: Path) -> None:
+    """Reject symlinks and names outside the canonical bundle directory."""
+
+    if path.is_symlink() or path.parent.resolve(strict=True) != root:
+        raise ValueError("Bundle evidence path must be contained and not a symlink")
+    if path.exists() and path.resolve(strict=True).parent != root:
+        raise ValueError("Bundle evidence path escapes the intended root")
+
+
+@contextmanager
+def _open_regular_bundle_file(path: Path) -> Iterator[BinaryIO]:
+    """Open a regular file, using no-follow at the final component where supported."""
+
+    flags = os.O_RDONLY | getattr(os, "O_BINARY", 0)
+    flags |= getattr(os, "O_NONBLOCK", 0)
+    flags |= getattr(os, "O_NOFOLLOW", 0)
+    descriptor = os.open(path, flags)
+    try:
+        with os.fdopen(descriptor, "rb") as stream:
+            descriptor = -1
+            if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
+                raise ValueError("Bundle evidence path must be a regular file")
+            yield stream
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+
+
 def _load_manifest(manifest_path: Path) -> dict[str, Any]:
     """Load and validate bundle manifest JSON."""
 
     try:
-        with manifest_path.open("rb") as manifest_file:
+        with _open_regular_bundle_file(manifest_path) as manifest_file:
             manifest_bytes = manifest_file.read(_MAX_BUNDLE_MANIFEST_BYTES + 1)
         if len(manifest_bytes) > _MAX_BUNDLE_MANIFEST_BYTES:
             raise ValueError("Bundle manifest exceeds inspection byte limit")
@@ -189,6 +226,7 @@ def _verify_artifact_entry(
     *,
     entry: dict[str, Any],
     remaining_bytes: list[int],
+    root: Path,
 ) -> CeqanetBundleArtifactVerification | None:
     """Verify one manifest artifact entry."""
 
@@ -209,6 +247,7 @@ def _verify_artifact_entry(
         raise ValueError("Bundle artifact declared byte count exceeds limit")
 
     artifact_path = bundle_dir / filename
+    _require_contained_bundle_file(artifact_path, root=root)
     if not artifact_path.exists():
         return CeqanetBundleArtifactVerification(
             filename=filename,
@@ -222,7 +261,7 @@ def _verify_artifact_entry(
 
     digest = hashlib.sha256()
     actual_byte_count = 0
-    with artifact_path.open("rb") as artifact_file:
+    with _open_regular_bundle_file(artifact_path) as artifact_file:
         while True:
             chunk = artifact_file.read(
                 min(
