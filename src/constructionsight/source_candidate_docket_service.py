@@ -15,9 +15,7 @@ from pathlib import Path
 from typing import cast
 
 from pydantic import BaseModel, Field
-from sqlalchemy import create_engine, inspect, select
-from sqlalchemy.engine import Engine
-from sqlalchemy.engine.url import URL
+from sqlalchemy import create_engine, engine as sql_engine, inspect, select
 from sqlalchemy.orm import Session
 
 from constructionsight.authorization_decision import AuthorizationDeniedError
@@ -183,19 +181,19 @@ def _read_entry(row: SourceCandidateDocketRow, *, recorded_new: bool) -> Candida
     )
 
 
-def _engine_for_existing_sqlite(path: Path) -> Engine:
+def _engine_for_existing_sqlite(path: Path) -> sql_engine.Engine:
     """Never create a source database as a side effect of preview or staging."""
 
     resolved = path.resolve(strict=True)
     if not resolved.is_file():
         raise CandidateDocketError("source database must be an existing regular file")
     return create_engine(
-        URL.create("sqlite+pysqlite", database=str(resolved)),
+        sql_engine.URL.create("sqlite+pysqlite", database=str(resolved)),
         connect_args={"timeout": 30},
     )
 
 
-def _preflight(engine: Engine, *, kind: RecordKind, record_id: str) -> SourceCandidatePreview:
+def _preflight(engine: sql_engine.Engine, *, kind: RecordKind, record_id: str) -> SourceCandidatePreview:
     with Session(engine, autoflush=False) as session:
         return build_source_candidate_preview(session, kind=kind, record_id=record_id)
 
@@ -241,7 +239,7 @@ def list_staged_source_candidates(
 
 
 def _append_exact_entry(
-    engine: Engine,
+    engine: sql_engine.Engine,
     *,
     kind: RecordKind,
     record_id: str,

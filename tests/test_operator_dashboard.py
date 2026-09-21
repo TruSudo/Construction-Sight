@@ -40,12 +40,12 @@ from constructionsight.operator_source_candidate import (
     SourceRecordNotFound,
     build_source_candidate_preview,
 )
+from constructionsight.operator_web import _parameters, create_handler
 from constructionsight.parcel_core_models import (
     ParcelCoreRecord,
     ParcelGeometry,
     ParcelGeometryKind,
 )
-from constructionsight.operator_web import _parameters, create_handler
 from constructionsight.permit_models import PermitRecord
 from constructionsight.provenance import Provenance
 from constructionsight.site_models import Site
@@ -1325,3 +1325,27 @@ def test_explicit_desktop_launch_opens_only_bound_loopback_url(monkeypatch, tmp_
         'constructionsight-desktop = "constructionsight.operator_web:desktop_main"'
         in project
     )
+
+
+def test_temporary_isort_diagnostic_for_source_candidate_service() -> None:
+    """Expose exact Ruff import diff on the draft branch until reconciliation."""
+
+    import subprocess
+    import sys
+
+    path = Path(__file__).resolve().parents[1]
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "ruff",
+            "check",
+            "--diff",
+            "src/constructionsight/source_candidate_docket_service.py",
+        ],
+        cwd=path,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, "Ruff import diagnostic:\\n" + result.stdout + result.stderr
