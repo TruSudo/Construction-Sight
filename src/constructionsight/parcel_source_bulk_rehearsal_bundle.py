@@ -4,10 +4,7 @@ from __future__ import annotations
 
 import base64
 import json
-import os
-import tempfile
 from datetime import UTC, datetime
-from itertools import chain
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -31,7 +28,12 @@ from constructionsight.parcel_source_bulk_rehearsal_http import (
     ParcelArcGISBulkRehearsalPlan,
     build_arcgis_bulk_rehearsal_plan,
 )
-from constructionsight.storage.runtime_artifacts import read_runtime_artifact
+from constructionsight.storage.runtime_artifacts import (
+    open_runtime_artifact,
+    publish_runtime_artifact,
+    read_bounded_artifact_stream,
+    runtime_json_chunks,
+)
 
 _MAX_PORTABLE_PROOF_FILE_BYTES = 256 * 1024 * 1024
 
@@ -183,82 +185,40 @@ def save_arcgis_bulk_rehearsal_proof_bundle(
     if expected_bundle_id != bundle.bundle_id:
         raise ValueError("ArcGIS rehearsal proof expected bundle identity does not match")
     verify_arcgis_bulk_rehearsal_proof_bundle(bundle)
-    if path.is_symlink():
-        raise ValueError("ArcGIS rehearsal proof output cannot be a symlink")
-    path.parent.mkdir(parents=True, exist_ok=True)
-    if path.exists():
-        existing = load_arcgis_bulk_rehearsal_proof_bundle(path)
-        if existing != bundle:
-            raise ValueError("ArcGIS rehearsal proof path contains conflicting content")
-        return
-
-    # A fresh unique temporary file prevents concurrent writers from sharing an
-    # intermediate path. No partial or oversized proof is published.
-    encoder = json.JSONEncoder(sort_keys=True, separators=(",", ":"))
-    byte_count = 0
-    temporary_path: Path | None = None
     try:
-        with tempfile.NamedTemporaryFile(
-            mode="wb",
-            dir=path.parent,
-            prefix=".arcgis-rehearsal-proof-",
-            suffix=".tmp",
-            delete=False,
-        ) as temporary:
-            temporary_path = Path(temporary.name)
-            for fragment in chain(encoder.iterencode(bundle.to_dict()), ("\n",)):
-                for start in range(0, len(fragment), 16_384):
-                    chunk = fragment[start : start + 16_384].encode("utf-8")
-                    byte_count += len(chunk)
-                    if byte_count > _MAX_PORTABLE_PROOF_FILE_BYTES:
-                        raise ValueError(
-                            "ArcGIS rehearsal proof exceeds the file byte limit"
-                        )
-                    temporary.write(chunk)
-            temporary.flush()
-            os.fsync(temporary.fileno())
-        # An atomic create-only link refuses to replace a proof published by
-        # another writer after our earlier path.exists() check.
-        try:
-            os.link(temporary_path, path, follow_symlinks=False)
-        except FileExistsError:
-            if path.is_symlink():
-                raise ValueError(
-                    "ArcGIS rehearsal proof output cannot be a symlink"
-                ) from None
-            existing = load_arcgis_bulk_rehearsal_proof_bundle(path)
-            if existing != bundle:
-                raise ValueError(
-                    "ArcGIS rehearsal proof path contains conflicting content"
-                ) from None
-            return
-        # The linked proof now has an authoritative path; removing its original
-        # temporary name does not change the published inode.
-        temporary_path.unlink()
-        temporary_path = None
-    finally:
-        if temporary_path is not None:
-            temporary_path.unlink(missing_ok=True)
+        publish_runtime_artifact(
+            path, runtime_json_chunks(bundle.to_dict()),
+            max_bytes=_MAX_PORTABLE_PROOF_FILE_BYTES,
+        )
+    except FileExistsError:
+        if path.is_symlink():
+            raise ValueError("ArcGIS rehearsal proof output cannot be a symlink") from None
+        existing = load_arcgis_bulk_rehearsal_proof_bundle(path, durable=True)
+        if existing != bundle:
+            raise ValueError("ArcGIS rehearsal proof path contains conflicting content") from None
 
 
 def load_arcgis_bulk_rehearsal_proof_bundle(
     path: Path,
+    *,
+    durable: bool = False,
 ) -> ParcelArcGISBulkRehearsalProofBundle:
     """Load and independently verify one portable proof bundle from disk."""
 
     try:
-        raw = read_runtime_artifact(path, max_bytes=_MAX_PORTABLE_PROOF_FILE_BYTES)
-        payload: Any = json.loads(raw)
+        with open_runtime_artifact(path, durable=durable) as stream:
+            raw = read_bounded_artifact_stream(stream, max_bytes=_MAX_PORTABLE_PROOF_FILE_BYTES)
+            payload: Any = json.loads(raw)
+            if not isinstance(payload, dict):
+                raise ValueError("ArcGIS rehearsal proof bundle must be a JSON object")
+            try:
+                bundle = ParcelArcGISBulkRehearsalProofBundle.model_validate(payload)
+            except ValueError as exc:
+                raise ValueError("invalid ArcGIS rehearsal proof bundle") from exc
+            verify_arcgis_bulk_rehearsal_proof_bundle(bundle)
+            return bundle
     except (OSError, json.JSONDecodeError, UnicodeDecodeError) as exc:
         raise ValueError(f"cannot load ArcGIS rehearsal proof bundle: {path}") from exc
-    if not isinstance(payload, dict):
-        raise ValueError("ArcGIS rehearsal proof bundle must be a JSON object")
-    try:
-        bundle = ParcelArcGISBulkRehearsalProofBundle.model_validate(payload)
-    except ValueError as exc:
-        raise ValueError("invalid ArcGIS rehearsal proof bundle") from exc
-    verify_arcgis_bulk_rehearsal_proof_bundle(bundle)
-    return bundle
 
 
 def _build_bundle_from_portable_artifacts(

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import json
+import os
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -28,6 +29,7 @@ from constructionsight.parcel_source_bulk_rehearsal_bundle import (
     verify_arcgis_bulk_rehearsal_proof_bundle,
 )
 from constructionsight.parcel_source_bulk_rehearsal_bundle_models import (
+    ParcelArcGISBulkPortableArtifact,
     ParcelArcGISBulkRehearsalProofBundle,
 )
 from constructionsight.parcel_source_bulk_rehearsal_http import (
@@ -236,7 +238,11 @@ def test_bundle_save_requires_exact_identity_and_rejects_conflict(tmp_path: Path
         )
 
 
-def test_bundle_rejects_unsafe_artifact_reference(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    "reference",
+    ["../count.json", "/count.json", "C:count.json", "count:stream", "NUL.json", "count."],
+)
+def test_bundle_rejects_unsafe_artifact_reference(tmp_path: Path, reference: str) -> None:
     snapshot, plan, execution, artifact_store = _completed_rehearsal(tmp_path)
     bundle = build_arcgis_bulk_rehearsal_proof_bundle(
         snapshot,
@@ -246,8 +252,10 @@ def test_bundle_rejects_unsafe_artifact_reference(tmp_path: Path) -> None:
         created_at=_NOW + timedelta(minutes=1),
     )
     payload = bundle.to_dict()
-    payload["artifacts"][0]["artifact_reference"] = "../count.json"
+    payload["artifacts"][0]["artifact_reference"] = reference
 
+    with pytest.raises(ValueError, match="reference"):
+        ParcelArcGISBulkPortableArtifact.model_validate(payload["artifacts"][0])
     with pytest.raises(ValueError, match="reference"):
         ParcelArcGISBulkRehearsalProofBundle.model_validate(payload)
 
@@ -269,6 +277,25 @@ def test_rehearsal_proof_loader_rejects_invalid_utf8(tmp_path: Path) -> None:
         load_arcgis_bulk_rehearsal_proof_bundle(path)
 
 
+def test_rehearsal_proof_save_rejects_symlinked_parent_before_creating_outputs(
+    tmp_path: Path,
+) -> None:
+    snapshot, plan, execution, artifact_store = _completed_rehearsal(tmp_path)
+    bundle = build_arcgis_bulk_rehearsal_proof_bundle(
+        snapshot, plan, execution, artifact_store,
+        created_at=_NOW + timedelta(minutes=1),
+    )
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    alias = tmp_path / "alias"
+    alias.symlink_to(outside, target_is_directory=True)
+    with pytest.raises((OSError, ValueError)):
+        save_arcgis_bulk_rehearsal_proof_bundle(
+            bundle, alias / "new-directory" / "proof.json", expected_bundle_id=bundle.bundle_id,
+        )
+    assert list(outside.iterdir()) == []
+
+
 def test_rehearsal_proof_save_rejects_oversize_without_publishing(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -285,6 +312,7 @@ def test_rehearsal_proof_save_rejects_oversize_without_publishing(
         )
     assert not output.exists()
     assert list(tmp_path.glob(".arcgis-rehearsal-proof-*.tmp")) == []
+    assert list(tmp_path.glob(".runtime-artifact-*")) == []
 
 
 def test_rehearsal_proof_save_does_not_write_through_output_symlink(
@@ -318,17 +346,18 @@ def test_rehearsal_proof_save_failed_publish_preserves_prior_state(
     output = tmp_path / "failed-publish.json"
 
     def fail_link(
-        _source: Path, _target: Path, *, follow_symlinks: bool = False,
+        _source, _target, **_kwargs,
     ) -> None:
         raise OSError("synthetic publish failure")
 
-    monkeypatch.setattr(bulk_proof.os, "link", fail_link)
+    monkeypatch.setattr(os, "link", fail_link)
     with pytest.raises(OSError, match="publish failure"):
         save_arcgis_bulk_rehearsal_proof_bundle(
             bundle, output, expected_bundle_id=bundle.bundle_id,
         )
     assert not output.exists()
     assert list(tmp_path.glob(".arcgis-rehearsal-proof-*.tmp")) == []
+    assert list(tmp_path.glob(".runtime-artifact-*")) == []
 
 
 def test_rehearsal_proof_racing_conflict_cannot_overwrite_winner(
@@ -340,23 +369,24 @@ def test_rehearsal_proof_racing_conflict_cannot_overwrite_winner(
         created_at=_NOW + timedelta(minutes=1),
     )
     output = tmp_path / "racing-proof.json"
-    real_link = bulk_proof.os.link
+    real_link = os.link
     winner = b'{"attacker": "conflicting proof"}'
 
     def concurrent_publish(
-        temporary: Path, destination: Path, *, follow_symlinks: bool = False,
+        temporary, destination, **kwargs,
     ) -> None:
-        assert not destination.exists()
-        destination.write_bytes(winner)
-        real_link(temporary, destination, follow_symlinks=follow_symlinks)
+        assert not output.exists()
+        output.write_bytes(winner)
+        real_link(temporary, destination, **kwargs)
 
-    monkeypatch.setattr(bulk_proof.os, "link", concurrent_publish)
+    monkeypatch.setattr(os, "link", concurrent_publish)
     with pytest.raises(ValueError, match="cannot load|invalid|conflicting"):
         save_arcgis_bulk_rehearsal_proof_bundle(
             bundle, output, expected_bundle_id=bundle.bundle_id,
         )
     assert output.read_bytes() == winner
     assert list(tmp_path.glob(".arcgis-rehearsal-proof-*.tmp")) == []
+    assert list(tmp_path.glob(".runtime-artifact-*")) == []
 
 
 def test_rehearsal_proof_racing_exact_replay_retains_winner(
@@ -368,21 +398,22 @@ def test_rehearsal_proof_racing_exact_replay_retains_winner(
         created_at=_NOW + timedelta(minutes=1),
     )
     output = tmp_path / "racing-exact-proof.json"
-    real_link = bulk_proof.os.link
+    real_link = os.link
     expected = (
         json.dumps(bundle.to_dict(), sort_keys=True, separators=(",", ":")) + "\n"
     ).encode("utf-8")
 
     def concurrent_publish(
-        temporary: Path, destination: Path, *, follow_symlinks: bool = False,
+        temporary, destination, **kwargs,
     ) -> None:
-        assert not destination.exists()
-        destination.write_bytes(expected)
-        real_link(temporary, destination, follow_symlinks=follow_symlinks)
+        assert not output.exists()
+        output.write_bytes(expected)
+        real_link(temporary, destination, **kwargs)
 
-    monkeypatch.setattr(bulk_proof.os, "link", concurrent_publish)
+    monkeypatch.setattr(os, "link", concurrent_publish)
     save_arcgis_bulk_rehearsal_proof_bundle(
         bundle, output, expected_bundle_id=bundle.bundle_id,
     )
     assert output.read_bytes() == expected
     assert list(tmp_path.glob(".arcgis-rehearsal-proof-*.tmp")) == []
+    assert list(tmp_path.glob(".runtime-artifact-*")) == []

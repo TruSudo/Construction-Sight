@@ -43,3 +43,33 @@ CS-SR-054 remains partially corrected. Remaining paths include retained ArcGIS r
 The original reconciliation's unresolved source-access, provenance, identity, confidence, duplicate gating, ledger identity, monetary representation and schema-evolution findings remain execution work. No entry is moved to the resolved ledger by this batch.
 
 Codex Security is installed and enabled, including after the user's usage reset and renewed selection, but no scan/review action is exposed to this session. This blocks that optional review resource, not the authorized implementation and test work. Five isolated assurance passes have not begun because the complete defect inventory is not yet remediated.
+
+## First batch committed and verified on both supported runtimes
+
+Hardening advanced without force to `008a1a29cf3dccbff2ecf3113c50777607fa33fb`, tree `3b7eb4801095f49f73de42dd07d011c1e7e91389`. The GUI advanced without force to two-parent merge `e0055d010a548477a9dd98809651f303e47e8411`, tree `97434f646cab03985104ac4693195bdb0da4ba98`, preserving its previous head and the new hardening head as parents. Both PR bodies were updated and both remained drafts.
+
+The actual raw logs from [hardening CI 35589904486](https://github.com/TruSudo/Construction-Sight/actions/runs/35589904486) and [GUI CI 35589907069](https://github.com/TruSudo/Construction-Sight/actions/runs/35589907069) establish these results on each exact head:
+
+| Gate | Hardening Python 3.11 / 3.12 | GUI Python 3.11 / 3.12 |
+|---|---|---|
+| Ruff | Passed / passed | Passed / passed |
+| Strict mypy | Passed, 263 files / passed, 263 files | Passed, 273 files / passed, 273 files |
+| Full warning-strict tests | 1,574 / 1,574 passed | 1,678 / 1,678 passed |
+| Security mutation certification | 121/121 killed / 121/121 killed | 121/121 killed / 121/121 killed |
+| Native structural preflight | Zero findings / zero findings | Zero findings / zero findings |
+| Isolated vulnerability audit | Passed, zero active published advisories / passed, zero | Passed, zero active published advisories / passed, zero |
+| Release certification | Blocked by 75 active defects and missing assurance | Blocked by 75 active defects and missing assurance |
+
+The quality-job aggregate fails deliberately because release certification still has those 76 blockers. Actual gate outcomes were inspected in the logs; successful continue-on-error step conclusions were not used as proof. CS-SR-075's corrective mechanisms and required runtime/branch checks now have evidence, but its Native Maximum Assurance closure requirement remains unmet. No defect is closed.
+
+## Second correction batch: ArcGIS publication, checkpoints and replay
+
+The next batch begins from the exact committed heads above. Before changes, six retained-response tests reproduced temporary-name symlink writes, parent symlink and swap escapes, replacement of a racing conflict, and unsafe final/ancestor reads. Five checkpoint tests reproduced the same temporary-name/parent problems, unsafe reads and JSON materialization before any file ceiling. Portable-proof output followed a symlinked ancestor, and four portable artifact names containing Windows drive/stream/device/trailing-dot aliases passed their own field validator. Raw failing outputs are retained.
+
+The shared writer now stages through a pinned, exclusively created private directory, bounds chunks before writing beyond the limit, fsyncs complete content, publishes through an atomic create-only link, verifies inode identity, and fsyncs the parent before reporting success. Cleanup uses pinned directory handles. Retained responses, checkpoints and portable proof bundles share this protocol. Checkpoint reads now enforce a 16-MiB ceiling before JSON parsing. Artifact receipts and embedded portable references use the same canonical-name validation.
+
+Testing during implementation exposed an additional path within CS-SR-054's existing scope: a handled create-only conflict could skip the enclosing parent's final identity check. The check now runs even when the body raises. A regression rejects a substituted regular directory during exact replay. Successful replay validates through one held file descriptor and then syncs that file and its parent; conflicting content is rejected before that durability step.
+
+Validation of the second working candidate: **1,601 hardening tests and 1,705 GUI tests passed**, with warnings treated as errors. Ruff and strict mypy passed on both trees. The six added mutation witnesses and the moved read-growth witness all failed as intended under the targeted mutation run (7/7 killed); the full contract now contains 127 cases and still requires complete exact-head CI qualification. Before/after outputs, the previous committed preflight results, and all eight first-batch CI logs are retained in the [publication-batch evidence manifest](evidence/2026-09-21-publication-batch/manifest.json).
+
+The failure tests establish bounded writes, concurrent exact replay, create-only conflict preservation, descriptor cleanup, sync ordering, injected publication/sync failures and safe exact retry. They do not establish power-loss behavior on every native filesystem. A hard process termination may leave a private staging directory, and deterministic orphan cleanup and coupled multi-artifact recovery remain CS-SR-058 work. Other runtime loaders and CEQAnet/report/registry publication paths remain CS-SR-054/055/058 work. All 75 defects remain active, and the five-pass assurance campaign has not started.

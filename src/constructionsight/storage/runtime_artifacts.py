@@ -2,15 +2,21 @@
 
 from __future__ import annotations
 
+import json
 import os
+import secrets
 import stat
-from collections.abc import Iterator
-from contextlib import contextmanager
+from collections.abc import Iterable, Iterator
+from contextlib import contextmanager, suppress
+from itertools import chain
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import BinaryIO
 
 _DIRECTORY_RELATIVE_OPEN_SUPPORTED = os.open in os.supports_dir_fd
 _DIRECTORY_RELATIVE_STAT_SUPPORTED = os.stat in os.supports_dir_fd
+_DIRECTORY_RELATIVE_PUBLICATION_SUPPORTED = all(
+    operation in os.supports_dir_fd for operation in (os.mkdir, os.rmdir, os.unlink, os.link)
+)
 _DEVICE_NAMES = frozenset(
     {"con", "prn", "aux", "nul", "conin$", "conout$"}
     | {f"com{number}" for number in (*range(1, 10), "¹", "²", "³")}
@@ -73,7 +79,9 @@ def _require_same_entry(parent: int, name: str, descriptor: int) -> None:
 
 
 @contextmanager
-def anchored_artifact_parent(path: Path) -> Iterator[tuple[int, str]]:
+def anchored_artifact_parent(
+    path: Path, *, create_parents: bool = False,
+) -> Iterator[tuple[int, str]]:
     """Pin every existing parent and reject path changes before returning success.
 
     Every open is relative to an already pinned directory. Replacing an ancestor
@@ -93,22 +101,31 @@ def anchored_artifact_parent(path: Path) -> Iterator[tuple[int, str]]:
         parent = os.open(absolute.anchor, flags)
         descriptors.append(parent)
         for component in parts[:-1]:
+            if create_parents:
+                try:
+                    os.mkdir(component, mode=0o700, dir_fd=parent)
+                except FileExistsError:
+                    pass
+                else:
+                    os.fsync(parent)
             child = os.open(component, flags, dir_fd=parent)
             descriptors.append(child)
             bindings.append((parent, component, child))
             parent = child
         for binding in bindings:
             _require_same_entry(*binding)
-        yield parent, parts[-1]
-        for binding in bindings:
-            _require_same_entry(*binding)
+        try:
+            yield parent, parts[-1]
+        finally:
+            for binding in bindings:
+                _require_same_entry(*binding)
     finally:
         for descriptor in reversed(descriptors):
             os.close(descriptor)
 
 
 @contextmanager
-def open_runtime_artifact(path: Path) -> Iterator[BinaryIO]:
+def open_runtime_artifact(path: Path, *, durable: bool = False) -> Iterator[BinaryIO]:
     """Open one regular evidence file without following any path component."""
 
     with anchored_artifact_parent(path) as (parent, name):
@@ -126,6 +143,9 @@ def open_runtime_artifact(path: Path) -> Iterator[BinaryIO]:
             with os.fdopen(descriptor, "rb") as stream:
                 descriptor = -1
                 yield stream
+                if durable:
+                    os.fsync(stream.fileno())
+                    os.fsync(parent)
                 _require_same_entry(parent, name, stream.fileno())
         finally:
             if descriptor >= 0:
@@ -135,12 +155,103 @@ def open_runtime_artifact(path: Path) -> Iterator[BinaryIO]:
 def read_runtime_artifact(path: Path, *, max_bytes: int) -> bytes:
     """Return the bounded bytes from the same no-follow handle that was checked."""
 
-    if isinstance(max_bytes, bool) or max_bytes < 1:
-        raise ValueError("artifact byte limit must be positive")
+    _require_byte_limit(max_bytes)
     with open_runtime_artifact(path) as stream:
-        if os.fstat(stream.fileno()).st_size > max_bytes:
-            raise RuntimeArtifactError("artifact evidence exceeds the file byte limit")
-        content = stream.read(max_bytes + 1)
-        if len(content) > max_bytes:
-            raise RuntimeArtifactError("artifact evidence exceeds the file byte limit")
+        content = read_bounded_artifact_stream(stream, max_bytes=max_bytes)
     return content
+
+
+def read_bounded_artifact_stream(stream: BinaryIO, *, max_bytes: int) -> bytes:
+    """Read bounded bytes while a caller holds and verifies the same artifact handle."""
+
+    _require_byte_limit(max_bytes)
+    if os.fstat(stream.fileno()).st_size > max_bytes:
+        raise RuntimeArtifactError("artifact evidence exceeds the file byte limit")
+    content = stream.read(max_bytes + 1)
+    if len(content) > max_bytes:
+        raise RuntimeArtifactError("artifact evidence exceeds the file byte limit")
+    return content
+
+
+def _require_byte_limit(max_bytes: int) -> None:
+    if isinstance(max_bytes, bool) or not isinstance(max_bytes, int) or max_bytes < 1:
+        raise ValueError("artifact byte limit must be a positive integer")
+
+
+def publish_runtime_artifact(
+    path: Path, chunks: Iterable[bytes], *, max_bytes: int,
+) -> None:
+    """Durably publish one complete artifact without replacing an existing entry.
+
+    Stage in an exclusively created private directory, hold its descriptor for
+    every write/link/cleanup, fsync the complete file, then create the final name
+    with an atomic no-replace link. FileExistsError delegates exact replay to the
+    caller's bounded semantic verifier. An error after publication never claims
+    success; a retry can independently verify the complete existing artifact.
+    """
+
+    directory_flags = _require_anchored_access()
+    if not _DIRECTORY_RELATIVE_PUBLICATION_SUPPORTED:
+        raise RuntimeArtifactError("atomic directory-relative publication is unavailable")
+    _require_byte_limit(max_bytes)
+    with anchored_artifact_parent(path, create_parents=True) as (parent, name):
+        staging_name = f".runtime-artifact-{secrets.token_hex(16)}"
+        os.mkdir(staging_name, mode=0o700, dir_fd=parent)
+        staging = os.open(staging_name, directory_flags, dir_fd=parent)
+        staging_owned = False
+        descriptor = -1
+        try:
+            _require_same_entry(parent, staging_name, staging)
+            staging_stat = os.fstat(staging)
+            if staging_stat.st_uid != os.geteuid() or stat.S_IMODE(staging_stat.st_mode) != 0o700:
+                raise RuntimeArtifactError("artifact staging directory is not private and owned")
+            staging_owned = True
+            descriptor = os.open(
+                "content.tmp",
+                os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW
+                | getattr(os, "O_CLOEXEC", 0),
+                0o600,
+                dir_fd=staging,
+            )
+            with os.fdopen(descriptor, "wb") as stream:
+                descriptor = -1
+                byte_count = 0
+                for chunk in chunks:
+                    if not isinstance(chunk, bytes) or not chunk:
+                        raise RuntimeArtifactError("artifact chunks must be nonempty bytes")
+                    byte_count += len(chunk)
+                    if byte_count > max_bytes:
+                        raise RuntimeArtifactError("artifact evidence exceeds the file byte limit")
+                    stream.write(chunk)
+                stream.flush()
+                os.fsync(stream.fileno())
+                os.fsync(staging)
+                _require_same_entry(parent, staging_name, staging)
+                _require_same_entry(staging, "content.tmp", stream.fileno())
+                os.link(
+                    "content.tmp", name,
+                    src_dir_fd=staging, dst_dir_fd=parent, follow_symlinks=False,
+                )
+                _require_same_entry(parent, name, stream.fileno())
+                os.fsync(parent)
+        finally:
+            try:
+                if descriptor >= 0:
+                    os.close(descriptor)
+                if staging_owned:
+                    with suppress(FileNotFoundError):
+                        os.unlink("content.tmp", dir_fd=staging)
+                    _require_same_entry(parent, staging_name, staging)
+                    os.rmdir(staging_name, dir_fd=parent)
+                    os.fsync(parent)
+            finally:
+                os.close(staging)
+
+
+def runtime_json_chunks(value: object) -> Iterator[bytes]:
+    """Encode canonical JSON in bounded UTF-8 chunks with one final newline."""
+
+    encoder = json.JSONEncoder(sort_keys=True, separators=(",", ":"))
+    for fragment in chain(encoder.iterencode(value), ("\n",)):
+        for start in range(0, len(fragment), 16_384):
+            yield fragment[start : start + 16_384].encode("utf-8")
