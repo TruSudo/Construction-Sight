@@ -615,6 +615,76 @@ def test_in_place_apply_replays_prepared_backup_and_committed_target(
 
 
 
+
+def test_registry_apply_process_death_after_target_commit_replays_audit(tmp_path) -> None:
+    import multiprocessing
+    import os
+
+    registry = tmp_path / "sources.json"
+    observations = tmp_path / "observations.json"
+    plan = tmp_path / "plan.json"
+    target = tmp_path / "updated_sources.json"
+    audit = tmp_path / "apply_audit.json"
+    registry.write_text(_registry_json(), encoding="utf-8")
+    observations.write_text(_observation_json(), encoding="utf-8")
+    runner = CliRunner()
+    prepared = runner.invoke(
+        app,
+        [
+            "plan", str(registry), "--observations-path", str(observations),
+            "--output", str(plan),
+        ],
+    )
+    assert prepared.exit_code == 0
+    digest = json.loads(plan.read_text(encoding="utf-8"))["plan_digest"]
+    args = [
+        "apply", str(registry), str(plan),
+        "--approved-plan-digest", digest, "--audit-output", str(audit),
+        "--output", str(target), "--apply", "--operator-id", "operator:test",
+        "--authorization-reason", "Recover a terminated registry apply process.",
+    ]
+
+    if os.name != "posix":
+        result = runner.invoke(app, args)
+        assert result.exit_code != 0
+        assert not target.exists()
+        assert not audit.exists()
+        return
+
+    def terminated_apply() -> None:
+        import constructionsight.source_registry_update_plan_cli as cli
+
+        original_write = cli._atomic_write_text
+
+        def exit_after_commit(path, content, *, overwrite=True):
+            original_write(path, content, overwrite=overwrite)
+            if path == target:
+                os._exit(73)
+
+        cli._atomic_write_text = exit_after_commit
+        CliRunner().invoke(app, args)
+        os._exit(74)
+
+    process = multiprocessing.get_context("fork").Process(target=terminated_apply)
+    process.start()
+    process.join(timeout=25)
+    if process.is_alive():
+        process.terminate()
+        process.join(timeout=5)
+    assert process.exitcode == 73
+    committed = target.read_bytes()
+    assert not audit.exists()
+    assert len(list(tmp_path.glob(".source-registry-*.pending.json"))) == 1
+
+    retry = runner.invoke(app, args)
+    assert retry.exit_code == 0, str(retry.exception)
+    assert "Recovered exact pending source registry transaction." in retry.stdout
+    assert target.read_bytes() == committed
+    assert json.loads(audit.read_text(encoding="utf-8"))["applied_count"] == 1
+    assert not list(tmp_path.glob(".source-registry-*.pending.json"))
+
+
+
 def test_source_registry_apply_cli_refuses_output_equal_to_registry(tmp_path) -> None:
     registry_path = tmp_path / "sources.json"
     observations_path = tmp_path / "observations.json"
