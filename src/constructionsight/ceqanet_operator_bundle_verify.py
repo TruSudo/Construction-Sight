@@ -13,6 +13,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal, cast
 
+_MAX_BUNDLE_MANIFEST_BYTES = 1024 * 1024
+_MAX_BUNDLE_ARTIFACTS = 128
+_MAX_BUNDLE_ARTIFACT_BYTES = 16 * 1024 * 1024
+_MAX_BUNDLE_TOTAL_BYTES = 64 * 1024 * 1024
+_BUNDLE_READ_CHUNK_BYTES = 64 * 1024
+
 VerificationStatus = Literal["verified", "missing", "mismatch"]
 
 
@@ -112,6 +118,9 @@ def verify_ceqanet_operator_bundle(
     resolved_manifest_path = manifest_path or bundle_dir / "manifest.json"
     manifest = _load_manifest(resolved_manifest_path)
     artifact_entries = _artifact_entries(manifest)
+    if len(artifact_entries) > _MAX_BUNDLE_ARTIFACTS:
+        raise ValueError("Bundle manifest exceeds artifact entry limit")
+    remaining_bytes = [_MAX_BUNDLE_TOTAL_BYTES]
 
     verified_artifacts: list[CeqanetBundleArtifactVerification] = []
     malformed_artifacts: list[dict[str, object]] = []
@@ -123,6 +132,7 @@ def verify_ceqanet_operator_bundle(
         artifact = _verify_artifact_entry(
             bundle_dir,
             entry=cast(dict[str, Any], entry),
+            remaining_bytes=remaining_bytes,
         )
         if artifact is None:
             malformed_artifacts.append(
@@ -143,11 +153,15 @@ def _load_manifest(manifest_path: Path) -> dict[str, Any]:
     """Load and validate bundle manifest JSON."""
 
     try:
-        payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+        with manifest_path.open("rb") as manifest_file:
+            manifest_bytes = manifest_file.read(_MAX_BUNDLE_MANIFEST_BYTES + 1)
+        if len(manifest_bytes) > _MAX_BUNDLE_MANIFEST_BYTES:
+            raise ValueError("Bundle manifest exceeds inspection byte limit")
+        payload = json.loads(manifest_bytes.decode("utf-8"))
     except FileNotFoundError as exc:
         raise ValueError(f"Bundle manifest not found: {manifest_path}") from exc
-    except json.JSONDecodeError as exc:
-        raise ValueError(f"Bundle manifest is not valid JSON: {manifest_path}") from exc
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        raise ValueError(f"Bundle manifest is not valid UTF-8 JSON: {manifest_path}") from exc
 
     if not isinstance(payload, dict):
         raise ValueError("Bundle manifest must contain a JSON object.")
@@ -174,6 +188,7 @@ def _verify_artifact_entry(
     bundle_dir: Path,
     *,
     entry: dict[str, Any],
+    remaining_bytes: list[int],
 ) -> CeqanetBundleArtifactVerification | None:
     """Verify one manifest artifact entry."""
 
@@ -183,6 +198,15 @@ def _verify_artifact_entry(
     expected_byte_count = _int_or_none(entry.get("byte_count"))
     if filename is None or artifact_type is None or expected_sha256 is None:
         return None
+    if (
+        filename in {".", ".."}
+        or filename != Path(filename).name
+        or "\\" in filename
+        or "\x00" in filename
+    ):
+        raise ValueError("Bundle artifact filename must be a safe basename")
+    if expected_byte_count is not None and expected_byte_count > _MAX_BUNDLE_ARTIFACT_BYTES:
+        raise ValueError("Bundle artifact declared byte count exceeds limit")
 
     artifact_path = bundle_dir / filename
     if not artifact_path.exists():
@@ -196,9 +220,27 @@ def _verify_artifact_entry(
             status="missing",
         )
 
-    data = artifact_path.read_bytes()
-    actual_sha256 = hashlib.sha256(data).hexdigest()
-    actual_byte_count = len(data)
+    digest = hashlib.sha256()
+    actual_byte_count = 0
+    with artifact_path.open("rb") as artifact_file:
+        while True:
+            chunk = artifact_file.read(
+                min(
+                    _BUNDLE_READ_CHUNK_BYTES,
+                    _MAX_BUNDLE_ARTIFACT_BYTES - actual_byte_count + 1,
+                    remaining_bytes[0] + 1,
+                )
+            )
+            if not chunk:
+                break
+            actual_byte_count += len(chunk)
+            if actual_byte_count > _MAX_BUNDLE_ARTIFACT_BYTES:
+                raise ValueError("Bundle artifact exceeds inspection byte limit")
+            remaining_bytes[0] -= len(chunk)
+            if remaining_bytes[0] < 0:
+                raise ValueError("Bundle exceeds aggregate inspection byte limit")
+            digest.update(chunk)
+    actual_sha256 = digest.hexdigest()
     status: VerificationStatus = "verified"
     if actual_sha256 != expected_sha256 or (
         expected_byte_count is not None and actual_byte_count != expected_byte_count

@@ -102,3 +102,47 @@ def test_verify_ceqanet_operator_bundle_rejects_wrong_schema(tmp_path: Path) -> 
 def test_verify_ceqanet_operator_bundle_rejects_missing_manifest(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="Bundle manifest not found"):
         verify_ceqanet_operator_bundle(bundle_dir=tmp_path)
+
+
+def test_verify_bundle_rejects_manifest_before_full_materialization(tmp_path: Path) -> None:
+    (tmp_path / "manifest.json").write_bytes(b" " * (1024 * 1024 + 1))
+    with pytest.raises(ValueError, match="manifest exceeds inspection byte limit"):
+        verify_ceqanet_operator_bundle(bundle_dir=tmp_path)
+
+
+def test_verify_bundle_rejects_oversized_artifact_before_full_read(tmp_path: Path) -> None:
+    _write_bundle_manifest(tmp_path)
+    artifact_path = tmp_path / "operator-report.md"
+    with artifact_path.open("wb") as artifact_file:
+        artifact_file.truncate(16 * 1024 * 1024 + 1)
+    with pytest.raises(ValueError, match="artifact exceeds inspection byte limit"):
+        verify_ceqanet_operator_bundle(bundle_dir=tmp_path)
+
+
+def test_verify_bundle_rejects_excessive_manifest_entry_count(tmp_path: Path) -> None:
+    manifest = {
+        "metadata": {"schema_version": "ceqanet_operator_bundle.v1"},
+        "artifacts": ["bad"] * 129,
+    }
+    (tmp_path / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(ValueError, match="artifact entry limit"):
+        verify_ceqanet_operator_bundle(bundle_dir=tmp_path)
+
+
+def test_verify_bundle_rejects_parent_traversal_artifact(tmp_path: Path) -> None:
+    outside = tmp_path.parent / "outside-operator-artifact"
+    outside.write_bytes(b"outside")
+    manifest = {
+        "metadata": {"schema_version": "ceqanet_operator_bundle.v1"},
+        "artifacts": [
+            {
+                "filename": "../outside-operator-artifact",
+                "artifact_type": "unsafe",
+                "byte_count": 7,
+                "sha256": hashlib.sha256(b"outside").hexdigest(),
+            }
+        ],
+    }
+    (tmp_path / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(ValueError, match="safe basename"):
+        verify_ceqanet_operator_bundle(bundle_dir=tmp_path)
