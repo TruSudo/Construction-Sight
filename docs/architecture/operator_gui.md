@@ -282,3 +282,28 @@ disclosed rather than represented as exhaustive county coverage.
 
 The browser remains GET-only; no new acquisition, geocoding, conversion,
 outreach, bid, entity merge, or workflow transition is authorized.
+
+## On-demand parcel claims in the geographic operator (draft)
+
+The selected CEQA/permit record now exposes an explicit **Inspect retained
+parcel claims** read-only action. It looks up that exact source-family/key
+and requires a nonempty stored site APN, supported county, CA state, and
+consistent site/record county before querying parcel-core rows. Matches are
+bounded to 20 retained records with separately returned matching count and
+truncation. The lookup is an exact *normalized APN + named county* source
+co-occurrence: it does not perform fuzzy address matching, parcel topology
+containment, legal-title identification, candidate approval, or a persisted
+site/parcel relationship. A repeated APN across source families remains
+multiple independent claims.
+
+The drawer displays parcel source identity, source-updated date, address,
+zoning, land-use, geometry type, coordinate reference, and limitations; it
+never emits or draws raw parcel polygon geometry. On explicit inspection,
+only stored geodetic centroid pairs with recognized explicit EPSG:4326 or
+CRS84 and no known geometry conflict can receive dashed map markers.
+Unknown/projected CRS or missing centroids remain listed but unmapped. The
+operator explicitly labels these source-claimed centroids, not surveyed
+locations, verified geographic containment or legal parcel boundaries.
+Changing the selected record, filter, or mode clears the optional overlay;
+late results from previous selections cannot reinstate it. The server remains
+loopback GET-only and SQLite mode=ro.

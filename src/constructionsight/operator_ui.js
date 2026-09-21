@@ -3,7 +3,8 @@ const $ = id => document.getElementById(id);
 const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let mode = "records", snapshot = null, footprint = null, timeline = null, selected = null, pendingSelection = null, offset = 0, requestId = 0, controller;
 let query = "", kind = "all", county = "";
-let entityRequestId = 0, candidateRequestId = 0, relatedIds = new Set();
+let entityRequestId = 0, candidateRequestId = 0, parcelRequestId = 0, relatedIds = new Set();
+let parcelOverlay = [];
 let lastLoadedScope = null;
 const LIMIT = 50;
 const rows = () => snapshot ? (mode === "records" ? snapshot.projects : snapshot.leads) : [];
@@ -35,15 +36,18 @@ function evidence(items) {
   }).join("");
 }
 function selectRecord(id) {
-  entityRequestId++; candidateRequestId++; relatedIds = new Set();
+  entityRequestId++; candidateRequestId++; parcelRequestId++;
+  relatedIds = new Set(); parcelOverlay = [];
   selected = id;
   const row = rows().find(x => rowId(x) === id);
   if (!row) { $("detail").innerHTML = '<p class="empty">Select a record to inspect its evidence.</p>'; return; }
   if (mode === "records") {
-    $("detail").innerHTML = '<div class="eyebrow">' + esc(row.record_kind) + ' · source record</div><h2>' + esc(row.title) + '</h2><p>' + esc(row.description || "No description recorded.") + '</p><div class="detail-grid">' + datum("County", row.county) + datum("Jurisdiction / agency", row.jurisdiction) + datum("Source status / document", row.source_status) + datum("Source record number", row.source_record_number) + datum("Address", row.address) + datum("APN", row.apn) + datum("Record identity", row.record_id) + datum("Coordinates", row.point ? `${row.point.latitude.toFixed(6)}, ${row.point.longitude.toFixed(6)}` : null) + '</div><p>' + esc(row.map_reason) + '</p><h3>Candidate review · no commercial authorization</h3><button type="button" id="preview-candidate">Inspect review gaps</button><div id="candidate-preview" class="candidate-preview" aria-live="polite"></div><h3>Recorded milestones · historical source claims</h3>' + milestoneHistory(row.milestones) + '<p class="entity-warning">Recorded dates do not verify site activity, construction start, or a current project phase.</p><h3>Named parties · source claims</h3>' + (row.entities.map(e => '<div class="party"><b>' + esc(e.name) + '</b> · ' + esc(e.role) + ' <button type="button" class="entity-link" data-entity-key="' + esc(e.entity_key) + '">Find shared-key source records</button>' + evidence(e.provenance) + '</div>').join("") || '<p class="empty">No named parties recorded.</p>') + '<div id="entity-related" class="entity-related" aria-live="polite"></div><h3>Record evidence</h3>' + evidence(row.provenance) + (row.point ? '<h3>Location evidence</h3>' + evidence(row.point.provenance) : '') + '<h3>Limitations</h3>' + bullets(row.limitations);
+    $("detail").innerHTML = '<div class="eyebrow">' + esc(row.record_kind) + ' · source record</div><h2>' + esc(row.title) + '</h2><p>' + esc(row.description || "No description recorded.") + '</p><div class="detail-grid">' + datum("County", row.county) + datum("Jurisdiction / agency", row.jurisdiction) + datum("Source status / document", row.source_status) + datum("Source record number", row.source_record_number) + datum("Address", row.address) + datum("APN", row.apn) + datum("Record identity", row.record_id) + datum("Coordinates", row.point ? `${row.point.latitude.toFixed(6)}, ${row.point.longitude.toFixed(6)}` : null) + '</div><p>' + esc(row.map_reason) + '</p><h3>Parcel observations · unverified APN candidates</h3><button type="button" id="inspect-parcels">Inspect retained parcel claims</button><div id="parcel-candidates" class="parcel-candidates" aria-live="polite"></div><h3>Candidate review · no commercial authorization</h3><button type="button" id="preview-candidate">Inspect review gaps</button><div id="candidate-preview" class="candidate-preview" aria-live="polite"></div><h3>Recorded milestones · historical source claims</h3>' + milestoneHistory(row.milestones) + '<p class="entity-warning">Recorded dates do not verify site activity, construction start, or a current project phase.</p><h3>Named parties · source claims</h3>' + (row.entities.map(e => '<div class="party"><b>' + esc(e.name) + '</b> · ' + esc(e.role) + ' <button type="button" class="entity-link" data-entity-key="' + esc(e.entity_key) + '">Find shared-key source records</button>' + evidence(e.provenance) + '</div>').join("") || '<p class="empty">No named parties recorded.</p>') + '<div id="entity-related" class="entity-related" aria-live="polite"></div><h3>Record evidence</h3>' + evidence(row.provenance) + (row.point ? '<h3>Location evidence</h3>' + evidence(row.point.provenance) : '') + '<h3>Limitations</h3>' + bullets(row.limitations);
   } else {
     $("detail").innerHTML = '<div class="eyebrow">' + esc(row.status) + ' · persisted workflow</div><h2>' + esc(row.summary || row.base_candidate_id) + '</h2><div class="detail-grid">' + datum("Workflow", row.workflow_id) + datum("Exact review package", row.package_id) + datum("Candidate", row.base_candidate_id) + datum("Recorded score", row.lead_score) + '</div><h3>Evidence notes</h3>' + bullets(row.evidence_notes) + '<h3>Workflow notes</h3>' + bullets(row.notes) + '<h3>Limitations</h3>' + bullets(row.limitations) + '<h3>Recorded history</h3>' + bullets(row.events.map(e => `${e.created_at}: ${e.current_status} — ${e.reason}`));
   }
+  const parcelButton = $("inspect-parcels");
+  if (parcelButton && mode === "records") parcelButton.onclick = inspectParcels;
   const previewButton = $("preview-candidate");
   if (previewButton && mode === "records") previewButton.onclick = inspectCandidate;
   $("detail").querySelectorAll("button[data-entity-key]").forEach(button => {
@@ -75,7 +79,8 @@ function renderPulse(data, mapData) {
       : `${mapData.records_scanned.toLocaleString()} of ${mapData.matching_total.toLocaleString()} matching retained records scanned. This is not jurisdictional source coverage.`;
 }
 async function load() {
-  entityRequestId++; candidateRequestId++; relatedIds = new Set();
+  entityRequestId++; candidateRequestId++; parcelRequestId++;
+  relatedIds = new Set(); parcelOverlay = [];
   const id = ++requestId;
   const scope = JSON.stringify([mode, kind, query, county]);
   const shouldFit = scope !== lastLoadedScope;
@@ -176,6 +181,69 @@ function renderTimeline() {
       }
     };
   });
+}
+async function inspectParcels() {
+  if (mode !== "records" || !selected) return;
+  const row = rows().find(item => rowId(item) === selected);
+  const target = $("parcel-candidates");
+  if (!row || !target) return;
+  const token = ++parcelRequestId, sourceSelection = selected;
+  parcelOverlay = [];
+  renderMap();
+  target.textContent = "Inspecting retained APN and county source claims…";
+  try {
+    const parameters = new URLSearchParams({
+      kind: row.record_kind, record_id: row.record_id
+    });
+    const response = await fetch("/api/parcel-candidates?" + parameters);
+    const data = await response.json();
+    if (token !== parcelRequestId || selected !== sourceSelection || mode !== "records") return;
+    if (!response.ok) throw Error(data.error || "Parcel observations are unavailable.");
+    if (data.source_kind !== row.record_kind ||
+        data.source_record_id !== row.record_id ||
+        data.source_apn !== row.apn ||
+        data.source_county !== row.county) {
+      throw Error("Source record and parcel inspection identity disagree. Refresh.");
+    }
+    parcelOverlay = data.matches.filter(candidate => candidate.point);
+    const summary = data.truncated
+      ? "Showing the first " + data.returned + " of " + data.matching_total +
+        " stored APN/county candidate records; other claims may exist."
+      : data.matching_total + " stored APN/county candidate records.";
+    const candidates = data.matches.map(parcel =>
+      '<article class="parcel-claim"><b>' + esc(parcel.apn) + '</b> · ' +
+      esc(parcel.county) +
+      '<div class="detail-grid">' +
+      datum("Source", parcel.source_key) +
+      datum("Source record ID", parcel.source_record_id) +
+      datum("Parcel record identity", parcel.parcel_record_id) +
+      datum("Address claim", parcel.address) +
+      datum("Zoning claim", parcel.zoning) +
+      datum("Land-use claim", parcel.land_use) +
+      datum("Source updated", parcel.source_updated_at) +
+      datum("Geometry kind", parcel.geometry_kind) +
+      datum("Coordinate reference", parcel.spatial_reference) + '</div>' +
+      '<p>' + esc(parcel.map_reason) + '</p>' +
+      '<h4>Retained limitations</h4>' + bullets(parcel.limitations) + '</article>'
+    ).join("");
+    target.innerHTML =
+      '<p class="entity-warning">Exact normalized APN and county co-occurrence only. ' +
+      'No parcel-to-project relationship, boundary, current activity, or authority is verified.</p>' +
+      '<p>' + esc(summary) + ' ' +
+      esc(parcelOverlay.length) + ' candidates have displayable source-claimed centroids.</p>' +
+      (parcelOverlay.length ?
+        '<button type="button" id="fit-parcel-candidates">Fit candidate centroids</button>' : '') +
+      (candidates || '<p class="empty">No retained parcel claims matched this record.</p>') +
+      '<h4>Inspection limitations</h4>' + bullets(data.limitations);
+    const fitButton = $("fit-parcel-candidates");
+    if (fitButton) fitButton.onclick = () => fitMap(false, true);
+    renderMap();
+  } catch (error) {
+    if (token !== parcelRequestId || selected !== sourceSelection || mode !== "records") return;
+    parcelOverlay = [];
+    target.textContent = error.message || "Unable to inspect retained parcel claims.";
+    renderMap();
+  }
 }
 async function inspectCandidate() {
   if (mode !== "records" || !selected) return;
@@ -320,8 +388,9 @@ function selectMapPoint(id) {
   offset = Math.floor(point.ordinal / LIMIT) * LIMIT;
   load();
 }
-function fitMap(onlyRelated = false) {
-  const available = onlyRelated === true ? points().filter(point => relatedIds.has(rowId(point))) : points();
+function fitMap(onlyRelated = false, onlyParcels = false) {
+  const available = onlyParcels ? parcelOverlay
+    : onlyRelated === true ? points().filter(point => relatedIds.has(rowId(point))) : points();
   if (available.length) {
     const coords = available.map(r => project(r.point.latitude, r.point.longitude));
     const xs = coords.map(v => v[0]), ys = coords.map(v => v[1]);
@@ -356,11 +425,20 @@ function renderMap() {
     inView++;
     content += `<circle class="pin ${selected === rowId(row) ? 'selected' : relatedIds.has(rowId(row)) ? 'related' : ''}" cx="${x}" cy="${y}" r="7" tabindex="0" role="button" aria-label="${esc(row.title)}" data-id="${esc(rowId(row))}"><title>${esc(row.title)} · ${esc(row.record_kind)} source-claimed location</title></circle>`;
   }
+  for (const parcel of parcelOverlay) {
+    const [x, y] = xy(parcel.point.latitude, parcel.point.longitude);
+    if (x < 0 || x > width || y < 0 || y > height) continue;
+    content += '<circle class="parcel-pin" cx="' + x + '" cy="' + y +
+      '" r="10"><title>' + esc(parcel.apn) + ' · ' +
+      esc(parcel.source_key) +
+      ' · unverified source-claimed parcel centroid; not a boundary</title></circle>';
+  }
   svg.innerHTML = content;
   svg.querySelectorAll(".pin").forEach(el => { el.onclick = () => selectMapPoint(el.dataset.id); el.onkeydown = e => { if (["Enter"," "].includes(e.key)) { e.preventDefault(); selectMapPoint(el.dataset.id); } }; });
-  $("map-empty").hidden = points().length > 0;
+  $("map-empty").hidden = points().length > 0 || parcelOverlay.length > 0;
   const coverage = footprint?.truncated ? `first ${footprint.records_scanned} of ${footprint.matching_total} matching records scanned` : `${footprint?.matching_total || 0} matching records fully scanned`;
-  $("map-count").textContent = `${inView} in view / ${points().length} mapped · ${coverage}`;
+  $("map-count").textContent = `${inView} in view / ${points().length} mapped · ${coverage}` +
+    (parcelOverlay.length ? ` · ${parcelOverlay.length} inspected parcel centroids` : "");
 }
 function zoom(factor, x = svg.clientWidth / 2, y = svg.clientHeight / 2) {
   const next = Math.max(150, Math.min(2000000, scale * factor));

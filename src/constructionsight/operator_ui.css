@@ -29,3 +29,9 @@
 .timeline-row strong{display:block;line-height:1.4;font-size:12px;overflow-wrap:anywhere}
 .timeline-row small{display:block;margin-top:5px;color:var(--muted);line-height:1.4}
 @media(max-width:760px){.timeline-row{grid-template-columns:82px minmax(0,1fr);gap:8px;padding:12px}}
+
+.parcel-candidates{margin:14px 0 2px;overflow-wrap:anywhere}
+.parcel-claim{border:1px solid var(--line);border-left:3px solid var(--steel);border-radius:7px;margin:12px 0;padding:11px}
+.parcel-claim h4,.parcel-candidates h4{font-size:11px;margin:10px 0 5px;color:var(--muted)}
+.parcel-pin{fill:none;stroke:var(--steel);stroke-width:2;stroke-dasharray:3 2;pointer-events:none}
+.legend-parcel{border-color:var(--steel);border-style:dashed;background:none}
