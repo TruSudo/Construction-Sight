@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
+import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import datetime
@@ -64,6 +65,31 @@ CREATE TABLE IF NOT EXISTS effect_consumptions (
 """
 
 
+def _require_wal_mode(connection: sqlite3.Connection) -> None:
+    """Set WAL once and retry transient contention during initialization."""
+
+    deadline = time.monotonic() + 5.0
+    while True:
+        try:
+            current = connection.execute("PRAGMA journal_mode").fetchone()
+            if current is None:
+                raise EffectConsumptionError(
+                    "consumption journal mode could not be read"
+                )
+            if str(current[0]).lower() == "wal":
+                return
+            changed = connection.execute("PRAGMA journal_mode = WAL").fetchone()
+            if changed is None or str(changed[0]).lower() != "wal":
+                raise EffectConsumptionError(
+                    "consumption store requires SQLite WAL mode"
+                )
+            return
+        except sqlite3.OperationalError as exc:
+            if "locked" not in str(exc).lower() or time.monotonic() >= deadline:
+                raise
+            time.sleep(0.01)
+
+
 class EffectConsumptionStore:
     """Own cross-process reservation, transition, and replay state."""
 
@@ -81,7 +107,7 @@ class EffectConsumptionStore:
         connection.row_factory = sqlite3.Row
         try:
             connection.execute("PRAGMA busy_timeout = 30000")
-            connection.execute("PRAGMA journal_mode = WAL")
+            _require_wal_mode(connection)
             connection.execute("PRAGMA synchronous = FULL")
             connection.execute(_SCHEMA)
             yield connection
