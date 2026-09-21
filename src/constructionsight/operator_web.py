@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import webbrowser
 from contextlib import suppress
 from dataclasses import dataclass
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from threading import Timer
 from typing import cast
 from urllib.parse import parse_qs, urlparse
 
@@ -289,12 +291,16 @@ def _content_security_policy() -> str:
     )
 
 
-def main() -> None:
+def main(*, open_browser_by_default: bool = False) -> None:
     """Run the local-only operator application against an existing database."""
 
     parser = argparse.ArgumentParser(description="ConstructionSight operator GUI (read only)")
     parser.add_argument("--database", type=Path, default=Path("data/constructionsight.sqlite3"))
     parser.add_argument("--port", type=int, default=8765)
+    parser.add_argument(
+        "--open-browser", action="store_true", default=open_browser_by_default,
+        help="Open the local operator in the default browser after the server binds.",
+    )
     args = parser.parse_args()
     if not 1 <= args.port <= 65535:
         parser.error("--port must be between 1 and 65535")
@@ -303,9 +309,20 @@ def main() -> None:
     except (OSError, ValueError) as exc:
         parser.error(f"--database must name an existing SQLite file: {exc}")
     with ThreadingHTTPServer(("127.0.0.1", args.port), handler) as server:
-        print(f"ConstructionSight operator GUI: http://127.0.0.1:{args.port}", flush=True)
+        local_url = f"http://127.0.0.1:{server.server_address[1]}"
+        print(f"ConstructionSight operator GUI: {local_url}", flush=True)
+        if args.open_browser:
+            opener = Timer(0.2, webbrowser.open, args=(local_url,))
+            opener.daemon = True
+            opener.start()
         with suppress(KeyboardInterrupt):
             server.serve_forever()
+
+
+def desktop_main() -> None:
+    """Launch the explicit local operator browser workspace."""
+
+    main(open_browser_by_default=True)
 
 
 if __name__ == "__main__":

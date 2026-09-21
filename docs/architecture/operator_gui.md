@@ -14,6 +14,18 @@ PYTHONPATH=src python -m constructionsight.operator_web --database /absolute/pat
 ```
 
 Open `http://127.0.0.1:8765`. An optional `--port` selects another loopback port.
+
+For a GUI entry point that explicitly opens the local browser after the server
+binds, run:
+
+```bash
+constructionsight-desktop --database /absolute/path/to/constructionsight.sqlite3
+```
+
+The existing `constructionsight-operator` command is unchanged by default;
+pass `--open-browser` to it to request the same local launch behavior.
+This is a loopback browser interface, not yet a packaged native desktop or
+a mobile app. It requires the installed package and existing initialized DB.
 A missing database produces an explicit startup error. The operator does not
 create a database, run migrations, repair records, or authorize data acquisition.
 Populate the database through existing governed intake/persistence commands.
