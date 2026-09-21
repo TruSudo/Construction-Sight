@@ -540,13 +540,16 @@ def source_registry_apply(
         reserved = {journal.absolute(), lock_path.absolute()}
         if any(path.absolute() in reserved for path in apply_paths.values()):
             _abort("registry transaction metadata must not overlap an input or output")
-        recovered = _recover_pending_registry_apply(
-            source=registry_path, plan_path=plan_path, target=target_path,
-            audit=audit_output, backup=backup_output,
-            approved=approved_plan_digest.strip(), operator=resolved_operator,
-            reason=resolved_reason, overwrite=overwrite, in_place=in_place,
-            journal=journal, parent=pinned_parent, journal_name=journal_name,
-        )
+        try:
+            recovered = _recover_pending_registry_apply(
+                source=registry_path, plan_path=plan_path, target=target_path,
+                audit=audit_output, backup=backup_output,
+                approved=approved_plan_digest.strip(), operator=resolved_operator,
+                reason=resolved_reason, overwrite=overwrite, in_place=in_place,
+                journal=journal, parent=pinned_parent, journal_name=journal_name,
+            )
+        except (OSError, ValueError) as exc:
+            _abort(f"Pending registry transaction cannot be reconciled: {exc}")
         if recovered is not None:
             report = recovered
             console.print("Recovered exact pending source registry transaction.")
