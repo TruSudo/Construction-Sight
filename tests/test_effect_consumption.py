@@ -5,6 +5,7 @@ import json
 import multiprocessing
 import os
 import sqlite3
+import threading
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from datetime import UTC, datetime
@@ -445,3 +446,58 @@ def test_owned_store_and_runner_accept_no_caller_selected_backend() -> None:
     assert "store" not in inspect.signature(_execute_owned_effect).parameters
     assert "database_path" not in inspect.signature(_execute_owned_effect).parameters
     assert "ledger" not in inspect.signature(_execute_owned_effect).parameters
+
+
+def test_existing_wal_store_never_reissues_journal_mode_change(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Concurrent reservations must not reconfigure an existing WAL database."""
+
+    store = EffectConsumptionStore(tmp_path / "stable-wal.sqlite3")
+    operation = _operation()
+    store.reserve(operation, reserved_at=_NOW)
+    observed: list[str] = []
+    real_connect = sqlite3.connect
+
+    def traced_connect(*args, **kwargs):
+        connection = real_connect(*args, **kwargs)
+        connection.set_trace_callback(observed.append)
+        return connection
+
+    monkeypatch.setattr(sqlite3, "connect", traced_connect)
+    with pytest.raises(EffectOutcomeUnavailableError, match="reserved|indeterminate"):
+        store.reserve(operation, reserved_at=_NOW)
+    assert store.load(operation.reservation_key) is not None
+    assert not any(
+        statement.strip().lower().startswith("pragma journal_mode =")
+        for statement in observed
+    )
+
+
+def test_parallel_first_use_initializes_wal_without_lock_error(tmp_path: Path) -> None:
+    """Fresh concurrent stores must serialize reservation, including WAL bootstrap."""
+
+    for index in range(5):
+        store_path = tmp_path / f"parallel-wal-{index}.sqlite3"
+        barrier = threading.Barrier(2)
+        operation = _operation()
+
+        def reserve_once():
+            barrier.wait(timeout=10)
+            try:
+                return EffectConsumptionStore(store_path).reserve(
+                    operation, reserved_at=_NOW
+                )
+            except EffectOutcomeUnavailableError as exc:
+                return exc
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            futures = [executor.submit(reserve_once) for _ in range(2)]
+            outcomes = [future.result(timeout=20) for future in futures]
+
+        assert sum(not isinstance(outcome, Exception) for outcome in outcomes) == 1
+        retained = EffectConsumptionStore(store_path).load(operation.reservation_key)
+        assert retained is not None
+        assert retained.status is EffectConsumptionStatus.RESERVED
+        with sqlite3.connect(store_path) as connection:
+            assert connection.execute("PRAGMA journal_mode").fetchone()[0] == "wal"
