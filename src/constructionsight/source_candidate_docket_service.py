@@ -27,10 +27,7 @@ from constructionsight.local_operator_authorization import (
     LocalAuthorizationResult,
     authorize_local_operator_operation,
 )
-from constructionsight.operator_dashboard_models import (
-    RecordKind,
-    SourceCandidatePreview,
-)
+from constructionsight.operator_dashboard_models import RecordKind, SourceCandidatePreview
 from constructionsight.operator_source_candidate import build_source_candidate_preview
 from constructionsight.storage.source_candidate_docket_orm import SourceCandidateDocketRow
 
