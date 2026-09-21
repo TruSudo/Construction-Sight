@@ -213,3 +213,24 @@ cryptographic evidence of who wrote a record or a substitute for independent
 source verification. Readback
 the list is bounded at 100. This increment does not promote records into the
 separately governed commercial lead workflow or change the GUI's GET-only scope.
+
+## Retained-source pulse and map viewport (draft)
+
+The four summary cards report **matching retained source records** (not unique
+construction projects or qualified leads), mapped and unmapped records **within
+the bounded coordinate scan**, and whether that scan covered the entire
+matching persisted query. An incomplete 5,000-record scan is expressly marked
+as capped; no conclusion about coordinates or activity in unscanned records
+is supported. A list/map total mismatch is marked as a read mismatch because
+the two read-only requests are separate, not one transactional snapshot.
+These counters are not a live regional activity feed or proof of source
+coverage across San Bernardino or Riverside counties.
+
+The coordinate map legend distinguishes ordinary source-record markers,
+selected records, and records sharing an **exact stored entity key**; a
+shared key is not independently established corporate/person identity.
+Pagination retains the map center and zoom while search, county, record-family
+or view-mode changes refit the corresponding footprint. Explicit Refresh
+refits to the current query. The interface is still a loopback browser GUI,
+not an installed PySide6 desktop shell, street basemap, or parcel/county
+geographic layer. Browser visual and interaction acceptance remains required.
