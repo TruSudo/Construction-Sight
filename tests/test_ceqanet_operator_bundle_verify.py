@@ -1,9 +1,11 @@
 import hashlib
 import json
+import os
 from pathlib import Path
 
 import pytest
 
+import constructionsight.ceqanet_operator_bundle_verify as bundle_verify
 from constructionsight.ceqanet_operator_bundle_verify import verify_ceqanet_operator_bundle
 
 
@@ -146,3 +148,75 @@ def test_verify_bundle_rejects_parent_traversal_artifact(tmp_path: Path) -> None
     (tmp_path / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
     with pytest.raises(ValueError, match="safe basename"):
         verify_ceqanet_operator_bundle(bundle_dir=tmp_path)
+
+
+def test_verify_bundle_rejects_external_manifest_path(tmp_path: Path) -> None:
+    bundle = tmp_path / "bundle"
+    bundle.mkdir()
+    outside = tmp_path / "external-manifest.json"
+    outside.write_text(
+        json.dumps({
+            "metadata": {"schema_version": "ceqanet_operator_bundle.v1"},
+            "artifacts": [],
+        }),
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="contained"):
+        verify_ceqanet_operator_bundle(bundle_dir=bundle, manifest_path=outside)
+
+
+def test_verify_bundle_rejects_symlinked_manifest(tmp_path: Path) -> None:
+    bundle = tmp_path / "bundle"
+    bundle.mkdir()
+    outside = tmp_path / "external-manifest.json"
+    outside.write_text("{}", encoding="utf-8")
+    (bundle / "manifest.json").symlink_to(outside)
+    with pytest.raises(ValueError, match="not a symlink"):
+        verify_ceqanet_operator_bundle(bundle_dir=bundle)
+
+
+def test_verify_bundle_rejects_symlinked_artifact(tmp_path: Path) -> None:
+    bundle = tmp_path / "bundle"
+    bundle.mkdir()
+    _write_bundle_manifest(bundle)
+    outside = tmp_path / "external-evidence.txt"
+    outside.write_bytes((bundle / "operator-report.md").read_bytes())
+    (bundle / "operator-report.md").unlink()
+    (bundle / "operator-report.md").symlink_to(outside)
+    with pytest.raises(ValueError, match="not a symlink"):
+        verify_ceqanet_operator_bundle(bundle_dir=bundle)
+
+
+@pytest.mark.skipif(
+    not hasattr(os, "O_NOFOLLOW"),
+    reason="platform has no atomic final-component no-follow open",
+)
+def test_verify_bundle_rejects_artifact_swap_before_open(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    bundle = tmp_path / "bundle"
+    bundle.mkdir()
+    _write_bundle_manifest(bundle)
+    artifact_path = bundle / "operator-report.md"
+    outside = tmp_path / "external-evidence.txt"
+    outside.write_bytes(artifact_path.read_bytes())
+    original_open = os.open
+    swapped = False
+
+    def swap_then_open(
+        path: os.PathLike[str] | str,
+        flags: int,
+        *args: object,
+        **kwargs: object,
+    ) -> int:
+        nonlocal swapped
+        if Path(path) == artifact_path and not swapped:
+            swapped = True
+            artifact_path.unlink()
+            artifact_path.symlink_to(outside)
+        return original_open(path, flags, *args, **kwargs)
+
+    monkeypatch.setattr(bundle_verify.os, "open", swap_then_open)
+    with pytest.raises(OSError):
+        verify_ceqanet_operator_bundle(bundle_dir=bundle)
+    assert swapped
