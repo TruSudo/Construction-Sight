@@ -91,7 +91,10 @@ def inspect_csv_file(
 
     try:
         request = parse_ceqanet_csv_export_url(source_url)
-        content = csv_path.read_bytes()
+        with csv_path.open("rb") as csv_file:
+            content = csv_file.read(10_000_001)
+        if len(content) > 10_000_000:
+            raise ValueError("CEQAnet CSV file exceeds the 10000000-byte limit")
         inspection = inspect_ceqanet_csv_bytes(
             request,
             content,
