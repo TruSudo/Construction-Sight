@@ -452,7 +452,10 @@ def test_source_registry_apply_target_failure_does_not_publish_success_audit(
     retry = runner.invoke(app, args)
     assert retry.exit_code == 0, str(retry.exception)
     assert "Recovered exact pending source registry transaction." in retry.stdout
-    assert json.loads(updated_path.read_text(encoding="utf-8"))[0]["verification_status"] == "partial"
+    assert (
+        json.loads(updated_path.read_text(encoding="utf-8"))[0]["verification_status"]
+        == "partial"
+    )
     assert json.loads(audit_path.read_text(encoding="utf-8"))["applied_count"] == 1
     assert not list(tmp_path.glob(".source-registry-*.pending.json"))
     repeated = runner.invoke(app, args)
@@ -504,7 +507,10 @@ def test_source_registry_apply_audit_failure_does_not_claim_success(
     )
 
     assert result.exit_code != 0
-    assert json.loads(updated_path.read_text(encoding="utf-8"))[0]["verification_status"] == "partial"
+    assert (
+        json.loads(updated_path.read_text(encoding="utf-8"))[0]["verification_status"]
+        == "partial"
+    )
     assert not audit_path.exists()
     assert "Registry target committed, but success audit publication failed" in result.stderr
     assert "do not reapply until the target and audit are reconciled" in result.stderr
@@ -592,7 +598,10 @@ def test_in_place_apply_replays_prepared_backup_and_committed_target(
         assert not backup.exists()
     else:
         assert backup.read_bytes() == before
-        assert json.loads(registry.read_text(encoding="utf-8"))[0]["verification_status"] == "partial"
+        assert (
+            json.loads(registry.read_text(encoding="utf-8"))[0]["verification_status"]
+            == "partial"
+        )
     assert len(list(tmp_path.glob(".source-registry-*.pending.json"))) == 1
 
     monkeypatch.setattr(cli, "_atomic_write_text", original_write)
