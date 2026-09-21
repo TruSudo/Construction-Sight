@@ -29,6 +29,8 @@ from constructionsight.intake_models import (
     UnmappedEvidenceFragment,
 )
 
+_MAX_INTAKE_BYTES = 16 * 1024 * 1024
+
 _TEXT_EXTRACTABLE_FORMATS = {
     DigitalFormatFamily.PLAIN_TEXT,
     DigitalFormatFamily.HTML,
@@ -111,6 +113,9 @@ class IntakeInspectionInput:
 def inspect_lawful_input(payload: IntakeInspectionInput) -> UniversalIntakeRecord:
     """Inspect one lawful input and return a source-neutral intake record."""
 
+    if len(payload.content) > _MAX_INTAKE_BYTES:
+        raise ValueError("intake content exceeds bounded inspection byte limit")
+
     sha256 = hashlib.sha256(payload.content).hexdigest()
     evidence_id = f"evidence:{sha256[:16]}"
     evidence = IntakeEvidenceRef(
@@ -177,9 +182,14 @@ def inspect_lawful_file(
 ) -> UniversalIntakeRecord:
     """Inspect one local lawful file as universal intake evidence."""
 
+    with path.open("rb") as source_file:
+        content = source_file.read(_MAX_INTAKE_BYTES + 1)
+    if len(content) > _MAX_INTAKE_BYTES:
+        raise ValueError("intake file exceeds bounded inspection byte limit")
+
     return inspect_lawful_input(
         IntakeInspectionInput(
-            content=path.read_bytes(),
+            content=content,
             source_name=source_name or path.name,
             original_filename=path.name,
             source_family=source_family,
