@@ -67,6 +67,25 @@ def test_quality_bootstrap_uses_reviewed_source_without_project_install() -> Non
     ) in workflow
 
 
+def test_dependency_install_doctrine_matches_source_only_ci() -> None:
+    """Ensure recorded install policy cannot misstate the guarded CI execution boundary."""
+
+    contract = Path("governance/dependency_contract.toml").read_text(encoding="utf-8")
+    adr = Path("docs/adr/ADR-0002-dependency-governance.md").read_text(
+        encoding="utf-8"
+    )
+    workflow = _workflow()
+    assert "the candidate project is not installed or built" in contract
+    assert "source is executed using the reviewed PYTHONPATH binding" in contract
+    assert "installed-project shadowing rejected" in contract
+    assert "The untrusted candidate project is **not installed or built**" in adr
+    assert "does not certify the installability or execution" in adr
+    assert "PYTHONPATH: ${{ github.workspace }}/src" in workflow
+    assert workflow.count("python -m pip install") == 1
+    assert "-e ." not in workflow
+    assert "--editable" not in workflow
+
+
 def test_digest_refresh_cannot_authorize_project_install(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
