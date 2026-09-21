@@ -9,11 +9,16 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
 
 from constructionsight.ceqanet_operator_report import build_ceqanet_operator_report
+
+_MAX_BUNDLE_ARTIFACT_BYTES = 16 * 1024 * 1024
+_MAX_BUNDLE_MANIFEST_BYTES = 1024 * 1024
 
 
 @dataclass(frozen=True)
@@ -72,6 +77,8 @@ def build_ceqanet_operator_bundle(
 ) -> CeqanetOperatorBundle:
     """Write a deterministic CEQAnet operator bundle to disk."""
 
+    if output_dir.is_symlink():
+        raise ValueError("CEQAnet bundle output must not be a symlinked directory")
     output_dir.mkdir(parents=True, exist_ok=True)
     report = build_ceqanet_operator_report(operator_package).to_dict()
     persistence_preview = _object_field(operator_package, "persistence_preview")
@@ -152,8 +159,33 @@ def _write_json_artifact(
 def _write_text_artifact(path: Path, text: str, *, artifact_type: str) -> CeqanetBundleArtifact:
     """Write text and return artifact metadata."""
 
-    path.write_text(text, encoding="utf-8")
-    data = path.read_bytes()
+    data = text.encode("utf-8")
+    limit = (
+        _MAX_BUNDLE_MANIFEST_BYTES
+        if path.name == "manifest.json"
+        else _MAX_BUNDLE_ARTIFACT_BYTES
+    )
+    if len(data) > limit:
+        raise ValueError("CEQAnet bundle artifact exceeds the byte limit")
+
+    temporary_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="wb",
+            dir=path.parent,
+            prefix=".ceqanet-bundle-",
+            suffix=".tmp",
+            delete=False,
+        ) as temporary_file:
+            temporary_path = Path(temporary_file.name)
+            temporary_file.write(data)
+            temporary_file.flush()
+            os.fsync(temporary_file.fileno())
+        os.replace(temporary_path, path)
+        temporary_path = None
+    finally:
+        if temporary_path is not None:
+            temporary_path.unlink(missing_ok=True)
     return CeqanetBundleArtifact(
         filename=path.name,
         artifact_type=artifact_type,
