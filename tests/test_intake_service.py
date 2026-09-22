@@ -3,6 +3,8 @@ import zipfile
 from io import BytesIO
 from pathlib import Path
 
+import pytest
+
 from constructionsight.intake_models import DigitalFormatFamily, MaterialFactKind
 from constructionsight.intake_service import (
     IntakeInspectionInput,
@@ -145,3 +147,20 @@ def test_normalize_fact_value_is_deterministic() -> None:
 
     assert normalized_address == "A B"
     assert normalized_apn == "12345678"
+
+
+def test_inspect_lawful_file_rejects_oversized_input_before_full_read(
+    tmp_path: Path,
+) -> None:
+    oversized = tmp_path / "oversized-local-evidence.bin"
+    with oversized.open("wb") as stream:
+        stream.truncate(16 * 1024 * 1024 + 1)
+
+    with pytest.raises(ValueError, match="intake file exceeds bounded"):
+        inspect_lawful_file(oversized)
+
+
+def test_inspect_lawful_input_rejects_oversized_in_memory_payload() -> None:
+    oversized = b"x" * (16 * 1024 * 1024 + 1)
+    with pytest.raises(ValueError, match="intake content exceeds bounded"):
+        inspect_lawful_input(IntakeInspectionInput(content=oversized, source_name="test"))

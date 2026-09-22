@@ -1,0 +1,205 @@
+{
+  "purpose": "Exact first-batch CI logs plus second-batch remediation diagnostics; not Native Maximum Assurance",
+  "prior_exact_candidates": {
+    "hardening": {
+      "commit": "008a1a29cf3dccbff2ecf3113c50777607fa33fb",
+      "run_id": 35589904486
+    },
+    "gui": {
+      "commit": "e0055d010a548477a9dd98809651f303e47e8411",
+      "run_id": 35589907069
+    }
+  },
+  "files": [
+    {
+      "source_filename": "ci-106301698186.raw.json",
+      "raw_sha256": "f50057643acfe1e0fd0687da7a6b3cc73f49dd4fea13c5ec4b59b6194bf40d97",
+      "raw_bytes": 133885,
+      "path": "ci-106301698186.raw.json",
+      "sha256": "1c8617d42bcea0460c61607bb7f670df46c0cee0e75e2bd5bf26f6935c727407",
+      "bytes": 138961
+    },
+    {
+      "source_filename": "ci-106301698658.raw.json",
+      "raw_sha256": "8b373131fc07352c24686cab67328dbf07373e6033a6e7258891ccebb87d5a0a",
+      "raw_bytes": 134176,
+      "path": "ci-106301698658.raw.json",
+      "sha256": "b90359bef7edfd6a89e2841eecd5dee0f91ff02a1c12d17a49abe1044f5b51de",
+      "bytes": 139256
+    },
+    {
+      "source_filename": "ci-106301706342.raw.json",
+      "raw_sha256": "8b4697a6adadd24d49c24ebddb7f92a8003195e658eb6239ff1d9ac30220435f",
+      "raw_bytes": 134204,
+      "path": "ci-106301706342.raw.json",
+      "sha256": "eb53bcef4bd15022580eabbe3955ab77bf70e2d7c04f5769991fe320d8dc0691",
+      "bytes": 139283
+    },
+    {
+      "source_filename": "ci-106301706712.raw.json",
+      "raw_sha256": "c49a01e6b45f2408cd503a71324bc14f4538daf0a5f83cbf56561aa94d393cd5",
+      "raw_bytes": 134489,
+      "path": "ci-106301706712.raw.json",
+      "sha256": "f34bc0c8887f4c354797742c703a0c5b7d929bdddfc4ea5468dbd35ed4904737",
+      "bytes": 139572
+    },
+    {
+      "source_filename": "ci-106301698493.raw.json",
+      "raw_sha256": "4b0d08fff737974f89b32159e2d0ecb88eb3cff7fcdb5eac6de23ebfd3b2b68d",
+      "raw_bytes": 26950,
+      "path": "ci-106301698493.raw.json",
+      "sha256": "1012cd749699fbc36b7bd60ae0cced86bb024c2cb30a088a2d3ed0be25cec75a",
+      "bytes": 28056
+    },
+    {
+      "source_filename": "ci-106301698497.raw.json",
+      "raw_sha256": "06f722a8386573fd927f258e0a778dda72c8f1f169fa88cb12279ce849d2fe4d",
+      "raw_bytes": 26953,
+      "path": "ci-106301698497.raw.json",
+      "sha256": "95474d617883ec78180d136f0abec5e87376b085dc7aa551a97b897d8154a645",
+      "bytes": 28059
+    },
+    {
+      "source_filename": "ci-106301706599.raw.json",
+      "raw_sha256": "a6e7a25560b9fde89191a78af9b3d98f51761666d01e1de2d2a2012021492de9",
+      "raw_bytes": 26939,
+      "path": "ci-106301706599.raw.json",
+      "sha256": "7547840964914ffaa6e2f102dfe81166d862dd30e6a0ab8a7433474b83449c4c",
+      "bytes": 28045
+    },
+    {
+      "source_filename": "ci-106301706642.raw.json",
+      "raw_sha256": "318a740c4e1f30c0ea510878468c591da2f73f26c9ba1d89830c2e010e5de035",
+      "raw_bytes": 26940,
+      "path": "ci-106301706642.raw.json",
+      "sha256": "2f5fed9f79f9be2b216269be19b3989911760669f10048a871971f3adc592b80",
+      "bytes": 28046
+    },
+    {
+      "source_filename": "artifact-publication-before.txt",
+      "encoding": "JSON string containing the unmodified UTF-8 log",
+      "raw_sha256": "8212669a96426f0c99a11f5286797594eff8112090d9bba12c569a626151d30b",
+      "raw_bytes": 8716,
+      "path": "artifact-publication-before.raw.json",
+      "sha256": "655d725fadcd7bac4f5d01158f30ed8daa1356dda5e9b39acc940cc448d408f0",
+      "bytes": 8950
+    },
+    {
+      "source_filename": "checkpoint-publication-before.txt",
+      "encoding": "JSON string containing the unmodified UTF-8 log",
+      "raw_sha256": "3affbc87d626128973b60292af1966b2dd8ff2e13ae1b52a2ee23a5e5f0e8777",
+      "raw_bytes": 7143,
+      "path": "checkpoint-publication-before.raw.json",
+      "sha256": "a7fa6c5fa7eea55b9644a655db053a9bb0446bf310ad4787ad83aba1d14c1a00",
+      "bytes": 7386
+    },
+    {
+      "source_filename": "portable-proof-publication-before.txt",
+      "encoding": "JSON string containing the unmodified UTF-8 log",
+      "raw_sha256": "aa5a9bdd28f3753d9ab68d1c149f13f7922dd4a67736bb0d8b01473a08f8b582",
+      "raw_bytes": 1361,
+      "path": "portable-proof-publication-before.raw.json",
+      "sha256": "c0af8c29a39103052ee183b4ec415d3233457ed492c24495fc7ca7a7cf675484",
+      "bytes": 1394
+    },
+    {
+      "source_filename": "publication-replay-parent-before.txt",
+      "encoding": "JSON string containing the unmodified UTF-8 log",
+      "raw_sha256": "e1beb39259d6bfeabc1be129d4c3d0ff5071d0cc788adb702ffadc466896d3c8",
+      "raw_bytes": 1587,
+      "path": "publication-replay-parent-before.raw.json",
+      "sha256": "0e41fd09bc38e58fa207099ddca817833130b626e7c174b4a714a9240d9a36ed",
+      "bytes": 1634
+    },
+    {
+      "source_filename": "portable-reference-before.txt",
+      "encoding": "JSON string containing the unmodified UTF-8 log",
+      "raw_sha256": "0aaecf0a99d2e2ff565a98985a10dcca8e5174ee4ce216c266f2e923eea50c3f",
+      "raw_bytes": 5045,
+      "path": "portable-reference-before.raw.json",
+      "sha256": "3f49abee272c827056933e27fa0571fa6a69517a1f3e0b4aedfbe60482bfa993",
+      "bytes": 5240
+    },
+    {
+      "source_filename": "publication-integration-after.txt",
+      "encoding": "JSON string containing the unmodified UTF-8 log",
+      "raw_sha256": "5086b0d97bab2973aa1d32b55190eba1fc33fc443faba71cc3e4b50ca0068544",
+      "raw_bytes": 179,
+      "path": "publication-integration-after.raw.json",
+      "sha256": "49f68d3e917f995a28cb72c017778abef8319ff203688ca86755dc85e5f586c3",
+      "bytes": 185
+    },
+    {
+      "source_filename": "publication-batch-hardening.txt",
+      "encoding": "JSON string containing the unmodified UTF-8 log",
+      "raw_sha256": "753a0d8fb1b0711e04c558961e1397a5c09edbe431bdc73bf5b3d79d00ad8e40",
+      "raw_bytes": 1862,
+      "path": "publication-batch-hardening.raw.json",
+      "sha256": "556eb948f38115b4e50d6ee859fed8e1abeb62137a87ee1b1769c4f90ed02cd5",
+      "bytes": 1889
+    },
+    {
+      "source_filename": "publication-batch-gui.txt",
+      "encoding": "JSON string containing the unmodified UTF-8 log",
+      "raw_sha256": "808afaa81987357b51ee8ad88f3eb0667153e6dc9f172251ba431878a6208714",
+      "raw_bytes": 1942,
+      "path": "publication-batch-gui.raw.json",
+      "sha256": "eee9386487c8f8d866f242cc31bdaae2721495e0f032d69de8004261f9e40154",
+      "bytes": 1970
+    },
+    {
+      "source_filename": "publication-batch-hardening-ruff.txt",
+      "encoding": "JSON string containing the unmodified UTF-8 log",
+      "raw_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+      "raw_bytes": 19,
+      "path": "publication-batch-hardening-ruff.raw.json",
+      "sha256": "95dea020ee9d4c4923ddfcf78d3db6245cec77056eaf937e224fe82eb8c33de8",
+      "bytes": 23
+    },
+    {
+      "source_filename": "publication-batch-gui-ruff.txt",
+      "encoding": "JSON string containing the unmodified UTF-8 log",
+      "raw_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+      "raw_bytes": 19,
+      "path": "publication-batch-gui-ruff.raw.json",
+      "sha256": "95dea020ee9d4c4923ddfcf78d3db6245cec77056eaf937e224fe82eb8c33de8",
+      "bytes": 23
+    },
+    {
+      "source_filename": "publication-batch-hardening-mypy.txt",
+      "encoding": "JSON string containing the unmodified UTF-8 log",
+      "raw_sha256": "4de1948e66881080941a9dfae49d5a8fda0b56e3fc9a075167083e04568f47b8",
+      "raw_bytes": 45,
+      "path": "publication-batch-hardening-mypy.raw.json",
+      "sha256": "c539d9fd9096f82c26e01da4c415bc4a6daf6b992a0b41c03e25c6fe5d5e301d",
+      "bytes": 49
+    },
+    {
+      "source_filename": "publication-batch-gui-mypy.txt",
+      "encoding": "JSON string containing the unmodified UTF-8 log",
+      "raw_sha256": "083258566927605a5f849446bbb79ece08ae8d5e040de98fe0b394f575afb117",
+      "raw_bytes": 45,
+      "path": "publication-batch-gui-mypy.raw.json",
+      "sha256": "e80da3ad079ff11d4093de9400761c6b36c071ed8f8ff06d2fe7c95bc89e59c3",
+      "bytes": 49
+    },
+    {
+      "source_filename": "publication-targeted-mutations.json",
+      "path": "publication-targeted-mutations.json",
+      "sha256": "5398e16452cb1be76dc2d5c25452131f9fab96e42279d3c32fb46d2c6749561d",
+      "bytes": 15089
+    },
+    {
+      "source_filename": "008a1a29-preflight.json",
+      "path": "008a1a29-preflight.json",
+      "sha256": "fdbe992e2591b53b69162a35f125266a76329b0205947441711ed54d547d8510",
+      "bytes": 168
+    },
+    {
+      "source_filename": "e0055d01-preflight.json",
+      "path": "e0055d01-preflight.json",
+      "sha256": "fdbe992e2591b53b69162a35f125266a76329b0205947441711ed54d547d8510",
+      "bytes": 168
+    }
+  ]
+}

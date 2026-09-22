@@ -37,7 +37,7 @@ A planned capability is not an active defect when the current supported boundary
 | Parcel/site resolution | Yes | Yes | Yes | Yes | Yes | No | Hint and parcel-backed resolution preserve confidence, ambiguity, limitations, storage, topology, and read-only inspection. |
 | Parcel source registry | Yes | Yes | Yes | Config | Yes | No | Official San Bernardino and Riverside endpoints and exact preview mappings are registered; county/state scope constants remain distinct from physical fields. |
 | Parcel source verification | Yes | Yes | Yes | Yes | Yes | No | Eight digest-bound official observations support two immutable preview profiles, field-specific assurance contexts, and explicit county coverage gaps. No full acquisition or countywide completeness is claimed. |
-| Parcel ArcGIS acquisition gates | Yes | Yes | Yes | Yes | Yes | Bounded on demand | Exact capability snapshots, retained bounded proofs, a complete-rehearsal executor, and a digest-bound official HTTP plan/adapter now exist. A self-contained portable rehearsal proof bundle embeds exact count/page bytes, receipt metadata, snapshot, plan, manifest, checkpoint/retry evidence, and limitations; independent offline verification rebuilds the plan and manifest and reparses every object-ID page. All rehearsal paths remain mocked/offline only; no live county rehearsal, profile promotion, import, recurring authority, or bulk authorization has occurred. |
+| Parcel ArcGIS acquisition gates | Yes | Yes | Yes | Yes | Yes | Bounded on demand | Exact capability snapshots, retained bounded proofs, a complete-rehearsal executor, official HTTP adapter, and portable independently verifiable proof bundle exist. An exact-plan, maximum-24-hour, single-use authorization and offline preflight now guard eligibility for one future live rehearsal while fixing credential, bypass, import, promotion, recurring, and production-bulk authority false. A ConstructionSight-owned durable SQLite consumption ledger exists; its complete effect-boundary integration remains under CS-SR-061 review. No completed live county rehearsal is claimed. |
 | Parcel schema preview | Yes | Yes | Yes | No | Yes | No | Pre-import schema gate exists. |
 | Parcel row preview | Yes | Yes | Yes | No | Yes | No | Pre-record row gate exists. |
 | Parcel core record | Yes | Yes | Yes | Yes | Yes | No | Raw geometry, hashes, CRS labels, compatible summaries, persistence, and read-only inspection exist. |
@@ -52,7 +52,7 @@ A planned capability is not an active defect when the current supported boundary
 | Lead review package | Yes | Yes | Yes | Yes | Yes | No | Full review payloads, reasons, limitations, and scores remain visible. |
 | Lead dedupe | Yes | Yes | Yes | Yes | Yes | No | Fingerprints and duplicate results are persisted and visible. |
 | Lead workflow status | Yes | Yes | Yes | Yes | Yes | No | Matrix-valid, exact-state transitions preserve append-only unique events. |
-| Result ledger/share authority | Yes | Yes | Yes | Yes | Yes | No | Immutable revisions, serialized exact-state authority, and append-only operator events govern result entry and correction. |
+| Result ledger/share authority | Yes | Yes | Yes | Yes | Yes | No | Immutable revisions, serialized exact-state authority heads, and append-only operator events govern result entry and correction. |
 | Repository certification | Yes | Yes | Yes | N/A | Yes | N/A | Every tracked file is scanned; CI enforces dependency integrity, strict lint/type/test gates, warning failure, clean worktree, and diff hygiene. |
 | Outreach preview | No | No | No | No | No | No | Planned product capability; no external action is implied. |
 | UI/operator app | No | No | No | No | No | No | Planned product capability. |
@@ -61,11 +61,15 @@ A planned capability is not an active defect when the current supported boundary
 
 A certified tree must contain zero active defects. Any new runtime, data-quality, documentation, persistence, provenance, compatibility, security, or CI defect is recorded here immediately and blocks feature work until resolved.
 
-Current active entries: **none recorded**. The executable certification gate remains authoritative for the exact Git tree.
+Current active entries: **75 (`CS-SR-001` through `CS-SR-075`)**. The original 74 entries were reconciled against hardening commit `1a8f1b1e38e9f7ab11adcf629400fb4123c8ddf8` and the stacked GUI commit `a3392b8c1b7f44eb0c3c536b737bdae1420c646f`: 41 have correction evidence, 25 remain partially corrected, and 8 remain unresolved. None are closed. CS-SR-075 records the nine shared lint violations, one additional GUI import-order violation, and forbidden test skip confirmed in the exact-head CI logs. The complete per-entry implementation, test, mutation and remaining-requirement map is in [the September 21 reconciliation](../audits/fix_only_reconciliation_2026-09-21.md).
+
+The first September 21 correction batch pins every component when reading CEQAnet bundle evidence and ArcGIS proof files, fails closed without atomic no-follow support, binds ZIP verification to immutable bounded input bytes, and bounds ZIP directory allocation before parsing. A second batch applies pinned private staging, bounded create-only publication and verified durable replay to retained ArcGIS responses, checkpoints and portable proofs. A third batch applies the bounded no-follow reader to operator JSON/HTML, CSV and universal intake, and binds HTML detection and extraction to one byte snapshot. A fourth batch routes 33 CLI output modules and CEQAnet bundle/ZIP publication through pinned, bounded atomic publication, preserves create-only conflicts, and uses one anonymous ZIP staging handle. Coupled registry/bundle commits, success-record ordering, deterministic recovery and full path/platform qualification remain open work under CS-SR-054/055/058/061. Unsupported filesystem platforms reject these evidence reads; successful native Windows operation has not been established.
+
+Closure requires all stated defect criteria, five authentic context-isolated Native Maximum Assurance passes under ADR-0009, and the exact-candidate certification matrix. Owner acceptance remains a separate owner action. No release, completed live collection, or merge readiness is claimed. Both development PRs remain drafts; the operational GUI is maintained on stacked PR #119 and must receive and test each applicable hardening correction.
 
 ## Resolved defect ledger
 
-Every entry below is resolved within the currently supported scope. Monitoring language is preventive and does not represent an open defect.
+These are historical remediation records. The active CS-SR ledger above governs current defects and supersedes any broader completion claim in a historical entry; these records do not establish current release assurance.
 
 | ID | Severity | Layer | Resolved defect | Resolution |
 |---|---|---|---|---|
@@ -106,7 +110,7 @@ These entries are future product scope, not defects in the current supported imp
 | CS-PLAN-005 | Workflow reopen or override | Final states remain immutable. | Introduce explicit authority, reason, stale-state, and append-only event doctrine. |
 | CS-PLAN-006 | Outreach preview and sending | No external sending behavior exists. | Implement preview, approval, dedupe, compliance, evidence, and delivery audit boundaries first. |
 | CS-PLAN-007 | GUI/operator application | CLI and persisted services remain the supported operator surface. | Build only after underlying workflows and source maturity justify UI exposure. |
-| CS-PLAN-008 | Countywide parcel evidence ingestion | Exact metadata, retained bounded proofs, exact-ID persistence receipts, a complete-rehearsal executor, an official HTTP plan/adapter, and a self-contained independently verifiable rehearsal proof bundle exist. Both sources remain `bounded_query_verified`; all complete-rehearsal verification remains deterministic and offline. | Separately authorize and execute one live complete rehearsal per county through the governed adapter; save and independently verify the resulting portable proof bundle; then review profile promotion and recurring observation orchestration as distinct later phases. |
+| CS-PLAN-008 | Countywide parcel evidence ingestion | Exact metadata, retained bounded proofs, an exact-response executor, official HTTP adapter, portable proof bundle, and an exact-plan expiring single-use authorization/preflight contract exist. Both sources remain `bounded_query_verified`; no completed live county rehearsal is claimed and consumption integration remains under CS-SR-061 review. | Complete and verify authorization-consumption integration; separately issue and consume one authorization per county; execute, save, and independently verify each portable rehearsal bundle; then review profile promotion and recurring observation orchestration as distinct later phases. |
 
 ## Forward cleanup rule
 
