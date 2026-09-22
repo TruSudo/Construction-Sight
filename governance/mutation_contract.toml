@@ -1161,8 +1161,8 @@ risk = "A persisted near-match result with a changed or missing workflow fingerp
 [[cases]]
 id = "CS-MUT-LEAD-DUPLICATE-RESULT-IMMUTABLE-001"
 path = "src/constructionsight/storage/lead_workflow_store.py"
-search = "    if existing.payload_json != payload_json:\n        raise ValueError(\"persisted lead duplicate results are immutable\")"
-replacement = "    if False:\n        raise ValueError(\"persisted lead duplicate results are immutable\")"
+search = "    if not _duplicate_result_replay_matches(existing, result, payload_json):"
+replacement = "    if False:"
 tests = ["tests/test_lead_workflow_storage.py::test_store_duplicate_result_rejects_unreviewed_status_overwrite"]
 expected_output = "test_store_duplicate_result_rejects_unreviewed_status_overwrite"
 risk = "An unresolved persisted duplicate result could be overwritten as UNIQUE without an authenticated review decision."
@@ -1176,3 +1176,13 @@ replacement = "        if False:"
 tests = ["tests/test_lead_workflow_storage.py::test_store_workflow_rejects_actionable_state_with_persisted_duplicate"]
 expected_output = "test_store_workflow_rejects_actionable_state_with_persisted_duplicate"
 risk = "A direct workflow persistence operation could insert READY despite an existing unresolved duplicate result, bypassing the authorized transition API."
+
+
+[[cases]]
+id = "CS-MUT-LEAD-DUPLICATE-RESCAN-001"
+path = "src/constructionsight/storage/lead_workflow_store.py"
+search = '    candidate.pop("created_at", None)'
+replacement = '    pass'
+tests = ["tests/test_lead_workflow_storage.py::test_store_duplicate_result_recheck_preserves_first_verdict_snapshot"]
+expected_output = "test_store_duplicate_result_recheck_preserves_first_verdict_snapshot"
+risk = "A routine duplicate rescan could reject the same immutable verdict merely because the newly built fingerprint has a later creation timestamp."

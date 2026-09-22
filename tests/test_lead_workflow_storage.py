@@ -1,4 +1,5 @@
 import json
+from datetime import timedelta
 
 import pytest
 from sqlalchemy import inspect, select
@@ -254,6 +255,31 @@ def test_store_duplicate_result_rejects_unreviewed_status_overwrite() -> None:
         row = session.execute(select(LeadDuplicateResultRecord)).scalar_one()
         assert row.status == LeadDuplicateStatus.REVIEW_NEEDED.value
         assert row.payload_json == json.dumps(unresolved.to_dict(), sort_keys=True)
+
+
+def test_store_duplicate_result_recheck_preserves_first_verdict_snapshot() -> None:
+    _engine, factory = _session_factory()
+    first = _duplicate_result()
+    rescanned = first.model_copy(
+        update={
+            "candidate": first.candidate.model_copy(
+                update={
+                    "created_at": first.candidate.created_at + timedelta(seconds=1),
+                    "lead_score": 81,
+                }
+            )
+        }
+    )
+    with managed_session(factory) as session:
+        first_row = store_lead_duplicate_result(session, first)
+        session.flush()
+        replayed_row = store_lead_duplicate_result(session, rescanned)
+        session.flush()
+        assert replayed_row is first_row
+        persisted = session.execute(select(LeadDuplicateResultRecord)).scalars().all()
+        assert len(persisted) == 1
+        assert persisted[0].payload_json == json.dumps(first.to_dict(), sort_keys=True)
+        assert persisted[0].status == LeadDuplicateStatus.REVIEW_NEEDED.value
 
 
 def test_store_workflow_rejects_actionable_state_with_persisted_duplicate() -> None:
