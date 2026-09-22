@@ -59,11 +59,11 @@ def test_map_has_an_independent_workspace_and_collapsible_legend() -> None:
 def test_static_element_references_are_present() -> None:
     html = (ASSETS / "operator_ui.html").read_text(encoding="utf-8")
     script = (ASSETS / "operator_ui.js").read_text(encoding="utf-8")
-    ids = set(re.findall(r'\\bid="([^"]+)"', html))
+    ids = set(re.findall(r'\bid="([^"]+)"', html))
     dynamic_ids = {
         "inspect-parcels", "preview-candidate", "parcel-candidates",
         "fit-parcel-candidates", "candidate-preview", "entity-related",
         "fit-related", "map-selection-close", "view-map-record",
     }
-    references = set(re.findall(r'\\$\\("([^"]+)"\\)', script))
+    references = set(re.findall(r'\$\("([^"]+)"\)', script))
     assert references <= ids | dynamic_ids
