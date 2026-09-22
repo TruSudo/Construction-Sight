@@ -1029,3 +1029,19 @@ replacement = "            pass"
 tests = ["tests/test_source_registry_update_plan.py::test_registry_writers_sharing_audit_are_serialized_across_processes"]
 expected_output = "test_registry_writers_sharing_audit_are_serialized_across_processes"
 risk = "Different registry targets could race to overwrite a shared success audit."
+
+
+[[cases]]
+id = "CS-MUT-ARCHIVE-MANIFEST-SNAPSHOT-001"
+path = "src/constructionsight/ceqanet_operator_archive.py"
+search = '''    expected_content["manifest.json"] = (
+        verified_bundle.manifest_byte_count,
+        verified_bundle.manifest_sha256,
+    )'''
+replacement = '''    expected_content["manifest.json"] = (
+        len(manifest_path.read_bytes()),
+        hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
+    )'''
+tests = ["tests/test_ceqanet_operator_archive.py::test_archive_rejects_manifest_inventory_swap_during_verification"]
+expected_output = "test_archive_rejects_manifest_inventory_swap_during_verification"
+risk = "A restored manifest from before verification could be archived alongside a different verified artifact inventory, creating a success-claimed ZIP missing manifest-listed files."
