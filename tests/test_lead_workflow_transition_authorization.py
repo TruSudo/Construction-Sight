@@ -5,9 +5,8 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from threading import Barrier
 
-from sqlalchemy import select
-
 import pytest
+from sqlalchemy import select
 
 import constructionsight.operator_services.lead_workflow_transition_service as transition_service
 from constructionsight.authorization_decision import AuthorizationDeniedError
@@ -35,11 +34,11 @@ from constructionsight.storage.database import (
 from constructionsight.storage.effect_consumption_store import (
     EffectOutcomeUnavailableError,
 )
+from constructionsight.storage.lead_workflow_orm import LeadWorkflowRecordRow
 from constructionsight.storage.lead_workflow_store import (
     store_lead_duplicate_result,
     store_lead_workflow_record,
 )
-from constructionsight.storage.lead_workflow_orm import LeadWorkflowRecordRow
 
 
 def _workflow() -> LeadWorkflowRecord:
