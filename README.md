@@ -2,9 +2,13 @@
 
 ConstructionSight is a lawful public-record construction intelligence platform focused initially on San Bernardino County and Riverside County, California.
 
-The system is designed to discover, preserve, normalize, resolve, score, review, and track public construction signals across CEQA, permits, contractors, parcels, planning decisions, and related government records. The current implementation is strongest in governed backend architecture, evidence preservation, domain models, persistence, operator CLI surfaces, parcel/site reasoning, workflow controls, and repository certification. Production recurring source collection, outreach, and the graphical operator application remain planned work unless explicitly stated otherwise.
+The system is designed to discover, preserve, normalize, resolve, score, review, and track public construction signals across CEQA, permits, contractors, parcels, planning decisions, and related government records. The current implementation is strongest in governed backend architecture, evidence preservation, domain models, persistence, operator CLI surfaces, parcel/site reasoning, workflow controls, and repository certification. A local read-only graphical operator application and a separate, explicitly confirmed local source-review staging CLI are implemented on draft integration PR #119; neither is merged to main or production-certified. The GUI is not browser-verified, the staging CLI retains unapproved normalized-source snapshots only, and no commercial opportunity, outreach or bid is authorized. Production recurring source collection and commercial outreach remain planned integration work. See docs/architecture/operator_gui.md for exact limitations.
 
 ## Operating boundary
+
+For the isolated local runtime trial on the GUI branch, run
+`bash scripts/test-drive.sh`. See [the test-drive instructions](docs/private_test_drive.md)
+for the two retained public-source records, launch requirements and limits.
 
 ConstructionSight uses lawful public access methods only.
 
@@ -263,14 +267,21 @@ The backend can represent and govern opportunities, leads, workflow state, resul
 - autonomously enrich all decision-maker contacts;
 - send outreach;
 - create or send bids; or
-- provide the planned graphical operator application.
+- provide the complete planned graphical operator application.
 
-No external communication behavior is implied by the existing models or CLI.
+A local read-only operator GUI now reads persisted CEQA/permit records and lead
+workflows. It provides database-backed search, source evidence, named parties,
+and an offline geographic coordinate map. Source records are not qualified leads;
+no automatic acquisition, outreach, or bid action is enabled. See
+[local operator application](docs/architecture/operator_gui.md) for the launch
+command, data requirements, precise boundaries, and remaining integration.
+
+No external communication behavior is implied by the existing models, CLI, or GUI.
 
 ## Known limitations
 
-- Draft PR #117 remains uncertified and unmerged. The current active ledger contains 74 records (`CS-SR-001` through `CS-SR-074`), and the Native Maximum Assurance review artifact is absent. Exact-head September 20 CI discovered two active AnyIO 4.9.0 advisories, so both supported locks now pin reviewed AnyIO 4.14.2 universal wheel identity; subsequent isolated vulnerability checks passed with zero active reported PyPI release advisories at that collection time. No defect closure, full certification, promotion, or production readiness is implied.
-- Historical review context: the August 13 adversarial review invalidated earlier candidates and exposed `CS-SR-037` and `CS-SR-038`. The original 38-defect count describes that historical checkpoint only, not the present ledger. The earlier `CS-SR-037/038` corrective work does not close subsequent defects; the current 74-record ledger and fresh exact-tree Native Maximum Assurance govern present readiness.
+- Draft PR #117 remains uncertified. Its current hardening work includes active defects `CS-SR-001` through `CS-SR-074` (74 records) and a separately missing Native Maximum Assurance report. The September 18 historical hardening CI checkpoint reported 1,473 passing pytest tests per supported interpreter and 74 certification findings at its THEN head (73 active defects and the missing assurance report). September 20 exact-head integration verification added 42 test passes per runtime at the earlier GUI head; the historical results do not certify subsequent source-tree changes. The AnyIO advisory remediation is committed to both draft branches and was separately checked by fresh isolated vulnerability audits; no active defect is closed or production release authorized.
+- The earlier CS-SR-037/038 fixes and subsequent hardening candidates remain part of the historical review trail. CS-SR-073 is an active P0 pre-gate build-execution defect; no active defect may be closed merely because an implementation or routine quality gate passes. Fresh exact-tree Native Maximum Assurance and authenticated owner acceptance remain outstanding.
 - CEQAnet is `partial`, not `verified`; automated HTML collection received HTTP 403.
 - The original UTF-8 inspection failure remains preserved; the derived Windows-1252 replay passes against the same retained body hash without a second request.
 - Two retained point-in-time CSV successes, including one governed sequence observation, still do not establish recurring availability, completeness, or broader source coverage.
@@ -281,11 +292,11 @@ No external communication behavior is implied by the existing models or CLI.
 - Verified usable source coverage remains zero.
 - Most adapter families remain contract-level.
 - Parcel longitudinal selection evaluates only supplied observations; it does not acquire countywide data, establish source coverage or freshness, prove legal title, or resolve same-time content conflicts.
-- Verified county parcel profiles and ArcGIS capability snapshots establish official endpoints, exact schemas, and advertised query primitives—not executed page proof or complete countywide acquisition. San Bernardino still lacks address and land-use coverage; Riverside still lacks owner, jurisdiction, zoning, and planning land-use coverage; both remain `metadata_only` and lack full authority, two-lineage corroboration, and proven bulk completeness.
+- Official county parcel-source profiles, capability observations, retained bounded four-response proofs, and rehearsal artifacts do not establish complete countywide ingestion or production bulk authority. San Bernardino lacks address/land-use coverage in its retained profile; Riverside lacks owner/jurisdiction/zoning/planning land-use coverage. Both still need independently validated completeness, applicable lawful authority, and separately governed promotion before production acquisition.
 - Optional preview archives and nested child tables remain unimplemented.
 - Generic upstream corrections remain blocked pending record-family-specific doctrine.
 - Lead workflow reopen or override behavior is not implemented.
-- Outreach and GUI capabilities are not implemented.
+- Outreach and the full operator application remain incomplete; the local GUI is a read-only development view of retained records.
 - Geometry results are not survey-grade legal proof.
 
 ## Development doctrine
