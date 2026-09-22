@@ -6,8 +6,11 @@ let query = "", kind = "all", county = "";
 let entityRequestId = 0, candidateRequestId = 0, parcelRequestId = 0, relatedIds = new Set();
 let parcelOverlay = [];
 let lastLoadedScope = null;
+let rememberedRecordSelection = null, rememberedRecordOffset = 0;
+const preference = key => { try { return localStorage.getItem("constructionsight:" + key); } catch (_) { return null; } };
+const savePreference = (key, value) => { try { localStorage.setItem("constructionsight:" + key, value); } catch (_) { /* Storage may be unavailable. */ } };
 const LIMIT = 50;
-const rows = () => snapshot ? (mode === "records" ? snapshot.projects : snapshot.leads) : [];
+const rows = () => snapshot ? (mode === "workflow" ? snapshot.leads : snapshot.projects) : [];
 const rowId = row => row.record_kind ? `${row.record_kind}:${row.record_id}` : row.workflow_id;
 function bullets(items) { return items?.length ? "<ul>" + items.map(x => "<li>" + esc(x) + "</li>").join("") + "</ul>" : '<p class="empty">None recorded.</p>'; }
 const milestoneNames = {
@@ -41,22 +44,22 @@ function selectRecord(id) {
   selected = id;
   const row = rows().find(x => rowId(x) === id);
   if (!row) { $("detail").innerHTML = '<p class="empty">Select a record to inspect its evidence.</p>'; return; }
-  if (mode === "records") {
+  if (mode !== "workflow") {
     $("detail").innerHTML = '<div class="eyebrow">' + esc(row.record_kind) + ' · source record</div><h2>' + esc(row.title) + '</h2><p>' + esc(row.description || "No description recorded.") + '</p><div class="detail-grid">' + datum("County", row.county) + datum("Jurisdiction / agency", row.jurisdiction) + datum("Source status / document", row.source_status) + datum("Source record number", row.source_record_number) + datum("Address", row.address) + datum("APN", row.apn) + datum("Record identity", row.record_id) + datum("Coordinates", row.point ? `${row.point.latitude.toFixed(6)}, ${row.point.longitude.toFixed(6)}` : null) + '</div><p>' + esc(row.map_reason) + '</p><h3>Parcel observations · unverified APN candidates</h3><button type="button" id="inspect-parcels">Inspect retained parcel claims</button><div id="parcel-candidates" class="parcel-candidates" aria-live="polite"></div><h3>Candidate review · no commercial authorization</h3><button type="button" id="preview-candidate">Inspect review gaps</button><div id="candidate-preview" class="candidate-preview" aria-live="polite"></div><h3>Recorded milestones · historical source claims</h3>' + milestoneHistory(row.milestones) + '<p class="entity-warning">Recorded dates do not verify site activity, construction start, or a current project phase.</p><h3>Named parties · source claims</h3>' + (row.entities.map(e => '<div class="party"><b>' + esc(e.name) + '</b> · ' + esc(e.role) + ' <button type="button" class="entity-link" data-entity-key="' + esc(e.entity_key) + '">Find shared-key source records</button>' + evidence(e.provenance) + '</div>').join("") || '<p class="empty">No named parties recorded.</p>') + '<div id="entity-related" class="entity-related" aria-live="polite"></div><h3>Record evidence</h3>' + evidence(row.provenance) + (row.point ? '<h3>Location evidence</h3>' + evidence(row.point.provenance) : '') + '<h3>Limitations</h3>' + bullets(row.limitations);
   } else {
     $("detail").innerHTML = '<div class="eyebrow">' + esc(row.status) + ' · persisted workflow</div><h2>' + esc(row.summary || row.base_candidate_id) + '</h2><div class="detail-grid">' + datum("Workflow", row.workflow_id) + datum("Exact review package", row.package_id) + datum("Candidate", row.base_candidate_id) + datum("Recorded score", row.lead_score) + '</div><h3>Evidence notes</h3>' + bullets(row.evidence_notes) + '<h3>Workflow notes</h3>' + bullets(row.notes) + '<h3>Limitations</h3>' + bullets(row.limitations) + '<h3>Recorded history</h3>' + bullets(row.events.map(e => `${e.created_at}: ${e.current_status} — ${e.reason}`));
   }
   const parcelButton = $("inspect-parcels");
-  if (parcelButton && mode === "records") parcelButton.onclick = inspectParcels;
+  if (parcelButton && mode !== "workflow") parcelButton.onclick = inspectParcels;
   const previewButton = $("preview-candidate");
-  if (previewButton && mode === "records") previewButton.onclick = inspectCandidate;
+  if (previewButton && mode !== "workflow") previewButton.onclick = inspectCandidate;
   $("detail").querySelectorAll("button[data-entity-key]").forEach(button => {
     button.onclick = () => inspectEntity(button.dataset.entityKey);
   });
-  renderList(); renderMap();
+  renderList(); renderMap(); renderMapSelection();
 }
 function renderList() {
-  $("records").innerHTML = rows().map(row => '<button class="record ' + (rowId(row) === selected ? 'selected' : '') + '" data-id="' + esc(rowId(row)) + '"><span class="tag">' + esc(mode === "records" ? row.record_kind : row.status) + '</span><strong>' + esc(row.title || row.summary || row.base_candidate_id) + '</strong><small>' + esc(mode === "records" ? (row.county || "County unknown") + ' · ' + (row.jurisdiction || "Agency unknown") : 'Score ' + row.lead_score + ' · ' + row.workflow_id) + '</small><small>' + esc(mode === "records" ? (row.point ? "Source coordinates available" : "Location not mapped") + (row.coverage === "outside_target_counties" ? " · Outside target counties" : "") : row.package_id) + '</small></button>').join("") || '<p class="empty">No stored records match this view. Use the existing intake commands to populate this database.</p>';
+  $("records").innerHTML = rows().map(row => '<button class="record ' + (rowId(row) === selected ? 'selected' : '') + '" data-id="' + esc(rowId(row)) + '"><span class="tag">' + esc(mode !== "workflow" ? row.record_kind : row.status) + '</span><strong>' + esc(row.title || row.summary || row.base_candidate_id) + '</strong><small>' + esc(mode !== "workflow" ? (row.county || "County unknown") + ' · ' + (row.jurisdiction || "Agency unknown") : 'Score ' + row.lead_score + ' · ' + row.workflow_id) + '</small><small>' + esc(mode !== "workflow" ? (row.point ? "Source coordinates available" : "Location not mapped") + (row.coverage === "outside_target_counties" ? " · Outside target counties" : "") : row.package_id) + '</small></button>').join("") || '<p class="empty">No stored records match this view. Use the existing intake commands to populate this database.</p>';
   $("records").querySelectorAll("button[data-id]").forEach(el => el.onclick = () => selectRecord(el.dataset.id));
 }
 function resetPulse(message = "—") {
@@ -82,7 +85,7 @@ async function load() {
   entityRequestId++; candidateRequestId++; parcelRequestId++;
   relatedIds = new Set(); parcelOverlay = [];
   const id = ++requestId;
-  const scope = JSON.stringify([mode, kind, query, county]);
+  const scope = JSON.stringify([mode === "workflow" ? "workflow" : "records", kind, query, county]);
   const shouldFit = scope !== lastLoadedScope;
   controller?.abort(); controller = new AbortController(); snapshot = null; footprint = null; timeline = null; selected = null;
   $("error").hidden = true; $("status").textContent = "Reading stored data…";
@@ -91,10 +94,10 @@ async function load() {
   $("timeline-list").innerHTML = '<p class="empty">Loading retained historical milestones…</p>'; $("timeline-count").textContent = "Reading…";
   $("previous").disabled = true; $("next").disabled = true; $("visible").textContent = ""; $("page-count").textContent = ""; renderMap();
   const parameters = new URLSearchParams({limit: LIMIT, offset});
-  if (mode === "records") { parameters.set("kind", kind); parameters.set("q", query); parameters.set("county", county); }
+  if (mode !== "workflow") { parameters.set("kind", kind); parameters.set("q", query); parameters.set("county", county); }
   try {
-    const requests = [fetch((mode === "records" ? "/api/snapshot?" : "/api/workflows?") + parameters, {signal: controller.signal})];
-    if (mode === "records") {
+    const requests = [fetch((mode !== "workflow" ? "/api/snapshot?" : "/api/workflows?") + parameters, {signal: controller.signal})];
+    if (mode !== "workflow") {
       const mapParameters = new URLSearchParams({kind, q: query, county});
       requests.push(fetch("/api/footprint?" + mapParameters, {signal: controller.signal}));
       requests.push(fetch("/api/timeline?" + mapParameters, {signal: controller.signal}));
@@ -109,13 +112,13 @@ async function load() {
     snapshot = data;
     footprint = payloads[1] || null;
     timeline = payloads[2] || null;
-    lastLoadedScope = scope;
-    if (mode === "records" && footprint) renderPulse(data, footprint);
-    if (mode === "records") renderTimeline();
+    if (mode !== "workflow") lastLoadedScope = scope;
+    if (mode !== "workflow" && footprint) renderPulse(data, footprint);
+    if (mode !== "workflow") renderTimeline();
     $("visible").textContent = data.total + " matching";
     $("page-count").textContent = data.returned ? `${offset + 1}–${offset + data.returned} of ${data.total}` : `0 of ${data.total}`;
     $("previous").disabled = offset === 0; $("next").disabled = !data.has_more;
-    $("status").textContent = mode === "records" ? `${data.returned} source records on this page · ${data.mapped_on_page} mapped · ${data.returned - data.mapped_on_page} unmapped. Records and historical status do not establish qualified leads or current construction activity.` : `${data.returned} workflows on this page. Status and scores are retained values; external actions remain unavailable.`;
+    $("status").textContent = mode !== "workflow" ? `${data.returned} source records on this page · ${data.mapped_on_page} mapped · ${data.returned - data.mapped_on_page} unmapped. Records and historical status do not establish qualified leads or current construction activity.` : `${data.returned} workflows on this page. Status and scores are retained values; external actions remain unavailable.`;
     renderList();
     if (pendingSelection) {
       const target = pendingSelection;
@@ -183,7 +186,7 @@ function renderTimeline() {
   });
 }
 async function inspectParcels() {
-  if (mode !== "records" || !selected) return;
+  if (mode === "workflow" || !selected) return;
   const row = rows().find(item => rowId(item) === selected);
   const target = $("parcel-candidates");
   if (!row || !target) return;
@@ -197,7 +200,7 @@ async function inspectParcels() {
     });
     const response = await fetch("/api/parcel-candidates?" + parameters);
     const data = await response.json();
-    if (token !== parcelRequestId || selected !== sourceSelection || mode !== "records") return;
+    if (token !== parcelRequestId || selected !== sourceSelection || mode === "workflow") return;
     if (!response.ok) throw Error(data.error || "Parcel observations are unavailable.");
     if (data.source_kind !== row.record_kind ||
         data.source_record_id !== row.record_id ||
@@ -239,14 +242,14 @@ async function inspectParcels() {
     if (fitButton) fitButton.onclick = () => fitMap(false, true);
     renderMap();
   } catch (error) {
-    if (token !== parcelRequestId || selected !== sourceSelection || mode !== "records") return;
+    if (token !== parcelRequestId || selected !== sourceSelection || mode === "workflow") return;
     parcelOverlay = [];
     target.textContent = error.message || "Unable to inspect retained parcel claims.";
     renderMap();
   }
 }
 async function inspectCandidate() {
-  if (mode !== "records" || !selected) return;
+  if (mode === "workflow" || !selected) return;
   const row = rows().find(item => rowId(item) === selected);
   const target = $("candidate-preview");
   if (!row || !target) return;
@@ -258,7 +261,7 @@ async function inspectCandidate() {
     });
     const response = await fetch("/api/candidate-preview?" + parameters);
     const result = await response.json();
-    if (token !== candidateRequestId || selected !== sourceSelection || mode !== "records") return;
+    if (token !== candidateRequestId || selected !== sourceSelection || mode === "workflow") return;
     if (!response.ok) throw Error(result.error || "Candidate review preview unavailable.");
     if (rowId(result.source_record) !== sourceSelection) throw Error("Source identity mismatch.");
     if (JSON.stringify(result.source_record) !== JSON.stringify(row)) {
@@ -277,12 +280,12 @@ async function inspectCandidate() {
       '<h3>Required verification and review</h3><ul>' + checks +
       '</ul><h3>Candidate limitations</h3>' + bullets(result.limitations);
   } catch (error) {
-    if (token !== candidateRequestId || selected !== sourceSelection || mode !== "records") return;
+    if (token !== candidateRequestId || selected !== sourceSelection || mode === "workflow") return;
     target.textContent = error.message || "Candidate review preview unavailable.";
   }
 }
 async function inspectEntity(entityKey) {
-  if (mode !== "records" || !entityKey) return;
+  if (mode === "workflow" || !entityKey) return;
   const target = $("entity-related");
   if (!target) return;
   const token = ++entityRequestId, sourceSelection = selected;
@@ -301,7 +304,7 @@ async function inspectEntity(entityKey) {
       fetch("/api/timeline?" + historyParameters)
     ]);
     const [data, history] = await Promise.all([response.json(), historyResponse.json()]);
-    if (token !== entityRequestId || selected !== sourceSelection || mode !== "records") return;
+    if (token !== entityRequestId || selected !== sourceSelection || mode === "workflow") return;
     if (!response.ok) throw Error(data.error || "Unable to inspect recorded entity co-occurrence.");
     if (!historyResponse.ok) throw Error(history.error || "Unable to inspect recorded entity history.");
     if (history.entity_key !== entityKey ||
@@ -359,31 +362,108 @@ async function inspectEntity(entityKey) {
     if (fitButton) fitButton.onclick = () => fitMap(true);
     renderMap();
   } catch (error) {
-    if (token !== entityRequestId || selected !== sourceSelection || mode !== "records") return;
+    if (token !== entityRequestId || selected !== sourceSelection || mode === "workflow") return;
     relatedIds = new Set();
     target.textContent = error.message || "Unable to inspect recorded entity co-occurrence.";
     renderMap();
   }
 }
 function switchMode(next) {
-  mode = next; offset = 0;
-  $("filters").hidden = mode !== "records"; $("map-card").hidden = mode !== "records"; $("timeline-card").hidden = mode !== "records"; $("pulse").hidden = mode !== "records";
-  $("heading").textContent = mode === "records" ? "Project records" : "Lead workflow";
-  $("list-title").textContent = mode === "records" ? "Source records" : "Persisted workflows";
-  ["records", "workflow"].forEach(v => { const active = (v === "records") === (mode === "records"); $(v + "-tab").classList.toggle("active", active); $(v + "-tab").setAttribute("aria-pressed", active); });
-  load();
+  if (!["records", "map", "workflow"].includes(next) || mode === next) return;
+  const previouslyWorkflow = mode === "workflow";
+  const nextWorkflow = next === "workflow";
+  if (!previouslyWorkflow && nextWorkflow) {
+    rememberedRecordSelection = selected;
+    rememberedRecordOffset = offset;
+  }
+  mode = next;
+  $("records-view").hidden = mode === "map";
+  $("map-view").hidden = mode !== "map";
+  $("filters").hidden = nextWorkflow;
+  $("timeline-card").hidden = nextWorkflow;
+  $("pulse").hidden = mode !== "records";
+  $("heading").textContent = mode === "records" ? "Project records" : mode === "map" ? "Map" : "Lead workflow";
+  $("heading-description").textContent = mode !== "workflow"
+    ? "Explore retained source evidence and inspect individual records."
+    : mode === "map"
+      ? "Geographic context for source-claimed locations · not verified active jobsites."
+      : "Review persisted workflows; no external actions are enabled.";
+  $("list-title").textContent = nextWorkflow ? "Persisted workflows" : "Source records";
+  for (const tab of ["records", "map", "workflow"]) {
+    const active = tab === mode;
+    $(tab + "-tab").classList.toggle("active", active);
+    $(tab + "-tab").setAttribute("aria-pressed", String(active));
+  }
+  savePreference("active-tab", mode);
+  if (previouslyWorkflow !== nextWorkflow || !snapshot) {
+    offset = nextWorkflow ? 0 : rememberedRecordOffset;
+    if (!nextWorkflow) pendingSelection = rememberedRecordSelection;
+    load();
+  } else {
+    renderList();
+    renderMap();
+    renderMapSelection();
+  }
+}
+function renderMapSelection() {
+  const target = $("map-selection");
+  if (mode !== "map" || !selected) { target.hidden = true; target.innerHTML = ""; return; }
+  const row = rows().find(item => rowId(item) === selected) ||
+    points().find(item => rowId(item) === selected);
+  if (!row) { target.hidden = true; target.innerHTML = ""; return; }
+  target.hidden = false;
+  target.innerHTML = '<button type="button" id="map-selection-close" class="map-selection-close" aria-label="Close selected location">×</button>' +
+    '<span class="section-kicker">SELECTED SOURCE LOCATION</span><h3>' + esc(row.title) + '</h3>' +
+    '<p>' + esc(row.county || "County not recorded") + ' · ' +
+    esc(row.record_kind || "Source record") + '</p>' +
+    '<p class="entity-warning">Source-claimed coordinates; current jobsite activity is unverified.</p>' +
+    '<button type="button" id="view-map-record" class="primary-button">Inspect source evidence →</button>';
+  $("map-selection-close").onclick = () => {
+    selected = null;
+    renderList();
+    renderMap();
+    renderMapSelection();
+  };
+  $("view-map-record").onclick = () => {
+    const targetId = selected;
+    const mapped = points().find(point => rowId(point) === targetId);
+    switchMode("records");
+    if (rows().some(item => rowId(item) === targetId)) selectRecord(targetId);
+    else if (mapped) {
+      pendingSelection = targetId;
+      offset = Math.floor(mapped.ordinal / LIMIT) * LIMIT;
+      load();
+    }
+  };
+}
+function setNavigationCollapsed(collapsed) {
+  $("app-shell").classList.toggle("nav-collapsed", collapsed);
+  $("nav-toggle").setAttribute("aria-expanded", String(!collapsed));
+  $("nav-toggle").setAttribute("aria-label", collapsed ? "Expand navigation" : "Collapse navigation");
+  $("nav-toggle").title = collapsed ? "Expand navigation" : "Collapse navigation";
+  savePreference("nav-collapsed", String(collapsed));
+  requestAnimationFrame(renderMap);
+}
+function setLegendCollapsed(collapsed) {
+  $("map-layout").classList.toggle("legend-collapsed", collapsed);
+  $("map-legend-panel").hidden = collapsed;
+  $("legend-open").hidden = !collapsed;
+  $("legend-open").setAttribute("aria-expanded", String(!collapsed));
+  savePreference("legend-collapsed", String(collapsed));
+  requestAnimationFrame(renderMap);
 }
 // World coordinates are normalized Web Mercator units. One scale serves both axes.
 function project(lat, lon) { return [(lon + 180) / 360, (1 - Math.asinh(Math.tan(lat * Math.PI / 180)) / Math.PI) / 2]; }
 function unproject(x, y) { return [Math.atan(Math.sinh(Math.PI * (1 - 2 * y))) * 180 / Math.PI, x * 360 - 180]; }
 let center = project(34.0, -116.8), scale = 12000;
 const svg = $("map");
-const points = () => mode === "records" && footprint ? footprint.points : [];
+const points = () => mode !== "workflow" && footprint ? footprint.points : [];
 function selectMapPoint(id) {
   const row = rows().find(item => rowId(item) === id);
-  if (row) { selectRecord(id); return; }
+  if (row) { selectRecord(id); renderMapSelection(); return; }
   const point = points().find(item => rowId(item) === id);
   if (!point) return;
+  if (mode === "map") { selected = id; renderMap(); renderMapSelection(); return; }
   pendingSelection = id;
   offset = Math.floor(point.ordinal / LIMIT) * LIMIT;
   load();
@@ -439,6 +519,8 @@ function renderMap() {
   const coverage = footprint?.truncated ? `first ${footprint.records_scanned} of ${footprint.matching_total} matching records scanned` : `${footprint?.matching_total || 0} matching records fully scanned`;
   $("map-count").textContent = `${inView} in view / ${points().length} mapped · ${coverage}` +
     (parcelOverlay.length ? ` · ${parcelOverlay.length} inspected parcel centroids` : "");
+  $("map-legend-summary").textContent = `${points().length} mapped source locations · ${inView} in view`;
+  $("map-legend-scope").textContent = coverage + ". Missing positions remain searchable in Project records.";
 }
 function zoom(factor, x = svg.clientWidth / 2, y = svg.clientHeight / 2) {
   const next = Math.max(150, Math.min(2000000, scale * factor));
@@ -460,9 +542,17 @@ svg.addEventListener("keydown", e => {
 new ResizeObserver(renderMap).observe(svg);
 $("zoom-in").onclick = () => zoom(1.5); $("zoom-out").onclick = () => zoom(1 / 1.5);
 $("fit").onclick = fitMap; $("region").onclick = () => { center = project(34.0, -116.8); scale = 12000; renderMap(); };
-$("records-tab").onclick = () => switchMode("records"); $("workflow-tab").onclick = () => switchMode("workflow");
+$("records-tab").onclick = () => switchMode("records");
+$("map-tab").onclick = () => switchMode("map");
+$("workflow-tab").onclick = () => switchMode("workflow");
+$("nav-toggle").onclick = () => setNavigationCollapsed(!$("app-shell").classList.contains("nav-collapsed"));
+$("legend-close").onclick = () => setLegendCollapsed(true);
+$("legend-open").onclick = () => setLegendCollapsed(false);
 $("filters").onsubmit = e => { e.preventDefault(); query = $("search").value.trim(); kind = $("kind").value; county = $("county").value; offset = 0; load(); };
 $("refresh").onclick = () => { lastLoadedScope = null; load(); };
 $("previous").onclick = () => { offset = Math.max(0, offset - LIMIT); load(); };
 $("next").onclick = () => { offset += LIMIT; load(); };
+setNavigationCollapsed(preference("nav-collapsed") === "true");
+setLegendCollapsed(preference("legend-collapsed") === "true");
 load();
+if (["map", "workflow"].includes(preference("active-tab"))) switchMode(preference("active-tab"));
