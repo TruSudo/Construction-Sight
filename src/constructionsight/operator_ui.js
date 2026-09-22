@@ -7,6 +7,7 @@ let entityRequestId = 0, candidateRequestId = 0, parcelRequestId = 0, relatedIds
 let parcelOverlay = [];
 let lastLoadedScope = null;
 let rememberedRecordSelection = null, rememberedRecordOffset = 0;
+let firstMapReveal = true;
 const preference = key => { try { return localStorage.getItem("constructionsight:" + key); } catch (_) { return null; } };
 const savePreference = (key, value) => { try { localStorage.setItem("constructionsight:" + key, value); } catch (_) { /* Storage may be unavailable. */ } };
 const LIMIT = 50;
@@ -403,6 +404,10 @@ function switchMode(next) {
     renderList();
     renderMap();
     renderMapSelection();
+  }
+  if (mode === "map" && firstMapReveal) {
+    firstMapReveal = false;
+    requestAnimationFrame(() => { fitMap(); renderMapSelection(); });
   }
 }
 function renderMapSelection() {
