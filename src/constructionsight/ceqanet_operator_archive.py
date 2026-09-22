@@ -104,6 +104,13 @@ def build_ceqanet_operator_archive(
             filenames=archived_files,
             expected_content=expected_content,
         )
+        # Prove that the staged ZIP itself contains exactly the expected names
+        # before replacing a previously committed archive. ZIP verification of
+        # the source directory alone cannot detect an omitted output member.
+        temporary_file.seek(0)
+        with zipfile.ZipFile(temporary_file, mode="r") as archive_file:
+            if archive_file.namelist() != archived_files:
+                raise ValueError("CEQAnet ZIP output has inconsistent member inventory")
         temporary_file.seek(0)
 
         def chunks() -> Iterator[bytes]:

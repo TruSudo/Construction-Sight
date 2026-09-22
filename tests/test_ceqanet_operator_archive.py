@@ -168,6 +168,29 @@ def test_archive_builder_rejects_duplicate_manifest_inventory_claim(
     assert archive_path.read_bytes() == prior_content
 
 
+def test_archive_writer_rejects_missing_staged_member_before_publication(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source_dir = tmp_path / "bundle"
+    _write_export_dir(source_dir)
+    archive_path = tmp_path / "existing.zip"
+    previous = b"previous committed archive must remain intact"
+    archive_path.write_bytes(previous)
+    original_writer = archive_writer._write_zip
+
+    def skip_last_member(**kwargs: object) -> None:
+        assert isinstance(kwargs["filenames"], list)
+        kwargs["filenames"] = kwargs["filenames"][:-1]
+        original_writer(**kwargs)
+
+    monkeypatch.setattr(archive_writer, "_write_zip", skip_last_member)
+    with pytest.raises(ValueError, match="inconsistent member inventory"):
+        build_ceqanet_operator_archive(
+            source_dir=source_dir, archive_path=archive_path,
+        )
+    assert archive_path.read_bytes() == previous
+
+
 def test_archive_writer_streams_source_and_output_bytes(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -1094,3 +1094,13 @@ replacement = "        or False"
 tests = ["tests/test_ceqanet_operator_archive_verify.py::test_archive_verification_rejects_inaccurate_manifest_artifact_count"]
 expected_output = "test_archive_verification_rejects_inaccurate_manifest_artifact_count"
 risk = "Archive metadata could lie about the verified artifact inventory cardinality while passing manifest verification."
+
+
+[[cases]]
+id = "CS-MUT-ARCHIVE-STAGED-INVENTORY-001"
+path = "src/constructionsight/ceqanet_operator_archive.py"
+search = "            if archive_file.namelist() != archived_files:"
+replacement = "            if False:"
+tests = ["tests/test_ceqanet_operator_archive.py::test_archive_writer_rejects_missing_staged_member_before_publication"]
+expected_output = "test_archive_writer_rejects_missing_staged_member_before_publication"
+risk = "An archive builder could claim successful publication of a staged ZIP missing an expected verified artifact, or overwrite an existing archive without a complete member inventory."
