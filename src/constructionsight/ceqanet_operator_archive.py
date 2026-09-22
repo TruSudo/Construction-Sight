@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import tempfile
 import zipfile
+import zlib
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
@@ -104,13 +105,12 @@ def build_ceqanet_operator_archive(
             filenames=archived_files,
             expected_content=expected_content,
         )
-        # Prove that the staged ZIP itself contains exactly the expected names
-        # before replacing a previously committed archive. ZIP verification of
-        # the source directory alone cannot detect an omitted output member.
-        temporary_file.seek(0)
-        with zipfile.ZipFile(temporary_file, mode="r") as archive_file:
-            if archive_file.namelist() != archived_files:
-                raise ValueError("CEQAnet ZIP output has inconsistent member inventory")
+        # Verify the exact staged ZIP bytes before replacing a committed archive.
+        # The source directory and the ZIP are separate objects: validating only
+        # the source or just the ZIP's names cannot prove published member bytes.
+        _verify_staged_zip(
+            temporary_file, filenames=archived_files, expected_content=expected_content,
+        )
         temporary_file.seek(0)
 
         def chunks() -> Iterator[bytes]:
@@ -251,6 +251,49 @@ def _write_zip(
                     archive_entry.write(chunk)
             if (written, digest.hexdigest()) != expected:
                 raise ValueError("CEQAnet archive source changed since verification")
+
+
+def _verify_staged_zip(
+    staged: BinaryIO, *, filenames: list[str],
+    expected_content: dict[str, tuple[int, str]],
+) -> None:
+    """Bound and check every decompressed member of the anonymous staged ZIP."""
+
+    if staged.seek(0, 2) > _MAX_ARCHIVE_FILE_BYTES:
+        raise ValueError("CEQAnet staged ZIP exceeds the archive byte limit")
+    staged.seek(0)
+    remaining = _MAX_ARCHIVE_TOTAL_BYTES
+    try:
+        with zipfile.ZipFile(staged, mode="r") as archive:
+            infos = archive.infolist()
+            if [info.filename for info in infos] != filenames:
+                raise ValueError("CEQAnet ZIP output has inconsistent member inventory")
+            for info in infos:
+                expected = expected_content.get(info.filename)
+                if expected is None:
+                    raise ValueError("CEQAnet staged ZIP member has no verified identity")
+                if info.file_size > _MAX_ARCHIVE_MEMBER_BYTES:
+                    raise ValueError("CEQAnet staged ZIP member exceeds the byte limit")
+                written = 0
+                digest = hashlib.sha256()
+                with archive.open(info, mode="r") as member:
+                    while True:
+                        chunk = member.read(
+                            min(_ARCHIVE_CHUNK_BYTES,
+                                _MAX_ARCHIVE_MEMBER_BYTES - written + 1,
+                                remaining + 1),
+                        )
+                        if not chunk:
+                            break
+                        written += len(chunk)
+                        remaining -= len(chunk)
+                        if written > _MAX_ARCHIVE_MEMBER_BYTES or remaining < 0:
+                            raise ValueError("CEQAnet staged ZIP exceeds a decompressed byte limit")
+                        digest.update(chunk)
+                if (written, digest.hexdigest()) != expected:
+                    raise ValueError("CEQAnet staged ZIP member disagrees with verified bytes")
+    except (zipfile.BadZipFile, zlib.error, EOFError) as exc:
+        raise ValueError("CEQAnet staged ZIP is corrupt") from exc
 
 
 def _metadata_object(payload: dict[str, object], *, field_name: str) -> dict[str, object]:

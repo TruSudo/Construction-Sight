@@ -191,6 +191,37 @@ def test_archive_writer_rejects_missing_staged_member_before_publication(
     assert archive_path.read_bytes() == previous
 
 
+def test_archive_writer_rejects_corrupted_staged_zip_before_publication(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source_dir = tmp_path / "bundle"
+    _write_export_dir(source_dir)
+    archive_path = tmp_path / "existing.zip"
+    previous_bytes = b"previous published archive must survive staged ZIP corruption"
+    archive_path.write_bytes(previous_bytes)
+    real_write_zip = archive_writer._write_zip
+
+    def corrupt_zip(**kwargs):
+        real_write_zip(**kwargs)
+        staged = kwargs["archive_path"]
+        with zipfile.ZipFile(staged, mode="r") as archive:
+            info = archive.infolist()[0]
+            offset = info.header_offset + 30 + len(info.filename.encode()) + len(info.extra)
+        staged.seek(offset)
+        old_byte = staged.read(1)
+        assert old_byte
+        staged.seek(offset)
+        staged.write(bytes((old_byte[0] ^ 0xFF,)))
+        staged.flush()
+
+    monkeypatch.setattr(archive_writer, "_write_zip", corrupt_zip)
+    with pytest.raises(ValueError, match="staged ZIP"):
+        build_ceqanet_operator_archive(
+            source_dir=source_dir, archive_path=archive_path,
+        )
+    assert archive_path.read_bytes() == previous_bytes
+
+
 def test_archive_writer_streams_source_and_output_bytes(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
