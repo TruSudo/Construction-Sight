@@ -152,6 +152,8 @@ def _manifest_filenames(verification: dict[str, object]) -> list[str]:
         if isinstance(filename, str) and filename and status == "verified":
             filenames.append(filename)
 
+    if len(filenames) != len(set(filenames)):
+        raise ValueError("Bundle verification contains duplicate artifact filenames")
     if "manifest.json" not in filenames:
         filenames.append("manifest.json")
     return sorted(set(filenames))

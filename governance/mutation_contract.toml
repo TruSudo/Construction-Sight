@@ -1055,3 +1055,13 @@ replacement = "                pass"
 tests = ["tests/test_ceqanet_operator_archive_verify.py::test_archive_verification_rejects_unlisted_extra_zip_member", "tests/test_ceqanet_operator_archive_verify.py::test_archive_verification_rejects_duplicate_manifest_inventory_claim"]
 expected_output = "test_archive_verification_rejects_"
 risk = "An archive verifier could report success for undeclared ZIP payloads or duplicate manifest identity claims despite apparently valid file hashes."
+
+
+[[cases]]
+id = "CS-MUT-ARCHIVE-BUILDER-DUPLICATE-001"
+path = "src/constructionsight/ceqanet_operator_archive.py"
+search = "    if len(filenames) != len(set(filenames)):"
+replacement = "    if False:"
+tests = ["tests/test_ceqanet_operator_archive.py::test_archive_builder_rejects_duplicate_manifest_inventory_claim"]
+expected_output = "test_archive_builder_rejects_duplicate_manifest_inventory_claim"
+risk = "Deduplicating a verified manifest inventory could falsely claim archive success despite repeated artifact identities and produce a ZIP that fails independent verification."

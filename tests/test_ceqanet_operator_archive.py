@@ -144,6 +144,30 @@ def test_build_ceqanet_operator_archive_can_allow_unverified_bundle(tmp_path: Pa
     assert archive_path.exists()
 
 
+@pytest.mark.parametrize("require_verified", [True, False])
+def test_archive_builder_rejects_duplicate_manifest_inventory_claim(
+    tmp_path: Path, require_verified: bool,
+) -> None:
+    export_dir = tmp_path / "export"
+    _write_export_dir(export_dir)
+    manifest_path = export_dir / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["artifacts"].append(dict(manifest["artifacts"][0]))
+    manifest["metadata"]["artifact_count"] = 6
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    archive_path = tmp_path / "existing.zip"
+    prior_content = b"existing archive must survive ambiguous source inventory"
+    archive_path.write_bytes(prior_content)
+
+    with pytest.raises(ValueError, match="duplicate artifact filenames"):
+        build_ceqanet_operator_archive(
+            source_dir=export_dir,
+            archive_path=archive_path,
+            require_verified=require_verified,
+        )
+    assert archive_path.read_bytes() == prior_content
+
+
 def test_archive_writer_streams_source_and_output_bytes(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
