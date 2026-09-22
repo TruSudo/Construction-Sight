@@ -135,6 +135,7 @@ def verify_ceqanet_operator_bundle(
 
     verified_artifacts: list[CeqanetBundleArtifactVerification] = []
     malformed_artifacts: list[dict[str, object]] = []
+    seen_filenames: set[str] = set()
 
     for index, entry in enumerate(artifact_entries):
         if not isinstance(entry, dict):
@@ -151,6 +152,11 @@ def verify_ceqanet_operator_bundle(
                 {"index": index, "reason": "artifact missing filename, artifact_type, or sha256"}
             )
             continue
+        if artifact.filename in seen_filenames:
+            malformed_artifacts.append(
+                {"index": index, "reason": "duplicate artifact filename"}
+            )
+        seen_filenames.add(artifact.filename)
         verified_artifacts.append(artifact)
 
     return CeqanetBundleVerification(

@@ -80,12 +80,13 @@ def build_ceqanet_operator_archive(
     verification = verified_bundle.to_dict()
     verification_metadata = _metadata_object(verification, field_name="verification")
     verification_passed = verification_metadata.get("passed") is True
+    # An ambiguous inventory must be rejected even when the caller explicitly
+    # allows an unverified source; do not publish a ZIP that fails its verifier.
+    archived_files = _manifest_filenames(verification)
     if require_verified and not verification_passed:
         raise ValueError(
             "Refusing archive creation because operator bundle verification did not pass."
         )
-
-    archived_files = _manifest_filenames(verification)
     expected_content = _verified_content(verification)
     expected_content["manifest.json"] = (
         verified_bundle.manifest_byte_count,

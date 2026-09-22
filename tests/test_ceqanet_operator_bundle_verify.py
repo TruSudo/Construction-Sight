@@ -57,6 +57,25 @@ def test_verify_ceqanet_operator_bundle_passes_for_matching_manifest(tmp_path: P
     assert payload["artifacts"][0]["status"] == "verified"
 
 
+def test_verify_ceqanet_operator_bundle_rejects_duplicate_manifest_claim(
+    tmp_path: Path,
+) -> None:
+    _write_bundle_manifest(tmp_path)
+    manifest_path = tmp_path / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["artifacts"].append(dict(manifest["artifacts"][0]))
+    manifest["metadata"]["artifact_count"] = 3
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    verification = verify_ceqanet_operator_bundle(bundle_dir=tmp_path).to_dict()
+
+    assert verification["metadata"]["passed"] is False
+    assert verification["metadata"]["verified_count"] == 3
+    assert verification["malformed_artifacts"] == [
+        {"index": 2, "reason": "duplicate artifact filename"},
+    ]
+
+
 def test_verify_ceqanet_operator_bundle_tracks_missing_and_mismatch(tmp_path: Path) -> None:
     _write_bundle_manifest(tmp_path)
     (tmp_path / "operator-report.md").write_text("changed\n", encoding="utf-8")
