@@ -536,11 +536,38 @@ risk = "Dependency registry identity could drift from the direct project declara
 [[cases]]
 id = "CS-MUT-DEDUPE-ORDER-001"
 path = "src/constructionsight/lead_dedupe_service.py"
-search = "    basis = \"|\".join([candidate.fingerprint_key, \",\".join(sorted(matched_keys))])"
-replacement = "    basis = \"|\".join([candidate.fingerprint_key, \",\".join(matched_keys)])"
+search = '"matched_fingerprint_keys": sorted(set(matched_keys))'
+replacement = '"matched_fingerprint_keys": matched_keys'
 tests = ["tests/test_adversarial_semantic_witnesses.py::test_duplicate_result_identity_is_order_independent"]
 expected_output = "test_duplicate_result_identity_is_order_independent"
 risk = "Duplicate-result identity could depend on input enumeration order rather than the semantic match set."
+
+[[cases]]
+id = "CS-MUT-DEDUPE-CANDIDATE-001"
+path = "src/constructionsight/lead_dedupe_service.py"
+search = 'exclude={"created_at", "lead_score"}'
+replacement = 'exclude={"created_at", "lead_score", "base_candidate_id"}'
+tests = ["tests/test_lead_workflow_storage.py::test_duplicate_checks_for_distinct_candidates_can_both_be_persisted"]
+expected_output = "test_duplicate_checks_for_distinct_candidates_can_both_be_persisted"
+risk = "Distinct candidates sharing a match fingerprint could collide and abort a normal persistence transaction."
+
+[[cases]]
+id = "CS-MUT-DEDUPE-RATIONALE-001"
+path = "src/constructionsight/lead_dedupe_service.py"
+search = '"reasons": sorted(set(reasons))'
+replacement = '"reasons": []'
+tests = ["tests/test_lead_dedupe_service.py::test_duplicate_result_identity_binds_changed_decision_rationale"]
+expected_output = "test_duplicate_result_identity_binds_changed_decision_rationale"
+risk = "A new duplicate decision rationale could reuse an immutable result identity and fail during rescan persistence."
+
+[[cases]]
+id = "CS-MUT-INIT-DEFAULT-DIRECTORY-001"
+path = "src/constructionsight/cli.py"
+search = "        DEFAULT_DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)"
+replacement = "        pass"
+tests = ["tests/test_cli_init_db.py::test_init_db_creates_default_directory_on_first_run"]
+expected_output = "test_init_db_creates_default_directory_on_first_run"
+risk = "First-run initialization outside a checkout could fail because the default data directory does not exist."
 
 [[cases]]
 id = "CS-MUT-AUTH-EXTRA-001"

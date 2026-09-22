@@ -10,6 +10,7 @@ from constructionsight.lead_dedupe_models import (
     LeadDuplicateStatus,
     LeadFingerprint,
 )
+from constructionsight.lead_dedupe_service import build_lead_fingerprint, check_lead_duplicate
 from constructionsight.lead_review_models import (
     LeadReviewItem,
     LeadReviewPackage,
@@ -280,6 +281,22 @@ def test_store_duplicate_result_recheck_preserves_first_verdict_snapshot() -> No
         assert len(persisted) == 1
         assert persisted[0].payload_json == json.dumps(first.to_dict(), sort_keys=True)
         assert persisted[0].status == LeadDuplicateStatus.REVIEW_NEEDED.value
+
+
+def test_duplicate_checks_for_distinct_candidates_can_both_be_persisted() -> None:
+    _engine, factory = _session_factory()
+    first = build_lead_fingerprint(package=_package(), site_key="site:shared")
+    second = first.model_copy(update={"base_candidate_id": "candidate:second"})
+    results = [check_lead_duplicate(candidate, []) for candidate in (first, second)]
+    with managed_session(factory) as session:
+        for result in results:
+            store_lead_duplicate_result(session, result)
+    with managed_session(factory) as session:
+        rows = session.scalars(select(LeadDuplicateResultRecord)).all()
+        assert len(rows) == 2
+        assert {row.base_candidate_id for row in rows} == {
+            first.base_candidate_id, second.base_candidate_id,
+        }
 
 
 def test_store_workflow_rejects_actionable_state_with_persisted_duplicate() -> None:
