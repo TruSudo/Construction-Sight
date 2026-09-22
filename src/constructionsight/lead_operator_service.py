@@ -318,12 +318,11 @@ def require_persisted_duplicate_review_clear(
     """Gate actionability against both workflow limits and durable dedupe results."""
 
     require_duplicate_review_clear(limitations=record.limitations, next_status=next_status)
-    if next_status not in ACTIONABLE_LEAD_WORKFLOW_STATUSES or record.fingerprint_key is None:
+    if next_status not in ACTIONABLE_LEAD_WORKFLOW_STATUSES:
         return
     unresolved_result = session.execute(
         select(LeadDuplicateResultRecord.result_id).where(
             LeadDuplicateResultRecord.base_candidate_id == record.base_candidate_id,
-            LeadDuplicateResultRecord.candidate_fingerprint_key == record.fingerprint_key,
             LeadDuplicateResultRecord.status.in_(
                 (LeadDuplicateStatus.DUPLICATE.value, LeadDuplicateStatus.REVIEW_NEEDED.value)
             ),

@@ -1146,3 +1146,33 @@ replacement = "    if False:"
 tests = ["tests/test_lead_workflow_transition_authorization.py::test_unresolved_persisted_duplicate_blocks_actionable_transition"]
 expected_output = "test_unresolved_persisted_duplicate_blocks_actionable_transition"
 risk = "An unresolved durable duplicate result could be ignored when a workflow no longer carries its descriptive limitation."
+
+
+[[cases]]
+id = "CS-MUT-LEAD-DUPLICATE-CANDIDATE-SCOPE-001"
+path = "src/constructionsight/lead_operator_service.py"
+search = "            LeadDuplicateResultRecord.base_candidate_id == record.base_candidate_id,\n            LeadDuplicateResultRecord.status.in_("
+replacement = "            LeadDuplicateResultRecord.base_candidate_id == record.base_candidate_id,\n            LeadDuplicateResultRecord.candidate_fingerprint_key == record.fingerprint_key,\n            LeadDuplicateResultRecord.status.in_("
+tests = ["tests/test_lead_workflow_transition_authorization.py::test_unresolved_persisted_duplicate_blocks_actionable_transition"]
+expected_output = "test_unresolved_persisted_duplicate_blocks_actionable_transition"
+risk = "A persisted near-match result with a changed or missing workflow fingerprint could bypass the pre-authorized actionability block."
+
+
+[[cases]]
+id = "CS-MUT-LEAD-DUPLICATE-RESULT-IMMUTABLE-001"
+path = "src/constructionsight/storage/lead_workflow_store.py"
+search = "    if existing.payload_json != payload_json:\n        raise ValueError(\"persisted lead duplicate results are immutable\")"
+replacement = "    if False:\n        raise ValueError(\"persisted lead duplicate results are immutable\")"
+tests = ["tests/test_lead_workflow_storage.py::test_store_duplicate_result_rejects_unreviewed_status_overwrite"]
+expected_output = "test_store_duplicate_result_rejects_unreviewed_status_overwrite"
+risk = "An unresolved persisted duplicate result could be overwritten as UNIQUE without an authenticated review decision."
+
+
+[[cases]]
+id = "CS-MUT-LEAD-DUPLICATE-STORAGE-GATE-001"
+path = "src/constructionsight/storage/lead_workflow_store.py"
+search = "        if unresolved_result is not None:"
+replacement = "        if False:"
+tests = ["tests/test_lead_workflow_storage.py::test_store_workflow_rejects_actionable_state_with_persisted_duplicate"]
+expected_output = "test_store_workflow_rejects_actionable_state_with_persisted_duplicate"
+risk = "A direct workflow persistence operation could insert READY despite an existing unresolved duplicate result, bypassing the authorized transition API."

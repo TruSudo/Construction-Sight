@@ -1,5 +1,6 @@
 import json
 
+import pytest
 from sqlalchemy import inspect, select
 
 from constructionsight.domain_types import confidence_band
@@ -237,6 +238,41 @@ def test_store_lead_duplicate_result_roundtrip() -> None:
         assert row.matched_count == 1
         payload = json.loads(row.payload_json)
         assert payload["limitations"] == ["review prior lead history"]
+
+
+def test_store_duplicate_result_rejects_unreviewed_status_overwrite() -> None:
+    _engine, factory = _session_factory()
+    unresolved = _duplicate_result()
+    rewritten = unresolved.model_copy(
+        update={"status": LeadDuplicateStatus.UNIQUE, "matched_fingerprint_keys": []},
+    )
+    with managed_session(factory) as session:
+        store_lead_duplicate_result(session, unresolved)
+        session.flush()
+        with pytest.raises(ValueError, match="duplicate results are immutable"):
+            store_lead_duplicate_result(session, rewritten)
+        row = session.execute(select(LeadDuplicateResultRecord)).scalar_one()
+        assert row.status == LeadDuplicateStatus.REVIEW_NEEDED.value
+        assert row.payload_json == json.dumps(unresolved.to_dict(), sort_keys=True)
+
+
+def test_store_workflow_rejects_actionable_state_with_persisted_duplicate() -> None:
+    _engine, factory = _session_factory()
+    with managed_session(factory) as session:
+        store_lead_duplicate_result(session, _duplicate_result())
+        with pytest.raises(ValueError, match="unresolved duplicate review"):
+            store_lead_workflow_record(session, _workflow())
+        assert session.execute(select(LeadWorkflowRecordRow)).scalar_one_or_none() is None
+
+
+def test_store_workflow_rejects_duplicate_from_same_candidate_without_fingerprint() -> None:
+    _engine, factory = _session_factory()
+    with managed_session(factory) as session:
+        store_lead_duplicate_result(session, _duplicate_result())
+        workflow = _workflow().model_copy(update={"fingerprint_key": None})
+        with pytest.raises(ValueError, match="unresolved duplicate review"):
+            store_lead_workflow_record(session, workflow)
+        assert session.execute(select(LeadWorkflowRecordRow)).scalar_one_or_none() is None
 
 
 def test_store_lead_workflow_event_roundtrip() -> None:

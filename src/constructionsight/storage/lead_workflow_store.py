@@ -7,9 +7,18 @@ import json
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from constructionsight.lead_dedupe_models import LeadDuplicateResult, LeadFingerprint
+from constructionsight.lead_dedupe_models import (
+    LeadDuplicateResult,
+    LeadDuplicateStatus,
+    LeadFingerprint,
+)
 from constructionsight.lead_review_models import LeadReviewPackage
-from constructionsight.lead_workflow_models import LeadWorkflowEvent, LeadWorkflowRecord
+from constructionsight.lead_workflow_models import (
+    ACTIONABLE_LEAD_WORKFLOW_STATUSES,
+    LeadWorkflowEvent,
+    LeadWorkflowRecord,
+    require_duplicate_review_clear,
+)
 from constructionsight.opportunity_enrichment_models import OpportunityEnrichmentReport
 from constructionsight.result_ledger_models import ResultLedgerRecord, ResultShareRecord
 from constructionsight.result_ledger_service import validate_result_ledger_history
@@ -159,11 +168,8 @@ def store_lead_duplicate_result(
         )
         session.add(existing)
         return existing
-    existing.status = result.status.value
-    existing.candidate_fingerprint_key = result.candidate.fingerprint_key
-    existing.base_candidate_id = result.candidate.base_candidate_id
-    existing.matched_count = len(result.matched_fingerprint_keys)
-    existing.payload_json = payload_json
+    if existing.payload_json != payload_json:
+        raise ValueError("persisted lead duplicate results are immutable")
     return existing
 
 
@@ -210,6 +216,22 @@ def store_lead_workflow_record(
     """Insert or update a lead workflow record and its events."""
 
     session.flush()
+    require_duplicate_review_clear(
+        limitations=workflow.limitations, next_status=workflow.status,
+    )
+    if workflow.status in ACTIONABLE_LEAD_WORKFLOW_STATUSES:
+        unresolved_result = session.execute(
+            select(LeadDuplicateResultRecord.result_id).where(
+                LeadDuplicateResultRecord.base_candidate_id == workflow.base_candidate_id,
+                LeadDuplicateResultRecord.status.in_(
+                    (LeadDuplicateStatus.DUPLICATE.value, LeadDuplicateStatus.REVIEW_NEEDED.value)
+                ),
+            ).limit(1)
+        ).scalar_one_or_none()
+        if unresolved_result is not None:
+            raise ValueError(
+                "unresolved duplicate review blocks actionable persisted lead workflow status"
+            )
     payload_json = _payload_json(workflow.to_dict())
     existing = session.execute(
         select(LeadWorkflowRecordRow).where(

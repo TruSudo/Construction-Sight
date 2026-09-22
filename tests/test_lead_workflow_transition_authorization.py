@@ -150,13 +150,25 @@ def test_transition_rejects_stale_state_before_mutation(
     assert executor.calls == []
 
 
-def test_unresolved_persisted_duplicate_blocks_actionable_transition() -> None:
+@pytest.mark.parametrize("duplicate_fingerprint_key", [
+    "lead-fingerprint:test", "lead-fingerprint:other",
+])
+@pytest.mark.parametrize("workflow_has_fingerprint", [True, False])
+def test_unresolved_persisted_duplicate_blocks_actionable_transition(
+    duplicate_fingerprint_key: str, workflow_has_fingerprint: bool,
+) -> None:
     factory = _factory()
     fingerprint = LeadFingerprint(
-        fingerprint_key="lead-fingerprint:test", base_candidate_id="candidate:test",
+        fingerprint_key=duplicate_fingerprint_key, base_candidate_id="candidate:test",
         site_key="site:test",
     )
     with managed_session(factory) as session:
+        if not workflow_has_fingerprint:
+            workflow = transition_service.load_persisted_lead_workflow(
+                session, "lead-workflow:test",
+            )
+            workflow.fingerprint_key = None
+            store_lead_workflow_record(session, workflow)
         store_lead_duplicate_result(
             session,
             LeadDuplicateResult(
