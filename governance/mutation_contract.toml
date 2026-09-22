@@ -915,7 +915,9 @@ risk = "CSV inspection could parse bytes obtained by following a symlinked evide
 [[cases]]
 id = "CS-MUT-TEXT-WRITER-CONTAINMENT-001"
 path = "src/constructionsight/storage/runtime_artifacts.py"
-search = "    publish_runtime_artifact(path, chunks, max_bytes=max_bytes, replace_existing=overwrite)"
+search = '''    publish_runtime_artifact(
+        path, chunks, max_bytes=max_bytes, replace_existing=overwrite, parent=parent,
+    )'''
 replacement = "    path.write_text(content, encoding=\"utf-8\")"
 tests = ["tests/test_runtime_output_writers.py::test_operator_writers_reject_unsafe_or_oversized_output"]
 expected_output = "test_operator_writers_reject_unsafe_or_oversized_output"
@@ -924,7 +926,9 @@ risk = "Operator output could bypass pinned no-follow publication."
 [[cases]]
 id = "CS-MUT-TEXT-WRITER-CEILING-001"
 path = "src/constructionsight/storage/runtime_artifacts.py"
-search = "    publish_runtime_artifact(path, chunks, max_bytes=max_bytes, replace_existing=overwrite)"
+search = '''    publish_runtime_artifact(
+        path, chunks, max_bytes=max_bytes, replace_existing=overwrite, parent=parent,
+    )'''
 replacement = "    publish_runtime_artifact(path, chunks, max_bytes=max_bytes * 1024, replace_existing=overwrite)"
 tests = ["tests/test_runtime_output_writers.py::test_text_output_ceiling_counts_utf8_bytes_before_replacement"]
 expected_output = "test_text_output_ceiling_counts_utf8_bytes_before_replacement"
@@ -933,7 +937,9 @@ risk = "A UTF-8 output could exceed its byte ceiling before replacing retained e
 [[cases]]
 id = "CS-MUT-TEXT-WRITER-NOREPLACE-001"
 path = "src/constructionsight/storage/runtime_artifacts.py"
-search = "    publish_runtime_artifact(path, chunks, max_bytes=max_bytes, replace_existing=overwrite)"
+search = '''    publish_runtime_artifact(
+        path, chunks, max_bytes=max_bytes, replace_existing=overwrite, parent=parent,
+    )'''
 replacement = "    publish_runtime_artifact(path, chunks, max_bytes=max_bytes, replace_existing=True)"
 tests = ["tests/test_runtime_output_writers.py::test_create_only_operator_output_preserves_racing_winner"]
 expected_output = "test_create_only_operator_output_preserves_racing_winner"
@@ -983,3 +989,43 @@ replacement = "            archive_path=archive_path,"
 tests = ["tests/test_ceqanet_operator_archive.py::test_archive_publication_never_writes_through_replaced_paths"]
 expected_output = "test_archive_publication_never_writes_through_replaced_paths"
 risk = "ZIP staging could write through the unverified destination before safe publication."
+
+
+[[cases]]
+id = "CS-MUT-REGISTRY-RECOVERY-PLAN-001"
+path = "src/constructionsight/source_registry_update_plan_cli.py"
+search = '''    validate_source_registry_apply_snapshot(
+        _sources_from_json(original_text), current_plan, _sources_from_json(target_text), report,
+        approved_plan_digest=str(record["approved"]),
+    )'''
+replacement = "    pass"
+tests = ["tests/test_source_registry_update_plan.py::test_recovery_revalidates_plan_contents", "tests/test_source_registry_update_plan.py::test_recovery_revalidates_prepared_result"]
+expected_output = "test_recovery_revalidates"
+risk = "Recovery could accept altered approved plans, fabricated audit outcomes, or unauthorized prepared registry changes."
+
+[[cases]]
+id = "CS-MUT-REGISTRY-RECOVERY-DURABILITY-001"
+path = "src/constructionsight/source_registry_update_plan_cli.py"
+search = "    if _digest_bytes(artifacts.read(target, durable=True)) != target_sha:"
+replacement = "    if _digest_bytes(artifacts.read(target)) != target_sha:"
+tests = ["tests/test_source_registry_update_plan.py::test_recovery_syncs_existing_target_before_success_audit"]
+expected_output = "test_recovery_syncs_existing_target_before_success_audit"
+risk = "A recovered target could expose success evidence before its durability is confirmed."
+
+[[cases]]
+id = "CS-MUT-REGISTRY-TRANSACTION-PARENT-001"
+path = "src/constructionsight/source_registry_update_plan_cli.py"
+search = "        validate_runtime_artifact_bindings(self.bindings)"
+replacement = "        pass"
+tests = ["tests/test_source_registry_update_plan.py::test_registry_apply_does_not_publish_into_replaced_parent"]
+expected_output = "test_registry_apply_does_not_publish_into_replaced_parent"
+risk = "A detached transaction could publish and delete recovery evidence before detecting parent replacement."
+
+[[cases]]
+id = "CS-MUT-REGISTRY-SHARED-OUTPUT-LOCK-001"
+path = "src/constructionsight/source_registry_update_plan_cli.py"
+search = "            fcntl.flock(fd, fcntl.LOCK_EX)"
+replacement = "            pass"
+tests = ["tests/test_source_registry_update_plan.py::test_registry_writers_sharing_audit_are_serialized_across_processes"]
+expected_output = "test_registry_writers_sharing_audit_are_serialized_across_processes"
+risk = "Different registry targets could race to overwrite a shared success audit."

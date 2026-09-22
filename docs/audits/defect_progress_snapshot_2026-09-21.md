@@ -112,3 +112,15 @@ The underlying detailed reconciliation identifies each issue's original root cau
 5. **Only after implementation gaps are eliminated:** Fresh exact-candidate tests, supported-environment CI, mutation/coverage review, five genuine isolated analytical passes, candidate reconciliation, owner acceptance and governed ledger closure. Keep PR #117 draft; no merge to main without explicit owner authorization.
 
 Do not interpret a reclassification as a suppressed finding. The authoritative defect ledger remains unchanged, with all 75 records active.
+
+
+## Focused update — 2026-09-22
+
+The aggregate 42/25/8 classification above remains a historical provisional
+assessment, not a fresh review of all 75 defects. CS-SR-058/054 remain partially
+corrected after new recovery validation, pinned participant handles, shared-output
+locking and durability checks (1,875 local passing tests; 146 mutation witnesses).
+The two Ruff regressions observed at c00df163 are corrected and locally verified;
+CS-SR-075 awaits canonical CI on the newly published candidate. The new archive
+manifest-snapshot subfinding is still open under CS-SR-058. See the execution
+record and retained raw evidence for exact verification limits. Zero formal closures.

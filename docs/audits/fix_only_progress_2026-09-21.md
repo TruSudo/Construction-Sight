@@ -159,3 +159,48 @@ batch must not be mistaken for a cross-artifact transaction fix. CS-SR-061 still
 filesystem effects coupled to owned durable authorization consumption. The remaining
 inventory, five genuine isolated assurance reviews, exact-candidate release gates and
 owner acceptance remain outstanding. Both PRs stay draft and main is unchanged.
+
+
+## Registry recovery validation and containment — 2026-09-22
+
+Starting live PR #117 head: `c00df16369b23aa801c3ee031a0c7bc35ed24f73`;
+PR #119 remains draft at `7ceac11e38f79ae315060e1798a8783d0dc96cde`.
+Actual logs from run [35669287404](https://github.com/TruSudo/Construction-Sight/actions/runs/35669287404)
+show 1,860 tests and 142/142 mutants passing on both supported runtimes, but Ruff
+failed on I001 and F841. Those failures are corrected; the audit-only retry test
+now asserts that recovery preserves the committed target's modification time.
+
+Eight retained adversarial failures demonstrated acceptance of changed plan
+contents, invented audit outcomes, unauthorized prepared target content, missing
+recovery durability synchronization, and publication into a replaced parent.
+Recovery now recomputes plan approval, validates every prepared transition and
+audit row/count against the original source, rechecks the journal before effects,
+and synchronizes matching backup/target/audit bytes before advancing or deleting
+the journal. All participants use retained directory handles. Ancestor and lock
+bindings are checked before operations; every writable artifact is locked in a
+common order, including audits shared by different targets. Diagnostics describe
+published contents without treating a failed durability operation as a proven
+commit. Publication remains recoverable with temporary partial visibility, not
+an atomic transaction across filesystems.
+
+Local warning-strict full suite: **1,875 passed**. Ruff and strict mypy passed;
+**146/146 focused mutations killed**, including four new recovery/concurrency
+witnesses. Three existing text-writer mutation search anchors were updated to
+match the added pinned-parent argument while retaining their original fault and
+test. The mutation run preceded final diagnostic wording/formatting edits; it is
+not exact-commit qualification. The clean diagnostic structural snapshot passed
+with only the 76 expected finalization blockers. Canonical CI must freshly qualify
+the published commit. [Raw diagnostic evidence](evidence/2026-09-22-registry-recovery/manifest.json)
+retains command results and starting CI log identities.
+
+CS-SR-058 and CS-SR-054 remain **partially corrected**. Registry staging orphan
+cleanup, durable consumption of filesystem effects, complete crash-boundary
+coverage and coupled CEQAnet bundle publication remain open. A further concrete
+CS-SR-058 archive reproduction produced `verification_passed=true` while the ZIP
+omitted a member listed by its archived manifest; standalone verification failed.
+The archive builder verified a different manifest snapshot. That subfinding is
+recorded in the retained reproduction and is the next correction batch.
+CS-SR-061/050/049 and the other documented dependencies remain active. CS-SR-075's
+narrow correction is locally verified and awaits the new canonical CI. No ledger
+facts or active statuses changed; 75 active, zero formally closed. No isolated
+assurance pass, owner acceptance, merge or release is claimed.

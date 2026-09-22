@@ -7,7 +7,7 @@ import os
 import secrets
 import stat
 from collections.abc import Iterable, Iterator
-from contextlib import contextmanager, suppress
+from contextlib import contextmanager, nullcontext, suppress
 from itertools import chain
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import BinaryIO
@@ -83,9 +83,17 @@ def _require_same_entry(parent: int, name: str, descriptor: int) -> None:
         raise RuntimeArtifactError("artifact path changed during handle-relative access")
 
 
+def validate_runtime_artifact_bindings(bindings: Iterable[tuple[int, str, int]]) -> None:
+    """Recheck retained ancestors before another transaction side effect."""
+
+    for binding in bindings:
+        _require_same_entry(*binding)
+
+
 @contextmanager
 def anchored_artifact_parent(
     path: Path, *, create_parents: bool = False,
+    retained_bindings: list[tuple[int, str, int]] | None = None,
 ) -> Iterator[tuple[int, str]]:
     """Pin every existing parent and reject path changes before returning success.
 
@@ -119,6 +127,8 @@ def anchored_artifact_parent(
             parent = child
         for binding in bindings:
             _require_same_entry(*binding)
+        if retained_bindings is not None:
+            retained_bindings.extend(bindings)
         try:
             yield parent, parts[-1]
         finally:
@@ -130,10 +140,15 @@ def anchored_artifact_parent(
 
 
 @contextmanager
-def open_runtime_artifact(path: Path, *, durable: bool = False) -> Iterator[BinaryIO]:
+def open_runtime_artifact(
+    path: Path, *, durable: bool = False, parent: int | None = None,
+) -> Iterator[BinaryIO]:
     """Open one regular evidence file without following any path component."""
 
-    with anchored_artifact_parent(path) as (parent, name):
+    context = (
+        anchored_artifact_parent(path) if parent is None else nullcontext((parent, path.name))
+    )
+    with context as (parent, name):
         flags = (
             os.O_RDONLY
             | os.O_NOFOLLOW
@@ -157,11 +172,13 @@ def open_runtime_artifact(path: Path, *, durable: bool = False) -> Iterator[Bina
                 os.close(descriptor)
 
 
-def read_runtime_artifact(path: Path, *, max_bytes: int) -> bytes:
+def read_runtime_artifact(
+    path: Path, *, max_bytes: int, parent: int | None = None, durable: bool = False,
+) -> bytes:
     """Return the bounded bytes from the same no-follow handle that was checked."""
 
     _require_byte_limit(max_bytes)
-    with open_runtime_artifact(path) as stream:
+    with open_runtime_artifact(path, parent=parent, durable=durable) as stream:
         content = read_bounded_artifact_stream(stream, max_bytes=max_bytes)
     return content
 
@@ -195,6 +212,7 @@ def _require_byte_limit(max_bytes: int) -> None:
 
 def publish_runtime_artifact(
     path: Path, chunks: Iterable[bytes], *, max_bytes: int, replace_existing: bool = False,
+    parent: int | None = None,
 ) -> None:
     """Durably publish one complete artifact, create-only unless replacement is explicit.
 
@@ -215,7 +233,11 @@ def publish_runtime_artifact(
     if replace_existing and not _DIRECTORY_RELATIVE_REPLACEMENT_SUPPORTED:
         raise RuntimeArtifactError("atomic directory-relative replacement is unavailable")
     _require_byte_limit(max_bytes)
-    with anchored_artifact_parent(path, create_parents=True) as (parent, name):
+    context = (
+        anchored_artifact_parent(path, create_parents=True)
+        if parent is None else nullcontext((parent, path.name))
+    )
+    with context as (parent, name):
         if replace_existing:
             _require_regular_replacement_target(parent, name)
         staging_name = f".runtime-artifact-{secrets.token_hex(16)}"
@@ -290,6 +312,7 @@ def _require_regular_replacement_target(parent: int, name: str) -> None:
 
 def write_runtime_text(
     path: Path, content: str, *, overwrite: bool = True, max_bytes: int = 16 * 1024 * 1024,
+    parent: int | None = None,
 ) -> None:
     """Write bounded UTF-8 through the same contained atomic publication protocol."""
 
@@ -297,7 +320,9 @@ def write_runtime_text(
         content[start:start + 16_384].encode("utf-8")
         for start in range(0, len(content), 16_384)
     )
-    publish_runtime_artifact(path, chunks, max_bytes=max_bytes, replace_existing=overwrite)
+    publish_runtime_artifact(
+        path, chunks, max_bytes=max_bytes, replace_existing=overwrite, parent=parent,
+    )
 
 
 def runtime_json_chunks(value: object) -> Iterator[bytes]:
