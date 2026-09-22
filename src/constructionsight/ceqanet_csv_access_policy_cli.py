@@ -28,13 +28,14 @@ from constructionsight.ceqanet_maturity_proposal_models import (
     CeqanetSourceMaturityProposalVerification,
 )
 from constructionsight.models import PublicSource
+from constructionsight.storage.runtime_artifacts import read_runtime_text, write_runtime_text
 
 app = typer.Typer(help="ConstructionSight bounded CEQAnet CSV access policies.")
 console = Console()
 
 
 def _load_json(path: Path) -> Any:
-    return json.loads(path.read_text(encoding="utf-8"))
+    return json.loads(read_runtime_text(path))
 
 
 def _load_sources(path: Path) -> list[PublicSource]:
@@ -54,10 +55,9 @@ def _parse_date(value: str, label: str) -> date:
 def _write_json(path: Path, payload: object, *, overwrite: bool) -> None:
     if path.exists() and not overwrite:
         raise ValueError(f"output already exists: {path}; pass --overwrite to replace it")
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps(payload, indent=2, sort_keys=True, default=str) + "\n",
-        encoding="utf-8",
+    write_runtime_text(
+        path,
+        json.dumps(payload, indent=2, sort_keys=True, default=str) + "\n", overwrite=overwrite,
     )
 
 
