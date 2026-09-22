@@ -321,6 +321,14 @@ def _manifest_inventory_issues(
         for filename, count in sorted(Counter(listed).items())
         if count > 1
     ]
+    metadata = manifest["metadata"]
+    if "artifact_count" in metadata and (
+        type(metadata["artifact_count"]) is not int
+        or metadata["artifact_count"] != len(_artifact_entries(manifest))
+    ):
+        issues.append(
+            {"filename": "manifest.json", "reason": "manifest artifact_count mismatch"}
+        )
     allowed = set(listed) | {"manifest.json"}
     issues.extend(
         {"filename": filename, "reason": "archive member not listed in manifest"}

@@ -1075,3 +1075,22 @@ replacement = "        if False:"
 tests = ["tests/test_ceqanet_operator_bundle_verify.py::test_verify_ceqanet_operator_bundle_rejects_duplicate_manifest_claim"]
 expected_output = "test_verify_ceqanet_operator_bundle_rejects_duplicate_manifest_claim"
 risk = "Duplicate manifest artifact identities could be counted as independently verified source evidence and create a falsely successful bundle verification."
+
+
+[[cases]]
+id = "CS-MUT-BUNDLE-INVENTORY-COUNT-001"
+path = "src/constructionsight/ceqanet_operator_bundle_verify.py"
+search = '        or metadata["artifact_count"] != len(artifact_entries)'
+replacement = "        or False"
+tests = ["tests/test_ceqanet_operator_bundle_verify.py::test_bundle_verification_rejects_inaccurate_manifest_artifact_count"]
+expected_output = "test_bundle_verification_rejects_inaccurate_manifest_artifact_count"
+risk = "Manifest metadata could lie about artifact inventory cardinality while bundle verification reports success."
+
+[[cases]]
+id = "CS-MUT-ARCHIVE-INVENTORY-COUNT-001"
+path = "src/constructionsight/ceqanet_operator_archive_verify.py"
+search = '        or metadata["artifact_count"] != len(_artifact_entries(manifest))'
+replacement = "        or False"
+tests = ["tests/test_ceqanet_operator_archive_verify.py::test_archive_verification_rejects_inaccurate_manifest_artifact_count"]
+expected_output = "test_archive_verification_rejects_inaccurate_manifest_artifact_count"
+risk = "Archive metadata could lie about the verified artifact inventory cardinality while passing manifest verification."

@@ -184,6 +184,29 @@ def test_archive_verification_rejects_duplicate_manifest_inventory_claim(
     ]
 
 
+@pytest.mark.parametrize("declared_count", [True, 99])
+def test_archive_verification_rejects_inaccurate_manifest_artifact_count(
+    tmp_path: Path, declared_count: object,
+) -> None:
+    export_dir = tmp_path / "export"
+    archive_path = tmp_path / "operator-export.zip"
+    _write_export_dir(export_dir)
+    manifest = json.loads((export_dir / "manifest.json").read_text(encoding="utf-8"))
+    manifest["metadata"]["artifact_count"] = declared_count
+    _write_archive_from_export_dir(
+        export_dir, archive_path,
+        overrides={"manifest.json": json.dumps(manifest).encode("utf-8")},
+    )
+
+    verification = verify_ceqanet_operator_archive(archive_path=archive_path).to_dict()
+
+    assert verification["metadata"]["passed"] is False
+    assert verification["metadata"]["verified_count"] == 5
+    assert verification["archive_issues"] == [
+        {"filename": "manifest.json", "reason": "manifest artifact_count mismatch"},
+    ]
+
+
 def test_verify_ceqanet_operator_archive_detects_missing_manifest(tmp_path: Path) -> None:
     archive_path = tmp_path / "operator-export.zip"
     with zipfile.ZipFile(archive_path, mode="w") as archive_file:

@@ -136,6 +136,14 @@ def verify_ceqanet_operator_bundle(
     verified_artifacts: list[CeqanetBundleArtifactVerification] = []
     malformed_artifacts: list[dict[str, object]] = []
     seen_filenames: set[str] = set()
+    metadata = manifest["metadata"]
+    if "artifact_count" in metadata and (
+        type(metadata["artifact_count"]) is not int
+        or metadata["artifact_count"] != len(artifact_entries)
+    ):
+        malformed_artifacts.append(
+            {"index": -1, "reason": "manifest artifact_count mismatch"}
+        )
 
     for index, entry in enumerate(artifact_entries):
         if not isinstance(entry, dict):
