@@ -383,7 +383,7 @@ function switchMode(next) {
   $("timeline-card").hidden = nextWorkflow;
   $("pulse").hidden = mode !== "records";
   $("heading").textContent = mode === "records" ? "Project records" : mode === "map" ? "Map" : "Lead workflow";
-  $("heading-description").textContent = mode !== "workflow"
+  $("heading-description").textContent = mode === "records"
     ? "Explore retained source evidence and inspect individual records."
     : mode === "map"
       ? "Geographic context for source-claimed locations · not verified active jobsites."
