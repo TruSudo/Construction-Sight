@@ -295,3 +295,45 @@ def test_archive_writer_rejects_symlink_swap_after_verification(
             archive_path=archive_path,
         )
     assert not archive_path.exists()
+
+
+@pytest.mark.parametrize("require_verified", [True, False])
+def test_archive_rejects_manifest_inventory_swap_during_verification(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, require_verified: bool,
+) -> None:
+    """ZIP must not pair one verified inventory with another manifest snapshot."""
+
+    source_dir = tmp_path / "bundle"
+    _write_export_dir(source_dir)
+    manifest_path = source_dir / "manifest.json"
+    original_manifest = manifest_path.read_bytes()
+    alternate_manifest = json.loads(original_manifest)
+    alternate_manifest["artifacts"] = alternate_manifest["artifacts"][:-1]
+    alternate_manifest["metadata"]["artifact_count"] = 4
+    alternate_bytes = json.dumps(alternate_manifest).encode("utf-8")
+    old_archive = b"previous committed ZIP bytes"
+    archive_path = tmp_path / "operator-export.zip"
+    archive_path.write_bytes(old_archive)
+    actual_verify = archive_writer.verify_ceqanet_operator_bundle
+
+    def verify_swapped_manifest(*, bundle_dir: Path):
+        manifest_path.write_bytes(alternate_bytes)
+        try:
+            result = actual_verify(bundle_dir=bundle_dir)
+            assert result.passed
+            assert len(result.artifacts) == 4
+            return result
+        finally:
+            manifest_path.write_bytes(original_manifest)
+
+    monkeypatch.setattr(
+        archive_writer, "verify_ceqanet_operator_bundle", verify_swapped_manifest,
+    )
+    with pytest.raises(ValueError, match="changed since verification"):
+        build_ceqanet_operator_archive(
+            source_dir=source_dir,
+            archive_path=archive_path,
+            require_verified=require_verified,
+        )
+    assert archive_path.read_bytes() == old_archive
+    assert manifest_path.read_bytes() == original_manifest

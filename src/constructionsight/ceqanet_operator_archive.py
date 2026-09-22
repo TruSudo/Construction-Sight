@@ -74,20 +74,10 @@ def build_ceqanet_operator_archive(
     root = source_dir.resolve(strict=True)
     manifest_path = source_dir / "manifest.json"
     _require_contained_bundle_file(manifest_path, root=root)
-    manifest_digest = hashlib.sha256()
-    manifest_size = 0
-    with _open_regular_bundle_file(manifest_path) as manifest_file:
-        while True:
-            chunk = manifest_file.read(
-                min(_ARCHIVE_CHUNK_BYTES, 1024 * 1024 - manifest_size + 1)
-            )
-            if not chunk:
-                break
-            manifest_size += len(chunk)
-            if manifest_size > 1024 * 1024:
-                raise ValueError("CEQAnet archive manifest exceeds the byte limit")
-            manifest_digest.update(chunk)
-    verification = verify_ceqanet_operator_bundle(bundle_dir=source_dir).to_dict()
+    # Bind ZIP inventory and manifest to the SAME verified byte snapshot.
+    # A separate pre-verification read can pair mismatched manifest inventories.
+    verified_bundle = verify_ceqanet_operator_bundle(bundle_dir=source_dir)
+    verification = verified_bundle.to_dict()
     verification_metadata = _metadata_object(verification, field_name="verification")
     verification_passed = verification_metadata.get("passed") is True
     if require_verified and not verification_passed:
@@ -98,8 +88,8 @@ def build_ceqanet_operator_archive(
     archived_files = _manifest_filenames(verification)
     expected_content = _verified_content(verification)
     expected_content["manifest.json"] = (
-        manifest_size,
-        manifest_digest.hexdigest(),
+        verified_bundle.manifest_byte_count,
+        verified_bundle.manifest_sha256,
     )
     archive_digest = hashlib.sha256()
     archive_byte_count = 0
