@@ -6,6 +6,10 @@ The system is designed to discover, preserve, normalize, resolve, score, review,
 
 ## Operating boundary
 
+For the isolated local runtime trial on the GUI branch, run
+`bash scripts/test-drive.sh`. See [the test-drive instructions](docs/private_test_drive.md)
+for the two retained public-source records, launch requirements and limits.
+
 ConstructionSight uses lawful public access methods only.
 
 It does not bypass authentication, captchas, rate limits, HTTP access controls, paywalls, robots restrictions, or terms-of-use limits. It does not disguise an automated client to defeat a source response. Credentials may be used only when lawfully supplied and permitted by the source.

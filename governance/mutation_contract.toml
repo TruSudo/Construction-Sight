@@ -536,11 +536,38 @@ risk = "Dependency registry identity could drift from the direct project declara
 [[cases]]
 id = "CS-MUT-DEDUPE-ORDER-001"
 path = "src/constructionsight/lead_dedupe_service.py"
-search = "    basis = \"|\".join([candidate.fingerprint_key, \",\".join(sorted(matched_keys))])"
-replacement = "    basis = \"|\".join([candidate.fingerprint_key, \",\".join(matched_keys)])"
+search = '"matched_fingerprint_keys": sorted(set(matched_keys))'
+replacement = '"matched_fingerprint_keys": matched_keys'
 tests = ["tests/test_adversarial_semantic_witnesses.py::test_duplicate_result_identity_is_order_independent"]
 expected_output = "test_duplicate_result_identity_is_order_independent"
 risk = "Duplicate-result identity could depend on input enumeration order rather than the semantic match set."
+
+[[cases]]
+id = "CS-MUT-DEDUPE-CANDIDATE-001"
+path = "src/constructionsight/lead_dedupe_service.py"
+search = 'exclude={"created_at", "lead_score"}'
+replacement = 'exclude={"created_at", "lead_score", "base_candidate_id"}'
+tests = ["tests/test_lead_workflow_storage.py::test_duplicate_checks_for_distinct_candidates_can_both_be_persisted"]
+expected_output = "test_duplicate_checks_for_distinct_candidates_can_both_be_persisted"
+risk = "Distinct candidates sharing a match fingerprint could collide and abort a normal persistence transaction."
+
+[[cases]]
+id = "CS-MUT-DEDUPE-RATIONALE-001"
+path = "src/constructionsight/lead_dedupe_service.py"
+search = '"reasons": sorted(set(reasons))'
+replacement = '"reasons": []'
+tests = ["tests/test_lead_dedupe_service.py::test_duplicate_result_identity_binds_changed_decision_rationale"]
+expected_output = "test_duplicate_result_identity_binds_changed_decision_rationale"
+risk = "A new duplicate decision rationale could reuse an immutable result identity and fail during rescan persistence."
+
+[[cases]]
+id = "CS-MUT-INIT-DEFAULT-DIRECTORY-001"
+path = "src/constructionsight/cli.py"
+search = "        DEFAULT_DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)"
+replacement = "        pass"
+tests = ["tests/test_cli_init_db.py::test_init_db_creates_default_directory_on_first_run"]
+expected_output = "test_init_db_creates_default_directory_on_first_run"
+risk = "First-run initialization outside a checkout could fail because the default data directory does not exist."
 
 [[cases]]
 id = "CS-MUT-AUTH-EXTRA-001"
@@ -915,7 +942,9 @@ risk = "CSV inspection could parse bytes obtained by following a symlinked evide
 [[cases]]
 id = "CS-MUT-TEXT-WRITER-CONTAINMENT-001"
 path = "src/constructionsight/storage/runtime_artifacts.py"
-search = "    publish_runtime_artifact(path, chunks, max_bytes=max_bytes, replace_existing=overwrite)"
+search = '''    publish_runtime_artifact(
+        path, chunks, max_bytes=max_bytes, replace_existing=overwrite, parent=parent,
+    )'''
 replacement = "    path.write_text(content, encoding=\"utf-8\")"
 tests = ["tests/test_runtime_output_writers.py::test_operator_writers_reject_unsafe_or_oversized_output"]
 expected_output = "test_operator_writers_reject_unsafe_or_oversized_output"
@@ -924,7 +953,9 @@ risk = "Operator output could bypass pinned no-follow publication."
 [[cases]]
 id = "CS-MUT-TEXT-WRITER-CEILING-001"
 path = "src/constructionsight/storage/runtime_artifacts.py"
-search = "    publish_runtime_artifact(path, chunks, max_bytes=max_bytes, replace_existing=overwrite)"
+search = '''    publish_runtime_artifact(
+        path, chunks, max_bytes=max_bytes, replace_existing=overwrite, parent=parent,
+    )'''
 replacement = "    publish_runtime_artifact(path, chunks, max_bytes=max_bytes * 1024, replace_existing=overwrite)"
 tests = ["tests/test_runtime_output_writers.py::test_text_output_ceiling_counts_utf8_bytes_before_replacement"]
 expected_output = "test_text_output_ceiling_counts_utf8_bytes_before_replacement"
@@ -933,7 +964,9 @@ risk = "A UTF-8 output could exceed its byte ceiling before replacing retained e
 [[cases]]
 id = "CS-MUT-TEXT-WRITER-NOREPLACE-001"
 path = "src/constructionsight/storage/runtime_artifacts.py"
-search = "    publish_runtime_artifact(path, chunks, max_bytes=max_bytes, replace_existing=overwrite)"
+search = '''    publish_runtime_artifact(
+        path, chunks, max_bytes=max_bytes, replace_existing=overwrite, parent=parent,
+    )'''
 replacement = "    publish_runtime_artifact(path, chunks, max_bytes=max_bytes, replace_existing=True)"
 tests = ["tests/test_runtime_output_writers.py::test_create_only_operator_output_preserves_racing_winner"]
 expected_output = "test_create_only_operator_output_preserves_racing_winner"
@@ -983,3 +1016,200 @@ replacement = "            archive_path=archive_path,"
 tests = ["tests/test_ceqanet_operator_archive.py::test_archive_publication_never_writes_through_replaced_paths"]
 expected_output = "test_archive_publication_never_writes_through_replaced_paths"
 risk = "ZIP staging could write through the unverified destination before safe publication."
+
+
+[[cases]]
+id = "CS-MUT-REGISTRY-RECOVERY-PLAN-001"
+path = "src/constructionsight/source_registry_update_plan_cli.py"
+search = '''    validate_source_registry_apply_snapshot(
+        _sources_from_json(original_text), current_plan, _sources_from_json(target_text), report,
+        approved_plan_digest=str(record["approved"]),
+    )'''
+replacement = "    pass"
+tests = ["tests/test_source_registry_update_plan.py::test_recovery_revalidates_plan_contents", "tests/test_source_registry_update_plan.py::test_recovery_revalidates_prepared_result"]
+expected_output = "test_recovery_revalidates"
+risk = "Recovery could accept altered approved plans, fabricated audit outcomes, or unauthorized prepared registry changes."
+
+[[cases]]
+id = "CS-MUT-REGISTRY-RECOVERY-DURABILITY-001"
+path = "src/constructionsight/source_registry_update_plan_cli.py"
+search = "    if _digest_bytes(artifacts.read(target, durable=True)) != target_sha:"
+replacement = "    if _digest_bytes(artifacts.read(target)) != target_sha:"
+tests = ["tests/test_source_registry_update_plan.py::test_recovery_syncs_existing_target_before_success_audit"]
+expected_output = "test_recovery_syncs_existing_target_before_success_audit"
+risk = "A recovered target could expose success evidence before its durability is confirmed."
+
+[[cases]]
+id = "CS-MUT-REGISTRY-TRANSACTION-PARENT-001"
+path = "src/constructionsight/source_registry_update_plan_cli.py"
+search = "        validate_runtime_artifact_bindings(self.bindings)"
+replacement = "        pass"
+tests = ["tests/test_source_registry_update_plan.py::test_registry_apply_does_not_publish_into_replaced_parent"]
+expected_output = "test_registry_apply_does_not_publish_into_replaced_parent"
+risk = "A detached transaction could publish and delete recovery evidence before detecting parent replacement."
+
+[[cases]]
+id = "CS-MUT-REGISTRY-SHARED-OUTPUT-LOCK-001"
+path = "src/constructionsight/source_registry_update_plan_cli.py"
+search = "            fcntl.flock(fd, fcntl.LOCK_EX)"
+replacement = "            pass"
+tests = ["tests/test_source_registry_update_plan.py::test_registry_writers_sharing_audit_are_serialized_across_processes"]
+expected_output = "test_registry_writers_sharing_audit_are_serialized_across_processes"
+risk = "Different registry targets could race to overwrite a shared success audit."
+
+
+[[cases]]
+id = "CS-MUT-ARCHIVE-MANIFEST-SNAPSHOT-001"
+path = "src/constructionsight/ceqanet_operator_archive.py"
+search = '''    expected_content["manifest.json"] = (
+        verified_bundle.manifest_byte_count,
+        verified_bundle.manifest_sha256,
+    )'''
+replacement = '''    expected_content["manifest.json"] = (
+        len(manifest_path.read_bytes()),
+        hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
+    )'''
+tests = ["tests/test_ceqanet_operator_archive.py::test_archive_rejects_manifest_inventory_swap_during_verification"]
+expected_output = "test_archive_rejects_manifest_inventory_swap_during_verification"
+risk = "A restored manifest from before verification could be archived alongside a different verified artifact inventory, creating a success-claimed ZIP missing manifest-listed files."
+
+
+[[cases]]
+id = "CS-MUT-ARCHIVE-INVENTORY-001"
+path = "src/constructionsight/ceqanet_operator_archive_verify.py"
+search = "                archive_issues.extend(_manifest_inventory_issues(filenames, manifest))"
+replacement = "                pass"
+tests = ["tests/test_ceqanet_operator_archive_verify.py::test_archive_verification_rejects_unlisted_extra_zip_member", "tests/test_ceqanet_operator_archive_verify.py::test_archive_verification_rejects_duplicate_manifest_inventory_claim"]
+expected_output = "test_archive_verification_rejects_"
+risk = "An archive verifier could report success for undeclared ZIP payloads or duplicate manifest identity claims despite apparently valid file hashes."
+
+
+[[cases]]
+id = "CS-MUT-ARCHIVE-BUILDER-DUPLICATE-001"
+path = "src/constructionsight/ceqanet_operator_archive.py"
+search = "    if len(filenames) != len(set(filenames)):"
+replacement = "    if False:"
+tests = ["tests/test_ceqanet_operator_archive.py::test_archive_builder_rejects_duplicate_manifest_inventory_claim"]
+expected_output = "test_archive_builder_rejects_duplicate_manifest_inventory_claim"
+risk = "Deduplicating a verified manifest inventory could falsely claim archive success despite repeated artifact identities and produce a ZIP that fails independent verification."
+
+
+[[cases]]
+id = "CS-MUT-BUNDLE-INVENTORY-DUPLICATE-001"
+path = "src/constructionsight/ceqanet_operator_bundle_verify.py"
+search = "        if artifact.filename in seen_filenames:"
+replacement = "        if False:"
+tests = ["tests/test_ceqanet_operator_bundle_verify.py::test_verify_ceqanet_operator_bundle_rejects_duplicate_manifest_claim"]
+expected_output = "test_verify_ceqanet_operator_bundle_rejects_duplicate_manifest_claim"
+risk = "Duplicate manifest artifact identities could be counted as independently verified source evidence and create a falsely successful bundle verification."
+
+
+[[cases]]
+id = "CS-MUT-BUNDLE-INVENTORY-COUNT-001"
+path = "src/constructionsight/ceqanet_operator_bundle_verify.py"
+search = '        or metadata["artifact_count"] != len(artifact_entries)'
+replacement = "        or False"
+tests = ["tests/test_ceqanet_operator_bundle_verify.py::test_bundle_verification_rejects_inaccurate_manifest_artifact_count"]
+expected_output = "test_bundle_verification_rejects_inaccurate_manifest_artifact_count"
+risk = "Manifest metadata could lie about artifact inventory cardinality while bundle verification reports success."
+
+[[cases]]
+id = "CS-MUT-ARCHIVE-INVENTORY-COUNT-001"
+path = "src/constructionsight/ceqanet_operator_archive_verify.py"
+search = '        or metadata["artifact_count"] != len(_artifact_entries(manifest))'
+replacement = "        or False"
+tests = ["tests/test_ceqanet_operator_archive_verify.py::test_archive_verification_rejects_inaccurate_manifest_artifact_count"]
+expected_output = "test_archive_verification_rejects_inaccurate_manifest_artifact_count"
+risk = "Archive metadata could lie about the verified artifact inventory cardinality while passing manifest verification."
+
+
+[[cases]]
+id = "CS-MUT-ARCHIVE-STAGED-INVENTORY-001"
+path = "src/constructionsight/ceqanet_operator_archive.py"
+search = "            if [info.filename for info in infos] != filenames:"
+replacement = "            if False:"
+tests = ["tests/test_ceqanet_operator_archive.py::test_archive_writer_rejects_missing_staged_member_before_publication"]
+expected_output = "test_archive_writer_rejects_missing_staged_member_before_publication"
+risk = "An archive builder could claim successful publication of a staged ZIP missing an expected verified artifact, or overwrite an existing archive without a complete member inventory."
+
+
+[[cases]]
+id = "CS-MUT-ARCHIVE-STAGED-BYTES-001"
+path = "src/constructionsight/ceqanet_operator_archive.py"
+search = '''        _verify_staged_zip(
+            temporary_file, filenames=archived_files, expected_content=expected_content,
+        )'''
+replacement = "        pass"
+tests = ["tests/test_ceqanet_operator_archive.py::test_archive_writer_rejects_corrupted_staged_zip_before_publication"]
+expected_output = "test_archive_writer_rejects_corrupted_staged_zip_before_publication"
+risk = "A verified source bundle could be transformed into a corrupted staged ZIP and replace an existing committed archive before the generated bytes are independently checked."
+
+
+[[cases]]
+id = "CS-MUT-LEAD-DUPLICATE-REVIEW-INITIAL-001"
+path = "src/constructionsight/lead_workflow_service.py"
+search = "        and duplicate_result.status == LeadDuplicateStatus.REVIEW_NEEDED"
+replacement = "        and False"
+tests = ["tests/test_lead_workflow_service.py::test_create_lead_workflow_reviews_near_match"]
+expected_output = "test_create_lead_workflow_reviews_near_match"
+risk = "Near-match duplicate uncertainty could create a READY workflow without successful duplicate review."
+
+
+[[cases]]
+id = "CS-MUT-LEAD-DUPLICATE-ACTIONABILITY-001"
+path = "src/constructionsight/lead_workflow_models.py"
+search = "    if next_status in ACTIONABLE_LEAD_WORKFLOW_STATUSES and ("
+replacement = "    if False and ("
+tests = ["tests/test_lead_workflow_models.py::test_workflow_record_rejects_legacy_actionable_duplicate_review"]
+expected_output = "test_workflow_record_rejects_legacy_actionable_duplicate_review"
+risk = "An unresolved duplicate workflow could deserialize into READY, ACTIVE, PAUSED, or CLOSED_SUCCESS and bypass the domain invariant."
+
+
+[[cases]]
+id = "CS-MUT-LEAD-DUPLICATE-DURABLE-001"
+path = "src/constructionsight/lead_operator_service.py"
+search = "    if unresolved_result is not None:"
+replacement = "    if False:"
+tests = ["tests/test_lead_workflow_transition_authorization.py::test_unresolved_persisted_duplicate_blocks_actionable_transition"]
+expected_output = "test_unresolved_persisted_duplicate_blocks_actionable_transition"
+risk = "An unresolved durable duplicate result could be ignored when a workflow no longer carries its descriptive limitation."
+
+
+[[cases]]
+id = "CS-MUT-LEAD-DUPLICATE-CANDIDATE-SCOPE-001"
+path = "src/constructionsight/lead_operator_service.py"
+search = "            LeadDuplicateResultRecord.base_candidate_id == record.base_candidate_id,\n            LeadDuplicateResultRecord.status.in_("
+replacement = "            LeadDuplicateResultRecord.base_candidate_id == record.base_candidate_id,\n            LeadDuplicateResultRecord.candidate_fingerprint_key == record.fingerprint_key,\n            LeadDuplicateResultRecord.status.in_("
+tests = ["tests/test_lead_workflow_transition_authorization.py::test_unresolved_persisted_duplicate_blocks_actionable_transition"]
+expected_output = "test_unresolved_persisted_duplicate_blocks_actionable_transition"
+risk = "A persisted near-match result with a changed or missing workflow fingerprint could bypass the pre-authorized actionability block."
+
+
+[[cases]]
+id = "CS-MUT-LEAD-DUPLICATE-RESULT-IMMUTABLE-001"
+path = "src/constructionsight/storage/lead_workflow_store.py"
+search = "    if not _duplicate_result_replay_matches(existing, result, payload_json):"
+replacement = "    if False:"
+tests = ["tests/test_lead_workflow_storage.py::test_store_duplicate_result_rejects_unreviewed_status_overwrite"]
+expected_output = "test_store_duplicate_result_rejects_unreviewed_status_overwrite"
+risk = "An unresolved persisted duplicate result could be overwritten as UNIQUE without an authenticated review decision."
+
+
+[[cases]]
+id = "CS-MUT-LEAD-DUPLICATE-STORAGE-GATE-001"
+path = "src/constructionsight/storage/lead_workflow_store.py"
+search = "        if unresolved_result is not None:"
+replacement = "        if False:"
+tests = ["tests/test_lead_workflow_storage.py::test_store_workflow_rejects_actionable_state_with_persisted_duplicate"]
+expected_output = "test_store_workflow_rejects_actionable_state_with_persisted_duplicate"
+risk = "A direct workflow persistence operation could insert READY despite an existing unresolved duplicate result, bypassing the authorized transition API."
+
+
+[[cases]]
+id = "CS-MUT-LEAD-DUPLICATE-RESCAN-001"
+path = "src/constructionsight/storage/lead_workflow_store.py"
+search = '    candidate.pop("created_at", None)'
+replacement = '    pass'
+tests = ["tests/test_lead_workflow_storage.py::test_store_duplicate_result_recheck_preserves_first_verdict_snapshot"]
+expected_output = "test_store_duplicate_result_recheck_preserves_first_verdict_snapshot"
+risk = "A routine duplicate rescan could reject the same immutable verdict merely because the newly built fingerprint has a later creation timestamp."

@@ -161,6 +161,7 @@ def verify_ceqanet_operator_archive(
             artifacts: list[CeqanetArchiveArtifactVerification] = []
             malformed_artifacts: list[dict[str, object]] = []
             if manifest is not None:
+                archive_issues.extend(_manifest_inventory_issues(filenames, manifest))
                 for index, entry in enumerate(_artifact_entries(manifest)):
                     if not isinstance(entry, dict):
                         malformed_artifacts.append(
@@ -302,6 +303,38 @@ def _duplicate_filenames(filenames: list[str]) -> tuple[str, ...]:
 
     counts = Counter(filenames)
     return tuple(sorted(filename for filename, count in counts.items() if count > 1))
+
+
+def _manifest_inventory_issues(
+    archive_filenames: list[str], manifest: dict[str, Any],
+) -> list[dict[str, object]]:
+    """Require each ZIP member to have one unambiguous manifest inventory claim."""
+
+    listed: list[str] = []
+    for entry in _artifact_entries(manifest):
+        if isinstance(entry, dict):
+            filename = entry.get("filename")
+            if isinstance(filename, str):
+                listed.append(filename)
+    issues: list[dict[str, object]] = [
+        {"filename": filename, "reason": "duplicate manifest artifact filename"}
+        for filename, count in sorted(Counter(listed).items())
+        if count > 1
+    ]
+    metadata = manifest["metadata"]
+    if "artifact_count" in metadata and (
+        type(metadata["artifact_count"]) is not int
+        or metadata["artifact_count"] != len(_artifact_entries(manifest))
+    ):
+        issues.append(
+            {"filename": "manifest.json", "reason": "manifest artifact_count mismatch"}
+        )
+    allowed = set(listed) | {"manifest.json"}
+    issues.extend(
+        {"filename": filename, "reason": "archive member not listed in manifest"}
+        for filename in sorted(set(archive_filenames) - allowed)
+    )
+    return issues
 
 
 def _archive_entry_issues(infos: list[zipfile.ZipInfo]) -> list[dict[str, object]]:

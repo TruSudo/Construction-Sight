@@ -139,6 +139,74 @@ def test_verify_ceqanet_operator_archive_detects_artifact_mismatch(
     ]
 
 
+def test_archive_verification_rejects_unlisted_extra_zip_member(tmp_path: Path) -> None:
+    export_dir = tmp_path / "export"
+    archive_path = tmp_path / "operator-export.zip"
+    _write_export_dir(export_dir)
+    _write_archive_from_export_dir(export_dir, archive_path)
+    with zipfile.ZipFile(archive_path, mode="a") as archive_file:
+        _write_archive_entry(
+            archive_file, filename="unlisted.txt", data=b"unlisted content",
+        )
+
+    verification = verify_ceqanet_operator_archive(archive_path=archive_path).to_dict()
+
+    assert verification["metadata"]["passed"] is False
+    assert verification["metadata"]["verified_count"] == 5
+    assert verification["archive_issues"] == [
+        {"filename": "unlisted.txt", "reason": "archive member not listed in manifest"},
+    ]
+
+
+def test_archive_verification_rejects_duplicate_manifest_inventory_claim(
+    tmp_path: Path,
+) -> None:
+    export_dir = tmp_path / "export"
+    archive_path = tmp_path / "operator-export.zip"
+    _write_export_dir(export_dir)
+    manifest = json.loads((export_dir / "manifest.json").read_text(encoding="utf-8"))
+    manifest["artifacts"].append(dict(manifest["artifacts"][0]))
+    manifest["metadata"]["artifact_count"] = 6
+    _write_archive_from_export_dir(
+        export_dir, archive_path,
+        overrides={"manifest.json": json.dumps(manifest).encode("utf-8")},
+    )
+
+    verification = verify_ceqanet_operator_archive(archive_path=archive_path).to_dict()
+
+    assert verification["metadata"]["passed"] is False
+    assert verification["metadata"]["verified_count"] == 6
+    assert verification["archive_issues"] == [
+        {
+            "filename": "operator-package.json",
+            "reason": "duplicate manifest artifact filename",
+        },
+    ]
+
+
+@pytest.mark.parametrize("declared_count", [True, 99])
+def test_archive_verification_rejects_inaccurate_manifest_artifact_count(
+    tmp_path: Path, declared_count: object,
+) -> None:
+    export_dir = tmp_path / "export"
+    archive_path = tmp_path / "operator-export.zip"
+    _write_export_dir(export_dir)
+    manifest = json.loads((export_dir / "manifest.json").read_text(encoding="utf-8"))
+    manifest["metadata"]["artifact_count"] = declared_count
+    _write_archive_from_export_dir(
+        export_dir, archive_path,
+        overrides={"manifest.json": json.dumps(manifest).encode("utf-8")},
+    )
+
+    verification = verify_ceqanet_operator_archive(archive_path=archive_path).to_dict()
+
+    assert verification["metadata"]["passed"] is False
+    assert verification["metadata"]["verified_count"] == 5
+    assert verification["archive_issues"] == [
+        {"filename": "manifest.json", "reason": "manifest artifact_count mismatch"},
+    ]
+
+
 def test_verify_ceqanet_operator_archive_detects_missing_manifest(tmp_path: Path) -> None:
     archive_path = tmp_path / "operator-export.zip"
     with zipfile.ZipFile(archive_path, mode="w") as archive_file:

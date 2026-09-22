@@ -144,6 +144,84 @@ def test_build_ceqanet_operator_archive_can_allow_unverified_bundle(tmp_path: Pa
     assert archive_path.exists()
 
 
+@pytest.mark.parametrize("require_verified", [True, False])
+def test_archive_builder_rejects_duplicate_manifest_inventory_claim(
+    tmp_path: Path, require_verified: bool,
+) -> None:
+    export_dir = tmp_path / "export"
+    _write_export_dir(export_dir)
+    manifest_path = export_dir / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["artifacts"].append(dict(manifest["artifacts"][0]))
+    manifest["metadata"]["artifact_count"] = 6
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    archive_path = tmp_path / "existing.zip"
+    prior_content = b"existing archive must survive ambiguous source inventory"
+    archive_path.write_bytes(prior_content)
+
+    with pytest.raises(ValueError, match="duplicate artifact filenames"):
+        build_ceqanet_operator_archive(
+            source_dir=export_dir,
+            archive_path=archive_path,
+            require_verified=require_verified,
+        )
+    assert archive_path.read_bytes() == prior_content
+
+
+def test_archive_writer_rejects_missing_staged_member_before_publication(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source_dir = tmp_path / "bundle"
+    _write_export_dir(source_dir)
+    archive_path = tmp_path / "existing.zip"
+    previous = b"previous committed archive must remain intact"
+    archive_path.write_bytes(previous)
+    original_writer = archive_writer._write_zip
+
+    def skip_last_member(**kwargs: object) -> None:
+        assert isinstance(kwargs["filenames"], list)
+        kwargs["filenames"] = kwargs["filenames"][:-1]
+        original_writer(**kwargs)
+
+    monkeypatch.setattr(archive_writer, "_write_zip", skip_last_member)
+    with pytest.raises(ValueError, match="inconsistent member inventory"):
+        build_ceqanet_operator_archive(
+            source_dir=source_dir, archive_path=archive_path,
+        )
+    assert archive_path.read_bytes() == previous
+
+
+def test_archive_writer_rejects_corrupted_staged_zip_before_publication(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source_dir = tmp_path / "bundle"
+    _write_export_dir(source_dir)
+    archive_path = tmp_path / "existing.zip"
+    previous_bytes = b"previous published archive must survive staged ZIP corruption"
+    archive_path.write_bytes(previous_bytes)
+    real_write_zip = archive_writer._write_zip
+
+    def corrupt_zip(**kwargs):
+        real_write_zip(**kwargs)
+        staged = kwargs["archive_path"]
+        with zipfile.ZipFile(staged, mode="r") as archive:
+            info = archive.infolist()[0]
+            offset = info.header_offset + 30 + len(info.filename.encode()) + len(info.extra)
+        staged.seek(offset)
+        old_byte = staged.read(1)
+        assert old_byte
+        staged.seek(offset)
+        staged.write(bytes((old_byte[0] ^ 0xFF,)))
+        staged.flush()
+
+    monkeypatch.setattr(archive_writer, "_write_zip", corrupt_zip)
+    with pytest.raises(ValueError, match="staged ZIP"):
+        build_ceqanet_operator_archive(
+            source_dir=source_dir, archive_path=archive_path,
+        )
+    assert archive_path.read_bytes() == previous_bytes
+
+
 def test_archive_writer_streams_source_and_output_bytes(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -295,3 +373,45 @@ def test_archive_writer_rejects_symlink_swap_after_verification(
             archive_path=archive_path,
         )
     assert not archive_path.exists()
+
+
+@pytest.mark.parametrize("require_verified", [True, False])
+def test_archive_rejects_manifest_inventory_swap_during_verification(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, require_verified: bool,
+) -> None:
+    """ZIP must not pair one verified inventory with another manifest snapshot."""
+
+    source_dir = tmp_path / "bundle"
+    _write_export_dir(source_dir)
+    manifest_path = source_dir / "manifest.json"
+    original_manifest = manifest_path.read_bytes()
+    alternate_manifest = json.loads(original_manifest)
+    alternate_manifest["artifacts"] = alternate_manifest["artifacts"][:-1]
+    alternate_manifest["metadata"]["artifact_count"] = 4
+    alternate_bytes = json.dumps(alternate_manifest).encode("utf-8")
+    old_archive = b"previous committed ZIP bytes"
+    archive_path = tmp_path / "operator-export.zip"
+    archive_path.write_bytes(old_archive)
+    actual_verify = archive_writer.verify_ceqanet_operator_bundle
+
+    def verify_swapped_manifest(*, bundle_dir: Path):
+        manifest_path.write_bytes(alternate_bytes)
+        try:
+            result = actual_verify(bundle_dir=bundle_dir)
+            assert result.passed
+            assert len(result.artifacts) == 4
+            return result
+        finally:
+            manifest_path.write_bytes(original_manifest)
+
+    monkeypatch.setattr(
+        archive_writer, "verify_ceqanet_operator_bundle", verify_swapped_manifest,
+    )
+    with pytest.raises(ValueError, match="changed since verification"):
+        build_ceqanet_operator_archive(
+            source_dir=source_dir,
+            archive_path=archive_path,
+            require_verified=require_verified,
+        )
+    assert archive_path.read_bytes() == old_archive
+    assert manifest_path.read_bytes() == original_manifest

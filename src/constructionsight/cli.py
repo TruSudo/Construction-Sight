@@ -33,6 +33,7 @@ from constructionsight.intelligence.graph_neighborhood_service import (
 from constructionsight.intelligence.relationship_query_service import RelationshipQueryService
 from constructionsight.models import PublicSource
 from constructionsight.storage.database import (
+    DEFAULT_DATABASE_PATH,
     create_database_engine,
     initialize_database,
     managed_session,
@@ -727,6 +728,8 @@ def init_db(
 ) -> None:
     """Initialize the ConstructionSight database tables."""
 
+    if database_url is None:
+        DEFAULT_DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
     engine = create_database_engine(database_url)
     initialize_database(engine)
     console.print("Database initialized.")

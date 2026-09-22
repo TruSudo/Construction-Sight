@@ -14,6 +14,11 @@ from constructionsight.operator_dashboard_models import RecordKind, RecordSelect
 from constructionsight.permit_models import PermitRecord
 from constructionsight.storage.domain_orm import CeqaDomainRecord, PermitDomainRecord
 from constructionsight.storage.domain_store import CeqaStore, PermitStore
+from constructionsight.storage.lead_workflow_orm import (
+    LeadReviewPackageRecord,
+    LeadWorkflowRecordRow,
+)
+from constructionsight.storage.parcel_site_orm import ParcelCoreRecordRow
 
 
 def create_operator_read_engine(database_path: Path) -> Engine:
@@ -22,11 +27,32 @@ def create_operator_read_engine(database_path: Path) -> Engine:
     path = database_path.resolve(strict=True)
     if not path.is_file():
         raise ValueError("operator database must be an existing regular file")
-    return create_engine(
+    engine = create_engine(
         f"sqlite+pysqlite:///{path.as_uri()}?mode=ro&uri=true",
         connect_args={"check_same_thread": False},
         poolclass=NullPool,
     )
+    try:
+        with Session(engine) as session:
+            verify_operator_schema(session)
+    except Exception:
+        engine.dispose()
+        raise
+    return engine
+
+
+def verify_operator_schema(session: Session) -> None:
+    """Check the GUI's required tables and columns without reading or writing rows.
+
+    A valid SQLite file alone does not establish that source, workflow and parcel
+    views can run. This is a read-compatibility check, not a database migration.
+    """
+
+    for row_type in (
+        CeqaDomainRecord, PermitDomainRecord, LeadWorkflowRecordRow,
+        LeadReviewPackageRecord, ParcelCoreRecordRow,
+    ):
+        session.execute(select(row_type).limit(0)).close()
 
 
 def read_project_page(

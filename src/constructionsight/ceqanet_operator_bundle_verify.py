@@ -58,6 +58,9 @@ class CeqanetBundleVerification:
 
     bundle_dir: Path
     manifest_path: Path
+    # The exact manifest byte snapshot used for this verification's artifact inventory.
+    manifest_byte_count: int
+    manifest_sha256: str
     artifacts: tuple[CeqanetBundleArtifactVerification, ...]
     malformed_artifacts: tuple[dict[str, object], ...]
 
@@ -124,7 +127,7 @@ def verify_ceqanet_operator_bundle(
     root = bundle_dir.resolve(strict=True)
     resolved_manifest_path = manifest_path or bundle_dir / "manifest.json"
     _require_contained_bundle_file(resolved_manifest_path, root=root)
-    manifest = _load_manifest(resolved_manifest_path)
+    manifest, manifest_bytes = _load_manifest(resolved_manifest_path)
     artifact_entries = _artifact_entries(manifest)
     if len(artifact_entries) > _MAX_BUNDLE_ARTIFACTS:
         raise ValueError("Bundle manifest exceeds artifact entry limit")
@@ -132,6 +135,15 @@ def verify_ceqanet_operator_bundle(
 
     verified_artifacts: list[CeqanetBundleArtifactVerification] = []
     malformed_artifacts: list[dict[str, object]] = []
+    seen_filenames: set[str] = set()
+    metadata = manifest["metadata"]
+    if "artifact_count" in metadata and (
+        type(metadata["artifact_count"]) is not int
+        or metadata["artifact_count"] != len(artifact_entries)
+    ):
+        malformed_artifacts.append(
+            {"index": -1, "reason": "manifest artifact_count mismatch"}
+        )
 
     for index, entry in enumerate(artifact_entries):
         if not isinstance(entry, dict):
@@ -148,11 +160,18 @@ def verify_ceqanet_operator_bundle(
                 {"index": index, "reason": "artifact missing filename, artifact_type, or sha256"}
             )
             continue
+        if artifact.filename in seen_filenames:
+            malformed_artifacts.append(
+                {"index": index, "reason": "duplicate artifact filename"}
+            )
+        seen_filenames.add(artifact.filename)
         verified_artifacts.append(artifact)
 
     return CeqanetBundleVerification(
         bundle_dir=bundle_dir,
         manifest_path=resolved_manifest_path,
+        manifest_byte_count=len(manifest_bytes),
+        manifest_sha256=hashlib.sha256(manifest_bytes).hexdigest(),
         artifacts=tuple(verified_artifacts),
         malformed_artifacts=tuple(malformed_artifacts),
     )
@@ -175,7 +194,7 @@ def _open_regular_bundle_file(path: Path) -> Iterator[BinaryIO]:
         yield stream
 
 
-def _load_manifest(manifest_path: Path) -> dict[str, Any]:
+def _load_manifest(manifest_path: Path) -> tuple[dict[str, Any], bytes]:
     """Load and validate bundle manifest JSON."""
 
     try:
@@ -198,7 +217,7 @@ def _load_manifest(manifest_path: Path) -> dict[str, Any]:
         raise ValueError(
             "Bundle manifest schema_version must be ceqanet_operator_bundle.v1."
         )
-    return cast(dict[str, Any], payload)
+    return cast(dict[str, Any], payload), manifest_bytes
 
 
 def _artifact_entries(manifest: dict[str, Any]) -> list[object]:

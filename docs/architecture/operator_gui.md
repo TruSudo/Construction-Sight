@@ -1,5 +1,10 @@
 # Local operator application
 
+For a new isolated trial with retained public-source records, use
+`bash scripts/test-drive.sh` and follow [the runtime walkthrough](../private_test_drive.md).
+Startup and `/api/health` now check the tables and columns required by the GUI.
+An incompatible database is rejected without migration or repair.
+
 Run the read-only application against an **existing, initialized** ConstructionSight
 SQLite database:
 

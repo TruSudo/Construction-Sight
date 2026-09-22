@@ -14,7 +14,6 @@ from threading import Timer
 from typing import cast
 from urllib.parse import parse_qs, urlparse
 
-from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -31,7 +30,10 @@ from constructionsight.operator_source_candidate import (
     SourceRecordNotFound,
     build_source_candidate_preview,
 )
-from constructionsight.storage.operator_read_store import create_operator_read_engine
+from constructionsight.storage.operator_read_store import (
+    create_operator_read_engine,
+    verify_operator_schema,
+)
 
 _ASSETS = {
     "/": ("operator_ui.html", "text/html; charset=utf-8"),
@@ -183,7 +185,7 @@ def create_handler(database_path: Path) -> type[BaseHTTPRequestHandler]:
             try:
                 with Session(engine, autoflush=False) as session:
                     if path == "/api/health":
-                        session.scalar(select(1))
+                        verify_operator_schema(session)
                         payload: object = {
                             "status": "database_readable",
                             "read_only": True,
@@ -308,6 +310,12 @@ def main(*, open_browser_by_default: bool = False) -> None:
         handler = create_handler(args.database)
     except (OSError, ValueError) as exc:
         parser.error(f"--database must name an existing SQLite file: {exc}")
+    except SQLAlchemyError:
+        parser.error(
+            "--database is unreadable or its schema is incompatible with the operator. "
+            "Use a fresh test-drive database initialized by this checkout; preserve the old "
+            "database for an explicit upgrade."
+        )
     with ThreadingHTTPServer(("127.0.0.1", args.port), handler) as server:
         local_url = f"http://127.0.0.1:{server.server_address[1]}"
         print(f"ConstructionSight operator GUI: {local_url}", flush=True)

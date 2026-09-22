@@ -428,6 +428,41 @@ def test_read_only_database_cannot_write_and_missing_path_is_not_created(tmp_pat
     assert not missing.exists()
 
 
+def test_operator_rejects_empty_sqlite_before_serving(tmp_path):
+    path = tmp_path / "empty.sqlite3"
+    engine = create_database_engine(f"sqlite:///{path}")
+    with engine.connect() as connection:
+        connection.execute(text("CREATE TABLE unrelated (id INTEGER)"))
+        connection.commit()
+    engine.dispose()
+    before = path.read_bytes()
+    with pytest.raises(OperationalError, match="no such table"):
+        create_handler(path)
+    assert path.read_bytes() == before
+
+
+def test_operator_rejects_legacy_column_shape_before_serving(database):
+    path, engine = database
+    with engine.begin() as connection:
+        connection.execute(text("ALTER TABLE domain_ceqa_records RENAME COLUMN title TO old_title"))
+    before = path.read_bytes()
+    with pytest.raises(OperationalError, match="no such column"):
+        create_handler(path)
+    assert path.read_bytes() == before
+
+
+def test_health_rechecks_schema_after_startup(database):
+    path, engine = database
+    with _server(path) as port:
+        assert _get(port, "/api/health")[0] == 200
+        with engine.begin() as connection:
+            connection.execute(text("DROP TABLE lead_review_packages"))
+        status, _, body = _get(port, "/api/health")
+        assert status == 503
+        assert b"database_readable" not in body
+        assert str(path).encode() not in body
+
+
 @pytest.mark.parametrize(
     "query",
     [

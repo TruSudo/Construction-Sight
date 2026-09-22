@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import tempfile
 import zipfile
+import zlib
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
@@ -74,32 +75,23 @@ def build_ceqanet_operator_archive(
     root = source_dir.resolve(strict=True)
     manifest_path = source_dir / "manifest.json"
     _require_contained_bundle_file(manifest_path, root=root)
-    manifest_digest = hashlib.sha256()
-    manifest_size = 0
-    with _open_regular_bundle_file(manifest_path) as manifest_file:
-        while True:
-            chunk = manifest_file.read(
-                min(_ARCHIVE_CHUNK_BYTES, 1024 * 1024 - manifest_size + 1)
-            )
-            if not chunk:
-                break
-            manifest_size += len(chunk)
-            if manifest_size > 1024 * 1024:
-                raise ValueError("CEQAnet archive manifest exceeds the byte limit")
-            manifest_digest.update(chunk)
-    verification = verify_ceqanet_operator_bundle(bundle_dir=source_dir).to_dict()
+    # Bind ZIP inventory and manifest to the SAME verified byte snapshot.
+    # A separate pre-verification read can pair mismatched manifest inventories.
+    verified_bundle = verify_ceqanet_operator_bundle(bundle_dir=source_dir)
+    verification = verified_bundle.to_dict()
     verification_metadata = _metadata_object(verification, field_name="verification")
     verification_passed = verification_metadata.get("passed") is True
+    # An ambiguous inventory must be rejected even when the caller explicitly
+    # allows an unverified source; do not publish a ZIP that fails its verifier.
+    archived_files = _manifest_filenames(verification)
     if require_verified and not verification_passed:
         raise ValueError(
             "Refusing archive creation because operator bundle verification did not pass."
         )
-
-    archived_files = _manifest_filenames(verification)
     expected_content = _verified_content(verification)
     expected_content["manifest.json"] = (
-        manifest_size,
-        manifest_digest.hexdigest(),
+        verified_bundle.manifest_byte_count,
+        verified_bundle.manifest_sha256,
     )
     archive_digest = hashlib.sha256()
     archive_byte_count = 0
@@ -112,6 +104,12 @@ def build_ceqanet_operator_archive(
             archive_path=temporary_file,
             filenames=archived_files,
             expected_content=expected_content,
+        )
+        # Verify the exact staged ZIP bytes before replacing a committed archive.
+        # The source directory and the ZIP are separate objects: validating only
+        # the source or just the ZIP's names cannot prove published member bytes.
+        _verify_staged_zip(
+            temporary_file, filenames=archived_files, expected_content=expected_content,
         )
         temporary_file.seek(0)
 
@@ -162,6 +160,8 @@ def _manifest_filenames(verification: dict[str, object]) -> list[str]:
         if isinstance(filename, str) and filename and status == "verified":
             filenames.append(filename)
 
+    if len(filenames) != len(set(filenames)):
+        raise ValueError("Bundle verification contains duplicate artifact filenames")
     if "manifest.json" not in filenames:
         filenames.append("manifest.json")
     return sorted(set(filenames))
@@ -251,6 +251,49 @@ def _write_zip(
                     archive_entry.write(chunk)
             if (written, digest.hexdigest()) != expected:
                 raise ValueError("CEQAnet archive source changed since verification")
+
+
+def _verify_staged_zip(
+    staged: BinaryIO, *, filenames: list[str],
+    expected_content: dict[str, tuple[int, str]],
+) -> None:
+    """Bound and check every decompressed member of the anonymous staged ZIP."""
+
+    if staged.seek(0, 2) > _MAX_ARCHIVE_FILE_BYTES:
+        raise ValueError("CEQAnet staged ZIP exceeds the archive byte limit")
+    staged.seek(0)
+    remaining = _MAX_ARCHIVE_TOTAL_BYTES
+    try:
+        with zipfile.ZipFile(staged, mode="r") as archive:
+            infos = archive.infolist()
+            if [info.filename for info in infos] != filenames:
+                raise ValueError("CEQAnet ZIP output has inconsistent member inventory")
+            for info in infos:
+                expected = expected_content.get(info.filename)
+                if expected is None:
+                    raise ValueError("CEQAnet staged ZIP member has no verified identity")
+                if info.file_size > _MAX_ARCHIVE_MEMBER_BYTES:
+                    raise ValueError("CEQAnet staged ZIP member exceeds the byte limit")
+                written = 0
+                digest = hashlib.sha256()
+                with archive.open(info, mode="r") as member:
+                    while True:
+                        chunk = member.read(
+                            min(_ARCHIVE_CHUNK_BYTES,
+                                _MAX_ARCHIVE_MEMBER_BYTES - written + 1,
+                                remaining + 1),
+                        )
+                        if not chunk:
+                            break
+                        written += len(chunk)
+                        remaining -= len(chunk)
+                        if written > _MAX_ARCHIVE_MEMBER_BYTES or remaining < 0:
+                            raise ValueError("CEQAnet staged ZIP exceeds a decompressed byte limit")
+                        digest.update(chunk)
+                if (written, digest.hexdigest()) != expected:
+                    raise ValueError("CEQAnet staged ZIP member disagrees with verified bytes")
+    except (zipfile.BadZipFile, zlib.error, EOFError) as exc:
+        raise ValueError("CEQAnet staged ZIP is corrupt") from exc
 
 
 def _metadata_object(payload: dict[str, object], *, field_name: str) -> dict[str, object]:
