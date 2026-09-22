@@ -14,6 +14,7 @@ from constructionsight.lead_operator_models import LeadWorkflowTransitionReport
 from constructionsight.lead_operator_service import (
     LeadOperatorError,
     load_persisted_lead_workflow,
+    require_persisted_duplicate_review_clear,
     transition_persisted_lead_workflow,
 )
 from constructionsight.lead_workflow_models import LeadWorkflowStatus
@@ -57,6 +58,8 @@ def apply_authorized_lead_workflow_transition(
             f"expected {expected_current_status.value}, "
             f"observed {current.status.value}"
         )
+    # Fail before reserving one-shot effect authority for an unreviewed near match.
+    require_persisted_duplicate_review_clear(session, current, next_status)
     state_identity = authorization_digest(
         "lead-workflow-transition-state",
         {

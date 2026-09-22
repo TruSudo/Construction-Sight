@@ -5,10 +5,17 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from threading import Barrier
 
+from sqlalchemy import select
+
 import pytest
 
 import constructionsight.operator_services.lead_workflow_transition_service as transition_service
 from constructionsight.authorization_decision import AuthorizationDeniedError
+from constructionsight.lead_dedupe_models import (
+    LeadDuplicateResult,
+    LeadDuplicateStatus,
+    LeadFingerprint,
+)
 from constructionsight.lead_operator_models import LeadWorkflowTransitionReport
 from constructionsight.lead_operator_service import LeadOperatorError
 from constructionsight.lead_workflow_models import (
@@ -28,7 +35,11 @@ from constructionsight.storage.database import (
 from constructionsight.storage.effect_consumption_store import (
     EffectOutcomeUnavailableError,
 )
-from constructionsight.storage.lead_workflow_store import store_lead_workflow_record
+from constructionsight.storage.lead_workflow_store import (
+    store_lead_duplicate_result,
+    store_lead_workflow_record,
+)
+from constructionsight.storage.lead_workflow_orm import LeadWorkflowRecordRow
 
 
 def _workflow() -> LeadWorkflowRecord:
@@ -138,6 +149,43 @@ def test_transition_rejects_stale_state_before_mutation(
         )
 
     assert executor.calls == []
+
+
+def test_unresolved_persisted_duplicate_blocks_actionable_transition() -> None:
+    factory = _factory()
+    fingerprint = LeadFingerprint(
+        fingerprint_key="lead-fingerprint:test", base_candidate_id="candidate:test",
+        site_key="site:test",
+    )
+    with managed_session(factory) as session:
+        store_lead_duplicate_result(
+            session,
+            LeadDuplicateResult(
+                result_id="lead-duplicate:unresolved",
+                status=LeadDuplicateStatus.REVIEW_NEEDED,
+                candidate=fingerprint,
+            ),
+        )
+
+    with (
+        managed_session(factory) as session,
+        pytest.raises(LeadOperatorError, match="unresolved duplicate review"),
+    ):
+        apply_authorized_lead_workflow_transition(
+            session, workflow_id="lead-workflow:test",
+            expected_current_status=LeadWorkflowStatus.MONITOR,
+            next_status=LeadWorkflowStatus.READY,
+            reason="cannot treat unresolved duplicate result as cleared",
+            caller_confirmation=True, operator_id="operator:tyler",
+        )
+
+    with managed_session(factory) as session:
+        workflow = session.execute(
+            select(LeadWorkflowRecordRow).where(
+                LeadWorkflowRecordRow.workflow_id == "lead-workflow:test"
+            )
+        ).scalar_one()
+        assert workflow.status == LeadWorkflowStatus.MONITOR.value
 
 
 def test_exact_replay_returns_transition_without_repeating_database_writer(
