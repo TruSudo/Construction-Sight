@@ -3,58 +3,92 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ConstructionSight</title>
+<meta name="theme-color" content="#080f19">
+<title>ConstructionSight · Intelligence workspace</title>
 <link rel="stylesheet" href="/operator_ui.css">
 <script defer src="/operator_ui.js"></script>
 </head>
 <body>
-<div class="shell">
-<aside class="rail">
-  <div class="brand"><div class="reticle" aria-hidden="true"></div><div><strong>ConstructionSight</strong><small>Targeted site intelligence</small></div></div>
-  <nav aria-label="Workspace"><button id="records-tab" class="active" aria-pressed="true">Project records</button><button id="workflow-tab" aria-pressed="false">Lead workflow</button></nav>
-  <div class="notice"><b>Development operation</b><p>Browse retained data. Live collection is off. Crime overlay is off.</p><p>Source records require review before they become commercial opportunities.</p></div>
-</aside>
-<main>
-  <header class="top"><div><div class="eyebrow">San Bernardino + Riverside</div><h1 id="heading">Project records</h1></div><button id="refresh">Refresh data</button><span class="mode">LOCAL · READ ONLY</span></header>
-  <form id="filters" class="filters">
-    <label class="search-label">Search records<input id="search" type="search" maxlength="200" placeholder="Project, company, address, APN, or record number"></label>
-    <label>Source type<select id="kind"><option value="all">All source records</option><option value="ceqa">CEQA records</option><option value="permit">Permit records</option></select></label>
-    <label>County<select id="county"><option value="">All recorded counties</option><option>San Bernardino</option><option>Riverside</option></select></label>
-    <button type="submit">Search</button>
-  </form>
-  <section id="pulse" class="pulse" aria-label="Retained source-record pulse for current filters">
-    <div class="pulse-card"><span>Matching source records</span><strong id="pulse-matching">—</strong><small>Source records, not deduplicated projects or qualified leads</small></div>
-    <div class="pulse-card"><span>Mapped in scanned records</span><strong id="pulse-mapped">—</strong><small>Source-claimed coordinates only</small></div>
-    <div class="pulse-card"><span>Unmapped in scanned records</span><strong id="pulse-unmapped">—</strong><small>Missing supported coordinates; not an absence of activity</small></div>
-    <div class="pulse-card"><span>Map scan coverage</span><strong id="pulse-scan">—</strong><small id="pulse-scan-note">Reading the retained query footprint.</small></div>
-  </section>
-  <div id="error" class="error" role="alert" hidden></div>
-  <div id="status" class="status" role="status" aria-live="polite">Loading stored records…</div>
-  <section class="workspace">
-    <section class="card record-card" aria-label="Records">
-      <div class="cardhead"><h2 id="list-title">Source records</h2><span id="visible"></span></div>
-      <div id="records" class="records"></div>
-      <div class="pagination"><button id="previous" disabled>Previous</button><span id="page-count"></span><button id="next" disabled>Next</button></div>
-    </section>
-    <div class="right">
-      <section id="map-card" class="card" aria-label="Geographic coordinate map">
-        <div class="cardhead"><h2>Coordinate map</h2><span id="map-count"></span></div>
-        <div class="map-wrap">
-          <svg id="map" tabindex="0" role="group" aria-label="Source coordinates. Drag to pan; use plus and minus to zoom, arrow keys to pan."></svg>
-          <div class="map-controls"><button id="zoom-in" aria-label="Zoom in">+</button><button id="zoom-out" aria-label="Zoom out">−</button><button id="fit">Fit footprint</button><button id="region">Region</button></div>
-          <div id="map-empty" class="map-empty" hidden>No supported source coordinates in the scanned footprint.<br>Unmapped records remain searchable.</div>
-        </div>
-        <div class="map-caption">Source-claimed locations and inspected parcel centroids · Web Mercator · No street or county boundary layer <span class="map-legend"><span class="legend-dot"></span>Source record <span class="legend-dot legend-related"></span>Shared-key source record <span class="legend-dot legend-selected"></span>Selected source record <span class="legend-dot legend-parcel"></span>Unverified parcel centroid (inspect only)</span></div>
-      </section>
-      <section id="timeline-card" class="card" aria-label="Historical source-record milestones">
-        <div class="cardhead"><h2>Historical source milestones</h2><span id="timeline-count">Reading…</span></div>
-        <div id="timeline-warning" class="timeline-warning" role="status">These are recorded source dates, not current construction status.</div>
-        <div id="timeline-list" class="timeline-list" aria-live="polite"><p class="empty">Loading retained historical milestones…</p></div>
-      </section>
-      <section id="detail" class="card detail" aria-label="Selected record"><p class="empty">Select a record to inspect its location, named parties, and evidence.</p></section>
+<div class="shell" id="app-shell">
+  <aside class="rail" id="main-navigation">
+    <div class="brand">
+      <div class="brand-symbol reticle" aria-hidden="true"></div>
+      <div class="brand-copy"><strong>ConstructionSight</strong><small>CONSTRUCTION INTELLIGENCE</small></div>
+      <button id="nav-toggle" class="icon-button nav-toggle" type="button" aria-label="Collapse navigation" aria-controls="main-navigation" aria-expanded="true" title="Collapse navigation">☰</button>
     </div>
-  </section>
-</main>
+    <div class="nav-label">WORKSPACE</div>
+    <nav aria-label="Workspace">
+      <button id="records-tab" class="active" aria-pressed="true" type="button" title="Project records"><span class="nav-icon" aria-hidden="true">▤</span><span class="nav-text">Project records</span></button>
+      <button id="map-tab" aria-pressed="false" type="button" title="Map"><span class="nav-icon" aria-hidden="true">⌖</span><span class="nav-text">Map</span></button>
+      <button id="workflow-tab" aria-pressed="false" type="button" title="Lead workflow"><span class="nav-icon" aria-hidden="true">◇</span><span class="nav-text">Lead workflow</span></button>
+    </nav>
+    <div class="rail-foot"><span class="online-dot" aria-hidden="true"></span><span class="nav-text">PRIVATE LOCAL WORKSPACE<br><small>Read-only · Live collection off</small></span></div>
+  </aside>
+  <main id="primary-content">
+    <header class="top">
+      <div class="top-heading"><div class="eyebrow">INTELLIGENCE / SAN BERNARDINO + RIVERSIDE</div><h1 id="heading">Project records</h1><p id="heading-description">Explore retained source evidence and inspect individual records.</p></div>
+      <span class="mode"><span class="online-dot" aria-hidden="true"></span> LOCAL · READ ONLY</span>
+      <button id="refresh" type="button" title="Reload retained source data">↻ &nbsp; Refresh data</button>
+    </header>
+    <div id="error" class="error" role="alert" hidden></div>
+    <div id="status" class="status" role="status" aria-live="polite">Loading stored records…</div>
+    <form id="filters" class="filters">
+      <label class="search-label">Search retained records<input id="search" type="search" maxlength="200" placeholder="Project, company, address, APN or record number"></label>
+      <label>Source type<select id="kind"><option value="all">All source records</option><option value="ceqa">CEQA records</option><option value="permit">Permit records</option></select></label>
+      <label>County<select id="county"><option value="">Both counties</option><option>San Bernardino</option><option>Riverside</option></select></label>
+      <button type="submit" class="primary-button">Apply filters</button>
+    </form>
+    <section id="pulse" class="pulse" aria-label="Retained source-record pulse for current filters">
+      <div class="pulse-card"><span>Matching source records</span><strong id="pulse-matching">—</strong><small>Not deduplicated projects or qualified leads</small></div>
+      <div class="pulse-card"><span>Mapped in scanned records</span><strong id="pulse-mapped">—</strong><small>Source-claimed coordinates only</small></div>
+      <div class="pulse-card"><span>Unmapped in scanned records</span><strong id="pulse-unmapped">—</strong><small>Location not confirmed</small></div>
+      <div class="pulse-card"><span>Map scan coverage</span><strong id="pulse-scan">—</strong><small id="pulse-scan-note">Reading retained footprint.</small></div>
+    </section>
+    <section id="records-view" class="view view-records" aria-label="Project records workspace">
+      <div class="workspace">
+        <section class="card record-card" aria-label="Records">
+          <div class="cardhead"><div><span class="section-kicker">SOURCE EXPLORER</span><h2 id="list-title">Source records</h2></div><span id="visible"></span></div>
+          <div id="records" class="records"></div>
+          <div class="pagination"><button id="previous" disabled>Previous</button><span id="page-count"></span><button id="next" disabled>Next</button></div>
+        </section>
+        <div class="right">
+          <section id="detail" class="card detail" aria-label="Selected record"><p class="empty">Select a record to inspect its location, named parties, and evidence.</p></section>
+          <section id="timeline-card" class="card" aria-label="Historical source-record milestones">
+            <div class="cardhead"><div><span class="section-kicker">EVIDENCE CHRONOLOGY</span><h2>Historical source milestones</h2></div><span id="timeline-count">Reading…</span></div>
+            <div id="timeline-warning" class="timeline-warning" role="status">These are recorded source dates, not current construction status.</div>
+            <div id="timeline-list" class="timeline-list" aria-live="polite"><p class="empty">Loading retained historical milestones…</p></div>
+          </section>
+        </div>
+      </div>
+    </section>
+    <section id="map-view" class="view view-map" aria-label="Geographic intelligence workspace" hidden>
+      <div id="map-layout" class="map-layout">
+        <aside id="map-legend-panel" class="map-sidebar" aria-label="Map legend and controls">
+          <div class="map-sidebar-head"><div><span class="section-kicker">GEOGRAPHIC INTELLIGENCE</span><h2>Map legend</h2></div><button id="legend-close" class="icon-button" type="button" title="Close map legend" aria-label="Close map legend">‹</button></div>
+          <p class="legend-intro">Explore retained source locations. Symbols represent stored claims, not verified active construction sites.</p>
+          <div class="legend-group"><h3>LOCATION SYMBOLS</h3>
+            <div class="legend-row"><span class="legend-dot" aria-hidden="true"></span><span><b>Source record</b><small>Source-claimed location within the map scan</small></span></div>
+            <div class="legend-row"><span class="legend-dot legend-related" aria-hidden="true"></span><span><b>Shared-key record</b><small>Same stored entity key; real-world identity not independently verified</small></span></div>
+            <div class="legend-row"><span class="legend-dot legend-selected" aria-hidden="true"></span><span><b>Selected record</b><small>Location currently selected for inspection</small></span></div>
+            <div class="legend-row"><span class="legend-dot legend-parcel" aria-hidden="true"></span><span><b>Parcel centroid</b><small>Unverified APN candidate; not a parcel boundary</small></span></div>
+          </div>
+          <div class="legend-group"><h3>DISPLAY SCOPE</h3><p id="map-legend-summary">Reading mapped source records…</p><p id="map-legend-scope">Only source-backed coordinates are shown. Missing positions remain searchable in Project records.</p></div>
+          <div class="legend-group"><h3>MAP CONTROLS</h3><p>Drag or use arrow keys to pan. Scroll or use ± to zoom. Fit footprint shows the currently scanned locations.</p></div>
+          <div class="legend-group legend-limit"><h3>DATA LIMITATIONS</h3><p>Coordinate reference map only. No street or county boundary layer, live construction status, or verified jobsite geometry.</p></div>
+        </aside>
+        <section id="map-card" class="card map-card" aria-label="Geographic coordinate map">
+          <div class="map-toolbar"><button id="legend-open" class="icon-button" type="button" title="Open map legend" aria-controls="map-legend-panel" aria-expanded="true" aria-label="Open map legend">☰</button><span class="map-toolbar-title">Source geography <small>Retained record footprint</small></span><span id="map-count"></span></div>
+          <div class="map-wrap">
+            <svg id="map" tabindex="0" role="group" aria-label="Source coordinates. Drag to pan; use plus and minus to zoom, arrow keys to pan."></svg>
+            <div class="map-controls"><button id="zoom-in" aria-label="Zoom in">+</button><button id="zoom-out" aria-label="Zoom out">−</button><button id="fit">Fit footprint</button><button id="region">Region</button></div>
+            <div id="map-empty" class="map-empty" hidden>No supported source coordinates in the scanned footprint.<br>Unmapped records remain searchable.</div>
+            <div id="map-selection" class="map-selection" hidden aria-live="polite"></div>
+          </div>
+          <div class="map-caption">Source-claimed locations and inspected parcel centroids · Web Mercator · No street or county boundary layer</div>
+        </section>
+      </div>
+    </section>
+  </main>
 </div>
 </body>
 </html>
