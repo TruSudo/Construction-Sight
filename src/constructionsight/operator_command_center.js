@@ -179,7 +179,7 @@ async function showEvidence() {
   }
 }
 function showEntities() {
-  const token=++featureRequest, row=selectedRecord;
+  ++featureRequest;const row=selectedRecord;
   featureIntro("Entity Network", "Exact stored-entity-key co-occurrence across retained CEQA and permit records");
   if(!row){
     byId("feature-body").innerHTML='<section class="feature-card"><h2>Select a source record</h2><p>Select a source record in the Command Center, then inspect its named parties here.</p><button type="button" class="action" id="return-records">Return to source records</button></section>';
@@ -260,10 +260,12 @@ async function loadData(offset=pageOffset, focusIdentity=null){
     byId("source-total").textContent=newPage.total.toLocaleString();
     byId("workflow-total").textContent=newWorkflow.total.toLocaleString();
     selected=null;selectedRecord=null;renderDossier(null);renderRecords();renderMap();
-    if(focusIdentity){const focus=records().find(r=>identity(r)===focusIdentity);if(focus)selectRow(focus);else byId("global-notice").textContent="Selected map point is no longer present at its recorded position. Refresh the source query.";}
+    const focus=focusIdentity ? records().find(r=>identity(r)===focusIdentity) : null;
+    if(focus)selectRow(focus);
     byId("global-notice").textContent="Retained SQLite records only · "+newPage.total+" matching source records · "+
       (newFootprint.truncated?"map scan truncated · ":"")+"readiness and live collection not enabled · "+
-      (health.read_only?"read-only access":"operator status requires review")+".";
+      (health.read_only?"read-only access":"operator status requires review")+"."+
+      (focusIdentity && !focus ? " Selected map point moved or disappeared from its recorded position; refresh before inspecting it." : "");
   }catch(error){
     if(token!==pageRequest)return;
     page=null;footprint=null;workflows=null;selected=null;selectedRecord=null;
