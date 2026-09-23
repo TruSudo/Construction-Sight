@@ -162,6 +162,7 @@ async function showEvidence() {
     const milestones=Array.isArray(row.milestones)?row.milestones:[];
     const checks=Array.isArray(result.checks)?result.checks:[];
     const parcelCurrent=parcels.source_kind===row.record_kind && parcels.source_record_id===row.record_id &&
+      parcels.source_apn===row.apn && parcels.source_county===row.county &&
       parcels.read_only===true && parcels.linked_site_verified===false;
     const parcelClaims=parcelCurrent && Array.isArray(parcels.matches)?parcels.matches:[];
     const parcelSection='<section class="feature-card"><h2>Retained parcel candidates</h2>'+
