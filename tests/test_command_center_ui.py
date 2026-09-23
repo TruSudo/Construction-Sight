@@ -69,11 +69,11 @@ def test_command_center_discloses_unassessed_records_and_missing_actions() -> No
     html = (ASSETS / "operator_command_center.html").read_text(encoding="utf-8")
     script = (ASSETS / "operator_command_center.js").read_text(encoding="utf-8")
     for required in (
-        "UNASSESSED", "Readiness not yet evaluated",
+        "UNASSESSED", "Stored status, not outreach approval",
         "No monitoring or notifications", "Not deduplicated projects",
     ):
         assert required in html + script
-    for endpoint in ("/api/snapshot?", "/api/footprint?", "/api/workflows?", "/api/health"):
+    for endpoint in ("/api/snapshot?", "/api/footprint?", "/api/workflows?", "/api/health", "/api/workflow-summary"):
         assert endpoint in script
     assert "source claims" in script.lower()
     assert "localStorage" in script
@@ -106,6 +106,10 @@ def test_command_center_exact_source_navigation_and_paging_contract() -> None:
     assert "neighborhood.entity_key!==key" in script
     assert "source_scan_truncated" in script and "matching_records_truncated" in script
     assert "read-only" in script.lower()
+    for identifier in ("workflow-ready", "workflow-review", "workflow-hold"):
+        assert f'id="{identifier}"' in html
+    assert "workflowStatus.total===newWorkflow.total" in script
+    assert "workflowStatus.outreach_authorized===false" in script
     assert "commercial_lead_created" not in script
     assert "fetch(url,{cache:\"no-store\"})" in script
     assert "rel=\"noopener noreferrer\"" in script
