@@ -1397,6 +1397,14 @@ def test_command_center_off_page_map_to_exact_evidence_and_entity_http(database)
         assert not preview["commercial_lead_created"]
         assert not preview["outreach_authorized"] and not preview["bid_authorized"]
         assert preview["source_snapshot"]["provenance"]
+        status, _, raw = _get(port, "/api/parcel-candidates?" + selection)
+        assert status == 200
+        parcel_candidates = json.loads(raw)
+        assert parcel_candidates["source_kind"] == source["record_kind"]
+        assert parcel_candidates["source_record_id"] == source["record_id"]
+        assert parcel_candidates["read_only"]
+        assert not parcel_candidates["linked_site_verified"]
+        assert not parcel_candidates["parcel_boundaries_rendered"]
         status, _, raw = _get(
             port, "/api/entity-neighborhood?kind=all&entity_key=fixture%3Aparty"
         )
