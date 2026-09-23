@@ -120,3 +120,30 @@ def test_command_center_exact_source_navigation_and_paging_contract() -> None:
     assert "fetch(url,{cache:\"no-store\"})" in script
     assert "rel=\"noopener noreferrer\"" in script
     assert '["http:", "https:"]' in script
+
+
+def test_ai_center_is_dedicated_opt_in_surface_with_no_hidden_ai_dependency() -> None:
+    """Reserve visible and passive AI separately without implying a live model."""
+    html = (ASSETS / "operator_command_center.html").read_text(encoding="utf-8")
+    script = (ASSETS / "operator_command_center.js").read_text(encoding="utf-8")
+    original_sections = (
+        "Command Center", "Project Intelligence", "Site Map", "Entity Network",
+        "Evidence Chains", "Lead Console", "Outreach", "Bid Studio",
+        "Royalty Ledger", "Watchlist", "Sources &amp; Collection",
+    )
+    assert all(section in html for section in original_sections)
+    assert html.index("Sources &amp; Collection") < html.index("AI AUGMENTATION")
+    assert 'data-section="ai"' in html
+    assert 'AI Center <span class="nav-count ai-off-indicator">OFF</span>' in html
+    assert 'if(name==="ai")' in script
+    for indicator in (
+        "AI OFF", "NO MODEL CONNECTED", "AI Research Assistant",
+        "Ambient Intelligence", "Remote data transmission: disabled",
+        "No monitoring, alerts or AI suggestions are running.",
+        "There is no live model selector or enable switch yet.",
+    ):
+        assert indicator in script
+    # No assistant call, inferred authority or provider network endpoint is introduced.
+    assert "fetch(\"/api/ai" not in script
+    assert "openai.com" not in script.lower()
+    assert "outreach, bids, payments" in script
