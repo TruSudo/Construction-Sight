@@ -110,6 +110,9 @@ def test_command_center_exact_source_navigation_and_paging_contract() -> None:
         assert f'id="{identifier}"' in html
     assert "workflowStatus.total===newWorkflow.total" in script
     assert "workflowStatus.outreach_authorized===false" in script
+    assert 'new URLSearchParams({kind:item.kind,county:item.county,limit:"1",offset:"0"})' in script
+    assert "sanBernardino+riverside>all" in script
+    assert "Other / unknown" in script
     assert "commercial_lead_created" not in script
     assert "fetch(url,{cache:\"no-store\"})" in script
     assert "rel=\"noopener noreferrer\"" in script
