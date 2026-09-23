@@ -86,3 +86,27 @@ def test_legacy_workspace_can_open_links_from_canonical_sidebar() -> None:
     assert '"hashchange"' in old
     assert '"records", "map", "workflow"' in old
     assert 'href="/"' in old_html
+
+
+def test_command_center_exact_source_navigation_and_paging_contract() -> None:
+    """All displayed read details come from bounded existing read-only routes."""
+    html = (ASSETS / "operator_command_center.html").read_text(encoding="utf-8")
+    script = (ASSETS / "operator_command_center.js").read_text(encoding="utf-8")
+    parser = _Ids()
+    parser.feed(html)
+    assert len(parser.ids) == len(set(parser.ids))
+    assert 'id="previous-records"' in html and 'id="next-records"' in html
+    assert "Math.floor(p.ordinal/50)*50" in script
+    assert "identity(r)===identity(p)" in script
+    assert "identity(r)===focusIdentity" in script
+    assert "newPage.total!==newFootprint.matching_total" in script
+    assert '"/api/candidate-preview?"' in script
+    assert '"/api/entity-neighborhood?"' in script
+    assert "JSON.stringify(result.source_record)!==JSON.stringify(row)" in script
+    assert "neighborhood.entity_key!==key" in script
+    assert "source_scan_truncated" in script and "matching_records_truncated" in script
+    assert "read-only" in script.lower()
+    assert "commercial_lead_created" not in script
+    assert "fetch(url,{cache:\"no-store\"})" in script
+    assert "rel=\"noopener noreferrer\"" in script
+    assert '["http:", "https:"]' in script
