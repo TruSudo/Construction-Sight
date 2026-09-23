@@ -57,7 +57,7 @@ function renderDossier(row) {
     '<dt>Sources</dt><dd>' + sources + '</dd></dl>' +
     '<p>Readiness, verified decision-maker contact and present construction stage have not been evaluated. No outreach or bid authorization is implied.</p>' +
     '<div class="dossier-actions"><button type="button" class="action primary" id="watch-selected">' + (watch ? "★ Remove bookmark" : "☆ Watch source record") + '</button>' +
-    '<button type="button" class="action" id="inspect-selected">Inspect evidence &amp; review gaps →</button>' +
+    '<button type="button" class="action" id="inspect-selected">Inspect evidence, parcels &amp; review gaps →</button>' +
     '<a class="action" href="/workspace#records">Open Project Intelligence →</a></div>';
   byId("watch-selected").onclick = () => toggleWatch(row);
   byId("inspect-selected").onclick = () => showSection("evidence");
@@ -150,7 +150,10 @@ async function showEvidence() {
   byId("feature-body").innerHTML='<section class="feature-card"><p role="status">Loading exact-source evidence…</p></section>';
   try {
     const params=new URLSearchParams({kind:row.record_kind,record_id:row.record_id});
-    const result=await fetchJson("/api/candidate-preview?"+params);
+    const [result, parcels]=await Promise.all([
+      fetchJson("/api/candidate-preview?"+params),
+      fetchJson("/api/parcel-candidates?"+params).catch(error=>({error:String(error.message || error)}))
+    ]);
     if(token!==featureRequest || byId("feature-view").hidden)return;
     if(identity(result.source_record)!==identity(row) || JSON.stringify(result.source_record)!==JSON.stringify(row))
       throw Error("The retained source changed since selection. Refresh and inspect the new revision.");
@@ -158,6 +161,24 @@ async function showEvidence() {
     const siteSources=Array.isArray(result.source_snapshot.site?.provenance)?result.source_snapshot.site.provenance:[];
     const milestones=Array.isArray(row.milestones)?row.milestones:[];
     const checks=Array.isArray(result.checks)?result.checks:[];
+    const parcelCurrent=parcels.source_kind===row.record_kind && parcels.source_record_id===row.record_id &&
+      parcels.read_only===true && parcels.linked_site_verified===false;
+    const parcelClaims=parcelCurrent && Array.isArray(parcels.matches)?parcels.matches:[];
+    const parcelSection='<section class="feature-card"><h2>Retained parcel candidates</h2>'+
+      (parcels.error?'<p role="alert">Parcel inspection unavailable: '+escapeText(parcels.error)+'</p>':
+      !parcelCurrent?'<p role="alert">Parcel inspection returned an inconsistent source identity or authority state.</p>':
+      '<p>Source APN: '+escapeText(valueOrUnknown(parcels.source_apn))+' · Normalized APN: '+
+      escapeText(valueOrUnknown(parcels.normalized_apn))+' · '+parcels.matching_total+
+      ' exact APN/county co-occurrences'+(parcels.truncated?' (result truncated)':'')+
+      '. These are unverified source claims, not confirmed parcel/site links or surveyed boundaries.</p>'+
+      (parcelClaims.map(item=>'<div class="evidence-item"><strong>'+escapeText(item.apn)+
+        '</strong> · '+escapeText(item.county)+' · '+escapeText(item.source_key)+
+        '<p>Address: '+escapeText(valueOrUnknown(item.address))+
+        ' · Zoning: '+escapeText(valueOrUnknown(item.zoning))+
+        ' · Land use: '+escapeText(valueOrUnknown(item.land_use))+'</p>'+
+        '<small>Record: '+escapeText(item.parcel_record_id)+' · '+escapeText(item.map_reason)+'</small></div>').join("")||
+        '<p>No retained parcel candidate matched the exact APN and county. This does not establish that no parcel exists.</p>'))+
+      '</section>';
     byId("feature-body").innerHTML=
       '<section class="feature-card"><span class="badge">SOURCE RECORD · '+escapeText(result.state.toUpperCase())+'</span><h2>'+escapeText(row.title)+'</h2>'+
       '<p>'+escapeText(row.record_kind.toUpperCase())+' / '+escapeText(row.record_id)+
@@ -169,6 +190,7 @@ async function showEvidence() {
       (siteSources.map(evidenceItem).join("") || '<p>No linked site provenance retained.</p>')+'</section>'+
       '<section class="feature-card"><h2>Historical source milestones</h2>'+
       (milestones.map(m=>'<p>'+escapeText(m.recorded_date)+' · '+escapeText(m.event_kind.replaceAll("_"," "))+' (source claimed)</p>').join("") || '<p>No dated events retained.</p>')+'</section>'+
+      parcelSection+
       '<section class="feature-card"><h2>Opportunity review gaps</h2>'+
       checks.map(c=>'<p><strong>'+escapeText(c.key.replaceAll("_"," "))+' · '+escapeText(c.state)+'</strong><br>'+escapeText(c.detail)+'</p>').join("")+
       '<p>Review status is not approval. Full normalized evidence remains in the read-only Project Intelligence view.</p></section>';
