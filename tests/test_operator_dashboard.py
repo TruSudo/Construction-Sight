@@ -1360,3 +1360,52 @@ def test_explicit_desktop_launch_opens_only_bound_loopback_url(monkeypatch, tmp_
         'constructionsight-desktop = "constructionsight.operator_web:desktop_main"'
         in project
     )
+
+
+def test_command_center_off_page_map_to_exact_evidence_and_entity_http(database):
+    """A mapped source beyond page one resolves to the same exact read-only evidence."""
+    path, engine = database
+    with Session(engine) as session, session.begin():
+        for index in range(57):
+            CeqaStore(session).upsert(_record(f"mapped:{index:03d}"))
+    before = hashlib.sha256(path.read_bytes()).hexdigest()
+    with _server(path) as port:
+        status, _, raw = _get(port, "/api/footprint?kind=all")
+        assert status == 200
+        footprint = json.loads(raw)
+        assert footprint["matching_total"] == 57
+        assert footprint["mapped_in_scan"] == 57
+        target = next(point for point in footprint["points"] if point["ordinal"] == 52)
+        offset = (target["ordinal"] // 50) * 50
+        status, _, raw = _get(
+            port, f"/api/snapshot?kind=all&limit=50&offset={offset}"
+        )
+        assert status == 200
+        page = json.loads(raw)
+        assert page["total"] == footprint["matching_total"]
+        source = page["projects"][target["ordinal"] - page["offset"]]
+        assert (source["record_kind"], source["record_id"]) == (
+            target["record_kind"], target["record_id"]
+        )
+        selection = f"kind=ceqa&record_id={source['record_id']}"
+        status, _, raw = _get(port, "/api/candidate-preview?" + selection)
+        assert status == 200
+        preview = json.loads(raw)
+        assert preview["source_record"] == source
+        assert preview["read_only"] and not preview["persisted"]
+        assert not preview["commercial_lead_created"]
+        assert not preview["outreach_authorized"] and not preview["bid_authorized"]
+        assert preview["source_snapshot"]["provenance"]
+        status, _, raw = _get(
+            port, "/api/entity-neighborhood?kind=all&entity_key=fixture%3Aparty"
+        )
+        assert status == 200
+        neighbors = json.loads(raw)
+        assert neighbors["entity_key"] == "fixture:party"
+        assert neighbors["matching_records_in_scan"] == 57
+        assert any(
+            (item["record_kind"], item["record_id"]) ==
+            (target["record_kind"], target["record_id"])
+            for item in neighbors["records"]
+        )
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == before
