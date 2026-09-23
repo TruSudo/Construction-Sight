@@ -101,6 +101,9 @@ def test_command_center_exact_source_navigation_and_paging_contract() -> None:
     assert "identity(r)===focusIdentity" in script
     assert "newPage.total!==newFootprint.matching_total" in script
     assert '"/api/candidate-preview?"' in script
+    assert '"/api/parcel-candidates?"' in script
+    assert "parcels.source_record_id===row.record_id" in script
+    assert "parcels.linked_site_verified===false" in script
     assert '"/api/entity-neighborhood?"' in script
     assert "JSON.stringify(result.source_record)!==JSON.stringify(row)" in script
     assert "neighborhood.entity_key!==key" in script
