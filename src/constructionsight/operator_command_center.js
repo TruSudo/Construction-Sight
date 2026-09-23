@@ -250,26 +250,37 @@ async function loadData(offset=pageOffset, focusIdentity=null){
   const filter=new URLSearchParams({kind:"all",limit:"50",offset:String(offset),q:activeQuery});
   const geo=new URLSearchParams({kind:"all",q:activeQuery});
   try{
-    const [newPage,newFootprint,newWorkflow,health]=await Promise.all([
+    const [newPage,newFootprint,newWorkflow,health,workflowStatus]=await Promise.all([
       fetchJson("/api/snapshot?"+filter),fetchJson("/api/footprint?"+geo),
-      fetchJson("/api/workflows?limit=50&offset=0"),fetchJson("/api/health")
+      fetchJson("/api/workflows?limit=50&offset=0"),fetchJson("/api/health"),
+      fetchJson("/api/workflow-summary").catch(error=>({error:String(error.message || error)}))
     ]);
     if(token!==pageRequest)return;
     if(newPage.total!==newFootprint.matching_total)throw Error("Source-list and geographic scope disagree. Refresh the database view.");
     page=newPage;footprint=newFootprint;workflows=newWorkflow;pageOffset=offset;
     byId("source-total").textContent=newPage.total.toLocaleString();
     byId("workflow-total").textContent=newWorkflow.total.toLocaleString();
+    const counts=workflowStatus.statuses;
+    const known=counts && Object.values(counts).every(n=>Number.isSafeInteger(n) && n>=0);
+    const validStatus=workflowStatus.read_only===true && workflowStatus.outreach_authorized===false &&
+      Number.isSafeInteger(workflowStatus.unclassified) && workflowStatus.unclassified>=0 &&
+      known && Object.values(counts).reduce((a,b)=>a+b,workflowStatus.unclassified)===workflowStatus.total &&
+      workflowStatus.total===newWorkflow.total;
+    for(const [status,id] of [["ready","workflow-ready"],["review","workflow-review"],["hold","workflow-hold"]])
+      byId(id).textContent=validStatus && Number.isSafeInteger(counts[status]) ? String(counts[status]) : "—";
     selected=null;selectedRecord=null;renderDossier(null);renderRecords();renderMap();
     const focus=focusIdentity ? records().find(r=>identity(r)===focusIdentity) : null;
     if(focus)selectRow(focus);
     byId("global-notice").textContent="Retained SQLite records only · "+newPage.total+" matching source records · "+
       (newFootprint.truncated?"map scan truncated · ":"")+"readiness and live collection not enabled · "+
       (health.read_only?"read-only access":"operator status requires review")+"."+
+      (!validStatus?" Workflow-status breakdown unavailable or inconsistent.":"")+
       (focusIdentity && !focus ? " Selected map point moved or disappeared from its recorded position; refresh before inspecting it." : "");
   }catch(error){
     if(token!==pageRequest)return;
     page=null;footprint=null;workflows=null;selected=null;selectedRecord=null;
     byId("source-total").textContent="—";byId("workflow-total").textContent="—";
+    for(const id of ["workflow-ready","workflow-review","workflow-hold"])byId(id).textContent="—";
     byId("global-notice").textContent="Data unavailable: "+String(error.message || error)+". Check the selected existing SQLite database; no synthetic records will be substituted.";
     renderDossier(null);renderRecords();renderMap();
   }
