@@ -36,7 +36,10 @@ from constructionsight.storage.operator_read_store import (
 )
 
 _ASSETS = {
-    "/": ("operator_ui.html", "text/html; charset=utf-8"),
+    "/": ("operator_command_center.html", "text/html; charset=utf-8"),
+    "/workspace": ("operator_ui.html", "text/html; charset=utf-8"),
+    "/operator_command_center.js": ("operator_command_center.js", "text/javascript; charset=utf-8"),
+    "/operator_command_center.css": ("operator_command_center.css", "text/css; charset=utf-8"),
     "/operator_ui.js": ("operator_ui.js", "text/javascript; charset=utf-8"),
     "/operator_ui.css": ("operator_ui.css", "text/css; charset=utf-8"),
 }
