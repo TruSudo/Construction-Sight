@@ -28,9 +28,9 @@
  <div class="notice" id="global-notice" role="status">Reading retained local records. Readiness, outreach, bids, and live watchlist alerts are not enabled in this operator.</div>
  <section class="stats" aria-label="ConstructionSight status summary">
   <button class="stat" id="source-stat" type="button"><small>▤ &nbsp; Matching Source Records</small><strong id="source-total">—</strong><span>Not deduplicated projects or leads</span></button>
-  <div class="stat"><small><i class="dot green"></i> Ready for Outreach</small><strong>—</strong><span>Readiness not yet evaluated</span></div>
-  <div class="stat"><small><i class="dot yellow"></i> In Review</small><strong>—</strong><span>Readiness not yet evaluated</span></div>
-  <div class="stat"><small><i class="dot red"></i> Not Ready</small><strong>—</strong><span>Readiness not yet evaluated</span></div>
+  <a class="stat" href="/workspace#workflow"><small><i class="dot green"></i> Workflow: Ready</small><strong id="workflow-ready">—</strong><span>Stored status, not outreach approval</span></a>
+  <a class="stat" href="/workspace#workflow"><small><i class="dot yellow"></i> Workflow: In Review</small><strong id="workflow-review">—</strong><span>Persisted workflow records only</span></a>
+  <a class="stat" href="/workspace#workflow"><small><i class="dot red"></i> Workflow: Hold</small><strong id="workflow-hold">—</strong><span>Persisted workflow records only</span></a>
   <a class="stat" href="/workspace#workflow"><small>◷ &nbsp; Persisted Workflows</small><strong id="workflow-total">—</strong><span>Inspect retained workflow records →</span></a>
  </section>
  <div class="dashboard-grid">
