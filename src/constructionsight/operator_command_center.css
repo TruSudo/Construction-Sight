@@ -6,3 +6,6 @@
 /* Original owner-provided logo emblem, cropped for the fixed sidebar brand region. */
 .brand .brand-emblem{display:block;margin:0 auto;width:140px;height:138px;object-fit:cover;border:0;border-radius:0;background:transparent;font-size:0}
 @media(max-width:720px){.brand .brand-emblem{width:72px;height:71px}}
+
+/* Exact-source inspection and bounded source-page navigation retain the approved palette. */
+.records-footer{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}.record-pager{display:flex;gap:8px}.record-pager button,.related-record{background:#30291d;border:1px solid #62512e;border-radius:5px;color:#f4bc65;padding:6px 10px;font-size:11px}.record-pager button:disabled{opacity:.45;cursor:not-allowed}.evidence-item{padding:12px 0;border-bottom:1px solid #43413c;overflow-wrap:anywhere}.evidence-item p{margin:4px 0}.evidence-item small{display:inline-block;color:#aaa}.feature-card code{overflow-wrap:anywhere}.related-record{display:block;width:100%;margin:5px 0;text-align:left}.related-record:hover,.record-pager button:not(:disabled):hover{border-color:var(--amber)}
