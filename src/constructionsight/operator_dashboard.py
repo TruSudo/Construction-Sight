@@ -15,6 +15,7 @@ from constructionsight.lead_operator_service import (
     get_lead_operator_record,
     load_persisted_lead_workflow,
 )
+from constructionsight.lead_workflow_models import LeadWorkflowStatus
 from constructionsight.lead_review_models import LeadReviewPackage
 from constructionsight.operator_dashboard_models import (
     DashboardPoint,
@@ -434,4 +435,36 @@ def build_workflow_snapshot(
         "offset": offset,
         "limit": limit,
         "read_only": True,
+    }
+
+
+def build_workflow_status_summary(session: Session) -> dict[str, Any]:
+    """Count stored workflow rows by exact status without assessing source-record readiness.
+
+    Counts reflect status columns as persisted, not independent approval or revalidation
+    of each workflow's review-package relationship. Unexpected values remain unclassified.
+    """
+    statuses = {status.value: 0 for status in LeadWorkflowStatus}
+    unclassified = 0
+    for raw_status, count in session.execute(
+        select(LeadWorkflowRecordRow.status, func.count())
+        .group_by(LeadWorkflowRecordRow.status)
+    ):
+        if raw_status in statuses:
+            statuses[raw_status] += count
+        else:
+            unclassified += count
+    total = sum(statuses.values()) + unclassified
+    return {
+        "total": total,
+        "statuses": statuses,
+        "unclassified": unclassified,
+        "read_only": True,
+        "outreach_authorized": False,
+        "limitations": [
+            "Counts are persisted workflow rows, not distinct verified construction projects.",
+            "Stored workflow status does not independently authorize outreach or bids.",
+            "Grouped status-column counts do not revalidate individual review packages.",
+            "Source records without a persisted workflow are not classified in this summary.",
+        ],
     }
