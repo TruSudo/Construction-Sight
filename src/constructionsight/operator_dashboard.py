@@ -15,8 +15,8 @@ from constructionsight.lead_operator_service import (
     get_lead_operator_record,
     load_persisted_lead_workflow,
 )
-from constructionsight.lead_workflow_models import LeadWorkflowStatus
 from constructionsight.lead_review_models import LeadReviewPackage
+from constructionsight.lead_workflow_models import LeadWorkflowStatus
 from constructionsight.operator_dashboard_models import (
     DashboardPoint,
     DashboardProject,
