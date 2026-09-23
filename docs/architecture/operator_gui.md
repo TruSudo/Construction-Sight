@@ -341,7 +341,10 @@ The owner-approved charcoal-and-amber Command Center now connects additional exi
   separate `/api/candidate-preview` read and requires the returned projected
   source record to match the selected snapshot. It exposes retained source and
   linked-site provenance, source-claimed historical milestones, normalized-record
-  digest and explicit readiness-review gaps. Source links are HTTP(S)-only and
+  digest and explicit readiness-review gaps. It also reads bounded exact APN/county
+  parcel-candidate claims from `/api/parcel-candidates`, checking source identity,
+  APN and county against the selected snapshot before display. Candidate parcels
+  are not established links, surveyed boundaries or verified site footprints. Source links are HTTP(S)-only and
   external links use `noopener noreferrer`. The read does not create a lead,
   grant authorization, or revalidate the original raw source document.
 - **Entity Network** shows the selected record's retained party claims and reads
