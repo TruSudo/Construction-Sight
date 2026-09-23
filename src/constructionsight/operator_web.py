@@ -23,6 +23,7 @@ from constructionsight.operator_dashboard import (
     build_geographic_footprint,
     build_historical_timeline,
     build_workflow_snapshot,
+    build_workflow_status_summary,
 )
 from constructionsight.operator_dashboard_models import RecordSelection
 from constructionsight.operator_parcel_candidates import inspect_parcel_candidates
@@ -172,9 +173,12 @@ def create_handler(database_path: Path) -> type[BaseHTTPRequestHandler]:
                     "/api/candidate-preview",
                     "/api/parcel-candidates",
                     "/api/workflows",
+                    "/api/workflow-summary",
                 }:
                     self._send_json({"error": "Not found."}, status=HTTPStatus.NOT_FOUND)
                     return
+                if path == "/api/workflow-summary" and parsed.query:
+                    raise ValueError("workflow summary does not accept query parameters")
                 parameters = _parameters(
                     parsed.query,
                     workflow=path == "/api/workflows",
@@ -195,6 +199,8 @@ def create_handler(database_path: Path) -> type[BaseHTTPRequestHandler]:
                             "read_only": True,
                             "live_collection_enabled": False,
                         }
+                    elif path == "/api/workflow-summary":
+                        payload = build_workflow_status_summary(session)
                     elif path == "/api/workflows":
                         payload = build_workflow_snapshot(
                             session, limit=parameters.limit, offset=parameters.offset
