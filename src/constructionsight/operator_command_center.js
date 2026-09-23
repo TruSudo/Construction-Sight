@@ -221,11 +221,42 @@ function showEntities() {
   });
 }
 
+
+async function showSources() {
+  const token=++featureRequest;
+  featureIntro("Sources & Collection", "Actual retained CEQA and permit counts from the selected local database");
+  byId("feature-body").innerHTML='<section class="feature-card"><p role="status">Reading stored source-family and county counts…</p></section>';
+  const families=["ceqa","permit"], counties=["","San Bernardino","Riverside"];
+  try {
+    const queries=families.flatMap(kind=>counties.map(county=>({kind,county})));
+    const data=await Promise.all(queries.map(async item=>
+      fetchJson("/api/snapshot?"+new URLSearchParams({kind:item.kind,county:item.county,limit:"1",offset:"0"}))
+    ));
+    if(token!==featureRequest || byId("feature-view").hidden)return;
+    if(data.some((result,index)=>result.selection!==queries[index].kind || !Number.isSafeInteger(result.total) || result.total<0))
+      throw Error("Stored source scope changed or could not be verified.");
+    const rows=families.map((kind,index)=>{
+      const [all,sanBernardino,riverside]=data.slice(index*3,index*3+3).map(result=>result.total);
+      if(sanBernardino+riverside>all)throw Error("Source counts disagree across county filters.");
+      return '<tr><th scope="row">'+escapeText(kind.toUpperCase())+'</th><td>'+all+'</td><td>'+sanBernardino+'</td><td>'+riverside+'</td><td>'+(all-sanBernardino-riverside)+'</td></tr>';
+    }).join("");
+    byId("feature-body").innerHTML='<section class="feature-card"><span class="badge">RETAINED SQLITE RECORDS · READ ONLY</span><h2>Source inventory</h2>'+
+      '<p>Counts are source records, not deduplicated projects, live construction sites, or approved commercial leads. Other/unknown includes records with missing or out-of-scope county claims.</p>'+
+      '<div class="source-inventory-scroll"><table class="source-inventory"><thead><tr><th>Source family</th><th>All counties</th><th>San Bernardino</th><th>Riverside</th><th>Other / unknown</th></tr></thead><tbody>'+rows+'</tbody></table></div></section>'+
+      '<section class="feature-card"><h2>Collection status</h2><p>This local operator does not run live source acquisition, subscription monitoring, scheduled updates or remote data import. Import and retained-source validation remain separate governed workflows.</p>'+
+      '<a href="/workspace#records">Inspect stored source evidence →</a></section>';
+  } catch(error) {
+    if(token===featureRequest && !byId("feature-view").hidden)
+      byId("feature-body").innerHTML='<section class="feature-card"><h2>Source inventory unavailable</h2><p role="alert">'+escapeText(error.message || error)+'</p></section>';
+  }
+}
+
 function showSection(name) {
   ++featureRequest;
   byId("command-view").hidden=true;byId("feature-view").hidden=false;
   if(name==="entities"){document.querySelectorAll("[data-section]").forEach(n=>{n.classList.toggle("current",n.dataset.section===name);n.setAttribute("aria-pressed",String(n.dataset.section===name));});document.querySelector('a[href="/"]').classList.remove("current");showEntities();return;}
   if(name==="evidence"){document.querySelectorAll("[data-section]").forEach(n=>{n.classList.toggle("current",n.dataset.section===name);n.setAttribute("aria-pressed",String(n.dataset.section===name));});document.querySelector('a[href="/"]').classList.remove("current");showEvidence();return;}
+  if(name==="sources"){document.querySelectorAll("[data-section]").forEach(n=>{n.classList.toggle("current",n.dataset.section===name);n.setAttribute("aria-pressed",String(n.dataset.section===name));});document.querySelector('a[href="/"]').classList.remove("current");showSources();return;}
   document.querySelectorAll("[data-section]").forEach(n=>{n.classList.toggle("current",n.dataset.section===name);n.setAttribute("aria-pressed",String(n.dataset.section===name));});
   document.querySelector('a[href="/"]').classList.remove("current");
   if(name==="watchlist"){
