@@ -274,12 +274,38 @@ async function showSources() {
   }
 }
 
+function showAiCenter() {
+  featureIntro("AI Center", "Optional research assistance and ambient intelligence · not connected");
+  byId("feature-body").innerHTML =
+    '<section class="feature-card ai-status-card"><span class="badge">AI OFF · NO MODEL CONNECTED</span>'+
+    '<h2>ConstructionSight AI Center</h2>'+
+    '<p>The application continues to acquire, retain, search, inspect and display source records independently of AI. '+
+    'This development interface does not invoke a model, perform background inference, or send source records to an AI provider.</p>'+
+    '<p>Provider: not configured · Remote data transmission: disabled · Background analysis: inactive</p></section>'+
+    '<section class="feature-card"><h2>AI Research Assistant · planned</h2>'+
+    '<p>Optional, operator-initiated analysis of already retained and permitted evidence: cited dossier explanations, '+
+    'research questions, competing source claims and proposed entity matches. Proposed findings require source links and '+
+    'separate review; they never become authoritative source facts automatically.</p>'+
+    '<a href="/workspace#records">Inspect existing evidence without AI →</a></section>'+
+    '<section class="feature-card"><h2>Ambient Intelligence · planned</h2>'+
+    '<p>Optional background analysis of authorized record-change events, with bounded queues, cancellation, '+
+    'deduplicated analysis, separate findings storage and explicit provenance. It will not block core workflows '+
+    'or independently authorize outreach, bids, payments or changes to source records.</p>'+
+    '<p>Current status: inactive. No monitoring, alerts or AI suggestions are running.</p></section>'+
+    '<section class="feature-card"><h2>Model and privacy controls · planned</h2>'+
+    '<p>A future provider connection will require explicit activation and clear disclosure before any remote data '+
+    'transmission. Local and remote models will use a replaceable adapter; timeouts or provider failures must not '+
+    'interrupt the normal ConstructionSight workflow.</p>'+
+    '<p>There is no live model selector or enable switch yet. The AI Center is reserved for this optional feature.</p></section>';
+}
+
 function showSection(name) {
   ++featureRequest;
   byId("command-view").hidden=true;byId("feature-view").hidden=false;
   if(name==="entities"){document.querySelectorAll("[data-section]").forEach(n=>{n.classList.toggle("current",n.dataset.section===name);n.setAttribute("aria-pressed",String(n.dataset.section===name));});document.querySelector('a[href="/"]').classList.remove("current");showEntities();return;}
   if(name==="evidence"){document.querySelectorAll("[data-section]").forEach(n=>{n.classList.toggle("current",n.dataset.section===name);n.setAttribute("aria-pressed",String(n.dataset.section===name));});document.querySelector('a[href="/"]').classList.remove("current");showEvidence();return;}
   if(name==="sources"){document.querySelectorAll("[data-section]").forEach(n=>{n.classList.toggle("current",n.dataset.section===name);n.setAttribute("aria-pressed",String(n.dataset.section===name));});document.querySelector('a[href="/"]').classList.remove("current");showSources();return;}
+  if(name==="ai"){document.querySelectorAll("[data-section]").forEach(n=>{n.classList.toggle("current",n.dataset.section===name);n.setAttribute("aria-pressed",String(n.dataset.section===name));});document.querySelector('a[href="/"]').classList.remove("current");showAiCenter();return;}
   document.querySelectorAll("[data-section]").forEach(n=>{n.classList.toggle("current",n.dataset.section===name);n.setAttribute("aria-pressed",String(n.dataset.section===name));});
   document.querySelector('a[href="/"]').classList.remove("current");
   if(name==="watchlist"){
