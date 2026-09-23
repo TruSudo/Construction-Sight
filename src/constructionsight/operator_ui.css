@@ -222,3 +222,5 @@ main {min-width:0;min-height:100vh}
   html {scroll-behavior:auto}
   *,*::before,*::after {animation-duration:.01ms!important;transition-duration:.01ms!important}
 }
+
+.command-return{display:block;margin:0 11px 16px;padding:11px 14px;border:1px solid #eaa45255;border-radius:10px;background:#eaa45216;color:#ffc780;text-decoration:none;font-weight:700;font-size:12px}.command-return:hover,.command-return:focus-visible{background:#eaa45230;color:#fff}

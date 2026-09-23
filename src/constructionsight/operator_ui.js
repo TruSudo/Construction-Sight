@@ -560,4 +560,14 @@ $("next").onclick = () => { offset += LIMIT; load(); };
 setNavigationCollapsed(preference("nav-collapsed") === "true");
 setLegendCollapsed(preference("legend-collapsed") === "true");
 load();
-if (["map", "workflow"].includes(preference("active-tab"))) switchMode(preference("active-tab"));
+const requestedView = window.location.hash.replace(/^#/, "");
+if (["records", "map", "workflow"].includes(requestedView)) {
+  if (requestedView !== "records") switchMode(requestedView);
+  else savePreference("active-tab", "records");
+} else if (["map", "workflow"].includes(preference("active-tab"))) {
+  switchMode(preference("active-tab"));
+}
+window.addEventListener("hashchange", () => {
+  const view = window.location.hash.replace(/^#/, "");
+  if (["records", "map", "workflow"].includes(view)) switchMode(view);
+});
