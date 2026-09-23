@@ -324,3 +324,52 @@ locations, verified geographic containment or legal parcel boundaries.
 Changing the selected record, filter, or mode clears the optional overlay;
 late results from previous selections cannot reinstate it. The server remains
 loopback GET-only and SQLite mode=ro.
+
+
+## Command Center exact-source integration increment (September 23, 2026)
+
+The owner-approved charcoal-and-amber Command Center now connects additional existing
+**read-only** services without changing the established backend write boundaries:
+
+- The Command Center record list has explicit 50-record previous/next pagination.
+  Selecting a coordinate point outside the visible list page requests the stable
+  page containing that footprint point's `ordinal` and checks its full source-family
+  and source-record identity before displaying the dossier. If query order changed,
+  the operator warns instead of silently selecting a different record. Coordinate
+  dots remain a schematic overview, **not** a satellite, parcel or street basemap.
+- An exact selected source record can open **Evidence Chains**. The view performs a
+  separate `/api/candidate-preview` read and requires the returned projected
+  source record to match the selected snapshot. It exposes retained source and
+  linked-site provenance, source-claimed historical milestones, normalized-record
+  digest and explicit readiness-review gaps. Source links are HTTP(S)-only and
+  external links use `noopener noreferrer`. The read does not create a lead,
+  grant authorization, or revalidate the original raw source document.
+- **Entity Network** shows the selected record's retained party claims and reads
+  exact stored-key co-occurrences from `/api/entity-neighborhood`. Related rows
+  can be inspected in the dossier; separate record families are not collapsed.
+  It discloses scan and match truncation, and never treats a name/key match as
+  independently verified corporate identity.
+- **Sources & Collection** reads actual retained CEQA/permit counts per target
+  county from the existing paginated snapshot API. Other/unknown counts include
+  missing and out-of-target county claims. There is no automatic collection,
+  jobsite monitoring or subscription in this screen.
+- A GET-only `/api/workflow-summary` groups exact persisted workflow status columns
+  and returns the complete stored-status breakdown, total and unclassified count.
+  The three KPI cards now show *workflow ready*, *workflow review* and
+  *workflow hold* counts rather than inventing source-record readiness. The
+  browser hides those KPI counts if the summary or its total disagrees with the
+  separately retrieved workflow count. A ready **workflow status is not outreach
+  or bid authorization**. The status-column aggregate is not a substitute for
+  individual workflow/review-package validation, nor a count of distinct projects.
+
+The same-origin loopback service remains read-only. No network collection, outbound
+contact, customer-requested bid preparation, royalty posting, background watchlist,
+interactive street basemap or full visual-parity acceptance was implemented in this
+increment. Source-record qualification and legitimate commercial actions remain
+separate governed work.
+
+New backend regressions cover off-page footprint-to-source-to-preview-to-entity
+retrieval, persisted-status aggregation and query-parameter rejection. The UI
+received a synthetic DOM/HTTP interaction smoke run; the full Python matrix,
+real-browser visual acceptance and exact-head CI are **not yet established** for
+this development commit. The draft is not a certified release.
