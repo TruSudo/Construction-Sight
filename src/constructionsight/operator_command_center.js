@@ -4,7 +4,7 @@ const byId = id => document.getElementById(id);
 const escapeText = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const identity = row => row.record_kind + ":" + row.record_id;
 const WATCH_KEY = "constructionsight:operator:local-watchlist-v1";
-let page = null, footprint = null, workflows = null, selected = null, activeQuery = "", pageRequest = 0;
+let page = null, footprint = null, workflows = null, selected = null, selectedRecord = null, activeQuery = "", pageRequest = 0, featureRequest = 0, pageOffset = 0;
 let localWatchlist = {};
 try { const stored = JSON.parse(localStorage.getItem(WATCH_KEY) || "{}"); if (stored && typeof stored === "object" && !Array.isArray(stored)) localWatchlist = stored; } catch (_) { /* Browser-local preferences are optional. */ }
 const records = () => page && Array.isArray(page.projects) ? page.projects : [];
@@ -57,8 +57,10 @@ function renderDossier(row) {
     '<dt>Sources</dt><dd>' + sources + '</dd></dl>' +
     '<p>Readiness, verified decision-maker contact and present construction stage have not been evaluated. No outreach or bid authorization is implied.</p>' +
     '<div class="dossier-actions"><button type="button" class="action primary" id="watch-selected">' + (watch ? "★ Remove bookmark" : "☆ Watch source record") + '</button>' +
-    '<a class="action" href="/workspace#records">Inspect full source evidence →</a></div>';
+    '<button type="button" class="action" id="inspect-selected">Inspect evidence &amp; review gaps →</button>' +
+    '<a class="action" href="/workspace#records">Open Project Intelligence →</a></div>';
   byId("watch-selected").onclick = () => toggleWatch(row);
+  byId("inspect-selected").onclick = () => showSection("evidence");
 }
 function renderRecords() {
   const target = byId("command-records");
@@ -70,12 +72,14 @@ function renderRecords() {
     '</small><small>' + escapeText(row.record_kind.toUpperCase()) + '</small></button>'
   ).join("") || '<p class="empty" style="padding:12px">No retained source records match the current query.</p>';
   target.querySelectorAll("[data-record]").forEach(el => el.onclick = () => selectRow(items[Number(el.dataset.record)]));
-  byId("records-scope").textContent = page ? "Showing " + items.length + " of " + page.total +
-    " matching source records. Not deduplicated projects or qualified leads." : "Source records unavailable.";
+  byId("records-scope").textContent = page ? "Showing " + (page.total ? page.offset + 1 : 0) + "–" + (page.offset + page.returned) + " of " + page.total +
+    " matching source records (first " + items.length + " shown here). Not deduplicated projects or qualified leads." : "Source records unavailable.";
+  byId("previous-records").disabled = !page || page.offset === 0;
+  byId("next-records").disabled = !page || !page.has_more;
 }
 function selectRow(row) {
   if (!row) return;
-  selected = identity(row); renderDossier(row); renderRecords();
+  selected = identity(row); selectedRecord = row; ++featureRequest; renderDossier(row); renderRecords();
   byId("command-dossier").closest(".dossier-panel").scrollIntoView({block:"nearest",behavior:"auto"});
 }
 function renderMap() {
@@ -98,7 +102,7 @@ function renderMap() {
   svg.innerHTML=content;
   svg.querySelectorAll("[data-point]").forEach(el=>{
     const choose=()=>{const p=display[Number(el.dataset.point)];const row=records().find(r=>identity(r)===identity(p));if(row)selectRow(row);
-      else {selected=null;byId("command-dossier").innerHTML='<span class="badge">SOURCE RECORD · NOT ON CURRENT PAGE</span><h3>'+escapeText(p.title || "Source record")+'</h3><p>'+escapeText(valueOrUnknown(p.county))+' · '+escapeText(p.record_kind)+' · source-claimed location. Open the full map to inspect records outside the current page.</p><a class="action" href="/workspace#map">Open full map →</a>';renderRecords();}};
+      else loadData(Math.floor(p.ordinal/50)*50,identity(p));};
     el.onclick=choose;el.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();choose();}};
   });
   byId("map-message").hidden=display.length>0;
@@ -117,8 +121,111 @@ const sections = {
   royalty:["Royalty Ledger","Contract attribution, payments, and reconciliation.","No royalty transaction ledger or payment posting is exposed through this read-only operator. Existing result/share services must be connected and validated before balances or payment status can be shown.","/workspace#workflow","Inspect retained workflow records →"],
   sources:["Sources & Collection","Review available data and collection boundaries.","This application reads a selected local SQLite database only. Live collection is disabled; matching source-record counts do not establish coverage of all permitting jurisdictions.","/workspace#records","Review retained source records →"]
 };
+
+function safeSourceLink(raw) {
+  try {
+    const url = new URL(String(raw));
+    return ["http:", "https:"].includes(url.protocol) ? '<a rel="noopener noreferrer" target="_blank" href="'+escapeText(url.href)+'">Open public source ↗</a>' : "";
+  } catch (_) { return ""; }
+}
+function evidenceItem(provenance) {
+  return '<div class="evidence-item"><strong>'+escapeText(provenance.source_name || "Unnamed source")+'</strong>'+
+    '<p>'+escapeText(valueOrUnknown(provenance.evidence_text))+'</p>'+
+    '<small>Captured: '+escapeText(valueOrUnknown(provenance.captured_at))+
+    ' · Reference: '+escapeText(valueOrUnknown(provenance.raw_reference))+'</small> '+
+    safeSourceLink(provenance.source_url)+'</div>';
+}
+function featureIntro(name, message) {
+  byId("feature-heading").textContent=name;
+  byId("feature-description").textContent=message;
+}
+async function showEvidence() {
+  const token=++featureRequest, row=selectedRecord;
+  featureIntro("Evidence Chains", "Retained exact-source evidence, historical claims and review gaps · read only");
+  if(!row){
+    byId("feature-body").innerHTML='<section class="feature-card"><h2>Select a source record</h2><p>Select a project in the Command Center or Site Map to inspect its evidence.</p><button type="button" class="action" id="return-records">Return to source records</button></section>';
+    byId("return-records").onclick=showHome;
+    return;
+  }
+  byId("feature-body").innerHTML='<section class="feature-card"><p role="status">Loading exact-source evidence…</p></section>';
+  try {
+    const params=new URLSearchParams({kind:row.record_kind,record_id:row.record_id});
+    const result=await fetchJson("/api/candidate-preview?"+params);
+    if(token!==featureRequest || byId("feature-view").hidden)return;
+    if(identity(result.source_record)!==identity(row) || JSON.stringify(result.source_record)!==JSON.stringify(row))
+      throw Error("The retained source changed since selection. Refresh and inspect the new revision.");
+    const provenance=Array.isArray(result.source_snapshot.provenance)?result.source_snapshot.provenance:[];
+    const siteSources=Array.isArray(result.source_snapshot.site?.provenance)?result.source_snapshot.site.provenance:[];
+    const milestones=Array.isArray(row.milestones)?row.milestones:[];
+    const checks=Array.isArray(result.checks)?result.checks:[];
+    byId("feature-body").innerHTML=
+      '<section class="feature-card"><span class="badge">SOURCE RECORD · '+escapeText(result.state.toUpperCase())+'</span><h2>'+escapeText(row.title)+'</h2>'+
+      '<p>'+escapeText(row.record_kind.toUpperCase())+' / '+escapeText(row.record_id)+
+      ' · '+escapeText(valueOrUnknown(row.county))+' · Record digest: <code>'+escapeText(result.normalized_source_sha256)+'</code></p>'+
+      '<p>Read-only preview. No commercial lead, outreach authorization, or bid authorization is created.</p></section>'+
+      '<section class="feature-card"><h2>Source evidence ('+provenance.length+')</h2>'+
+      (provenance.map(evidenceItem).join("") || '<p>No source provenance retained. Review is on hold.</p>')+'</section>'+
+      '<section class="feature-card"><h2>Linked site evidence ('+siteSources.length+')</h2>'+
+      (siteSources.map(evidenceItem).join("") || '<p>No linked site provenance retained.</p>')+'</section>'+
+      '<section class="feature-card"><h2>Historical source milestones</h2>'+
+      (milestones.map(m=>'<p>'+escapeText(m.recorded_date)+' · '+escapeText(m.event_kind.replaceAll("_"," "))+' (source claimed)</p>').join("") || '<p>No dated events retained.</p>')+'</section>'+
+      '<section class="feature-card"><h2>Opportunity review gaps</h2>'+
+      checks.map(c=>'<p><strong>'+escapeText(c.key.replaceAll("_"," "))+' · '+escapeText(c.state)+'</strong><br>'+escapeText(c.detail)+'</p>').join("")+
+      '<p>Review status is not approval. Full normalized evidence remains in the read-only Project Intelligence view.</p></section>';
+  } catch(error) {
+    if(token===featureRequest && !byId("feature-view").hidden)
+      byId("feature-body").innerHTML='<section class="feature-card"><h2>Evidence unavailable</h2><p role="alert">'+escapeText(error.message || error)+'</p><button type="button" class="action" id="return-records">Return to source records</button></section>';
+    if(byId("return-records"))byId("return-records").onclick=showHome;
+  }
+}
+function showEntities() {
+  const token=++featureRequest, row=selectedRecord;
+  featureIntro("Entity Network", "Exact stored-entity-key co-occurrence across retained CEQA and permit records");
+  if(!row){
+    byId("feature-body").innerHTML='<section class="feature-card"><h2>Select a source record</h2><p>Select a source record in the Command Center, then inspect its named parties here.</p><button type="button" class="action" id="return-records">Return to source records</button></section>';
+    byId("return-records").onclick=showHome;
+    return;
+  }
+  const entities=Array.isArray(row.entities)?row.entities:[];
+  byId("feature-body").innerHTML='<section class="feature-card"><span class="badge">SOURCE-CLAIMED PARTIES</span><h2>'+escapeText(row.title)+'</h2>'+
+    '<p>Matching an exact stored entity key does not independently verify legal identity, ownership, or a real-world project relationship.</p>'+
+    (entities.map((e,index)=>'<div class="evidence-item"><strong>'+escapeText(e.name)+'</strong> · '+escapeText(e.role)+
+      '<br><small>Stored key: '+escapeText(e.entity_key)+'</small><br><button type="button" class="action" data-entity="'+index+'">Inspect matching records</button></div>').join("") ||
+      '<p>No named entities retained on this source record.</p>')+'</section><section class="feature-card" id="entity-results"><p>Select a named party to inspect exact-key source co-occurrences.</p></section>';
+  byId("feature-body").querySelectorAll("[data-entity]").forEach(button=>button.onclick=async()=>{
+    const key=entities[Number(button.dataset.entity)]?.entity_key, currentToken=++featureRequest;
+    if(typeof key!=="string" || !key || key.length>255)return;
+    byId("entity-results").innerHTML='<p role="status">Inspecting exact-key source co-occurrences…</p>';
+    try {
+      const neighborhood=await fetchJson("/api/entity-neighborhood?"+new URLSearchParams({kind:"all",entity_key:key}));
+      if(currentToken!==featureRequest || byId("feature-view").hidden)return;
+      if(neighborhood.entity_key!==key)throw Error("Entity identity changed while loading.");
+      const matches=Array.isArray(neighborhood.records)?neighborhood.records:[];
+      const target=byId("entity-results");
+      target.innerHTML='<h2>Exact-key matches ('+neighborhood.matching_records_in_scan+')</h2>'+
+        '<p>'+neighborhood.scanned_source_records+' of '+neighborhood.total_source_records+' source records scanned. '+
+        (neighborhood.source_scan_truncated?"Source scan truncated. ":"")+
+        (neighborhood.matching_records_truncated?"Result list truncated. ":"")+
+        'Equal stored keys indicate co-occurrence only, not independently confirmed entity identity.</p>'+
+        (matches.map((match,index)=>'<button type="button" class="related-record" data-related="'+index+'">'+escapeText(match.title)+
+          ' · '+escapeText(match.record_kind)+' / '+escapeText(match.record_id)+'</button>').join("") ||
+          '<p>No source records matched within the bounded scan.</p>');
+      target.querySelectorAll("[data-related]").forEach(item=>item.onclick=()=>{
+        const record=matches[Number(item.dataset.related)];
+        if(record){showHome();selectRow(record);}
+      });
+    } catch(error) {
+      if(currentToken===featureRequest && !byId("feature-view").hidden)
+        byId("entity-results").innerHTML='<p role="alert">Entity inspection unavailable: '+escapeText(error.message || error)+'</p>';
+    }
+  });
+}
+
 function showSection(name) {
+  ++featureRequest;
   byId("command-view").hidden=true;byId("feature-view").hidden=false;
+  if(name==="entities"){document.querySelectorAll("[data-section]").forEach(n=>{n.classList.toggle("current",n.dataset.section===name);n.setAttribute("aria-pressed",String(n.dataset.section===name));});document.querySelector('a[href="/"]').classList.remove("current");showEntities();return;}
+  if(name==="evidence"){document.querySelectorAll("[data-section]").forEach(n=>{n.classList.toggle("current",n.dataset.section===name);n.setAttribute("aria-pressed",String(n.dataset.section===name));});document.querySelector('a[href="/"]').classList.remove("current");showEvidence();return;}
   document.querySelectorAll("[data-section]").forEach(n=>{n.classList.toggle("current",n.dataset.section===name);n.setAttribute("aria-pressed",String(n.dataset.section===name));});
   document.querySelector('a[href="/"]').classList.remove("current");
   if(name==="watchlist"){
@@ -130,17 +237,17 @@ function showSection(name) {
   byId("feature-body").innerHTML='<section class="feature-card"><span class="badge">FUNCTIONALITY STATUS · PARTIAL / NOT CONNECTED</span><h2>'+escapeText(title)+'</h2><p>'+escapeText(warning)+'</p><a href="'+link+'">'+escapeText(label)+'</a></section>'+
     (name==="sources" ? '<section class="feature-card"><h2>Current local source scope</h2><p id="source-scope-detail">'+escapeText(page ? page.total+" matching retained records in the selected database.": "Reading local source record status…")+'</p></section>' : "");
 }
-function showHome(){byId("command-view").hidden=false;byId("feature-view").hidden=true;document.querySelectorAll("[data-section]").forEach(n=>{n.classList.remove("current");n.setAttribute("aria-pressed","false");});document.querySelector('a[href="/"]').classList.add("current");}
+function showHome(){++featureRequest;byId("command-view").hidden=false;byId("feature-view").hidden=true;document.querySelectorAll("[data-section]").forEach(n=>{n.classList.remove("current");n.setAttribute("aria-pressed","false");});document.querySelector('a[href="/"]').classList.add("current");}
 async function fetchJson(url){
   const response=await fetch(url,{cache:"no-store"});
   const data=await response.json();
   if(!response.ok) throw Error(data.error || "Local data unavailable.");
   return data;
 }
-async function loadData(){
-  const token=++pageRequest;
+async function loadData(offset=pageOffset, focusIdentity=null){
+  const token=++pageRequest;++featureRequest;
   byId("global-notice").textContent="Loading retained local records. Readiness, outreach, bidding, and live watchlist monitoring are not enabled.";
-  const filter=new URLSearchParams({kind:"all",limit:"50",offset:"0",q:activeQuery});
+  const filter=new URLSearchParams({kind:"all",limit:"50",offset:String(offset),q:activeQuery});
   const geo=new URLSearchParams({kind:"all",q:activeQuery});
   try{
     const [newPage,newFootprint,newWorkflow,health]=await Promise.all([
@@ -149,23 +256,26 @@ async function loadData(){
     ]);
     if(token!==pageRequest)return;
     if(newPage.total!==newFootprint.matching_total)throw Error("Source-list and geographic scope disagree. Refresh the database view.");
-    page=newPage;footprint=newFootprint;workflows=newWorkflow;
+    page=newPage;footprint=newFootprint;workflows=newWorkflow;pageOffset=offset;
     byId("source-total").textContent=newPage.total.toLocaleString();
     byId("workflow-total").textContent=newWorkflow.total.toLocaleString();
-    selected=null;renderDossier(null);renderRecords();renderMap();
+    selected=null;selectedRecord=null;renderDossier(null);renderRecords();renderMap();
+    if(focusIdentity){const focus=records().find(r=>identity(r)===focusIdentity);if(focus)selectRow(focus);else byId("global-notice").textContent="Selected map point is no longer present at its recorded position. Refresh the source query.";}
     byId("global-notice").textContent="Retained SQLite records only · "+newPage.total+" matching source records · "+
       (newFootprint.truncated?"map scan truncated · ":"")+"readiness and live collection not enabled · "+
       (health.read_only?"read-only access":"operator status requires review")+".";
   }catch(error){
     if(token!==pageRequest)return;
-    page=null;footprint=null;workflows=null;selected=null;
+    page=null;footprint=null;workflows=null;selected=null;selectedRecord=null;
     byId("source-total").textContent="—";byId("workflow-total").textContent="—";
     byId("global-notice").textContent="Data unavailable: "+String(error.message || error)+". Check the selected existing SQLite database; no synthetic records will be substituted.";
     renderDossier(null);renderRecords();renderMap();
   }
 }
 document.querySelectorAll("[data-section]").forEach(button=>button.onclick=()=>showSection(button.dataset.section));
-byId("global-search").onsubmit=event=>{event.preventDefault();activeQuery=byId("search-term").value.trim();showHome();loadData();};
+byId("global-search").onsubmit=event=>{event.preventDefault();activeQuery=byId("search-term").value.trim();pageOffset=0;showHome();loadData(0);};
+byId("previous-records").onclick=()=>{if(page&&page.offset>0)loadData(Math.max(0,page.offset-50));};
+byId("next-records").onclick=()=>{if(page&&page.has_more)loadData(page.offset+page.limit);};
 byId("source-stat").onclick=()=>{showHome();byId("command-records").scrollIntoView({block:"nearest"});};
 byId("notification-button").onclick=()=>showSection("watchlist");
 byId("open-watchlist").onclick=()=>showSection("watchlist");
