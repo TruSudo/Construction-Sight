@@ -32,6 +32,7 @@ from constructionsight.operator_dashboard import (
     build_geographic_footprint,
     build_historical_timeline,
     build_workflow_snapshot,
+    build_workflow_status_summary,
 )
 from constructionsight.operator_services.ceqanet_persistence_service import (
     execute_authorized_ceqanet_write_plan,
@@ -1408,4 +1409,60 @@ def test_command_center_off_page_map_to_exact_evidence_and_entity_http(database)
             (target["record_kind"], target["record_id"])
             for item in neighbors["records"]
         )
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == before
+
+
+def test_command_center_status_kpis_count_only_persisted_workflows(database):
+    """Source records remain unassessed even when distinct persisted workflows exist."""
+    path, engine = database
+    with Session(engine) as session, session.begin():
+        CeqaStore(session).upsert(_record("unreviewed-source"))
+        store_lead_review_package(
+            session,
+            LeadReviewPackage(
+                package_id="review:status-counters",
+                base_candidate_id="candidate:status-counters",
+                lead_score=50,
+                status=LeadReviewStatus.MONITOR,
+                summary="Synthetic workflow aggregation fixture",
+                evidence_notes=["Synthetic, not authorized outreach"],
+            ),
+        )
+        for index, status in enumerate(
+            (
+                LeadWorkflowStatus.READY,
+                LeadWorkflowStatus.REVIEW,
+                LeadWorkflowStatus.HOLD,
+                LeadWorkflowStatus.MONITOR,
+            )
+        ):
+            store_lead_workflow_record(
+                session,
+                LeadWorkflowRecord(
+                    workflow_id=f"workflow:status-{index}",
+                    package_id="review:status-counters",
+                    base_candidate_id="candidate:status-counters",
+                    status=status,
+                    lead_score=50,
+                ),
+            )
+    with Session(engine) as session:
+        summary = build_workflow_status_summary(session)
+        assert summary["total"] == 4
+        assert summary["statuses"]["ready"] == 1
+        assert summary["statuses"]["review"] == 1
+        assert summary["statuses"]["hold"] == 1
+        assert summary["statuses"]["monitor"] == 1
+        assert summary["unclassified"] == 0
+        assert summary["read_only"] and summary["outreach_authorized"] is False
+        assert build_dashboard_snapshot(session).total == 1
+    before = hashlib.sha256(path.read_bytes()).hexdigest()
+    with _server(path) as port:
+        status, _, raw = _get(port, "/api/workflow-summary")
+        assert status == 200
+        payload = json.loads(raw)
+        assert payload == summary
+        assert _get(port, "/api/workflow-summary?kind=all")[0] == 400
+        assert _get(port, "/api/workflow-summary?limit=1")[0] == 400
+        assert _get(port, "/api/snapshot?kind=all")[0] == 200
     assert hashlib.sha256(path.read_bytes()).hexdigest() == before
