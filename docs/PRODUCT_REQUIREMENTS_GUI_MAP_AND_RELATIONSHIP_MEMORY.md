@@ -238,3 +238,24 @@ unavailable, timing out, or producing malformed/hostile output. Disablement must
 restore the same deterministic application behavior without loss of records,
 workflows or evidence. This requirement is recorded for future implementation;
 it is **not an assertion that an AI integration exists today**.
+
+
+## Locked AI Center navigation and experience
+
+Preserve the owner's canonical charcoal-and-amber sidebar and all existing
+navigation sections. Reserve a **separate AI AUGMENTATION section** in the
+sidebar containing **AI Center**; do not bury the model controls in Project
+Intelligence or require AI for navigation. The AI Center must eventually provide
+two clearly distinct capabilities within one consistent optional integration:
+an operator-invoked AI Research Assistant and passive Ambient Intelligence.
+The AI Center should expose selected provider/model, opt-in activation,
+approved input/disclosure scope, costs/usage, privacy controls, background
+queue status, findings with source links, and a clear OFF / unavailable state.
+
+The sidebar and initial AI Center status are now implemented as **OFF / no model
+connected** placeholders. They are intentionally not switches, model selectors,
+background processing, or evidence of an integrated AI provider. Do not label
+future controls operational until real connections, permission boundaries,
+persistent findings, AI-disabled equivalence tests and failure fallback have
+been verified. Keep standard ConstructionSight features available when the
+AI Center is unconfigured or disabled.
