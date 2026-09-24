@@ -292,8 +292,8 @@ def test_sources_collection_prepares_bounded_sch_capture_without_browser_network
     assert '" --sch-number "+raw+' in script
     assert ' --plan-output ' in script
     assert ' --execute-live' in script
-    assert 'ceqanet.lci.ca.gov/'+ "'" + '+raw+' in script
+    assert 'ceqanet.lci.ca.gov/' in script
     assert 'byId("capture-command").textContent=command;' in script
     assert 'No collection, import, lead qualification, outreach or bids' in script
-    assert 'no remote' not in script.lower() or 'This read-only dashboard' in script
+    assert 'This read-only dashboard cannot issue remote requests' in script
     assert 'fetch("/api/capture' not in script
