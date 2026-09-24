@@ -24,6 +24,25 @@ SHA-256 `5b1bc503c81d12ed0f00e52539edb437b42ae4c3a539a25e1c82a02b84273163`.
 The newer offline parser replays the historical Windows-1252 response. Do not
 relabel the July capture as a September live acquisition.
 
+## New one-shot project capture (optional, separate from historical replay)
+
+For a newly selected **exact SCH project that has not already consumed the durable
+one-request allowance**, the reviewed-import CLI now provides the governed
+`capture-preview` command. It calls the *existing* authorized one-request CEQAnet
+project CSV service, preserves the full execution artifact in a new path, and
+independently replays that saved evidence to present the proposed import plan
+without writing SQLite. The source response must contain at most 100 complete
+rows in the two target counties; incompatible or ambiguous source claims block
+preview. The Command Center's Sources & Collection view can prepare an exact
+SCH command for manual execution; it never calls remote APIs itself.
+
+Read `docs/architecture/governed_ceqanet_capture_to_command_center.md` for the
+exact operation, source-access flags, timestamp freshness/replay limitation,
+separate digest approval and non-overwrite evidence handling. **The existing
+historical July Cabazon fixture is not a newly executed September capture.**
+The durable effect layer may replay a previously authorized SCH request;
+`capture-preview` refuses to relabel older replayed bytes as a new capture.
+
 ## Operator workflow
 
 1. Start from an **existing, operator-compatible SQLite database**. This CLI
