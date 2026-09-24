@@ -10,7 +10,7 @@ import hashlib
 import json
 import re
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from pydantic import HttpUrl
@@ -68,7 +68,7 @@ def _value(row: dict[str, str], *keys: str) -> str | None:
     return None
 
 
-def _source_date(raw: str | None) -> datetime.date | None:
+def _source_date(raw: str | None) -> date | None:
     if raw is None:
         return None
     for fmt in ("%m/%d/%Y", "%Y-%m-%d"):
