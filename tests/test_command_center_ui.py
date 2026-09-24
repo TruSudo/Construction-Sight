@@ -187,3 +187,19 @@ def test_royalty_panel_uses_real_revisioned_results_without_claiming_payment() -
     assert "previous corrected revisions must not be summed" in script.lower()
     assert "No royalty entitlement, payment, outstanding balance" in script
     assert "No payout, balance, or synthetic result was substituted" in script
+
+
+def test_local_source_revision_refreshes_dashboard_without_remote_ai_or_collection() -> None:
+    """External SQLite writes become visible without introducing an operator write route."""
+    script = (ASSETS / "operator_command_center.js").read_text(encoding="utf-8")
+    assert 'fetchJson("/api/source-revision")' in script
+    assert 'window.setInterval(refreshAfterExternalSourceChange,90_000)' in script
+    assert "document.visibilityState" in script
+    assert 'byId("command-view").hidden' in script
+    assert "sourceProbeActive" in script
+    assert "sourceRevision!==null" in script
+    assert "state.live_collection_enabled!==false" in script
+    assert "const previousSelection=selected, previousOffset=pageOffset" in script
+    assert "loadData(previousOffset,previousSelection)" in script
+    assert "Remote collection is not running" in script
+    assert "window.fetch(" not in script
