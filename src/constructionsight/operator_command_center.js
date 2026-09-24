@@ -345,7 +345,7 @@ function renderResultHistory(entry) {
   const current=entry.current, share=current.share;
   const amount=value=>value===null || value===undefined ? "Not recorded" : escapeText(String(value));
   return '<section class="feature-card"><span class="badge">RETAINED RESULT · REVISION '+escapeText(current.revision)+'</span>'+
-    '<h2>'+escapeText(entry.workflow_id)+'</h2><p>Latest validated outcome: '+escapeText(current.status)+
+    '<h2>'+escapeText(entry.workflow_id)+'</h2><p>Latest retained outcome: '+escapeText(current.status)+
     ' · exact review package '+escapeText(entry.package_id)+'</p>'+
     '<p>Recorded gross value: '+amount(current.gross_value)+
     ' · Share state: '+escapeText(current.share_status)+'</p>'+
