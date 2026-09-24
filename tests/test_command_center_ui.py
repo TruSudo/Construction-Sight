@@ -265,7 +265,11 @@ def test_entity_network_indexes_real_retained_cross_county_source_keys() -> None
     assert 'if(!row){showEntityIndex();return;}' in script
     assert 'id="browse-entity-index"' in script
     assert 'byId("browse-entity-index").onclick=showEntityIndex;' in script
-    assert '"/api/entity-index?"+new URLSearchParams({kind,county})' in script
+    assert '"/api/entity-index?"+new URLSearchParams({kind,county,role})' in script
+    assert 'id="entity-index-role"' in script
+    assert 'byId("entity-index-role").onchange=()=>showEntityIndex(byId("entity-index-role").value)' in script
+    assert 'data.role_filter!==role' in script
+    assert 'showIndexedEntityMatches(entry.entity_key,kind,county,role)' in script
     assert 'data.read_only!==true || data.live_collection_enabled!==false' in script
     assert 'data.selection!==kind || data.county_filter!==county' in script
     assert 'entry.appears_in_both_target_counties' in script
