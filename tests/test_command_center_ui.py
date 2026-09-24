@@ -222,6 +222,9 @@ def test_command_center_source_and_county_filters_share_exact_list_map_scope() -
     assert 'kind:activeKind,county:activeCounty,q:activeQuery' in script
     assert 'newPage.selection!==activeKind || newFootprint.selection!==activeKind' in script
     assert 'for (const id of ["filter-kind","filter-county"])' in script
+    assert 'data-source-kind="' in script and 'data-source-county="' in script
+    assert 'applySourceFilter(kind,county)' in script
+    assert 'button.dataset.sourceKind, county=button.dataset.sourceCounty' in script
     assert 'pageOffset=0;showHome();loadData(0);' in script
 
 
