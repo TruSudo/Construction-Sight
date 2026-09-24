@@ -7,12 +7,14 @@ claim that its source observations reflect present construction activity.
 from __future__ import annotations
 
 from contextlib import contextmanager
+from datetime import UTC, datetime
 import hashlib
 import json
 from http.client import HTTPConnection
 from http.server import ThreadingHTTPServer
 from pathlib import Path
 from threading import Thread
+from types import SimpleNamespace
 from urllib.parse import quote
 
 import pytest
@@ -20,6 +22,7 @@ import typer
 from sqlalchemy.orm import Session
 from typer.testing import CliRunner
 
+import constructionsight.ceqanet_csv_operator_bridge_cli as capture_module
 from constructionsight.ceqanet_csv_live_models import CeqanetCsvLiveExecution
 from constructionsight.ceqanet_csv_models import canonical_digest
 from constructionsight.ceqanet_csv_operator_bridge import (
@@ -348,3 +351,275 @@ def test_real_riverside_csv_cli_authorized_apply_to_operator_sqlite(tmp_path: Pa
     finally:
         reader.dispose()
     assert hashlib.sha256(EVIDENCE.read_bytes()).hexdigest() == source_before
+
+
+def test_capture_preview_delegates_one_exact_authorized_get_and_replays_saved_source(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """One explicit capture bridges a retained public-source response without importing."""
+
+    calls: list[dict[str, object]] = []
+    delivered: list[CeqanetCsvLiveExecution] = []
+
+    def authorized_capture(**kwargs: object) -> SimpleNamespace:
+        calls.append(kwargs)
+        # A mocked NEW invocation must carry the current effect timestamp;
+        # the retained body remains the actual historical July source fixture.
+        source = _execution().model_copy(update={"executed_at": datetime.now(UTC)})
+        delivered.append(source)
+        return SimpleNamespace(
+            execution=source, verification=SimpleNamespace(passed=True),
+        )
+
+    monkeypatch.setattr(
+        capture_module, "execute_authorized_ceqanet_csv", authorized_capture,
+    )
+    evidence = tmp_path / "new-exact-capture.json"
+    plan = tmp_path / "unapproved-plan.json"
+    result = runner.invoke(
+        app, [
+            "capture-preview", "--sch-number", "2026030377",
+            "--output", str(evidence), "--plan-output", str(plan),
+            "--authorization-reason", "One reviewed public project scope",
+            "--execute-live",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    payload = json.loads(result.stdout)
+    assert len(calls) == 1
+    assert calls[0]["request"].sch_number == "2026030377"
+    assert calls[0]["request"].document_id is None
+    assert calls[0]["access_profile"].public_url == calls[0]["request"].source_url
+    assert calls[0]["caller_confirmation"] is True
+    assert calls[0]["max_retained_rows"] == 100
+    assert payload["source_record_count"] == 2
+    assert payload["planned_write_count"] == 4
+    assert payload["network_executed"] is True
+    assert payload["persistence_mutated"] is False
+    assert payload["qualified_leads_created"] is False
+    assert payload["source_claims_verified"] is False
+    assert payload["source_evidence_path"] == str(evidence)
+    assert payload["plan_output_path"] == str(plan)
+    assert payload["source_verification_passed"] is True
+    assert payload["execution_timestamp_within_invocation"] is True
+    assert payload["approved_plan_digest_required"] == canonical_digest(
+        json.loads(plan.read_text("utf-8"))
+    )
+    saved = CeqanetCsvLiveExecution.model_validate(json.loads(evidence.read_text("utf-8")))
+    assert saved == delivered[0]
+    assert saved.body_sha256 == _execution().body_sha256
+    assert saved.executed_at.year == 2026
+    assert not (tmp_path / "operator.sqlite3").exists()
+
+
+def test_capture_preview_rejects_missing_authority_and_existing_outputs_before_request(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The command never acquires a source without explicit approval and fresh paths."""
+
+    calls: list[dict[str, object]] = []
+
+    def no_request(**kwargs: object) -> SimpleNamespace:
+        calls.append(kwargs)
+        raise AssertionError("no acquisition is authorized by this input")
+
+    monkeypatch.setattr(capture_module, "execute_authorized_ceqanet_csv", no_request)
+    evidence = tmp_path / "capture.json"
+    plan = tmp_path / "plan.json"
+    base = [
+        "capture-preview", "--sch-number", "2026030377",
+        "--output", str(evidence), "--authorization-reason", "Reviewed exact scope",
+    ]
+    for arguments in (
+        base,
+        [
+            "capture-preview", "--sch-number", "2026030377",
+            "--output", str(evidence), "--authorization-reason", "  ",
+            "--execute-live",
+        ],
+        [*base, "--execute-live", "--plan-output", str(evidence)],
+        [
+            "capture-preview", "--sch-number", "not-an-sch",
+            "--output", str(evidence), "--authorization-reason", "Reviewed exact scope",
+            "--execute-live",
+        ],
+    ):
+        result = runner.invoke(app, arguments)
+        assert result.exit_code != 0
+    evidence.write_text("existing source is never overwritten", encoding="utf-8")
+    plan.write_text("existing plan is never overwritten", encoding="utf-8")
+    result = runner.invoke(app, [*base, "--execute-live", "--plan-output", str(plan)])
+    assert result.exit_code != 0
+    assert evidence.read_text("utf-8") == "existing source is never overwritten"
+    assert plan.read_text("utf-8") == "existing plan is never overwritten"
+    assert not calls
+
+
+def test_capture_preview_preserves_failed_verification_and_rejects_claimed_captcha(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    evidence = tmp_path / "failed-verification.json"
+    plan = tmp_path / "never-written-plan.json"
+    governed_capture = capture_module.execute_authorized_ceqanet_csv
+    monkeypatch.setattr(
+        capture_module, "execute_authorized_ceqanet_csv",
+        lambda **_: SimpleNamespace(
+            execution=_execution(), verification=SimpleNamespace(passed=False),
+        ),
+    )
+    arguments = [
+        "capture-preview", "--sch-number", "2026030377",
+        "--output", str(evidence), "--plan-output", str(plan),
+        "--authorization-reason", "Inspect one public record",
+        "--execute-live",
+    ]
+    result = runner.invoke(app, arguments)
+    assert result.exit_code == 1
+    assert evidence.is_file() and not plan.exists()
+    assert "Retained source verification failed" in result.output
+
+    # Restore the actual lawful-access facade, never a mock, for denial verification.
+    monkeypatch.setattr(capture_module, "execute_authorized_ceqanet_csv", governed_capture)
+    # The real governed facade must refuse disclosed CAPTCHA access before HTTP.
+    blocked = runner.invoke(
+        app, [
+            "capture-preview", "--sch-number", "2026030377",
+            "--output", str(tmp_path / "blocked.json"),
+            "--authorization-reason", "Known CAPTCHA must block",
+            "--execute-live", "--has-captcha",
+        ],
+    )
+    assert blocked.exit_code == 1
+    assert "blocked" in blocked.output.lower()
+    assert not (tmp_path / "blocked.json").exists()
+
+
+def test_capture_preview_refuses_old_effect_replay_as_new_public_source(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Durable exact-request replay remains auditable but cannot claim new ingestion."""
+
+    monkeypatch.setattr(
+        capture_module, "execute_authorized_ceqanet_csv",
+        lambda **_: SimpleNamespace(
+            execution=_execution(), verification=SimpleNamespace(passed=True),
+        ),
+    )
+    path = tmp_path / "previously-captured-response.json"
+    plan = tmp_path / "must-not-suggest-import.json"
+    result = runner.invoke(
+        app, [
+            "capture-preview", "--sch-number", "2026030377",
+            "--output", str(path), "--plan-output", str(plan),
+            "--authorization-reason", "Require genuinely new response",
+            "--execute-live",
+        ],
+    )
+    assert result.exit_code == 1
+    assert "not a new public-source acquisition" in result.output
+    assert path.is_file()
+    assert not plan.exists()
+    assert CeqanetCsvLiveExecution.model_validate(
+        json.loads(path.read_text("utf-8"))
+    ) == _execution()
+
+
+def test_capture_preview_to_separate_authorized_apply_and_live_operator_http(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Mock only the network boundary; replay, approve, persist and GET real SQLite."""
+
+    def captured_once(**_: object) -> SimpleNamespace:
+        # The source BODY is the genuine committed JULY capture, not a new live GET.
+        # Its invocation timestamp is adjusted solely to simulate the CLI's
+        # fresh-effect contract without making a real network request in CI.
+        execution = _execution().model_copy(update={"executed_at": datetime.now(UTC)})
+        return SimpleNamespace(
+            execution=execution, verification=SimpleNamespace(passed=True),
+        )
+
+    monkeypatch.setattr(capture_module, "execute_authorized_ceqanet_csv", captured_once)
+    evidence = tmp_path / "mock-boundary-actual-retained-body.json"
+    plan = tmp_path / "mock-boundary-unapproved-plan.json"
+    capture = runner.invoke(
+        app, [
+            "capture-preview", "--sch-number", "2026030377",
+            "--output", str(evidence), "--plan-output", str(plan),
+            "--authorization-reason", "CI simulation of one exact public GET",
+            "--execute-live",
+        ],
+    )
+    assert capture.exit_code == 0, capture.output
+    preview = json.loads(capture.stdout)
+    assert preview["persistence_mutated"] is False
+    assert preview["source_sha256"] == _execution().body_sha256
+    assert preview["planned_write_count"] == 4
+    path = tmp_path / "operator-for-explicit-reviewed-apply.sqlite3"
+    engine = create_database_engine(f"sqlite:///{path}")
+    initialize_database(engine)
+    engine.dispose()
+
+    # A separate import must still present both reviewed digests and its OWN
+    # write authorization; the capture's --execute-live is never sufficient.
+    args = [
+        "apply", "--evidence", str(evidence), "--database", str(path),
+        "--approved-source-sha256", preview["source_sha256"],
+        "--approved-plan-digest", preview["approved_plan_digest_required"],
+        "--authorization-reason", "Independent exact-plan approval in CI",
+    ]
+    before_approval = hashlib.sha256(path.read_bytes()).hexdigest()
+    denied = runner.invoke(app, args)
+    assert denied.exit_code == 2
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == before_approval
+    applied = runner.invoke(app, [*args, "--execute-write"])
+    assert applied.exit_code == 0, applied.output
+    assert json.loads(applied.stdout)["operator_readback_verified"] is True
+
+    before = hashlib.sha256(path.read_bytes()).hexdigest()
+    with _real_source_operator_server(path) as port:
+        status, raw = _http_get(
+            port, "/api/snapshot?kind=ceqa&county=Riverside&q=Cabazon&limit=50&offset=0"
+        )
+        assert status == 200
+        page = json.loads(raw)
+        assert page["total"] == page["returned"] == 2
+        assert {row["record_id"] for row in page["projects"]} == set(
+            preview["source_records"]
+        )
+        assert all(row["point"] is None and row["apn"] is None for row in page["projects"])
+        status, raw = _http_get(port, "/api/entity-index?kind=ceqa&county=Riverside")
+        assert status == 200
+        assert json.loads(raw)["matching_source_records"] == 2
+        status, raw = _http_get(port, "/api/workflows?limit=25&offset=0")
+        assert status == 200 and json.loads(raw)["total"] == 0
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == before
+
+
+def test_capture_preview_rejects_result_from_another_sch_without_ever_importing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The saved source cannot be represented as the operator's approved SCH."""
+
+    monkeypatch.setattr(
+        capture_module, "execute_authorized_ceqanet_csv",
+        lambda **_: SimpleNamespace(
+            execution=_execution().model_copy(update={"executed_at": datetime.now(UTC)}),
+            verification=SimpleNamespace(passed=True),
+        ),
+    )
+    path = tmp_path / "mismatched-source.json"
+    plan = tmp_path / "no-mismatched-plan.json"
+    result = runner.invoke(
+        app, [
+            "capture-preview", "--sch-number", "2026030378",
+            "--output", str(path), "--plan-output", str(plan),
+            "--authorization-reason", "Reject misrouted exact project identity",
+            "--execute-live",
+        ],
+    )
+    assert result.exit_code == 1
+    assert "does not match the exact approved SCH request" in result.output
+    assert path.is_file() and not plan.exists()
+    assert CeqanetCsvLiveExecution.model_validate(
+        json.loads(path.read_text("utf-8"))
+    ).request.sch_number == "2026030377"
