@@ -203,3 +203,37 @@ def test_local_source_revision_refreshes_dashboard_without_remote_ai_or_collecti
     assert "loadData(previousOffset,previousSelection)" in script
     assert "Remote collection is not running" in script
     assert "window.fetch(" not in script
+
+
+def test_command_center_source_and_county_filters_share_exact_list_map_scope() -> None:
+    """Source-family/county controls must constrain list, map, and pagination together."""
+    html = (ASSETS / "operator_command_center.html").read_text(encoding="utf-8")
+    script = (ASSETS / "operator_command_center.js").read_text(encoding="utf-8")
+    for fragment in (
+        'id="filter-kind"', 'id="filter-county"',
+        '<option value="ceqa">CEQA</option>',
+        '<option value="permit">Permits</option>',
+        '<option value="San Bernardino">San Bernardino</option>',
+        '<option value="Riverside">Riverside</option>',
+    ):
+        assert fragment in html
+    assert 'let activeKind = "all", activeCounty = "";' in script
+    assert 'kind:activeKind,county:activeCounty,limit:"50",offset:String(offset),q:activeQuery' in script
+    assert 'kind:activeKind,county:activeCounty,q:activeQuery' in script
+    assert 'newPage.selection!==activeKind || newFootprint.selection!==activeKind' in script
+    assert 'for (const id of ["filter-kind","filter-county"])' in script
+    assert 'pageOffset=0;showHome();loadData(0);' in script
+
+
+def test_watchlist_bookmark_opens_fresh_exact_source_not_cached_display_text() -> None:
+    """A local bookmark resolves a current, exact database record without writing or alerting."""
+    script = (ASSETS / "operator_command_center.js").read_text(encoding="utf-8")
+    assert 'data-open="' in script
+    assert 'openWatchBookmark(currentKey)' in script
+    assert 'new URLSearchParams({kind:entry.record_kind,record_id:entry.record_id})' in script
+    assert 'fetchJson("/api/candidate-preview?" + params)' in script
+    assert 'identity(row) !== key || result.read_only !== true' in script
+    assert 'token !== featureRequest || byId("command-view").hidden' in script
+    assert 'No cached source facts were substituted.' in script
+    assert 'Bookmark is not monitoring or outreach approval.' in script
+    assert 'fetch(url,{cache:"no-store"})' in script
