@@ -100,6 +100,8 @@ def test_command_center_exact_source_navigation_and_paging_contract() -> None:
     assert len(parser.ids) == len(set(parser.ids))
     assert 'id="previous-records"' in html and 'id="next-records"' in html
     assert "Math.floor(p.ordinal/50)*50" in script
+    assert "const items = records();" in script
+    assert "const items = records().slice(0,7);" not in script
     assert "identity(r)===identity(p)" in script
     assert "identity(r)===focusIdentity" in script
     assert "newPage.total!==newFootprint.matching_total" in script
