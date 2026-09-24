@@ -15,6 +15,7 @@ import typer
 from sqlalchemy.orm import Session
 
 from constructionsight.authorization_decision import AuthorizationDeniedError
+from constructionsight.ceqanet_capture_queue import build_reviewed_ceqanet_capture_queue
 from constructionsight.ceqanet_csv_live_models import CeqanetCsvLiveExecution
 from constructionsight.ceqanet_csv_models import canonical_digest
 from constructionsight.ceqanet_csv_service import build_ceqanet_csv_export_request
@@ -32,7 +33,11 @@ from constructionsight.operator_services.ceqanet_persistence_service import (
 from constructionsight.storage.database import database_url_from_path
 from constructionsight.storage.domain_store import CeqaStore
 from constructionsight.storage.operator_read_store import create_operator_read_engine
-from constructionsight.storage.runtime_artifacts import read_runtime_text, write_runtime_text
+from constructionsight.storage.runtime_artifacts import (
+    read_runtime_artifact,
+    read_runtime_text,
+    write_runtime_text,
+)
 
 app = typer.Typer(help="Governed current CEQAnet capture, reviewed preview and separate import.")
 
@@ -77,6 +82,60 @@ def _summary(bridge: ReviewedCeqanetCsvBridge) -> dict[str, object]:
         "qualified_leads_created": False,
         "read_only_operator_compatibility": "same existing SQLite domain store",
     }
+
+
+@app.command("discover-preview")
+def discover_preview(
+    listing_evidence: Annotated[
+        Path,
+        typer.Option("--listing-evidence", exists=True, dir_okay=False, readable=True,
+                     help="Retained complete governed CEQAnet listing-execution JSON."),
+    ],
+    output: Annotated[
+        Path, typer.Option("--output", help="New path for the offline exact-SCH review queue."),
+    ],
+) -> None:
+    """Derive exact-SCH manual capture candidates from existing listing evidence only."""
+
+    if output.exists() or listing_evidence.absolute() == output.absolute():
+        raise typer.BadParameter("review queue output must be new and distinct from listing evidence")
+    try:
+        raw = read_runtime_artifact(listing_evidence, max_bytes=16 * 1024 * 1024)
+        payload: Any = json.loads(raw.decode("utf-8"))
+        if not isinstance(payload, dict):
+            raise ValueError("listing evidence must be a JSON object")
+        queue = build_reviewed_ceqanet_capture_queue(payload, original_bytes=raw)
+        write_runtime_text(
+            output, json.dumps(queue, sort_keys=True, indent=2) + "\n", overwrite=False,
+        )
+    except (OSError, ValueError, UnicodeDecodeError, TypeError) as exc:
+        typer.echo(f"Stored listing cannot be queued for exact project capture: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
+    # The queue is not an authorization decision. No project GET was performed.
+    typer.echo(
+        json.dumps(
+            {
+                "queue_output_path": str(output),
+                "listing_artifact_sha256": queue["listing_artifact_sha256"],
+                "listing_pages_reviewed": queue["listing_pages_reviewed"],
+                "listing_records_parsed": queue["listing_records_parsed"],
+                "candidate_count": queue["candidate_count"],
+                "excluded_observations": queue["excluded_observations"],
+                "candidates": queue["candidates"],
+                "network_executed": False,
+                "persistence_mutated": False,
+                "commercial_leads_created": False,
+                "next_step": (
+                    "Review each candidate's exact official SCH and current public access; "
+                    "execute capture-preview separately for an authorized new SCH; "
+                    "independently approve any subsequent two-digest SQLite import."
+                ),
+            },
+            sort_keys=True,
+            indent=2,
+        )
+    )
 
 
 @app.command("capture-preview")
