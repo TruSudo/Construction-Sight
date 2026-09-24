@@ -416,6 +416,30 @@ async function showHistoricalPulse() {
       target.innerHTML='<p role="alert">Historical source milestones unavailable: '+escapeText(error.message||error)+'</p>';
   }
 }
+function prepareCeqanetCapture() {
+  const raw=byId("capture-sch-number").value.trim();
+  const target=byId("capture-instructions");
+  if(!/^[0-9]{10}$/.test(raw)){
+    target.textContent="Enter an exact 10-digit SCH number from the official public source. No collection was attempted.";
+    return;
+  }
+  // This is a command preview, not a network request or automatic approval.
+  // The operator must verify public access, execute the command locally, then
+  // independently inspect both exact digests before the separately governed apply.
+  const stamp=new Date().toISOString().replace(/[-:]/g,"").replace(/\\.\\d{3}/,"");
+  const base="evidence/manual/ceqanet-"+raw+"-"+stamp;
+  const command="constructionsight-ceqanet-reviewed-import capture-preview"+
+    " --sch-number "+raw+" --output "+base+".json"+
+    " --plan-output "+base+"-reviewed-plan.json"+
+    " --authorization-reason 'Operator-reviewed official public CEQAnet project CSV'"+
+    " --execute-live";
+  target.innerHTML='<p>Official CEQAnet project page: <a href="https://ceqanet.lci.ca.gov/'+raw+
+    '" target="_blank" rel="noopener noreferrer">Inspect SCH '+raw+' ↗</a></p>'+
+    '<p>After checking applicable source-access restrictions, run this command locally. It performs one separately authorized public GET and produces retained evidence plus a proposed, unapplied write plan:</p>'+
+    '<pre class="capture-command" id="capture-command"></pre>'+
+    '<p>Review the retained source rows, county scope and the source/plan SHA-256 digests printed by that command. To import, independently approve both exact digests using the separate <code>constructionsight-ceqanet-reviewed-import apply --help</code> workflow and its explicit write authorization. Once applied to this operator database, the Command Center refreshes on the next local revision check. No collection, import, lead qualification, outreach or bids have been initiated by this preview.</p>';
+  byId("capture-command").textContent=command;
+}
 async function showSources() {
   const token=++featureRequest;
   featureIntro("Sources & Collection", "Actual retained CEQA and permit counts from the selected local database");
@@ -440,8 +464,12 @@ async function showSources() {
       '<div class="source-inventory-scroll"><table class="source-inventory"><thead><tr><th>Source family</th><th>All counties</th><th>San Bernardino</th><th>Riverside</th><th>Other / unknown</th></tr></thead><tbody>'+rows+'</tbody></table></div></section>'+
       '<section class="feature-card"><h2>Collection status</h2><p>This local operator does not run live source acquisition, subscription monitoring, scheduled updates or remote data import. Import and retained-source validation remain separate governed workflows.</p>'+
       '<a href="/workspace#records">Inspect stored source evidence →</a></section>'+
+      '<section class="feature-card"><h2>Review a newly available CEQAnet project</h2><p>Prepare a single-project, manually authorized capture using the existing offline-review and SQLite import services. This read-only dashboard cannot issue remote requests or authorize imports.</p>'+
+      '<form id="capture-source-form"><label for="capture-sch-number">Official 10-digit SCH number</label> <input id="capture-sch-number" type="text" inputmode="numeric" maxlength="10" pattern="[0-9]{10}" placeholder="0000000000" required> <button type="submit" class="action">Prepare local capture instructions</button></form>'+
+      '<div id="capture-instructions" aria-live="polite"><p>No collection has been attempted. Verify the public source and its access conditions before executing any command.</p></div></section>'+
       '<section class="feature-card"><h2>Historical source activity</h2><p>Inspect dated historical observations for the current search, source-family and county filters. This is not real-time site monitoring.</p>'+
       '<button type="button" class="action" id="show-historical-pulse">Load retained timeline →</button><div id="historical-pulse"></div></section>';
+    byId("capture-source-form").onsubmit=event=>{event.preventDefault();prepareCeqanetCapture();};
     byId("show-historical-pulse").onclick=showHistoricalPulse;
     byId("feature-body").querySelectorAll("[data-source-kind]").forEach(button=>button.onclick=()=>{
       const kind=button.dataset.sourceKind, county=button.dataset.sourceCounty;
