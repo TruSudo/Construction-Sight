@@ -156,6 +156,43 @@ class HistoricalTimelineSnapshot(BaseModel):
     ])
 
 
+class EntityIndexEntry(BaseModel):
+    """An exact stored key and bounded source-record counts, not verified corporate identity."""
+
+    entity_key: str
+    source_claimed_names: list[str]
+    source_claimed_roles: list[str]
+    matching_records_in_scan: int = Field(ge=1)
+    san_bernardino_records: int = Field(ge=0)
+    riverside_records: int = Field(ge=0)
+    other_or_unknown_records: int = Field(ge=0)
+    appears_in_both_target_counties: bool = False
+
+
+class EntityIndexSnapshot(BaseModel):
+    """Bounded inventory of exact-key source co-occurrence without identity resolution."""
+
+    selection: RecordSelection
+    county_filter: str
+    entries: list[EntityIndexEntry]
+    matching_source_records: int = Field(ge=0)
+    scanned_source_records: int = Field(ge=0)
+    distinct_keys_in_scan: int = Field(ge=0)
+    returned: int = Field(ge=0)
+    scan_limit: int = Field(ge=1)
+    result_limit: int = Field(ge=1)
+    source_scan_truncated: bool = False
+    result_truncated: bool = False
+    read_only: Literal[True] = True
+    live_collection_enabled: Literal[False] = False
+    limitations: list[str] = Field(default_factory=lambda: [
+        "Equal stored entity keys are source co-occurrence, not independently verified identity.",
+        "County counts include source records with matching keys, not unique construction sites.",
+        "Two-county co-occurrence is observed only within the bounded retained source scan.",
+        "No qualification, contact verification, live collection, or outreach approval is inferred.",
+    ])
+
+
 class EntityNeighborhoodSnapshot(BaseModel):
     """Bounded exact-key co-occurrence in persisted source claims, never identity proof."""
 
