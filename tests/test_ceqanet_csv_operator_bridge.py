@@ -9,7 +9,6 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
-from urllib.parse import urlencode
 
 import pytest
 from sqlalchemy.orm import Session
