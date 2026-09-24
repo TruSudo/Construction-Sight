@@ -43,31 +43,36 @@ function renderWatchlist(full = false) {
     if (currentKey) { delete localWatchlist[currentKey]; saveWatchlist(); if (full) renderWatchlist(true); }
   });
 }
-async function openWatchBookmark(key) {
-  const entry = localWatchlist[key];
+async function openExactStoredRecord(entry,key,origin) {
   if (!entry || !["ceqa","permit"].includes(entry.record_kind) ||
       typeof entry.record_id !== "string" || !entry.record_id || entry.record_id.length > 255 ||
       identity(entry) !== key) return;
-  // A bookmark is only a browser-local pointer. Resolve the exact record afresh
-  // from the current read-only SQLite snapshot rather than trusting its cached title.
+  // Re-resolve exact source identity against the current read-only database.
+  // Never treat cached bookmark labels or a historical event as current source facts.
   showHome();
   const token = ++featureRequest;
-  byId("global-notice").textContent = "Looking up bookmarked source record in the current local database…";
+  byId("global-notice").textContent = "Looking up selected exact source record in the current local database…";
   try {
     const params = new URLSearchParams({kind:entry.record_kind,record_id:entry.record_id});
     const result = await fetchJson("/api/candidate-preview?" + params);
     if (token !== featureRequest || byId("command-view").hidden) return;
     const row = result.source_record;
     if (!row || identity(row) !== key || result.read_only !== true)
-      throw Error("Bookmarked record identity or read-only state could not be verified.");
+      throw Error("Selected record identity or read-only state could not be verified.");
     selectRow(row);
-    byId("global-notice").textContent = "Opened an exact bookmarked source record from the current local database. " +
-      "It may be outside the active search/filter or displayed page. Bookmark is not monitoring or outreach approval.";
+    byId("global-notice").textContent = "Opened an exact "+origin+" source record from the current local database. " +
+      "It may be outside the active search/filter or displayed page. " +
+      (origin==="bookmark" ? "Bookmark is not monitoring or outreach approval." :
+        "Historical source event is not proof of current site activity or commercial qualification.");
   } catch (error) {
     if (token === featureRequest && !byId("command-view").hidden)
-      byId("global-notice").textContent = "Bookmarked source record unavailable in this database: " +
+      byId("global-notice").textContent = "Selected source record unavailable in this database: " +
         String(error.message || error) + ". No cached source facts were substituted.";
   }
+}
+async function openWatchBookmark(key) {
+  const entry = localWatchlist[key];
+  return openExactStoredRecord(entry,key,"bookmark");
 }
 function valueOrUnknown(value) { return value === null || value === undefined || value === "" ? "Not established" : String(value); }
 function renderDossier(row) {
@@ -292,12 +297,13 @@ async function showHistoricalPulse() {
       !Array.isArray(data.events) || data.returned_events!==data.events.length ||
       data.source_scan_truncated!==(data.matching_total>data.records_scanned))
       throw Error("Historical source timeline returned inconsistent scope or bounds.");
-    const history=data.events.map(event=>
+    const history=data.events.map((event,index)=>
       '<div class="evidence-item"><strong>'+escapeText(valueOrUnknown(event.recorded_date))+
       ' · '+escapeText(valueOrUnknown(event.event_kind).replaceAll("_"," "))+'</strong>'+
       '<p>'+escapeText(valueOrUnknown(event.title))+' · '+escapeText(valueOrUnknown(event.county))+
       ' · '+escapeText(event.record_kind)+' / '+escapeText(event.record_id)+'</p>'+
       (event.source_date_order_conflict?'<small>Retained source date-order conflict; inspect underlying evidence.</small>':'')+
+      '<button type="button" class="action" data-history="'+index+'">Open exact source record →</button>'+
       '</div>').join("") || '<p>No dated milestones appear within this bounded retained source scan.</p>';
     target.innerHTML='<h2>Historical source milestones</h2><p>'+data.records_scanned+
       ' of '+data.matching_total+' matching source records scanned; '+data.milestones_in_scan+
@@ -305,6 +311,10 @@ async function showHistoricalPulse() {
       (data.source_scan_truncated?'Source scan truncated. ':'')+
       (data.event_result_truncated?'Event list truncated. ':'')+
       'Historical source-claimed dates are not evidence of current site activity, new live acquisition, or qualified security opportunities.</p>'+history;
+    target.querySelectorAll("[data-history]").forEach(button=>button.onclick=()=>{
+      const event=data.events[Number(button.dataset.history)];
+      if(event)openExactStoredRecord(event,identity(event),"historical timeline");
+    });
   }catch(error){
     if(token===featureRequest && !byId("feature-view").hidden && target===byId("historical-pulse"))
       target.innerHTML='<p role="alert">Historical source milestones unavailable: '+escapeText(error.message||error)+'</p>';
