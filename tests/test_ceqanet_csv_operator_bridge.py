@@ -6,9 +6,9 @@ claim that its source observations reflect present construction activity.
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 import hashlib
 import json
-from contextlib import contextmanager
 from http.client import HTTPConnection
 from http.server import ThreadingHTTPServer
 from pathlib import Path
