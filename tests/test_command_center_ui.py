@@ -170,3 +170,20 @@ def test_lead_console_reads_exact_persisted_workflows_not_unqualified_sources() 
     assert "does not independently verify" in script
     assert "No synthetic lead records were substituted" in script
     assert "outreach or submit a bid" in script
+
+
+def test_royalty_panel_uses_real_revisioned_results_without_claiming_payment() -> None:
+    """UI must distinguish a stored share calculation from verified royalty entitlement."""
+    html = (ASSETS / "operator_command_center.html").read_text(encoding="utf-8")
+    script = (ASSETS / "operator_command_center.js").read_text(encoding="utf-8")
+    assert 'data-section="royalty"' in html
+    assert 'if(name==="royalty")' in script
+    assert '"/api/results?"' in script
+    assert 'new URLSearchParams({limit:"25",offset:String(offset)})' in script
+    assert "data.payment_status_verified!==false" in script
+    assert "data.royalty_entitlement_verified!==false" in script
+    assert 'id="results-prev"' in script and 'id="results-next"' in script
+    assert "entry.history[entry.history.length-1].ledger_id" in script
+    assert "previous corrected revisions must not be summed" in script.lower()
+    assert "No royalty entitlement, payment, outstanding balance" in script
+    assert "No payout, balance, or synthetic result was substituted" in script
