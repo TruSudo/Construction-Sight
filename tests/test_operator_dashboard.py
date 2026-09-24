@@ -209,6 +209,79 @@ def test_search_filters_before_pagination_and_escapes_wildcards(database):
         assert build_dashboard_snapshot(session, query="Fixture planning agency").total == 5
 
 
+
+
+def test_command_center_source_family_county_and_search_share_exact_http_scope(database):
+    """The same active filters must return consistent persisted list and map identities."""
+    path, engine = database
+    san_bernardino = _record("fixture:sb")
+    riverside = _record(
+        "fixture:rv",
+        title="Riverside Logistics fixture",
+        county="Riverside",
+        site=Site(
+            site_key="fixture:riverside-site",
+            county="Riverside",
+            latitude=33.95,
+            longitude=-116.82,
+            provenance=_provenance(),
+        ),
+    )
+    with Session(engine) as session, session.begin():
+        CeqaStore(session).upsert(san_bernardino)
+        CeqaStore(session).upsert(riverside)
+        PermitStore(session).upsert(
+            PermitRecord(
+                permit_key="fixture:permit",
+                permit_number="FIX-42",
+                jurisdiction="Fontana",
+                county="San Bernardino",
+                status="Issued",
+                site=san_bernardino.site,
+                entities=san_bernardino.entities,
+                provenance=_provenance(),
+            )
+        )
+    before = hashlib.sha256(path.read_bytes()).hexdigest()
+    scopes = (
+        ("all", "", "", 3),
+        ("ceqa", "San%20Bernardino", "", 1),
+        ("ceqa", "Riverside", "", 1),
+        ("permit", "San%20Bernardino", "", 1),
+        ("permit", "Riverside", "", 0),
+        ("all", "Riverside", "Logistics", 1),
+    )
+    with _server(path) as port:
+        for kind, county, query, expected in scopes:
+            common = f"kind={kind}&county={county}&q={query}"
+            page_status, _, raw_page = _get(
+                port, f"/api/snapshot?{common}&limit=50&offset=0"
+            )
+            map_status, _, raw_map = _get(port, f"/api/footprint?{common}")
+            assert page_status == map_status == 200
+            page, footprint = json.loads(raw_page), json.loads(raw_map)
+            assert page["selection"] == footprint["selection"] == kind
+            assert page["read_only"] and footprint["read_only"]
+            assert page["total"] == footprint["matching_total"] == expected
+            assert page["returned"] == expected
+            page_ids = {(row["record_kind"], row["record_id"]) for row in page["projects"]}
+            mapped_ids = {
+                (row["record_kind"], row["record_id"]) for row in footprint["points"]
+            }
+            assert mapped_ids <= page_ids
+            if kind == "ceqa" and county == "Riverside":
+                assert mapped_ids == {("ceqa", "fixture:rv")}
+        status, _, raw = _get(
+            port, "/api/candidate-preview?kind=ceqa&record_id=fixture%3Arv"
+        )
+        assert status == 200
+        exact = json.loads(raw)
+        assert exact["read_only"] is True
+        assert exact["source_record"]["record_id"] == "fixture:rv"
+        assert exact["source_record"]["county"] == "Riverside"
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == before
+
+
 @pytest.mark.parametrize(
     "updates,reason",
     [
