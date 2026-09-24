@@ -514,3 +514,73 @@ def test_capture_preview_refuses_old_effect_replay_as_new_public_source(
     assert CeqanetCsvLiveExecution.model_validate(
         json.loads(path.read_text("utf-8"))
     ) == _execution()
+
+
+def test_capture_preview_to_separate_authorized_apply_and_live_operator_http(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Mock only the network boundary; replay, approve, persist and GET real SQLite."""
+
+    def captured_once(**_: object) -> SimpleNamespace:
+        # The source BODY is the genuine committed JULY capture, not a new live GET.
+        # Its invocation timestamp is adjusted solely to simulate the CLI's
+        # fresh-effect contract without making a real network request in CI.
+        execution = _execution().model_copy(update={"executed_at": datetime.now(UTC)})
+        return SimpleNamespace(
+            execution=execution, verification=SimpleNamespace(passed=True),
+        )
+
+    monkeypatch.setattr(capture_module, "execute_authorized_ceqanet_csv", captured_once)
+    evidence = tmp_path / "mock-boundary-actual-retained-body.json"
+    plan = tmp_path / "mock-boundary-unapproved-plan.json"
+    capture = runner.invoke(
+        app, [
+            "capture-preview", "--sch-number", "2026030377",
+            "--output", str(evidence), "--plan-output", str(plan),
+            "--authorization-reason", "CI simulation of one exact public GET",
+            "--execute-live",
+        ],
+    )
+    assert capture.exit_code == 0, capture.output
+    preview = json.loads(capture.stdout)
+    assert preview["persistence_mutated"] is False
+    assert preview["source_sha256"] == _execution().body_sha256
+    assert preview["planned_write_count"] == 4
+    path = tmp_path / "operator-for-explicit-reviewed-apply.sqlite3"
+    engine = create_database_engine(f"sqlite:///{path}")
+    initialize_database(engine)
+    engine.dispose()
+
+    # A separate import must still present both reviewed digests and its OWN
+    # write authorization; the capture's --execute-live is never sufficient.
+    args = [
+        "apply", "--evidence", str(evidence), "--database", str(path),
+        "--approved-source-sha256", preview["source_sha256"],
+        "--approved-plan-digest", preview["approved_plan_digest_required"],
+        "--authorization-reason", "Independent exact-plan approval in CI",
+    ]
+    denied = runner.invoke(app, args)
+    assert denied.exit_code == 2
+    assert "execute-write" in denied.output.lower()
+    applied = runner.invoke(app, [*args, "--execute-write"])
+    assert applied.exit_code == 0, applied.output
+    assert json.loads(applied.stdout)["operator_readback_verified"] is True
+
+    before = hashlib.sha256(path.read_bytes()).hexdigest()
+    with _real_source_operator_server(path) as port:
+        status, raw = _http_get(
+            port, "/api/snapshot?kind=ceqa&county=Riverside&q=Cabazon&limit=50&offset=0"
+        )
+        assert status == 200
+        page = json.loads(raw)
+        assert page["total"] == page["returned"] == 2
+        assert {row["record_id"] for row in page["projects"]} == set(
+            preview["source_records"]
+        )
+        assert all(row["point"] is None and row["apn"] is None for row in page["projects"])
+        status, raw = _http_get(port, "/api/entity-index?kind=ceqa&county=Riverside")
+        assert status == 200
+        assert json.loads(raw)["matching_source_records"] == 2
+        status, raw = _http_get(port, "/api/workflows?limit=25&offset=0")
+        assert status == 200 and json.loads(raw)["total"] == 0
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == before
