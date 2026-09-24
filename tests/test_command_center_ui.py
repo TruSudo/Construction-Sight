@@ -240,3 +240,18 @@ def test_watchlist_bookmark_opens_fresh_exact_source_not_cached_display_text() -
     assert 'No cached source facts were substituted.' in script
     assert 'Bookmark is not monitoring or outreach approval.' in script
     assert 'fetch(url,{cache:"no-store"})' in script
+
+
+def test_source_activity_uses_existing_bounded_historical_read_api() -> None:
+    """Historical pulse must stay scoped, provenance-labeled and read-only."""
+    script = (ASSETS / "operator_command_center.js").read_text(encoding="utf-8")
+    assert 'id="show-historical-pulse"' in script
+    assert 'byId("show-historical-pulse").onclick=showHistoricalPulse' in script
+    assert '"/api/timeline?"+new URLSearchParams({kind,county,q:query})' in script
+    assert 'data.read_only!==true || data.live_collection_enabled!==false' in script
+    assert 'data.selection!==kind' in script
+    assert 'data.returned_events!==data.events.length' in script
+    assert 'data.source_scan_truncated!==(data.matching_total>data.records_scanned)' in script
+    assert "Historical source-claimed dates are not evidence of current site activity" in script
+    assert 'data.event_result_truncated?' in script
+    assert "source_date_order_conflict" in script
