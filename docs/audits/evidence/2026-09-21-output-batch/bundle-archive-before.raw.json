@@ -1,0 +1,26 @@
+{
+  "started_at": "2026-09-21T17:29:43.161640+00:00",
+  "finished_at": "2026-09-21T17:29:45.189572+00:00",
+  "cwd": "/workspace/scratch/3cb8a9b64f02/Construction-Sight",
+  "base_commit": "49c79447491bd531299331ad6a5846e64eb1c08e",
+  "diff_sha256": "78c6ffa9825daec160a8e44c9ca1e5c7687e1f8ae4555232739b26f9818f843f",
+  "untracked_sha256": {
+    "tests/test_runtime_output_writers.py": "445d92cd552d2d0e412c586ebabb2bc342717ec0a3ca590f95b66df43bcd4fdb"
+  },
+  "command": [
+    "/workspace/scratch/3cb8a9b64f02/Construction-Sight/.venv/bin/python",
+    "-m",
+    "pytest",
+    "tests/test_ceqanet_operator_bundle.py",
+    "tests/test_ceqanet_operator_archive.py",
+    "-q",
+    "-W",
+    "error",
+    "--tb=short",
+    "-k",
+    "unsafe_output or replaced_paths"
+  ],
+  "returncode": 1,
+  "stdout": "FFFFFF                                                                   [100%]\n=================================== FAILURES ===================================\n___________ test_bundle_publication_rejects_unsafe_output[ancestor] ____________\ntests/test_ceqanet_operator_bundle.py:45: in test_bundle_publication_rejects_unsafe_output\n    with pytest.raises((OSError, ValueError)):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE any of (<class 'OSError'>, <class 'ValueError'>)\n_____________ test_bundle_publication_rejects_unsafe_output[final] _____________\ntests/test_ceqanet_operator_bundle.py:45: in test_bundle_publication_rejects_unsafe_output\n    with pytest.raises((OSError, ValueError)):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE any of (<class 'OSError'>, <class 'ValueError'>)\n_____________ test_bundle_publication_rejects_unsafe_output[swap] ______________\ntests/test_ceqanet_operator_bundle.py:45: in test_bundle_publication_rejects_unsafe_output\n    with pytest.raises((OSError, ValueError)):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE any of (<class 'OSError'>, <class 'ValueError'>)\n____ test_archive_publication_never_writes_through_replaced_paths[ancestor] ____\ntests/test_ceqanet_operator_archive.py:39: in test_archive_publication_never_writes_through_replaced_paths\n    with pytest.raises((OSError, ValueError)):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE any of (<class 'OSError'>, <class 'ValueError'>)\n_____ test_archive_publication_never_writes_through_replaced_paths[final] ______\ntests/test_ceqanet_operator_archive.py:39: in test_archive_publication_never_writes_through_replaced_paths\n    with pytest.raises((OSError, ValueError)):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE any of (<class 'OSError'>, <class 'ValueError'>)\n______ test_archive_publication_never_writes_through_replaced_paths[swap] ______\ntests/test_ceqanet_operator_archive.py:39: in test_archive_publication_never_writes_through_replaced_paths\n    with pytest.raises((OSError, ValueError)):\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   Failed: DID NOT RAISE any of (<class 'OSError'>, <class 'ValueError'>)\n=========================== short test summary info ============================\nFAILED tests/test_ceqanet_operator_bundle.py::test_bundle_publication_rejects_unsafe_output[ancestor]\nFAILED tests/test_ceqanet_operator_bundle.py::test_bundle_publication_rejects_unsafe_output[final]\nFAILED tests/test_ceqanet_operator_bundle.py::test_bundle_publication_rejects_unsafe_output[swap]\nFAILED tests/test_ceqanet_operator_archive.py::test_archive_publication_never_writes_through_replaced_paths[ancestor]\nFAILED tests/test_ceqanet_operator_archive.py::test_archive_publication_never_writes_through_replaced_paths[final]\nFAILED tests/test_ceqanet_operator_archive.py::test_archive_publication_never_writes_through_replaced_paths[swap]\n6 failed, 18 deselected in 0.27s\n",
+  "stderr": ""
+}

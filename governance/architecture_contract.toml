@@ -1,0 +1,152 @@
+schema_version = "constructionsight.architecture-contract/v1"
+contract_id = "construction-sight-architecture-2026-07-15"
+production_root = "src/constructionsight"
+prohibit_module_cycles = true
+
+[[layers]]
+name = "package"
+responsibility = "Root package identity only; no runtime authority or side effects."
+path_patterns = ["src/constructionsight/__init__\\.py"]
+default = false
+allowed_internal_layers = ["package"]
+forbidden_internal_layers = ["cli", "governance", "persistence", "transport"]
+network = false
+persistence = false
+filesystem_write = false
+subprocess = false
+operator = false
+authority_bearing = false
+
+[[layers]]
+name = "governance"
+responsibility = "Repository certification, supply-chain inventory, and fail-closed governance evaluation."
+path_patterns = ["src/constructionsight/(?:.*certification.*|governance_contract_schema|supply_chain)\\.py"]
+default = false
+allowed_internal_layers = ["governance", "package"]
+forbidden_internal_layers = ["cli", "persistence", "transport", "adapter", "application"]
+network = false
+persistence = false
+filesystem_write = true
+subprocess = true
+operator = true
+authority_bearing = false
+
+[[layers]]
+name = "cli"
+responsibility = "Local operator composition root and presentation; it may construct governed stores and services but cannot import transport or implement canonical business decisions."
+path_patterns = ["src/constructionsight/(?:cli|.*_cli)\\.py"]
+default = false
+allowed_internal_layers = ["application", "domain", "persistence", "adapter", "governance", "package"]
+forbidden_internal_layers = ["transport"]
+network = false
+persistence = true
+filesystem_write = true
+subprocess = false
+operator = true
+authority_bearing = true
+
+[[layers]]
+name = "persistence"
+responsibility = "Database and durable-state mapping behind typed service boundaries; never imports CLI, transport, adapter, or governance code."
+path_patterns = ["src/constructionsight/storage/.*\\.py"]
+default = false
+allowed_internal_layers = ["persistence", "domain", "package"]
+forbidden_internal_layers = ["cli", "transport", "adapter", "governance", "application"]
+network = false
+persistence = true
+filesystem_write = true
+subprocess = false
+operator = false
+authority_bearing = true
+
+[[layers]]
+name = "transport"
+responsibility = "Approved bounded external transport only; no workflow or persistence authority."
+path_patterns = [
+  "src/constructionsight/adapters/ceqanet_listing_executor\\.py",
+  "src/constructionsight/(?:ceqanet_detail_http|ceqanet_discovery_http|http_transport|source_readiness_http|source_verification_http)\\.py",
+  "src/constructionsight/(?!parcel_source_probe_http\\.py$).*(?:_http|_live_service)\\.py",
+]
+default = false
+allowed_internal_layers = ["transport", "domain", "adapter", "package"]
+forbidden_internal_layers = ["cli", "persistence", "governance", "application"]
+network = true
+persistence = false
+filesystem_write = false
+subprocess = false
+operator = false
+authority_bearing = true
+
+[[layers]]
+name = "adapter"
+responsibility = "Source-specific parsing and normalization without unauthorized persistence or transport acquisition."
+path_patterns = ["src/constructionsight/adapters/(?!ceqanet_listing_executor\\.py$).*\\.py"]
+default = false
+allowed_internal_layers = ["adapter", "domain", "package"]
+forbidden_internal_layers = ["cli", "persistence", "governance", "application", "transport"]
+network = false
+persistence = false
+filesystem_write = false
+subprocess = false
+operator = false
+authority_bearing = false
+
+[[layers]]
+name = "domain"
+responsibility = "Pure evidence, identity, state, rule, value, and deterministic core-service contracts with no transport, persistence, operator, or governance authority."
+path_patterns = [
+  "src/constructionsight/(?!storage/)(?!adapters/)(?!parcel_source_bulk_rehearsal_bundle_models\\.py$).*(?:_models|models)\\.py",
+  "src/constructionsight/(?:domain_types|legal|provenance|parcel_geometry|parcel_topology|parcel_topology_parse|.*_rules|opportunity_scoring_profile|ceqanet_endpoints)\\.py",
+  "src/constructionsight/(?:site_resolution_service|ceqanet_csv_service|source_registry_integrity|result_ledger_service|parcel_source_acquisition_bundle)\\.py",
+  "src/constructionsight/(?:parcel_source_acquisition|parcel_source_verification|parcel_source_registry)\\.py",
+  "src/constructionsight/intelligence/(?:schemas|artifact_identity|artifact_resolution_service|__init__)\\.py",
+]
+default = false
+allowed_internal_layers = ["domain", "package"]
+forbidden_internal_layers = ["cli", "persistence", "transport", "adapter", "application", "governance"]
+network = false
+persistence = false
+filesystem_write = false
+subprocess = false
+operator = false
+authority_bearing = false
+
+[[layers]]
+name = "application"
+responsibility = "Canonical use cases, orchestration, authorization preflight, verification, and report construction."
+path_patterns = [
+  "src/constructionsight/(?:parcel_source_bulk_rehearsal|parcel_source_bulk_rehearsal_artifacts|parcel_source_probe_http|source_registry_update_plan_service)\\.py",
+]
+default = true
+allowed_internal_layers = ["application", "domain", "persistence", "transport", "adapter", "package"]
+forbidden_internal_layers = ["cli", "governance"]
+network = false
+persistence = true
+filesystem_write = true
+subprocess = false
+operator = false
+authority_bearing = true
+
+[[exceptions]]
+source_module = "constructionsight.parcel_source_bulk_rehearsal_http"
+target_module = "constructionsight.parcel_source_bulk_rehearsal"
+reason = "Temporary type-only compatibility for the immutable rehearsal policy and retry-classification exception co-located with the complete executor."
+risk = "The transport module can see an application module that also contains workflow and checkpoint behavior."
+compensating_control = "The transport imports only ParcelArcGISBulkRehearsalPolicy and ParcelArcGISBulkTransientError; it does not call executor or checkpoint functions, and the exact HTTP contract is regression-tested."
+owner = "ConstructionSight maintainers"
+issued_on = "2026-08-12"
+expires_on = "2026-11-12"
+test = "tests/test_parcel_source_bulk_rehearsal_http.py"
+adr = "docs/adr/ADR-0007-arcgis-rehearsal-transport-type-boundary.md"
+
+[[exceptions]]
+source_module = "constructionsight.parcel_source_bulk_rehearsal_http"
+target_module = "constructionsight.parcel_source_bulk_rehearsal_artifacts"
+reason = "Temporary type-only compatibility for exact in-memory ArcGIS count/page response envelopes and strict JSON decoding co-located with the artifact store."
+risk = "The transport module can see an application module that also contains filesystem-backed artifact retention."
+compensating_control = "The transport imports only ParcelArcGISBulkCountResponse, ParcelArcGISBulkPageResponse, and decode_json_object; it does not construct or invoke artifact stores, and filesystem authority remains false for transport."
+owner = "ConstructionSight maintainers"
+issued_on = "2026-08-12"
+expires_on = "2026-11-12"
+test = "tests/test_parcel_source_bulk_rehearsal_http.py"
+adr = "docs/adr/ADR-0007-arcgis-rehearsal-transport-type-boundary.md"

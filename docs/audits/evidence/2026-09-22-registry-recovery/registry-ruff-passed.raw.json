@@ -1,0 +1,19 @@
+{
+  "started_at": "2026-09-22T00:10:17.545623+00:00",
+  "finished_at": "2026-09-22T00:10:17.586150+00:00",
+  "cwd": "/workspace/scratch/9a28012c2f9f/Construction-Sight",
+  "base_commit": "c00df16369b23aa801c3ee031a0c7bc35ed24f73",
+  "diff_sha256": "d1219f8d82869b583114de7f9f92bd024e572aa2ff79d8f75a11c1951f431dfa",
+  "untracked_sha256": {},
+  "command": [
+    "/workspace/scratch/d29604697a81/cs-venv/bin/python",
+    "-m",
+    "ruff",
+    "check",
+    "src",
+    "tests"
+  ],
+  "returncode": 0,
+  "stdout": "All checks passed!\n",
+  "stderr": ""
+}

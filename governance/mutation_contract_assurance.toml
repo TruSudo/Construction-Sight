@@ -1,0 +1,611 @@
+schema_version = "constructionsight.mutation-contract/v1"
+contract_id = "construction-sight-focused-assurance-mutations-2026-09-14"
+execution = "Every case runs in a temporary full source overlay. The tracked tree is never modified."
+timeout_seconds = 120
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-EVIDENCE-DIGEST-001"
+path = "src/constructionsight/assurance_certification.py"
+search = '''    if actual_digest != raw_digest:
+        _record(
+            findings,
+            "ASSURANCE-010",'''
+replacement = '''    if False and actual_digest != raw_digest:
+        _record(
+            findings,
+            "ASSURANCE-010",'''
+tests = ["tests/test_assurance_certification.py::test_assurance_rejects_evidence_digest_mismatch"]
+expected_output = "test_assurance_rejects_evidence_digest_mismatch"
+risk = "Pass or gate evidence could be changed after review without invalidating its assurance claim."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-CONTEXT-AGGREGATION-001"
+path = "src/constructionsight/assurance_certification.py"
+search = '''        if completed_reviews != 1:'''
+replacement = '''        if False and completed_reviews != 1:'''
+tests = ["tests/test_assurance_certification.py::test_assurance_rejects_aggregated_completed_reviews"]
+expected_output = "test_assurance_rejects_aggregated_completed_reviews"
+risk = "One analytical record could claim several supposedly context-isolated reviews and satisfy native review cardinality without distinct contexts."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-SOURCE-DIGEST-001"
+path = "src/constructionsight/assurance_certification.py"
+search = '''    if actual_digest != raw_digest:
+        _record(
+            findings,
+            "ASSURANCE-027",'''
+replacement = '''    if False and actual_digest != raw_digest:
+        _record(
+            findings,
+            "ASSURANCE-027",'''
+tests = ["tests/test_assurance_certification.py::test_assurance_rejects_source_digest_mismatch"]
+expected_output = "test_assurance_rejects_source_digest_mismatch"
+risk = "Retained raw assurance source bytes could be changed without invalidating normalized provenance."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-SOURCE-COMMIT-001"
+path = "src/constructionsight/assurance_certification.py"
+search = '''        or payload.get("reviewed_commit") != reviewed_commit'''
+replacement = '''        or False'''
+tests = ["tests/test_assurance_certification.py::test_assurance_rejects_cross_commit_source_artifact"]
+expected_output = "test_assurance_rejects_cross_commit_source_artifact"
+risk = "Raw assurance evidence from another commit could be rebound to the current reviewed tree."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-SOURCE-REUSE-001"
+path = "src/constructionsight/assurance_certification.py"
+search = '''        if prior is not None and prior != label:'''
+replacement = '''        if False and prior is not None and prior != label:'''
+tests = ["tests/test_assurance_certification.py::test_assurance_rejects_reused_source_artifact"]
+expected_output = "source artifact is reused"
+risk = "One retained raw source could be presented as evidence for multiple supposedly distinct analytical or quality-gate contexts."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-SOURCE-SEMANTIC-PRODUCER-001"
+path = "src/constructionsight/assurance_source_certification.py"
+search = '''    if source.get("producer") != expected_producer:'''
+replacement = '''    if False and source.get("producer") != expected_producer:'''
+tests = ["tests/test_assurance_source_certification.py::test_assurance_rejects_raw_source_producer_mismatch"]
+expected_output = "test_assurance_rejects_raw_source_producer_mismatch"
+risk = "A retained raw source could claim a different producer than the normalized analytical evidence while remaining hash-consistent."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-SOURCE-SEMANTIC-PAYLOAD-001"
+path = "src/constructionsight/assurance_source_certification.py"
+search = '''        if source_payload.get(field) != expected'''
+replacement = '''        if False and source_payload.get(field) != expected'''
+tests = ["tests/test_assurance_source_certification.py::test_assurance_rejects_raw_provider_mismatch"]
+expected_output = "test_assurance_rejects_raw_provider_mismatch"
+risk = "Normalized provider, model, status, coverage, or count claims could contradict the retained raw source payload."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-SOURCE-SEMANTIC-SHAPE-001"
+path = "src/constructionsight/assurance_source_certification.py"
+search = '''    if not isinstance(source_payload, dict):
+        _record(findings, f"{label} raw source payload must be an object")
+        return'''
+replacement = '''    if not isinstance(source_payload, dict):
+        return'''
+tests = ["tests/test_assurance_source_certification.py::test_assurance_rejects_nonobject_raw_payload"]
+expected_output = "test_assurance_rejects_nonobject_raw_payload"
+risk = "A non-object raw source payload could avoid semantic reconciliation entirely."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-SOURCE-SEMANTIC-WIRING-001"
+path = "src/constructionsight/authority_certification.py"
+search = '''    audit_assurance_source_semantics(root, findings)'''
+replacement = '''    pass'''
+tests = ["tests/test_assurance_source_certification.py::test_assurance_rejects_raw_provider_mismatch"]
+expected_output = "test_assurance_rejects_raw_provider_mismatch"
+risk = "The semantic source-provenance certifier could be disconnected from the canonical defect-and-assurance audit."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-QUALITY-SOURCE-WIRING-001"
+path = "src/constructionsight/assurance_source_certification.py"
+search = '''    _audit_quality_gate_sources(root, report, findings)'''
+replacement = '''    pass'''
+tests = ["tests/test_assurance_source_certification.py::test_assurance_rejects_raw_quality_gate_failure"]
+expected_output = "test_assurance_rejects_raw_quality_gate_failure"
+risk = "Hash-valid quality-gate raw evidence could contradict normalized pass status if quality-source semantic reconciliation were skipped."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-PREFLIGHT-FILTER-001"
+path = "src/constructionsight/assurance_preflight_certification.py"
+search = '''    return code in _ALLOWED_TRANSACTION_BLOCKERS'''
+replacement = '''    return True'''
+tests = ["tests/test_assurance_preflight_certification.py::test_preflight_retains_any_other_governance_finding"]
+expected_output = "test_preflight_retains_any_other_governance_finding"
+risk = "Pre-assurance structural certification could silently discard real governance defects along with the two intentional transaction blockers."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-CI-PERMISSIONS-001"
+path = "src/constructionsight/ci_permissions_certification.py"
+search = '''    if permissions != _EXPECTED_TOP_LEVEL_PERMISSIONS:'''
+replacement = '''    if False:'''
+tests = ["tests/test_ci_permissions_certification.py::test_write_permission_fails"]
+expected_output = "test_write_permission_fails"
+risk = "A write-capable or extra GitHub token permission could be accepted as the canonical read-only CI permission set."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-CI-PERMISSIONS-PREFLIGHT-WIRING-001"
+path = "src/constructionsight/assurance_preflight_certification.py"
+search = '''    permission_blockers = audit_ci_permissions(root)'''
+replacement = '''    permission_blockers = ()'''
+tests = ["tests/test_assurance_preflight_certification.py::test_preflight_retains_semantic_permission_findings"]
+expected_output = "test_preflight_retains_semantic_permission_findings"
+risk = "Semantic CI permission certification could be disconnected from the pre-assurance structural gate."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-CI-PERMISSIONS-V2-WIRING-001"
+path = "src/constructionsight/repository_certification_v2.py"
+search = '''    permission_findings = audit_ci_permissions(repository_root)'''
+replacement = '''    permission_findings = ()'''
+tests = ["tests/test_repository_certification_v2.py::test_v2_includes_semantic_ci_permission_findings"]
+expected_output = "test_v2_includes_semantic_ci_permission_findings"
+risk = "Semantic CI permission certification could be disconnected from final canonical repository certification."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-CI-ACTION-COMMIT-001"
+path = "src/constructionsight/ci_action_certification.py"
+search = '''        if commit != expected.commit:'''
+replacement = '''        if False:'''
+tests = ["tests/test_ci_action_certification.py::test_stale_action_commit_fails"]
+expected_output = "test_stale_action_commit_fails"
+risk = "A stale or unreviewed immutable Action commit could satisfy the reviewed Action inventory."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-CI-ACTION-REVIEW-001"
+path = "src/constructionsight/ci_action_certification.py"
+search = '''        if review != _review_comment(expected):'''
+replacement = '''        if False:'''
+tests = ["tests/test_ci_action_certification.py::test_runtime_review_annotation_drift_fails"]
+expected_output = "test_runtime_review_annotation_drift_fails"
+risk = "The workflow could claim a different reviewed release/runtime class for an otherwise allowed Action identity."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-CI-ACTION-PREFLIGHT-WIRING-001"
+path = "src/constructionsight/assurance_preflight_certification.py"
+search = '''    action_blockers = audit_ci_actions(root)'''
+replacement = '''    action_blockers = ()'''
+tests = ["tests/test_assurance_preflight_certification.py::test_preflight_retains_action_runtime_findings"]
+expected_output = "test_preflight_retains_action_runtime_findings"
+risk = "Action source/runtime provenance certification could be disconnected from the pre-assurance gate."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-CI-ACTION-V2-WIRING-001"
+path = "src/constructionsight/repository_certification_v2.py"
+search = '''    action_findings = audit_ci_actions(repository_root)'''
+replacement = '''    action_findings = ()'''
+tests = ["tests/test_repository_certification_v2.py::test_v2_includes_action_runtime_findings"]
+expected_output = "test_v2_includes_action_runtime_findings"
+risk = "Action source/runtime provenance certification could be disconnected from canonical repository certification."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-OWNER-EVIDENCE-DIGEST-001"
+path = "src/constructionsight/owner_acceptance_certification.py"
+search = '''    if report.get("review_method") != expected_review_method(report):'''
+replacement = '''    if False:'''
+tests = ["tests/test_owner_acceptance_certification.py::test_owner_acceptance_rejects_changed_evidence"]
+expected_output = "test_owner_acceptance_rejects_changed_evidence"
+risk = "Material assurance evidence could change after owner review while the local acceptance claim remains apparently valid."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-OWNER-IDENTITY-001"
+path = "src/constructionsight/owner_acceptance_certification.py"
+search = '''    elif bound_login.casefold() != repository_owner.casefold():'''
+replacement = '''    elif False:'''
+tests = ["tests/test_owner_acceptance_certification.py::test_owner_acceptance_rejects_spoofed_owner"]
+expected_output = "test_owner_acceptance_rejects_spoofed_owner"
+risk = "A GitHub user other than the repository owner could be presented as the owner acceptance authority."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-OWNER-COMMIT-001"
+path = "src/constructionsight/owner_acceptance_certification.py"
+search = '''    elif github_review.get("commit_id") != reviewed_commit:'''
+replacement = '''    elif False:'''
+tests = ["tests/test_owner_acceptance_certification.py::test_owner_acceptance_rejects_stale_commit"]
+expected_output = "test_owner_acceptance_rejects_stale_commit"
+risk = "An owner acceptance from a different candidate commit could be rebound to the assured tree."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-OWNER-BODY-001"
+path = "src/constructionsight/owner_acceptance_certification.py"
+search = '''    if github_review.get("body") != expected_acceptance_body(assurance_report):'''
+replacement = '''    if False:'''
+tests = ["tests/test_owner_acceptance_certification.py::test_owner_acceptance_rejects_wrong_body_state_or_association"]
+expected_output = "test_owner_acceptance_rejects_wrong_body_state_or_association"
+risk = "A generic or unrelated owner comment could satisfy acceptance without binding the exact tree and assurance evidence digest."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-OWNER-GOV-WIRING-001"
+path = "src/constructionsight/authority_certification.py"
+search = '''    audit_owner_acceptance_binding(root, findings)'''
+replacement = '''    pass'''
+tests = ["tests/test_owner_acceptance_certification.py::test_canonical_governance_rejects_unbound_owner"]
+expected_output = "test_canonical_governance_rejects_unbound_owner"
+risk = "Authenticated-owner acceptance semantics could be disconnected from the canonical governance audit."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-GITHUB-ACTIONS-BINDING-001"
+path = "src/constructionsight/github_actions_certification.py"
+search = '''    return QUALITY_GATE_BINDINGS.get(gate_id)'''
+replacement = '''    return None'''
+tests = ["tests/test_github_actions_certification.py::test_github_actions_provenance_accepts_exact_successful_steps"]
+expected_output = "test_github_actions_provenance_accepts_exact_successful_steps"
+risk = "Canonical quality-gate job and step bindings could be disabled while leaving retained source metadata structurally valid."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-GITHUB-ACTIONS-STEP-001"
+path = "src/constructionsight/github_actions_certification.py"
+search = '''            step.get("status") != "completed"
+            or step.get("conclusion") != "success"'''
+replacement = '''            False'''
+tests = ["tests/test_github_actions_certification.py::test_github_actions_provenance_rejects_failed_bound_step"]
+expected_output = "test_github_actions_provenance_rejects_failed_bound_step"
+risk = "A failed authoritative GitHub Actions step could be accepted as passed assurance evidence."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-GITHUB-ACTIONS-COMMIT-001"
+path = "src/constructionsight/github_actions_certification.py"
+search = '''            or run.get("head_sha") != reviewed_commit'''
+replacement = '''            or False'''
+tests = ["tests/test_github_actions_certification.py::test_github_actions_provenance_rejects_wrong_run_commit"]
+expected_output = "test_github_actions_provenance_rejects_wrong_run_commit"
+risk = "Quality evidence from a different commit could be rebound to the assured candidate."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-GITHUB-ACTIONS-REPOSITORY-001"
+path = "src/constructionsight/github_actions_certification.py"
+search = '''            or run_repository != repository'''
+replacement = '''            or False'''
+tests = ["tests/test_github_actions_certification.py::test_github_actions_provenance_rejects_wrong_repository"]
+expected_output = "test_github_actions_provenance_rejects_wrong_repository"
+risk = "A GitHub Actions run from another repository or fork could be presented as ConstructionSight assurance evidence."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-GITHUB-ACTIONS-PR-001"
+path = "src/constructionsight/github_actions_certification.py"
+search = '''        if pr_number not in _pull_request_numbers(run):'''
+replacement = '''        if False:'''
+tests = ["tests/test_github_actions_certification.py::test_github_actions_provenance_rejects_wrong_pull_request"]
+expected_output = "test_github_actions_provenance_rejects_wrong_pull_request"
+risk = "A same-commit run from an unrelated pull-request context could satisfy provenance without matching the claimed review transaction."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-GOV-WIRING-001"
+path = "src/constructionsight/governance_certification.py"
+search = '''    mutation = _merge_mutation_contracts(
+        primary_mutation,
+        assurance_mutation,
+        findings,
+    )'''
+replacement = '''    mutation = dict(primary_mutation)'''
+tests = ["tests/test_mutation_governance_overlay.py::test_canonical_governance_audit_invokes_mutation_overlay_merge"]
+expected_output = "test_canonical_governance_audit_invokes_mutation_overlay_merge"
+risk = "The supplemental assurance mutation surface could execute in CI while disappearing from canonical governance certification."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-GOV-DUPLICATE-001"
+path = "src/constructionsight/governance_certification.py"
+search = '''        if case_id in primary_ids and case_id not in _MUTATION_OVERRIDES:'''
+replacement = '''        if False and case_id in primary_ids and case_id not in _MUTATION_OVERRIDES:'''
+tests = ["tests/test_mutation_governance_overlay.py::test_governance_merge_rejects_undeclared_duplicate_case_id"]
+expected_output = "test_governance_merge_rejects_undeclared_duplicate_case_id"
+risk = "An undeclared duplicate mutation identity could override an existing focused witness without a governance finding."
+
+[[cases]]
+id = "CS-MUT-VULNERABILITY-ACTIVE-001"
+path = "src/constructionsight/vulnerability_certification.py"
+search = "\"passed\": active_count == 0,"
+replacement = "\"passed\": True,"
+tests = ["tests/test_vulnerability_certification.py::test_active_advisory_is_fatal"]
+expected_output = "test_active_advisory_is_fatal"
+risk = "Active known vulnerabilities must fail the audit."
+
+[[cases]]
+id = "CS-MUT-VULNERABILITY-DIGEST-001"
+path = "src/constructionsight/vulnerability_certification.py"
+search = "        if sha256(body) != digest:"
+replacement = "        if False:"
+tests = ["tests/test_vulnerability_certification.py::test_source_digest_tampering_is_fatal"]
+expected_output = "test_source_digest_tampering_is_fatal"
+risk = "Retained source content must agree with its digest."
+
+[[cases]]
+id = "CS-MUT-VULNERABILITY-RELEASE-001"
+path = "src/constructionsight/vulnerability_certification.py"
+search = "        or info.get(\"version\") != version"
+replacement = "        or False"
+tests = ["tests/test_vulnerability_certification.py::test_release_identity_must_match_exact_lock"]
+expected_output = "test_release_identity_must_match_exact_lock"
+risk = "An advisory source from another release must not certify the lock."
+
+[[cases]]
+id = "CS-MUT-VULNERABILITY-MANIFEST-001"
+path = "src/constructionsight/vulnerability_certification.py"
+search = "        if manifest[key] != expected:"
+replacement = "        if False:"
+tests = ["tests/test_vulnerability_certification.py::test_complete_source_binding_is_required"]
+expected_output = "test_complete_source_binding_is_required"
+risk = "The source manifest must bind the complete exact commit and lock."
+
+[[cases]]
+id = "CS-MUT-VULNERABILITY-DUPLICATE-001"
+path = "src/constructionsight/vulnerability_certification.py"
+search = "        if key in result:"
+replacement = "        if False:"
+tests = ["tests/test_vulnerability_certification.py::test_ambiguous_json_rejected"]
+expected_output = "test_ambiguous_json_rejected"
+risk = "Duplicate JSON keys must not silently replace vulnerability claims."
+
+[[cases]]
+id = "CS-MUT-VULNERABILITY-HTTP-STATUS-001"
+path = "src/constructionsight/vulnerability_certification.py"
+search = "    if status != 200:"
+replacement = "    if False:"
+tests = ["tests/test_vulnerability_collection.py::test_redirect_access_and_http_failures_are_terminal"]
+expected_output = "test_redirect_access_and_http_failures_are_terminal"
+risk = "HTTP redirects, denials, and failed responses must never become clean evidence."
+
+[[cases]]
+id = "CS-MUT-VULNERABILITY-SIZE-001"
+path = "src/constructionsight/vulnerability_certification.py"
+search = "    if size > MAX_SOURCE_BYTES:"
+replacement = "    if False:"
+tests = ["tests/test_vulnerability_collection.py::test_undeclared_oversized_stream_is_bounded"]
+expected_output = "test_undeclared_oversized_stream_is_bounded"
+risk = "Acquisition must reject oversized streamed responses even without a declared length."
+
+[[cases]]
+id = "CS-MUT-VULNERABILITY-INVENTORY-001"
+path = "src/constructionsight/vulnerability_certification.py"
+search = "    if {path.name for path in source_dir.iterdir()} != expected_files:"
+replacement = "    if False:"
+tests = ["tests/test_vulnerability_certification.py::test_complete_source_binding_is_required"]
+expected_output = "test_complete_source_binding_is_required"
+risk = "Unexpected source files must invalidate the retained evidence inventory."
+
+[[cases]]
+id = "CS-MUT-VULNERABILITY-CI-001"
+path = "src/constructionsight/vulnerability_ci_certification.py"
+search = "        if actual.rstrip() != EXPECTED_VULNERABILITY_JOB:"
+replacement = "        if False:"
+tests = ["tests/test_vulnerability_certification.py::test_modified_vulnerability_job_fails_closed"]
+expected_output = "test_modified_vulnerability_job_fails_closed"
+risk = "The reviewed acquisition and enforcement job must not be silently weakened."
+
+[[cases]]
+id = "CS-MUT-VULNERABILITY-PREFLIGHT-001"
+path = "src/constructionsight/assurance_preflight_certification.py"
+search = "    vulnerability_findings = audit_vulnerability_job(root)"
+replacement = "    vulnerability_findings = ()"
+tests = ["tests/test_assurance_preflight_certification.py::test_preflight_retains_native_vulnerability_job_findings"]
+expected_output = "test_preflight_retains_native_vulnerability_job_findings"
+risk = "Native vulnerability CI wiring must be enforced before assurance freeze."
+
+[[cases]]
+id = "CS-MUT-VULNERABILITY-FINAL-001"
+path = "src/constructionsight/repository_certification_v2.py"
+search = "    vulnerability_findings = audit_vulnerability_job(repository_root)"
+replacement = "    vulnerability_findings = ()"
+tests = ["tests/test_repository_certification_v2.py::test_v2_retains_native_vulnerability_job_findings"]
+expected_output = "test_v2_retains_native_vulnerability_job_findings"
+risk = "Native vulnerability CI wiring must remain enforced at final certification."
+
+[[cases]]
+id = "CS-MUT-VULNERABILITY-BASH-ENV-SYMLINK-PLACEMENT-001"
+path = "src/constructionsight/vulnerability_ci_certification.py"
+search = '''        ("      - name: Check out exact repository candidate"),
+        (
+            "        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7"
+            ".0.1; reviewed 2026-09-14; runtime=node24"
+        ),
+        ("        with:"),
+        ("          persist-credentials: false"),
+        ("          ref: ${{ github.event.pull_request.head.sha || github.sha }}"),
+        (""),
+        ("      - name: Reject tracked symbolic links"),
+        ("        shell: /bin/bash --noprofile --norc -p -e -o pipefail {0}"),
+        ("        env:"),
+        ("          BASH_ENV: /dev/null"),
+        ("        run: |"),
+        ("          set -euo pipefail"),
+        ("          if git ls-files --stage | grep -q '^120000 '; then"),
+        ("            git ls-files --stage | grep '^120000 ' >&2"),
+        ("            exit 1"),
+        ("          fi"),
+        (""),
+'''
+replacement = '''        ("      - name: Check out exact repository candidate"),
+        (
+            "        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7"
+            ".0.1; reviewed 2026-09-14; runtime=node24"
+        ),
+        ("        env:"),
+        ("          BASH_ENV: /dev/null"),
+        ("        with:"),
+        ("          persist-credentials: false"),
+        ("          ref: ${{ github.event.pull_request.head.sha || github.sha }}"),
+        (""),
+        ("      - name: Reject tracked symbolic links"),
+        ("        shell: /bin/bash --noprofile --norc -p -e -o pipefail {0}"),
+        ("        run: |"),
+        ("          set -euo pipefail"),
+        ("          if git ls-files --stage | grep -q '^120000 '; then"),
+        ("            git ls-files --stage | grep '^120000 ' >&2"),
+        ("            exit 1"),
+        ("          fi"),
+        (""),
+'''
+tests = ["tests/test_vulnerability_ci_startup.py::test_startup_neutralizer_must_protect_the_executing_step"]
+expected_output = "test_startup_neutralizer_must_protect_the_executing_step"
+risk = "A startup neutralizer moved from the symlink Bash step to an Action step preserves the workflow-wide count while leaving the executing shell exposed to inherited BASH_ENV."
+
+[[cases]]
+id = "CS-MUT-VULNERABILITY-BASH-ENV-AUDIT-PLACEMENT-001"
+path = "src/constructionsight/vulnerability_ci_certification.py"
+search = '''        ("      - name: Set up isolated audit interpreter"),
+        (
+            "        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 "
+            "# v7.0.0; reviewed 2026-09-14; runtime=node24"
+        ),
+        ("        with:"),
+        ("          python-version: ${{ matrix.python-version }}"),
+        (""),
+        ("      - name: Vulnerability audit"),
+        ("        id: vulnerability-audit"),
+        ("        continue-on-error: true"),
+        ("        shell: /bin/bash --noprofile --norc -p -e -o pipefail {0}"),
+        ("        env:"),
+        ("          BASH_ENV: /dev/null"),
+        ("          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}"),
+        ("        run: |"),
+        ("          set -euo pipefail"),
+        ('          mkdir -p "${REPORT_DIR}"'),
+        ('          test "$(git rev-parse HEAD)" = "${EXPECTED_SHA}"'),
+        ('          export PYTHONPATH="${GITHUB_WORKSPACE}/src"'),
+        ("          python scripts/acquire_vulnerability_sources.py \\"),
+        ('            --root . --lock "${{ matrix.lock-file }}" --commit "${EXPECTED_SHA}" \\'),
+        (
+            '            --source-dir "${REPORT_DIR}/vulnerability-sources-${{ matrix.loc'
+            'k-tag }}" \\'
+        ),
+        (
+            '            2>&1 | tee "${REPORT_DIR}/vulnerability-collection-${{ matrix.lo'
+            'ck-tag }}.txt"'
+        ),
+        ("          python -m constructionsight.vulnerability_certification \\"),
+        ('            --root . --lock "${{ matrix.lock-file }}" --commit "${EXPECTED_SHA}" \\'),
+        (
+            '            --source-dir "${REPORT_DIR}/vulnerability-sources-${{ matrix.loc'
+            'k-tag }}" \\'
+        ),
+        ('            --output "${REPORT_DIR}/vulnerability-${{ matrix.lock-tag }}.json" \\'),
+        ('            2>&1 | tee "${REPORT_DIR}/vulnerability-${{ matrix.lock-tag }}.txt"'),
+        (""),
+'''
+replacement = '''        ("      - name: Set up isolated audit interpreter"),
+        (
+            "        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 "
+            "# v7.0.0; reviewed 2026-09-14; runtime=node24"
+        ),
+        ("        env:"),
+        ("          BASH_ENV: /dev/null"),
+        ("        with:"),
+        ("          python-version: ${{ matrix.python-version }}"),
+        (""),
+        ("      - name: Vulnerability audit"),
+        ("        id: vulnerability-audit"),
+        ("        continue-on-error: true"),
+        ("        shell: /bin/bash --noprofile --norc -p -e -o pipefail {0}"),
+        ("        env:"),
+        ("          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}"),
+        ("        run: |"),
+        ("          set -euo pipefail"),
+        ('          mkdir -p "${REPORT_DIR}"'),
+        ('          test "$(git rev-parse HEAD)" = "${EXPECTED_SHA}"'),
+        ('          export PYTHONPATH="${GITHUB_WORKSPACE}/src"'),
+        ("          python scripts/acquire_vulnerability_sources.py \\"),
+        ('            --root . --lock "${{ matrix.lock-file }}" --commit "${EXPECTED_SHA}" \\'),
+        (
+            '            --source-dir "${REPORT_DIR}/vulnerability-sources-${{ matrix.loc'
+            'k-tag }}" \\'
+        ),
+        (
+            '            2>&1 | tee "${REPORT_DIR}/vulnerability-collection-${{ matrix.lo'
+            'ck-tag }}.txt"'
+        ),
+        ("          python -m constructionsight.vulnerability_certification \\"),
+        ('            --root . --lock "${{ matrix.lock-file }}" --commit "${EXPECTED_SHA}" \\'),
+        (
+            '            --source-dir "${REPORT_DIR}/vulnerability-sources-${{ matrix.loc'
+            'k-tag }}" \\'
+        ),
+        ('            --output "${REPORT_DIR}/vulnerability-${{ matrix.lock-tag }}.json" \\'),
+        ('            2>&1 | tee "${REPORT_DIR}/vulnerability-${{ matrix.lock-tag }}.txt"'),
+        (""),
+'''
+tests = ["tests/test_vulnerability_ci_startup.py::test_startup_neutralizer_must_protect_the_executing_step"]
+expected_output = "test_startup_neutralizer_must_protect_the_executing_step"
+risk = "A startup neutralizer moved from the audit Bash step to an Action step preserves the workflow-wide count while leaving the executing shell exposed to inherited BASH_ENV."
+
+[[cases]]
+id = "CS-MUT-VULNERABILITY-BASH-ENV-ENFORCEMENT-PLACEMENT-001"
+path = "src/constructionsight/vulnerability_ci_certification.py"
+search = '''        ("      - name: Enforce vulnerability audit"),
+        ("        if: always()"),
+        ("        shell: /bin/bash --noprofile --norc -p -e -o pipefail {0}"),
+        ("        env:"),
+        ("          BASH_ENV: /dev/null"),
+        ("        run: test '${{ steps.vulnerability-audit.outcome }}' = 'success'"),
+        (""),
+        ("      - name: Retain vulnerability evidence"),
+        ("        if: always()"),
+        (
+            "        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a"
+            "0a # v7.0.1; reviewed 2026-09-14; runtime=node24"
+        ),
+        ("        with:"),
+        ("          name: vulnerability-${{ matrix.lock-tag }}"),
+        ("          path: ${{ env.REPORT_DIR }}/"),
+        ("          if-no-files-found: error"),
+        ("          retention-days: 7"),
+'''
+replacement = '''        ("      - name: Enforce vulnerability audit"),
+        ("        if: always()"),
+        ("        shell: /bin/bash --noprofile --norc -p -e -o pipefail {0}"),
+        ("        run: test '${{ steps.vulnerability-audit.outcome }}' = 'success'"),
+        (""),
+        ("      - name: Retain vulnerability evidence"),
+        ("        if: always()"),
+        (
+            "        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a"
+            "0a # v7.0.1; reviewed 2026-09-14; runtime=node24"
+        ),
+        ("        env:"),
+        ("          BASH_ENV: /dev/null"),
+        ("        with:"),
+        ("          name: vulnerability-${{ matrix.lock-tag }}"),
+        ("          path: ${{ env.REPORT_DIR }}/"),
+        ("          if-no-files-found: error"),
+        ("          retention-days: 7"),
+'''
+tests = ["tests/test_vulnerability_ci_startup.py::test_startup_neutralizer_must_protect_the_executing_step"]
+expected_output = "test_startup_neutralizer_must_protect_the_executing_step"
+risk = "A startup neutralizer moved from the enforcement Bash step to an Action step preserves the workflow-wide count while leaving the executing shell exposed to inherited BASH_ENV."
+
+[[cases]]
+id = "CS-MUT-CI-EXECUTION-DIGEST-001"
+path = "src/constructionsight/ci_execution_certification.py"
+search = "        if actual_digest != _REVIEWED_WORKFLOW_SHA256:"
+replacement = "        if False:"
+tests = ["tests/test_ci_execution_certification.py::test_changes_outside_vulnerability_job_fail_closed"]
+expected_output = "test_changes_outside_vulnerability_job_fail_closed"
+risk = "Unreviewed workflow-wide or quality-job settings could change execution without altering the separately certified vulnerability job."
+
+[[cases]]
+id = "CS-MUT-CI-PRE-GATE-PROJECT-INSTALL-001"
+path = "src/constructionsight/ci_execution_certification.py"
+search = '''    if workflow_text.count("python -m pip install") != 1:'''
+replacement = '''    if False:'''
+tests = ["tests/test_ci_execution_certification.py::test_digest_refresh_cannot_authorize_project_install"]
+expected_output = "test_digest_refresh_cannot_authorize_project_install"
+risk = "A reviewed workflow digest could be refreshed around a second pip command that reinstalls the candidate project and executes repository-controlled build code before assurance gates."
+
+[[cases]]
+id = "CS-MUT-CI-EXECUTION-PREFLIGHT-001"
+path = "src/constructionsight/assurance_preflight_certification.py"
+search = "    execution_blockers = audit_ci_execution(root)"
+replacement = "    execution_blockers = ()"
+tests = ["tests/test_assurance_preflight_certification.py::test_preflight_retains_complete_ci_execution_findings"]
+expected_output = "test_preflight_retains_complete_ci_execution_findings"
+risk = "Complete CI execution binding must block assurance preflight when workflow settings drift."
+
+[[cases]]
+id = "CS-MUT-CI-EXECUTION-FINAL-001"
+path = "src/constructionsight/repository_certification_v2.py"
+search = "    execution_findings = audit_ci_execution(repository_root)"
+replacement = "    execution_findings = ()"
+tests = ["tests/test_repository_certification_v2.py::test_v2_retains_complete_ci_execution_findings"]
+expected_output = "test_v2_retains_complete_ci_execution_findings"
+risk = "Complete CI execution binding must remain enforced during final repository certification."
