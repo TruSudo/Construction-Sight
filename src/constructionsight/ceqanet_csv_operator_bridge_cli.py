@@ -159,6 +159,16 @@ def capture_preview(
     except (OSError, ValueError) as exc:
         typer.echo(f"Acquisition completed but retained evidence could not be published: {exc}", err=True)
         raise typer.Exit(code=1) from exc
+    if (
+        authorized.execution.request != request
+        or authorized.execution.request_url != request.source_url
+    ):
+        typer.echo(
+            f"Source evidence preserved at {output}, but execution identity does "
+            "not match the exact approved SCH request; no import plan was prepared.",
+            err=True,
+        )
+        raise typer.Exit(code=1)
     if not authorized.verification.passed:
         typer.echo(
             f"Retained source verification failed; inspect preserved evidence at {output}",
