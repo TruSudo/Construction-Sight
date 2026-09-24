@@ -28,6 +28,7 @@ from constructionsight.operator_dashboard import (
 from constructionsight.operator_dashboard_models import RecordSelection
 from constructionsight.operator_parcel_candidates import inspect_parcel_candidates
 from constructionsight.operator_results import build_result_ledger_snapshot
+from constructionsight.operator_source_revision import build_source_revision_snapshot
 from constructionsight.operator_source_candidate import (
     SourceRecordNotFound,
     build_source_candidate_preview,
@@ -168,6 +169,7 @@ def create_handler(database_path: Path) -> type[BaseHTTPRequestHandler]:
                     return
                 if path not in {
                     "/api/health",
+                    "/api/source-revision",
                     "/api/snapshot",
                     "/api/footprint",
                     "/api/timeline",
@@ -180,8 +182,8 @@ def create_handler(database_path: Path) -> type[BaseHTTPRequestHandler]:
                 }:
                     self._send_json({"error": "Not found."}, status=HTTPStatus.NOT_FOUND)
                     return
-                if path == "/api/workflow-summary" and parsed.query:
-                    raise ValueError("workflow summary does not accept query parameters")
+                if path in {"/api/workflow-summary", "/api/source-revision"} and parsed.query:
+                    raise ValueError("unfiltered status inspection rejects query parameters")
                 parameters = _parameters(
                     parsed.query,
                     workflow=path in {"/api/workflows", "/api/results"},
@@ -203,6 +205,8 @@ def create_handler(database_path: Path) -> type[BaseHTTPRequestHandler]:
                             "read_only": True,
                             "live_collection_enabled": False,
                         }
+                    elif path == "/api/source-revision":
+                        payload = build_source_revision_snapshot(session)
                     elif path == "/api/workflow-summary":
                         payload = build_workflow_status_summary(session)
                     elif path == "/api/results":
