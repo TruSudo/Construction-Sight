@@ -7,6 +7,7 @@ remain offline, and no command automatically approves or writes a source capture
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -120,6 +121,7 @@ def capture_preview(
         plan_output.absolute() == output.absolute() or plan_output.exists()
     ):
         raise typer.BadParameter("plan output must be new and distinct from source evidence")
+    requested_at = datetime.now(UTC)
     try:
         request = build_ceqanet_csv_export_request(sch_number=sch_number)
         profile = SourceAccessProfile(
@@ -164,6 +166,18 @@ def capture_preview(
         )
         raise typer.Exit(code=1)
 
+    # The effect-consumption service can replay a previously authorized exact GET.
+    # Retain that evidence for audit, but do not relabel its old body as a NEW
+    # capture or prepare an import under this current-capture command.
+    if not requested_at <= authorized.execution.executed_at <= datetime.now(UTC):
+        typer.echo(
+            f"Source evidence preserved at {output}, but execution timestamp is not "
+            "within this capture invocation; an exact prior-result replay is not "
+            "a new public-source acquisition. No import plan was prepared.",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
     # Reopen the actual saved bytes through the existing independently replayable
     # bridge. A non-project export, incomplete body, unrecognized/other county,
     # conflicting schema or >100 rows cannot be silently omitted or imported.
@@ -190,6 +204,7 @@ def capture_preview(
                 "source_evidence_path": str(output),
                 "plan_output_path": str(plan_output) if plan_output is not None else None,
                 "source_verification_passed": True,
+                "execution_timestamp_within_invocation": True,
                 "source_claims_verified": False,
                 "persistence_mutated": False,
                 "next_step": (
