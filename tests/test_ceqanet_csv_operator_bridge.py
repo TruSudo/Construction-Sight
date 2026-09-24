@@ -16,6 +16,7 @@ from threading import Thread
 from urllib.parse import quote
 
 import pytest
+import typer
 from sqlalchemy.orm import Session
 from typer.testing import CliRunner
 
@@ -23,7 +24,7 @@ from constructionsight.ceqanet_csv_live_models import CeqanetCsvLiveExecution
 from constructionsight.ceqanet_csv_operator_bridge import (
     build_reviewed_ceqanet_csv_bridge,
 )
-from constructionsight.ceqanet_csv_operator_bridge_cli import app
+from constructionsight.ceqanet_csv_operator_bridge_cli import app, apply as apply_reviewed
 from constructionsight.ceqanet_persistence_execute import execute_ceqanet_write_plan
 from constructionsight.operator_dashboard import (
     build_dashboard_snapshot,
@@ -150,13 +151,21 @@ def test_reviewed_csv_preview_cli_is_non_mutating_and_requires_exact_hashes(
     ]
     before = hashlib.sha256(path.read_bytes()).hexdigest()
     without_permission = runner.invoke(app, arguments)
-    assert without_permission.exit_code != 0
-    assert "execute-write" in without_permission.output
+    assert without_permission.exit_code == 2
+    with pytest.raises(typer.BadParameter, match="execute-write"):
+        apply_reviewed(
+            EVIDENCE, path, payload["source_sha256"],
+            payload["approved_plan_digest_required"], "Test only", execute_write=False,
+        )
     wrong_hash = runner.invoke(
         app, [*arguments, "--approved-plan-digest", "0" * 64, "--execute-write"]
     )
-    assert wrong_hash.exit_code != 0
-    assert "differs from reviewed hashes" in wrong_hash.output
+    assert wrong_hash.exit_code == 2
+    with pytest.raises(typer.BadParameter, match="differs from reviewed hashes"):
+        apply_reviewed(
+            EVIDENCE, path, payload["source_sha256"], "0" * 64,
+            "Test only", execute_write=True,
+        )
     assert hashlib.sha256(path.read_bytes()).hexdigest() == before
 
 
