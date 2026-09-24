@@ -6,6 +6,7 @@ const identity = row => row.record_kind + ":" + row.record_id;
 const WATCH_KEY = "constructionsight:operator:local-watchlist-v1";
 let page = null, footprint = null, workflows = null, selected = null, selectedRecord = null, activeQuery = "", pageRequest = 0, featureRequest = 0, pageOffset = 0;
 let localWatchlist = {};
+let sourceRevision = null, sourceProbeActive = false;
 try { const stored = JSON.parse(localStorage.getItem(WATCH_KEY) || "{}"); if (stored && typeof stored === "object" && !Array.isArray(stored)) localWatchlist = stored; } catch (_) { /* Browser-local preferences are optional. */ }
 const records = () => page && Array.isArray(page.projects) ? page.projects : [];
 function updateWatchCounters() { const count = Object.keys(localWatchlist).length; byId("watched-count").textContent = String(count); byId("notification-count").textContent = String(count); }
@@ -475,14 +476,17 @@ async function loadData(offset=pageOffset, focusIdentity=null){
   const filter=new URLSearchParams({kind:"all",limit:"50",offset:String(offset),q:activeQuery});
   const geo=new URLSearchParams({kind:"all",q:activeQuery});
   try{
-    const [newPage,newFootprint,newWorkflow,health,workflowStatus]=await Promise.all([
+    const [newPage,newFootprint,newWorkflow,health,workflowStatus,sourceState]=await Promise.all([
       fetchJson("/api/snapshot?"+filter),fetchJson("/api/footprint?"+geo),
       fetchJson("/api/workflows?limit=50&offset=0"),fetchJson("/api/health"),
-      fetchJson("/api/workflow-summary").catch(error=>({error:String(error.message || error)}))
+      fetchJson("/api/workflow-summary").catch(error=>({error:String(error.message || error)})),
+      fetchJson("/api/source-revision").catch(()=>null)
     ]);
     if(token!==pageRequest)return;
     if(newPage.total!==newFootprint.matching_total)throw Error("Source-list and geographic scope disagree. Refresh the database view.");
     page=newPage;footprint=newFootprint;workflows=newWorkflow;pageOffset=offset;
+    if(sourceState && sourceState.read_only===true && sourceState.live_collection_enabled===false &&
+      /^[0-9a-f]{64}$/.test(sourceState.revision_identity))sourceRevision=sourceState.revision_identity;
     byId("source-total").textContent=newPage.total.toLocaleString();
     byId("workflow-total").textContent=newWorkflow.total.toLocaleString();
     const counts=workflowStatus.statuses;
@@ -510,6 +514,33 @@ async function loadData(offset=pageOffset, focusIdentity=null){
     renderDossier(null);renderRecords();renderMap();
   }
 }
+async function refreshAfterExternalSourceChange() {
+  if(sourceProbeActive || !page || byId("command-view").hidden ||
+    document.visibilityState==="hidden" || document.activeElement===byId("search-term"))
+    return;
+  sourceProbeActive=true;
+  const observedPageRequest=pageRequest;
+  try {
+    const state=await fetchJson("/api/source-revision");
+    if(observedPageRequest!==pageRequest || byId("command-view").hidden)return;
+    if(state.read_only!==true || state.live_collection_enabled!==false ||
+      typeof state.revision_identity!=="string" ||
+      !/^[0-9a-f]{64}$/.test(state.revision_identity))return;
+    if(sourceRevision!==null && state.revision_identity!==sourceRevision){
+      const previousSelection=selected, previousOffset=pageOffset;
+      await loadData(previousOffset,previousSelection);
+      if(page)byId("global-notice").textContent +=
+        " Refreshed after a change in local SQLite source records. Remote collection is not running.";
+    } else if(sourceRevision===null)sourceRevision=state.revision_identity;
+  }catch(_){
+    // A local revision probe is optional: never block or fabricate core records.
+  }finally{
+    sourceProbeActive=false;
+  }
+}
+if(typeof window.setInterval==="function")
+  window.setInterval(refreshAfterExternalSourceChange,90_000);
+
 document.querySelectorAll("[data-section]").forEach(button=>button.onclick=()=>showSection(button.dataset.section));
 byId("global-search").onsubmit=event=>{event.preventDefault();activeQuery=byId("search-term").value.trim();pageOffset=0;showHome();loadData(0);};
 byId("previous-records").onclick=()=>{if(page&&page.offset>0)loadData(Math.max(0,page.offset-50));};
