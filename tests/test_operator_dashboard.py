@@ -1524,6 +1524,7 @@ def test_result_ledger_latest_revision_exact_share_read_only_http(database):
         assert status == 200
         payload = json.loads(raw)
         assert payload["results"] == data["results"]
+        assert json.loads(_get(port, "/api/results")[2])["limit"] == 25
         assert payload["read_only"] and payload["payment_status_verified"] is False
         assert payload["royalty_entitlement_verified"] is False
         assert "unsafe-inline" not in headers["Content-Security-Policy"]
