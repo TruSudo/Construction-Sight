@@ -17,6 +17,7 @@ from urllib.parse import parse_qs, urlparse
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from constructionsight.domain_types import PartyRole
 from constructionsight.operator_dashboard import (
     build_dashboard_snapshot,
     build_entity_neighborhood,
@@ -61,6 +62,7 @@ class _RequestParameters:
     offset: int
     entity_key: str | None
     record_id: str | None = None
+    role_filter: str = ""
 
 
 def _parameters(
@@ -76,7 +78,7 @@ def _parameters(
         if candidate
         else {"kind", "q", "county", "entity_key"}
         if timeline
-        else {"kind", "county"}
+        else {"kind", "county", "role"}
         if entity_index
         else {"kind", "county", "entity_key"}
         if entity
@@ -101,6 +103,9 @@ def _parameters(
         raise ValueError("invalid record kind or search length")
     if county not in {"", "San Bernardino", "Riverside"}:
         raise ValueError("unsupported county filter")
+    role_filter = values.get("role", [""])[0] if entity_index else ""
+    if role_filter and role_filter not in {item.value for item in PartyRole}:
+        raise ValueError("invalid source-claimed role filter")
     record_id = values["record_id"][0] if "record_id" in values else None
     if candidate and (
         raw_kind not in {"ceqa", "permit"}
@@ -130,6 +135,7 @@ def _parameters(
         offset=offset,
         entity_key=entity_key,
         record_id=record_id,
+        role_filter=role_filter,
     )
 
 
@@ -238,7 +244,8 @@ def create_handler(database_path: Path) -> type[BaseHTTPRequestHandler]:
                         ).model_dump(mode="json")
                     elif path == "/api/entity-index":
                         payload = build_entity_index(
-                            session, kind=parameters.kind, county=parameters.county
+                            session, kind=parameters.kind, county=parameters.county,
+                            role=parameters.role_filter,
                         ).model_dump(mode="json")
                     elif path == "/api/entity-neighborhood":
                         if parameters.entity_key is None:
