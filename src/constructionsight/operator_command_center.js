@@ -293,13 +293,19 @@ async function showSources() {
     const rows=families.map((kind,index)=>{
       const [all,sanBernardino,riverside]=data.slice(index*3,index*3+3).map(result=>result.total);
       if(sanBernardino+riverside>all)throw Error("Source counts disagree across county filters.");
-      return '<tr><th scope="row">'+escapeText(kind.toUpperCase())+'</th><td>'+all+'</td><td>'+sanBernardino+'</td><td>'+riverside+'</td><td>'+(all-sanBernardino-riverside)+'</td></tr>';
+      const countButton=(count,county)=>'<button type="button" class="source-count" data-source-kind="'+kind+'" data-source-county="'+county+'" aria-label="Show '+kind+' source records'+(county?' in '+county+' County':' across retained counties')+'">'+count+'</button>';
+      return '<tr><th scope="row">'+escapeText(kind.toUpperCase())+'</th><td>'+countButton(all,'')+'</td><td>'+countButton(sanBernardino,'San Bernardino')+'</td><td>'+countButton(riverside,'Riverside')+'</td><td>'+(all-sanBernardino-riverside)+'</td></tr>';
     }).join("");
     byId("feature-body").innerHTML='<section class="feature-card"><span class="badge">RETAINED SQLITE RECORDS · READ ONLY</span><h2>Source inventory</h2>'+
       '<p>Counts are source records, not deduplicated projects, live construction sites, or approved commercial leads. Other/unknown includes records with missing or out-of-scope county claims.</p>'+
       '<div class="source-inventory-scroll"><table class="source-inventory"><thead><tr><th>Source family</th><th>All counties</th><th>San Bernardino</th><th>Riverside</th><th>Other / unknown</th></tr></thead><tbody>'+rows+'</tbody></table></div></section>'+
       '<section class="feature-card"><h2>Collection status</h2><p>This local operator does not run live source acquisition, subscription monitoring, scheduled updates or remote data import. Import and retained-source validation remain separate governed workflows.</p>'+
       '<a href="/workspace#records">Inspect stored source evidence →</a></section>';
+    byId("feature-body").querySelectorAll("[data-source-kind]").forEach(button=>button.onclick=()=>{
+      const kind=button.dataset.sourceKind, county=button.dataset.sourceCounty;
+      if(["ceqa","permit"].includes(kind) && ["","San Bernardino","Riverside"].includes(county))
+        applySourceFilter(kind,county);
+    });
   } catch(error) {
     if(token===featureRequest && !byId("feature-view").hidden)
       byId("feature-body").innerHTML='<section class="feature-card"><h2>Source inventory unavailable</h2><p role="alert">'+escapeText(error.message || error)+'</p></section>';
@@ -575,8 +581,13 @@ if(typeof window.setInterval==="function")
   window.setInterval(refreshAfterExternalSourceChange,90_000);
 
 document.querySelectorAll("[data-section]").forEach(button=>button.onclick=()=>showSection(button.dataset.section));
-byId("global-search").onsubmit=event=>{event.preventDefault();activeQuery=byId("search-term").value.trim();activeKind=byId("filter-kind").value;activeCounty=byId("filter-county").value;pageOffset=0;showHome();loadData(0);};
-for (const id of ["filter-kind","filter-county"]) byId(id).onchange=()=>{activeQuery=byId("search-term").value.trim();activeKind=byId("filter-kind").value;activeCounty=byId("filter-county").value;pageOffset=0;showHome();loadData(0);};
+function applySourceFilter(kind,county){
+  byId("filter-kind").value=kind;byId("filter-county").value=county;
+  activeKind=kind;activeCounty=county;activeQuery=byId("search-term").value.trim();
+  pageOffset=0;showHome();loadData(0);
+}
+byId("global-search").onsubmit=event=>{event.preventDefault();applySourceFilter(byId("filter-kind").value,byId("filter-county").value);};
+for (const id of ["filter-kind","filter-county"]) byId(id).onchange=()=>applySourceFilter(byId("filter-kind").value,byId("filter-county").value);
 byId("previous-records").onclick=()=>{if(page&&page.offset>0)loadData(Math.max(0,page.offset-50));};
 byId("next-records").onclick=()=>{if(page&&page.has_more)loadData(page.offset+page.limit);};
 byId("source-stat").onclick=()=>{showHome();byId("command-records").scrollIntoView({block:"nearest"});};
