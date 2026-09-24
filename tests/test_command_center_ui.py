@@ -277,3 +277,23 @@ def test_entity_network_indexes_real_retained_cross_county_source_keys() -> None
     assert '"/api/entity-neighborhood?"+new URLSearchParams({kind,county,entity_key:key})' in script
     assert 'openExactStoredRecord(row,identity(row),"entity index")' in script
     assert 'No stored entity keys appear in this bounded retained source scan.' in script
+
+
+def test_sources_collection_prepares_bounded_sch_capture_without_browser_network() -> None:
+    """Only the operator CLI can perform the separately approved current public GET."""
+    script = (ASSETS / "operator_command_center.js").read_text(encoding="utf-8")
+    assert 'id="capture-source-form"' in script
+    assert 'id="capture-sch-number"' in script
+    assert 'id="capture-instructions"' in script
+    assert 'byId("capture-source-form").onsubmit=event=>' in script
+    assert 'function prepareCeqanetCapture()' in script
+    assert '/^[0-9]{10}$/.test(raw)' in script
+    assert '"constructionsight-ceqanet-reviewed-import capture-preview"' in script
+    assert '" --sch-number "+raw+' in script
+    assert ' --plan-output ' in script
+    assert ' --execute-live' in script
+    assert 'ceqanet.lci.ca.gov/'+ "'" + '+raw+' in script
+    assert 'byId("capture-command").textContent=command;' in script
+    assert 'No collection, import, lead qualification, outreach or bids' in script
+    assert 'no remote' not in script.lower() or 'This read-only dashboard' in script
+    assert 'fetch("/api/capture' not in script
