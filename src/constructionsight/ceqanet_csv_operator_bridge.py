@@ -18,6 +18,7 @@ from pydantic import HttpUrl
 from constructionsight.ceqa_models import CeqaRecord
 from constructionsight.ceqanet_csv_live_models import CeqanetCsvLiveExecution
 from constructionsight.ceqanet_csv_models import CeqanetCsvExportKind
+from constructionsight.ceqanet_csv_service import parse_ceqanet_csv_export_url
 from constructionsight.ceqanet_csv_replay_service import (
     build_ceqanet_csv_encoding_replay,
     verify_ceqanet_csv_encoding_replay,
@@ -103,6 +104,16 @@ def build_reviewed_ceqanet_csv_bridge(
 
     if execution.request.export_kind is not CeqanetCsvExportKind.PROJECT:
         raise ValueError("reviewed CSV project bridge requires project-scope export evidence")
+    if (
+        execution.request_url != execution.request.source_url
+        or parse_ceqanet_csv_export_url(execution.final_url) != execution.request
+        or execution.method != "GET"
+        or execution.network_executed is not True
+        or execution.retry_count != 0
+        or execution.documents_downloaded is not False
+        or execution.persistence_mutated is not False
+    ):
+        raise ValueError("retained source execution is not the approved exact public CSV GET")
     if execution.inspection is not None and execution.inspection_error is not None:
         raise ValueError("retained CSV inspection state is contradictory")
     replay = build_ceqanet_csv_encoding_replay(execution, max_retained_rows=_MAX_ROWS)
