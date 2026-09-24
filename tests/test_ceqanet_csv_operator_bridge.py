@@ -7,6 +7,7 @@ claim that its source observations reflect present construction activity.
 from __future__ import annotations
 
 from contextlib import contextmanager
+from datetime import UTC, datetime
 import hashlib
 import json
 from http.client import HTTPConnection
@@ -358,11 +359,16 @@ def test_capture_preview_delegates_one_exact_authorized_get_and_replays_saved_so
     """One explicit capture bridges a retained public-source response without importing."""
 
     calls: list[dict[str, object]] = []
+    delivered: list[CeqanetCsvLiveExecution] = []
 
     def authorized_capture(**kwargs: object) -> SimpleNamespace:
         calls.append(kwargs)
+        # A mocked NEW invocation must carry the current effect timestamp;
+        # the retained body remains the actual historical July source fixture.
+        source = _execution().model_copy(update={"executed_at": datetime.now(UTC)})
+        delivered.append(source)
         return SimpleNamespace(
-            execution=_execution(), verification=SimpleNamespace(passed=True),
+            execution=source, verification=SimpleNamespace(passed=True),
         )
 
     monkeypatch.setattr(
@@ -395,11 +401,13 @@ def test_capture_preview_delegates_one_exact_authorized_get_and_replays_saved_so
     assert payload["source_evidence_path"] == str(evidence)
     assert payload["plan_output_path"] == str(plan)
     assert payload["source_verification_passed"] is True
+    assert payload["execution_timestamp_within_invocation"] is True
     assert payload["approved_plan_digest_required"] == canonical_digest(
         json.loads(plan.read_text("utf-8"))
     )
     saved = CeqanetCsvLiveExecution.model_validate(json.loads(evidence.read_text("utf-8")))
-    assert saved == _execution()
+    assert saved == delivered[0]
+    assert saved.body_sha256 == _execution().body_sha256
     assert saved.executed_at.year == 2026
     assert not (tmp_path / "operator.sqlite3").exists()
 
@@ -476,3 +484,33 @@ def test_capture_preview_preserves_failed_verification_and_rejects_claimed_captc
     assert blocked.exit_code == 1
     assert "blocked" in blocked.output.lower()
     assert not (tmp_path / "blocked.json").exists()
+
+
+def test_capture_preview_refuses_old_effect_replay_as_new_public_source(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Durable exact-request replay remains auditable but cannot claim new ingestion."""
+
+    monkeypatch.setattr(
+        capture_module, "execute_authorized_ceqanet_csv",
+        lambda **_: SimpleNamespace(
+            execution=_execution(), verification=SimpleNamespace(passed=True),
+        ),
+    )
+    path = tmp_path / "previously-captured-response.json"
+    plan = tmp_path / "must-not-suggest-import.json"
+    result = runner.invoke(
+        app, [
+            "capture-preview", "--sch-number", "2026030377",
+            "--output", str(path), "--plan-output", str(plan),
+            "--authorization-reason", "Require genuinely new response",
+            "--execute-live",
+        ],
+    )
+    assert result.exit_code == 1
+    assert "not a new public-source acquisition" in result.output
+    assert path.is_file()
+    assert not plan.exists()
+    assert CeqanetCsvLiveExecution.model_validate(
+        json.loads(path.read_text("utf-8"))
+    ) == _execution()
