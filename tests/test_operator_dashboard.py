@@ -344,6 +344,18 @@ def test_entity_index_is_bounded_exact_key_cross_county_and_read_only_http(datab
         assert scoped.entries[0].san_bernardino_records == 0
         assert scoped.entries[0].riverside_records == 1
         assert not scoped.entries[0].appears_in_both_target_counties
+        contractor = build_entity_index(session, role="contractor")
+        assert contractor.role_filter == "contractor"
+        assert contractor.returned == 1
+        assert contractor.entries[0].entity_key == "fixture:party"
+        assert contractor.entries[0].appears_in_both_target_counties
+        agency = build_entity_index(session, role="agency")
+        assert agency.returned == 1
+        assert agency.entries[0].entity_key == "fixture:rv-only"
+        assert not agency.entries[0].appears_in_both_target_counties
+        assert build_entity_index(session, role="general_contractor").returned == 0
+        with pytest.raises(ValueError, match="role filter"):
+            build_entity_index(session, role="unrecognized")
     before = hashlib.sha256(path.read_bytes()).hexdigest()
     with _server(path) as port:
         status, _, raw = _get(port, "/api/entity-index?kind=all&county=")
@@ -352,6 +364,12 @@ def test_entity_index_is_bounded_exact_key_cross_county_and_read_only_http(datab
         assert payload["read_only"] and payload["live_collection_enabled"] is False
         assert payload["entries"][0]["entity_key"] == "fixture:party"
         assert payload["entries"][0]["appears_in_both_target_counties"] is True
+        status, _, raw = _get(port, "/api/entity-index?kind=all&county=&role=contractor")
+        assert status == 200
+        role_payload = json.loads(raw)
+        assert role_payload["role_filter"] == "contractor"
+        assert role_payload["returned"] == 1
+        assert role_payload["entries"][0]["entity_key"] == "fixture:party"
         status, _, raw = _get(port, "/api/entity-index?kind=permit&county=Riverside")
         assert status == 200 and json.loads(raw)["entries"] == []
         for bad in (
@@ -359,6 +377,7 @@ def test_entity_index_is_bounded_exact_key_cross_county_and_read_only_http(datab
             "/api/entity-index?kind=all&kind=permit",
             "/api/entity-index?county=other",
             "/api/entity-index?kind=all&limit=100000",
+            "/api/entity-index?role=not-a-party-role",
         ):
             assert _get(port, bad)[0] == 400
     assert hashlib.sha256(path.read_bytes()).hexdigest() == before
