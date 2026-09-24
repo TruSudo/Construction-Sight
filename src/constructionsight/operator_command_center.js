@@ -241,17 +241,15 @@ async function showEvidence() {
 function showEntities() {
   ++featureRequest;const row=selectedRecord;
   featureIntro("Entity Network", "Exact stored-entity-key co-occurrence across retained CEQA and permit records");
-  if(!row){
-    byId("feature-body").innerHTML='<section class="feature-card"><h2>Select a source record</h2><p>Select a source record in the Command Center, then inspect its named parties here.</p><button type="button" class="action" id="return-records">Return to source records</button></section>';
-    byId("return-records").onclick=showHome;
-    return;
-  }
+  if(!row){showEntityIndex();return;}
   const entities=Array.isArray(row.entities)?row.entities:[];
   byId("feature-body").innerHTML='<section class="feature-card"><span class="badge">SOURCE-CLAIMED PARTIES</span><h2>'+escapeText(row.title)+'</h2>'+
     '<p>Matching an exact stored entity key does not independently verify legal identity, ownership, or a real-world project relationship.</p>'+
     (entities.map((e,index)=>'<div class="evidence-item"><strong>'+escapeText(e.name)+'</strong> · '+escapeText(e.role)+
       '<br><small>Stored key: '+escapeText(e.entity_key)+'</small><br><button type="button" class="action" data-entity="'+index+'">Inspect matching records</button></div>').join("") ||
-      '<p>No named entities retained on this source record.</p>')+'</section><section class="feature-card" id="entity-results"><p>Select a named party to inspect exact-key source co-occurrences.</p></section>';
+      '<p>No named entities retained on this source record.</p>')+
+    '<button type="button" class="action" id="browse-entity-index">Browse all retained entity keys →</button></section><section class="feature-card" id="entity-results"><p>Select a named party to inspect exact-key source co-occurrences.</p></section>';
+  byId("browse-entity-index").onclick=showEntityIndex;
   byId("feature-body").querySelectorAll("[data-entity]").forEach(button=>button.onclick=async()=>{
     const key=entities[Number(button.dataset.entity)]?.entity_key, currentToken=++featureRequest;
     if(typeof key!=="string" || !key || key.length>255)return;
@@ -281,6 +279,94 @@ function showEntities() {
   });
 }
 
+
+async function showEntityIndex() {
+  const token=++featureRequest;
+  featureIntro("Entity Network", "Exact stored entity keys across retained source records · read only");
+  byId("feature-body").innerHTML='<section class="feature-card"><p role="status">Reading bounded source-claimed entity index…</p></section>';
+  const kind=activeKind, county=activeCounty;
+  try {
+    const data=await fetchJson("/api/entity-index?"+new URLSearchParams({kind,county}));
+    if(token!==featureRequest || byId("feature-view").hidden)return;
+    if(data.read_only!==true || data.live_collection_enabled!==false ||
+      data.selection!==kind || data.county_filter!==county ||
+      !Array.isArray(data.entries) || !Number.isSafeInteger(data.matching_source_records) ||
+      !Number.isSafeInteger(data.scanned_source_records) ||
+      !Number.isSafeInteger(data.distinct_keys_in_scan) ||
+      data.returned!==data.entries.length || data.returned>data.result_limit ||
+      data.source_scan_truncated!==(data.matching_source_records>data.scanned_source_records) ||
+      data.result_truncated!==(data.distinct_keys_in_scan>data.returned))
+      throw Error("Retained entity index scope or bounds are inconsistent.");
+    const keys=new Set();
+    for(const entry of data.entries){
+      if(!entry || typeof entry.entity_key!=="string" || !entry.entity_key || entry.entity_key.length>255 ||
+        keys.has(entry.entity_key) || !Array.isArray(entry.source_claimed_names) ||
+        !Array.isArray(entry.source_claimed_roles) || !Number.isSafeInteger(entry.matching_records_in_scan) ||
+        entry.matching_records_in_scan<1 ||
+        entry.san_bernardino_records+entry.riverside_records+entry.other_or_unknown_records!==entry.matching_records_in_scan ||
+        entry.appears_in_both_target_counties!==Boolean(entry.san_bernardino_records&&entry.riverside_records))
+        throw Error("Retained entity key or source counts are inconsistent.");
+      keys.add(entry.entity_key);
+    }
+    const items=data.entries.map((entry,index)=>
+      '<button type="button" class="lead-record" data-index-entity="'+index+'"><strong>'+
+      escapeText(entry.source_claimed_names.join("; ") || "Unnamed stored entity key")+'</strong><small>'+
+      escapeText(entry.source_claimed_roles.join("; ") || "Role not recorded")+
+      ' · '+entry.matching_records_in_scan+' source records in scan'+
+      (entry.appears_in_both_target_counties?' · source-claimed in BOTH counties':'')+
+      ' · San Bernardino '+entry.san_bernardino_records+' / Riverside '+entry.riverside_records+
+      ' / Other or unknown '+entry.other_or_unknown_records+
+      '</small><small>Exact stored key: '+escapeText(entry.entity_key)+'</small></button>').join("")||
+      '<p>No stored entity keys appear in this bounded retained source scan.</p>';
+    byId("feature-body").innerHTML='<section class="feature-card"><span class="badge">UNVERIFIED SOURCE-CLAIMED ENTITY INDEX</span>'+
+      '<h2>Recorded companies and parties</h2><p>Scanned '+data.scanned_source_records+' of '+
+      data.matching_source_records+' source records; '+data.distinct_keys_in_scan+
+      ' distinct stored keys in scan; '+data.returned+' displayed. '+
+      (data.source_scan_truncated?'Source-record scan truncated. ':'')+
+      (data.result_truncated?'Entity-key list truncated. ':'')+
+      'Exact stored keys and two-county co-occurrence do not independently verify legal entity identity, project relationships, current operations or qualified security leads.</p>'+
+      '<div class="lead-records">'+items+'</div></section>'+
+      '<section class="feature-card" id="entity-results"><p>Select a stored key to inspect source-record co-occurrences.</p></section>';
+    byId("feature-body").querySelectorAll("[data-index-entity]").forEach(button=>button.onclick=()=>{
+      const entry=data.entries[Number(button.dataset.indexEntity)];
+      if(entry)showIndexedEntityMatches(entry.entity_key,kind,county);
+    });
+  }catch(error){
+    if(token===featureRequest && !byId("feature-view").hidden)
+      byId("feature-body").innerHTML='<section class="feature-card"><h2>Entity index unavailable</h2><p role="alert">'+
+        escapeText(error.message||error)+'</p></section>';
+  }
+}
+async function showIndexedEntityMatches(key,kind,county) {
+  if(typeof key!=="string" || !key || key.length>255)return;
+  const token=++featureRequest, target=byId("entity-results");
+  if(!target)return;
+  target.innerHTML='<p role="status">Inspecting matching retained source records…</p>';
+  try {
+    const data=await fetchJson("/api/entity-neighborhood?"+new URLSearchParams({kind,county,entity_key:key}));
+    if(token!==featureRequest || byId("feature-view").hidden || target!==byId("entity-results"))return;
+    if(data.read_only!==true || data.entity_key!==key || data.selection!==kind ||
+      data.county_filter!==county || !Array.isArray(data.records) ||
+      data.returned!==data.records.length || !Number.isSafeInteger(data.matching_records_in_scan))
+      throw Error("Exact entity neighborhood identity or bounds are inconsistent.");
+    target.innerHTML='<h2>Exact-key source records ('+data.matching_records_in_scan+')</h2>'+
+      '<p>Scanned '+data.scanned_source_records+' of '+data.total_source_records+' retained source records. '+
+      (data.source_scan_truncated?'Source scan truncated. ':'')+
+      (data.matching_records_truncated?'Matching-record list truncated. ':'')+
+      'Stored key co-occurrence is not verified real-world identity, ownership or an active project.</p>'+
+      (data.records.map((row,index)=>'<button type="button" class="related-record" data-index-record="'+index+'">'+
+        escapeText(row.title)+' · '+escapeText(row.record_kind)+' / '+escapeText(row.record_id)+
+        ' · '+escapeText(valueOrUnknown(row.county))+'</button>').join("")||
+        '<p>No source records matched in the bounded scan.</p>');
+    target.querySelectorAll("[data-index-record]").forEach(button=>button.onclick=()=>{
+      const row=data.records[Number(button.dataset.indexRecord)];
+      if(row)openExactStoredRecord(row,identity(row),"entity index");
+    });
+  }catch(error){
+    if(token===featureRequest && !byId("feature-view").hidden && target===byId("entity-results"))
+      target.innerHTML='<p role="alert">Exact-key record inspection unavailable: '+escapeText(error.message||error)+'</p>';
+  }
+}
 
 async function showHistoricalPulse() {
   const token=++featureRequest;
