@@ -22,12 +22,12 @@ import typer
 from sqlalchemy.orm import Session
 from typer.testing import CliRunner
 
+import constructionsight.ceqanet_csv_operator_bridge_cli as capture_module
 from constructionsight.ceqanet_csv_live_models import CeqanetCsvLiveExecution
 from constructionsight.ceqanet_csv_models import canonical_digest
 from constructionsight.ceqanet_csv_operator_bridge import (
     build_reviewed_ceqanet_csv_bridge,
 )
-import constructionsight.ceqanet_csv_operator_bridge_cli as capture_module
 from constructionsight.ceqanet_csv_operator_bridge_cli import app, apply as apply_reviewed
 from constructionsight.ceqanet_persistence_execute import execute_ceqanet_write_plan
 from constructionsight.operator_dashboard import (
