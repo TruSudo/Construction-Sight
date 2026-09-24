@@ -203,3 +203,77 @@ def test_local_source_revision_refreshes_dashboard_without_remote_ai_or_collecti
     assert "loadData(previousOffset,previousSelection)" in script
     assert "Remote collection is not running" in script
     assert "window.fetch(" not in script
+
+
+def test_command_center_source_and_county_filters_share_exact_list_map_scope() -> None:
+    """Source-family/county controls must constrain list, map, and pagination together."""
+    html = (ASSETS / "operator_command_center.html").read_text(encoding="utf-8")
+    script = (ASSETS / "operator_command_center.js").read_text(encoding="utf-8")
+    for fragment in (
+        'id="filter-kind"', 'id="filter-county"',
+        '<option value="ceqa">CEQA</option>',
+        '<option value="permit">Permits</option>',
+        '<option value="San Bernardino">San Bernardino</option>',
+        '<option value="Riverside">Riverside</option>',
+    ):
+        assert fragment in html
+    assert 'let activeKind = "all", activeCounty = "";' in script
+    assert 'kind:activeKind,county:activeCounty,limit:"50",offset:String(offset),q:activeQuery' in script
+    assert 'kind:activeKind,county:activeCounty,q:activeQuery' in script
+    assert 'newPage.selection!==activeKind || newFootprint.selection!==activeKind' in script
+    assert 'for (const id of ["filter-kind","filter-county"])' in script
+    assert 'data-source-kind="' in script and 'data-source-county="' in script
+    assert 'applySourceFilter(kind,county)' in script
+    assert 'button.dataset.sourceKind, county=button.dataset.sourceCounty' in script
+    assert 'pageOffset=0;showHome();loadData(0);' in script
+
+
+def test_watchlist_bookmark_opens_fresh_exact_source_not_cached_display_text() -> None:
+    """A local bookmark resolves a current, exact database record without writing or alerting."""
+    script = (ASSETS / "operator_command_center.js").read_text(encoding="utf-8")
+    assert 'data-open="' in script
+    assert 'openWatchBookmark(currentKey)' in script
+    assert 'new URLSearchParams({kind:entry.record_kind,record_id:entry.record_id})' in script
+    assert 'fetchJson("/api/candidate-preview?" + params)' in script
+    assert 'identity(row) !== key || result.read_only !== true' in script
+    assert 'token !== featureRequest || byId("command-view").hidden' in script
+    assert 'No cached source facts were substituted.' in script
+    assert 'Bookmark is not monitoring or outreach approval.' in script
+    assert 'fetch(url,{cache:"no-store"})' in script
+
+
+def test_source_activity_uses_existing_bounded_historical_read_api() -> None:
+    """Historical pulse must stay scoped, provenance-labeled and read-only."""
+    script = (ASSETS / "operator_command_center.js").read_text(encoding="utf-8")
+    assert 'id="show-historical-pulse"' in script
+    assert 'byId("show-historical-pulse").onclick=showHistoricalPulse' in script
+    assert '"/api/timeline?"+new URLSearchParams({kind,county,q:query})' in script
+    assert 'data.read_only!==true || data.live_collection_enabled!==false' in script
+    assert 'data.selection!==kind' in script
+    assert 'data.returned_events!==data.events.length' in script
+    assert 'data.source_scan_truncated!==(data.matching_total>data.records_scanned)' in script
+    assert "Historical source-claimed dates are not evidence of current site activity" in script
+    assert 'data.event_result_truncated?' in script
+    assert "source_date_order_conflict" in script
+    assert 'data-history="' in script
+    assert 'openExactStoredRecord(event,identity(event),"historical timeline")' in script
+
+
+def test_entity_network_indexes_real_retained_cross_county_source_keys() -> None:
+    """Entity Network can open globally without a selected dossier or fictitious identity links."""
+    script = (ASSETS / "operator_command_center.js").read_text(encoding="utf-8")
+    assert 'if(!row){showEntityIndex();return;}' in script
+    assert 'id="browse-entity-index"' in script
+    assert 'byId("browse-entity-index").onclick=()=>showEntityIndex();' in script
+    assert '"/api/entity-index?"+new URLSearchParams({kind,county,role})' in script
+    assert 'id="entity-index-role"' in script
+    assert 'byId("entity-index-role").onchange=()=>showEntityIndex(byId("entity-index-role").value)' in script
+    assert 'data.role_filter!==role' in script
+    assert 'showIndexedEntityMatches(entry.entity_key,kind,county,role)' in script
+    assert 'data.read_only!==true || data.live_collection_enabled!==false' in script
+    assert 'data.selection!==kind || data.county_filter!==county' in script
+    assert 'entry.appears_in_both_target_counties' in script
+    assert 'data.source_scan_truncated?' in script and 'data.result_truncated?' in script
+    assert '"/api/entity-neighborhood?"+new URLSearchParams({kind,county,entity_key:key})' in script
+    assert 'openExactStoredRecord(row,identity(row),"entity index")' in script
+    assert 'No stored entity keys appear in this bounded retained source scan.' in script

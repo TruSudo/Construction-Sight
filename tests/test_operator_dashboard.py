@@ -42,6 +42,7 @@ from constructionsight.operator_source_candidate import (
     SourceRecordNotFound,
     build_source_candidate_preview,
 )
+from constructionsight.operator_entity_index import build_entity_index
 from constructionsight.operator_web import _parameters, create_handler
 from constructionsight.parcel_core_models import (
     ParcelCoreRecord,
@@ -207,6 +208,179 @@ def test_search_filters_before_pagination_and_escapes_wildcards(database):
         assert build_dashboard_snapshot(session, query="2099012345").total == 5
         assert build_dashboard_snapshot(session, query="fixture:123").total == 5
         assert build_dashboard_snapshot(session, query="Fixture planning agency").total == 5
+
+
+
+
+def test_command_center_source_family_county_and_search_share_exact_http_scope(database):
+    """The same active filters must return consistent persisted list and map identities."""
+    path, engine = database
+    san_bernardino = _record("fixture:sb")
+    riverside = _record(
+        "fixture:rv",
+        title="Riverside Logistics fixture",
+        county="Riverside",
+        site=Site(
+            site_key="fixture:riverside-site",
+            county="Riverside",
+            latitude=33.95,
+            longitude=-116.82,
+            provenance=_provenance(),
+        ),
+    )
+    with Session(engine) as session, session.begin():
+        CeqaStore(session).upsert(san_bernardino)
+        CeqaStore(session).upsert(riverside)
+        PermitStore(session).upsert(
+            PermitRecord(
+                permit_key="fixture:permit",
+                permit_number="FIX-42",
+                jurisdiction="Fontana",
+                county="San Bernardino",
+                status="Issued",
+                site=san_bernardino.site,
+                entities=san_bernardino.entities,
+                provenance=_provenance(),
+            )
+        )
+    before = hashlib.sha256(path.read_bytes()).hexdigest()
+    scopes = (
+        ("all", "", "", 3),
+        ("ceqa", "San%20Bernardino", "", 1),
+        ("ceqa", "Riverside", "", 1),
+        ("permit", "San%20Bernardino", "", 1),
+        ("permit", "Riverside", "", 0),
+        ("all", "Riverside", "Logistics", 1),
+    )
+    with _server(path) as port:
+        for kind, county, query, expected in scopes:
+            common = f"kind={kind}&county={county}&q={query}"
+            page_status, _, raw_page = _get(
+                port, f"/api/snapshot?{common}&limit=50&offset=0"
+            )
+            map_status, _, raw_map = _get(port, f"/api/footprint?{common}")
+            assert page_status == map_status == 200
+            page, footprint = json.loads(raw_page), json.loads(raw_map)
+            assert page["selection"] == footprint["selection"] == kind
+            assert page["read_only"] and footprint["read_only"]
+            assert page["total"] == footprint["matching_total"] == expected
+            assert page["returned"] == expected
+            page_ids = {(row["record_kind"], row["record_id"]) for row in page["projects"]}
+            mapped_ids = {
+                (row["record_kind"], row["record_id"]) for row in footprint["points"]
+            }
+            assert mapped_ids <= page_ids
+            if kind == "ceqa" and county == "Riverside":
+                assert mapped_ids == {("ceqa", "fixture:rv")}
+        status, _, raw = _get(
+            port, "/api/candidate-preview?kind=ceqa&record_id=fixture%3Arv"
+        )
+        assert status == 200
+        exact = json.loads(raw)
+        assert exact["read_only"] is True
+        assert exact["source_record"]["record_id"] == "fixture:rv"
+        assert exact["source_record"]["county"] == "Riverside"
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == before
+
+
+
+def test_entity_index_is_bounded_exact_key_cross_county_and_read_only_http(database):
+    """Entity keys can connect both counties without inferring independently verified companies."""
+    path, engine = database
+    riverside = _record(
+        "fixture:rv-entity", county="Riverside",
+        title="Riverside source with shared retained entity key",
+        site=Site(
+            site_key="fixture:rv-entity-site", county="Riverside",
+            provenance=_provenance(),
+        ),
+        entities=[
+            Entity(
+                entity_key="fixture:party", name="Fixture Builder - source spelling",
+                role="contractor", provenance=_provenance(),
+            ),
+            Entity(
+                entity_key="fixture:rv-only", name="Riverside Project Agency",
+                role="agency", provenance=_provenance(),
+            ),
+        ],
+    )
+    san_bernardino = _record("fixture:sb-entity")
+    with Session(engine) as session, session.begin():
+        CeqaStore(session).upsert(san_bernardino)
+        CeqaStore(session).upsert(riverside)
+        PermitStore(session).upsert(
+            PermitRecord(
+                permit_key="fixture:permit-entity",
+                permit_number="FIX-ENTITY",
+                jurisdiction="Fontana",
+                county="San Bernardino",
+                status="Issued",
+                site=san_bernardino.site,
+                entities=san_bernardino.entities,
+                provenance=_provenance(),
+            )
+        )
+    with Session(engine) as session:
+        indexed = build_entity_index(session)
+        assert indexed.read_only and not indexed.live_collection_enabled
+        assert indexed.matching_source_records == indexed.scanned_source_records == 3
+        assert indexed.distinct_keys_in_scan == indexed.returned == 2
+        shared, riverside_only = indexed.entries
+        assert shared.entity_key == "fixture:party"
+        assert shared.matching_records_in_scan == 3
+        assert shared.san_bernardino_records == 2
+        assert shared.riverside_records == 1
+        assert shared.other_or_unknown_records == 0
+        assert shared.appears_in_both_target_counties is True
+        assert sorted(shared.source_claimed_names) == [
+            "Fixture Builder", "Fixture Builder - source spelling",
+        ]
+        assert riverside_only.entity_key == "fixture:rv-only"
+        assert not riverside_only.appears_in_both_target_counties
+        scoped = build_entity_index(session, kind="ceqa", county="Riverside")
+        assert scoped.selection == "ceqa" and scoped.county_filter == "Riverside"
+        assert scoped.matching_source_records == scoped.scanned_source_records == 1
+        assert scoped.entries[0].san_bernardino_records == 0
+        assert scoped.entries[0].riverside_records == 1
+        assert not scoped.entries[0].appears_in_both_target_counties
+        contractor = build_entity_index(session, role="contractor")
+        assert contractor.role_filter == "contractor"
+        assert contractor.returned == 1
+        assert contractor.entries[0].entity_key == "fixture:party"
+        assert contractor.entries[0].appears_in_both_target_counties
+        agency = build_entity_index(session, role="agency")
+        assert agency.returned == 1
+        assert agency.entries[0].entity_key == "fixture:rv-only"
+        assert not agency.entries[0].appears_in_both_target_counties
+        assert build_entity_index(session, role="general_contractor").returned == 0
+        with pytest.raises(ValueError, match="role filter"):
+            build_entity_index(session, role="unrecognized")
+    before = hashlib.sha256(path.read_bytes()).hexdigest()
+    with _server(path) as port:
+        status, _, raw = _get(port, "/api/entity-index?kind=all&county=")
+        assert status == 200
+        payload = json.loads(raw)
+        assert payload["read_only"] and payload["live_collection_enabled"] is False
+        assert payload["entries"][0]["entity_key"] == "fixture:party"
+        assert payload["entries"][0]["appears_in_both_target_counties"] is True
+        status, _, raw = _get(port, "/api/entity-index?kind=all&county=&role=contractor")
+        assert status == 200
+        role_payload = json.loads(raw)
+        assert role_payload["role_filter"] == "contractor"
+        assert role_payload["returned"] == 1
+        assert role_payload["entries"][0]["entity_key"] == "fixture:party"
+        status, _, raw = _get(port, "/api/entity-index?kind=permit&county=Riverside")
+        assert status == 200 and json.loads(raw)["entries"] == []
+        for bad in (
+            "/api/entity-index?entity_key=fixture%3Aparty",
+            "/api/entity-index?kind=all&kind=permit",
+            "/api/entity-index?county=other",
+            "/api/entity-index?kind=all&limit=100000",
+            "/api/entity-index?role=not-a-party-role",
+        ):
+            assert _get(port, bad)[0] == 400
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == before
 
 
 @pytest.mark.parametrize(

@@ -253,6 +253,50 @@ def test_actual_riverside_csv_import_reaches_command_center_http(tmp_path: Path)
         assert status == 200
         footprint = json.loads(raw)
         assert footprint["matching_total"] == 2 and footprint["points"] == []
+        status, raw = _http_get(port, "/api/entity-index?kind=ceqa&county=Riverside")
+        assert status == 200
+        index = json.loads(raw)
+        assert index["read_only"] and not index["live_collection_enabled"]
+        assert index["matching_source_records"] == index["scanned_source_records"] == 2
+        assert index["distinct_keys_in_scan"] >= 1
+        assert index["entries"] and all(
+            entry["riverside_records"] == entry["matching_records_in_scan"]
+            and entry["san_bernardino_records"] == 0
+            and entry["appears_in_both_target_counties"] is False
+            for entry in index["entries"]
+        )
+        status, raw = _http_get(
+            port, "/api/entity-index?kind=ceqa&county=Riverside&role=agency"
+        )
+        assert status == 200
+        agency_index = json.loads(raw)
+        assert agency_index["role_filter"] == "agency"
+        assert {entry["entity_key"] for entry in agency_index["entries"]} == {
+            entry["entity_key"] for entry in index["entries"]
+        }
+        status, raw = _http_get(
+            port, "/api/entity-index?kind=ceqa&county=Riverside&role=contractor"
+        )
+        assert status == 200
+        assert json.loads(raw)["entries"] == []
+        retained_keys = {
+            entity["entity_key"]
+            for record in payload["projects"]
+            for entity in record["entities"]
+        }
+        assert {entry["entity_key"] for entry in index["entries"]} == retained_keys
+        for entry in index["entries"]:
+            status, raw = _http_get(
+                port, "/api/entity-neighborhood?kind=ceqa&county=Riverside&entity_key="
+                + quote(entry["entity_key"], safe="")
+            )
+            assert status == 200
+            neighborhood = json.loads(raw)
+            assert neighborhood["read_only"]
+            assert neighborhood["entity_key"] == entry["entity_key"]
+            assert neighborhood["matching_records_in_scan"] == entry[
+                "matching_records_in_scan"
+            ]
         status, raw = _http_get(port, "/api/workflows?limit=25&offset=0")
         assert status == 200 and json.loads(raw)["total"] == 0
         status, raw = _http_get(port, "/api/source-revision")

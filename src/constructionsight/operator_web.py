@@ -17,6 +17,7 @@ from urllib.parse import parse_qs, urlparse
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from constructionsight.domain_types import PartyRole
 from constructionsight.operator_dashboard import (
     build_dashboard_snapshot,
     build_entity_neighborhood,
@@ -27,6 +28,7 @@ from constructionsight.operator_dashboard import (
 )
 from constructionsight.operator_dashboard_models import RecordSelection
 from constructionsight.operator_parcel_candidates import inspect_parcel_candidates
+from constructionsight.operator_entity_index import build_entity_index
 from constructionsight.operator_results import build_result_ledger_snapshot
 from constructionsight.operator_source_revision import build_source_revision_snapshot
 from constructionsight.operator_source_candidate import (
@@ -60,11 +62,12 @@ class _RequestParameters:
     offset: int
     entity_key: str | None
     record_id: str | None = None
+    role_filter: str = ""
 
 
 def _parameters(
     query: str, *, workflow: bool = False, footprint: bool = False,
-    entity: bool = False, candidate: bool = False, timeline: bool = False,
+    entity: bool = False, entity_index: bool = False, candidate: bool = False, timeline: bool = False,
     results: bool = False,
 ) -> _RequestParameters:
     values = parse_qs(query, keep_blank_values=True, max_num_fields=5)
@@ -75,6 +78,8 @@ def _parameters(
         if candidate
         else {"kind", "q", "county", "entity_key"}
         if timeline
+        else {"kind", "county", "role"}
+        if entity_index
         else {"kind", "county", "entity_key"}
         if entity
         else {"kind", "q", "county"}
@@ -98,6 +103,9 @@ def _parameters(
         raise ValueError("invalid record kind or search length")
     if county not in {"", "San Bernardino", "Riverside"}:
         raise ValueError("unsupported county filter")
+    role_filter = values.get("role", [""])[0] if entity_index else ""
+    if role_filter and role_filter not in {item.value for item in PartyRole}:
+        raise ValueError("invalid source-claimed role filter")
     record_id = values["record_id"][0] if "record_id" in values else None
     if candidate and (
         raw_kind not in {"ceqa", "permit"}
@@ -127,6 +135,7 @@ def _parameters(
         offset=offset,
         entity_key=entity_key,
         record_id=record_id,
+        role_filter=role_filter,
     )
 
 
@@ -174,6 +183,7 @@ def create_handler(database_path: Path) -> type[BaseHTTPRequestHandler]:
                     "/api/footprint",
                     "/api/timeline",
                     "/api/entity-neighborhood",
+                    "/api/entity-index",
                     "/api/candidate-preview",
                     "/api/parcel-candidates",
                     "/api/workflows",
@@ -191,6 +201,7 @@ def create_handler(database_path: Path) -> type[BaseHTTPRequestHandler]:
                     footprint=path == "/api/footprint",
                     timeline=path == "/api/timeline",
                     entity=path == "/api/entity-neighborhood",
+                    entity_index=path == "/api/entity-index",
                     candidate=path in {"/api/candidate-preview", "/api/parcel-candidates"},
                 )
             except ValueError as exc:
@@ -230,6 +241,11 @@ def create_handler(database_path: Path) -> type[BaseHTTPRequestHandler]:
                         payload = build_source_candidate_preview(
                             session, kind=parameters.kind,
                             record_id=parameters.record_id,
+                        ).model_dump(mode="json")
+                    elif path == "/api/entity-index":
+                        payload = build_entity_index(
+                            session, kind=parameters.kind, county=parameters.county,
+                            role=parameters.role_filter,
                         ).model_dump(mode="json")
                     elif path == "/api/entity-neighborhood":
                         if parameters.entity_key is None:
