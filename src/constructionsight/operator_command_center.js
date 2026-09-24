@@ -426,7 +426,7 @@ function prepareCeqanetCapture() {
   // This is a command preview, not a network request or automatic approval.
   // The operator must verify public access, execute the command locally, then
   // independently inspect both exact digests before the separately governed apply.
-  const stamp=new Date().toISOString().replace(/[-:]/g,"").replace(/\\.\\d{3}/,"");
+  const stamp=new Date().toISOString().replace(/[-:]/g,"").replace(/\.\d{3}/,"");
   const base="evidence/manual/ceqanet-"+raw+"-"+stamp;
   const command="constructionsight-ceqanet-reviewed-import capture-preview"+
     " --sch-number "+raw+" --output "+base+".json"+
