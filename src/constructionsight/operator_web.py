@@ -27,6 +27,7 @@ from constructionsight.operator_dashboard import (
 )
 from constructionsight.operator_dashboard_models import RecordSelection
 from constructionsight.operator_parcel_candidates import inspect_parcel_candidates
+from constructionsight.operator_results import build_result_ledger_snapshot
 from constructionsight.operator_source_candidate import (
     SourceRecordNotFound,
     build_source_candidate_preview,
@@ -173,6 +174,7 @@ def create_handler(database_path: Path) -> type[BaseHTTPRequestHandler]:
                     "/api/candidate-preview",
                     "/api/parcel-candidates",
                     "/api/workflows",
+                    "/api/results",
                     "/api/workflow-summary",
                 }:
                     self._send_json({"error": "Not found."}, status=HTTPStatus.NOT_FOUND)
@@ -181,7 +183,7 @@ def create_handler(database_path: Path) -> type[BaseHTTPRequestHandler]:
                     raise ValueError("workflow summary does not accept query parameters")
                 parameters = _parameters(
                     parsed.query,
-                    workflow=path == "/api/workflows",
+                    workflow=path in {"/api/workflows", "/api/results"},
                     footprint=path == "/api/footprint",
                     timeline=path == "/api/timeline",
                     entity=path == "/api/entity-neighborhood",
@@ -201,6 +203,10 @@ def create_handler(database_path: Path) -> type[BaseHTTPRequestHandler]:
                         }
                     elif path == "/api/workflow-summary":
                         payload = build_workflow_status_summary(session)
+                    elif path == "/api/results":
+                        payload = build_result_ledger_snapshot(
+                            session, limit=parameters.limit, offset=parameters.offset
+                        )
                     elif path == "/api/workflows":
                         payload = build_workflow_snapshot(
                             session, limit=parameters.limit, offset=parameters.offset
