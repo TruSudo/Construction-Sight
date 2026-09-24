@@ -277,6 +277,39 @@ function showEntities() {
 }
 
 
+async function showHistoricalPulse() {
+  const token=++featureRequest;
+  const target=byId("historical-pulse");
+  if(!target || byId("feature-view").hidden)return;
+  const kind=activeKind,county=activeCounty,query=activeQuery;
+  target.innerHTML='<p role="status">Reading retained historical source milestones for the active filters…</p>';
+  try {
+    const data=await fetchJson("/api/timeline?"+new URLSearchParams({kind,county,q:query}));
+    if(token!==featureRequest || byId("feature-view").hidden || target!==byId("historical-pulse"))return;
+    if(data.read_only!==true || data.live_collection_enabled!==false ||
+      data.selection!==kind || !Number.isSafeInteger(data.matching_total) ||
+      !Number.isSafeInteger(data.records_scanned) || !Number.isSafeInteger(data.milestones_in_scan) ||
+      !Array.isArray(data.events) || data.returned_events!==data.events.length ||
+      data.source_scan_truncated!==(data.matching_total>data.records_scanned))
+      throw Error("Historical source timeline returned inconsistent scope or bounds.");
+    const history=data.events.map(event=>
+      '<div class="evidence-item"><strong>'+escapeText(valueOrUnknown(event.recorded_date))+
+      ' · '+escapeText(valueOrUnknown(event.event_kind).replaceAll("_"," "))+'</strong>'+
+      '<p>'+escapeText(valueOrUnknown(event.title))+' · '+escapeText(valueOrUnknown(event.county))+
+      ' · '+escapeText(event.record_kind)+' / '+escapeText(event.record_id)+'</p>'+
+      (event.source_date_order_conflict?'<small>Retained source date-order conflict; inspect underlying evidence.</small>':'')+
+      '</div>').join("") || '<p>No dated milestones appear within this bounded retained source scan.</p>';
+    target.innerHTML='<h2>Historical source milestones</h2><p>'+data.records_scanned+
+      ' of '+data.matching_total+' matching source records scanned; '+data.milestones_in_scan+
+      ' dated source events in scan; '+data.returned_events+' shown. '+
+      (data.source_scan_truncated?'Source scan truncated. ':'')+
+      (data.event_result_truncated?'Event list truncated. ':'')+
+      'Historical source-claimed dates are not evidence of current site activity, new live acquisition, or qualified security opportunities.</p>'+history;
+  }catch(error){
+    if(token===featureRequest && !byId("feature-view").hidden && target===byId("historical-pulse"))
+      target.innerHTML='<p role="alert">Historical source milestones unavailable: '+escapeText(error.message||error)+'</p>';
+  }
+}
 async function showSources() {
   const token=++featureRequest;
   featureIntro("Sources & Collection", "Actual retained CEQA and permit counts from the selected local database");
@@ -300,7 +333,10 @@ async function showSources() {
       '<p>Counts are source records, not deduplicated projects, live construction sites, or approved commercial leads. Other/unknown includes records with missing or out-of-scope county claims.</p>'+
       '<div class="source-inventory-scroll"><table class="source-inventory"><thead><tr><th>Source family</th><th>All counties</th><th>San Bernardino</th><th>Riverside</th><th>Other / unknown</th></tr></thead><tbody>'+rows+'</tbody></table></div></section>'+
       '<section class="feature-card"><h2>Collection status</h2><p>This local operator does not run live source acquisition, subscription monitoring, scheduled updates or remote data import. Import and retained-source validation remain separate governed workflows.</p>'+
-      '<a href="/workspace#records">Inspect stored source evidence →</a></section>';
+      '<a href="/workspace#records">Inspect stored source evidence →</a></section>'+
+      '<section class="feature-card"><h2>Historical source activity</h2><p>Inspect dated historical observations for the current search, source-family and county filters. This is not real-time site monitoring.</p>'+
+      '<button type="button" class="action" id="show-historical-pulse">Load retained timeline →</button><div id="historical-pulse"></div></section>';
+    byId("show-historical-pulse").onclick=showHistoricalPulse;
     byId("feature-body").querySelectorAll("[data-source-kind]").forEach(button=>button.onclick=()=>{
       const kind=button.dataset.sourceKind, county=button.dataset.sourceCounty;
       if(["ceqa","permit"].includes(kind) && ["","San Bernardino","Riverside"].includes(county))
