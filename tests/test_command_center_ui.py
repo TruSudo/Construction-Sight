@@ -257,3 +257,19 @@ def test_source_activity_uses_existing_bounded_historical_read_api() -> None:
     assert "source_date_order_conflict" in script
     assert 'data-history="' in script
     assert 'openExactStoredRecord(event,identity(event),"historical timeline")' in script
+
+
+def test_entity_network_indexes_real_retained_cross_county_source_keys() -> None:
+    """Entity Network can open globally without a selected dossier or fictitious identity links."""
+    script = (ASSETS / "operator_command_center.js").read_text(encoding="utf-8")
+    assert 'if(!row){showEntityIndex();return;}' in script
+    assert 'id="browse-entity-index"' in script
+    assert 'byId("browse-entity-index").onclick=showEntityIndex;' in script
+    assert '"/api/entity-index?"+new URLSearchParams({kind,county})' in script
+    assert 'data.read_only!==true || data.live_collection_enabled!==false' in script
+    assert 'data.selection!==kind || data.county_filter!==county' in script
+    assert 'entry.appears_in_both_target_counties' in script
+    assert 'data.source_scan_truncated?' in script and 'data.result_truncated?' in script
+    assert '"/api/entity-neighborhood?"+new URLSearchParams({kind,county,entity_key:key})' in script
+    assert 'openExactStoredRecord(row,identity(row),"entity index")' in script
+    assert 'No stored entity keys appear in this bounded retained source scan.' in script
