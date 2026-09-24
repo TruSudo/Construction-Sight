@@ -444,6 +444,7 @@ def test_capture_preview_preserves_failed_verification_and_rejects_claimed_captc
 ) -> None:
     evidence = tmp_path / "failed-verification.json"
     plan = tmp_path / "never-written-plan.json"
+    governed_capture = capture_module.execute_authorized_ceqanet_csv
     monkeypatch.setattr(
         capture_module, "execute_authorized_ceqanet_csv",
         lambda **_: SimpleNamespace(
@@ -461,6 +462,8 @@ def test_capture_preview_preserves_failed_verification_and_rejects_claimed_captc
     assert evidence.is_file() and not plan.exists()
     assert "Retained source verification failed" in result.output
 
+    # Restore the actual lawful-access facade, never a mock, for denial verification.
+    monkeypatch.setattr(capture_module, "execute_authorized_ceqanet_csv", governed_capture)
     # The real governed facade must refuse disclosed CAPTCHA access before HTTP.
     blocked = runner.invoke(
         app, [
