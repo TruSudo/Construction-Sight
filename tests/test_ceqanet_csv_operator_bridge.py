@@ -283,7 +283,11 @@ def test_real_riverside_csv_cli_authorized_apply_to_operator_sqlite(tmp_path: Pa
     ]
     result = runner.invoke(app, arguments)
     assert result.exit_code == 0, result.output
-    payload = json.loads(result.output)
+    # The existing governance layer writes the authorization audit to stderr;
+    # CliRunner.output merges the two streams, but a real CLI keeps JSON stdout clean.
+    audit = json.loads(result.stderr.strip().splitlines()[0])
+    assert audit["action"] == "execute-ceqanet-write-plan"
+    payload = json.loads(result.stdout)
     assert payload["applied_operations"] == bridge.write_plan.operation_count == 4
     assert payload["operator_readback_verified"] is True
     assert payload["commercial_leads_created"] is False
