@@ -861,7 +861,7 @@ def test_retained_source_pulse_ui_binds_to_bounded_read_models(database):
     with Session(engine) as session, session.begin():
         CeqaStore(session).upsert(_record("pulse:synthetic"))
     with _server(path) as port:
-        html_status, _, html_body = _get(port, "/")
+        html_status, _, html_body = _get(port, "/workspace")
         script_status, _, script_body = _get(port, "/operator_ui.js")
         page = json.loads(_get(port, "/api/snapshot?kind=all")[2])
         footprint = json.loads(_get(port, "/api/footprint?kind=all")[2])
@@ -934,7 +934,7 @@ def test_historical_timeline_preserves_family_dates_scope_and_unmapped_sources(d
     before = hashlib.sha256(path.read_bytes()).hexdigest()
     with _server(path) as port:
         response = _get(port, "/api/timeline?kind=all&county=San+Bernardino")
-        html = _get(port, "/")[2].decode("utf-8")
+        html = _get(port, "/workspace")[2].decode("utf-8")
         script = _get(port, "/operator_ui.js")[2].decode("utf-8")
     assert response[0] == 200
     data = json.loads(response[2])
@@ -1156,7 +1156,7 @@ def test_on_demand_parcel_claims_exact_source_apn_county_and_crs(database):
         status, _, body = _get(
             port, "/api/parcel-candidates?kind=ceqa&record_id=parcel-source%3Aceqa"
         )
-        html = _get(port, "/")[2].decode("utf-8")
+        html = _get(port, "/workspace")[2].decode("utf-8")
         script = _get(port, "/operator_ui.js")[2].decode("utf-8")
     assert status == 200
     payload = json.loads(body)
