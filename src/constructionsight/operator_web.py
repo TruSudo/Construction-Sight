@@ -63,7 +63,8 @@ class _RequestParameters:
 
 def _parameters(
     query: str, *, workflow: bool = False, footprint: bool = False,
-    entity: bool = False, candidate: bool = False, timeline: bool = False
+    entity: bool = False, candidate: bool = False, timeline: bool = False,
+    results: bool = False,
 ) -> _RequestParameters:
     values = parse_qs(query, keep_blank_values=True, max_num_fields=5)
     allowed = (
@@ -81,9 +82,9 @@ def _parameters(
     )
     if set(values) - allowed or any(len(value) != 1 for value in values.values()):
         raise ValueError("unsupported or repeated query parameter")
-    limit = int(values.get("limit", ["100"])[0])
+    limit = int(values.get("limit", ["25" if results else "100"])[0])
     offset = int(values.get("offset", ["0"])[0])
-    if not 1 <= limit <= 500 or not 0 <= offset <= 1_000_000:
+    if not 1 <= limit <= (50 if results else 500) or not 0 <= offset <= 1_000_000:
         raise ValueError("invalid page bounds")
     if workflow:
         return _RequestParameters(
@@ -184,6 +185,7 @@ def create_handler(database_path: Path) -> type[BaseHTTPRequestHandler]:
                 parameters = _parameters(
                     parsed.query,
                     workflow=path in {"/api/workflows", "/api/results"},
+                    results=path == "/api/results",
                     footprint=path == "/api/footprint",
                     timeline=path == "/api/timeline",
                     entity=path == "/api/entity-neighborhood",
