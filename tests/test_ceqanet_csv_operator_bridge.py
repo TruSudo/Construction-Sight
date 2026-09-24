@@ -592,3 +592,33 @@ def test_capture_preview_to_separate_authorized_apply_and_live_operator_http(
         status, raw = _http_get(port, "/api/workflows?limit=25&offset=0")
         assert status == 200 and json.loads(raw)["total"] == 0
     assert hashlib.sha256(path.read_bytes()).hexdigest() == before
+
+
+def test_capture_preview_rejects_result_from_another_sch_without_ever_importing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The saved source cannot be represented as the operator's approved SCH."""
+
+    monkeypatch.setattr(
+        capture_module, "execute_authorized_ceqanet_csv",
+        lambda **_: SimpleNamespace(
+            execution=_execution().model_copy(update={"executed_at": datetime.now(UTC)}),
+            verification=SimpleNamespace(passed=True),
+        ),
+    )
+    path = tmp_path / "mismatched-source.json"
+    plan = tmp_path / "no-mismatched-plan.json"
+    result = runner.invoke(
+        app, [
+            "capture-preview", "--sch-number", "2026030378",
+            "--output", str(path), "--plan-output", str(plan),
+            "--authorization-reason", "Reject misrouted exact project identity",
+            "--execute-live",
+        ],
+    )
+    assert result.exit_code == 1
+    assert "does not match the exact approved SCH request" in result.output
+    assert path.is_file() and not plan.exists()
+    assert CeqanetCsvLiveExecution.model_validate(
+        json.loads(path.read_text("utf-8"))
+    ).request.sch_number == "2026030377"
