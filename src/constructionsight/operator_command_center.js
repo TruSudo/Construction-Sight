@@ -341,6 +341,82 @@ async function showLeads(offset=0) {
   }
 }
 
+function renderResultHistory(entry) {
+  const current=entry.current, share=current.share;
+  const amount=value=>value===null || value===undefined ? "Not recorded" : escapeText(String(value));
+  return '<section class="feature-card"><span class="badge">RETAINED RESULT · REVISION '+escapeText(current.revision)+'</span>'+
+    '<h2>'+escapeText(entry.workflow_id)+'</h2><p>Latest validated outcome: '+escapeText(current.status)+
+    ' · exact review package '+escapeText(entry.package_id)+'</p>'+
+    '<p>Recorded gross value: '+amount(current.gross_value)+
+    ' · Share state: '+escapeText(current.share_status)+'</p>'+
+    (share?'<p>Stored share rate: '+amount(share.share_rate)+
+      ' · Calculated share value: '+amount(share.share_value)+
+      ' (stored numerical amounts; currency, entitlement, payment and ownership not verified).</p>':
+      '<p>No calculated share attached to the current result revision.</p>')+
+    '<p>No royalty entitlement, payment, outstanding balance or disbursement is verified by these records.</p>'+
+    '<h3>Immutable result revisions ('+entry.revision_count+')</h3>'+
+    entry.history.map(row=>'<div class="evidence-item"><strong>Revision '+escapeText(row.revision)+
+      ' · '+escapeText(row.status)+'</strong><p>Ledger key: '+escapeText(row.ledger_id)+
+      ' · Date: '+escapeText(valueOrUnknown(row.decided_date))+'</p>'+
+      '<p>Prior revision: '+escapeText(valueOrUnknown(row.supersedes_ledger_id))+
+      ' · Correction: '+escapeText(valueOrUnknown(row.correction_reason))+'</p>'+
+      (Array.isArray(row.reasons)?row.reasons.map(reason=>'<p>'+escapeText(reason)+'</p>').join(""):"")+
+      (Array.isArray(row.limitations)?row.limitations.map(note=>'<p>'+escapeText(note)+'</p>').join(""):"")+
+      '</div>').join("")+'</section>';
+}
+async function showRoyaltyLedger(offset=0) {
+  const token=++featureRequest;
+  featureIntro("Royalty Ledger", "Stored outcome and share calculations · no royalty entitlement or payment verification");
+  byId("feature-body").innerHTML='<section class="feature-card"><p role="status">Reading validated result histories…</p></section>';
+  try {
+    const data=await fetchJson("/api/results?"+new URLSearchParams({limit:"25",offset:String(offset)}));
+    if(token!==featureRequest || byId("feature-view").hidden)return;
+    if(data.read_only!==true || data.payment_status_verified!==false ||
+      data.royalty_entitlement_verified!==false || !Number.isSafeInteger(data.total) ||
+      data.total<0 || data.offset!==offset || data.limit!==25 ||
+      !Array.isArray(data.results) || data.returned!==data.results.length ||
+      data.returned>25 || data.has_more!==(offset+data.returned<data.total))
+      throw Error("Stored results page or its authority state is inconsistent.");
+    const ids=new Set();
+    for(const entry of data.results){
+      if(!entry || typeof entry.workflow_id!=="string" || !entry.workflow_id ||
+        ids.has(entry.workflow_id) || !entry.current ||
+        entry.current.workflow_id!==entry.workflow_id ||
+        entry.current.package_id!==entry.package_id ||
+        !Array.isArray(entry.history) || !Number.isSafeInteger(entry.revision_count) ||
+        entry.revision_count!==entry.history.length || entry.revision_count===0 ||
+        entry.history[entry.history.length-1].ledger_id!==entry.current.ledger_id)
+        throw Error("Stored result revision identity is inconsistent.");
+      ids.add(entry.workflow_id);
+    }
+    const markup=data.results.map((entry,index)=>'<button type="button" class="lead-record" data-result="'+index+
+      '"><span class="badge">'+escapeText(entry.current.status)+'</span><strong>'+escapeText(entry.workflow_id)+
+      '</strong><small>Latest result revision '+escapeText(entry.current.revision)+
+      ' · share state '+escapeText(entry.current.share_status)+'</small></button>').join("")||
+      '<p>No retained result revisions exist in this database. No payout or royalty balance is inferred.</p>';
+    byId("feature-body").innerHTML='<section class="feature-card"><h2>Persisted outcomes and calculated shares</h2>'+
+      '<p>Showing '+(data.total?offset+1:0)+'–'+(offset+data.returned)+' of '+data.total+
+      ' workflows with retained outcome histories. A calculated result share is not proof of a royalty agreement, '+
+      'entitlement, receipt, currency, or payment status. Previous corrected revisions must not be summed.</p>'+
+      '<div class="lead-records">'+markup+'</div><div class="record-pager">'+
+      '<button type="button" id="results-prev" '+(offset===0?'disabled':'')+'>← Previous</button>'+
+      '<button type="button" id="results-next" '+(!data.has_more?'disabled':'')+'>Next →</button></div></section>'+
+      '<div id="result-detail"><section class="feature-card"><p>Select a retained result to inspect its validated revision history.</p></section></div>';
+    byId("results-prev").onclick=()=>{if(offset>0)showRoyaltyLedger(Math.max(0,offset-25));};
+    byId("results-next").onclick=()=>{if(data.has_more)showRoyaltyLedger(offset+25);};
+    byId("feature-body").querySelectorAll("[data-result]").forEach(button=>button.onclick=()=>{
+      if(token!==featureRequest)return;
+      const row=data.results[Number(button.dataset.result)];
+      if(row)byId("result-detail").innerHTML=renderResultHistory(row);
+    });
+  }catch(error){
+    if(token===featureRequest && !byId("feature-view").hidden)
+      byId("feature-body").innerHTML='<section class="feature-card"><h2>Result ledger unavailable</h2>'+
+        '<p role="alert">'+escapeText(error.message||error)+'</p>'+
+        '<p>No payout, balance, or synthetic result was substituted.</p></section>';
+  }
+}
+
 function showAiCenter() {
   featureIntro("AI Center", "Optional research assistance and ambient intelligence · not connected");
   byId("feature-body").innerHTML =
@@ -374,6 +450,7 @@ function showSection(name) {
   if(name==="sources"){document.querySelectorAll("[data-section]").forEach(n=>{n.classList.toggle("current",n.dataset.section===name);n.setAttribute("aria-pressed",String(n.dataset.section===name));});document.querySelector('a[href="/"]').classList.remove("current");showSources();return;}
   if(name==="ai"){document.querySelectorAll("[data-section]").forEach(n=>{n.classList.toggle("current",n.dataset.section===name);n.setAttribute("aria-pressed",String(n.dataset.section===name));});document.querySelector('a[href="/"]').classList.remove("current");showAiCenter();return;}
   if(name==="leads"){document.querySelectorAll("[data-section]").forEach(n=>{n.classList.toggle("current",n.dataset.section===name);n.setAttribute("aria-pressed",String(n.dataset.section===name));});document.querySelector('a[href="/"]').classList.remove("current");showLeads();return;}
+  if(name==="royalty"){document.querySelectorAll("[data-section]").forEach(n=>{n.classList.toggle("current",n.dataset.section===name);n.setAttribute("aria-pressed",String(n.dataset.section===name));});document.querySelector('a[href="/"]').classList.remove("current");showRoyaltyLedger();return;}
   document.querySelectorAll("[data-section]").forEach(n=>{n.classList.toggle("current",n.dataset.section===name);n.setAttribute("aria-pressed",String(n.dataset.section===name));});
   document.querySelector('a[href="/"]').classList.remove("current");
   if(name==="watchlist"){
