@@ -274,6 +274,73 @@ async function showSources() {
   }
 }
 
+function workflowDetails(row) {
+  const notes=(items,label)=>'<section class="lead-details-group"><h3>'+label+'</h3>'+
+    (Array.isArray(items)&&items.length?items.map(item=>'<p>'+escapeText(item)+'</p>').join(""):'<p>None retained.</p>')+'</section>';
+  const history=Array.isArray(row.events)?row.events:[];
+  return '<section class="feature-card"><span class="badge">PERSISTED WORKFLOW · '+escapeText(valueOrUnknown(row.status).toUpperCase())+'</span>'+
+    '<h2>'+escapeText(valueOrUnknown(row.summary||row.base_candidate_id))+'</h2>'+
+    '<p>A stored workflow status or lead score does not independently verify the source record, permit activity, approved contact, or authority to perform outreach or submit a bid.</p>'+
+    '<dl class="lead-detail-grid">'+
+    '<dt>Workflow ID</dt><dd>'+escapeText(row.workflow_id)+'</dd>'+
+    '<dt>Exact review package</dt><dd>'+escapeText(valueOrUnknown(row.package_id))+'</dd>'+
+    '<dt>Candidate ID</dt><dd>'+escapeText(valueOrUnknown(row.base_candidate_id))+'</dd>'+
+    '<dt>Recorded status</dt><dd>'+escapeText(valueOrUnknown(row.status))+'</dd>'+
+    '<dt>Stored lead score</dt><dd>'+escapeText(valueOrUnknown(row.lead_score))+'</dd>'+
+    '<dt>Last recorded update</dt><dd>'+escapeText(valueOrUnknown(row.updated_at))+'</dd></dl>'+
+    notes(row.evidence_notes,"Exact review package evidence notes")+
+    notes(row.notes,"Workflow notes")+notes(row.limitations,"Retained limitations")+
+    '<section class="lead-details-group"><h3>Recorded workflow events</h3>'+
+    (history.length?history.map(event=>'<p>'+escapeText(valueOrUnknown(event.created_at))+' · '+escapeText(valueOrUnknown(event.current_status))+
+      ' · '+escapeText(valueOrUnknown(event.reason))+'</p>').join(""):'<p>No historical events retained.</p>')+'</section>'+
+    '<a href="/workspace#workflow">Open full read-only workflow workspace →</a></section>';
+}
+async function showLeads(offset=0) {
+  const token=++featureRequest;
+  featureIntro("Lead Console", "Persisted, exact-package reviewed workflows · local read-only inspection");
+  byId("feature-body").innerHTML='<section class="feature-card"><p role="status">Loading persisted workflows…</p></section>';
+  try {
+    const data=await fetchJson("/api/workflows?"+new URLSearchParams({limit:"25",offset:String(offset)}));
+    if(token!==featureRequest || byId("feature-view").hidden)return;
+    if(data.read_only!==true || !Number.isSafeInteger(data.total) || data.total<0 ||
+      data.offset!==offset || data.limit!==25 || !Array.isArray(data.leads) ||
+      data.returned!==data.leads.length || data.returned>25 ||
+      data.has_more!==(offset+data.returned<data.total))throw Error("Stored workflow page is inconsistent.");
+    const ids=new Set();
+    for(const row of data.leads){
+      if(typeof row.workflow_id!=="string" || !row.workflow_id || ids.has(row.workflow_id) ||
+        typeof row.package_id!=="string" || !row.package_id ||
+        typeof row.base_candidate_id!=="string" || !row.base_candidate_id ||
+        !Array.isArray(row.limitations))throw Error("Stored workflow identity or evidence is inconsistent.");
+      ids.add(row.workflow_id);
+    }
+    const markup=data.leads.map((row,index)=>'<button class="lead-record" type="button" data-lead="'+index+
+      '"><span class="badge">'+escapeText(valueOrUnknown(row.status))+'</span><strong>'+
+      escapeText(valueOrUnknown(row.summary||row.base_candidate_id))+'</strong><small>'+
+      escapeText(row.workflow_id)+' · exact package '+escapeText(row.package_id)+'</small></button>').join("")||
+      '<p>No retained lead workflows. Unassessed source records are not automatically commercial leads.</p>';
+    byId("feature-body").innerHTML='<section class="feature-card"><h2>Persisted lead workflows</h2><p>Showing '+
+      (data.total?offset+1:0)+'–'+(offset+data.returned)+' of '+data.total+
+      ' workflow rows. These are not distinct verified construction projects or automatically approved contacts.</p>'+
+      '<div class="lead-records">'+markup+'</div><div class="record-pager">'+
+      '<button type="button" id="leads-prev" '+(offset===0?'disabled':'')+'>← Previous</button>'+
+      '<button type="button" id="leads-next" '+(!data.has_more?'disabled':'')+'>Next →</button></div></section>'+
+      '<div id="lead-detail"><section class="feature-card"><p>Select a retained workflow to inspect its exact review package and recorded history.</p></section></div>';
+    byId("leads-prev").onclick=()=>{if(offset>0)showLeads(Math.max(0,offset-25));};
+    byId("leads-next").onclick=()=>{if(data.has_more)showLeads(offset+25);};
+    byId("feature-body").querySelectorAll("[data-lead]").forEach(button=>button.onclick=()=>{
+      if(token!==featureRequest)return;
+      const row=data.leads[Number(button.dataset.lead)];
+      if(row)byId("lead-detail").innerHTML=workflowDetails(row);
+    });
+  }catch(error){
+    if(token===featureRequest && !byId("feature-view").hidden)
+      byId("feature-body").innerHTML='<section class="feature-card"><h2>Workflows unavailable</h2><p role="alert">'+
+      escapeText(error.message||error)+
+      '</p><p>No synthetic lead records were substituted.</p><a href="/workspace#workflow">Open full workflow inspector →</a></section>';
+  }
+}
+
 function showAiCenter() {
   featureIntro("AI Center", "Optional research assistance and ambient intelligence · not connected");
   byId("feature-body").innerHTML =
@@ -306,6 +373,7 @@ function showSection(name) {
   if(name==="evidence"){document.querySelectorAll("[data-section]").forEach(n=>{n.classList.toggle("current",n.dataset.section===name);n.setAttribute("aria-pressed",String(n.dataset.section===name));});document.querySelector('a[href="/"]').classList.remove("current");showEvidence();return;}
   if(name==="sources"){document.querySelectorAll("[data-section]").forEach(n=>{n.classList.toggle("current",n.dataset.section===name);n.setAttribute("aria-pressed",String(n.dataset.section===name));});document.querySelector('a[href="/"]').classList.remove("current");showSources();return;}
   if(name==="ai"){document.querySelectorAll("[data-section]").forEach(n=>{n.classList.toggle("current",n.dataset.section===name);n.setAttribute("aria-pressed",String(n.dataset.section===name));});document.querySelector('a[href="/"]').classList.remove("current");showAiCenter();return;}
+  if(name==="leads"){document.querySelectorAll("[data-section]").forEach(n=>{n.classList.toggle("current",n.dataset.section===name);n.setAttribute("aria-pressed",String(n.dataset.section===name));});document.querySelector('a[href="/"]').classList.remove("current");showLeads();return;}
   document.querySelectorAll("[data-section]").forEach(n=>{n.classList.toggle("current",n.dataset.section===name);n.setAttribute("aria-pressed",String(n.dataset.section===name));});
   document.querySelector('a[href="/"]').classList.remove("current");
   if(name==="watchlist"){
