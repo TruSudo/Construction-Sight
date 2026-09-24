@@ -301,7 +301,7 @@ def test_entity_index_is_bounded_exact_key_cross_county_and_read_only_http(datab
             ),
             Entity(
                 entity_key="fixture:rv-only", name="Riverside Project Agency",
-                role="lead_agency", provenance=_provenance(),
+                role="agency", provenance=_provenance(),
             ),
         ],
     )
