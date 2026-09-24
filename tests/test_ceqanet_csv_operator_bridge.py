@@ -567,9 +567,10 @@ def test_capture_preview_to_separate_authorized_apply_and_live_operator_http(
         "--approved-plan-digest", preview["approved_plan_digest_required"],
         "--authorization-reason", "Independent exact-plan approval in CI",
     ]
+    before_approval = hashlib.sha256(path.read_bytes()).hexdigest()
     denied = runner.invoke(app, args)
     assert denied.exit_code == 2
-    assert "execute-write" in denied.output.lower()
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == before_approval
     applied = runner.invoke(app, [*args, "--execute-write"])
     assert applied.exit_code == 0, applied.output
     assert json.loads(applied.stdout)["operator_readback_verified"] is True
