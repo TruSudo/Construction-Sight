@@ -19,3 +19,7 @@
 .global-search select{min-width:0;max-width:140px;flex:0 1 140px;color:#f1eee8;background:#2b2c29;border:1px solid #494740;border-radius:5px;padding:7px 5px;font-size:11px}
 .global-search select:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 @media(max-width:720px){.utility{flex-wrap:wrap}.global-search{flex-basis:100%;max-width:none;flex-wrap:wrap}.global-search input{flex-basis:100%;min-width:0}.global-search select{flex:1 1 90px;max-width:none}.global-search button{flex:0 0 auto}}
+
+/* Read-only entity-role chooser follows the approved charcoal-and-amber palette. */
+.feature-card select{max-width:100%;color:#f1eee8;background:#2b2c29;border:1px solid #62512e;border-radius:5px;padding:7px 10px;font-size:12px}
+.feature-card select:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
