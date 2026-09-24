@@ -37,6 +37,7 @@ from constructionsight.operator_dashboard import (
 from constructionsight.operator_services.ceqanet_persistence_service import (
     execute_authorized_ceqanet_write_plan,
 )
+from constructionsight.operator_results import build_result_ledger_snapshot
 from constructionsight.operator_source_candidate import (
     SourceRecordNotFound,
     build_source_candidate_preview,
@@ -49,14 +50,23 @@ from constructionsight.parcel_core_models import (
 )
 from constructionsight.permit_models import PermitRecord
 from constructionsight.provenance import Provenance
+from constructionsight.result_ledger_models import ResultLedgerStatus
+from constructionsight.result_ledger_service import (
+    build_result_ledger_record,
+    supersede_result_ledger_record,
+)
 from constructionsight.site_models import Site
 from constructionsight.storage.database import create_database_engine, initialize_database
 from constructionsight.storage.domain_orm import CeqaDomainRecord, SiteRecord
 from constructionsight.storage.domain_store import CeqaStore, PermitStore, SiteStore
-from constructionsight.storage.lead_workflow_orm import LeadReviewPackageRecord
+from constructionsight.storage.lead_workflow_orm import (
+    LeadReviewPackageRecord,
+    ResultLedgerRecordRow,
+)
 from constructionsight.storage.lead_workflow_store import (
     store_lead_review_package,
     store_lead_workflow_record,
+    store_result_ledger_record,
 )
 from constructionsight.storage.operator_read_store import create_operator_read_engine
 from constructionsight.storage.parcel_site_orm import ParcelCoreRecordRow
@@ -1474,3 +1484,83 @@ def test_command_center_status_kpis_count_only_persisted_workflows(database):
         assert _get(port, "/api/workflow-summary?limit=1")[0] == 400
         assert _get(port, "/api/snapshot?kind=all")[0] == 200
     assert hashlib.sha256(path.read_bytes()).hexdigest() == before
+
+
+def test_result_ledger_latest_revision_exact_share_read_only_http(database):
+    """Corrected outcomes show one latest share, not the sum of all revisions."""
+    path, engine = database
+    workflow = LeadWorkflowRecord(
+        workflow_id="workflow:result-read", package_id="review:result-read",
+        base_candidate_id="candidate:result-read",
+        status=LeadWorkflowStatus.CLOSED_SUCCESS, lead_score=50,
+    )
+    original = build_result_ledger_record(
+        workflow=workflow, status=ResultLedgerStatus.UNKNOWN,
+        reasons=["Synthetic outcome requires verification"],
+    )
+    corrected = supersede_result_ledger_record(
+        current=original, status=ResultLedgerStatus.WON,
+        correction_reason="Synthetic revision fixture",
+        gross_value=2500.0, share_rate=0.1,
+    )
+    with Session(engine) as session, session.begin():
+        store_lead_workflow_record(session, workflow)
+        store_result_ledger_record(session, original)
+        store_result_ledger_record(session, corrected)
+    with Session(engine) as session:
+        data = build_result_ledger_snapshot(session)
+        assert data["total"] == data["returned"] == 1
+        assert data["read_only"]
+        assert data["royalty_entitlement_verified"] is False
+        assert data["payment_status_verified"] is False
+        assert data["results"][0]["revision_count"] == 2
+        assert [r["revision"] for r in data["results"][0]["history"]] == [1, 2]
+        assert data["results"][0]["current"]["ledger_id"] == corrected.ledger_id
+        assert data["results"][0]["current"]["share"]["share_value"] == 250.0
+        assert build_result_ledger_snapshot(session, offset=1)["returned"] == 0
+    before = hashlib.sha256(path.read_bytes()).hexdigest()
+    with _server(path) as port:
+        status, headers, raw = _get(port, "/api/results?limit=25&offset=0")
+        assert status == 200
+        payload = json.loads(raw)
+        assert payload["results"] == data["results"]
+        assert payload["read_only"] and payload["payment_status_verified"] is False
+        assert payload["royalty_entitlement_verified"] is False
+        assert "unsafe-inline" not in headers["Content-Security-Policy"]
+        for invalid in (
+            "/api/results?kind=ceqa",
+            "/api/results?limit=0",
+            "/api/results?limit=51",
+            "/api/results?offset=-1",
+            "/api/results?limit=25&limit=25",
+        ):
+            assert _get(port, invalid)[0] == 400
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == before
+
+
+def test_result_ledger_index_drift_fails_closed(database):
+    path, engine = database
+    workflow = LeadWorkflowRecord(
+        workflow_id="workflow:tampered-result", package_id="review:tampered-result",
+        base_candidate_id="candidate:tampered-result",
+        status=LeadWorkflowStatus.CLOSED_SUCCESS, lead_score=50,
+    )
+    with Session(engine) as session, session.begin():
+        store_lead_workflow_record(session, workflow)
+        store_result_ledger_record(
+            session,
+            build_result_ledger_record(
+                workflow=workflow, status=ResultLedgerStatus.WON,
+                gross_value=100.0, share_rate=0.1,
+            ),
+        )
+    with Session(engine) as session, session.begin():
+        row = session.scalar(select(ResultLedgerRecordRow).limit(1))
+        assert row is not None
+        row.share_status = "pending_gross_value"
+    with Session(engine) as session, pytest.raises(ValueError, match="index"):
+        build_result_ledger_snapshot(session)
+    with _server(path) as port:
+        status, _, raw = _get(port, "/api/results?limit=25&offset=0")
+        assert status == 503
+        assert "Stored data could not be read" in json.loads(raw)["error"]
