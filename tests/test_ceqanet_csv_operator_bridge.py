@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 from typer.testing import CliRunner
 
 from constructionsight.ceqanet_csv_live_models import CeqanetCsvLiveExecution
+from constructionsight.ceqanet_csv_models import canonical_digest
 from constructionsight.ceqanet_csv_operator_bridge import (
     build_reviewed_ceqanet_csv_bridge,
 )
@@ -33,7 +34,7 @@ from constructionsight.operator_dashboard import (
 )
 from constructionsight.operator_source_candidate import build_source_candidate_preview
 from constructionsight.operator_web import create_handler
-from constructionsight.storage.database import create_database_engine
+from constructionsight.storage.database import create_database_engine, initialize_database
 from constructionsight.storage.operator_read_store import create_operator_read_engine
 
 EVIDENCE = (
@@ -261,3 +262,41 @@ def test_actual_riverside_csv_import_reaches_command_center_http(tmp_path: Path)
         assert revision["source_families"]["permit"]["record_count"] == 0
         assert revision["read_only"] and not revision["live_collection_enabled"]
     assert hashlib.sha256(path.read_bytes()).hexdigest() == before
+
+
+def test_real_riverside_csv_cli_authorized_apply_to_operator_sqlite(tmp_path: Path) -> None:
+    """Run the actual two-digest reviewed CLI path through governed persistence."""
+
+    bridge = build_reviewed_ceqanet_csv_bridge(_execution())
+    path = tmp_path / "authorized-historical-riverside.sqlite3"
+    engine = create_database_engine(f"sqlite:///{path}")
+    initialize_database(engine)
+    engine.dispose()
+    source_before = hashlib.sha256(EVIDENCE.read_bytes()).hexdigest()
+    arguments = [
+        "apply", "--evidence", str(EVIDENCE), "--database", str(path),
+        "--approved-source-sha256", bridge.source_sha256,
+        "--approved-plan-digest", canonical_digest(bridge.write_plan.to_dict()),
+        "--authorization-reason", "Apply exact retained Riverside fixture to isolated test DB",
+        "--operator-id", "operator:reviewed-import-integration-test",
+        "--execute-write",
+    ]
+    result = runner.invoke(app, arguments)
+    assert result.exit_code == 0, result.output
+    payload = json.loads(result.output)
+    assert payload["applied_operations"] == bridge.write_plan.operation_count == 4
+    assert payload["operator_readback_verified"] is True
+    assert payload["commercial_leads_created"] is False
+    assert payload["source_review_state"] == "unassessed"
+    reader = create_operator_read_engine(path)
+    try:
+        with Session(reader, autoflush=False) as session:
+            page = build_dashboard_snapshot(session, kind="ceqa", county="Riverside")
+            assert page.total == 2
+            assert {record.record_id for record in page.projects} == set(
+                bridge.source_record_keys
+            )
+            assert build_workflow_snapshot(session)["total"] == 0
+    finally:
+        reader.dispose()
+    assert hashlib.sha256(EVIDENCE.read_bytes()).hexdigest() == source_before
