@@ -1,4 +1,5 @@
 """Structural regressions for the standalone read-only operator presentation."""
+
 from __future__ import annotations
 
 import re
