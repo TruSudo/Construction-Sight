@@ -64,7 +64,7 @@ function renderDossier(row) {
 }
 function renderRecords() {
   const target = byId("command-records");
-  const items = records().slice(0,7);
+  const items = records();
   target.innerHTML = items.map((row,index) =>
     '<button class="record-row' + (selected === identity(row) ? ' selected' : '') +
     '" data-record="' + index + '" type="button"><i class="dot unknown" title="Unassessed" aria-label="Unassessed"></i><strong>' +
@@ -73,7 +73,7 @@ function renderRecords() {
   ).join("") || '<p class="empty" style="padding:12px">No retained source records match the current query.</p>';
   target.querySelectorAll("[data-record]").forEach(el => el.onclick = () => selectRow(items[Number(el.dataset.record)]));
   byId("records-scope").textContent = page ? "Showing " + (page.total ? page.offset + 1 : 0) + "–" + (page.offset + page.returned) + " of " + page.total +
-    " matching source records (first " + items.length + " shown here). Not deduplicated projects or qualified leads." : "Source records unavailable.";
+    " matching source records on this bounded page. Not deduplicated projects or qualified leads." : "Source records unavailable.";
   byId("previous-records").disabled = !page || page.offset === 0;
   byId("next-records").disabled = !page || !page.has_more;
 }
