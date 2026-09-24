@@ -1565,3 +1565,41 @@ def test_result_ledger_index_drift_fails_closed(database):
         status, _, raw = _get(port, "/api/results?limit=25&offset=0")
         assert status == 503
         assert "Stored data could not be read" in json.loads(raw)["error"]
+
+
+def test_local_source_revision_detects_external_import_without_restarting_gui(database):
+    """The loopback operator notices retained-source changes across its read-only sessions."""
+    path, engine = database
+    with _server(path) as port:
+        status, _, raw = _get(port, "/api/source-revision")
+        assert status == 200
+        empty = json.loads(raw)
+        assert empty["source_families"]["ceqa"]["record_count"] == 0
+        assert empty["read_only"] and not empty["live_collection_enabled"]
+        assert _get(port, "/api/source-revision?kind=ceqa")[0] == 400
+
+        with Session(engine) as session, session.begin():
+            CeqaStore(session).upsert(_record("revision:new"))
+        status, _, raw = _get(port, "/api/source-revision")
+        assert status == 200
+        updated = json.loads(raw)
+        assert updated["source_families"]["ceqa"]["record_count"] == 1
+        assert updated["revision_identity"] != empty["revision_identity"]
+
+        status, _, raw = _get(port, "/api/snapshot?kind=ceqa")
+        assert status == 200
+        snapshot = json.loads(raw)
+        assert snapshot["total"] == 1
+        assert snapshot["projects"][0]["record_id"] == "revision:new"
+        before = hashlib.sha256(path.read_bytes()).hexdigest()
+        status, _, raw = _get(port, "/api/source-revision")
+        assert status == 200 and json.loads(raw) == updated
+        assert hashlib.sha256(path.read_bytes()).hexdigest() == before
+
+        with Session(engine) as session, session.begin():
+            CeqaStore(session).upsert(_record("revision:second"))
+        status, _, raw = _get(port, "/api/source-revision")
+        assert status == 200
+        later = json.loads(raw)
+        assert later["revision_identity"] != updated["revision_identity"]
+        assert later["source_families"]["ceqa"]["record_count"] == 2
