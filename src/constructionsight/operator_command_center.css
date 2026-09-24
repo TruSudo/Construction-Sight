@@ -14,3 +14,8 @@
 
 /* Read-only Lead Console: existing amber/charcoal palette, no synthetic readiness colors. */
 .lead-records{display:grid;gap:8px;margin:12px 0}.lead-record{display:grid;gap:5px;text-align:left;border:1px solid #48443d;background:#232421;color:#eee;padding:12px;border-radius:6px}.lead-record:hover,.lead-record:focus-visible{border-color:var(--amber)}.lead-record strong{font-size:13px}.lead-record small{font-size:11px;color:#b7b4ad;overflow-wrap:anywhere}.lead-record .badge{width:max-content}.lead-detail-grid{display:grid;grid-template-columns:minmax(120px,35%) minmax(0,1fr);gap:8px;font-size:12px}.lead-detail-grid dt{color:#a6a39d}.lead-detail-grid dd{margin:0;overflow-wrap:anywhere}.lead-details-group{border-top:1px solid #47443f;margin-top:14px;padding-top:8px}.lead-details-group h3{margin:4px 0;font-size:13px}.lead-details-group p{overflow-wrap:anywhere}
+
+/* Compact source-family and county selectors preserve the locked desktop dashboard grid. */
+.global-search select{min-width:0;max-width:140px;flex:0 1 140px;color:#f1eee8;background:#2b2c29;border:1px solid #494740;border-radius:5px;padding:7px 5px;font-size:11px}
+.global-search select:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+@media(max-width:720px){.utility{flex-wrap:wrap}.global-search{flex-basis:100%;max-width:none;flex-wrap:wrap}.global-search input{flex-basis:100%;min-width:0}.global-search select{flex:1 1 90px;max-width:none}.global-search button{flex:0 0 auto}}
