@@ -174,6 +174,7 @@ class EntityIndexSnapshot(BaseModel):
 
     selection: RecordSelection
     county_filter: str
+    role_filter: str = ""
     entries: list[EntityIndexEntry]
     matching_source_records: int = Field(ge=0)
     scanned_source_records: int = Field(ge=0)
