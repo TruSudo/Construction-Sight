@@ -432,9 +432,17 @@ def test_capture_preview_rejects_missing_authority_and_existing_outputs_before_r
     ]
     for arguments in (
         base,
-        [*base, "--execute-live", "--authorization-reason", "  "],
+        [
+            "capture-preview", "--sch-number", "2026030377",
+            "--output", str(evidence), "--authorization-reason", "  ",
+            "--execute-live",
+        ],
         [*base, "--execute-live", "--plan-output", str(evidence)],
-        [*base, "--execute-live", "--sch-number", "not-an-sch"],
+        [
+            "capture-preview", "--sch-number", "not-an-sch",
+            "--output", str(evidence), "--authorization-reason", "Reviewed exact scope",
+            "--execute-live",
+        ],
     ):
         result = runner.invoke(app, arguments)
         assert result.exit_code != 0
