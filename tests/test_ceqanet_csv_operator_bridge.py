@@ -8,7 +8,12 @@ from __future__ import annotations
 
 import hashlib
 import json
+from contextlib import contextmanager
+from http.client import HTTPConnection
+from http.server import ThreadingHTTPServer
 from pathlib import Path
+from threading import Thread
+from urllib.parse import quote
 
 import pytest
 from sqlalchemy.orm import Session
@@ -26,6 +31,7 @@ from constructionsight.operator_dashboard import (
     build_workflow_snapshot,
 )
 from constructionsight.operator_source_candidate import build_source_candidate_preview
+from constructionsight.operator_web import create_handler
 from constructionsight.storage.database import create_database_engine
 from constructionsight.storage.operator_read_store import create_operator_read_engine
 
@@ -165,3 +171,78 @@ def test_retained_csv_import_rejects_tampered_evidence_and_document_scope() -> N
     assert execution.inspection is None  # Historical Windows-1252 parse; replay recovers it.
     assert execution.retained_body_complete is True
     assert execution.error is None
+
+
+@contextmanager
+def _real_source_operator_server(path: Path):
+    server = ThreadingHTTPServer(("127.0.0.1", 0), create_handler(path))
+    thread = Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
+    thread.start()
+    try:
+        yield server.server_address[1]
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=3)
+
+
+def _http_get(port: int, path: str) -> tuple[int, bytes]:
+    connection = HTTPConnection("127.0.0.1", port, timeout=5)
+    try:
+        connection.request("GET", path)
+        response = connection.getresponse()
+        return response.status, response.read()
+    finally:
+        connection.close()
+
+
+def test_actual_riverside_csv_import_reaches_command_center_http(tmp_path: Path) -> None:
+    """Same genuine retained source → SQLite → official desktop GUI HTTP read routes."""
+
+    bridge = build_reviewed_ceqanet_csv_bridge(_execution())
+    path = tmp_path / "actual-ceqanet-command-center.sqlite3"
+    engine = create_database_engine(f"sqlite:///{path}")
+    assert execute_ceqanet_write_plan(
+        bridge.write_plan.to_dict(), engine=engine
+    ).applied_count == bridge.write_plan.operation_count
+    engine.dispose()
+    before = hashlib.sha256(path.read_bytes()).hexdigest()
+    with _real_source_operator_server(path) as port:
+        status, html = _http_get(port, "/")
+        assert status == 200 and b"Construction intelligence, one workspace." in html
+        status, script = _http_get(port, "/operator_command_center.js")
+        assert status == 200 and b"/api/candidate-preview?" in script
+        status, raw = _http_get(
+            port, "/api/snapshot?kind=ceqa&q=Cabazon&county=Riverside&limit=25&offset=0"
+        )
+        assert status == 200
+        payload = json.loads(raw)
+        assert payload["total"] == payload["returned"] == 2
+        assert {row["record_id"] for row in payload["projects"]} == set(
+            bridge.source_record_keys
+        )
+        for record in payload["projects"]:
+            assert record["source_status"] in {"EIR", "NOP"}
+            assert record["point"] is None
+            assert record["coverage"] == "target_county"
+            selection = quote(record["record_id"], safe="")
+            status, raw = _http_get(
+                port, f"/api/candidate-preview?kind=ceqa&record_id={selection}"
+            )
+            assert status == 200
+            preview = json.loads(raw)
+            assert preview["source_record"] == record
+            assert preview["source_snapshot"]["provenance"][0]["verified"] is False
+            assert preview["commercial_lead_created"] is False
+            assert preview["outreach_authorized"] is False
+            assert preview["bid_authorized"] is False
+            assert bridge.source_sha256 in (
+                preview["source_snapshot"]["provenance"][0]["notes"]
+            )
+        status, raw = _http_get(port, "/api/footprint?kind=ceqa&county=Riverside")
+        assert status == 200
+        footprint = json.loads(raw)
+        assert footprint["matching_total"] == 2 and footprint["points"] == []
+        status, raw = _http_get(port, "/api/workflows?limit=25&offset=0")
+        assert status == 200 and json.loads(raw)["total"] == 0
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == before
