@@ -245,4 +245,10 @@ def test_actual_riverside_csv_import_reaches_command_center_http(tmp_path: Path)
         assert footprint["matching_total"] == 2 and footprint["points"] == []
         status, raw = _http_get(port, "/api/workflows?limit=25&offset=0")
         assert status == 200 and json.loads(raw)["total"] == 0
+        status, raw = _http_get(port, "/api/source-revision")
+        assert status == 200
+        revision = json.loads(raw)
+        assert revision["source_families"]["ceqa"]["record_count"] == 2
+        assert revision["source_families"]["permit"]["record_count"] == 0
+        assert revision["read_only"] and not revision["live_collection_enabled"]
     assert hashlib.sha256(path.read_bytes()).hexdigest() == before
