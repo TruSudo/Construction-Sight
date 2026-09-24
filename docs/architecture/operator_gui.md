@@ -376,3 +376,33 @@ retrieval, persisted-status aggregation and query-parameter rejection. The UI
 received a synthetic DOM/HTTP interaction smoke run; the full Python matrix,
 real-browser visual acceptance and exact-head CI are **not yet established** for
 this development commit. The draft is not a certified release.
+
+
+## Incremental workflow and result inspection
+
+The canonical Command Center now renders **all** of the current bounded 50-source-record
+page inside its scrolling source list, with previous/next navigation. The full
+Project Intelligence and geodetic Site Map remain accessible via `/workspace`.
+
+The canonical **Lead Console** reads 25 persisted workflows per request from the
+existing read-only `/api/workflows` route. An operator can inspect the selected
+workflow's exact review-package summary, evidence notes, stored limitations,
+status history and candidate identity without granting outreach or bid authority.
+The default source records are not promoted to lead workflows merely by viewing
+them, and no new lead/write workflow is introduced here.
+
+The **Royalty Ledger** menu now opens a read-only result/share inspection view.
+`GET /api/results?limit=25&offset=0` returns paginated unique workflow IDs with
+complete bounded (up to 100 revisions per workflow) validated immutable result
+histories. The endpoint cross-checks persisted index columns, exact workflow and
+review-package identity, and the current stored share record before returning
+a current revision. It fails closed on inconsistency and never sums superseded
+historical shares. No balance, payment, currency, operator-specific entitlement
+or royalty contract is verified or inferred from a calculated result share.
+No new financial posting, payout, commercial messaging, or authorization control
+was implemented. The panel exposes these limitations explicitly rather than
+presenting the generic share calculation as a paid royalty.
+
+The dedicated AI Center remains OFF / no provider connected. These new read-only
+capabilities operate independently of AI. The entire new increment remains
+development-stage until exact-head CI and actual browser acceptance are reviewed.
