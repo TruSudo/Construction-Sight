@@ -249,7 +249,7 @@ function showEntities() {
       '<br><small>Stored key: '+escapeText(e.entity_key)+'</small><br><button type="button" class="action" data-entity="'+index+'">Inspect matching records</button></div>').join("") ||
       '<p>No named entities retained on this source record.</p>')+
     '<button type="button" class="action" id="browse-entity-index">Browse all retained entity keys →</button></section><section class="feature-card" id="entity-results"><p>Select a named party to inspect exact-key source co-occurrences.</p></section>';
-  byId("browse-entity-index").onclick=showEntityIndex;
+  byId("browse-entity-index").onclick=()=>showEntityIndex();
   byId("feature-body").querySelectorAll("[data-entity]").forEach(button=>button.onclick=async()=>{
     const key=entities[Number(button.dataset.entity)]?.entity_key, currentToken=++featureRequest;
     if(typeof key!=="string" || !key || key.length>255)return;
@@ -280,16 +280,16 @@ function showEntities() {
 }
 
 
-async function showEntityIndex() {
+async function showEntityIndex(role="") {
   const token=++featureRequest;
   featureIntro("Entity Network", "Exact stored entity keys across retained source records · read only");
   byId("feature-body").innerHTML='<section class="feature-card"><p role="status">Reading bounded source-claimed entity index…</p></section>';
   const kind=activeKind, county=activeCounty;
   try {
-    const data=await fetchJson("/api/entity-index?"+new URLSearchParams({kind,county}));
+    const data=await fetchJson("/api/entity-index?"+new URLSearchParams({kind,county,role}));
     if(token!==featureRequest || byId("feature-view").hidden)return;
     if(data.read_only!==true || data.live_collection_enabled!==false ||
-      data.selection!==kind || data.county_filter!==county ||
+      data.selection!==kind || data.county_filter!==county || data.role_filter!==role ||
       !Array.isArray(data.entries) || !Number.isSafeInteger(data.matching_source_records) ||
       !Number.isSafeInteger(data.scanned_source_records) ||
       !Number.isSafeInteger(data.distinct_keys_in_scan) ||
@@ -318,7 +318,15 @@ async function showEntityIndex() {
       ' / Other or unknown '+entry.other_or_unknown_records+
       '</small><small>Exact stored key: '+escapeText(entry.entity_key)+'</small></button>').join("")||
       '<p>No stored entity keys appear in this bounded retained source scan.</p>';
+    const roleOptions=[["","All recorded roles"],["owner","Owner"],["developer","Developer"],
+      ["general_contractor","General contractor"],["contractor","Contractor"],
+      ["applicant","Applicant"],["agency","Agency"],["architect","Architect"],
+      ["engineer","Engineer"],["civil_engineer","Civil engineer"],
+      ["representative","Representative"],["unknown","Unknown role"]];
     byId("feature-body").innerHTML='<section class="feature-card"><span class="badge">UNVERIFIED SOURCE-CLAIMED ENTITY INDEX</span>'+
+      '<p><label for="entity-index-role">Recorded party role</label> <select id="entity-index-role" aria-label="Filter entity index by stored party role">'+
+      roleOptions.map(([value,label])=>'<option value="'+value+'"'+(role===value?' selected':'')+'>'+label+'</option>').join("")+
+      '</select></p>'+
       '<h2>Recorded companies and parties</h2><p>Scanned '+data.scanned_source_records+' of '+
       data.matching_source_records+' source records; '+data.distinct_keys_in_scan+
       ' distinct stored keys in scan; '+data.returned+' displayed. '+
@@ -327,9 +335,10 @@ async function showEntityIndex() {
       'Exact stored keys and two-county co-occurrence do not independently verify legal entity identity, project relationships, current operations or qualified security leads.</p>'+
       '<div class="lead-records">'+items+'</div></section>'+
       '<section class="feature-card" id="entity-results"><p>Select a stored key to inspect source-record co-occurrences.</p></section>';
+    byId("entity-index-role").onchange=()=>showEntityIndex(byId("entity-index-role").value);
     byId("feature-body").querySelectorAll("[data-index-entity]").forEach(button=>button.onclick=()=>{
       const entry=data.entries[Number(button.dataset.indexEntity)];
-      if(entry)showIndexedEntityMatches(entry.entity_key,kind,county);
+      if(entry)showIndexedEntityMatches(entry.entity_key,kind,county,role);
     });
   }catch(error){
     if(token===featureRequest && !byId("feature-view").hidden)
@@ -337,7 +346,7 @@ async function showEntityIndex() {
         escapeText(error.message||error)+'</p></section>';
   }
 }
-async function showIndexedEntityMatches(key,kind,county) {
+async function showIndexedEntityMatches(key,kind,county,role="") {
   if(typeof key!=="string" || !key || key.length>255)return;
   const token=++featureRequest, target=byId("entity-results");
   if(!target)return;
@@ -353,6 +362,7 @@ async function showIndexedEntityMatches(key,kind,county) {
       '<p>Scanned '+data.scanned_source_records+' of '+data.total_source_records+' retained source records. '+
       (data.source_scan_truncated?'Source scan truncated. ':'')+
       (data.matching_records_truncated?'Matching-record list truncated. ':'')+
+      (role?'The neighborhood includes all source-claimed roles for this exact key; the role filter only constrains the entity index. ':'')+
       'Stored key co-occurrence is not verified real-world identity, ownership or an active project.</p>'+
       (data.records.map((row,index)=>'<button type="button" class="related-record" data-index-record="'+index+'">'+
         escapeText(row.title)+' · '+escapeText(row.record_kind)+' / '+escapeText(row.record_id)+
