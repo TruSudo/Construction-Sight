@@ -23,9 +23,12 @@ from constructionsight.operator_dashboard import (
     build_geographic_footprint,
     build_historical_timeline,
     build_workflow_snapshot,
+    build_workflow_status_summary,
 )
 from constructionsight.operator_dashboard_models import RecordSelection
 from constructionsight.operator_parcel_candidates import inspect_parcel_candidates
+from constructionsight.operator_results import build_result_ledger_snapshot
+from constructionsight.operator_source_revision import build_source_revision_snapshot
 from constructionsight.operator_source_candidate import (
     SourceRecordNotFound,
     build_source_candidate_preview,
@@ -61,7 +64,8 @@ class _RequestParameters:
 
 def _parameters(
     query: str, *, workflow: bool = False, footprint: bool = False,
-    entity: bool = False, candidate: bool = False, timeline: bool = False
+    entity: bool = False, candidate: bool = False, timeline: bool = False,
+    results: bool = False,
 ) -> _RequestParameters:
     values = parse_qs(query, keep_blank_values=True, max_num_fields=5)
     allowed = (
@@ -79,9 +83,9 @@ def _parameters(
     )
     if set(values) - allowed or any(len(value) != 1 for value in values.values()):
         raise ValueError("unsupported or repeated query parameter")
-    limit = int(values.get("limit", ["100"])[0])
+    limit = int(values.get("limit", ["25" if results else "100"])[0])
     offset = int(values.get("offset", ["0"])[0])
-    if not 1 <= limit <= 500 or not 0 <= offset <= 1_000_000:
+    if not 1 <= limit <= (50 if results else 500) or not 0 <= offset <= 1_000_000:
         raise ValueError("invalid page bounds")
     if workflow:
         return _RequestParameters(
@@ -165,6 +169,7 @@ def create_handler(database_path: Path) -> type[BaseHTTPRequestHandler]:
                     return
                 if path not in {
                     "/api/health",
+                    "/api/source-revision",
                     "/api/snapshot",
                     "/api/footprint",
                     "/api/timeline",
@@ -172,12 +177,17 @@ def create_handler(database_path: Path) -> type[BaseHTTPRequestHandler]:
                     "/api/candidate-preview",
                     "/api/parcel-candidates",
                     "/api/workflows",
+                    "/api/results",
+                    "/api/workflow-summary",
                 }:
                     self._send_json({"error": "Not found."}, status=HTTPStatus.NOT_FOUND)
                     return
+                if path in {"/api/workflow-summary", "/api/source-revision"} and parsed.query:
+                    raise ValueError("unfiltered status inspection rejects query parameters")
                 parameters = _parameters(
                     parsed.query,
-                    workflow=path == "/api/workflows",
+                    workflow=path in {"/api/workflows", "/api/results"},
+                    results=path == "/api/results",
                     footprint=path == "/api/footprint",
                     timeline=path == "/api/timeline",
                     entity=path == "/api/entity-neighborhood",
@@ -195,6 +205,14 @@ def create_handler(database_path: Path) -> type[BaseHTTPRequestHandler]:
                             "read_only": True,
                             "live_collection_enabled": False,
                         }
+                    elif path == "/api/source-revision":
+                        payload = build_source_revision_snapshot(session)
+                    elif path == "/api/workflow-summary":
+                        payload = build_workflow_status_summary(session)
+                    elif path == "/api/results":
+                        payload = build_result_ledger_snapshot(
+                            session, limit=parameters.limit, offset=parameters.offset
+                        )
                     elif path == "/api/workflows":
                         payload = build_workflow_snapshot(
                             session, limit=parameters.limit, offset=parameters.offset
