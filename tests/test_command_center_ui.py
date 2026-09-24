@@ -255,3 +255,5 @@ def test_source_activity_uses_existing_bounded_historical_read_api() -> None:
     assert "Historical source-claimed dates are not evidence of current site activity" in script
     assert 'data.event_result_truncated?' in script
     assert "source_date_order_conflict" in script
+    assert 'data-history="' in script
+    assert 'openExactStoredRecord(event,identity(event),"historical timeline")' in script
