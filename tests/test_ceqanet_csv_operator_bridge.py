@@ -265,6 +265,20 @@ def test_actual_riverside_csv_import_reaches_command_center_http(tmp_path: Path)
             and entry["appears_in_both_target_counties"] is False
             for entry in index["entries"]
         )
+        status, raw = _http_get(
+            port, "/api/entity-index?kind=ceqa&county=Riverside&role=agency"
+        )
+        assert status == 200
+        agency_index = json.loads(raw)
+        assert agency_index["role_filter"] == "agency"
+        assert {entry["entity_key"] for entry in agency_index["entries"]} == {
+            entry["entity_key"] for entry in index["entries"]
+        }
+        status, raw = _http_get(
+            port, "/api/entity-index?kind=ceqa&county=Riverside&role=contractor"
+        )
+        assert status == 200
+        assert json.loads(raw)["entries"] == []
         retained_keys = {
             entity["entity_key"]
             for record in payload["projects"]
