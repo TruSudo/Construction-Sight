@@ -873,9 +873,9 @@ def test_retained_source_pulse_ui_binds_to_bounded_read_models(database):
         "pulse-scan", "pulse-scan-note",
     ):
         assert f'id="{element_id}"' in html
-    assert "Source records, not deduplicated projects or qualified leads" in html
+    assert "Not deduplicated projects or qualified leads" in html
     assert "Source-claimed coordinates only" in html
-    assert "not an absence of activity" in html
+    assert "Unmapped records remain searchable." in html
     assert "No street or county boundary layer" in html
     assert "mapData.mapped_in_scan" in script
     assert "mapData.records_scanned - mapData.mapped_in_scan" in script
