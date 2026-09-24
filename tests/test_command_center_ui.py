@@ -264,7 +264,7 @@ def test_entity_network_indexes_real_retained_cross_county_source_keys() -> None
     script = (ASSETS / "operator_command_center.js").read_text(encoding="utf-8")
     assert 'if(!row){showEntityIndex();return;}' in script
     assert 'id="browse-entity-index"' in script
-    assert 'byId("browse-entity-index").onclick=showEntityIndex;' in script
+    assert 'byId("browse-entity-index").onclick=()=>showEntityIndex();' in script
     assert '"/api/entity-index?"+new URLSearchParams({kind,county,role})' in script
     assert 'id="entity-index-role"' in script
     assert 'byId("entity-index-role").onchange=()=>showEntityIndex(byId("entity-index-role").value)' in script
