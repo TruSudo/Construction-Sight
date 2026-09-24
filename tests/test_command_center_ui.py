@@ -147,3 +147,21 @@ def test_ai_center_is_dedicated_opt_in_surface_with_no_hidden_ai_dependency() ->
     assert "fetch(\"/api/ai" not in script
     assert "openai.com" not in script.lower()
     assert "outreach, bids, payments" in script
+
+
+def test_lead_console_reads_exact_persisted_workflows_not_unqualified_sources() -> None:
+    """The Command Center now offers bounded workflow history without authorizing outreach."""
+    html = (ASSETS / "operator_command_center.html").read_text(encoding="utf-8")
+    script = (ASSETS / "operator_command_center.js").read_text(encoding="utf-8")
+    assert 'data-section="leads"' in html
+    assert 'if(name==="leads")' in script
+    assert '"/api/workflows?"' in script
+    assert 'new URLSearchParams({limit:"25",offset:String(offset)})' in script
+    assert "data.read_only!==true" in script
+    assert "ids.has(row.workflow_id)" in script
+    assert "row.package_id" in script and "row.base_candidate_id" in script
+    assert 'id="leads-prev"' in script and 'id="leads-next"' in script
+    assert "workflowDetails(row)" in script
+    assert "does not independently verify" in script
+    assert "No synthetic lead records were substituted" in script
+    assert "outreach or submit a bid" in script
