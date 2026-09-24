@@ -7,6 +7,7 @@ const WATCH_KEY = "constructionsight:operator:local-watchlist-v1";
 let page = null, footprint = null, workflows = null, selected = null, selectedRecord = null, activeQuery = "", pageRequest = 0, featureRequest = 0, pageOffset = 0;
 let localWatchlist = {};
 let sourceRevision = null, sourceProbeActive = false;
+let activeKind = "all", activeCounty = "";
 try { const stored = JSON.parse(localStorage.getItem(WATCH_KEY) || "{}"); if (stored && typeof stored === "object" && !Array.isArray(stored)) localWatchlist = stored; } catch (_) { /* Browser-local preferences are optional. */ }
 const records = () => page && Array.isArray(page.projects) ? page.projects : [];
 function updateWatchCounters() { const count = Object.keys(localWatchlist).length; byId("watched-count").textContent = String(count); byId("notification-count").textContent = String(count); }
@@ -27,16 +28,46 @@ function renderWatchlist(full = false) {
   const markup = (full ? entries : entries.slice(0,4)).map(([key,entry],index) =>
     '<div class="watch-entry"><i class="dot unknown" aria-hidden="true"></i><span><b>' + escapeText(entry.title) +
     '</b><br><small>' + escapeText(entry.county) + ' · browser-local bookmark · unassessed</small></span>' +
-    '<button type="button" data-remove="' + index + '">Remove</button></div>'
+    '<button type="button" data-open="' + index + '">Open record</button><button type="button" data-remove="' + index + '">Remove</button></div>'
   ).join("") || '<p class="empty" style="padding:12px">No watched source records in this browser.</p>';
   const target = full ? byId("feature-body") : byId("watchlist-summary");
   if (full) {
     target.innerHTML = '<section class="feature-card"><h2>Saved source-record bookmarks</h2><p>These bookmarks are stored only in this browser. They do not subscribe to permit changes, schedule reminders, perform source polling, or send notifications.</p><div id="full-watchlist">' + markup + '</div><a href="/workspace#records">Browse retained source records →</a></section>';
   } else target.innerHTML = markup;
+  target.querySelectorAll("[data-open]").forEach(button => button.onclick = () => {
+    const currentKey = (full ? entries : entries.slice(0,4))[Number(button.dataset.open)]?.[0];
+    if (currentKey) openWatchBookmark(currentKey);
+  });
   target.querySelectorAll("[data-remove]").forEach(button => button.onclick = () => {
     const currentKey = (full ? entries : entries.slice(0,4))[Number(button.dataset.remove)]?.[0];
     if (currentKey) { delete localWatchlist[currentKey]; saveWatchlist(); if (full) renderWatchlist(true); }
   });
+}
+async function openWatchBookmark(key) {
+  const entry = localWatchlist[key];
+  if (!entry || !["ceqa","permit"].includes(entry.record_kind) ||
+      typeof entry.record_id !== "string" || !entry.record_id || entry.record_id.length > 255 ||
+      identity(entry) !== key) return;
+  // A bookmark is only a browser-local pointer. Resolve the exact record afresh
+  // from the current read-only SQLite snapshot rather than trusting its cached title.
+  showHome();
+  const token = ++featureRequest;
+  byId("global-notice").textContent = "Looking up bookmarked source record in the current local database…";
+  try {
+    const params = new URLSearchParams({kind:entry.record_kind,record_id:entry.record_id});
+    const result = await fetchJson("/api/candidate-preview?" + params);
+    if (token !== featureRequest || byId("command-view").hidden) return;
+    const row = result.source_record;
+    if (!row || identity(row) !== key || result.read_only !== true)
+      throw Error("Bookmarked record identity or read-only state could not be verified.");
+    selectRow(row);
+    byId("global-notice").textContent = "Opened an exact bookmarked source record from the current local database. " +
+      "It may be outside the active search/filter or displayed page. Bookmark is not monitoring or outreach approval.";
+  } catch (error) {
+    if (token === featureRequest && !byId("command-view").hidden)
+      byId("global-notice").textContent = "Bookmarked source record unavailable in this database: " +
+        String(error.message || error) + ". No cached source facts were substituted.";
+  }
 }
 function valueOrUnknown(value) { return value === null || value === undefined || value === "" ? "Not established" : String(value); }
 function renderDossier(row) {
@@ -473,8 +504,8 @@ async function fetchJson(url){
 async function loadData(offset=pageOffset, focusIdentity=null){
   const token=++pageRequest;++featureRequest;
   byId("global-notice").textContent="Loading retained local records. Readiness, outreach, bidding, and live watchlist monitoring are not enabled.";
-  const filter=new URLSearchParams({kind:"all",limit:"50",offset:String(offset),q:activeQuery});
-  const geo=new URLSearchParams({kind:"all",q:activeQuery});
+  const filter=new URLSearchParams({kind:activeKind,county:activeCounty,limit:"50",offset:String(offset),q:activeQuery});
+  const geo=new URLSearchParams({kind:activeKind,county:activeCounty,q:activeQuery});
   try{
     const [newPage,newFootprint,newWorkflow,health,workflowStatus,sourceState]=await Promise.all([
       fetchJson("/api/snapshot?"+filter),fetchJson("/api/footprint?"+geo),
@@ -483,7 +514,8 @@ async function loadData(offset=pageOffset, focusIdentity=null){
       fetchJson("/api/source-revision").catch(()=>null)
     ]);
     if(token!==pageRequest)return;
-    if(newPage.total!==newFootprint.matching_total)throw Error("Source-list and geographic scope disagree. Refresh the database view.");
+    if(newPage.selection!==activeKind || newFootprint.selection!==activeKind ||
+      newPage.total!==newFootprint.matching_total)throw Error("Source-list and geographic scope disagree. Refresh the database view.");
     page=newPage;footprint=newFootprint;workflows=newWorkflow;pageOffset=offset;
     if(sourceState && sourceState.read_only===true && sourceState.live_collection_enabled===false &&
       /^[0-9a-f]{64}$/.test(sourceState.revision_identity))sourceRevision=sourceState.revision_identity;
@@ -500,7 +532,8 @@ async function loadData(offset=pageOffset, focusIdentity=null){
     selected=null;selectedRecord=null;renderDossier(null);renderRecords();renderMap();
     const focus=focusIdentity ? records().find(r=>identity(r)===focusIdentity) : null;
     if(focus)selectRow(focus);
-    byId("global-notice").textContent="Retained SQLite records only · "+newPage.total+" matching source records · "+
+    byId("global-notice").textContent="Retained SQLite records only · "+newPage.total+" matching "+activeKind+" source records"+
+      (activeCounty?" in "+activeCounty+" County":" across retained counties")+" · "+
       (newFootprint.truncated?"map scan truncated · ":"")+"readiness and live collection not enabled · "+
       (health.read_only?"read-only access":"operator status requires review")+"."+
       (!validStatus?" Workflow-status breakdown unavailable or inconsistent.":"")+
@@ -542,7 +575,8 @@ if(typeof window.setInterval==="function")
   window.setInterval(refreshAfterExternalSourceChange,90_000);
 
 document.querySelectorAll("[data-section]").forEach(button=>button.onclick=()=>showSection(button.dataset.section));
-byId("global-search").onsubmit=event=>{event.preventDefault();activeQuery=byId("search-term").value.trim();pageOffset=0;showHome();loadData(0);};
+byId("global-search").onsubmit=event=>{event.preventDefault();activeQuery=byId("search-term").value.trim();activeKind=byId("filter-kind").value;activeCounty=byId("filter-county").value;pageOffset=0;showHome();loadData(0);};
+for (const id of ["filter-kind","filter-county"]) byId(id).onchange=()=>{activeQuery=byId("search-term").value.trim();activeKind=byId("filter-kind").value;activeCounty=byId("filter-county").value;pageOffset=0;showHome();loadData(0);};
 byId("previous-records").onclick=()=>{if(page&&page.offset>0)loadData(Math.max(0,page.offset-50));};
 byId("next-records").onclick=()=>{if(page&&page.has_more)loadData(page.offset+page.limit);};
 byId("source-stat").onclick=()=>{showHome();byId("command-records").scrollIntoView({block:"nearest"});};
