@@ -73,7 +73,10 @@ def test_command_center_discloses_unassessed_records_and_missing_actions() -> No
         "No monitoring or notifications", "Not deduplicated projects",
     ):
         assert required in html + script
-    for endpoint in ("/api/snapshot?", "/api/footprint?", "/api/workflows?", "/api/health", "/api/workflow-summary"):
+    for endpoint in (
+        "/api/snapshot?", "/api/footprint?", "/api/workflows?",
+        "/api/health", "/api/workflow-summary",
+    ):
         assert endpoint in script
     assert "source claims" in script.lower()
     assert "localStorage" in script
