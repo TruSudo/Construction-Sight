@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 
 from sqlalchemy.orm import Session
 
+from constructionsight.domain_types import PartyRole
 from constructionsight.operator_dashboard_models import (
     EntityIndexEntry,
     EntityIndexSnapshot,
@@ -39,7 +40,7 @@ def _target_county(value: str | None) -> str:
 
 
 def build_entity_index(
-    session: Session, *, kind: RecordSelection = "all", county: str = ""
+    session: Session, *, kind: RecordSelection = "all", county: str = "", role: str = ""
 ) -> EntityIndexSnapshot:
     """Count exact-key co-occurrences, never inferred identities or distinct projects."""
 
@@ -47,6 +48,8 @@ def build_entity_index(
         raise ValueError("invalid source family")
     if county not in {"", "San Bernardino", "Riverside"}:
         raise ValueError("invalid county filter")
+    if role and role not in {item.value for item in PartyRole}:
+        raise ValueError("invalid source-claimed party role filter")
     records, total = read_project_page(
         session, kind=kind, query="", county=county,
         limit=ENTITY_INDEX_SCAN_LIMIT, offset=0,
@@ -56,6 +59,8 @@ def build_entity_index(
         seen_in_record: set[str] = set()
         location = _target_county(record.county)
         for entity in record.entities:
+            if role and entity.role != role:
+                continue
             key = entity.entity_key
             if not key:
                 continue
@@ -94,6 +99,7 @@ def build_entity_index(
     return EntityIndexSnapshot(
         selection=kind,
         county_filter=county,
+        role_filter=role,
         entries=entries,
         matching_source_records=total,
         scanned_source_records=len(records),
