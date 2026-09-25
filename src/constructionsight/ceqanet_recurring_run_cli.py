@@ -451,10 +451,18 @@ def export_listing_evidence(
             err=True,
         )
         raise typer.Exit(code=1)
-    _write_json(
+    write_runtime_text(
         output_path,
-        cast(dict[str, object], execution.execution_report),
+        json.dumps(
+            cast(dict[str, object], execution.execution_report),
+            indent=2,
+            sort_keys=True,
+            default=str,
+        )
+        + "\n",
+        overwrite=False,
     )
+    typer.echo(f"Wrote {output_path}.")
 
 
 @app.command("verify")
