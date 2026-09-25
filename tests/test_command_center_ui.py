@@ -285,9 +285,15 @@ def test_sources_collection_prepares_bounded_sch_capture_without_browser_network
     assert 'id="capture-source-form"' in script
     assert 'id="capture-sch-number"' in script
     assert 'id="capture-instructions"' in script
-    assert 'byId("capture-source-form").onsubmit=event=>' in script
-    assert 'function prepareCeqanetCapture()' in script
+    assert 'byId("capture-source-form").onsubmit=async event=>' in script
+    assert 'async function prepareCeqanetCapture()' in script
     assert '/^[0-9]{10}$/.test(raw)' in script
+    assert '"/api/snapshot?"+new URLSearchParams({' in script
+    assert 'kind:"ceqa",q:raw,limit:"100",offset:"0"' in script
+    assert 'row.source_record_number===raw' in script
+    assert "EXACT SCH ALREADY RETAINED" in script
+    assert "No duplicate capture command was prepared" in script
+    assert "capture-next-preview" in script
     assert '"constructionsight-ceqanet-reviewed-import capture-preview"' in script
     assert '" --sch-number "+raw+' in script
     assert ' --plan-output ' in script
