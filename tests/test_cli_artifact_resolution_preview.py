@@ -5,6 +5,14 @@ from typing import Any
 from typer.testing import CliRunner
 
 from constructionsight.cli import app
+from constructionsight.intelligence.artifact_identity import (
+    IdentityArtifactType,
+    ResolutionTargetKind,
+    canonical_artifact_observation_id,
+    canonical_identity_fingerprint_id,
+    canonical_resolution_candidate_id,
+    normalize_artifact_value,
+)
 
 runner = CliRunner()
 
@@ -17,21 +25,40 @@ def _observation(
     source_family: str = "synthetic_source",
     evidence_record_id: str | None = None,
 ) -> dict[str, Any]:
+    typed_artifact = IdentityArtifactType(artifact_type)
+    normalized_value = normalize_artifact_value(typed_artifact, value)
+    canonical_id = canonical_artifact_observation_id(
+        artifact_type=typed_artifact,
+        normalized_value=normalized_value,
+        source_name="Synthetic Public Source",
+        source_family=source_family,
+        source_record_id=observation_id,
+        jurisdiction=None,
+        observed_field=None,
+        evidence_record_id=evidence_record_id,
+    )
     return {
-        "observation_id": observation_id,
+        "observation_id": canonical_id,
         "artifact_type": artifact_type,
         "raw_value": value,
-        "normalized_value": value.lower(),
+        "normalized_value": normalized_value,
         "source_name": "Synthetic Public Source",
         "source_family": source_family,
+        "source_record_id": observation_id,
         "evidence_record_id": evidence_record_id,
         "confidence_score": 90,
     }
 
 
 def _fingerprint(target_identity_id: str, observations: list[dict[str, Any]]) -> dict[str, Any]:
+    observation_ids = [str(item["observation_id"]) for item in observations]
     return {
-        "fingerprint_id": f"fingerprint-{target_identity_id}",
+        "fingerprint_id": canonical_identity_fingerprint_id(
+            target_identity_id=target_identity_id,
+            target_kind=ResolutionTargetKind.PROJECT,
+            observation_ids=observation_ids,
+            evidence_record_ids=[],
+        ),
         "target_identity_id": target_identity_id,
         "target_kind": "project",
         "artifact_observations": observations,
@@ -40,7 +67,11 @@ def _fingerprint(target_identity_id: str, observations: list[dict[str, Any]]) ->
 
 def _write_preview_input(path: Path) -> None:
     payload = {
-        "candidate_id": "candidate-cli-preview",
+        "candidate_id": canonical_resolution_candidate_id(
+            "project-left",
+            "project-right",
+            target_kind=ResolutionTargetKind.PROJECT,
+        ),
         "left": _fingerprint(
             "project-left",
             [
@@ -99,7 +130,11 @@ def test_cli_previews_artifact_resolution_as_json(tmp_path) -> None:
 
     assert result.exit_code == 0
     payload = json.loads(result.output)
-    assert payload["candidate_id"] == "candidate-cli-preview"
+    assert payload["candidate_id"] == canonical_resolution_candidate_id(
+        "project-left",
+        "project-right",
+        target_kind=ResolutionTargetKind.PROJECT,
+    )
     assert payload["left_identity_id"] == "project-left"
     assert payload["right_identity_id"] == "project-right"
     assert payload["resolution_score"] == 85
