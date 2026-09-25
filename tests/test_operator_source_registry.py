@@ -125,7 +125,9 @@ def test_source_registry_projection_reports_bounded_truncation(tmp_path, monkeyp
 
 
 
-def _verification(*, checked_at: datetime, reachable: bool, confidence: int):
+def _verification(
+    *, checked_at: datetime, reachable: bool, confidence: int
+) -> SourceVerificationResult:
     return SourceVerificationResult(
         source_name="Synthetic San Bernardino portal",
         public_url="https://example.invalid/public/",
