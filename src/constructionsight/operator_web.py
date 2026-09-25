@@ -154,12 +154,12 @@ def create_handler(
 ) -> type[BaseHTTPRequestHandler]:
     """Bind to existing local evidence in read-only mode without schema changes."""
 
-    engine = create_operator_read_engine(database_path)
     capture_queue = (
         empty_operator_capture_queue()
         if capture_queue_path is None
         else load_operator_capture_queue(capture_queue_path)
     )
+    engine = create_operator_read_engine(database_path)
 
     class OperatorHandler(BaseHTTPRequestHandler):
         """Serve only same-origin, loopback reads and bundled presentation assets."""
