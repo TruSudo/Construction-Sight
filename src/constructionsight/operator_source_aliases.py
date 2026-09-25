@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
+from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -85,7 +86,7 @@ class LoadedSourceAttributionAliases:
         }
 
 
-def load_source_attribution_aliases(path) -> LoadedSourceAttributionAliases:
+def load_source_attribution_aliases(path: Path) -> LoadedSourceAttributionAliases:
     """Load one bounded exact-name alias artifact without network or database access."""
 
     raw = read_runtime_artifact(path, max_bytes=SOURCE_ALIAS_MAX_BYTES)
