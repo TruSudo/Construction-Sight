@@ -83,7 +83,7 @@ def active_ledger(defects: list[dict[str, str]]) -> str:
 
 
 def resolved_ledger(defects: list[dict[str, object]]) -> str:
-    lines = ['schema_version = "constructionsight.resolved-defects/v1"']
+    lines = ['schema_version = "constructionsight.resolved-defects/v2"']
     if not defects:
         lines.append("defects = []")
     for defect in defects:

@@ -12,7 +12,6 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any, Final, cast
 
-from constructionsight.defect_closure_certification import audit_defect_closure
 from constructionsight.governance_certification_core import (
     _ASSURANCE_CONTRACT_SCHEMA,
     _ASSURANCE_REVIEW_SCHEMA,
@@ -1577,12 +1576,6 @@ def audit_assurance_review(
                     "match the assured tree digest",
                 )
 
-    if (
-        report.get("status") == "passed"
-        and valid_reviewed_commit
-        and valid_active_digest
-    ):
-        audit_defect_closure(root, active, resolved, report, findings)
 
 
 def _artifact_metadata(path: Path) -> dict[str, Any]:

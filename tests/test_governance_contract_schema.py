@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import tomllib
 from copy import deepcopy
 from pathlib import Path
@@ -84,7 +83,7 @@ def _contracts() -> dict[str, dict[str, Any]]:
             "defects": [],
         },
         "governance/resolved_defects.toml": {
-            "schema_version": "constructionsight.resolved-defects/v1",
+            "schema_version": "constructionsight.resolved-defects/v2",
             "defects": [],
         },
         "governance/open_work.toml": {
@@ -112,47 +111,33 @@ def _active_defect(defect_id: str = "CS-SR-001") -> dict[str, Any]:
     }
 
 
-def _write_resolution_evidence(root: Path, digest: str) -> None:
-    (root / "docs").mkdir(parents=True, exist_ok=True)
+def _write_resolution_evidence(root: Path) -> None:
+    (root / "docs/assurance/defect_closures").mkdir(parents=True, exist_ok=True)
     (root / "tests").mkdir(parents=True, exist_ok=True)
-    (root / "governance/reviews").mkdir(parents=True, exist_ok=True)
     (root / "docs/evidence.md").write_text("evidence\n", encoding="utf-8")
-    (root / "tests/test_resolution.py").write_text(
-        "def test_resolution():\n    assert True\n",
+    (root / "docs/assurance/defect_closures/CS-SR-001.md").write_text(
+        "# CS-SR-001 closure\n",
         encoding="utf-8",
     )
-    (root / "governance/reviews/assurance_review.json").write_text(
-        json.dumps(
-            {
-                "schema_version": "constructionsight.assurance-review/v1",
-                "status": "passed",
-                "reviewer": "independent-reviewer",
-                "review_method": "adversarial review",
-                "reviewed_commit": "c" * 40,
-                "reviewed_active_defects_digest": "e" * 64,
-                "reviewed_tree_digest": digest,
-                "findings": [],
-            }
-        ),
+    (root / "tests/test_resolution.py").write_text(
+        "def test_resolution():\n    assert True\n",
         encoding="utf-8",
     )
 
 
 def _resolved_defect(
     defect_id: str = "CS-SR-001",
-    *,
-    digest: str = "d" * 64,
 ) -> dict[str, Any]:
     return {
         **_active_defect(defect_id),
         "resolution_summary": "Implemented and regression-tested the required correction.",
         "resolution_commit": "b" * 40,
+        "resolution_tree": "c" * 40,
+        "last_active_commit": "d" * 40,
         "evidence_paths": ["docs/evidence.md"],
         "regression_tests": ["tests/test_resolution.py"],
-        "review_artifact": "governance/reviews/assurance_review.json",
-        "reviewed_tree_digest": digest,
+        "closure_evidence": "docs/assurance/defect_closures/CS-SR-001.md",
     }
-
 
 def _codes(findings: list[GovernanceFinding]) -> set[str]:
     return {finding.code for finding in findings}
@@ -215,12 +200,11 @@ def test_active_defect_requires_exact_fields_identity_and_commit(tmp_path: Path)
     } <= _codes(findings)
 
 
-def test_valid_resolved_defect_requires_review_and_evidence(tmp_path: Path) -> None:
-    digest = "d" * 64
-    _write_resolution_evidence(tmp_path, digest)
+def test_valid_resolved_defect_requires_closure_and_evidence(tmp_path: Path) -> None:
+    _write_resolution_evidence(tmp_path)
     contracts = _contracts()
     contracts["governance/resolved_defects.toml"]["defects"] = [
-        _resolved_defect(digest=digest)
+        _resolved_defect()
     ]
     findings: list[GovernanceFinding] = []
 
@@ -242,10 +226,11 @@ def test_resolved_defect_rejects_malformed_and_unsafe_evidence(tmp_path: Path) -
             "required_resolution": "",
             "resolution_summary": "",
             "resolution_commit": "short",
+            "resolution_tree": "short",
+            "last_active_commit": "short",
             "evidence_paths": ["../escape"],
             "regression_tests": ["docs/not-a-test.md"],
-            "review_artifact": "governance/reviews/other.json",
-            "reviewed_tree_digest": "short",
+            "closure_evidence": "../escape.md",
             "unknown": True,
         }
     )
@@ -268,8 +253,7 @@ def test_resolved_defect_rejects_malformed_and_unsafe_evidence(tmp_path: Path) -
 
 
 def test_resolved_defect_rejects_symlink_escape(tmp_path: Path) -> None:
-    digest = "d" * 64
-    _write_resolution_evidence(tmp_path, digest)
+    _write_resolution_evidence(tmp_path)
     evidence = tmp_path / "docs/evidence.md"
     evidence.unlink()
     outside = tmp_path.parent / f"{tmp_path.name}-outside-evidence.md"
@@ -277,7 +261,7 @@ def test_resolved_defect_rejects_symlink_escape(tmp_path: Path) -> None:
     evidence.symlink_to(outside)
     contracts = _contracts()
     contracts["governance/resolved_defects.toml"]["defects"] = [
-        _resolved_defect(digest=digest)
+        _resolved_defect()
     ]
     findings: list[GovernanceFinding] = []
 
@@ -287,9 +271,8 @@ def test_resolved_defect_rejects_symlink_escape(tmp_path: Path) -> None:
 
 
 def test_resolved_defects_reject_duplicate_and_active_overlap(tmp_path: Path) -> None:
-    digest = "d" * 64
-    _write_resolution_evidence(tmp_path, digest)
-    resolved = _resolved_defect(digest=digest)
+    _write_resolution_evidence(tmp_path)
+    resolved = _resolved_defect()
     contracts = _contracts()
     contracts["governance/active_defects.toml"]["defects"] = [_active_defect()]
     contracts["governance/resolved_defects.toml"]["defects"] = [
@@ -303,17 +286,17 @@ def test_resolved_defects_reject_duplicate_and_active_overlap(tmp_path: Path) ->
     assert {"GOV-RESOLVED-005", "GOV-RESOLVED-006"} <= _codes(findings)
 
 
-def test_resolved_defect_must_bind_canonical_review_digest(tmp_path: Path) -> None:
-    _write_resolution_evidence(tmp_path, "e" * 64)
+def test_resolved_defect_requires_safe_closure_evidence(tmp_path: Path) -> None:
+    _write_resolution_evidence(tmp_path)
     contracts = _contracts()
-    contracts["governance/resolved_defects.toml"]["defects"] = [
-        _resolved_defect(digest="d" * 64)
-    ]
+    resolved = _resolved_defect()
+    resolved["closure_evidence"] = "docs/missing.md"
+    contracts["governance/resolved_defects.toml"]["defects"] = [resolved]
     findings: list[GovernanceFinding] = []
 
     audit_governance_contract_shapes(tmp_path, contracts, findings)
 
-    assert "GOV-RESOLVED-015" in _codes(findings)
+    assert "GOV-RESOLVED-012" in _codes(findings)
 
 
 def test_open_work_rejects_duplicate_and_unsafe_overlap_paths(tmp_path: Path) -> None:

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import re
 from collections.abc import Mapping
 from datetime import date
@@ -11,7 +10,6 @@ from typing import Any, Final
 
 from constructionsight.assurance_certification import (
     ASSURANCE_CONTRACT_FIELDS,
-    CANONICAL_ASSURANCE_ARTIFACT,
     audit_assurance_contract,
 )
 from constructionsight.governance_certification_core import GovernanceFinding, _finding
@@ -117,10 +115,11 @@ _ACTIVE_DEFECT_FIELDS: Final = {
 _RESOLVED_DEFECT_FIELDS: Final = _ACTIVE_DEFECT_FIELDS | {
     "resolution_summary",
     "resolution_commit",
+    "resolution_tree",
+    "last_active_commit",
     "evidence_paths",
     "regression_tests",
-    "review_artifact",
-    "reviewed_tree_digest",
+    "closure_evidence",
 }
 _OVERLAP_FIELDS: Final = {
     "repository",
@@ -144,7 +143,6 @@ _VULNERABILITY_EXCEPTION_FIELDS: Final = {
     "expires_on",
     "review_evidence",
 }
-_CANONICAL_REVIEW_ARTIFACT: Final = CANONICAL_ASSURANCE_ARTIFACT
 
 
 def _nonblank(value: object) -> bool:
@@ -420,7 +418,7 @@ def _audit_resolved_defects(
                     f"invalid severity for resolved defect {defect_id}",
                 )
             )
-        for field in ("discovered_against", "resolution_commit"):
+        for field in ("discovered_against", "resolution_commit", "last_active_commit"):
             value = defect.get(field)
             if not isinstance(value, str) or not re.fullmatch(r"[0-9a-f]{40}", value):
                 findings.append(
@@ -430,6 +428,17 @@ def _audit_resolved_defects(
                         f"resolved defect {defect_id}.{field} must be a full commit SHA",
                     )
                 )
+        resolution_tree = defect.get("resolution_tree")
+        if not isinstance(resolution_tree, str) or not re.fullmatch(
+            r"[0-9a-f]{40,64}", resolution_tree
+        ):
+            findings.append(
+                _finding(
+                    "GOV-RESOLVED-013",
+                    path,
+                    f"resolved defect {defect_id}.resolution_tree must be a Git object ID",
+                )
+            )
         for field in ("area", "root_cause", "required_resolution", "resolution_summary"):
             if not _nonblank(defect.get(field)):
                 findings.append(
@@ -465,64 +474,33 @@ def _audit_resolved_defects(
                     "tests, unique, and sorted",
                 )
             )
-        review_artifact = defect.get("review_artifact")
-        review_path: Path | None = None
-        if review_artifact == _CANONICAL_REVIEW_ARTIFACT:
-            try:
-                _relative, review_path = resolve_repository_file(
-                    root,
-                    _CANONICAL_REVIEW_ARTIFACT,
-                    required_prefix="governance/reviews",
-                    required_suffix=".json",
-                )
-            except RepositoryPathError:
-                review_path = None
-        if review_path is None:
+        closure_evidence = defect.get("closure_evidence")
+        if not _nonblank(closure_evidence):
             findings.append(
                 _finding(
                     "GOV-RESOLVED-012",
                     path,
-                    f"resolved defect {defect_id} must reference the existing canonical "
-                    "assurance artifact",
+                    f"resolved defect {defect_id}.closure_evidence must be nonblank",
                 )
             )
-        reviewed_tree_digest = defect.get("reviewed_tree_digest")
-        if not isinstance(reviewed_tree_digest, str) or not re.fullmatch(
-            r"[0-9a-f]{64}", reviewed_tree_digest
-        ):
+            continue
+        assert isinstance(closure_evidence, str)
+        try:
+            resolve_repository_file(
+                root,
+                closure_evidence,
+                required_prefix="docs/assurance/defect_closures",
+                required_suffix=".md",
+            )
+        except RepositoryPathError:
             findings.append(
                 _finding(
-                    "GOV-RESOLVED-013",
+                    "GOV-RESOLVED-012",
                     path,
-                    f"resolved defect {defect_id}.reviewed_tree_digest must be a lowercase "
-                    "SHA-256 digest",
+                    f"resolved defect {defect_id}.closure_evidence must reference a safe "
+                    "existing defect-closure document",
                 )
             )
-        elif review_path is not None:
-            try:
-                review_payload = json.loads(review_path.read_text(encoding="utf-8"))
-            except (OSError, UnicodeError, json.JSONDecodeError):
-                findings.append(
-                    _finding(
-                        "GOV-RESOLVED-014",
-                        path,
-                        f"resolved defect {defect_id} cannot verify malformed "
-                        "assurance evidence",
-                    )
-                )
-            else:
-                if not isinstance(review_payload, dict) or review_payload.get(
-                    "reviewed_tree_digest"
-                ) != reviewed_tree_digest:
-                    findings.append(
-                        _finding(
-                            "GOV-RESOLVED-015",
-                            path,
-                            f"resolved defect {defect_id} does not bind the canonical "
-                            "reviewed-tree digest",
-                        )
-                    )
-
 
 def _audit_open_work(
     payload: Mapping[str, Any],

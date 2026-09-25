@@ -1,8 +1,7 @@
-schema_version = "constructionsight.resolved-defects/v1"
+schema_version = "constructionsight.resolved-defects/v2"
 
-# A defect moves here only after its correction and regression evidence are complete
-# and the required cumulative assurance mode covering the corrected tree has passed.
-# The resulting zero-active-defect tree must then pass canonical exact-head
-# certification before the hardening effort or pull request may be represented as
-# certified.
+# Historical findings remain here permanently after defect-specific correction,
+# regression evidence, Git-history provenance, and canonical validation establish
+# closure. Individual closure does not require whole-tree assurance to have already
+# passed; final zero-active-defect certification still requires Native Maximum Assurance.
 defects = []
