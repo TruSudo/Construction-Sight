@@ -13,6 +13,7 @@ from constructionsight.intelligence import (
     MemoryKind,
     MemoryLifecycleStatus,
     ResolutionDecisionType,
+    ResolutionTargetKind,
     RippleEvent,
     RippleEventType,
     SourceLayoutMemory,
