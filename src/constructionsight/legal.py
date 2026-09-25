@@ -135,5 +135,8 @@ def evaluate_access(profile: SourceAccessProfile) -> AccessPolicyResult:
 
     return AccessPolicyResult(
         decision=AccessDecision.ALLOWED,
-        reason="Reviewed access facts identify no restriction blocking public collection.",
+        reason=(
+            f"Reviewed access facts {fact_basis} identify no restriction "
+            "blocking public collection."
+        ),
     )
