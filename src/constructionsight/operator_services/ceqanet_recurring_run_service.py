@@ -14,6 +14,7 @@ from constructionsight.ceqanet_recurring_run_models import (
 )
 from constructionsight.ceqanet_recurring_run_service import (
     assert_ceqanet_definition_evidence_current,
+    bind_authorized_recurring_listing_evidence,
     execute_ceqanet_recurring_run,
 )
 from constructionsight.effect_consumption import _execute_owned_effect
@@ -164,13 +165,18 @@ def execute_authorized_ceqanet_recurring_run(
     )
 
     def execute_owned_recurring_run(_trusted_at: object) -> CeqanetRecurringRunExecution:
-        return execute_ceqanet_recurring_run(
+        execution = execute_ceqanet_recurring_run(
             definition,
             manifest,
             sources,
             checklist_report,
             attempt_sequence=attempt_sequence,
             execute_live=True,
+        )
+        return bind_authorized_recurring_listing_evidence(
+            execution,
+            manifest,
+            authorization=authorization.to_dict(),
         )
 
     execution = _execute_owned_effect(
