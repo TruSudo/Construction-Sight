@@ -14,7 +14,7 @@ def model_to_json(model: BaseModel | None) -> str | None:
 
     if model is None:
         return None
-    return model.model_dump_json(exclude_computed_fields=True)
+    return model.model_dump_json(round_trip=True)
 
 
 def models_to_json(models: Sequence[BaseModel]) -> str:
@@ -22,7 +22,7 @@ def models_to_json(models: Sequence[BaseModel]) -> str:
 
     return json.dumps(
         [
-            json.loads(model.model_dump_json(exclude_computed_fields=True))
+            json.loads(model.model_dump_json(round_trip=True))
             for model in models
         ],
         sort_keys=True,
