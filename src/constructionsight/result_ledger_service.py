@@ -87,6 +87,8 @@ def validate_result_ledger_history(
     revisions = [record.revision for record in ordered]
     if revisions != list(range(1, len(ordered) + 1)):
         raise ValueError("result ledger history revisions must be contiguous from one")
+    for record in ordered:
+        record.assert_content_digest()
     for index, record in enumerate(ordered):
         if index == 0:
             if record.supersedes_ledger_id is not None:
