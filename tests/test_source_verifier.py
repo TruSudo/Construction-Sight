@@ -3,6 +3,7 @@ from constructionsight.http_transport_models import (
     BoundedHttpPolicy,
     HttpFailureKind,
 )
+from constructionsight.legal import SourceAccessProfile
 from constructionsight.models import PlatformFamily, PublicSource
 from constructionsight.verification.source_verifier import SourceVerifier
 
@@ -22,6 +23,18 @@ def _source(url: str = "https://ezop.sbcounty.gov/citizenaccess/") -> PublicSour
             "public_url": url,
             "record_categories": ["permit"],
         }
+    )
+
+
+def _reviewed_access_profile(url: str) -> SourceAccessProfile:
+    return SourceAccessProfile(
+        public_url=url,
+        requires_login=False,
+        has_captcha=False,
+        robots_disallows_collection=False,
+        terms_disallow_collection=False,
+        paywalled=False,
+        access_fact_basis="review:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
     )
 
 
@@ -68,7 +81,11 @@ def test_verifier_detects_accela_public_search_hints() -> None:
         )
     )
 
-    result = verifier.verify(_source())
+    source = _source()
+    result = verifier.verify(
+        source,
+        access_profile=_reviewed_access_profile(str(source.public_url)),
+    )
 
     assert result.url_reachable is True
     assert result.portal_type_detected is PlatformFamily.ACCELA_ACA
@@ -83,7 +100,11 @@ def test_verifier_flags_login_hints() -> None:
         executor=_executor(body=b"Login required. Please enter username and password.")
     )
 
-    result = verifier.verify(_source("https://www.cslb.ca.gov/"))
+    source = _source("https://www.cslb.ca.gov/")
+    result = verifier.verify(
+        source,
+        access_profile=_reviewed_access_profile(str(source.public_url)),
+    )
 
     assert result.url_reachable is True
     assert result.login_required is True
@@ -99,10 +120,49 @@ def test_verifier_preserves_transport_failure_class() -> None:
         )
     )
 
-    result = verifier.verify(_source())
+    source = _source()
+    result = verifier.verify(
+        source,
+        access_profile=_reviewed_access_profile(str(source.public_url)),
+    )
 
     assert result.url_reachable is False
     assert result.portal_type_detected is PlatformFamily.UNKNOWN
     assert result.confidence_score == 0
     assert result.notes == "HTTP verification failed closed: transport_failure"
     assert result.raw_observations["failure_kind"] == "transport_failure"
+
+
+def test_verifier_does_not_touch_network_when_access_facts_are_unknown() -> None:
+    calls = 0
+
+    def forbidden_executor(
+        url: str,
+        method: str,
+        policy: BoundedHttpPolicy,
+    ) -> BoundedHttpObservation:
+        nonlocal calls
+        calls += 1
+        raise AssertionError("network executor must not run for unknown access facts")
+
+    source = _source()
+    result = SourceVerifier(executor=forbidden_executor).verify(source)
+
+    assert calls == 0
+    assert result.url_reachable is False
+    assert result.confidence_score == 0
+    assert result.raw_observations["access_decision"] == "review_required"
+    assert "unknown" in (result.notes or "").lower()
+
+
+def test_verifier_rejects_access_facts_bound_to_different_source_url() -> None:
+    source = _source()
+
+    result = SourceVerifier(executor=_executor()).verify(
+        source,
+        access_profile=_reviewed_access_profile("https://example.gov/other"),
+    )
+
+    assert result.url_reachable is False
+    assert result.raw_observations["access_decision"] == "review_required"
+    assert "exact source URL" in (result.notes or "")

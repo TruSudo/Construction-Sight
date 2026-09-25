@@ -80,3 +80,20 @@ def test_ceqanet_listing_execute_cli_rejects_unbounded_query_even_with_live_cons
 
     assert result.exit_code != 0
     assert "requires at least one bounding query filter" in result.output
+
+
+def test_ceqanet_listing_execute_cli_requires_access_fact_basis() -> None:
+    result = runner.invoke(
+        app,
+        [
+            "execute",
+            "--county",
+            "San Bernardino",
+            "--execute-live",
+            "--json-output",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "lawful access preflight denied execution" in result.output
+    assert "fact basis" in result.output

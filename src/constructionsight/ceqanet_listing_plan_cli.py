@@ -253,6 +253,7 @@ def _build_plan(
     *,
     query: CeqanetListingQuery,
     public_url: str,
+    access_fact_basis: str | None,
     requires_login: bool,
     has_captcha: bool,
     robots_disallows_collection: bool,
@@ -264,6 +265,7 @@ def _build_plan(
     access_result = evaluate_access(
         SourceAccessProfile(
             public_url=public_url,
+            access_fact_basis=access_fact_basis,
             requires_login=requires_login,
             has_captcha=has_captcha,
             robots_disallows_collection=robots_disallows_collection,
@@ -341,6 +343,13 @@ def plan_ceqanet_listing(
         str,
         typer.Option(help="Public CEQAnet URL evaluated by access policy."),
     ] = "https://ceqanet.lci.ca.gov/",
+    access_fact_basis: Annotated[
+        str | None,
+        typer.Option(
+            "--access-fact-basis",
+            help="Retained evidence or reviewed-artifact identity for access facts.",
+        ),
+    ] = None,
     requires_login: Annotated[
         bool,
         typer.Option(help="Mark source as requiring login for access-policy preview."),
@@ -389,6 +398,7 @@ def plan_ceqanet_listing(
     plan = _build_plan(
         query=query,
         public_url=public_url,
+        access_fact_basis=access_fact_basis,
         requires_login=requires_login,
         has_captcha=has_captcha,
         robots_disallows_collection=robots_disallows_collection,
@@ -451,6 +461,13 @@ def dry_run_ceqanet_listing(
         str,
         typer.Option(help="Public CEQAnet URL evaluated by access policy."),
     ] = "https://ceqanet.lci.ca.gov/",
+    access_fact_basis: Annotated[
+        str | None,
+        typer.Option(
+            "--access-fact-basis",
+            help="Retained evidence or reviewed-artifact identity for access facts.",
+        ),
+    ] = None,
     requires_login: Annotated[
         bool,
         typer.Option(help="Mark source as requiring login for access-policy preview."),
@@ -499,6 +516,7 @@ def dry_run_ceqanet_listing(
     plan = _build_plan(
         query=query,
         public_url=public_url,
+        access_fact_basis=access_fact_basis,
         requires_login=requires_login,
         has_captcha=has_captcha,
         robots_disallows_collection=robots_disallows_collection,

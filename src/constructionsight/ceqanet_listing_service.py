@@ -95,6 +95,7 @@ def _access_state(
         "ceqanet-listing-access-state",
         {
             "public_url": profile.public_url,
+            "access_fact_basis": profile.access_fact_basis,
             "requires_login": profile.requires_login,
             "has_captcha": profile.has_captcha,
             "robots_disallows_collection": profile.robots_disallows_collection,

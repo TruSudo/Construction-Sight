@@ -69,6 +69,8 @@ def test_ceqanet_detail_execute_cli_writes_json_output(
             "operator:test",
             "--authorization-reason",
             "Review one exact detail page.",
+            "--access-fact-basis",
+            "review:1111111111111111111111111111111111111111111111111111111111111111",
             "--execute-live",
             "--json-output",
             "--output",
@@ -80,6 +82,7 @@ def test_ceqanet_detail_execute_cli_writes_json_output(
     assert "Wrote CEQAnet detail execution JSON" in result.output
     assert calls[0]["detail_url"] == _URL
     assert calls[0]["operator_id"] == "operator:test"
+    assert calls[0]["access_profile"].access_fact_basis == "review:1111111111111111111111111111111111111111111111111111111111111111"
     payload = json.loads(output_path.read_text(encoding="utf-8"))
     assert payload["metadata"]["schema_version"] == "ceqanet_detail_execution.v2"
     assert payload["metadata"]["allowed"] is True
@@ -164,3 +167,20 @@ def test_ceqanet_detail_execute_cli_forwards_bounded_body_ceiling(
     assert snapshot["body_text"] == "abc"
     assert snapshot["body_length"] == 6
     assert snapshot["body_truncated"] is True
+
+
+def test_ceqanet_detail_execute_cli_requires_access_fact_basis() -> None:
+    result = runner.invoke(
+        cli.app,
+        [
+            "execute",
+            "--url",
+            _URL,
+            "--execute-live",
+            "--json-output",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "lawful access preflight denied execution" in result.output
+    assert "fact basis" in result.output

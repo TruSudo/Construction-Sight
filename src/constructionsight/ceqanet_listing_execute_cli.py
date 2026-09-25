@@ -211,6 +211,13 @@ def execute_ceqanet_listing(
         str,
         typer.Option(help="Public CEQAnet URL evaluated by access policy."),
     ] = "https://ceqanet.lci.ca.gov/",
+    access_fact_basis: Annotated[
+        str | None,
+        typer.Option(
+            "--access-fact-basis",
+            help="Retained evidence or reviewed-artifact identity for access facts.",
+        ),
+    ] = None,
     requires_login: Annotated[
         bool,
         typer.Option(help="Mark source as requiring login."),
@@ -302,6 +309,7 @@ def execute_ceqanet_listing(
     )
     profile = SourceAccessProfile(
         public_url=public_url,
+        access_fact_basis=access_fact_basis,
         requires_login=requires_login,
         has_captcha=has_captcha,
         robots_disallows_collection=robots_disallows_collection,
