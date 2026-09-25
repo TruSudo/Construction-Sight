@@ -1,0 +1,167 @@
+{
+  "purpose": "Retained remediation diagnostics; not Native Maximum Assurance or exact-lock release qualification",
+  "files": [
+    {
+      "path": "ci-106275606358.raw.json",
+      "encoding": "JSON string containing the unmodified UTF-8 command/job log",
+      "raw_sha256": "3e098fdf68ab2a2a1eb2ffb45e5019678e2f6045500ae11530ca556ed6613608",
+      "raw_bytes": 144502,
+      "sha256": "42e6fb13c03cac0ea4eef275cd8275e51a26693a0852a93a79ab9575b011e748",
+      "bytes": 149753
+    },
+    {
+      "path": "ci-106275606604.raw.json",
+      "encoding": "JSON string containing the unmodified UTF-8 command/job log",
+      "raw_sha256": "c6e5c661ed9e4e377d7afc569d91ab460d08b31166d50eea7e2b54e7e91d7931",
+      "raw_bytes": 26950,
+      "sha256": "71b70fa2602cfd88e99f3b2fc34280e41be990cd7e46d8d1c92e68831c6382dd",
+      "bytes": 28056
+    },
+    {
+      "path": "ci-106275606669.raw.json",
+      "encoding": "JSON string containing the unmodified UTF-8 command/job log",
+      "raw_sha256": "fe0c263c813d145f6c30c4a46f1037dc848dab23473d2c5103d2961d46ca790c",
+      "raw_bytes": 26957,
+      "sha256": "6a36582bd5ab8e5394d7806aed126645631aa452106d93b3609e48814f41b616",
+      "bytes": 28063
+    },
+    {
+      "path": "ci-106275606672.raw.json",
+      "encoding": "JSON string containing the unmodified UTF-8 command/job log",
+      "raw_sha256": "977fcc21f19d1f2af9081c1eb53d2e0cf41c84f8384e2df28f8ff4c6601cf1e1",
+      "raw_bytes": 144791,
+      "sha256": "31980a04f06cded9f54d3fc4fd2cb71f1703832e1b54a89165aff7d04c4b4645",
+      "bytes": 150046
+    },
+    {
+      "path": "ci-106275742262.raw.json",
+      "encoding": "JSON string containing the unmodified UTF-8 command/job log",
+      "raw_sha256": "5ac108670dc3de968dedabefb2dd7a227ca3267f344e42e2e7bfef4173997d21",
+      "raw_bytes": 26957,
+      "sha256": "b3b140e70e4f295885d1e8f7d98a06aa9bc28bb222c9bca0d0f46a17fa3f3d43",
+      "bytes": 28063
+    },
+    {
+      "path": "ci-106275742457.raw.json",
+      "encoding": "JSON string containing the unmodified UTF-8 command/job log",
+      "raw_sha256": "3c4914bafa64fb17374d7496c404b448acdef738fd84bd1e679c2f0a143b6300",
+      "raw_bytes": 147510,
+      "sha256": "b657102e68c9a4feff63f39d4f1dd426df18731ae93cd85f14a3ba1d2727c515",
+      "bytes": 152804
+    },
+    {
+      "path": "ci-106275742728.raw.json",
+      "encoding": "JSON string containing the unmodified UTF-8 command/job log",
+      "raw_sha256": "32c40d32fe98b45a69743d22d3a2f90225f75c498ea1007448654a7ec933facb",
+      "raw_bytes": 147223,
+      "sha256": "b530d93cb7db442366999ec5a147eb8aae41c034c45b65e62ca5d949adb24d7f",
+      "bytes": 152513
+    },
+    {
+      "path": "ci-106275742911.raw.json",
+      "encoding": "JSON string containing the unmodified UTF-8 command/job log",
+      "raw_sha256": "c63e5ea661e14f6b0af789d352b60163e408f48fc0455ffda8acdc6c401889d9",
+      "raw_bytes": 26959,
+      "sha256": "35567399e91440ef8f65215071b38addaf3259f00f7c972199936e699c9ca73a",
+      "bytes": 28065
+    },
+    {
+      "path": "baseline-hardening.raw.json",
+      "encoding": "JSON string containing the unmodified UTF-8 command/job log",
+      "raw_sha256": "90fe7f8e0b8e2c12d2b5a9829bd570c288bdb97d6f60fae9061555d095f99133",
+      "raw_bytes": 1782,
+      "sha256": "7549eef50cf7a6847908a088cfff819a1d20f490904a0cea13322575f82edffe",
+      "bytes": 1808
+    },
+    {
+      "path": "baseline-preflight.json",
+      "sha256": "b72d554ff9aef19137b4bb36e58edffabe41b7f68b39df829f6fe67bcfd0f4fd",
+      "bytes": 378
+    },
+    {
+      "path": "cs054-before.raw.json",
+      "encoding": "JSON string containing the unmodified UTF-8 command/job log",
+      "raw_sha256": "e3312c302117833c8b1bdf62d078eb2f547eb83338a5e260340a4484e580b210",
+      "raw_bytes": 3937,
+      "sha256": "bb033c2699dd76bb81baa34baae94b30d4f353f2e0c99a0d5cdd73e6ddea5e2b",
+      "bytes": 4049
+    },
+    {
+      "path": "cs054-after-reader.raw.json",
+      "encoding": "JSON string containing the unmodified UTF-8 command/job log",
+      "raw_sha256": "3c5c77ae771d9e4e2c2a7779f4ad977f04cafb131264ff2e7a91de0e254f44fb",
+      "raw_bytes": 99,
+      "sha256": "18792ff8a24bcc3bbf152b2ad78be7b15a403a5db77d0c10afe54fd35b7a44e7",
+      "bytes": 104
+    },
+    {
+      "path": "cs054-reader-integration-before.raw.json",
+      "encoding": "JSON string containing the unmodified UTF-8 command/job log",
+      "raw_sha256": "112cfbade45a9039fb71bb17a3ece8b83af300ee635f880af822f36bc390fad7",
+      "raw_bytes": 6640,
+      "sha256": "9b52b1a8adbdb2515676e10813a4908e1fc1cec7433d999169037dfd250b46f1",
+      "bytes": 6841
+    },
+    {
+      "path": "cs054-reader-integration-after.raw.json",
+      "encoding": "JSON string containing the unmodified UTF-8 command/job log",
+      "raw_sha256": "4bbc26b6df2222acbc80a5239aacf219cae0f19542860a2aafd8a224b7eae376",
+      "raw_bytes": 99,
+      "sha256": "094fd90112eb100b4905a22169d94d4a983883be3024414938d6ab7c206c635b",
+      "bytes": 104
+    },
+    {
+      "path": "reader-batch-hardening.raw.json",
+      "encoding": "JSON string containing the unmodified UTF-8 command/job log",
+      "raw_sha256": "368606ba1f3f1cd293473e50c4c35d1b8a23338d7de97296a9f33377c67babc7",
+      "raw_bytes": 1782,
+      "sha256": "c7f339c45f67adfd2988daaec26b022f461c0cf43fbe0717bb01a98cdf6926fb",
+      "bytes": 1808
+    },
+    {
+      "path": "reader-batch-gui.raw.json",
+      "encoding": "JSON string containing the unmodified UTF-8 command/job log",
+      "raw_sha256": "0ee65469f4f4a770d6a1d7d7dcdfb3f634d1902e9c73b1c3c4971dcfd20228ed",
+      "raw_bytes": 1942,
+      "sha256": "091b382c3c20b1d78af92928e957ea05a1517f08e9663775f08f78b9115e2c17",
+      "bytes": 1970
+    },
+    {
+      "path": "reader-batch-mypy.raw.json",
+      "encoding": "JSON string containing the unmodified UTF-8 command/job log",
+      "raw_sha256": "4de1948e66881080941a9dfae49d5a8fda0b56e3fc9a075167083e04568f47b8",
+      "raw_bytes": 45,
+      "sha256": "c539d9fd9096f82c26e01da4c415bc4a6daf6b992a0b41c03e25c6fe5d5e301d",
+      "bytes": 49
+    },
+    {
+      "path": "reader-batch-gui-mypy.raw.json",
+      "encoding": "JSON string containing the unmodified UTF-8 command/job log",
+      "raw_sha256": "083258566927605a5f849446bbb79ece08ae8d5e040de98fe0b394f575afb117",
+      "raw_bytes": 45,
+      "sha256": "e80da3ad079ff11d4093de9400761c6b36c071ed8f8ff06d2fe7c95bc89e59c3",
+      "bytes": 49
+    },
+    {
+      "path": "reader-batch-ruff.raw.json",
+      "encoding": "JSON string containing the unmodified UTF-8 command/job log",
+      "raw_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+      "raw_bytes": 19,
+      "sha256": "95dea020ee9d4c4923ddfcf78d3db6245cec77056eaf937e224fe82eb8c33de8",
+      "bytes": 23
+    },
+    {
+      "path": "reader-batch-gui-ruff.raw.json",
+      "encoding": "JSON string containing the unmodified UTF-8 command/job log",
+      "raw_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+      "raw_bytes": 19,
+      "sha256": "95dea020ee9d4c4923ddfcf78d3db6245cec77056eaf937e224fe82eb8c33de8",
+      "bytes": 23
+    },
+    {
+      "path": "reader-batch-mutations.json",
+      "sha256": "70dc699e975b45ee2a3ab0c1dd4c12aedc5a174847d0c0949f723c95b9f4209a",
+      "bytes": 315030
+    }
+  ]
+}

@@ -21,7 +21,7 @@ Opportunity scoring is governed by a versioned profile, not anonymous hardcoded 
 
 ```text
 profile key: opportunity-scoring:default
-version: 2026-06-30.1
+version: 2026-09-25.1
 ```
 
 The default profile preserves the original behavior:
@@ -42,14 +42,25 @@ public decision with site/APN hint: +15
 public decision without site/APN hint: +10
 ```
 
+Configured weights are nominal evidence weights. Operational contribution is
+confidence-weighted as `round(configured_weight * confidence_score / 100)`, then
+capped at 100 across the report. Zero-confidence signals contribute zero
+operational points. The report model independently recomputes both aggregate
+confidence and the confidence-weighted lead score so caller-supplied values cannot
+override those derivations.
+
+The default profile also requires aggregate confidence of at least 70 before a
+high-value score can produce an outreach-preview action. A nominally high score
+with insufficient confidence remains review-bound.
+
 Scores are capped at 100.
 
 ## Next action
 
 The default next-action thresholds are deterministic:
 
-- 70+ with no limitations: prepare outreach preview
-- 50+ with limitations: review limitations before outreach
+- 70+ with no limitations and aggregate confidence 70+: prepare outreach preview
+- 50+ or a high nominal score below the actionable-confidence floor: review limitations before outreach
 - positive score below 50: monitor and enrich with more source evidence
 - zero score: hold until a source signal appears
 
