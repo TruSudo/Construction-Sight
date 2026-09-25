@@ -149,14 +149,19 @@ def build_longitudinal_parcel_assurance(
             "parcel longitudinal source contexts must exactly match observations; "
             f"missing={missing}, extra={extra}"
         )
-    limitations = sorted(
-        {
-            (
-                "Assurance is withheld whenever any source timeline lacks a unique "
-                "current observation."
-            ),
-            "Superseded observations remain evidence but do not enter current field assurance.",
-        }
+    limitations = tuple(
+        sorted(
+            {
+                (
+                    "Assurance is withheld whenever any source timeline lacks a unique "
+                    "current observation."
+                ),
+                (
+                    "Superseded observations remain evidence but do not enter current "
+                    "field assurance."
+                ),
+            }
+        )
     )
     if selection.requires_human_review:
         return ParcelLongitudinalAssuranceResult(
