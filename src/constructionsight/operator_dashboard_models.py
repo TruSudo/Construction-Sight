@@ -190,7 +190,10 @@ class EntityIndexSnapshot(BaseModel):
         "Equal stored entity keys are source co-occurrence, not independently verified identity.",
         "County counts include source records with matching keys, not unique construction sites.",
         "Two-county co-occurrence is observed only within the bounded retained source scan.",
-        "No qualification, contact verification, live collection, or outreach approval is inferred.",
+        (
+            "No qualification, contact verification, live collection, or outreach "
+            "approval is inferred."
+        ),
     ])
 
 
