@@ -18,14 +18,14 @@ from constructionsight.authorization_decision import AuthorizationDeniedError
 from constructionsight.ceqanet_capture_queue import build_reviewed_ceqanet_capture_queue
 from constructionsight.ceqanet_csv_live_models import CeqanetCsvLiveExecution
 from constructionsight.ceqanet_csv_models import canonical_digest
+from constructionsight.ceqanet_csv_operator_bridge import (
+    ReviewedCeqanetCsvBridge,
+    build_reviewed_ceqanet_csv_bridge,
+)
 from constructionsight.ceqanet_csv_service import build_ceqanet_csv_export_request
 from constructionsight.legal import SourceAccessProfile
 from constructionsight.operator_services.ceqanet_csv_service import (
     execute_authorized_ceqanet_csv,
-)
-from constructionsight.ceqanet_csv_operator_bridge import (
-    ReviewedCeqanetCsvBridge,
-    build_reviewed_ceqanet_csv_bridge,
 )
 from constructionsight.operator_services.ceqanet_persistence_service import (
     execute_authorized_ceqanet_write_plan,
@@ -98,7 +98,9 @@ def discover_preview(
     """Derive exact-SCH manual capture candidates from existing listing evidence only."""
 
     if output.exists() or listing_evidence.absolute() == output.absolute():
-        raise typer.BadParameter("review queue output must be new and distinct from listing evidence")
+        raise typer.BadParameter(
+            "review queue output must be new and distinct from listing evidence"
+        )
     try:
         raw = read_runtime_artifact(listing_evidence, max_bytes=16 * 1024 * 1024)
         payload: Any = json.loads(raw.decode("utf-8"))
@@ -147,10 +149,18 @@ def capture_preview(
         Path, typer.Option("--output", help="New path for full retained live-execution evidence."),
     ],
     authorization_reason: Annotated[
-        str, typer.Option("--authorization-reason", help="Reason for this exact single public GET."),
+        str,
+        typer.Option(
+            "--authorization-reason",
+            help="Reason for this exact single public GET.",
+        ),
     ],
     execute_live: Annotated[
-        bool, typer.Option("--execute-live", help="Explicit approval to request this one SCH export."),
+        bool,
+        typer.Option(
+            "--execute-live",
+            help="Explicit approval to request this one SCH export.",
+        ),
     ] = False,
     plan_output: Annotated[
         Path | None, typer.Option("--plan-output", help="Optional new reviewed plan path."),
@@ -216,7 +226,10 @@ def capture_preview(
             overwrite=False,
         )
     except (OSError, ValueError) as exc:
-        typer.echo(f"Acquisition completed but retained evidence could not be published: {exc}", err=True)
+        typer.echo(
+            f"Acquisition completed but retained evidence could not be published: {exc}",
+            err=True,
+        )
         raise typer.Exit(code=1) from exc
     if (
         authorized.execution.request != request
