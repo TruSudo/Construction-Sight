@@ -4,7 +4,7 @@ const byId = id => document.getElementById(id);
 const escapeText = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const identity = row => row.record_kind + ":" + row.record_id;
 const WATCH_KEY = "constructionsight:operator:local-watchlist-v1";
-let page = null, footprint = null, workflows = null, selected = null, selectedRecord = null, activeQuery = "", pageRequest = 0, featureRequest = 0, pageOffset = 0;
+let page = null, footprint = null, workflows = null, ingestionInbox = null, selected = null, selectedRecord = null, activeQuery = "", pageRequest = 0, featureRequest = 0, pageOffset = 0;
 let localWatchlist = {};
 let sourceRevision = null, sourceProbeActive = false;
 let activeKind = "all", activeCounty = "";
@@ -416,7 +416,38 @@ async function showHistoricalPulse() {
       target.innerHTML='<p role="alert">Historical source milestones unavailable: '+escapeText(error.message||error)+'</p>';
   }
 }
-async function prepareCeqanetCapture() {
+async function ingestionInboxMarkup(inbox) {
+  if(!inbox || inbox.read_only!==true || inbox.network_executed!==false ||
+    inbox.persistence_mutated!==false || inbox.commercial_leads_created!==false ||
+    !Number.isSafeInteger(inbox.candidate_count) || !Number.isSafeInteger(inbox.pending_capture_count) ||
+    !Number.isSafeInteger(inbox.persisted_candidate_count) || !Number.isSafeInteger(inbox.conflict_candidate_count) ||
+    !Number.isSafeInteger(inbox.county_unavailable_candidate_count) || !Array.isArray(inbox.candidates) ||
+    inbox.candidate_count!==inbox.candidates.length ||
+    inbox.pending_capture_count+inbox.persisted_candidate_count!==inbox.candidate_count ||
+    inbox.conflict_candidate_count+inbox.county_unavailable_candidate_count>inbox.persisted_candidate_count)
+    throw Error("CEQAnet ingestion inbox returned inconsistent read-only state.");
+  if(inbox.configured!==true)
+    return '<section class="feature-card"><span class="badge">CEQANET INGESTION INBOX · NOT CONFIGURED</span>'+
+      '<h2>Discovery queue status</h2><p>Start this local operator with both <code>--ceqanet-listing-evidence</code> and '+
+      '<code>--ceqanet-queue-evidence</code> to reconcile one exact reviewed discovery queue against the selected SQLite database. '+
+      'The dashboard performs no remote collection and no persistence mutation.</p></section>';
+  const rows=inbox.candidates.map(item=>'<tr><td>'+escapeText(item.sch_number)+'</td><td>'+
+    escapeText(valueOrUnknown(item.source_claimed_county))+'</td><td>'+escapeText(item.state.replaceAll("_"," "))+
+    '</td><td>'+escapeText(String(item.persisted_record_count))+'</td></tr>').join("");
+  const next=inbox.next_pending_sch ?
+    '<p><strong>Next reviewed pending SCH:</strong> '+escapeText(inbox.next_pending_sch)+
+    '. Continue with <code>constructionsight-ceqanet-reviewed-import capture-next-preview</code> using the same exact listing, queue and database. '+
+    'That capture remains one separately authorized public GET; persistence still requires independent approval of both exact digests through <code>apply</code>.</p>' :
+    '<p>No pending reviewed SCH remains in this configured queue. Any conflict or unavailable county state requires evidence review rather than another automatic capture.</p>';
+  return '<section class="feature-card"><span class="badge">CEQANET INGESTION INBOX · READ ONLY</span>'+
+    '<h2>Reviewed discovery → persistence status</h2><p>'+inbox.candidate_count+' reviewed candidates · '+
+    inbox.pending_capture_count+' pending capture · '+inbox.persisted_candidate_count+' reviewed captures persisted · '+
+    inbox.conflict_candidate_count+' county conflicts · '+inbox.county_unavailable_candidate_count+' county unavailable.</p>'+next+
+    '<div class="source-inventory-scroll"><table class="source-inventory"><thead><tr><th>SCH</th><th>Source county</th><th>State</th><th>Reviewed rows</th></tr></thead><tbody>'+
+    rows+'</tbody></table></div><p>Same-SCH contextual records do not suppress missing reviewed CSV enrichment. '+
+    'No browser request, database mutation, lead qualification, outreach, or bid action is authorized by this status view.</p></section>';
+}
+function prepareCeqanetCapture() {
   const raw=byId("capture-sch-number").value.trim();
   const target=byId("capture-instructions");
   if(!/^[0-9]{10}$/.test(raw)){
@@ -487,9 +518,12 @@ async function showSources() {
   const families=["ceqa","permit"], counties=["","San Bernardino","Riverside"];
   try {
     const queries=families.flatMap(kind=>counties.map(county=>({kind,county})));
-    const data=await Promise.all(queries.map(async item=>
-      fetchJson("/api/snapshot?"+new URLSearchParams({kind:item.kind,county:item.county,limit:"1",offset:"0"}))
-    ));
+    const [data,inbox]=await Promise.all([
+      Promise.all(queries.map(async item=>
+        fetchJson("/api/snapshot?"+new URLSearchParams({kind:item.kind,county:item.county,limit:"1",offset:"0"}))
+      )),
+      fetchJson("/api/ingestion-inbox")
+    ]);
     if(token!==featureRequest || byId("feature-view").hidden)return;
     if(data.some((result,index)=>result.selection!==queries[index].kind || !Number.isSafeInteger(result.total) || result.total<0))
       throw Error("Stored source scope changed or could not be verified.");
@@ -502,6 +536,7 @@ async function showSources() {
     byId("feature-body").innerHTML='<section class="feature-card"><span class="badge">RETAINED SQLITE RECORDS · READ ONLY</span><h2>Source inventory</h2>'+
       '<p>Counts are source records, not deduplicated projects, live construction sites, or approved commercial leads. Other/unknown includes records with missing or out-of-scope county claims.</p>'+
       '<div class="source-inventory-scroll"><table class="source-inventory"><thead><tr><th>Source family</th><th>All counties</th><th>San Bernardino</th><th>Riverside</th><th>Other / unknown</th></tr></thead><tbody>'+rows+'</tbody></table></div></section>'+
+      ingestionInboxMarkup(inbox)+
       '<section class="feature-card"><h2>Collection status</h2><p>This local operator does not run live source acquisition, subscription monitoring, scheduled updates or remote data import. Import and retained-source validation remain separate governed workflows.</p>'+
       '<a href="/workspace#records">Inspect stored source evidence →</a></section>'+
       '<section class="feature-card"><h2>Review a newly available CEQAnet project</h2><p>Prepare a single-project, manually authorized capture using the existing offline-review and SQLite import services. This read-only dashboard cannot issue remote requests or authorize imports.</p>'+
@@ -723,20 +758,26 @@ async function loadData(offset=pageOffset, focusIdentity=null){
   const filter=new URLSearchParams({kind:activeKind,county:activeCounty,limit:"50",offset:String(offset),q:activeQuery});
   const geo=new URLSearchParams({kind:activeKind,county:activeCounty,q:activeQuery});
   try{
-    const [newPage,newFootprint,newWorkflow,health,workflowStatus,sourceState]=await Promise.all([
+    const [newPage,newFootprint,newWorkflow,health,workflowStatus,sourceState,newInbox]=await Promise.all([
       fetchJson("/api/snapshot?"+filter),fetchJson("/api/footprint?"+geo),
       fetchJson("/api/workflows?limit=50&offset=0"),fetchJson("/api/health"),
       fetchJson("/api/workflow-summary").catch(error=>({error:String(error.message || error)})),
-      fetchJson("/api/source-revision").catch(()=>null)
+      fetchJson("/api/source-revision").catch(()=>null),
+      fetchJson("/api/ingestion-inbox").catch(()=>null)
     ]);
     if(token!==pageRequest)return;
     if(newPage.selection!==activeKind || newFootprint.selection!==activeKind ||
       newPage.total!==newFootprint.matching_total)throw Error("Source-list and geographic scope disagree. Refresh the database view.");
-    page=newPage;footprint=newFootprint;workflows=newWorkflow;pageOffset=offset;
+    page=newPage;footprint=newFootprint;workflows=newWorkflow;ingestionInbox=newInbox;pageOffset=offset;
     if(sourceState && sourceState.read_only===true && sourceState.live_collection_enabled===false &&
       /^[0-9a-f]{64}$/.test(sourceState.revision_identity))sourceRevision=sourceState.revision_identity;
     byId("source-total").textContent=newPage.total.toLocaleString();
     byId("workflow-total").textContent=newWorkflow.total.toLocaleString();
+    const validInbox=newInbox && newInbox.read_only===true && newInbox.network_executed===false &&
+      newInbox.persistence_mutated===false && Number.isSafeInteger(newInbox.pending_capture_count) &&
+      newInbox.pending_capture_count>=0;
+    byId("ingestion-pending").textContent=validInbox && newInbox.configured===true ?
+      String(newInbox.pending_capture_count) : "—";
     const counts=workflowStatus.statuses;
     const known=counts && Object.values(counts).every(n=>Number.isSafeInteger(n) && n>=0);
     const validStatus=workflowStatus.read_only===true && workflowStatus.outreach_authorized===false &&
@@ -756,8 +797,8 @@ async function loadData(offset=pageOffset, focusIdentity=null){
       (focusIdentity && !focus ? " Selected map point moved or disappeared from its recorded position; refresh before inspecting it." : "");
   }catch(error){
     if(token!==pageRequest)return;
-    page=null;footprint=null;workflows=null;selected=null;selectedRecord=null;
-    byId("source-total").textContent="—";byId("workflow-total").textContent="—";
+    page=null;footprint=null;workflows=null;ingestionInbox=null;selected=null;selectedRecord=null;
+    byId("source-total").textContent="—";byId("workflow-total").textContent="—";byId("ingestion-pending").textContent="—";
     for(const id of ["workflow-ready","workflow-review","workflow-hold"])byId(id).textContent="—";
     byId("global-notice").textContent="Data unavailable: "+String(error.message || error)+". Check the selected existing SQLite database; no synthetic records will be substituted.";
     renderDossier(null);renderRecords();renderMap();
