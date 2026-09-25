@@ -19,14 +19,14 @@ from constructionsight.authorization_decision import AuthorizationDeniedError
 from constructionsight.ceqanet_capture_queue import build_reviewed_ceqanet_capture_queue
 from constructionsight.ceqanet_csv_live_models import CeqanetCsvLiveExecution
 from constructionsight.ceqanet_csv_models import canonical_digest
+from constructionsight.ceqanet_csv_operator_bridge import (
+    ReviewedCeqanetCsvBridge,
+    build_reviewed_ceqanet_csv_bridge,
+)
 from constructionsight.ceqanet_csv_service import build_ceqanet_csv_export_request
 from constructionsight.legal import SourceAccessProfile
 from constructionsight.operator_services.ceqanet_csv_service import (
     execute_authorized_ceqanet_csv,
-)
-from constructionsight.ceqanet_csv_operator_bridge import (
-    ReviewedCeqanetCsvBridge,
-    build_reviewed_ceqanet_csv_bridge,
 )
 from constructionsight.operator_services.ceqanet_persistence_service import (
     execute_authorized_ceqanet_write_plan,
@@ -87,7 +87,7 @@ def _load_bound_capture_candidate(
             listing_payload, original_bytes=listing_raw,
         )
         if queue_payload != regenerated:
-            raise ValueError("saved queue does not exactly match a fresh derivation from listing evidence")
+            raise ValueError(\n                "saved queue does not exactly match a fresh derivation from listing evidence"\n            )
         candidates = regenerated.get("candidates")
         if not isinstance(candidates, list):
             raise ValueError("saved queue candidates are malformed")
