@@ -1157,3 +1157,46 @@ def test_capture_next_preview_selects_pending_sch_and_stops_after_persistence(
     assert no_pending_payload["network_executed"] is False
     assert len(calls) == 1
     assert not unused_output.exists()
+
+
+
+def test_prepare_inbox_creates_exact_queue_and_pending_status_without_database_write(
+    tmp_path: Path,
+) -> None:
+    listing_path = tmp_path / "listing.json"
+    queue_path = tmp_path / "review-queue.json"
+    listing_path.write_text(
+        json.dumps(_single_candidate_listing(), sort_keys=True),
+        encoding="utf-8",
+    )
+    database = tmp_path / "operator.sqlite3"
+    engine = create_database_engine(f"sqlite:///{database}")
+    initialize_database(engine)
+    engine.dispose()
+    before = hashlib.sha256(database.read_bytes()).hexdigest()
+
+    result = runner.invoke(
+        app,
+        [
+            "prepare-inbox",
+            "--listing-evidence",
+            str(listing_path),
+            "--queue-output",
+            str(queue_path),
+            "--database",
+            str(database),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    payload = json.loads(result.stdout)
+    queue = json.loads(queue_path.read_text("utf-8"))
+    assert queue["candidate_count"] == 1
+    assert queue["candidates"][0]["sch_number"] == "2026030377"
+    assert payload["queue_artifact_sha256"] == hashlib.sha256(
+        queue_path.read_bytes()
+    ).hexdigest()
+    assert payload["pending_capture_count"] == 1
+    assert payload["next_pending_sch"] == "2026030377"
+    assert payload["network_executed"] is False
+    assert payload["persistence_mutated"] is False
+    assert hashlib.sha256(database.read_bytes()).hexdigest() == before
