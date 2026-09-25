@@ -722,6 +722,22 @@ def test_invalid_capture_queue_blocks_operator_startup_without_database_mutation
     assert hashlib.sha256(path.read_bytes()).hexdigest() == before
 
 
+def test_source_registry_endpoint_is_read_only_and_rejects_query_parameters(database):
+    path, _ = database
+    before = hashlib.sha256(path.read_bytes()).hexdigest()
+    with _server(path) as port:
+        status, _, body = _get(port, "/api/source-registry")
+        assert status == 200
+        payload = json.loads(body)
+        assert payload["read_only"] is True
+        assert payload["network_collection_enabled"] is False
+        assert payload["verification_metadata_is_authority"] is False
+        assert payload["total"] == payload["returned"] == 0
+        assert payload["entries"] == []
+        assert _get(port, "/api/source-registry?kind=permit")[0] == 400
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == before
+
+
 def test_health_rechecks_schema_after_startup(database):
     path, engine = database
     with _server(path) as port:
