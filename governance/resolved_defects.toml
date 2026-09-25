@@ -125,3 +125,213 @@ last_active_commit = "a972cabef8ada46e2af35b9d8d208961368b79c9"
 evidence_paths = ["docs/assurance/defect_closures/CS-SR-070.md", "src/constructionsight/ci_action_certification.py"]
 regression_tests = ["tests/test_assurance_preflight_certification.py", "tests/test_ci_action_certification.py"]
 closure_evidence = "docs/assurance/defect_closures/CS-SR-070.md"
+
+[[defects]]
+id = "CS-SR-001"
+severity = "P1"
+area = "architecture"
+root_cause = "No strict machine-readable layer and capability-acquisition contract is enforced across the tracked production tree."
+discovered_against = "679f15fa6d39f222c16b8c5c3e99db7662465909"
+required_resolution = "Add exact module classification, AST import graph, capability permissions, exceptions, cycle checks, and regression fixtures."
+resolution_summary = "Implemented machine-readable architecture classification, AST import/cycle enforcement, capability boundaries and regression coverage."
+resolution_commit = "74598ce80a57c02c87e2d5cde68d3bd172d4bca0"
+resolution_tree = "200e913fec0c29ef6e3160533737e9ea0b895638"
+last_active_commit = "58e54aa0e06f3d8becb744d5dc65be83b33373ce"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-001.md", "governance/architecture_contract.toml", "src/constructionsight/architecture_boundary_certification.py", "src/constructionsight/architecture_certification.py"]
+regression_tests = ["tests/test_architecture_boundary_certification.py", "tests/test_governance_certification.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-001.md"
+
+[[defects]]
+id = "CS-SR-002"
+severity = "P1"
+area = "capability-traceability"
+root_cause = "Implemented, guarded, planned, and deprecated capabilities are documented but not cross-checked against production modules, tests, doctrine, authority, and future entry conditions."
+discovered_against = "679f15fa6d39f222c16b8c5c3e99db7662465909"
+required_resolution = "Add a strict capability registry and fail-closed tree reconciliation."
+resolution_summary = "Implemented a strict capability contract with fail-closed production-tree and governance-reference reconciliation."
+resolution_commit = "74598ce80a57c02c87e2d5cde68d3bd172d4bca0"
+resolution_tree = "200e913fec0c29ef6e3160533737e9ea0b895638"
+last_active_commit = "58e54aa0e06f3d8becb744d5dc65be83b33373ce"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-002.md", "governance/capability_contract.toml", "src/constructionsight/traceability_certification.py"]
+regression_tests = ["tests/test_governance_certification.py", "tests/test_governance_link_certification.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-002.md"
+
+[[defects]]
+id = "CS-SR-003"
+severity = "P1"
+area = "supply-chain"
+root_cause = "Direct dependencies use open-ended minimum versions, CI installs with resolver-selected upgrades, and third-party Actions use mutable major tags."
+discovered_against = "679f15fa6d39f222c16b8c5c3e99db7662465909"
+required_resolution = "Pin declarations, add governed artifact-hashed locks and inventory, pin Actions to immutable SHAs, and add vulnerability/SBOM gates."
+resolution_summary = "Pinned the supported dependency environments and Actions, added artifact-hashed locks/inventory, deterministic SBOM generation and isolated vulnerability gates."
+resolution_commit = "74598ce80a57c02c87e2d5cde68d3bd172d4bca0"
+resolution_tree = "200e913fec0c29ef6e3160533737e9ea0b895638"
+last_active_commit = "58e54aa0e06f3d8becb744d5dc65be83b33373ce"
+evidence_paths = [".github/workflows/ci.yml", "docs/assurance/defect_closures/CS-SR-003.md", "governance/dependency_contract.toml", "src/constructionsight/supply_chain.py"]
+regression_tests = ["tests/test_ci_action_certification.py", "tests/test_supply_chain.py", "tests/test_vulnerability_certification.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-003.md"
+
+[[defects]]
+id = "CS-SR-004"
+severity = "P1"
+area = "network-resilience"
+root_cause = "Network boundaries are individually hardened but no complete inventory mechanically rejects unapproved clients or requests without a declared policy."
+discovered_against = "679f15fa6d39f222c16b8c5c3e99db7662465909"
+required_resolution = "Add a network contract, approved transport classification, AST enforcement, policy completeness checks, and adversarial fixtures."
+resolution_summary = "Implemented the network contract, approved transport classification, AST/policy completeness enforcement and adversarial governance coverage."
+resolution_commit = "74598ce80a57c02c87e2d5cde68d3bd172d4bca0"
+resolution_tree = "200e913fec0c29ef6e3160533737e9ea0b895638"
+last_active_commit = "58e54aa0e06f3d8becb744d5dc65be83b33373ce"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-004.md", "governance/network_contract.toml", "src/constructionsight/governance_certification.py", "src/constructionsight/governance_certification_core.py"]
+regression_tests = ["tests/test_governance_certification.py", "tests/test_repository_certification.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-004.md"
+
+[[defects]]
+id = "CS-SR-005"
+severity = "P1"
+area = "authorization"
+root_cause = "Strong feature-specific authorization exists, including PR #116, but no repository-wide decision contract and mutation inventory mechanically prevents boolean-only or scope-free authority."
+discovered_against = "679f15fa6d39f222c16b8c5c3e99db7662465909"
+required_resolution = "Add a general scope-bound authorization decision contract and classify every authority-bearing capability."
+resolution_summary = "Implemented general scope-bound authorization decisions and a machine-readable classification of authority-bearing operations."
+resolution_commit = "74598ce80a57c02c87e2d5cde68d3bd172d4bca0"
+resolution_tree = "200e913fec0c29ef6e3160533737e9ea0b895638"
+last_active_commit = "58e54aa0e06f3d8becb744d5dc65be83b33373ce"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-005.md", "governance/authorization_contract.toml", "src/constructionsight/authorization_decision.py", "src/constructionsight/authorization_decision_models.py"]
+regression_tests = ["tests/test_authorization_decision.py", "tests/test_semantic_authorization_certification.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-005.md"
+
+[[defects]]
+id = "CS-SR-006"
+severity = "P1"
+area = "certification"
+root_cause = "The canonical certifier does not yet enforce architecture, capability, dependency, network, authorization, adversarial-test, ADR, action-pin, or review doctrine."
+discovered_against = "679f15fa6d39f222c16b8c5c3e99db7662465909"
+required_resolution = "Expand deterministic certification and CI with stable finding codes and fail-closed governance parsing."
+resolution_summary = "Expanded deterministic repository certification to enforce governance, architecture, authorization, dependency and review doctrine with stable fail-closed findings in CI."
+resolution_commit = "74598ce80a57c02c87e2d5cde68d3bd172d4bca0"
+resolution_tree = "200e913fec0c29ef6e3160533737e9ea0b895638"
+last_active_commit = "58e54aa0e06f3d8becb744d5dc65be83b33373ce"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-006.md", "src/constructionsight/governance_certification.py", "src/constructionsight/governance_contract_schema.py", "src/constructionsight/repository_certification.py"]
+regression_tests = ["tests/test_governance_certification.py", "tests/test_governance_contract_schema.py", "tests/test_repository_certification.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-006.md"
+
+[[defects]]
+id = "CS-SR-009"
+severity = "P1"
+area = "dependency-certification"
+root_cause = "The canonical dependency audit parsed lock files one physical line at a time, so secure backslash-continued artifact hashes would be misclassified or omitted from direct-dependency reconciliation."
+discovered_against = "671169400e83136756335905cadf9bddeb33d1d1"
+required_resolution = "Use one fail-closed logical-row parser for installation verification, SBOM generation, dependency agreement, and canonical certification; add multiline and unhashed regression fixtures."
+resolution_summary = "Unified logical requirement parsing across lock verification, dependency agreement, SBOM generation and canonical dependency certification with malformed/unhashed regressions."
+resolution_commit = "74598ce80a57c02c87e2d5cde68d3bd172d4bca0"
+resolution_tree = "200e913fec0c29ef6e3160533737e9ea0b895638"
+last_active_commit = "58e54aa0e06f3d8becb744d5dc65be83b33373ce"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-009.md", "src/constructionsight/dependency_certification.py", "src/constructionsight/supply_chain.py"]
+regression_tests = ["tests/test_dependency_certification.py", "tests/test_supply_chain.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-009.md"
+
+[[defects]]
+id = "CS-SR-010"
+severity = "P1"
+area = "adversarial-testing"
+root_cause = "A focused mutation certifier and mutation contract existed in production code, but the Python CI matrix did not execute or enforce its result."
+discovered_against = "c43f460eedef8f3e51b6cc4fe62b9e9ee903b915"
+required_resolution = "Execute focused mutation certification in both supported Python CI jobs, retain its deterministic report, and include its outcome in the aggregate fail-closed quality gate."
+resolution_summary = "Integrated focused mutation certification into both supported Python CI jobs, retained deterministic reports and aggregate fail-closed enforcement."
+resolution_commit = "74598ce80a57c02c87e2d5cde68d3bd172d4bca0"
+resolution_tree = "200e913fec0c29ef6e3160533737e9ea0b895638"
+last_active_commit = "58e54aa0e06f3d8becb744d5dc65be83b33373ce"
+evidence_paths = [".github/workflows/ci.yml", "docs/assurance/defect_closures/CS-SR-010.md", "governance/mutation_contract.toml", "src/constructionsight/mutation_certification.py"]
+regression_tests = ["tests/test_mutation_detection.py", "tests/test_mutation_governance_overlay.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-010.md"
+
+[[defects]]
+id = "CS-SR-012"
+severity = "P1"
+area = "installed-environment-inventory"
+root_cause = "Installed-version verification required locked distributions but did not reject additional installed distributions, duplicate installed metadata, or a missing/mismatched ConstructionSight distribution. Undeclared code could therefore remain importable while absent from the certified inventory."
+discovered_against = "aaaf20ebd937bbc9b5dfb7b77416917e0c060e69"
+required_resolution = "Reject every installed distribution outside the exact lock and exact ConstructionSight project identity; include bootstrap tooling in the lock; reject duplicate/malformed installed metadata; add adversarial fixtures."
+resolution_summary = "Implemented exact installed-environment inventory validation against governed locks/project identity with unexpected, duplicate and malformed distribution rejection."
+resolution_commit = "74598ce80a57c02c87e2d5cde68d3bd172d4bca0"
+resolution_tree = "200e913fec0c29ef6e3160533737e9ea0b895638"
+last_active_commit = "58e54aa0e06f3d8becb744d5dc65be83b33373ce"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-012.md", "governance/dependency_contract.toml", "src/constructionsight/supply_chain.py"]
+regression_tests = ["tests/test_dependency_certification.py", "tests/test_supply_chain.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-012.md"
+
+[[defects]]
+id = "CS-SR-013"
+severity = "P1"
+area = "sbom-provenance"
+root_cause = "The deterministic SBOM represented only locked package versions, omitted reviewed artifact hashes, could use an unsupported PyPI project identity for the local application, parsed project metadata URLs imprecisely, and took a second inventory snapshot after verification."
+discovered_against = "3e8fe3ee510f18329c1450be1a7407fa42a696a1"
+required_resolution = "Bind the SBOM to one verified inventory snapshot, include the local application as the root generic component, include approved SHA-256 artifact identities for locked libraries, validate external URLs, and generate a deterministic standards-conformant serial."
+resolution_summary = "Bound deterministic SBOM output to governed verified inventory and artifact hashes, including the local application root and validated external metadata."
+resolution_commit = "74598ce80a57c02c87e2d5cde68d3bd172d4bca0"
+resolution_tree = "200e913fec0c29ef6e3160533737e9ea0b895638"
+last_active_commit = "58e54aa0e06f3d8becb744d5dc65be83b33373ce"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-013.md", "governance/dependency_contract.toml", "src/constructionsight/supply_chain.py"]
+regression_tests = ["tests/test_supply_chain.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-013.md"
+
+[[defects]]
+id = "CS-SR-014"
+severity = "P1"
+area = "dependency-policy-traceability"
+root_cause = "Dependency registry and top-level policy validation could silently collapse duplicate canonical identities, discard non-table entries, accept stale hash-policy statements, permit unsafe lock paths, and omit checks that CI actually enforces the declared installation and mutation gates."
+discovered_against = "459ec451bc75d0cf3395d61f3613fd4fd972822f"
+required_resolution = "Fail closed on unknown/missing top-level fields, canonical and duplicate registry identities, non-table entries, required policy values, safe artifact paths, bootstrap and cross-lock agreement, authoritative source URLs, and mandatory CI commands."
+resolution_summary = "Made dependency policy traceability fail closed for malformed/duplicate identities, unsafe paths, policy disagreement, cross-lock inconsistency and missing mandatory CI enforcement."
+resolution_commit = "74598ce80a57c02c87e2d5cde68d3bd172d4bca0"
+resolution_tree = "200e913fec0c29ef6e3160533737e9ea0b895638"
+last_active_commit = "58e54aa0e06f3d8becb744d5dc65be83b33373ce"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-014.md", "governance/dependency_contract.toml", "src/constructionsight/dependency_certification.py"]
+regression_tests = ["tests/test_dependency_certification.py", "tests/test_supply_chain.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-014.md"
+
+[[defects]]
+id = "CS-SR-015"
+severity = "P1"
+area = "governance-schema"
+root_cause = "Schema versions were checked, but unknown or misspelled top-level fields across architecture, capability, network, authorization, adversarial-test, mutation, defect, overlap, and vulnerability-exception contracts could remain inert without a finding. Mutation, overlap, and vulnerability-exception contracts were not loaded by canonical repository certification."
+discovered_against = "d6e6209de1bc5f6cd0eb139db6e96f1b894744de"
+required_resolution = "Load every machine-readable governance surface in the canonical certifier; enforce exact top-level fields and nonexpansion boundaries; validate active-defect, overlap, and vulnerability-exception identities; add negative fixtures."
+resolution_summary = "Implemented exact governance-surface loading and schema/nonexpansion validation for contracts, defect ledgers, overlaps and vulnerability exceptions with negative fixtures."
+resolution_commit = "74598ce80a57c02c87e2d5cde68d3bd172d4bca0"
+resolution_tree = "200e913fec0c29ef6e3160533737e9ea0b895638"
+last_active_commit = "58e54aa0e06f3d8becb744d5dc65be83b33373ce"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-015.md", "src/constructionsight/governance_contract_schema.py"]
+regression_tests = ["tests/test_governance_contract_schema.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-015.md"
+
+[[defects]]
+id = "CS-SR-016"
+severity = "P1"
+area = "cross-contract-traceability"
+root_cause = "Capability, network-policy, authorization-operation, dependency, and adversarial-matrix references were independently parsed but not bidirectionally reconciled. Invented references, orphaned policies, and capabilities omitted from adversarial matrices could therefore survive certification."
+discovered_against = "02720edb7b475011f536aa5a0b33990887f8476e"
+required_resolution = "Build a bidirectional governance reference graph; require exact policy and operation ownership, valid dependency capability references, and adversarial matrix coverage for every registered capability; add orphan and invented-reference fixtures."
+resolution_summary = "Implemented bidirectional cross-contract governance reconciliation for capabilities, network policies, authorization operations, dependencies and adversarial matrices."
+resolution_commit = "74598ce80a57c02c87e2d5cde68d3bd172d4bca0"
+resolution_tree = "200e913fec0c29ef6e3160533737e9ea0b895638"
+last_active_commit = "58e54aa0e06f3d8becb744d5dc65be83b33373ce"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-016.md", "src/constructionsight/governance_link_certification.py", "src/constructionsight/traceability_certification.py"]
+regression_tests = ["tests/test_governance_certification.py", "tests/test_governance_link_certification.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-016.md"
+
+[[defects]]
+id = "CS-SR-017"
+severity = "P1"
+area = "adversarial-contract-doctrine"
+root_cause = "Adversarial matrices could accept unknown fields, category contraction or invention, unsafe or missing test references, malformed exclusions, and empty prose obligations while still appearing to cover all required risk classes."
+discovered_against = "35f23048b2d9bc2f9b16e5440ba74d589c70dc99"
+required_resolution = "Enforce the exact mandatory category set, exact matrix and exclusion fields, canonical lists, safe existing test paths, complete category coverage or justified exclusion, and nonblank branch/mutation/property/concurrency doctrine; add negative fixtures."
+resolution_summary = "Implemented strict adversarial-contract doctrine validation for mandatory categories, matrix/exclusion fields, safe tests and nonblank branch/mutation/property/concurrency obligations."
+resolution_commit = "74598ce80a57c02c87e2d5cde68d3bd172d4bca0"
+resolution_tree = "200e913fec0c29ef6e3160533737e9ea0b895638"
+last_active_commit = "58e54aa0e06f3d8becb744d5dc65be83b33373ce"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-017.md", "governance/adversarial_test_contract.toml", "src/constructionsight/adversarial_contract_certification.py"]
+regression_tests = ["tests/test_adversarial_contract_certification.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-017.md"
