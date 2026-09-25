@@ -17,8 +17,8 @@ from urllib.parse import parse_qs, urlparse
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from constructionsight.domain_types import PartyRole
 from constructionsight.ceqanet_ingestion_inbox import build_ceqanet_ingestion_inbox
+from constructionsight.domain_types import PartyRole
 from constructionsight.operator_dashboard import (
     build_dashboard_snapshot,
     build_entity_neighborhood,
@@ -28,14 +28,14 @@ from constructionsight.operator_dashboard import (
     build_workflow_status_summary,
 )
 from constructionsight.operator_dashboard_models import RecordSelection
-from constructionsight.operator_parcel_candidates import inspect_parcel_candidates
 from constructionsight.operator_entity_index import build_entity_index
+from constructionsight.operator_parcel_candidates import inspect_parcel_candidates
 from constructionsight.operator_results import build_result_ledger_snapshot
-from constructionsight.operator_source_revision import build_source_revision_snapshot
 from constructionsight.operator_source_candidate import (
     SourceRecordNotFound,
     build_source_candidate_preview,
 )
+from constructionsight.operator_source_revision import build_source_revision_snapshot
 from constructionsight.storage.operator_read_store import (
     create_operator_read_engine,
     verify_operator_schema,
@@ -68,8 +68,14 @@ class _RequestParameters:
 
 
 def _parameters(
-    query: str, *, workflow: bool = False, footprint: bool = False,
-    entity: bool = False, entity_index: bool = False, candidate: bool = False, timeline: bool = False,
+    query: str,
+    *,
+    workflow: bool = False,
+    footprint: bool = False,
+    entity: bool = False,
+    entity_index: bool = False,
+    candidate: bool = False,
+    timeline: bool = False,
     results: bool = False,
 ) -> _RequestParameters:
     values = parse_qs(query, keep_blank_values=True, max_num_fields=5)
@@ -253,7 +259,11 @@ def create_handler(
                 }:
                     self._send_json({"error": "Not found."}, status=HTTPStatus.NOT_FOUND)
                     return
-                if path in {"/api/workflow-summary", "/api/source-revision", "/api/ingestion-inbox"} and parsed.query:
+                if (
+                    path
+                    in {"/api/workflow-summary", "/api/source-revision", "/api/ingestion-inbox"}
+                    and parsed.query
+                ):
                     raise ValueError("unfiltered status inspection rejects query parameters")
                 parameters = _parameters(
                     parsed.query,

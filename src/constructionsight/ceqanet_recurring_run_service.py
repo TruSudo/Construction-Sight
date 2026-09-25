@@ -324,7 +324,10 @@ def bind_authorized_recurring_listing_evidence(
     )
     bound_report = {
         "metadata": bound_metadata,
-        "snapshots": [dict(snapshot) if isinstance(snapshot, dict) else snapshot for snapshot in snapshots],
+        "snapshots": [
+            dict(snapshot) if isinstance(snapshot, dict) else snapshot
+            for snapshot in snapshots
+        ],
     }
     payload = execution.model_dump(
         mode="json",

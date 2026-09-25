@@ -60,10 +60,22 @@ class CeqanetIngestionInbox(BaseModel):
             "Queue membership remains a source claim, not proof of current construction activity.",
             "Completion requires exact SCH plus reviewed CEQAnet CSV provenance; other retained "
             "records for the SCH remain context and do not suppress enrichment capture.",
-            "County agreement compares retained source claims; it does not independently verify location.",
-            "This inbox performs no remote collection, persistence mutation, lead qualification, outreach, or bidding.",
-            "Each pending candidate still requires separate current lawful-access review and capture authorization.",
-            "Any import still requires independent approval of the exact source and write-plan digests.",
+            (
+                "County agreement compares retained source claims; it does not independently "
+                "verify location."
+            ),
+            (
+                "This inbox performs no remote collection, persistence mutation, lead "
+                "qualification, outreach, or bidding."
+            ),
+            (
+                "Each pending candidate still requires separate current lawful-access review "
+                "and capture authorization."
+            ),
+            (
+                "Any import still requires independent approval of the exact source and "
+                "write-plan digests."
+            ),
         ]
     )
 

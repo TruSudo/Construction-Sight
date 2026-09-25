@@ -3,13 +3,12 @@
 The committed source artifact was captured in July 2026; this test makes no
 claim that its source observations reflect present construction activity.
 """
-
 from __future__ import annotations
 
-from contextlib import contextmanager
-from datetime import UTC, datetime
 import hashlib
 import json
+from contextlib import contextmanager
+from datetime import UTC, datetime
 from http.client import HTTPConnection
 from http.server import ThreadingHTTPServer
 from pathlib import Path
@@ -22,7 +21,7 @@ import typer
 from sqlalchemy.orm import Session
 from typer.testing import CliRunner
 
-import constructionsight.ceqanet_csv_operator_bridge_cli as capture_module
+from constructionsight import ceqanet_csv_operator_bridge_cli as capture_module
 from constructionsight.ceqanet_csv_live_models import CeqanetCsvLiveExecution
 from constructionsight.ceqanet_csv_models import canonical_digest
 from constructionsight.ceqanet_csv_operator_bridge import (

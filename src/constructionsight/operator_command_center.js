@@ -455,7 +455,7 @@ async function ingestionInboxMarkup(inbox) {
     rows+'</tbody></table></div><p>Same-SCH contextual records do not suppress missing reviewed CSV enrichment. '+
     'No browser request, database mutation, lead qualification, outreach, or bid action is authorized by this status view.</p></section>';
 }
-function prepareCeqanetCapture() {
+async function prepareCeqanetCapture() {
   const raw=byId("capture-sch-number").value.trim();
   const target=byId("capture-instructions");
   if(!/^[0-9]{10}$/.test(raw)){
