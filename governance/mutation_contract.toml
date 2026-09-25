@@ -1002,8 +1002,14 @@ risk = "The registry CLI could discard its no-overwrite policy at the actual pub
 [[cases]]
 id = "CS-MUT-BUNDLE-OUTPUT-CONTAINMENT-001"
 path = "src/constructionsight/ceqanet_operator_bundle.py"
-search = "    publish_runtime_artifact(path, chunks(), max_bytes=limit, replace_existing=True)"
-replacement = "    path.write_text(\"\".join(fragments), encoding=\"utf-8\")"
+search = '''        publish_runtime_artifact(
+            output_path,
+            chunks(),
+            max_bytes=limit,
+            replace_existing=True,
+            parent=parent,
+        )'''
+replacement = "        output_path.write_bytes(b\"\\".join(chunks()))"
 tests = ["tests/test_ceqanet_operator_bundle.py::test_bundle_publication_rejects_unsafe_output"]
 expected_output = "test_bundle_publication_rejects_unsafe_output"
 risk = "Bundle output could follow a replaced ancestor or final symlink."
