@@ -651,3 +651,93 @@ last_active_commit = "22ff17f177fc26d9056f2678cc18f4c9ad4894eb"
 evidence_paths = ["docs/architecture/opportunity_enrichment_spine.md", "docs/assurance/defect_closures/CS-SR-048.md", "src/constructionsight/opportunity_enrichment_models.py", "src/constructionsight/opportunity_enrichment_service.py", "src/constructionsight/opportunity_scoring_profile.py"]
 regression_tests = ["tests/test_opportunity_enrichment_models.py", "tests/test_opportunity_enrichment_service.py"]
 closure_evidence = "docs/assurance/defect_closures/CS-SR-048.md"
+
+[[defects]]
+id = "CS-SR-068"
+severity = "P1"
+area = "supply-chain-action-runtime-provenance"
+root_cause = "Canonical CI pins third-party GitHub Action source commits, but the pinned checkout, setup-python, and upload-artifact commits declare Node 20 while current GitHub-hosted runners forcibly execute those bundles under Node 24. The immutable source SHA therefore no longer fixes the interpreter semantics actually executing in CI, and the workflow lacks a native binding from Action identity to a reviewed runtime class."
+discovered_against = "99081b3cd2f4d6dc1916f13c36e09ecda76ac7e1"
+required_resolution = "Review and pin Node-24-native checkout, setup-python, and upload-artifact releases by immutable commit; preserve existing least-privilege and quality semantics; machine-certify the exact Action repositories, commits, occurrence counts, and reviewed runtime annotations; retain the composite pip-audit identity; rerun the complete exact-head matrix; and require the Node-20 forced-runtime warning to disappear before assurance freeze."
+resolution_summary = "Pinned checkout, setup-python, and upload-artifact to immutable reviewed Node-24-native releases and added repository-native certification of exact Action repository, commit, runtime annotation, and occurrence counts."
+resolution_commit = "6e568d2c266550be14f50f1270f4a5d13889d787"
+resolution_tree = "7fcfec16460c11694f2ab54650f070cf4ad00732"
+last_active_commit = "93467d37b1876b9732f07ad0ad8a61c02db67b9f"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-068.md", ".github/workflows/ci.yml", "src/constructionsight/ci_action_certification.py"]
+regression_tests = ["tests/test_ci_action_certification.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-068.md"
+
+[[defects]]
+id = "CS-SR-069"
+severity = "P1"
+area = "supply-chain-vulnerability-toolchain-reproducibility"
+root_cause = "The immutable pypa/gh-action-pip-audit composite source does not pin the scanner implementation it executes: its requirements allow resolver-selected pip-audit and transitive versions, so the mandatory vulnerability gate can change without a ConstructionSight tree or Action-SHA change."
+discovered_against = "7fe708e1ea49044b2b847a9624da5c80c765a679"
+required_resolution = "Remove the resolver-selected vulnerability-scanner bootstrap; use a repository-owned deterministic vulnerability certifier with explicit fail-closed advisory provenance or a fully artifact-hashed exact scanner environment; preserve isolated zero-known-vulnerability enforcement and retained evidence; add negative network, schema, advisory, and mutation coverage; and rerun the complete supported-runtime matrix."
+resolution_summary = "Removed resolver-selected vulnerability scanner bootstrap from the mandatory gate and replaced it with repository-owned, source-evidence-bound vulnerability collection and certification over exact hash-locked environments."
+resolution_commit = "6e568d2c266550be14f50f1270f4a5d13889d787"
+resolution_tree = "7fcfec16460c11694f2ab54650f070cf4ad00732"
+last_active_commit = "93467d37b1876b9732f07ad0ad8a61c02db67b9f"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-069.md", ".github/workflows/ci.yml", "scripts/acquire_vulnerability_sources.py", "src/constructionsight/vulnerability_certification.py", "src/constructionsight/vulnerability_ci_certification.py"]
+regression_tests = ["tests/test_vulnerability_certification.py", "tests/test_vulnerability_collection.py", "tests/test_vulnerability_ci_certification.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-069.md"
+
+[[defects]]
+id = "CS-SR-071"
+severity = "P0"
+area = "assurance-execution-integrity"
+root_cause = "The isolated vulnerability job invokes three noninteractive Bash steps without step-local BASH_ENV neutralization. A workflow, job, runner, or inherited environment can therefore point BASH_ENV at attacker-controlled startup content that Bash evaluates before the canonically certified step body, allowing the execution semantics to diverge from the text the vulnerability CI certifier binds."
+discovered_against = "235b322da599bcb8ff34ff5d20b18893fc487b14"
+required_resolution = "Set BASH_ENV to /dev/null at each security-critical vulnerability Bash step, bind all occurrences and their placement into the exact vulnerability-job execution contract, add missing-or-weakened neutralizer regressions and focused mutation coverage, rerun the complete exact-head supported-runtime matrix, and retain CS-SR-071 as active until exact-tree Native Maximum Assurance legitimately closes the reviewed defect history."
+resolution_summary = "Neutralized Bash startup hooks at every security-critical vulnerability step with step-local BASH_ENV=/dev/null and bound those exact declarations into the canonical vulnerability-job certifier."
+resolution_commit = "6e568d2c266550be14f50f1270f4a5d13889d787"
+resolution_tree = "7fcfec16460c11694f2ab54650f070cf4ad00732"
+last_active_commit = "93467d37b1876b9732f07ad0ad8a61c02db67b9f"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-071.md", ".github/workflows/ci.yml", "src/constructionsight/vulnerability_ci_certification.py"]
+regression_tests = ["tests/test_vulnerability_ci_certification.py", "tests/test_vulnerability_ci_startup.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-071.md"
+
+[[defects]]
+id = "CS-SR-072"
+severity = "P0"
+area = "ci-inherited-execution-controls"
+root_cause = "The canonical CI workflow launches noninteractive Bash without suppressing inherited shell options and exported functions. SHELLOPTS=noexec skips a failing script and exits successfully even with BASH_ENV=/dev/null; an imported test function can also turn failed enforcement into success. A workflow-level noexec setting outside the literal vulnerability-job block passes the complete existing structural preflight, and quality-job shells remain exposed to inherited startup hooks."
+discovered_against = "71c34f275a8d6fa99692e730ff7254b932da7983"
+required_resolution = "Use an explicit reviewed Bash executable and startup-isolated launch flags for every canonical CI run step, preserving errexit and pipefail; bind all workflow bytes including global settings and quality-job controls into structural and final certification; preserve the existing BASH_ENV neutralizers and vulnerability-job contract; add real inherited-option, exported-function, startup-hook, command-resolution, and failure-propagation regressions plus digest and integration mutation witnesses; rerun the complete supported-runtime matrix; and retain the defect until exact-tree Native Maximum Assurance closure."
+resolution_summary = "Moved every canonical CI run step to the reviewed absolute Bash executable with startup isolation and privileged-mode semantics, sealed whole-workflow execution controls, and added real inherited-option/function adversarial tests."
+resolution_commit = "6e568d2c266550be14f50f1270f4a5d13889d787"
+resolution_tree = "7fcfec16460c11694f2ab54650f070cf4ad00732"
+last_active_commit = "93467d37b1876b9732f07ad0ad8a61c02db67b9f"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-072.md", ".github/workflows/ci.yml", "src/constructionsight/ci_execution_certification.py"]
+regression_tests = ["tests/test_ci_execution_certification.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-072.md"
+
+[[defects]]
+id = "CS-SR-073"
+severity = "P0"
+area = "ci-pre-gate-build-execution"
+root_cause = "The quality job installed the pull-request candidate with pip install --no-deps --no-build-isolation -e . before the structural and assurance gates. Because the candidate controls its PEP 517 build backend and build configuration, repository-controlled build code could execute before those gates and mutate runner command files or the checkout, allowing later gate execution to diverge from the reviewed workflow while the whole-workflow digest itself remained unchanged."
+discovered_against = "af8758343a6a554f23e7ef10ea6aeb849f082718"
+required_resolution = "Remove all candidate project installation and build execution from the pre-gate quality bootstrap; install only the exact hash-locked third-party environment; execute canonical source through a reviewed PYTHONPATH binding; certify the dependency-only install block and prohibit additional project-install commands independently of the workflow digest; verify source-project identity without invoking a build backend and reject installed-project shadowing; add regression and mutation coverage; rerun both supported runtimes; and retain CS-SR-073 as active until exact-tree Native Maximum Assurance legitimately closes reviewed defect history."
+resolution_summary = "Removed candidate-project installation and build execution from pre-gate CI; the quality job now installs only exact hash-locked third-party dependencies and executes reviewed source through PYTHONPATH with structural regression enforcement."
+resolution_commit = "6e568d2c266550be14f50f1270f4a5d13889d787"
+resolution_tree = "7fcfec16460c11694f2ab54650f070cf4ad00732"
+last_active_commit = "93467d37b1876b9732f07ad0ad8a61c02db67b9f"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-073.md", ".github/workflows/ci.yml", "src/constructionsight/ci_execution_certification.py", "docs/adr/ADR-0009-native-maximum-assurance.md"]
+regression_tests = ["tests/test_ci_execution_certification.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-073.md"
+
+[[defects]]
+id = "CS-SR-074"
+severity = "P0"
+area = "supply-chain-newly-disclosed-anyio-advisories"
+root_cause = "Both supported artifact-hashed dependency locks retained AnyIO 4.9.0 when exact-head CI newly detected active GHSA-5p39-cfhj-2xmp (CVE-2026-64847) and GHSA-82r6-8w77-94w6 (CVE-2026-63374); their distinct public disclosure dates are not inferred from the CI detection date. The canonical 2026-09-20 exact-head CI vulnerability audits identified both as active and failed, invalidating reliance on the older no-active-advisory checkpoint. Exposure of affected AnyIO code paths within ConstructionSight has not been independently established."
+discovered_against = "3be6ee6529ed5d8cbb69d88c064de9fd6174c0a4"
+required_resolution = "Retain independent source evidence for both advisories and the reviewed fixed AnyIO release; pin exact PyPI-published universal wheel identity and SHA-256 consistently for Python 3.11 and 3.12; validate strict hash-locked installation, dependency compatibility, network/TLS behavior, full tests and independent fresh vulnerability collection at an exact new head; propagate the fix to stacked GUI and hardening trees; keep this defect active until Native Maximum Assurance, reviewed closure and authenticated owner acceptance legitimately succeed."
+resolution_summary = "Upgraded both supported hash-locked environments from vulnerable AnyIO 4.9.0 to reviewed AnyIO 4.14.2 with exact wheel SHA-256 identity; repository-native fresh vulnerability collection now reports zero active advisories in both runtime matrices."
+resolution_commit = "6e568d2c266550be14f50f1270f4a5d13889d787"
+resolution_tree = "7fcfec16460c11694f2ab54650f070cf4ad00732"
+last_active_commit = "93467d37b1876b9732f07ad0ad8a61c02db67b9f"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-074.md", "requirements/py311.lock", "requirements/py312.lock", "scripts/acquire_vulnerability_sources.py", "src/constructionsight/vulnerability_certification.py"]
+regression_tests = ["tests/test_vulnerability_certification.py", "tests/test_vulnerability_collection.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-074.md"
