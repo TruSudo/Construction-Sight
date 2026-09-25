@@ -19,8 +19,8 @@ from constructionsight.adapters import (
     default_adapter_registry,
 )
 from constructionsight.adapters.base import AdapterRunContext
-from constructionsight.adapters.ceqanet import CeqanetLiveDiscovery
 from constructionsight.adapters.runner import AdapterRunner
+from constructionsight.ceqanet_discovery_service import discover_ceqanet_public_search
 from constructionsight.intelligence.artifact_identity import (
     IdentityFingerprint,
     IdentityResolutionCandidate,
@@ -33,12 +33,14 @@ from constructionsight.intelligence.graph_neighborhood_service import (
 from constructionsight.intelligence.relationship_query_service import RelationshipQueryService
 from constructionsight.models import PublicSource
 from constructionsight.storage.database import (
+    DEFAULT_DATABASE_PATH,
     create_database_engine,
     initialize_database,
     managed_session,
     session_factory,
 )
 from constructionsight.storage.intelligence_store import IntelligenceStore
+from constructionsight.storage.runtime_artifacts import read_runtime_text, write_runtime_text
 from constructionsight.storage.source_registry import SourceRegistryStore
 from constructionsight.storage.verification_store import VerificationStore
 from constructionsight.verification.source_verifier import SourceVerifier
@@ -50,7 +52,7 @@ console = Console()
 def _load_sources_from_json(registry_path: Path) -> list[PublicSource]:
     """Load and validate source records from a JSON registry file."""
 
-    data = json.loads(registry_path.read_text(encoding="utf-8"))
+    data = json.loads(read_runtime_text(registry_path))
     if not isinstance(data, list):
         raise typer.BadParameter("Source registry JSON must be a list of source records.")
     return [PublicSource.model_validate(item) for item in data]
@@ -78,7 +80,7 @@ def _read_json_object_file(input_path: Path) -> dict[str, Any]:
     """Read a JSON object from disk for export verification."""
 
     try:
-        payload = json.loads(input_path.read_text(encoding="utf-8"))
+        payload = json.loads(read_runtime_text(input_path))
     except json.JSONDecodeError as exc:
         raise typer.BadParameter(f"Invalid JSON export: {exc}") from exc
     if not isinstance(payload, dict):
@@ -224,10 +226,8 @@ def _verification_export_payload(records: list[Any], *, limit: int) -> dict[str,
 def _write_json_file(output_path: Path, payload: dict[str, Any]) -> None:
     """Write deterministic UTF-8 JSON to disk."""
 
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(
-        json.dumps(payload, indent=2, sort_keys=True, default=str) + "\n",
-        encoding="utf-8",
+    write_runtime_text(
+        output_path, json.dumps(payload, indent=2, sort_keys=True, default=str) + "\n",
     )
 
 
@@ -378,7 +378,7 @@ def _read_artifact_resolution_preview_input(
     """Read artifact-resolution preview input from a JSON object file."""
 
     try:
-        payload = json.loads(input_path.read_text(encoding="utf-8"))
+        payload = json.loads(read_runtime_text(input_path))
     except json.JSONDecodeError as exc:
         raise typer.BadParameter(f"Invalid artifact resolution JSON: {exc}") from exc
 
@@ -612,7 +612,7 @@ def discover_ceqanet(
 ) -> None:
     """Discover the public CEQAnet advanced-search surface without collecting records."""
 
-    result = CeqanetLiveDiscovery().discover()
+    result = discover_ceqanet_public_search()
     table = Table(title="CEQAnet Public Search Discovery")
     table.add_column("Check")
     table.add_column("Result")
@@ -728,6 +728,8 @@ def init_db(
 ) -> None:
     """Initialize the ConstructionSight database tables."""
 
+    if database_url is None:
+        DEFAULT_DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
     engine = create_database_engine(database_url)
     initialize_database(engine)
     console.print("Database initialized.")

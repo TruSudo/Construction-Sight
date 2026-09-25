@@ -1,0 +1,123 @@
+{
+  "schema_version": "constructionsight.diagnostic-evidence-manifest/v1",
+  "scope": "Output containment correction batch; local diagnostic and prior-head CI evidence, not Native Maximum Assurance.",
+  "starting_hardening_commit": "49c79447491bd531299331ad6a5846e64eb1c08e",
+  "starting_gui_commit": "3fd888d714ca9a14d3a3c79eb71759a8a89988dd",
+  "files": [
+    {
+      "path": "bundle-archive-after.raw.json",
+      "bytes": 2812,
+      "sha256": "c2b1c8d6c53347b5b6801565ff57a62d538e531686e2017264a7572bf36ea978"
+    },
+    {
+      "path": "bundle-archive-before.raw.json",
+      "bytes": 3866,
+      "sha256": "a906ed8ffe9e43140c02aaef75e8e8198a4b65917462d75dcc9686fb64c853fd"
+    },
+    {
+      "path": "ci-106315381990.raw.json",
+      "bytes": 142456,
+      "sha256": "628eb4afaf693ee6f455a03f33c22981eda2e8f4ee8e44ea391f00fed1fa2fa2"
+    },
+    {
+      "path": "ci-106315382184.raw.json",
+      "bytes": 142745,
+      "sha256": "9699616d4d96256cf25dce78fbb437376001a95cd0a016f52886e86793189ab5"
+    },
+    {
+      "path": "ci-106315382236.raw.json",
+      "bytes": 29372,
+      "sha256": "9541388f241b3dbb2851c1965a09d0ec1c5067d14ae322f29e292a64006878d5"
+    },
+    {
+      "path": "ci-106315382328.raw.json",
+      "bytes": 29372,
+      "sha256": "1d9647d3bc9441d7aa8617e96e51568d170b690a5fb8c9def1a6ba0367d07a62"
+    },
+    {
+      "path": "ci-106315386903.raw.json",
+      "bytes": 143080,
+      "sha256": "561d3ac3ee6926a1154a659b04f7d05d88b0f9fd0b05c7b91311f53e04e07a61"
+    },
+    {
+      "path": "ci-106315387064.raw.json",
+      "bytes": 29368,
+      "sha256": "05db6e7e59c06f6a6caf4b452c866ff9bd628bb0d230e9bccc18fa5f74ca9d64"
+    },
+    {
+      "path": "ci-106315387091.raw.json",
+      "bytes": 29368,
+      "sha256": "741176160d51711330a6acd58994aa09670252757310cb1658f60eba8c405026"
+    },
+    {
+      "path": "ci-106315387283.raw.json",
+      "bytes": 142781,
+      "sha256": "0e49648ec9f1e2bad22dac431ae4853182441c8265ab854415f644093f3833e0"
+    },
+    {
+      "path": "output-before-test-source.txt",
+      "bytes": 5024,
+      "sha256": "9f01f71d8c9f04c7187ed5ba2e06198ade1c231248781898e0c173bc645a6f9d"
+    },
+    {
+      "path": "output-before.raw.json",
+      "bytes": 58786,
+      "sha256": "a23f7d15922dd5491efca4f4d8636389d937d1c311ed033accaab437901b0c43"
+    },
+    {
+      "path": "output-gui-full.raw.json",
+      "bytes": 2869,
+      "sha256": "6dc6bef0938cb0e0ae35b3f8e82e369bd9ab6e9d3015e3122ec10e04c0d29b9c"
+    },
+    {
+      "path": "output-gui-mypy.raw.json",
+      "bytes": 587,
+      "sha256": "75eae6789609153d5513de3404cd21fe2ccecfcd32af0404207339420a51194a"
+    },
+    {
+      "path": "output-gui-ruff.raw.json",
+      "bytes": 571,
+      "sha256": "89ff4c2efc10007a7f27541f3adb7c1311bdac14f0ef38a48a2c4cc6f477c4cf"
+    },
+    {
+      "path": "output-hardening-full.raw.json",
+      "bytes": 2816,
+      "sha256": "391d0a4dd48aa9c21a6affcaeb2061ff194395c3fb634bf8b999d8252e9bfd99"
+    },
+    {
+      "path": "output-inherited-candidate.raw.json",
+      "bytes": 1447,
+      "sha256": "7eecb94acac2180bec0c63cee65eb73958f3157a00e026179fbc5e863251821a"
+    },
+    {
+      "path": "output-mutation-report.json",
+      "bytes": 27853,
+      "sha256": "fd3292012e4aaba2c5959e057c51beec6c913a9d3e5f53851d46fc917087cf75"
+    },
+    {
+      "path": "output-mutations.raw.json",
+      "bytes": 1228,
+      "sha256": "8784b929aac5654dd179661ef385e1eadf7e0b3cb96c7c6f26f362e82c68f6f8"
+    },
+    {
+      "path": "output-mypy.raw.json",
+      "bytes": 697,
+      "sha256": "f490cfa71f8a2ced2455e6280d39910df00991a9e3a1aee6853824f414da5823"
+    },
+    {
+      "path": "output-ruff-final.raw.json",
+      "bytes": 681,
+      "sha256": "7464aa15e9638a9b661bb3bda16f92ee2e61f9c1a1da1944b195242727a96574"
+    },
+    {
+      "path": "output-ruff.raw.json",
+      "bytes": 719,
+      "sha256": "44f3afb63ffd8ed475a6d6f524730029eb72a1718345bcb7b7a11a9018789227"
+    },
+    {
+      "path": "output-targeted.raw.json",
+      "bytes": 1085,
+      "sha256": "e5f313e788310be6090727a75814da75296f89155847ab00d530f3ae78d5118a"
+    }
+  ]
+}

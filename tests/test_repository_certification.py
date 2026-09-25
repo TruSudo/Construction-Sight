@@ -46,15 +46,20 @@ jobs:
           - "3.11"
           - "3.12"
     steps:
+      - run: git ls-files --stage
       - run: python -m ruff check src tests
       - run: python -m mypy src
       - run: python -m compileall -q src tests
       - run: python -m pytest --strict-config --strict-markers -ra
       - run: python -m pip check
       - run: git diff --check
-      - run: python -m constructionsight.repository_certification --root . --require-clean-worktree
-      - run: constructionsight audit-adapters
-      - run: constructionsight audit-source-coverage data/source_registry.seed.json
+      - run: >-
+          python -m constructionsight.repository_certification_v2
+          --root . --require-clean-worktree
+      - run: python -c 'from constructionsight.cli import app; app()' audit-adapters
+      - run: |
+          python -c 'from constructionsight.cli import app; app()' \\
+            audit-source-coverage data/source_registry.seed.json
 """
 
 
@@ -129,6 +134,25 @@ def test_broken_local_markdown_link_fails(tmp_path: Path) -> None:
     assert any(finding.code == "CERT-DOC-001" for finding in report.findings)
 
 
+def test_tracked_symbolic_link_fails_without_reading_target(tmp_path: Path) -> None:
+    _build_repository(tmp_path)
+    outside = tmp_path.parent / f"{tmp_path.name}-outside.md"
+    outside.write_text("outside\n", encoding="utf-8")
+    link = tmp_path / "docs/external.md"
+    link.parent.mkdir(parents=True)
+    link.symlink_to(outside)
+    _run(tmp_path, "add", "docs/external.md")
+    _run(tmp_path, "commit", "-m", "Add prohibited symbolic link")
+
+    report = audit_repository(tmp_path)
+
+    assert any(
+        finding.code == "CERT-PATH-005"
+        and finding.path == "docs/external.md"
+        for finding in report.findings
+    )
+
+
 def test_dirty_worktree_fails_when_required(tmp_path: Path) -> None:
     _build_repository(tmp_path)
     _write(tmp_path, "README.md", "# Modified fixture\n")
@@ -147,6 +171,25 @@ def test_missing_console_script_attribute_fails(tmp_path: Path) -> None:
     report = audit_repository(tmp_path)
 
     assert any(finding.code == "CERT-SCRIPT-003" for finding in report.findings)
+
+
+def test_ci_gate_in_comment_does_not_satisfy_required_command(tmp_path: Path) -> None:
+    _build_repository(tmp_path)
+    command = "python -m constructionsight.repository_certification_v2"
+    workflow = _MINIMAL_WORKFLOW.replace(
+        "          python -m constructionsight.repository_certification_v2\n",
+        f"          # legacy compatibility: {command}\n",
+    )
+    _write(tmp_path, ".github/workflows/ci.yml", workflow)
+    _run(tmp_path, "add", ".github/workflows/ci.yml")
+    _run(tmp_path, "commit", "-m", "Comment out required certification command")
+
+    report = audit_repository(tmp_path)
+
+    assert any(
+        finding.code == "CERT-CI-002" and command in finding.message
+        for finding in report.findings
+    )
 
 
 def test_cli_returns_failure_for_findings(tmp_path: Path) -> None:
