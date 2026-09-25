@@ -168,7 +168,11 @@ def test_cli_writes_artifact_resolution_json_file(tmp_path) -> None:
     assert output_path.exists()
 
     payload = json.loads(output_path.read_text(encoding="utf-8"))
-    assert payload["candidate_id"] == "candidate-cli-preview"
+    assert payload["candidate_id"] == canonical_resolution_candidate_id(
+        "project-left",
+        "project-right",
+        target_kind=ResolutionTargetKind.PROJECT,
+    )
     assert payload["recommended_decision"] == "needs_review"
 
 
