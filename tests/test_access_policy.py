@@ -11,7 +11,7 @@ def _reviewed_public_profile(**overrides: object) -> SourceAccessProfile:
         "robots_disallows_collection": False,
         "terms_disallow_collection": False,
         "paywalled": False,
-        "access_fact_basis": "review:test-access-policy",
+        "access_fact_basis": "review:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     }
     values.update(overrides)
     return SourceAccessProfile(**values)
