@@ -35,9 +35,9 @@ def test_result_ledger_digest_bound_collections_are_immutable() -> None:
     assert ledger.share.notes == ()
 
     with pytest.raises(ValidationError, match="frozen"):
-        ledger.reasons = ("changed after digest",)  # type: ignore[misc]
+        setattr(ledger, "reasons", ("changed after digest",))
     with pytest.raises(ValidationError, match="frozen"):
-        ledger.share.notes = ("changed after digest",)  # type: ignore[misc]
+        setattr(ledger.share, "notes", ("changed after digest",))
 
 
 def test_parcel_observation_retains_recursively_frozen_record() -> None:
@@ -53,7 +53,7 @@ def test_parcel_observation_retains_recursively_frozen_record() -> None:
 
     assert observation.record.limitations == ("retained source limitation",)
     with pytest.raises(ValidationError, match="frozen"):
-        observation.record.limitations = ("mutated later",)  # type: ignore[misc]
+        setattr(observation.record, "limitations", ("mutated later",))
 
 
 def test_live_verification_finding_collection_is_immutable() -> None:
@@ -68,4 +68,4 @@ def test_live_verification_finding_collection_is_immutable() -> None:
 
     assert verification.findings == ("retained finding",)
     with pytest.raises(ValidationError, match="frozen"):
-        verification.findings = ("rewritten finding",)  # type: ignore[misc]
+        setattr(verification, "findings", ("rewritten finding",))
