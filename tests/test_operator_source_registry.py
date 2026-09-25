@@ -103,7 +103,6 @@ def test_source_registry_projection_reports_bounded_truncation(tmp_path, monkeyp
         store.upsert_source(
             _source(
                 "Second portal",
-                county="Riverside",
                 platform="tyler_energov",
                 verification_status="unverified",
             )
