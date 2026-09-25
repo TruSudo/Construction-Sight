@@ -1114,3 +1114,18 @@ last_active_commit = "02ab5cd8b3be9e703fde4c9295fb25772b403b0c"
 evidence_paths = ["docs/assurance/defect_closures/CS-SR-059.md", "src/constructionsight/ceqanet_csv_live_models.py", "src/constructionsight/parcel_core_models.py", "src/constructionsight/result_ledger_models.py"]
 regression_tests = ["tests/test_deep_content_immutability.py", "tests/test_parcel_observation_service.py", "tests/test_result_ledger_service.py"]
 closure_evidence = "docs/assurance/defect_closures/CS-SR-059.md"
+
+[[defects]]
+id = "CS-SR-011"
+severity = "P0"
+area = "exact-head-ci"
+root_cause = "No pull-request workflow run or commit status is associated with the current hardening heads after branch updates and a draft PR reopen, while a prior branch head remains observable through the same GitHub API. Exact-head CI evidence therefore does not exist for the current tree."
+discovered_against = "ee2ee1f5d3c09b09d4b70f1f6b3b45fdfed27ab2"
+required_resolution = "Trigger the canonical CI workflow through a non-suppressed pull-request event or explicit workflow dispatch on the final exact head; require both Python jobs and retained certification artifacts before any defect resolution or merge."
+resolution_summary = "Canonical pull-request CI run #1551 executed against exact last-active commit 381a64ecc4e35601453091ac880af0d6328d85a9. Retained Python 3.11 and 3.12 artifacts each prove 2134/2134 tests passed and 164/164 focused mutants killed; Ruff, strict mypy, compilation, isolated vulnerability audits, adapter/source audits, Native assurance preflight, GitHub Actions provenance verification, repository/semantic certification, and diff hygiene all passed. Raw repository certification reduced to only ASSURANCE-001 plus CS-SR-011 itself."
+resolution_commit = "381a64ecc4e35601453091ac880af0d6328d85a9"
+resolution_tree = "ec4523d97cb9d67f8b9c195c1b6caf59cebe80c3"
+last_active_commit = "381a64ecc4e35601453091ac880af0d6328d85a9"
+evidence_paths = [".github/workflows/ci.yml", "docs/assurance/defect_closures/CS-SR-011.md"]
+regression_tests = ["tests/test_assurance_preflight_certification.py", "tests/test_ci_exact_head_contract.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-011.md"
