@@ -20,6 +20,25 @@ PYTHONPATH=src python -m constructionsight.operator_web --database /absolute/pat
 
 Open `http://127.0.0.1:8765`. An optional `--port` selects another loopback port.
 
+To display a previously reviewed exact-SCH queue produced by
+`constructionsight-ceqanet-reviewed-import discover-preview`, add its retained
+JSON artifact explicitly:
+
+```bash
+constructionsight-operator \
+  --database /absolute/path/to/constructionsight.sqlite3 \
+  --capture-queue /absolute/path/to/review-queue.json
+```
+
+The queue is loaded through bounded no-follow runtime-artifact handling and must
+validate as `ceqanet_exact_sch_capture_queue.v1`. Invalid schema, source digest,
+SCH identity, official CEQAnet detail URL, target-county scope, duplicate/order,
+count, or authority-state metadata blocks startup. The dashboard receives a
+reduced read-only queue projection from `GET /api/capture-queue`. Selecting a
+candidate only populates the existing local single-SCH capture command preview;
+it does not issue a network request, write SQLite, create a lead, authorize
+outreach, or prepare a bid. Restart the operator to bind a different queue.
+
 For a GUI entry point that explicitly opens the local browser after the server
 binds, run:
 
@@ -116,6 +135,16 @@ Populate the database through existing governed intake/persistence commands.
   workflow references. It does not substitute the newest review for the same
   candidate. Missing exact reviews remain visible as limitations; contradictory
   identities fail the request. Workflows have separate pagination.
+- An optional retained exact-SCH capture queue can be bound at operator startup.
+  The browser reads only a validated, reduced projection from
+  `/api/capture-queue`. The queue may contain only exact ten-digit SCH candidates
+  in San Bernardino or Riverside County whose official detail URL encodes the
+  same SCH identity and whose retained authority flags remain candidate-only,
+  network-not-executed and persistence-not-mutated. Queue metadata is not
+  independent authentication of the original listing execution, and a candidate
+  is not evidence of a current jobsite. The Sources & Collection panel can copy
+  that exact SCH into the separately governed one-request capture-instruction
+  workflow; no remote collection or import occurs in the GET-only operator.
 - Both views are read-only. Source records are not deduplicated projects or
   qualified leads. No source record is silently promoted to an outreach-ready
   opportunity, and an old document/permit status is not a current phase assertion.
@@ -161,7 +190,7 @@ layers, relationship/history views, and the established commercial workflow.
 This slice does not complete those requirements or the private operational release.
 
 PR #119 remains stacked on draft PR #117. The inherited active ledger now
-contains 74 records (`CS-SR-001` through `CS-SR-074`) plus the separate missing
+contains 75 records (`CS-SR-001` through `CS-SR-075`) plus the separate missing
 Native Maximum Assurance report, which prevents certification. The historical
 September 18 hardening-branch CI reported 74 findings at its earlier exact head
 (73 active defects plus the missing assurance report), not this current tree.
@@ -406,3 +435,59 @@ presenting the generic share calculation as a paid royalty.
 The dedicated AI Center remains OFF / no provider connected. These new read-only
 capabilities operate independently of AI. The entire new increment remains
 development-stage until exact-head CI and actual browser acceptance are reviewed.
+
+
+## Retained source-verification reconciliation in Sources & Collection
+
+The configured-source table now distinguishes the persisted source-registry row
+from the newest linked `source_verifications` observation. The server selects
+the newest observation per source by `checked_at` and verification-row identity,
+revalidates its complete typed `SourceVerificationResult`, and requires its
+source name and canonical public URL to agree with the linked registry row.
+
+When a retained verification exists, the Command Center shows its observation
+time, reachability result, detected platform family, public-search observation,
+login-requirement observation, confidence and retained note separately from the
+registry's stored verification status and confidence. The operator also reports
+whether the registry status, confidence and last-checked date are consistent with
+the newest retained check under the same status derivation used by
+`VerificationStore`. A disagreement is displayed as a review warning; the read
+surface does not overwrite either record to make them appear consistent.
+
+These observations remain historical evidence. A prior successful reachability
+check, a `verified` registry label, or a live-capable adapter status does not
+authorize a new HTTP request, recurring collection, credential use, source
+promotion, lead qualification, outreach or bidding. Malformed retained
+verification JSON or linked source-identity disagreement fails the read instead
+of silently omitting the inconsistent evidence.
+
+## Configured-source attribution coverage in Sources & Collection
+
+The source-registry view now also performs a bounded local provenance-attribution
+scan. It compares only exact record-level `Provenance.source_name` values from
+retained CEQA and permit records with configured registry source names. It does
+not infer source identity from similar names, portal hosts, jurisdictions,
+addresses or adapter families.
+
+Configured source identities are scanned independently of the 500-row display
+limit. If that bounded identity scan is incomplete, record attribution is
+withheld entirely so an unseen configured source cannot be mislabeled as
+unregistered. Duplicate configured source names are also excluded from per-source
+attribution because an exact name alone would not identify one registry row.
+
+When source identity is complete, CEQA and permit records are each scanned under
+their own bounded cap. The panel reports records scanned versus stored totals,
+whether either record scan truncated, the count of scanned records with at least
+one unique configured source-name match, the count without such a match, and
+retained provenance source names that do not occur in the configured identity
+set. A record with multiple source provenance assertions may contribute to more
+than one per-source attribution count, but contributes only once to the
+with/without-configured-source accounting.
+
+These are local evidence-coverage diagnostics, not claims of jurisdiction-wide
+coverage or live collection. They do not establish that the source supplied every
+project in its jurisdiction, that a retained record is current, or that a project
+is an active security opportunity. Startup schema validation now requires the
+`sources` and `source_verifications` tables because Sources & Collection
+depends on them; a legacy database missing either table is rejected instead of
+failing only after the panel is opened.

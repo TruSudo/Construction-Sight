@@ -34,6 +34,7 @@ from constructionsight.operator_dashboard import (
     build_workflow_snapshot,
     build_workflow_status_summary,
 )
+from constructionsight.operator_entity_index import build_entity_index
 from constructionsight.operator_results import build_result_ledger_snapshot
 from constructionsight.operator_services.ceqanet_persistence_service import (
     execute_authorized_ceqanet_write_plan,
@@ -42,7 +43,6 @@ from constructionsight.operator_source_candidate import (
     SourceRecordNotFound,
     build_source_candidate_preview,
 )
-from constructionsight.operator_entity_index import build_entity_index
 from constructionsight.operator_web import _parameters, create_handler
 from constructionsight.parcel_core_models import (
     ParcelCoreRecord,
@@ -76,6 +76,42 @@ from constructionsight.storage.parcel_site_store import store_parcel_core_record
 
 def _provenance():
     return [Provenance(source_name="Synthetic integration fixture", evidence_text="Fixture only")]
+
+
+def _capture_queue_payload():
+    return {
+        "schema_version": "ceqanet_exact_sch_capture_queue.v1",
+        "listing_artifact_sha256": "a" * 64,
+        "listing_plan_id": "fixture-listing-plan",
+        "listing_pages_reviewed": 2,
+        "listing_records_parsed": 5,
+        "candidate_count": 1,
+        "excluded_observations": {
+            "missing_or_ambiguous_sch": 1,
+            "outside_target_counties": 2,
+        },
+        "candidates": [
+            {
+                "sch_number": "2026012345",
+                "source_claimed_county": "San Bernardino",
+                "source_claimed_title": "Synthetic retained listing candidate",
+                "title_requires_detail_enrichment": False,
+                "official_detail_url": (
+                    "https://ceqanet.lci.ca.gov/Project/2026012345"
+                ),
+                "observation_pages": [1, 2],
+                "source_observation_count": 2,
+                "review_state": "unverified_source_claim",
+                "candidate_only": True,
+                "network_executed_for_candidate": False,
+                "persistence_mutated": False,
+            }
+        ],
+        "network_executed": False,
+        "persistence_mutated": False,
+        "commercial_leads_created": False,
+        "limitations": ["Fixture input only."],
+    }
 
 
 def _record(key="fixture:one", **updates):
@@ -117,8 +153,11 @@ def database(tmp_path):
 
 
 @contextmanager
-def _server(path):
-    server = ThreadingHTTPServer(("127.0.0.1", 0), create_handler(path))
+def _server(path, *, capture_queue_path=None):
+    server = ThreadingHTTPServer(
+        ("127.0.0.1", 0),
+        create_handler(path, capture_queue_path=capture_queue_path),
+    )
     thread = Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
     thread.start()
     try:
@@ -634,6 +673,84 @@ def test_operator_rejects_legacy_column_shape_before_serving(database):
     with pytest.raises(OperationalError, match="no such column"):
         create_handler(path)
     assert path.read_bytes() == before
+
+
+def test_capture_queue_endpoint_is_optional_bounded_and_read_only(database, tmp_path):
+    path, _ = database
+    before = hashlib.sha256(path.read_bytes()).hexdigest()
+
+    with _server(path) as port:
+        status, _, body = _get(port, "/api/capture-queue")
+        assert status == 200
+        empty = json.loads(body)
+        assert empty["configured"] is False
+        assert empty["candidate_count"] == 0
+        assert empty["read_only"] is True
+        assert _get(port, "/api/capture-queue?unexpected=1")[0] == 400
+
+    queue_path = tmp_path / "capture-queue.json"
+    queue_path.write_text(json.dumps(_capture_queue_payload()), encoding="utf-8")
+    with _server(path, capture_queue_path=queue_path) as port:
+        status, _, body = _get(port, "/api/capture-queue")
+        assert status == 200
+        queue = json.loads(body)
+        assert queue["schema_version"] == "constructionsight.operator_capture_queue.v1"
+        assert queue["configured"] is True
+        assert queue["candidate_count"] == 1
+        assert queue["candidates"][0]["sch_number"] == "2026012345"
+        assert queue["candidates"][0]["candidate_only"] is True
+        assert queue["network_executed"] is False
+        assert queue["persistence_mutated"] is False
+        assert queue["commercial_leads_created"] is False
+
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == before
+
+
+def test_invalid_capture_queue_blocks_operator_startup_without_database_mutation(
+    database, tmp_path
+):
+    path, _ = database
+    before = hashlib.sha256(path.read_bytes()).hexdigest()
+    queue_path = tmp_path / "bad-capture-queue.json"
+    payload = _capture_queue_payload()
+    payload["candidates"][0]["official_detail_url"] = "https://example.com/Project/2026012345"
+    queue_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="official SCH page"):
+        create_handler(path, capture_queue_path=queue_path)
+
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == before
+
+
+def test_source_registry_endpoint_is_read_only_and_rejects_query_parameters(database):
+    path, _ = database
+    before = hashlib.sha256(path.read_bytes()).hexdigest()
+    with _server(path) as port:
+        status, _, body = _get(port, "/api/source-registry")
+        assert status == 200
+        payload = json.loads(body)
+        assert payload["read_only"] is True
+        assert payload["network_collection_enabled"] is False
+        assert payload["verification_metadata_is_authority"] is False
+        assert payload["total"] == payload["returned"] == 0
+        assert payload["source_identity_scan_truncated"] is False
+        assert payload["source_attribution_available"] is True
+        assert payload["ceqa_records_total"] == payload["ceqa_records_scanned"] == 0
+        assert payload["permit_records_total"] == payload["permit_records_scanned"] == 0
+        assert payload["records_with_registered_source_in_scan"] == 0
+        assert payload["records_without_registered_source_in_scan"] == 0
+        assert payload["entries"] == []
+        assert _get(port, "/api/source-registry?kind=permit")[0] == 400
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == before
+
+
+def test_operator_startup_requires_source_registry_schema(database):
+    path, engine = database
+    with engine.begin() as connection:
+        connection.execute(text("DROP TABLE source_verifications"))
+
+    with pytest.raises(OperationalError):
+        create_handler(path)
 
 
 def test_health_rechecks_schema_after_startup(database):

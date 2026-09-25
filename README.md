@@ -271,8 +271,10 @@ The backend can represent and govern opportunities, leads, workflow state, resul
 
 A local read-only operator GUI now reads persisted CEQA/permit records and lead
 workflows. It provides database-backed search, source evidence, named parties,
-and an offline geographic coordinate map. Source records are not qualified leads;
-no automatic acquisition, outreach, or bid action is enabled. See
+and an offline geographic coordinate map. An optional explicitly configured
+retained exact-SCH review queue can also be displayed without granting the browser
+network or write authority. Source records and queue candidates are not qualified
+leads; no automatic acquisition, outreach, or bid action is enabled. See
 [local operator application](docs/architecture/operator_gui.md) for the launch
 command, data requirements, precise boundaries, and remaining integration.
 
@@ -280,7 +282,7 @@ No external communication behavior is implied by the existing models, CLI, or GU
 
 ## Known limitations
 
-- Draft PR #117 remains uncertified. Its current hardening work includes active defects `CS-SR-001` through `CS-SR-074` (74 records) and a separately missing Native Maximum Assurance report. The September 18 historical hardening CI checkpoint reported 1,473 passing pytest tests per supported interpreter and 74 certification findings at its THEN head (73 active defects and the missing assurance report). September 20 exact-head integration verification added 42 test passes per runtime at the earlier GUI head; the historical results do not certify subsequent source-tree changes. The AnyIO advisory remediation is committed to both draft branches and was separately checked by fresh isolated vulnerability audits; no active defect is closed or production release authorized.
+- Draft PR #117 remains uncertified. Its current hardening work includes active defects `CS-SR-001` through `CS-SR-075` (75 records) and a separately missing Native Maximum Assurance report. The September 18 historical hardening CI checkpoint reported 1,473 passing pytest tests per supported interpreter and 74 certification findings at its THEN head (73 active defects and the missing assurance report). September 20 exact-head integration verification added 42 test passes per runtime at the earlier GUI head; the historical results do not certify subsequent source-tree changes. The AnyIO advisory remediation is committed to both draft branches and was separately checked by fresh isolated vulnerability audits; no active defect is closed or production release authorized.
 - The earlier CS-SR-037/038 fixes and subsequent hardening candidates remain part of the historical review trail. CS-SR-073 is an active P0 pre-gate build-execution defect; no active defect may be closed merely because an implementation or routine quality gate passes. Fresh exact-tree Native Maximum Assurance and authenticated owner acceptance remain outstanding.
 - CEQAnet is `partial`, not `verified`; automated HTML collection received HTTP 403.
 - The original UTF-8 inspection failure remains preserved; the derived Windows-1252 replay passes against the same retained body hash without a second request.

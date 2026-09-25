@@ -447,7 +447,7 @@ async function ingestionInboxMarkup(inbox) {
     rows+'</tbody></table></div><p>Same-SCH contextual records do not suppress missing reviewed CSV enrichment. '+
     'No browser request, database mutation, lead qualification, outreach, or bid action is authorized by this status view.</p></section>';
 }
-function prepareCeqanetCapture() {
+async function prepareCeqanetCapture() {
   const raw=byId("capture-sch-number").value.trim();
   const target=byId("capture-instructions");
   if(!/^[0-9]{10}$/.test(raw)){
@@ -511,6 +511,217 @@ function prepareCeqanetCapture() {
     '<p>For discovery-queue candidates, prefer the lineage-bound <code>inbox</code> and <code>capture-next-preview</code> workflow so the exact listing and queue remain attached through apply. Review the retained source rows, county scope and the source/plan SHA-256 digests printed by the command. To import, independently approve both exact digests using the separate <code>constructionsight-ceqanet-reviewed-import apply --help</code> workflow and its explicit write authorization. Once applied to this operator database, the Command Center refreshes on the next local revision check. No collection, import, lead qualification, outreach or bids have been initiated by this preview.</p>';
   byId("capture-command").textContent=command;
 }
+function renderSourceRegistry(registry) {
+  if(!registry || registry.read_only!==true || registry.network_collection_enabled!==false ||
+    registry.verification_metadata_is_authority!==false || !Number.isSafeInteger(registry.total) ||
+    registry.total<0 || !Number.isSafeInteger(registry.returned) || registry.returned<0 ||
+    !Number.isSafeInteger(registry.result_limit) || registry.result_limit<1 ||
+    !Array.isArray(registry.entries) || registry.returned!==registry.entries.length ||
+    registry.returned>registry.result_limit || registry.truncated!==(registry.total>registry.returned) ||
+    !Number.isSafeInteger(registry.source_identity_scan_limit) ||
+    registry.source_identity_scan_limit<1 ||
+    !Number.isSafeInteger(registry.source_identity_rows_scanned) ||
+    registry.source_identity_rows_scanned<0 ||
+    registry.source_identity_rows_scanned>registry.source_identity_scan_limit ||
+    registry.source_identity_scan_truncated!==(registry.total>registry.source_identity_rows_scanned) ||
+    registry.source_attribution_available!==!registry.source_identity_scan_truncated ||
+    !Number.isSafeInteger(registry.source_attribution_scan_limit) ||
+    registry.source_attribution_scan_limit<1 ||
+    !Number.isSafeInteger(registry.ceqa_records_total) || registry.ceqa_records_total<0 ||
+    !Number.isSafeInteger(registry.ceqa_records_scanned) || registry.ceqa_records_scanned<0 ||
+    registry.ceqa_records_scanned>registry.source_attribution_scan_limit ||
+    !Number.isSafeInteger(registry.permit_records_total) || registry.permit_records_total<0 ||
+    !Number.isSafeInteger(registry.permit_records_scanned) || registry.permit_records_scanned<0 ||
+    registry.permit_records_scanned>registry.source_attribution_scan_limit ||
+    registry.attribution_scan_truncated!==(
+      registry.ceqa_records_total>registry.ceqa_records_scanned ||
+      registry.permit_records_total>registry.permit_records_scanned
+    ) ||
+    !Number.isSafeInteger(registry.records_with_registered_source_in_scan) ||
+    registry.records_with_registered_source_in_scan<0 ||
+    !Number.isSafeInteger(registry.records_without_registered_source_in_scan) ||
+    registry.records_without_registered_source_in_scan<0 ||
+    !Array.isArray(registry.ambiguous_registry_source_names) ||
+    !Array.isArray(registry.unregistered_source_names_in_scan) ||
+    typeof registry.unregistered_source_names_truncated!=="boolean")
+    throw Error("Persisted source registry returned inconsistent bounds or authority state.");
+  const scannedRecords=registry.ceqa_records_scanned+registry.permit_records_scanned;
+  if(registry.source_attribution_available){
+    if(registry.records_with_registered_source_in_scan+
+      registry.records_without_registered_source_in_scan!==scannedRecords)
+      throw Error("Source attribution accounting disagrees with the bounded record scan.");
+  }else if(registry.records_with_registered_source_in_scan!==0 ||
+    registry.records_without_registered_source_in_scan!==0 ||
+    registry.unregistered_source_names_in_scan.length!==0)
+    throw Error("Unavailable source attribution returned unsupported coverage claims.");
+  const validateNames=items=>items.every((item,index)=>
+    typeof item==="string" && item && (index===0 || items[index-1]<item));
+  if(!validateNames(registry.ambiguous_registry_source_names) ||
+    !validateNames(registry.unregistered_source_names_in_scan))
+    throw Error("Source attribution names are not canonical unique strings.");
+  const statuses=new Set(["unverified","verified","partial","failed","blocked"]);
+  const rows=registry.entries.map(entry=>{
+    if(!entry || typeof entry.source_name!=="string" || !entry.source_name ||
+      typeof entry.jurisdiction_name!=="string" || !entry.jurisdiction_name ||
+      typeof entry.county!=="string" || !entry.county ||
+      typeof entry.platform_family!=="string" || !entry.platform_family ||
+      !Array.isArray(entry.record_categories) || !statuses.has(entry.verification_status) ||
+      typeof entry.adapter_status!=="string" || !entry.adapter_status ||
+      typeof entry.adapter_live!=="boolean" ||
+      typeof entry.latest_verification_present!=="boolean" ||
+      typeof entry.attribution_name_unambiguous!=="boolean" ||
+      !Number.isSafeInteger(entry.attributed_ceqa_records_in_scan) ||
+      entry.attributed_ceqa_records_in_scan<0 ||
+      !Number.isSafeInteger(entry.attributed_permit_records_in_scan) ||
+      entry.attributed_permit_records_in_scan<0 ||
+      !Number.isSafeInteger(entry.attributed_records_in_scan) ||
+      entry.attributed_records_in_scan!==entry.attributed_ceqa_records_in_scan+
+        entry.attributed_permit_records_in_scan ||
+      (!entry.attribution_name_unambiguous && entry.attributed_records_in_scan!==0))
+      throw Error("Persisted source registry entry is inconsistent.");
+    const latest=entry.latest_verification_present;
+    if(latest && (
+      typeof entry.latest_verification_checked_at!=="string" ||
+      !entry.latest_verification_checked_at ||
+      typeof entry.latest_verification_url_reachable!=="boolean" ||
+      typeof entry.latest_detected_platform_family!=="string" ||
+      !entry.latest_detected_platform_family ||
+      !Number.isSafeInteger(entry.latest_verification_confidence_score) ||
+      entry.latest_verification_confidence_score<0 ||
+      entry.latest_verification_confidence_score>100 ||
+      typeof entry.verification_metadata_consistent!=="boolean" ||
+      ![null,true,false].includes(entry.latest_public_search_available) ||
+      ![null,true,false].includes(entry.latest_login_required) ||
+      ![null,"string"].includes(
+        entry.latest_verification_notes===null ? null : typeof entry.latest_verification_notes
+      )
+    )) throw Error("Latest retained source verification is inconsistent.");
+    if(!latest && (
+      entry.latest_verification_checked_at!==null ||
+      entry.latest_verification_url_reachable!==null ||
+      entry.latest_detected_platform_family!==null ||
+      entry.latest_public_search_available!==null ||
+      entry.latest_login_required!==null ||
+      entry.latest_verification_confidence_score!==null ||
+      entry.latest_verification_notes!==null ||
+      entry.verification_metadata_consistent!==null
+    )) throw Error("Absent source verification carries unexpected retained claims.");
+    const searchState=entry.latest_public_search_available===null ? "search availability unrecorded" :
+      (entry.latest_public_search_available ? "public search observed" : "public search not observed");
+    const loginState=entry.latest_login_required===null ? "login requirement unrecorded" :
+      (entry.latest_login_required ? "login reported required" : "login reported not required");
+    const latestDetail=latest ?
+      '<small class="'+(entry.verification_metadata_consistent?'source-verification-ok':'source-verification-warning')+
+      '">latest retained check: '+(entry.latest_verification_url_reachable?'reachable':'not reachable')+
+      ' · '+escapeText(entry.latest_verification_checked_at)+
+      ' · detected '+escapeText(entry.latest_detected_platform_family)+
+      ' · confidence '+entry.latest_verification_confidence_score+'/100 · '+
+      searchState+' · '+loginState+
+      (entry.verification_metadata_consistent?' · registry metadata agrees':
+        ' · registry metadata DIFFERS; inspect retained verification history')+'</small>'+
+      (entry.latest_verification_notes?
+        '<small>latest check note: '+escapeText(entry.latest_verification_notes)+'</small>':'') :
+      '<small>no linked retained verification observation</small>';
+    const attributionDetail=!registry.source_attribution_available ?
+      '<small class="source-attribution-warning">record attribution withheld: configured source identity scan is incomplete</small>' :
+      (entry.attribution_name_unambiguous ?
+        '<small>retained exact-name attribution in scan: '+entry.attributed_records_in_scan+
+        ' record(s) · CEQA '+entry.attributed_ceqa_records_in_scan+
+        ' · permits '+entry.attributed_permit_records_in_scan+'</small>' :
+        '<small class="source-attribution-warning">record attribution withheld: duplicate configured source name</small>');
+    return '<tr><th scope="row">'+escapeText(entry.source_name)+
+      '<small>'+escapeText(entry.jurisdiction_name)+' · '+escapeText(entry.county)+'</small></th>'+
+      '<td>'+escapeText(entry.platform_family)+'<small>adapter '+escapeText(entry.adapter_status)+
+      (entry.adapter_live?' · live-capable software':' · not live-capable')+'</small></td>'+
+      '<td>'+escapeText(entry.verification_status)+'<small>stored confidence '+
+      escapeText(entry.confidence_score)+'/100 · checked '+
+      escapeText(valueOrUnknown(entry.last_checked_date))+'</small>'+latestDetail+'</td>'+
+      '<td>'+escapeText(entry.record_categories.join(", ") || "No categories")+
+      '<small>'+escapeText(valueOrUnknown(entry.update_frequency))+'</small>'+
+      attributionDetail+'</td>'+
+      '<td>'+safeSourceLink(entry.public_url)+'</td></tr>';
+  }).join("") || '<tr><td colspan="5">No public-source registry rows are retained in this database.</td></tr>';
+  const attributionSummary=registry.source_attribution_available ?
+    '<p>Bounded exact-name attribution scanned '+registry.ceqa_records_scanned+' of '+
+    registry.ceqa_records_total+' retained CEQA records and '+registry.permit_records_scanned+
+    ' of '+registry.permit_records_total+' retained permit records. '+
+    registry.records_with_registered_source_in_scan+' scanned record(s) matched at least one '+
+    'unambiguous configured source name; '+registry.records_without_registered_source_in_scan+
+    ' did not.'+(registry.attribution_scan_truncated?
+      ' The record scan is truncated, so these are not complete local coverage counts.':'')+'</p>' :
+    '<p class="source-attribution-warning">Record attribution is withheld because only '+
+    registry.source_identity_rows_scanned+' of '+registry.total+
+    ' configured source identities fit the bounded identity scan.</p>';
+  const ambiguity=registry.ambiguous_registry_source_names.length ?
+    '<p class="source-attribution-warning">Duplicate configured source names withheld from exact-name attribution: '+
+    registry.ambiguous_registry_source_names.map(escapeText).join(", ")+'</p>' : '';
+  const unregistered=registry.unregistered_source_names_in_scan.length ?
+    '<p>Retained provenance source names not present in the complete configured-source identity set: '+
+    registry.unregistered_source_names_in_scan.map(escapeText).join(", ")+
+    (registry.unregistered_source_names_truncated?' … list truncated':'')+'</p>' : '';
+  return '<section class="feature-card"><span class="badge">PERSISTED SOURCE REGISTRY · READ ONLY</span>'+
+    '<h2>Configured public sources ('+registry.returned+(registry.truncated?' of '+registry.total:'')+')</h2>'+
+    '<p>Verification state, confidence, update cadence and adapter maturity are retained metadata. The newest linked verification observation is shown separately when available, including any disagreement with the registry row. Historical checks do not prove current reachability, complete jurisdiction coverage, or authority for recurring collection.</p>'+
+    attributionSummary+ambiguity+unregistered+
+    '<div class="source-inventory-scroll"><table class="source-inventory source-registry-table"><thead>'+
+    '<tr><th>Source</th><th>Platform / adapter</th><th>Registry verification</th>'+
+    '<th>Declared records / cadence</th><th>Official source</th></tr></thead><tbody>'+
+    rows+'</tbody></table></div>'+
+    (registry.truncated?'<p>Registry display is truncated at '+registry.result_limit+' rows.</p>':'')+
+    '</section>';
+}
+
+function renderCaptureQueue(queue) {
+  if(!queue || queue.schema_version!=="constructionsight.operator_capture_queue.v1" ||
+    queue.read_only!==true || queue.network_executed!==false ||
+    queue.persistence_mutated!==false || queue.commercial_leads_created!==false ||
+    !Number.isSafeInteger(queue.candidate_count) || queue.candidate_count<0 ||
+    !Array.isArray(queue.candidates) || queue.candidate_count!==queue.candidates.length)
+    throw Error("Retained exact-SCH review queue returned an inconsistent authority state.");
+  if(!queue.configured){
+    if(queue.candidate_count!==0)
+      throw Error("Unconfigured review queue reported retained candidates.");
+    return '<section class="feature-card"><h2>Exact-SCH review queue</h2>'+
+      '<p>No retained review queue is configured for this operator session. To display one, restart the local '+
+      'operator with <code>--capture-queue &lt;review-queue.json&gt;</code>. This does not enable remote collection.</p></section>';
+  }
+  const seen=new Set();
+  for(const item of queue.candidates){
+    if(!item || typeof item.sch_number!=="string" || !/^[0-9]{10}$/.test(item.sch_number) ||
+      seen.has(item.sch_number) || !["San Bernardino","Riverside"].includes(item.source_claimed_county) ||
+      typeof item.source_claimed_title!=="string" || !item.source_claimed_title ||
+      item.candidate_only!==true || item.review_state!=="unverified_source_claim" ||
+      item.network_executed_for_candidate!==false || item.persistence_mutated!==false)
+      throw Error("Retained exact-SCH review queue candidate is inconsistent.");
+    seen.add(item.sch_number);
+  }
+  const rows=queue.candidates.map((item,index)=>
+    '<div class="capture-queue-entry"><div><strong>'+escapeText(item.source_claimed_title)+
+    '</strong><small>SCH '+escapeText(item.sch_number)+' · '+escapeText(item.source_claimed_county)+
+    ' · observed '+item.source_observation_count+' time(s) in retained listing evidence'+
+    (item.title_requires_detail_enrichment?' · title/detail enrichment still required':'')+
+    '</small></div><div class="capture-queue-actions">'+safeSourceLink(item.official_detail_url)+
+    '<button type="button" class="action" data-capture-queue="'+index+'">Prepare reviewed capture →</button></div></div>'
+  ).join("") || '<p>No target-county exact-SCH candidates were retained in this reviewed listing queue.</p>';
+  return '<section class="feature-card"><span class="badge">RETAINED REVIEW QUEUE · CANDIDATES ONLY</span>'+
+    '<h2>Exact-SCH review queue ('+queue.candidate_count+')</h2>'+
+    '<p>Derived from '+queue.listing_pages_reviewed+' retained listing page(s) and '+
+    queue.listing_records_parsed+' parsed source observations. Listing artifact SHA-256: <code>'+
+    escapeText(queue.listing_artifact_sha256)+'</code>. Candidates are source claims, not verified active '+
+    'construction sites. Selecting one only prepares the existing local one-request capture instructions.</p>'+
+    '<div class="capture-queue">'+rows+'</div></section>';
+}
+function bindCaptureQueue(queue) {
+  if(!queue || !queue.configured)return;
+  byId("feature-body").querySelectorAll("[data-capture-queue]").forEach(button=>button.onclick=()=>{
+    const item=queue.candidates[Number(button.dataset.captureQueue)];
+    if(!item || !/^[0-9]{10}$/.test(item.sch_number))return;
+    byId("capture-sch-number").value=item.sch_number;
+    prepareCeqanetCapture();
+    byId("capture-source-form").scrollIntoView({block:"nearest",behavior:"auto"});
+  });
+}
+
 async function showSources() {
   const token=++featureRequest;
   featureIntro("Sources & Collection", "Actual retained CEQA and permit counts from the selected local database");
@@ -518,10 +729,14 @@ async function showSources() {
   const families=["ceqa","permit"], counties=["","San Bernardino","Riverside"];
   try {
     const queries=families.flatMap(kind=>counties.map(county=>({kind,county})));
-    const [data,inbox]=await Promise.all([
+    const [data,captureQueue,sourceRegistry,inbox]=await Promise.all([
       Promise.all(queries.map(async item=>
-        fetchJson("/api/snapshot?"+new URLSearchParams({kind:item.kind,county:item.county,limit:"1",offset:"0"}))
+        fetchJson("/api/snapshot?"+new URLSearchParams({
+          kind:item.kind,county:item.county,limit:"1",offset:"0"
+        }))
       )),
+      fetchJson("/api/capture-queue"),
+      fetchJson("/api/source-registry"),
       fetchJson("/api/ingestion-inbox")
     ]);
     if(token!==featureRequest || byId("feature-view").hidden)return;
@@ -536,15 +751,18 @@ async function showSources() {
     byId("feature-body").innerHTML='<section class="feature-card"><span class="badge">RETAINED SQLITE RECORDS · READ ONLY</span><h2>Source inventory</h2>'+
       '<p>Counts are source records, not deduplicated projects, live construction sites, or approved commercial leads. Other/unknown includes records with missing or out-of-scope county claims.</p>'+
       '<div class="source-inventory-scroll"><table class="source-inventory"><thead><tr><th>Source family</th><th>All counties</th><th>San Bernardino</th><th>Riverside</th><th>Other / unknown</th></tr></thead><tbody>'+rows+'</tbody></table></div></section>'+
+      renderSourceRegistry(sourceRegistry)+
       ingestionInboxMarkup(inbox)+
       '<section class="feature-card"><h2>Collection status</h2><p>This local operator does not run live source acquisition, subscription monitoring, scheduled updates or remote data import. Import and retained-source validation remain separate governed workflows.</p>'+
       '<a href="/workspace#records">Inspect stored source evidence →</a></section>'+
+      renderCaptureQueue(captureQueue)+
       '<section class="feature-card"><h2>Review a newly available CEQAnet project</h2><p>Prepare a single-project, manually authorized capture using the existing offline-review and SQLite import services. This read-only dashboard cannot issue remote requests or authorize imports.</p>'+
       '<form id="capture-source-form"><label for="capture-sch-number">Official 10-digit SCH number</label> <input id="capture-sch-number" type="text" inputmode="numeric" maxlength="10" pattern="[0-9]{10}" placeholder="0000000000" required> <button type="submit" class="action">Prepare local capture instructions</button></form>'+
       '<div id="capture-instructions" aria-live="polite"><p>No collection has been attempted. Verify the public source and its access conditions before executing any command.</p></div></section>'+
       '<section class="feature-card"><h2>Historical source activity</h2><p>Inspect dated historical observations for the current search, source-family and county filters. This is not real-time site monitoring.</p>'+
       '<button type="button" class="action" id="show-historical-pulse">Load retained timeline →</button><div id="historical-pulse"></div></section>';
     byId("capture-source-form").onsubmit=async event=>{event.preventDefault();await prepareCeqanetCapture();};
+    bindCaptureQueue(captureQueue);
     byId("show-historical-pulse").onclick=showHistoricalPulse;
     byId("feature-body").querySelectorAll("[data-source-kind]").forEach(button=>button.onclick=()=>{
       const kind=button.dataset.sourceKind, county=button.dataset.sourceCounty;
@@ -556,7 +774,6 @@ async function showSources() {
       byId("feature-body").innerHTML='<section class="feature-card"><h2>Source inventory unavailable</h2><p role="alert">'+escapeText(error.message || error)+'</p></section>';
   }
 }
-
 function workflowDetails(row) {
   const notes=(items,label)=>'<section class="lead-details-group"><h3>'+label+'</h3>'+
     (Array.isArray(items)&&items.length?items.map(item=>'<p>'+escapeText(item)+'</p>').join(""):'<p>None retained.</p>')+'</section>';
