@@ -4,12 +4,21 @@ from __future__ import annotations
 
 import hashlib
 from collections import Counter
-from collections.abc import Callable
 
-import httpx
-
-from constructionsight.adapters.specs import AdapterFamilySpec, AdapterImplementationStatus
+from constructionsight.adapters.specs import (
+    AdapterFamilySpec,
+    AdapterImplementationStatus,
+)
+from constructionsight.authorization_decision_models import authorization_digest
+from constructionsight.effect_consumption import _execute_owned_effect
+from constructionsight.effect_consumption_models import EffectReplayPolicy
+from constructionsight.local_operator_authorization import (
+    authorize_local_operator_operation,
+)
 from constructionsight.models import PlatformFamily, PublicSource, VerificationStatus
+from constructionsight.source_readiness_http import (
+    check_source_http_reachability as _check_source_http_reachability,
+)
 from constructionsight.source_readiness_models import (
     HttpReachabilityResult,
     SourceReadinessReport,
@@ -17,58 +26,173 @@ from constructionsight.source_readiness_models import (
     SourceReadinessStatus,
 )
 
-HttpReachabilityChecker = Callable[[PublicSource], HttpReachabilityResult]
-
 
 def build_source_readiness_report(
     sources: list[PublicSource],
     adapter_specs: dict[PlatformFamily, AdapterFamilySpec],
     *,
     check_http: bool = False,
-    http_checker: HttpReachabilityChecker | None = None,
 ) -> SourceReadinessReport:
-    """Build a conservative source-readiness report without mutating sources."""
+    """Build an offline source-readiness report without acquiring network authority."""
 
-    checker = http_checker or check_http_reachability
-    rows = [
-        _build_row(
-            source,
-            adapter_specs,
-            checker(source) if check_http else HttpReachabilityResult(checked=False),
+    if check_http:
+        raise ValueError(
+            "live HTTP readiness requires build_authorized_source_readiness_report"
         )
-        for source in sources
+    return _build_source_readiness_report_with_results(
+        sources,
+        adapter_specs,
+        http_results=None,
+    )
+
+
+def build_authorized_source_readiness_report(
+    sources: list[PublicSource],
+    adapter_specs: dict[PlatformFamily, AdapterFamilySpec],
+    *,
+    caller_confirmation: bool,
+    authorization_reason: str,
+    operator_id: str | None = None,
+) -> SourceReadinessReport:
+    """Authorize bounded HEAD/405-GET reachability for the exact source set."""
+
+    source_payload = [source.model_dump(mode="json") for source in sources]
+    adapter_payload = [
+        {
+            "platform_family": family.value,
+            "status": spec.status.value,
+            "uses_public_http": spec.uses_public_http,
+            "lawful_access_boundary": _lawful_access_boundary(spec),
+        }
+        for family, spec in sorted(
+            adapter_specs.items(), key=lambda item: item[0].value
+        )
+    ]
+    state_identity = authorization_digest(
+        "source-readiness-state",
+        {
+            "sources": source_payload,
+            "adapter_specs": adapter_payload,
+            "policy_id": "CS-NET-007",
+            "method_sequence": ["HEAD", "GET only after 405"],
+            "max_response_bytes": 4096,
+        },
+    )
+    resource_id = authorization_digest(
+        "source-readiness-resource",
+        {
+            "source_keys": [_source_key(source) for source in sources],
+            "urls": [str(source.public_url) for source in sources],
+        },
+    )
+    exact_scope = tuple(
+        sorted(
+            {
+                "fallback:GET-only-after-405",
+                "max-attempts-per-source:2",
+                "max-response-bytes:4096",
+                "method:HEAD",
+                "policy:CS-NET-007",
+                "redirects:denied",
+                "retries:0",
+                f"source-count:{len(sources)}",
+                *(f"url:{source.public_url}" for source in sources),
+            },
+            key=str.casefold,
+        )
+    )
+    authorization = authorize_local_operator_operation(
+        action="check-source-http-readiness",
+        resource_type="public-source-registry-snapshot",
+        resource_id=resource_id,
+        exact_scope=exact_scope,
+        current_state_identity=state_identity,
+        expected_identity=state_identity,
+        granted_authority=(
+            "perform bounded public HEAD checks with 405-only GET fallback",
+        ),
+        denied_authority=tuple(
+            sorted(
+                {
+                    "access-control bypass",
+                    "credential use",
+                    "document download",
+                    "persistence mutation",
+                    "production recurrence",
+                    "redirect following",
+                    "registry mutation",
+                    "retry",
+                    "source promotion",
+                },
+                key=str.casefold,
+            )
+        ),
+        reason=authorization_reason,
+        caller_confirmation=caller_confirmation,
+        limitations=tuple(
+            sorted(
+                {
+                    "local operator identity is not authentication",
+                    "reachability does not establish source completeness or maturity",
+                    "one durable source-set allowance across processes",
+                },
+                key=str.casefold,
+            )
+        ),
+        operator_id=operator_id,
+        current_revocation_identity=state_identity,
+    )
+
+    def execute(_trusted_at: object) -> SourceReadinessReport:
+        http_results = tuple(_check_source_http_reachability(source) for source in sources)
+        return _build_source_readiness_report_with_results(
+            sources,
+            adapter_specs,
+            http_results=http_results,
+        )
+
+    return _execute_owned_effect(
+        authorization,
+        allowance_identity=authorization_digest(
+            "source-readiness-manual-allowance",
+            {"state_identity": state_identity},
+        ),
+        content_identity=state_identity,
+        implementation_id=(
+            "constructionsight.source_readiness_http."
+            "check_source_http_reachability"
+        ),
+        replay_policy=EffectReplayPolicy.EXACT,
+        effect=execute,
+        encode_result=lambda result: result.model_dump(mode="json"),
+        decode_result=lambda payload: SourceReadinessReport.model_validate(payload),
+    )
+
+
+def _build_source_readiness_report_with_results(
+    sources: list[PublicSource],
+    adapter_specs: dict[PlatformFamily, AdapterFamilySpec],
+    *,
+    http_results: tuple[HttpReachabilityResult, ...] | None,
+) -> SourceReadinessReport:
+    if http_results is None:
+        normalized_results = tuple(
+            HttpReachabilityResult(checked=False) for _source in sources
+        )
+    else:
+        if len(http_results) != len(sources):
+            raise ValueError("HTTP result count must match source count")
+        normalized_results = http_results
+
+    rows = [
+        _build_row(source, adapter_specs, http_result)
+        for source, http_result in zip(sources, normalized_results, strict=True)
     ]
     return SourceReadinessReport(
         source_count=len(rows),
         status_counts=dict(Counter(row.readiness_status.value for row in rows)),
         rows=rows,
     )
-
-
-def check_http_reachability(source: PublicSource) -> HttpReachabilityResult:
-    """Perform a lightweight lawful public HTTP reachability check."""
-
-    url = str(source.public_url)
-    try:
-        with httpx.Client(follow_redirects=True, timeout=10.0) as client:
-            response = client.head(url)
-            method = "HEAD"
-            if response.status_code == 405:
-                response = client.get(url)
-                method = "GET"
-        return HttpReachabilityResult(
-            checked=True,
-            reachable=200 <= response.status_code < 400,
-            status_code=response.status_code,
-            method=method,
-            final_url=str(response.url),
-        )
-    except httpx.HTTPError as exc:
-        return HttpReachabilityResult(
-            checked=True,
-            reachable=False,
-            error=exc.__class__.__name__,
-        )
 
 
 def _build_row(
@@ -169,7 +293,8 @@ def _readiness_decision(
     if adapter_status == AdapterImplementationStatus.CONTRACT_READY:
         return (
             SourceReadinessStatus.PARTIAL,
-            "source is verified and adapter contract exists, but live reads are not proven",
+            "source is verified and adapter contract exists, "
+            "but live reads are not proven",
             ["contract-ready adapter is not production live coverage"],
             "add guarded live-read evidence before live coverage claims",
         )
@@ -193,7 +318,10 @@ def _lawful_access_boundary(spec: AdapterFamilySpec | None) -> str:
     if spec is None:
         return "public URL only; adapter family is unknown"
     if spec.uses_public_http:
-        return "public HTTP only; no bypass, credentials, captcha, or access-control evasion"
+        return (
+            "public HTTP only; no bypass, credentials, captcha, "
+            "or access-control evasion"
+        )
     return "non-public HTTP behavior is not enabled by this workflow"
 
 
