@@ -14,13 +14,19 @@ def model_to_json(model: BaseModel | None) -> str | None:
 
     if model is None:
         return None
-    return model.model_dump_json()
+    return model.model_dump_json(exclude_computed_fields=True)
 
 
 def models_to_json(models: Sequence[BaseModel]) -> str:
     """Serialize a list of Pydantic models to JSON."""
 
-    return json.dumps([json.loads(model.model_dump_json()) for model in models], sort_keys=True)
+    return json.dumps(
+        [
+            json.loads(model.model_dump_json(exclude_computed_fields=True))
+            for model in models
+        ],
+        sort_keys=True,
+    )
 
 
 def strings_to_json(values: list[str]) -> str:
