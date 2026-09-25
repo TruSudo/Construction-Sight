@@ -24,7 +24,7 @@ def _site_result() -> SiteResolutionResult:
                 site_key="site:test",
                 match_strength="exact",
                 confidence_score=90,
-                confidence_band="verified",
+                confidence_band=confidence_band(90),
                 reasons=["site matched"],
             )
         ],
