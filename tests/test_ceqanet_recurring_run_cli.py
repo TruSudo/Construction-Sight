@@ -7,8 +7,8 @@ from pathlib import Path
 from pydantic import HttpUrl
 from typer.testing import CliRunner
 
-from constructionsight.ceqanet_recurring_run_cli import app
 from constructionsight.ceqanet_capture_queue import build_reviewed_ceqanet_capture_queue
+from constructionsight.ceqanet_recurring_run_cli import app
 from constructionsight.ceqanet_recurring_run_models import (
     CeqanetRecurringRunDefinition,
     CeqanetRecurringRunExecution,

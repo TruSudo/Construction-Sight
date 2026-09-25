@@ -225,7 +225,9 @@ def discover_preview(
     """Derive exact-SCH manual capture candidates from existing listing evidence only."""
 
     if output.exists() or listing_evidence.absolute() == output.absolute():
-        raise typer.BadParameter("review queue output must be new and distinct from listing evidence")
+        raise typer.BadParameter(
+            "review queue output must be new and distinct from listing evidence"
+        )
     try:
         raw = read_runtime_artifact(listing_evidence, max_bytes=16 * 1024 * 1024)
         payload: Any = json.loads(raw.decode("utf-8"))
@@ -531,10 +533,16 @@ def capture_preview(
         Path, typer.Option("--output", help="New path for full retained live-execution evidence."),
     ],
     authorization_reason: Annotated[
-        str, typer.Option("--authorization-reason", help="Reason for this exact single public GET."),
+        str,
+        typer.Option(
+            "--authorization-reason", help="Reason for this exact single public GET."
+        ),
     ],
     execute_live: Annotated[
-        bool, typer.Option("--execute-live", help="Explicit approval to request this one SCH export."),
+        bool,
+        typer.Option(
+            "--execute-live", help="Explicit approval to request this one SCH export."
+        ),
     ] = False,
     plan_output: Annotated[
         Path | None, typer.Option("--plan-output", help="Optional new reviewed plan path."),
@@ -641,7 +649,10 @@ def capture_preview(
             overwrite=False,
         )
     except (OSError, ValueError) as exc:
-        typer.echo(f"Acquisition completed but retained evidence could not be published: {exc}", err=True)
+        typer.echo(
+            f"Acquisition completed but retained evidence could not be published: {exc}",
+            err=True,
+        )
         raise typer.Exit(code=1) from exc
     if (
         authorized.execution.request != request
@@ -867,7 +878,9 @@ def apply(
                     if record.state_clearinghouse_number is not None
                 }
                 if len(source_sch_numbers) != 1:
-                    raise ValueError("reviewed project import does not retain one exact SCH identity")
+                    raise ValueError(
+                        "reviewed project import does not retain one exact SCH identity"
+                    )
                 source_sch = next(iter(source_sch_numbers))
                 for expected in bridge.preview.ceqa_records:
                     actual = store.get(expected.ceqa_key)

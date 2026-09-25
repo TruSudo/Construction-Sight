@@ -10,12 +10,12 @@ from sqlalchemy.orm import Session
 
 from constructionsight.ceqa_models import CeqaRecord
 from constructionsight.models import PlatformFamily, PublicSource, SourceVerificationResult
-from constructionsight.permit_models import PermitRecord
-from constructionsight.provenance import Provenance
 from constructionsight.operator_source_registry import (
     SOURCE_REGISTRY_RESULT_LIMIT,
     build_operator_source_registry,
 )
+from constructionsight.permit_models import PermitRecord
+from constructionsight.provenance import Provenance
 from constructionsight.storage.database import create_database_engine, initialize_database
 from constructionsight.storage.domain_store import CeqaStore, PermitStore
 from constructionsight.storage.source_registry import SourceRegistryStore

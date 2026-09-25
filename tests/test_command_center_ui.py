@@ -226,7 +226,10 @@ def test_command_center_source_and_county_filters_share_exact_list_map_scope() -
     ):
         assert fragment in html
     assert 'let activeKind = "all", activeCounty = "";' in script
-    assert 'kind:activeKind,county:activeCounty,limit:"50",offset:String(offset),q:activeQuery' in script
+    assert (
+        'kind:activeKind,county:activeCounty,limit:"50",'
+        'offset:String(offset),q:activeQuery'
+    ) in script
     assert 'kind:activeKind,county:activeCounty,q:activeQuery' in script
     assert 'newPage.selection!==activeKind || newFootprint.selection!==activeKind' in script
     assert 'for (const id of ["filter-kind","filter-county"])' in script
@@ -275,7 +278,10 @@ def test_entity_network_indexes_real_retained_cross_county_source_keys() -> None
     assert 'byId("browse-entity-index").onclick=()=>showEntityIndex();' in script
     assert '"/api/entity-index?"+new URLSearchParams({kind,county,role})' in script
     assert 'id="entity-index-role"' in script
-    assert 'byId("entity-index-role").onchange=()=>showEntityIndex(byId("entity-index-role").value)' in script
+    assert (
+        'byId("entity-index-role").onchange=()=>showEntityIndex('
+        'byId("entity-index-role").value)'
+    ) in script
     assert 'data.role_filter!==role' in script
     assert 'showIndexedEntityMatches(entry.entity_key,kind,county,role)' in script
     assert 'data.read_only!==true || data.live_collection_enabled!==false' in script
