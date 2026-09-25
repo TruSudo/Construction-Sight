@@ -378,6 +378,85 @@ def execute_manifest(
     )
 
 
+@app.command("export-listing-evidence")
+def export_listing_evidence(
+    definition_path: Annotated[
+        Path,
+        typer.Option(
+            "--definition",
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+        ),
+    ],
+    manifest_path: Annotated[
+        Path,
+        typer.Option(
+            "--manifest",
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+        ),
+    ],
+    execution_path: Annotated[
+        Path,
+        typer.Option(
+            "--execution",
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+        ),
+    ],
+    registry_path: Annotated[Path, _registry_option()],
+    checklist_path: Annotated[Path, _checklist_option()],
+    output_path: Annotated[
+        Path,
+        typer.Option("--output", help="New v2 listing-evidence JSON output path."),
+    ],
+) -> None:
+    """Export a verified authorized recurring attempt as exact v2 listing evidence."""
+
+    if output_path.exists():
+        raise typer.BadParameter("listing evidence output already exists; use a new path")
+    definition = _load_model(definition_path, CeqanetRecurringRunDefinition)
+    manifest = _load_model(manifest_path, CeqanetRecurringRunManifest)
+    execution = _load_model(execution_path, CeqanetRecurringRunExecution)
+    verification = verify_ceqanet_recurring_run_execution(
+        definition,
+        manifest,
+        execution,
+        _load_registry(registry_path),
+        _load_model(checklist_path, SourceVerificationChecklistReport),
+    )
+    if not verification.passed:
+        typer.echo(
+            "Recurring execution cannot be exported as listing evidence: "
+            + "; ".join(verification.findings),
+            err=True,
+        )
+        raise typer.Exit(code=1)
+    metadata = execution.execution_report.get("metadata")
+    snapshots = execution.execution_report.get("snapshots")
+    if (
+        not isinstance(metadata, dict)
+        or metadata.get("schema_version") != "ceqanet_listing_execution.v2"
+        or not isinstance(snapshots, list)
+    ):
+        typer.echo(
+            "Recurring execution predates authorized v2 listing-evidence binding; "
+            "it cannot be promoted implicitly.",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+    _write_json(
+        output_path,
+        cast(dict[str, object], execution.execution_report),
+    )
+
+
 @app.command("verify")
 def verify_execution(
     definition_path: Annotated[
