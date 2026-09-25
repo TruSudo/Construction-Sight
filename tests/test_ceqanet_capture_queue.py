@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
+import constructionsight.ceqanet_csv_operator_bridge_cli as capture_module
 from constructionsight.ceqanet_capture_queue import build_reviewed_ceqanet_capture_queue
 from constructionsight.ceqanet_csv_operator_bridge_cli import app
 
@@ -225,3 +226,44 @@ def test_discover_preview_cli_blocks_bad_snapshot_without_queue(
     )
     assert result.exit_code == 1
     assert not queue_path.exists()
+
+def test_capture_preview_rebinds_queue_to_exact_listing_before_any_network(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    listing_path = tmp_path / "listing.json"
+    queue_path = tmp_path / "queue.json"
+    listing = _listing(_card("2026030377"))
+    listing_path.write_text(json.dumps(listing, sort_keys=True), encoding="utf-8")
+    discovered = runner.invoke(
+        app, [
+            "discover-preview", "--listing-evidence", str(listing_path),
+            "--output", str(queue_path),
+        ],
+    )
+    assert discovered.exit_code == 0, discovered.output
+
+    queue = json.loads(queue_path.read_text("utf-8"))
+    queue["candidates"][0]["source_claimed_county"] = "San Bernardino"
+    queue_path.write_text(json.dumps(queue, sort_keys=True), encoding="utf-8")
+    calls: list[object] = []
+
+    def must_not_fetch(**kwargs: object) -> object:
+        calls.append(kwargs)
+        raise AssertionError("tampered queue must be rejected before network access")
+
+    monkeypatch.setattr(capture_module, "execute_authorized_ceqanet_csv", must_not_fetch)
+    result = runner.invoke(
+        app, [
+            "capture-preview", "--sch-number", "2026030377",
+            "--listing-evidence", str(listing_path),
+            "--queue-evidence", str(queue_path),
+            "--output", str(tmp_path / "capture.json"),
+            "--authorization-reason", "Review exact queued project",
+            "--execute-live",
+        ],
+    )
+    assert result.exit_code != 0
+    assert "does not exactly match a fresh derivation" in result.output
+    assert calls == []
+    assert not (tmp_path / "capture.json").exists()
+
