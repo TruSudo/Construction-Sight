@@ -261,7 +261,7 @@ def test_resolved_defect_rejects_symlink_escape(tmp_path: Path) -> None:
     evidence.symlink_to(outside)
     contracts = _contracts()
     contracts["governance/resolved_defects.toml"]["defects"] = [
-        _resolved_defect(digest=digest)
+        _resolved_defect()
     ]
     findings: list[GovernanceFinding] = []
 
