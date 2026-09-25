@@ -181,6 +181,11 @@ def load_operator_capture_queue(path: Path) -> dict[str, Any]:
         )
     ):
         raise ValueError("capture queue exclusion counts are inconsistent")
+    accounted_observations = sum(excluded.values()) + sum(
+        item["source_observation_count"] for item in candidates
+    )
+    if accounted_observations != parsed_count:
+        raise ValueError("capture queue observation accounting is inconsistent")
     if (
         payload.get("network_executed") is not False
         or payload.get("persistence_mutated") is not False
