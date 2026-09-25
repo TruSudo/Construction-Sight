@@ -90,14 +90,6 @@ discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
 required_resolution = "Define canonical versioned derivation rules for every authoritative normalized value and derived identity, recompute and validate them from source content at trust boundaries, use collision-appropriate full digests where identity is security or evidence relevant, canonicalize symmetric identity pairs, and add forged-normalization, forged-fingerprint, reversed-pair, and stale-ID regressions."
 
 [[defects]]
-id = "CS-SR-048"
-severity = "P0"
-area = "operational-confidence-gating"
-root_cause = "Opportunity, site-resolution, enrichment, and readiness logic can score or resolve evidence by signal presence while treating confidence as descriptive metadata, allowing inferred, ambiguous, conflicting, unverified, or zero-confidence inputs to contribute enough operational weight for actionable state."
-discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
-required_resolution = "Make evidence eligibility and confidence part of operational scoring and resolution semantics, prohibit weak or conflicting evidence from independently producing actionable or canonical state, preserve explicit review states for uncertain evidence, and add low-confidence, conflicting, inferred, and missing-evidence readiness regressions."
-
-[[defects]]
 id = "CS-SR-050"
 severity = "P0"
 area = "business-transition-concurrency"
