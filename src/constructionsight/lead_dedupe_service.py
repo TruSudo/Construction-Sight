@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 
 from constructionsight.lead_dedupe_models import (
@@ -82,7 +83,7 @@ def check_lead_duplicate(
         matched_keys = []
         reasons.append("no duplicate lead fingerprint found")
     return LeadDuplicateResult(
-        result_id=_result_id(candidate, matched_keys),
+        result_id=_result_id(candidate, status, matched_keys, reasons),
         status=status,
         candidate=candidate,
         matched_fingerprint_keys=_unique(matched_keys),
@@ -122,11 +123,32 @@ def _fingerprint_key(
     return f"lead-fingerprint:{_short_hash(basis)}"
 
 
-def _result_id(candidate: LeadFingerprint, matched_keys: list[str]) -> str:
-    """Build deterministic duplicate result id."""
+def _result_id(
+    candidate: LeadFingerprint,
+    status: LeadDuplicateStatus,
+    matched_keys: list[str],
+    reasons: list[str],
+) -> str:
+    """Bind each candidate's immutable verdict to a versioned semantic identity.
 
-    basis = "|".join([candidate.fingerprint_key, ",".join(sorted(matched_keys))])
-    return f"lead-duplicate:{_short_hash(basis)}"
+    Observation time and score may change on a rescan; candidate attribution,
+    match basis and decision content may not share an old verdict identity.
+    Existing persisted v1 IDs remain readable without rewriting their receipts.
+    """
+
+    basis = json.dumps(
+        {
+            "schema_version": "constructionsight.lead-duplicate/v2",
+            "candidate": candidate.model_dump(mode="json", exclude={"created_at", "lead_score"}),
+            "status": status.value,
+            "matched_fingerprint_keys": sorted(set(matched_keys)),
+            "reasons": sorted(set(reasons)),
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=True,
+    )
+    return f"lead-duplicate:v2:{hashlib.sha256(basis.encode('utf-8')).hexdigest()}"
 
 
 def _short_hash(value: str) -> str:
