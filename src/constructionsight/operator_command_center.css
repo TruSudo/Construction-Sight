@@ -44,3 +44,5 @@
 /* Persisted source-registry metadata is factual configuration, not a readiness score. */
 .source-registry-table th small,.source-registry-table td small{display:block;margin-top:4px;color:#9f9d97;font-weight:400;line-height:1.4}
 .source-registry-table td:last-child{white-space:nowrap}
+.source-registry-table .source-verification-warning{color:#f0b85a}
+.source-registry-table .source-verification-ok{color:#a8b7a5}
