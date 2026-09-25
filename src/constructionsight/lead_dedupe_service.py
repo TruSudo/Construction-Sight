@@ -14,6 +14,7 @@ from constructionsight.lead_dedupe_models import (
 )
 from constructionsight.lead_review_models import LeadReviewPackage
 
+
 def normalize_lead_title(value: str) -> str:
     """Normalize lead title text for duplicate checks."""
 
