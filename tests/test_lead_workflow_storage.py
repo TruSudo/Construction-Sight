@@ -17,12 +17,12 @@ from constructionsight.lead_review_models import (
     LeadReviewPackage,
     LeadReviewStatus,
 )
-from constructionsight.lead_workflow_service import transition_lead_workflow
 from constructionsight.lead_workflow_models import (
     LeadWorkflowEvent,
     LeadWorkflowRecord,
     LeadWorkflowStatus,
 )
+from constructionsight.lead_workflow_service import transition_lead_workflow
 from constructionsight.opportunity_enrichment_models import (
     EnrichmentSignalKind,
     OpportunityEnrichmentReport,
