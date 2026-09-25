@@ -18,6 +18,7 @@ from constructionsight.permit_models import PermitRecord
 from constructionsight.storage.orm import SourceRecord, VerificationRecord
 
 SOURCE_REGISTRY_RESULT_LIMIT = 500
+SOURCE_IDENTITY_SCAN_LIMIT = 5_000
 SOURCE_ATTRIBUTION_SCAN_LIMIT = 5_000
 UNREGISTERED_SOURCE_NAME_RESULT_LIMIT = 100
 
@@ -68,6 +69,10 @@ class OperatorSourceRegistrySnapshot(BaseModel):
     returned: int = Field(ge=0)
     result_limit: int = Field(ge=1)
     truncated: bool
+    source_identity_scan_limit: int = Field(ge=1)
+    source_identity_rows_scanned: int = Field(ge=0)
+    source_identity_scan_truncated: bool
+    source_attribution_available: bool
     source_attribution_scan_limit: int = Field(ge=1)
     ceqa_records_total: int = Field(ge=0)
     ceqa_records_scanned: int = Field(ge=0)
@@ -224,13 +229,29 @@ def build_operator_source_registry(session: Session) -> OperatorSourceRegistrySn
         .limit(SOURCE_REGISTRY_RESULT_LIMIT)
     ).all()
     sources = [(row, _public_source(row)) for row in rows]
-    source_name_counts = Counter(source.source_name for _, source in sources)
-    configured_names = set(source_name_counts)
-    unambiguous_names = {
-        name for name, count in source_name_counts.items() if count == 1
-    }
-    ambiguous_names = sorted(
-        name for name, count in source_name_counts.items() if count > 1
+    identity_names = list(
+        session.scalars(
+            select(SourceRecord.source_name)
+            .order_by(SourceRecord.id)
+            .limit(SOURCE_IDENTITY_SCAN_LIMIT)
+        ).all()
+    )
+    source_identity_scan_truncated = total > len(identity_names)
+    source_name_counts = Counter(identity_names)
+    configured_names = (
+        set(source_name_counts) if not source_identity_scan_truncated else set()
+    )
+    unambiguous_names = (
+        {
+            name for name, count in source_name_counts.items() if count == 1
+        }
+        if not source_identity_scan_truncated
+        else set()
+    )
+    ambiguous_names = (
+        sorted(name for name, count in source_name_counts.items() if count > 1)
+        if not source_identity_scan_truncated
+        else []
     )
 
     ceqa_records, ceqa_total = read_project_page(
@@ -249,17 +270,23 @@ def build_operator_source_registry(session: Session) -> OperatorSourceRegistrySn
         limit=SOURCE_ATTRIBUTION_SCAN_LIMIT,
         offset=0,
     )
-    ceqa_counts, ceqa_with, ceqa_without, ceqa_unregistered = _attribution(
-        ceqa_records,
-        configured_names=configured_names,
-        unambiguous_names=unambiguous_names,
-    )
-    permit_counts, permit_with, permit_without, permit_unregistered = _attribution(
-        permit_records,
-        configured_names=configured_names,
-        unambiguous_names=unambiguous_names,
-    )
-    unregistered_names = sorted(ceqa_unregistered | permit_unregistered)
+    if source_identity_scan_truncated:
+        ceqa_counts: Counter[str] = Counter()
+        permit_counts: Counter[str] = Counter()
+        ceqa_with = ceqa_without = permit_with = permit_without = 0
+        unregistered_names: list[str] = []
+    else:
+        ceqa_counts, ceqa_with, ceqa_without, ceqa_unregistered = _attribution(
+            ceqa_records,
+            configured_names=configured_names,
+            unambiguous_names=unambiguous_names,
+        )
+        permit_counts, permit_with, permit_without, permit_unregistered = _attribution(
+            permit_records,
+            configured_names=configured_names,
+            unambiguous_names=unambiguous_names,
+        )
+        unregistered_names = sorted(ceqa_unregistered | permit_unregistered)
     displayed_unregistered = unregistered_names[:UNREGISTERED_SOURCE_NAME_RESULT_LIMIT]
 
     verifications = _latest_verifications(session, [row.id for row, _ in sources])
@@ -354,6 +381,10 @@ def build_operator_source_registry(session: Session) -> OperatorSourceRegistrySn
         returned=len(entries),
         result_limit=SOURCE_REGISTRY_RESULT_LIMIT,
         truncated=total > len(entries),
+        source_identity_scan_limit=SOURCE_IDENTITY_SCAN_LIMIT,
+        source_identity_rows_scanned=len(identity_names),
+        source_identity_scan_truncated=source_identity_scan_truncated,
+        source_attribution_available=not source_identity_scan_truncated,
         source_attribution_scan_limit=SOURCE_ATTRIBUTION_SCAN_LIMIT,
         ceqa_records_total=ceqa_total,
         ceqa_records_scanned=len(ceqa_records),
@@ -382,6 +413,10 @@ def build_operator_source_registry(session: Session) -> OperatorSourceRegistrySn
             (
                 "Record attribution uses only exact record-level provenance source_name "
                 "matches to one unambiguous configured registry name."
+            ),
+            (
+                "If the bounded source-identity scan is incomplete, attribution is withheld "
+                "rather than treating unseen configured sources as unregistered."
             ),
             (
                 "Attribution scans are bounded independently for CEQA and permit records; "
