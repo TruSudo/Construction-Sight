@@ -199,3 +199,33 @@ required fixed-decimal monetary doctrine. This finding remains a real blocker.
 version, compatibility check, migration transaction, or upgrade provenance.
 Existing databases can therefore drift from the current ORM model. This remains a
 real blocker and is coupled to the exact-money persistence remediation.
+
+
+### CS-SR-046 — remains unresolved
+
+The generic `Provenance` model still permits authoritative-looking epistemic
+claims to be caller supplied: `verified`, `confidence_score`,
+`evidence_text`, and source metadata can be constructed without a mandatory
+immutable evidence identifier, reviewer identity, derivation record, or
+independence proof. Newer source-specific verification packages are stronger but
+do not remove this generic trust-boundary weakness.
+
+### CS-SR-047 — remains unresolved
+
+The artifact identity layer still accepts caller-supplied
+`ArtifactObservation.normalized_value`, observation/candidate/fingerprint IDs,
+match values, and related semantic identity fields without canonical recomputation
+from raw source content at the authoritative model boundary. Symmetric identity
+pairs are not canonically ordered. Existing deterministic scoring does not satisfy
+the required self-validating derivation doctrine.
+
+### CS-SR-048 — remains unresolved
+
+Opportunity enrichment currently computes `lead_score` as the sum of
+`score_delta` for all present signals, independent of each signal's
+`confidence_score`. Confidence is averaged separately as descriptive metadata.
+Thus low- or zero-confidence signals can still contribute their full operational
+weight. Site resolution likewise derives confidence from signal presence and fixed
+weights without requiring evidence eligibility before a candidate can reach
+RESOLVED. Limitations can force review later, but confidence is not itself part of
+the score-eligibility rule required by CS-SR-048.
