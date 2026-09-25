@@ -76,3 +76,13 @@ def test_login_source_requires_review_even_when_other_facts_are_unknown() -> Non
 
     assert result.decision is AccessDecision.REVIEW_REQUIRED
     assert result.allowed is False
+
+
+def test_all_clear_profile_rejects_nonimmutable_fact_basis() -> None:
+    profile = _reviewed_public_profile(access_fact_basis="review:operator-said-ok")
+
+    result = evaluate_access(profile)
+
+    assert result.decision is AccessDecision.REVIEW_REQUIRED
+    assert result.allowed is False
+    assert "SHA-256" in result.reason
