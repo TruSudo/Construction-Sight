@@ -623,3 +623,120 @@ def test_capture_preview_rejects_result_from_another_sch_without_ever_importing(
     assert CeqanetCsvLiveExecution.model_validate(
         json.loads(path.read_text("utf-8"))
     ).request.sch_number == "2026030377"
+
+def test_listing_queue_bound_capture_apply_and_operator_http_end_to_end(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Prove listing discovery -> bound exact capture -> approved SQLite -> operator HTTP."""
+
+    html = (
+        '<div class="search-result">'
+        '<a href="/Project/2026030377">Cabazon Infrastructure Plan</a>'
+        '<span>SCH Number</span><span>2026030377</span>'
+        '<span>County</span><span>Riverside</span>'
+        '</div>'
+    )
+    listing = {
+        "metadata": {
+            "schema_version": "ceqanet_listing_execution.v2",
+            "allowed": True,
+            "planned_request_count": 1,
+            "executed_request_count": 1,
+            "successful_response_count": 1,
+            "failed_response_count": 0,
+            "plan_id": "end-to-end-bound-listing",
+            "access": {"decision": "allowed"},
+            "authorization": {"decision_id": "end-to-end-test-authorization"},
+        },
+        "snapshots": [{
+            "page_number": 1,
+            "method": "GET",
+            "request_url": "https://ceqanet.lci.ca.gov/Search?County=Riverside",
+            "final_url": "https://ceqanet.lci.ca.gov/Search?County=Riverside",
+            "status_code": 200,
+            "content_type": "text/html; charset=utf-8",
+            "body_text": html,
+            "body_length": len(html),
+            "body_truncated": False,
+            "executed": True,
+            "reachable": True,
+            "error": None,
+            "failure_kind": "none",
+        }],
+    }
+    listing_path = tmp_path / "listing.json"
+    queue_path = tmp_path / "queue.json"
+    evidence = tmp_path / "bound-capture.json"
+    plan = tmp_path / "bound-plan.json"
+    listing_path.write_text(json.dumps(listing, sort_keys=True), encoding="utf-8")
+
+    discovered = runner.invoke(
+        app, [
+            "discover-preview", "--listing-evidence", str(listing_path),
+            "--output", str(queue_path),
+        ],
+    )
+    assert discovered.exit_code == 0, discovered.output
+    assert json.loads(discovered.stdout)["candidate_count"] == 1
+
+    monkeypatch.setattr(
+        capture_module, "execute_authorized_ceqanet_csv",
+        lambda **_: SimpleNamespace(
+            execution=_execution().model_copy(update={"executed_at": datetime.now(UTC)}),
+            verification=SimpleNamespace(passed=True),
+        ),
+    )
+    captured = runner.invoke(
+        app, [
+            "capture-preview", "--sch-number", "2026030377",
+            "--listing-evidence", str(listing_path),
+            "--queue-evidence", str(queue_path),
+            "--output", str(evidence), "--plan-output", str(plan),
+            "--authorization-reason", "Capture exact independently rebound queued project",
+            "--execute-live",
+        ],
+    )
+    assert captured.exit_code == 0, captured.output
+    preview = json.loads(captured.stdout)
+    binding = preview["discovery_binding"]
+    assert binding["sch_number"] == "2026030377"
+    assert binding["source_claimed_county"] == "Riverside"
+    assert binding["listing_artifact_sha256"] == hashlib.sha256(
+        listing_path.read_bytes()
+    ).hexdigest()
+    assert binding["queue_artifact_sha256"] == hashlib.sha256(
+        queue_path.read_bytes()
+    ).hexdigest()
+    retained = json.loads(evidence.read_text("utf-8"))
+    assert retained["schema_version"] == "ceqanet_bound_project_capture.v1"
+    assert retained["discovery_binding"] == binding
+    assert retained["live_execution"]["request"]["sch_number"] == "2026030377"
+
+    database = tmp_path / "operator-bound.sqlite3"
+    engine = create_database_engine(f"sqlite:///{database}")
+    initialize_database(engine)
+    engine.dispose()
+    applied = runner.invoke(
+        app, [
+            "apply", "--evidence", str(evidence), "--database", str(database),
+            "--approved-source-sha256", preview["source_sha256"],
+            "--approved-plan-digest", preview["approved_plan_digest_required"],
+            "--authorization-reason", "Independent approval of exact bound source and plan",
+            "--execute-write",
+        ],
+    )
+    assert applied.exit_code == 0, applied.output
+    assert json.loads(applied.stdout)["operator_readback_verified"] is True
+
+    with _real_source_operator_server(database) as port:
+        status, raw = _http_get(
+            port, "/api/snapshot?kind=ceqa&county=Riverside&q=Cabazon&limit=50&offset=0"
+        )
+        assert status == 200
+        page = json.loads(raw)
+        assert page["total"] == page["returned"] == 2
+        assert {row["record_id"] for row in page["projects"]} == set(
+            preview["source_records"]
+        )
+        assert all(row["county"] == "Riverside" for row in page["projects"])
+
