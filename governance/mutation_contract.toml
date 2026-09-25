@@ -1,0 +1,1215 @@
+schema_version = "constructionsight.mutation-contract/v1"
+contract_id = "construction-sight-focused-mutations-2026-07-15"
+execution = "Every case runs in a temporary full source overlay. The tracked tree is never modified."
+timeout_seconds = 120
+
+[[cases]]
+id = "CS-MUT-AUTH-EXPIRY-001"
+path = "src/constructionsight/authorization_decision.py"
+search = "if checked_at >= decision.expires_at:"
+replacement = "if checked_at > decision.expires_at:"
+tests = ["tests/test_authorization_decision.py::test_preflight_rejects_expiry_revocation_scope_and_stale_state"]
+expected_output = "test_preflight_rejects_expiry_revocation_scope_and_stale_state"
+risk = "An authorization valid exactly at its exclusive expiry boundary could execute."
+
+[[cases]]
+id = "CS-MUT-CONSUME-RESERVATION-001"
+path = "src/constructionsight/effect_consumption.py"
+search = '''    store = _owned_store()
+    reservation = store.reserve(operation, reserved_at=reserved_at)'''
+replacement = '''    return effect(reserved_at)'''
+tests = ["tests/test_effect_consumption.py::test_concurrent_duplicate_cannot_cross_effect_boundary_twice"]
+expected_output = "test_concurrent_duplicate_cannot_cross_effect_boundary_twice"
+risk = "The owned runner could invoke a protected effect without first creating a durable reservation."
+
+[[cases]]
+id = "CS-MUT-CONSUME-CHECK-THEN-ACT-001"
+path = "src/constructionsight/storage/effect_consumption_store.py"
+search = "                    INSERT INTO effect_consumptions ("
+replacement = "                    INSERT OR REPLACE INTO effect_consumptions ("
+tests = ["tests/test_lead_workflow_transition_authorization.py::test_concurrent_database_writers_apply_exact_transition_at_most_once"]
+expected_output = "test_concurrent_database_writers_apply_exact_transition_at_most_once"
+risk = "A last-writer-wins reservation could replace durable consumed state and reopen an effect after a check-then-act race."
+
+[[cases]]
+id = "CS-MUT-CONSUME-PROCESS-LOCAL-001"
+path = "src/constructionsight/effect_consumption.py"
+search = "    return EffectConsumptionStore(_CONSUMPTION_DATABASE_PATH)"
+replacement = '''    return EffectConsumptionStore(
+        _CONSUMPTION_DATABASE_PATH.with_name(
+            f"{_CONSUMPTION_DATABASE_PATH.stem}-{__import__('os').getpid()}.sqlite3"
+        )
+    )'''
+tests = ["tests/test_effect_consumption.py::test_cross_process_daily_file_effect_is_written_at_most_once"]
+expected_output = "test_cross_process_daily_file_effect_is_written_at_most_once"
+risk = "Consumption uniqueness could silently degrade to one independent database per process."
+
+[[cases]]
+id = "CS-MUT-CONSUME-DUPLICATE-SEQUENCE-001"
+path = "src/constructionsight/operator_services/ceqanet_recurring_run_service.py"
+search = "        allowance_identity=attempt_identity,"
+replacement = '''        allowance_identity=(
+            f"{attempt_identity}:{authorization.decision.decision_id}"
+        ),'''
+tests = ["tests/test_ceqanet_recurring_run_operator_service.py::test_exact_replay_returns_attempt_without_repeating_execution"]
+expected_output = "test_exact_replay_returns_attempt_without_repeating_execution"
+risk = "A repeated recurring-run sequence could receive a fresh invocation-specific allowance and execute twice."
+
+[[cases]]
+id = "CS-MUT-CONSUME-DAILY-ALLOWANCE-001"
+path = "src/constructionsight/ceqanet_csv_evidence_series_service.py"
+search = '''                "policy_digest": policy.policy_digest,
+                "source_name": series.source_name,
+                "utc_date": authorized_at.date().isoformat(),'''
+replacement = '''                "policy_digest": policy.policy_digest,
+                "series_digest": series.series_digest,
+                "source_name": series.source_name,
+                "utc_date": authorized_at.date().isoformat(),'''
+tests = ["tests/test_ceqanet_csv_evidence_series.py::test_stale_series_snapshot_cannot_reopen_spent_utc_date_allowance"]
+expected_output = "test_stale_series_snapshot_cannot_reopen_spent_utc_date_allowance"
+risk = "A stale but valid evidence-series snapshot could mint a second per-UTC-date allowance by changing the snapshot digest."
+
+[[cases]]
+id = "CS-MUT-CONSUME-TERMINAL-FAILURE-001"
+path = "src/constructionsight/storage/effect_consumption_store.py"
+search = '''                if record.status in {
+                    EffectConsumptionStatus.RESERVED,
+                    EffectConsumptionStatus.IN_PROGRESS,
+                }:'''
+replacement = '''                if record.status in {
+                    EffectConsumptionStatus.RESERVED,
+                    EffectConsumptionStatus.SUCCEEDED,
+                }:'''
+tests = ["tests/test_effect_consumption.py::test_crash_after_effect_start_remains_indeterminate_after_restart"]
+expected_output = "test_crash_after_effect_start_remains_indeterminate_after_restart"
+risk = "A crash-retained in-progress operation could lose its explicit indeterminate classification after restart."
+
+[[cases]]
+id = "CS-MUT-CONSUME-TERMINAL-PERSIST-001"
+path = "src/constructionsight/effect_consumption.py"
+search = "            effect_started=effect_started,"
+replacement = "            effect_started=False,"
+tests = ["tests/test_effect_consumption.py::test_terminal_result_persistence_failure_blocks_reexecution"]
+expected_output = "test_terminal_result_persistence_failure_blocks_reexecution"
+risk = "A failure after the effect boundary could fail to persist the correct terminal phase."
+
+[[cases]]
+id = "CS-MUT-CONSUME-CONTENT-001"
+path = "src/constructionsight/effect_consumption.py"
+search = '''        "revocation_identity": decision.revocation_identity,
+        "allowance_identity": allowance_identity,
+        "content_identity": content_identity,
+        "implementation_id": implementation_id,'''
+replacement = '''        "revocation_identity": decision.revocation_identity,
+        "allowance_identity": allowance_identity,
+        "content_identity": "content:ignored",
+        "implementation_id": implementation_id,'''
+tests = ["tests/test_effect_consumption.py::test_changed_content_conflicts_with_consumed_allowance"]
+expected_output = "test_changed_content_conflicts_with_consumed_allowance"
+risk = "Changed protected content could inherit the retained result of a different consumed operation."
+
+[[cases]]
+id = "CS-MUT-CONSUME-STALE-AUTH-001"
+path = "src/constructionsight/effect_consumption.py"
+search = "    if trusted_at < decision.not_before or trusted_at >= decision.expires_at:"
+replacement = "    if False and (trusted_at < decision.not_before or trusted_at >= decision.expires_at):"
+tests = ["tests/test_effect_consumption.py::test_stale_authorization_fails_before_reservation_or_effect"]
+expected_output = "test_stale_authorization_fails_before_reservation_or_effect"
+risk = "An expired authorization could reserve and execute under stale authority."
+
+[[cases]]
+id = "CS-MUT-AUTH-BOOLEAN-001"
+path = "src/constructionsight/local_operator_authorization.py"
+search = "if not caller_confirmation:"
+replacement = "if caller_confirmation:"
+tests = ["tests/test_local_operator_authorization.py::test_boolean_confirmation_is_not_authority"]
+expected_output = "test_boolean_confirmation_is_not_authority"
+risk = "A bare Boolean could replace rather than supplement a complete scope-bound decision."
+
+[[cases]]
+id = "CS-MUT-AUTH-UNICODE-001"
+path = "src/constructionsight/local_operator_authorization.py"
+search = "normalized = unicodedata.normalize(\"NFC\", value).strip()"
+replacement = "normalized = value.strip()"
+tests = ["tests/test_local_operator_authorization.py::test_local_authorization_normalizes_identity_and_emits_redacted_audit"]
+expected_output = "test_local_authorization_normalizes_identity_and_emits_redacted_audit"
+risk = "Canonically equivalent operator or scope identities could produce different authority identities."
+
+[[cases]]
+id = "CS-MUT-AUTH-EFFECT-TARGET-001"
+path = "src/constructionsight/semantic_authorization_certification.py"
+search = "        \"constructionsight.http_transport.execute_bounded_http\","
+replacement = "        \"constructionsight.http_transport.execute_bounded_http_disabled\","
+tests = ["tests/test_semantic_authorization_certification.py::test_direct_resolved_effect_is_rejected_without_authorization"]
+expected_output = "test_direct_resolved_effect_is_rejected_without_authorization"
+risk = "An imported or aliased canonical effect target could disappear from the resolved authorization graph."
+
+[[cases]]
+id = "CS-MUT-CONSUME-CALLER-LEDGER-001"
+path = "src/constructionsight/semantic_authorization_certification.py"
+search = '''        "ledger",
+        "persister",'''
+replacement = '''        "persister",'''
+tests = ["tests/test_semantic_authorization_certification.py::test_authorized_service_cannot_expose_caller_consumption_or_time_seams"]
+expected_output = "test_authorized_service_cannot_expose_caller_consumption_or_time_seams"
+risk = "A production service could reacquire caller-selected consumption state through a ledger parameter."
+
+[[cases]]
+id = "CS-MUT-AUTH-LEAD-CONFIRM-001"
+path = "src/constructionsight/operator_services/lead_workflow_transition_service.py"
+search = "    if not caller_confirmation:"
+replacement = "    if caller_confirmation:"
+tests = ["tests/test_lead_workflow_transition_authorization.py::test_transition_requires_scope_bound_confirmation"]
+expected_output = "test_transition_requires_scope_bound_confirmation"
+risk = "A lead workflow transition could execute without caller confirmation supplementing exact authority."
+
+[[cases]]
+id = "CS-MUT-AUTH-RESULT-CONFIRM-001"
+path = "src/constructionsight/operator_services/result_authority_apply_service.py"
+search = "    if not caller_confirmation:"
+replacement = "    if caller_confirmation:"
+tests = ["tests/test_result_authority_apply_authorization.py::test_result_authority_requires_scope_bound_confirmation"]
+expected_output = "test_result_authority_requires_scope_bound_confirmation"
+risk = "An authoritative result mutation could execute without caller confirmation supplementing exact authority."
+
+[[cases]]
+id = "CS-MUT-NET-REDIRECT-001"
+path = "src/constructionsight/http_transport.py"
+search = "if 300 <= response.status_code < 400:"
+replacement = "if 300 <= response.status_code < 302:"
+tests = ["tests/test_http_transport.py::test_bounded_http_denies_redirect_without_following_location"]
+expected_output = "test_bounded_http_denies_redirect_without_following_location"
+risk = "A redirect status could escape the terminal redirect classification."
+
+[[cases]]
+id = "CS-MUT-NET-SIZE-001"
+path = "src/constructionsight/http_transport.py"
+search = "if declared_length > policy.max_response_bytes:"
+replacement = "if declared_length < policy.max_response_bytes:"
+tests = ["tests/test_http_transport.py::test_bounded_http_rejects_declared_oversized_response_without_body_read"]
+expected_output = "test_bounded_http_rejects_declared_oversized_response_without_body_read"
+risk = "An oversized response could be read despite the declared byte ceiling."
+
+[[cases]]
+id = "CS-MUT-CSV-IDENTITY-001"
+path = "src/constructionsight/ceqanet_csv_live_service.py"
+search = "allowed_request_urls=(request_url,),"
+replacement = "allowed_request_urls=(),"
+tests = ["tests/test_ceqanet_csv_live.py::test_live_execution_performs_exactly_one_get_without_redirect_or_retry"]
+expected_output = "test_live_execution_performs_exactly_one_get_without_redirect_or_retry"
+risk = "A CEQAnet CSV query could execute without exact canonical request-identity authority."
+
+[[cases]]
+id = "CS-MUT-NET-QUERY-AUTHORITY-001"
+path = "src/constructionsight/http_transport.py"
+search = "elif parsed.query:"
+replacement = "elif False and parsed.query:"
+tests = ["tests/test_http_transport.py::test_bounded_http_requires_executable_authority_for_any_query"]
+expected_output = "test_bounded_http_requires_executable_authority_for_any_query"
+risk = "A query could execute under prose-only host/path scope without an exact request identity."
+
+[[cases]]
+id = "CS-MUT-NET-CANONICAL-PATH-001"
+path = "src/constructionsight/http_transport_models.py"
+search = "if path_component and decoded_character in _AMBIGUOUS_ENCODED_PATH_CHARACTERS:"
+replacement = "if False and path_component and decoded_character in _AMBIGUOUS_ENCODED_PATH_CHARACTERS:"
+tests = ["tests/test_http_transport.py::test_bounded_http_rejects_ambiguous_url_forms_before_execution"]
+expected_output = "test_bounded_http_rejects_ambiguous_url_forms_before_execution"
+risk = "Encoded path separators or dot segments could be authorized under a representation different from the transmitted path."
+
+[[cases]]
+id = "CS-MUT-NET-CLIENT-INJECTION-001"
+path = "src/constructionsight/http_transport.py"
+search = '''def execute_bounded_http(
+    url: str,
+    method: str,
+    policy: BoundedHttpPolicy,
+) -> BoundedHttpObservation:'''
+replacement = '''def execute_bounded_http(
+    url: str,
+    method: str,
+    policy: BoundedHttpPolicy,
+    *,
+    client: httpx.Client | None = None,
+) -> BoundedHttpObservation:'''
+tests = ["tests/test_http_transport.py::test_bounded_http_production_boundary_does_not_accept_client_injection"]
+expected_output = "test_bounded_http_production_boundary_does_not_accept_client_injection"
+risk = "A production-visible client parameter could reacquire caller-selected transport authority."
+
+[[cases]]
+id = "CS-MUT-NET-AMBIENT-ENV-001"
+path = "src/constructionsight/http_transport.py"
+search = '''    return httpx.Client(
+        transport=_PinnedHttpTransport(),
+        follow_redirects=False,
+        trust_env=False,
+    )'''
+replacement = '''    return httpx.Client(
+        transport=_PinnedHttpTransport(),
+        follow_redirects=False,
+        trust_env=True,
+    )'''
+tests = ["tests/test_http_transport.py::test_bounded_http_owned_client_disables_ambient_environment_authority"]
+expected_output = "test_bounded_http_owned_client_disables_ambient_environment_authority"
+risk = "Environment proxy, certificate, or credential configuration could regain authority beneath the reviewed request."
+
+[[cases]]
+id = "CS-MUT-NET-TLS-VERIFY-001"
+path = "src/constructionsight/http_transport.py"
+search = "    context.check_hostname = True"
+replacement = "    context.check_hostname = False"
+tests = ["tests/test_http_transport.py::test_bounded_http_owns_tls_roots_and_requires_hostname_verification"]
+expected_output = "test_bounded_http_owns_tls_roots_and_requires_hostname_verification"
+risk = "Production TLS certificate verification could be disabled beneath the exact request boundary."
+
+[[cases]]
+id = "CS-MUT-NET-CLIENT-CERT-001"
+path = "src/constructionsight/http_transport.py"
+search = "    context.load_verify_locations(cafile=certifi.where())"
+replacement = '''    context.load_verify_locations(cafile=certifi.where())
+    context.load_cert_chain("client-cert.pem", "client-key.pem")'''
+tests = ["tests/test_http_transport.py::test_bounded_http_owns_tls_roots_and_requires_hostname_verification"]
+expected_output = "test_bounded_http_owns_tls_roots_and_requires_hostname_verification"
+risk = "A production client certificate could be introduced beneath the reviewed public transport boundary."
+
+[[cases]]
+id = "CS-MUT-NET-IP-LITERAL-001"
+path = "src/constructionsight/http_transport.py"
+search = "        raise ValueError(\"HTTP URL IP literals are outside public egress authority\")"
+replacement = "        pass"
+tests = ["tests/test_http_transport.py::test_public_egress_rejects_literal_and_special_use_authorities"]
+expected_output = "test_public_egress_rejects_literal_and_special_use_authorities"
+risk = "A caller could direct an authorized public read to a loopback, link-local, or other literal address."
+
+[[cases]]
+id = "CS-MUT-NET-PUBLIC-RESOLUTION-001"
+path = "src/constructionsight/http_transport.py"
+search = "    if any(not _is_globally_routable_address(address) for address in addresses):"
+replacement = "    if False and any(not _is_globally_routable_address(address) for address in addresses):"
+tests = ["tests/test_http_transport.py::test_public_egress_rejects_any_non_public_dns_answer"]
+expected_output = "test_public_egress_rejects_any_non_public_dns_answer"
+risk = "A mixed DNS answer set could smuggle a loopback or private connection target into public egress."
+
+[[cases]]
+id = "CS-MUT-NET-RESOLUTION-PIN-001"
+path = "src/constructionsight/http_transport.py"
+search = "            host=self._authority.address,"
+replacement = "            host=host,"
+tests = ["tests/test_http_transport.py::test_public_egress_pins_single_resolution_to_tcp_and_preserves_tls_hostname"]
+expected_output = "test_public_egress_pins_single_resolution_to_tcp_and_preserves_tls_hostname"
+risk = "The socket layer could perform a second attacker-controlled DNS resolution after public-address validation."
+
+[[cases]]
+id = "CS-MUT-NET-SOURCE-AUTHORITY-001"
+path = "src/constructionsight/source_authority_rules.py"
+search = "    if url not in _GOVERNED_SOURCE_URLS:"
+replacement = "    if False and url not in _GOVERNED_SOURCE_URLS:"
+tests = ["tests/test_source_http_effect_ownership.py::test_source_verification_rejects_caller_controlled_public_host_authority"]
+expected_output = "test_source_verification_rejects_caller_controlled_public_host_authority"
+risk = "A caller-controlled source registry record could grant itself generic public-source egress authority."
+
+[[cases]]
+id = "CS-MUT-LISTING-RETRY-001"
+path = "src/constructionsight/adapters/ceqanet_listing_executor.py"
+search = "if self.max_attempts != 1 or self.retry_delays_seconds:"
+replacement = "if self.max_attempts < 1:"
+tests = ["tests/test_ceqanet_listing_executor.py::test_ceqanet_listing_executor_rejects_invalid_runtime_bounds"]
+expected_output = "test_ceqanet_listing_executor_rejects_invalid_runtime_bounds"
+risk = "Listing execution could silently expand from one attempt into retries that contradict CS-NET-002."
+
+[[cases]]
+id = "CS-MUT-LISTING-PLAN-IDENTITY-001"
+path = "src/constructionsight/adapters/ceqanet_listing_executor.py"
+search = "if plan != canonical_plan:"
+replacement = "if False and plan != canonical_plan:"
+tests = ["tests/test_ceqanet_listing_executor.py::test_ceqanet_listing_executor_rejects_forged_query_before_http"]
+expected_output = "test_ceqanet_listing_executor_rejects_forged_query_before_http"
+risk = "A forged listing query could become its own transport authority instead of remaining bound to canonical planner output."
+
+[[cases]]
+id = "CS-MUT-PERSIST-SNAPSHOT-001"
+path = "src/constructionsight/operator_services/ceqanet_persistence_service.py"
+search = "    execution_payload = _verified_execution_payload(snapshot)"
+replacement = "    execution_payload = write_plan_payload"
+tests = ["tests/test_ceqanet_persistence_operator_service.py::test_persistence_facade_executes_only_a_deeply_detached_snapshot"]
+expected_output = "test_persistence_facade_executes_only_a_deeply_detached_snapshot"
+risk = "Caller-owned nested write-plan content could change after authorization and reach the persistence effect."
+
+[[cases]]
+id = "CS-MUT-PERSIST-RECHECK-001"
+path = "src/constructionsight/operator_services/ceqanet_persistence_service.py"
+search = "    if current_plan_digest != snapshot.plan_digest:"
+replacement = "    if False and current_plan_digest != snapshot.plan_digest:"
+tests = ["tests/test_ceqanet_persistence_operator_service.py::test_persistence_facade_rechecks_snapshot_identity_before_effect"]
+expected_output = "test_persistence_facade_rechecks_snapshot_identity_before_effect"
+risk = "A detached persistence snapshot could execute without a final exact-identity recheck."
+
+[[cases]]
+id = "CS-MUT-DEFECT-FACTS-001"
+path = "src/constructionsight/defect_closure_certification.py"
+search = "        if closure_facts != original:"
+replacement = "        if False and closure_facts != original:"
+tests = ["tests/test_review_binding_certification.py::test_closure_rejects_changed_reviewed_defect_facts"]
+expected_output = "test_closure_rejects_changed_reviewed_defect_facts"
+risk = "Finalization could rewrite original severity, area, root cause, discovery, or required-resolution facts after review."
+
+[[cases]]
+id = "CS-MUT-DEFECT-ANCESTRY-001"
+path = "src/constructionsight/defect_closure_certification.py"
+search = "            if not _is_ancestor(root, resolution_commit, last_active_commit):"
+replacement = "            if False and not _is_ancestor(root, resolution_commit, last_active_commit):"
+tests = ["tests/test_review_binding_certification.py::test_closure_rejects_resolution_outside_reviewed_history"]
+expected_output = "test_closure_rejects_resolution_outside_reviewed_history"
+risk = "A resolution commit outside the reviewed implementation history could be claimed as closure evidence."
+
+[[cases]]
+id = "CS-MUT-ARCH-BYPASS-001"
+path = "src/constructionsight/architecture_boundary_certification.py"
+search = "if source_layer != \"transport\":"
+replacement = "if source_layer == \"transport\":"
+tests = ["tests/test_architecture_boundary_certification.py::test_low_level_http_engine_cannot_be_imported_by_application"]
+expected_output = "test_low_level_http_engine_cannot_be_imported_by_application"
+risk = "Application code could reacquire the low-level HTTP engine through a generic utility bypass."
+
+[[cases]]
+id = "CS-MUT-NET-EXPLICIT-REQUEST-001"
+path = "src/constructionsight/http_transport.py"
+search = """    response = session.send(
+        request,"""
+replacement = """    response = session.send(
+        session.build_request(request.method, request.url),"""
+tests = ["tests/test_http_transport.py::test_bounded_http_test_seam_cannot_merge_client_query_defaults"]
+expected_output = "test_bounded_http_test_seam_cannot_merge_client_query_defaults"
+risk = "Client-level query defaults could be merged after authorization if the bounded engine rebuilt the explicit request."
+
+[[cases]]
+id = "CS-MUT-NET-CLIENT-AUTH-001"
+path = "src/constructionsight/http_transport.py"
+search = "        auth=None,"
+replacement = "        auth=httpx.USE_CLIENT_DEFAULT,"
+tests = ["tests/test_http_transport.py::test_bounded_http_test_seam_disables_client_auth_mutation"]
+expected_output = "test_bounded_http_test_seam_disables_client_auth_mutation"
+risk = "A test-substituted client authentication hook could mutate exact request identity if the production engine stopped forcing auth=None."
+
+[[cases]]
+id = "CS-MUT-NET-REQUEST-HOOK-001"
+path = "src/constructionsight/http_transport.py"
+search = """    if session.event_hooks.get("request"):"""
+replacement = """    if False and session.event_hooks.get("request"):"""
+tests = ["tests/test_http_transport.py::test_bounded_http_test_seam_rejects_request_hooks_before_execution"]
+expected_output = "test_bounded_http_test_seam_rejects_request_hooks_before_execution"
+risk = "A substituted request hook could rewrite the authorized method or URL immediately before transmission if defense-in-depth regressed."
+
+[[cases]]
+id = "CS-MUT-NET-RESPONSE-HOOK-001"
+path = "src/constructionsight/http_transport.py"
+search = """    if session.event_hooks.get("response"):"""
+replacement = """    if False and session.event_hooks.get("response"):"""
+tests = ["tests/test_http_transport.py::test_bounded_http_test_seam_rejects_response_hooks_before_execution"]
+expected_output = "test_bounded_http_test_seam_rejects_response_hooks_before_execution"
+risk = "A substituted response hook could rewrite denied or malformed evidence before classification if defense-in-depth regressed."
+
+[[cases]]
+id = "CS-MUT-NET-RESPONSE-REQUEST-IDENTITY-001"
+path = "src/constructionsight/http_transport.py"
+search = "        if response.request is not request:"
+replacement = "        if False and response.request is not request:"
+tests = ["tests/test_http_transport.py::test_bounded_http_rejects_forged_response_request_identity"]
+expected_output = "test_bounded_http_rejects_forged_response_request_identity"
+risk = "A transport-substituted response request object could be accepted as evidence instead of remaining bound to the exact authorized request object."
+
+[[cases]]
+id = "CS-MUT-NET-CSV-MEDIA-001"
+path = "src/constructionsight/ceqanet_csv_live_service.py"
+search = """_ACCEPTED_MEDIA_TYPES = (
+    "application/csv",
+    "application/vnd.ms-excel",
+    "text/csv",
+    "text/plain",
+)"""
+replacement = """_ACCEPTED_MEDIA_TYPES = (
+    "application/csv",
+    "application/vnd.ms-excel",
+    "text/csv",
+    "text/html",
+    "text/plain",
+)"""
+tests = ["tests/test_ceqanet_csv_live.py::test_csv_validation_failure_is_retained_as_evidence"]
+expected_output = "test_csv_validation_failure_is_retained_as_evidence"
+risk = "An HTML login, denial, or error page could cross the CS-NET-003 media-type boundary as accepted CSV transport evidence."
+
+[[cases]]
+id = "CS-MUT-ARCGIS-PROBE-CLIENT-INJECTION-001"
+path = "src/constructionsight/parcel_source_acquisition_http.py"
+search = '''def fetch_arcgis_capability_snapshot(
+    profile: ParcelSourceVerificationProfile,
+    *,'''
+replacement = '''def fetch_arcgis_capability_snapshot(
+    profile: ParcelSourceVerificationProfile,
+    client: httpx.Client | None = None,
+    *,'''
+tests = ["tests/test_parcel_source_acquisition_http.py::test_arcgis_production_boundaries_do_not_accept_client_injection"]
+expected_output = "test_arcgis_production_boundaries_do_not_accept_client_injection"
+risk = "The ArcGIS probe boundary could reacquire caller-selected HTTP client authority."
+
+[[cases]]
+id = "CS-MUT-ARCGIS-BULK-CLIENT-INJECTION-001"
+path = "src/constructionsight/parcel_source_bulk_rehearsal_http.py"
+search = '''    def __init__(
+        self,
+        snapshot: ParcelArcGISCapabilitySnapshot,
+        plan: ParcelArcGISBulkRehearsalPlan,
+    ) -> None:'''
+replacement = '''    def __init__(
+        self,
+        snapshot: ParcelArcGISCapabilitySnapshot,
+        plan: ParcelArcGISBulkRehearsalPlan,
+        client: httpx.Client | None = None,
+    ) -> None:'''
+tests = ["tests/test_parcel_source_bulk_rehearsal_http.py::test_http_source_constructor_does_not_accept_client_injection"]
+expected_output = "test_http_source_constructor_does_not_accept_client_injection"
+risk = "The ArcGIS bulk source could reacquire caller-selected HTTP client authority."
+
+[[cases]]
+id = "CS-MUT-ARCH-IMPORTFROM-EXTERNAL-001"
+path = "src/constructionsight/governance_certification_core.py"
+search = "                            external.add(f\"{base}.{alias.name}\")"
+replacement = "                            external.add(base)"
+tests = ["tests/test_governance_certification.py::test_architecture_rejects_member_import_network_client"]
+expected_output = "test_architecture_rejects_member_import_network_client"
+risk = "A member-qualified prohibited capability could disappear from architecture classification when imported with from X import Y syntax."
+
+[[cases]]
+id = "CS-MUT-ARCH-IMPORTFROM-INTERNAL-001"
+path = "src/constructionsight/governance_certification_core.py"
+search = "                        internal.add(member)"
+replacement = "                        internal.add(resolved)"
+tests = ["tests/test_governance_certification.py::test_architecture_resolves_internal_member_module_import"]
+expected_output = "test_architecture_resolves_internal_member_module_import"
+risk = "A package-level member import could hide the exact lower-level internal module dependency from architecture enforcement."
+
+[[cases]]
+id = "CS-MUT-ARCH-BOUNDARY-WIRING-001"
+path = "src/constructionsight/governance_certification.py"
+search = "    audit_architecture_boundaries(\n"
+replacement = "    if False:\n        audit_architecture_boundaries(\n"
+tests = ["tests/test_governance_certification.py::test_canonical_governance_audit_invokes_architecture_boundary"]
+expected_output = "test_canonical_governance_audit_invokes_architecture_boundary"
+risk = "A tested architecture-boundary certifier could become dead code and stop contributing to the canonical governance result."
+
+[[cases]]
+id = "CS-MUT-CI-EXECUTABLE-001"
+path = "src/constructionsight/repository_certification.py"
+search = "        if not any(line.startswith(snippet) for line in executable_lines):"
+replacement = "        if snippet not in workflow:"
+tests = ["tests/test_repository_certification.py::test_ci_gate_in_comment_does_not_satisfy_required_command"]
+expected_output = "test_ci_gate_in_comment_does_not_satisfy_required_command"
+risk = "Commented workflow text could again satisfy a required CI execution gate."
+
+[[cases]]
+id = "CS-MUT-RESULT-AUDIT-ROLLBACK-001"
+path = "src/constructionsight/result_authority_service.py"
+search = "        with session.begin_nested():"
+replacement = "        with session.no_autoflush:"
+tests = ["tests/test_adversarial_semantic_witnesses.py::test_result_audit_failure_rolls_back_authoritative_transaction"]
+expected_output = "test_result_audit_failure_rolls_back_authoritative_transaction"
+risk = "A failed authoritative-result audit event could leave ledger or head state committed outside the audit transaction."
+
+[[cases]]
+id = "CS-MUT-PARCEL-CONFLICT-001"
+path = "src/constructionsight/parcel_assurance.py"
+search = "    if len(value_groups) > 1:"
+replacement = "    if False and len(value_groups) > 1:"
+tests = ["tests/test_parcel_assurance.py::test_conflict_retains_each_value_and_requires_review"]
+expected_output = "test_conflict_retains_each_value_and_requires_review"
+risk = "Conflicting current parcel evidence could be collapsed into a selected value without mandatory review."
+
+[[cases]]
+id = "CS-MUT-DEPENDENCY-DRIFT-001"
+path = "src/constructionsight/dependency_certification.py"
+search = "        if registered is not None and registered != declaration:"
+replacement = "        if False and registered is not None and registered != declaration:"
+tests = ["tests/test_dependency_certification.py::test_registry_version_must_equal_direct_declaration"]
+expected_output = "test_registry_version_must_equal_direct_declaration"
+risk = "Dependency registry identity could drift from the direct project declaration without certification failure."
+
+[[cases]]
+id = "CS-MUT-DEDUPE-ORDER-001"
+path = "src/constructionsight/lead_dedupe_service.py"
+search = '"matched_fingerprint_keys": sorted(set(matched_keys))'
+replacement = '"matched_fingerprint_keys": matched_keys'
+tests = ["tests/test_adversarial_semantic_witnesses.py::test_duplicate_result_identity_is_order_independent"]
+expected_output = "test_duplicate_result_identity_is_order_independent"
+risk = "Duplicate-result identity could depend on input enumeration order rather than the semantic match set."
+
+[[cases]]
+id = "CS-MUT-DEDUPE-CANDIDATE-001"
+path = "src/constructionsight/lead_dedupe_service.py"
+search = 'exclude={"created_at", "lead_score"}'
+replacement = 'exclude={"created_at", "lead_score", "base_candidate_id"}'
+tests = ["tests/test_lead_workflow_storage.py::test_duplicate_checks_for_distinct_candidates_can_both_be_persisted"]
+expected_output = "test_duplicate_checks_for_distinct_candidates_can_both_be_persisted"
+risk = "Distinct candidates sharing a match fingerprint could collide and abort a normal persistence transaction."
+
+[[cases]]
+id = "CS-MUT-DEDUPE-RATIONALE-001"
+path = "src/constructionsight/lead_dedupe_service.py"
+search = '"reasons": sorted(set(reasons))'
+replacement = '"reasons": []'
+tests = ["tests/test_lead_dedupe_service.py::test_duplicate_result_identity_binds_changed_decision_rationale"]
+expected_output = "test_duplicate_result_identity_binds_changed_decision_rationale"
+risk = "A new duplicate decision rationale could reuse an immutable result identity and fail during rescan persistence."
+
+[[cases]]
+id = "CS-MUT-INIT-DEFAULT-DIRECTORY-001"
+path = "src/constructionsight/cli.py"
+search = "        DEFAULT_DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)"
+replacement = "        pass"
+tests = ["tests/test_cli_init_db.py::test_init_db_creates_default_directory_on_first_run"]
+expected_output = "test_init_db_creates_default_directory_on_first_run"
+risk = "First-run initialization outside a checkout could fail because the default data directory does not exist."
+
+[[cases]]
+id = "CS-MUT-AUTH-EXTRA-001"
+path = "src/constructionsight/authorization_decision_models.py"
+search = "class AuthorizationDecision(BaseModel):\n    \"\"\"Fail-closed authority for one exact action, resource, state, and scope.\"\"\"\n\n    model_config = ConfigDict(extra=\"forbid\", frozen=True)"
+replacement = "class AuthorizationDecision(BaseModel):\n    \"\"\"Fail-closed authority for one exact action, resource, state, and scope.\"\"\"\n\n    model_config = ConfigDict(extra=\"ignore\", frozen=True)"
+tests = ["tests/test_adversarial_semantic_witnesses.py::test_authorization_decision_rejects_unknown_extra_fields"]
+expected_output = "test_authorization_decision_rejects_unknown_extra_fields"
+risk = "Unknown authority-significant fields could be silently discarded instead of rejected."
+
+[[cases]]
+id = "CS-MUT-AUTH-ID-SCHEMA-001"
+path = "src/constructionsight/authorization_decision_models.py"
+search = '''    schema_version: Literal["constructionsight.authorization-decision/v1"] = (
+        AUTHORIZATION_DECISION_SCHEMA_VERSION
+    )
+    decision_id: str = Field(pattern=r"^authorization-decision:[0-9a-f]{64}$")'''
+replacement = '''    schema_version: Literal["constructionsight.authorization-decision/v1"] = (
+        AUTHORIZATION_DECISION_SCHEMA_VERSION
+    )
+    decision_id: str = Field(min_length=1)'''
+tests = ["tests/test_adversarial_semantic_witnesses.py::test_authorization_decision_rejects_malformed_identity_schema"]
+expected_output = "test_authorization_decision_rejects_malformed_identity_schema"
+risk = "Malformed authorization identity syntax could reach semantic validation instead of failing at the identity boundary."
+
+[[cases]]
+id = "CS-MUT-PERSIST-INTERRUPT-ROLLBACK-001"
+path = "src/constructionsight/storage/database.py"
+search = "        session.rollback()"
+replacement = "        session.commit()"
+tests = ["tests/test_adversarial_semantic_witnesses.py::test_mid_transaction_failure_rolls_back_partial_writes"]
+expected_output = "test_mid_transaction_failure_rolls_back_partial_writes"
+risk = "An interrupted multi-record persistence operation could commit its partial prefix instead of rolling it back."
+
+[[cases]]
+id = "CS-MUT-CONSUME-REPLAY-001"
+path = "src/constructionsight/effect_consumption.py"
+search = "    if reservation.exact_replay:"
+replacement = "    if False and reservation.exact_replay:"
+tests = ["tests/test_effect_consumption.py::test_sequential_exact_replay_returns_retained_result_without_effect"]
+expected_output = "test_sequential_exact_replay_returns_retained_result_without_effect"
+risk = "An exact duplicate could skip its retained result path and attempt to cross the protected effect boundary again."
+
+[[cases]]
+id = "CS-MUT-AUTH-NAIVE-PREFLIGHT-001"
+path = "src/constructionsight/authorization_decision.py"
+search = "    if checked_at.tzinfo is None or checked_at.utcoffset() is None:"
+replacement = "    if False and (checked_at.tzinfo is None or checked_at.utcoffset() is None):"
+tests = ["tests/test_adversarial_semantic_witnesses.py::test_preflight_rejects_naive_checked_at"]
+expected_output = "test_preflight_rejects_naive_checked_at"
+risk = "A timezone-naive authorization preflight timestamp could enter validity-window evaluation."
+
+[[cases]]
+id = "CS-MUT-REPO-SYMLINK-001"
+path = "src/constructionsight/repository_path_certification.py"
+search = "        if candidate.is_symlink():"
+replacement = "        if False and candidate.is_symlink():"
+tests = ["tests/test_repository_path_certification.py::test_repository_file_resolution_rejects_external_and_internal_symlinks"]
+expected_output = "test_repository_file_resolution_rejects_external_and_internal_symlinks"
+risk = "Repository evidence resolution could follow a symbolic-link component outside the intended evidence path."
+
+[[cases]]
+id = "CS-MUT-CEQANET-DISCOVERY-EXECUTOR-001"
+path = "src/constructionsight/ceqanet_discovery_http.py"
+search = '''    def __init__(
+        self,
+        timeout_seconds: float = 20.0,
+    ) -> None:
+        self.policy = replace(
+            CEQANET_DISCOVERY_POLICY,
+            read_timeout_seconds=timeout_seconds,
+        )
+
+    def discover(self) -> CeqanetDiscoveryResult:
+        observation = _execute_bounded_http(
+            CEQANET_ADVANCED_SEARCH_URL,
+            "GET",
+            self.policy,
+        )'''
+replacement = '''    def __init__(
+        self,
+        timeout_seconds: float = 20.0,
+        executor=_execute_bounded_http,
+    ) -> None:
+        self.policy = replace(
+            CEQANET_DISCOVERY_POLICY,
+            read_timeout_seconds=timeout_seconds,
+        )
+        self.executor = executor
+
+    def discover(self) -> CeqanetDiscoveryResult:
+        observation = self.executor(
+            CEQANET_ADVANCED_SEARCH_URL,
+            "GET",
+            self.policy,
+        )'''
+tests = ["tests/test_ceqanet_discovery_http.py::test_live_discovery_does_not_accept_caller_selected_executor"]
+expected_output = "test_live_discovery_does_not_accept_caller_selected_executor"
+risk = "CEQAnet live discovery could reacquire caller-selected HTTP effect authority after the production boundary is reviewed."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-FRESH-CONTEXT-001"
+path = "src/constructionsight/assurance_certification.py"
+search = '''        if raw.get("fresh_context") is not True:'''
+replacement = '''        if False and raw.get("fresh_context") is not True:'''
+tests = ["tests/test_assurance_certification.py::test_assurance_rejects_non_fresh_pass"]
+expected_output = "test_assurance_rejects_non_fresh_pass"
+risk = "A pass primed by the implementation session or earlier candidates could be counted as a fresh analytical take."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-DEEP-COUNT-001"
+path = "src/constructionsight/assurance_certification.py"
+search = '''    if not _positive_integer(minimum_deep) or deep_review_count < cast(
+        int, minimum_deep
+    ):'''
+replacement = '''    if not _positive_integer(minimum_deep) or False:'''
+tests = ["tests/test_assurance_certification.py::test_assurance_rejects_insufficient_deep_passes"]
+expected_output = "test_assurance_rejects_insufficient_deep_passes"
+risk = "A single or incomplete deep review could be misrepresented as the required variance-reducing multi-pass scan."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-DEFERRED-CANDIDATE-001"
+path = "src/constructionsight/assurance_certification.py"
+search = '''        if disposition not in {"resolved", "rejected"}:'''
+replacement = '''        if disposition not in {"resolved", "rejected", "deferred"}:'''
+tests = ["tests/test_assurance_certification.py::test_assurance_rejects_deferred_candidate"]
+expected_output = "test_assurance_rejects_deferred_candidate"
+risk = "A deferred security candidate could disappear behind a passing assurance status."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-EVIDENCE-DIGEST-001"
+path = "src/constructionsight/assurance_certification.py"
+search = '''    if actual_digest != raw_digest:'''
+replacement = '''    if False and actual_digest != raw_digest:'''
+tests = ["tests/test_assurance_certification.py::test_assurance_rejects_evidence_digest_mismatch"]
+expected_output = "test_assurance_rejects_evidence_digest_mismatch"
+risk = "Pass or gate evidence could be changed after review without invalidating its assurance claim."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-COVERAGE-GAP-001"
+path = "src/constructionsight/assurance_certification.py"
+search = '''    if payload.get("coverage_complete") is not True or payload.get("coverage_gaps") != []:'''
+replacement = '''    if False and (payload.get("coverage_complete") is not True or payload.get("coverage_gaps") != []):'''
+tests = ["tests/test_assurance_certification.py::test_assurance_rejects_candidate_union_coverage_gap"]
+expected_output = "test_assurance_rejects_candidate_union_coverage_gap"
+risk = "A partial scan could make a complete-coverage claim while known paths remain unreviewed."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-SURVIVING-MUTANT-001"
+path = "src/constructionsight/assurance_certification.py"
+search = '''    if report.get("surviving_security_mutants") != contract.get(
+        "surviving_security_mutants_allowed"
+    ):'''
+replacement = '''    if False and report.get("surviving_security_mutants") != contract.get(
+        "surviving_security_mutants_allowed"
+    ):'''
+tests = ["tests/test_assurance_certification.py::test_assurance_rejects_surviving_security_mutant"]
+expected_output = "test_assurance_rejects_surviving_security_mutant"
+risk = "Known security mutants could survive while the native maximum artifact still reports a pass."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-PASS-EVIDENCE-001"
+path = "src/constructionsight/assurance_certification.py"
+search = '''                if payload.get(field) != raw.get(field):'''
+replacement = '''                if False and payload.get(field) != raw.get(field):'''
+tests = ["tests/test_assurance_certification.py::test_assurance_rejects_pass_evidence_disagreement"]
+expected_output = "test_assurance_rejects_pass_evidence_disagreement"
+risk = "A normalized pass wrapper could claim different coverage or review counts than the canonical assurance report."
+
+[[cases]]
+id = "CS-MUT-ASSURANCE-GATE-EVIDENCE-001"
+path = "src/constructionsight/assurance_certification.py"
+search = '''            if bound_result is None or bound_result.get("status") != raw.get("status"):'''
+replacement = '''            if False and (bound_result is None or bound_result.get("status") != raw.get("status")):'''
+tests = ["tests/test_assurance_certification.py::test_assurance_rejects_quality_gate_evidence_disagreement"]
+expected_output = "test_assurance_rejects_quality_gate_evidence_disagreement"
+risk = "A main artifact could report a passed quality gate whose normalized source evidence records failure or omission."
+
+[[cases]]
+id = "CS-MUT-VULNERABILITY-BASH-ENV-001"
+path = "src/constructionsight/vulnerability_ci_certification.py"
+search = '''        if actual.count("          BASH_ENV: /dev/null") != 3:'''
+replacement = '''        if actual.count("          BASH_ENV: /dev/null") != 2:'''
+tests = ["tests/test_vulnerability_ci_certification.py::test_canonical_vulnerability_job_neutralizes_shell_startup"]
+expected_output = "test_canonical_vulnerability_job_neutralizes_shell_startup"
+risk = "A vulnerability Bash step could execute an inherited startup hook before the reviewed scanner command body."
+
+[[cases]]
+id = "CS-MUT-RUNTIME-ANCESTOR-NOFOLLOW-001"
+path = "src/constructionsight/storage/runtime_artifacts.py"
+search = '''    return os.O_RDONLY | nofollow | directory | getattr(os, "O_CLOEXEC", 0)'''
+replacement = '''    return os.O_RDONLY | directory | getattr(os, "O_CLOEXEC", 0)'''
+tests = ["tests/test_runtime_artifacts.py::test_runtime_reader_never_opens_a_symlinked_ancestor"]
+expected_output = "test_runtime_reader_never_opens_a_symlinked_ancestor"
+risk = "An ancestor symlink could be opened outside the evidence path before a later check rejects it."
+
+[[cases]]
+id = "CS-MUT-RUNTIME-ENTRY-IDENTITY-001"
+path = "src/constructionsight/storage/runtime_artifacts.py"
+search = '''        or (current.st_dev, current.st_ino) != (opened.st_dev, opened.st_ino)'''
+replacement = '''        or False'''
+tests = ["tests/test_runtime_artifacts.py::test_runtime_reader_detects_regular_file_replacement_before_return"]
+expected_output = "test_runtime_reader_detects_regular_file_replacement_before_return"
+risk = "Replacing a checked regular file with another inode could retain a successful verification result."
+
+[[cases]]
+id = "CS-MUT-RUNTIME-NOFOLLOW-CAPABILITY-001"
+path = "src/constructionsight/storage/runtime_artifacts.py"
+search = '''        or not nofollow'''
+replacement = '''        or False'''
+tests = ["tests/test_runtime_artifacts.py::test_runtime_reader_fails_before_open_without_required_capabilities"]
+expected_output = "test_runtime_reader_fails_before_open_without_required_capabilities"
+risk = "A platform missing atomic no-follow access could silently open evidence with weaker path semantics."
+
+[[cases]]
+id = "CS-MUT-RUNTIME-READ-GROWTH-001"
+path = "src/constructionsight/storage/runtime_artifacts.py"
+search = '''    if len(content) > max_bytes:'''
+replacement = '''    if False and len(content) > max_bytes:'''
+tests = ["tests/test_runtime_artifacts.py::test_runtime_reader_bounds_growth_even_when_initial_size_was_small"]
+expected_output = "test_runtime_reader_bounds_growth_even_when_initial_size_was_small"
+risk = "File growth after the initial size check could cross the actual read ceiling."
+
+[[cases]]
+id = "CS-MUT-ZIP-DIRECTORY-PREMATERIALIZATION-001"
+path = "src/constructionsight/ceqanet_operator_archive_verify.py"
+search = '''    _require_bounded_central_directory(raw)'''
+replacement = '''    pass'''
+tests = ["tests/test_ceqanet_operator_archive_verify.py::test_archive_entry_limit_precedes_zip_directory_materialization"]
+expected_output = "test_archive_entry_limit_precedes_zip_directory_materialization"
+risk = "ZIP central-directory objects could be materialized before the entry ceiling is enforced."
+
+[[cases]]
+id = "CS-MUT-ZIP-VERIFIED-BYTE-BINDING-001"
+path = "src/constructionsight/ceqanet_operator_archive_verify.py"
+search = '''    with io.BytesIO(raw) as source, zipfile.ZipFile(source) as archive:'''
+replacement = '''    with io.BytesIO(raw) as source, zipfile.ZipFile(path) as archive:'''
+tests = ["tests/test_ceqanet_operator_archive_verify.py::test_archive_verification_uses_bytes_bound_before_path_replacement"]
+expected_output = "test_archive_verification_uses_bytes_bound_before_path_replacement"
+risk = "ZIP verification could reopen a substituted path instead of consuming the bounded verified byte snapshot."
+
+[[cases]]
+id = "CS-MUT-RUNTIME-PUBLISH-NOREPLACE-001"
+path = "src/constructionsight/storage/runtime_artifacts.py"
+search = '''                os.link(
+                    "content.tmp", name,
+                    src_dir_fd=staging, dst_dir_fd=parent, follow_symlinks=False,
+                )'''
+replacement = '''                os.replace(
+                    "content.tmp", name,
+                    src_dir_fd=staging, dst_dir_fd=parent,
+                )'''
+tests = ["tests/test_runtime_artifact_publication.py::test_artifact_publication_never_replaces_a_racing_conflict"]
+expected_output = "test_artifact_publication_never_replaces_a_racing_conflict"
+risk = "A create-only evidence publication could overwrite the artifact that won a concurrent race."
+
+[[cases]]
+id = "CS-MUT-RUNTIME-PUBLISH-DATA-SYNC-001"
+path = "src/constructionsight/storage/runtime_artifacts.py"
+search = '''                stream.flush()
+                os.fsync(stream.fileno())'''
+replacement = '''                stream.flush()'''
+tests = ["tests/test_runtime_artifact_publication.py::test_artifact_data_is_synced_before_publish_and_directory_after_publish"]
+expected_output = "test_artifact_data_is_synced_before_publish_and_directory_after_publish"
+risk = "An authoritative artifact name could be published before the complete data is durably prepared."
+
+[[cases]]
+id = "CS-MUT-RUNTIME-PUBLISH-BOUND-001"
+path = "src/constructionsight/storage/runtime_artifacts.py"
+search = '''                    if byte_count > max_bytes:'''
+replacement = '''                    if False and byte_count > max_bytes:'''
+tests = ["tests/test_runtime_artifact_publication.py::test_artifact_writer_stops_before_publishing_oversize_and_cleans_staging"]
+expected_output = "test_artifact_writer_stops_before_publishing_oversize_and_cleans_staging"
+risk = "A stream could continue past its reviewed output ceiling and publish an oversized artifact."
+
+[[cases]]
+id = "CS-MUT-RUNTIME-EXCEPTION-PARENT-BINDING-001"
+path = "src/constructionsight/storage/runtime_artifacts.py"
+search = '''        try:
+            yield parent, parts[-1]
+        finally:
+            for binding in bindings:
+                _require_same_entry(*binding)'''
+replacement = '''        yield parent, parts[-1]
+        for binding in bindings:
+            _require_same_entry(*binding)'''
+tests = ["tests/test_runtime_artifact_publication.py::test_artifact_exact_replay_rejects_parent_replacement_during_failed_publish"]
+expected_output = "test_artifact_exact_replay_rejects_parent_replacement_during_failed_publish"
+risk = "A handled publication conflict could bypass parent-identity validation and return an exact replay from a substituted directory."
+
+[[cases]]
+id = "CS-MUT-RUNTIME-REPLAY-DURABILITY-001"
+path = "src/constructionsight/parcel_source_bulk_rehearsal_artifacts.py"
+search = '''                with open_runtime_artifact(path, durable=True) as retained_file:'''
+replacement = '''                with open_runtime_artifact(path, durable=False) as retained_file:'''
+tests = ["tests/test_runtime_artifact_publication.py::test_artifact_exact_replay_syncs_verified_file_and_parent"]
+expected_output = "test_artifact_exact_replay_syncs_verified_file_and_parent"
+risk = "Recovery from an interrupted publication could acknowledge existing matching bytes without completing data and directory durability."
+
+[[cases]]
+id = "CS-MUT-CHECKPOINT-INPUT-BOUND-001"
+path = "src/constructionsight/parcel_source_bulk_rehearsal.py"
+search = '''read_bounded_artifact_stream(stream, max_bytes=_MAX_CHECKPOINT_FILE_BYTES)'''
+replacement = '''read_bounded_artifact_stream(stream, max_bytes=_MAX_CHECKPOINT_FILE_BYTES * 1024)'''
+tests = ["tests/test_runtime_artifact_publication.py::test_checkpoint_loader_bounds_input_before_json_materialization"]
+expected_output = "test_checkpoint_loader_bounds_input_before_json_materialization"
+risk = "An oversized retained checkpoint could reach JSON materialization before its governed byte ceiling rejects it."
+
+[[cases]]
+id = "CS-MUT-TEXT-READER-CONTAINMENT-001"
+path = "src/constructionsight/storage/runtime_artifacts.py"
+search = '''    return read_runtime_artifact(path, max_bytes=max_bytes).decode("utf-8")'''
+replacement = '''    return path.read_text(encoding="utf-8")'''
+tests = ["tests/test_runtime_evidence_loaders.py::test_json_loaders_reject_before_parsing"]
+expected_output = "test_json_loaders_reject_before_parsing"
+risk = "Operator JSON input could bypass the shared no-follow bounded reader."
+
+[[cases]]
+id = "CS-MUT-TEXT-READER-CEILING-001"
+path = "src/constructionsight/storage/runtime_artifacts.py"
+search = '''    return read_runtime_artifact(path, max_bytes=max_bytes).decode("utf-8")'''
+replacement = '''    return read_runtime_artifact(path, max_bytes=max_bytes * 1024).decode("utf-8")'''
+tests = ["tests/test_runtime_evidence_loaders.py::test_json_loaders_reject_before_parsing"]
+expected_output = "test_json_loaders_reject_before_parsing"
+risk = "Operator JSON could reach materialization before the 16-MiB ceiling rejects it."
+
+[[cases]]
+id = "CS-MUT-DETAIL-SNAPSHOT-BINDING-001"
+path = "src/constructionsight/ceqanet_detail_parse_cli.py"
+search = '''    return content,'''
+replacement = '''    return read_runtime_text(input_path),'''
+tests = ["tests/test_runtime_evidence_loaders.py::test_html_auto_detection_uses_one_byte_snapshot"]
+expected_output = "test_html_auto_detection_uses_one_byte_snapshot"
+risk = "HTML selected by format detection could be substituted before parsing."
+
+[[cases]]
+id = "CS-MUT-RESULT-SNAPSHOT-BINDING-001"
+path = "src/constructionsight/ceqanet_result_parse_cli.py"
+search = '''    return content,'''
+replacement = '''    return read_runtime_text(input_path),'''
+tests = ["tests/test_runtime_evidence_loaders.py::test_html_auto_detection_uses_one_byte_snapshot"]
+expected_output = "test_html_auto_detection_uses_one_byte_snapshot"
+risk = "HTML selected by format detection could be substituted before parsing."
+
+[[cases]]
+id = "CS-MUT-VOCABULARY-SNAPSHOT-BINDING-001"
+path = "src/constructionsight/ceqanet_vocabulary_export_cli.py"
+search = '''    return content,'''
+replacement = '''    return read_runtime_text(input_path),'''
+tests = ["tests/test_runtime_evidence_loaders.py::test_html_auto_detection_uses_one_byte_snapshot"]
+expected_output = "test_html_auto_detection_uses_one_byte_snapshot"
+risk = "HTML selected by format detection could be substituted before parsing."
+
+[[cases]]
+id = "CS-MUT-INTAKE-FILE-CONTAINMENT-001"
+path = "src/constructionsight/intake_service.py"
+search = '''        content = read_runtime_artifact(path, max_bytes=_MAX_INTAKE_BYTES)'''
+replacement = '''        content = path.read_bytes()'''
+tests = ["tests/test_runtime_evidence_loaders.py::test_intake_file_rejects_symlinks"]
+expected_output = "test_intake_file_rejects_symlinks"
+risk = "Universal intake could follow final or ancestor symlinks into outside evidence."
+
+[[cases]]
+id = "CS-MUT-CSV-FILE-CONTAINMENT-001"
+path = "src/constructionsight/ceqanet_csv_cli.py"
+search = '''        content = read_runtime_artifact(csv_path, max_bytes=10_000_000)'''
+replacement = '''        content = csv_path.read_bytes()'''
+tests = ["tests/test_runtime_evidence_loaders.py::test_csv_file_rejects_symlinks_before_inspection"]
+expected_output = "test_csv_file_rejects_symlinks_before_inspection"
+risk = "CSV inspection could parse bytes obtained by following a symlinked evidence path."
+
+[[cases]]
+id = "CS-MUT-TEXT-WRITER-CONTAINMENT-001"
+path = "src/constructionsight/storage/runtime_artifacts.py"
+search = '''    publish_runtime_artifact(
+        path, chunks, max_bytes=max_bytes, replace_existing=overwrite, parent=parent,
+    )'''
+replacement = "    path.write_text(content, encoding=\"utf-8\")"
+tests = ["tests/test_runtime_output_writers.py::test_operator_writers_reject_unsafe_or_oversized_output"]
+expected_output = "test_operator_writers_reject_unsafe_or_oversized_output"
+risk = "Operator output could bypass pinned no-follow publication."
+
+[[cases]]
+id = "CS-MUT-TEXT-WRITER-CEILING-001"
+path = "src/constructionsight/storage/runtime_artifacts.py"
+search = '''    publish_runtime_artifact(
+        path, chunks, max_bytes=max_bytes, replace_existing=overwrite, parent=parent,
+    )'''
+replacement = "    publish_runtime_artifact(path, chunks, max_bytes=max_bytes * 1024, replace_existing=overwrite)"
+tests = ["tests/test_runtime_output_writers.py::test_text_output_ceiling_counts_utf8_bytes_before_replacement"]
+expected_output = "test_text_output_ceiling_counts_utf8_bytes_before_replacement"
+risk = "A UTF-8 output could exceed its byte ceiling before replacing retained evidence."
+
+[[cases]]
+id = "CS-MUT-TEXT-WRITER-NOREPLACE-001"
+path = "src/constructionsight/storage/runtime_artifacts.py"
+search = '''    publish_runtime_artifact(
+        path, chunks, max_bytes=max_bytes, replace_existing=overwrite, parent=parent,
+    )'''
+replacement = "    publish_runtime_artifact(path, chunks, max_bytes=max_bytes, replace_existing=True)"
+tests = ["tests/test_runtime_output_writers.py::test_create_only_operator_output_preserves_racing_winner"]
+expected_output = "test_create_only_operator_output_preserves_racing_winner"
+risk = "A concurrent artifact could be overwritten without requested replacement authority."
+
+[[cases]]
+id = "CS-MUT-REPLACEMENT-TARGET-TYPE-001"
+path = "src/constructionsight/storage/runtime_artifacts.py"
+search = "    if not stat.S_ISREG(target.st_mode):"
+replacement = "    if False and not stat.S_ISREG(target.st_mode):"
+tests = ["tests/test_runtime_output_writers.py::test_operator_writers_reject_unsafe_or_oversized_output"]
+expected_output = "test_operator_writers_reject_unsafe_or_oversized_output"
+risk = "An explicitly unsafe final artifact entry could be silently replaced."
+
+[[cases]]
+id = "CS-MUT-REPLACEMENT-PRIMITIVE-001"
+path = "src/constructionsight/storage/runtime_artifacts.py"
+search = "    if replace_existing and not _DIRECTORY_RELATIVE_REPLACEMENT_SUPPORTED:"
+replacement = "    if False and replace_existing and not _DIRECTORY_RELATIVE_REPLACEMENT_SUPPORTED:"
+tests = ["tests/test_runtime_output_writers.py::test_unsupported_output_primitive_fails_before_touching_destination"]
+expected_output = "test_unsupported_output_primitive_fails_before_touching_destination"
+risk = "Unsupported atomic output primitives could silently downgrade containment."
+
+[[cases]]
+id = "CS-MUT-REGISTRY-OUTPUT-NOREPLACE-001"
+path = "src/constructionsight/source_registry_update_plan_cli.py"
+search = "        _atomic_write_text(output, f\"{rendered}\\n\", overwrite=overwrite)"
+replacement = "        _atomic_write_text(output, f\"{rendered}\\n\", overwrite=True)"
+tests = ["tests/test_runtime_output_writers.py::test_registry_plan_preserves_a_concurrent_output"]
+expected_output = "test_registry_plan_preserves_a_concurrent_output"
+risk = "The registry CLI could discard its no-overwrite policy at the actual publication boundary."
+
+[[cases]]
+id = "CS-MUT-BUNDLE-OUTPUT-CONTAINMENT-001"
+path = "src/constructionsight/ceqanet_operator_bundle.py"
+search = "    publish_runtime_artifact(path, chunks(), max_bytes=limit, replace_existing=True)"
+replacement = "    path.write_text(\"\".join(fragments), encoding=\"utf-8\")"
+tests = ["tests/test_ceqanet_operator_bundle.py::test_bundle_publication_rejects_unsafe_output"]
+expected_output = "test_bundle_publication_rejects_unsafe_output"
+risk = "Bundle output could follow a replaced ancestor or final symlink."
+
+[[cases]]
+id = "CS-MUT-ARCHIVE-OUTPUT-HANDLE-001"
+path = "src/constructionsight/ceqanet_operator_archive.py"
+search = "            archive_path=temporary_file,"
+replacement = "            archive_path=archive_path,"
+tests = ["tests/test_ceqanet_operator_archive.py::test_archive_publication_never_writes_through_replaced_paths"]
+expected_output = "test_archive_publication_never_writes_through_replaced_paths"
+risk = "ZIP staging could write through the unverified destination before safe publication."
+
+
+[[cases]]
+id = "CS-MUT-REGISTRY-RECOVERY-PLAN-001"
+path = "src/constructionsight/source_registry_update_plan_cli.py"
+search = '''    validate_source_registry_apply_snapshot(
+        _sources_from_json(original_text), current_plan, _sources_from_json(target_text), report,
+        approved_plan_digest=str(record["approved"]),
+    )'''
+replacement = "    pass"
+tests = ["tests/test_source_registry_update_plan.py::test_recovery_revalidates_plan_contents", "tests/test_source_registry_update_plan.py::test_recovery_revalidates_prepared_result"]
+expected_output = "test_recovery_revalidates"
+risk = "Recovery could accept altered approved plans, fabricated audit outcomes, or unauthorized prepared registry changes."
+
+[[cases]]
+id = "CS-MUT-REGISTRY-RECOVERY-DURABILITY-001"
+path = "src/constructionsight/source_registry_update_plan_cli.py"
+search = "    if _digest_bytes(artifacts.read(target, durable=True)) != target_sha:"
+replacement = "    if _digest_bytes(artifacts.read(target)) != target_sha:"
+tests = ["tests/test_source_registry_update_plan.py::test_recovery_syncs_existing_target_before_success_audit"]
+expected_output = "test_recovery_syncs_existing_target_before_success_audit"
+risk = "A recovered target could expose success evidence before its durability is confirmed."
+
+[[cases]]
+id = "CS-MUT-REGISTRY-TRANSACTION-PARENT-001"
+path = "src/constructionsight/source_registry_update_plan_cli.py"
+search = "        validate_runtime_artifact_bindings(self.bindings)"
+replacement = "        pass"
+tests = ["tests/test_source_registry_update_plan.py::test_registry_apply_does_not_publish_into_replaced_parent"]
+expected_output = "test_registry_apply_does_not_publish_into_replaced_parent"
+risk = "A detached transaction could publish and delete recovery evidence before detecting parent replacement."
+
+[[cases]]
+id = "CS-MUT-REGISTRY-SHARED-OUTPUT-LOCK-001"
+path = "src/constructionsight/source_registry_update_plan_cli.py"
+search = "            fcntl.flock(fd, fcntl.LOCK_EX)"
+replacement = "            pass"
+tests = ["tests/test_source_registry_update_plan.py::test_registry_writers_sharing_audit_are_serialized_across_processes"]
+expected_output = "test_registry_writers_sharing_audit_are_serialized_across_processes"
+risk = "Different registry targets could race to overwrite a shared success audit."
+
+
+[[cases]]
+id = "CS-MUT-ARCHIVE-MANIFEST-SNAPSHOT-001"
+path = "src/constructionsight/ceqanet_operator_archive.py"
+search = '''    expected_content["manifest.json"] = (
+        verified_bundle.manifest_byte_count,
+        verified_bundle.manifest_sha256,
+    )'''
+replacement = '''    expected_content["manifest.json"] = (
+        len(manifest_path.read_bytes()),
+        hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
+    )'''
+tests = ["tests/test_ceqanet_operator_archive.py::test_archive_rejects_manifest_inventory_swap_during_verification"]
+expected_output = "test_archive_rejects_manifest_inventory_swap_during_verification"
+risk = "A restored manifest from before verification could be archived alongside a different verified artifact inventory, creating a success-claimed ZIP missing manifest-listed files."
+
+
+[[cases]]
+id = "CS-MUT-ARCHIVE-INVENTORY-001"
+path = "src/constructionsight/ceqanet_operator_archive_verify.py"
+search = "                archive_issues.extend(_manifest_inventory_issues(filenames, manifest))"
+replacement = "                pass"
+tests = ["tests/test_ceqanet_operator_archive_verify.py::test_archive_verification_rejects_unlisted_extra_zip_member", "tests/test_ceqanet_operator_archive_verify.py::test_archive_verification_rejects_duplicate_manifest_inventory_claim"]
+expected_output = "test_archive_verification_rejects_"
+risk = "An archive verifier could report success for undeclared ZIP payloads or duplicate manifest identity claims despite apparently valid file hashes."
+
+
+[[cases]]
+id = "CS-MUT-ARCHIVE-BUILDER-DUPLICATE-001"
+path = "src/constructionsight/ceqanet_operator_archive.py"
+search = "    if len(filenames) != len(set(filenames)):"
+replacement = "    if False:"
+tests = ["tests/test_ceqanet_operator_archive.py::test_archive_builder_rejects_duplicate_manifest_inventory_claim"]
+expected_output = "test_archive_builder_rejects_duplicate_manifest_inventory_claim"
+risk = "Deduplicating a verified manifest inventory could falsely claim archive success despite repeated artifact identities and produce a ZIP that fails independent verification."
+
+
+[[cases]]
+id = "CS-MUT-BUNDLE-INVENTORY-DUPLICATE-001"
+path = "src/constructionsight/ceqanet_operator_bundle_verify.py"
+search = "        if artifact.filename in seen_filenames:"
+replacement = "        if False:"
+tests = ["tests/test_ceqanet_operator_bundle_verify.py::test_verify_ceqanet_operator_bundle_rejects_duplicate_manifest_claim"]
+expected_output = "test_verify_ceqanet_operator_bundle_rejects_duplicate_manifest_claim"
+risk = "Duplicate manifest artifact identities could be counted as independently verified source evidence and create a falsely successful bundle verification."
+
+
+[[cases]]
+id = "CS-MUT-BUNDLE-INVENTORY-COUNT-001"
+path = "src/constructionsight/ceqanet_operator_bundle_verify.py"
+search = '        or metadata["artifact_count"] != len(artifact_entries)'
+replacement = "        or False"
+tests = ["tests/test_ceqanet_operator_bundle_verify.py::test_bundle_verification_rejects_inaccurate_manifest_artifact_count"]
+expected_output = "test_bundle_verification_rejects_inaccurate_manifest_artifact_count"
+risk = "Manifest metadata could lie about artifact inventory cardinality while bundle verification reports success."
+
+[[cases]]
+id = "CS-MUT-ARCHIVE-INVENTORY-COUNT-001"
+path = "src/constructionsight/ceqanet_operator_archive_verify.py"
+search = '        or metadata["artifact_count"] != len(_artifact_entries(manifest))'
+replacement = "        or False"
+tests = ["tests/test_ceqanet_operator_archive_verify.py::test_archive_verification_rejects_inaccurate_manifest_artifact_count"]
+expected_output = "test_archive_verification_rejects_inaccurate_manifest_artifact_count"
+risk = "Archive metadata could lie about the verified artifact inventory cardinality while passing manifest verification."
+
+
+[[cases]]
+id = "CS-MUT-ARCHIVE-STAGED-INVENTORY-001"
+path = "src/constructionsight/ceqanet_operator_archive.py"
+search = "            if [info.filename for info in infos] != filenames:"
+replacement = "            if False:"
+tests = ["tests/test_ceqanet_operator_archive.py::test_archive_writer_rejects_missing_staged_member_before_publication"]
+expected_output = "test_archive_writer_rejects_missing_staged_member_before_publication"
+risk = "An archive builder could claim successful publication of a staged ZIP missing an expected verified artifact, or overwrite an existing archive without a complete member inventory."
+
+
+[[cases]]
+id = "CS-MUT-ARCHIVE-STAGED-BYTES-001"
+path = "src/constructionsight/ceqanet_operator_archive.py"
+search = '''        _verify_staged_zip(
+            temporary_file, filenames=archived_files, expected_content=expected_content,
+        )'''
+replacement = "        pass"
+tests = ["tests/test_ceqanet_operator_archive.py::test_archive_writer_rejects_corrupted_staged_zip_before_publication"]
+expected_output = "test_archive_writer_rejects_corrupted_staged_zip_before_publication"
+risk = "A verified source bundle could be transformed into a corrupted staged ZIP and replace an existing committed archive before the generated bytes are independently checked."
+
+
+[[cases]]
+id = "CS-MUT-LEAD-DUPLICATE-REVIEW-INITIAL-001"
+path = "src/constructionsight/lead_workflow_service.py"
+search = "        and duplicate_result.status == LeadDuplicateStatus.REVIEW_NEEDED"
+replacement = "        and False"
+tests = ["tests/test_lead_workflow_service.py::test_create_lead_workflow_reviews_near_match"]
+expected_output = "test_create_lead_workflow_reviews_near_match"
+risk = "Near-match duplicate uncertainty could create a READY workflow without successful duplicate review."
+
+
+[[cases]]
+id = "CS-MUT-LEAD-DUPLICATE-ACTIONABILITY-001"
+path = "src/constructionsight/lead_workflow_models.py"
+search = "    if next_status in ACTIONABLE_LEAD_WORKFLOW_STATUSES and ("
+replacement = "    if False and ("
+tests = ["tests/test_lead_workflow_models.py::test_workflow_record_rejects_legacy_actionable_duplicate_review"]
+expected_output = "test_workflow_record_rejects_legacy_actionable_duplicate_review"
+risk = "An unresolved duplicate workflow could deserialize into READY, ACTIVE, PAUSED, or CLOSED_SUCCESS and bypass the domain invariant."
+
+
+[[cases]]
+id = "CS-MUT-LEAD-DUPLICATE-DURABLE-001"
+path = "src/constructionsight/lead_operator_service.py"
+search = "    if unresolved_result is not None:"
+replacement = "    if False:"
+tests = ["tests/test_lead_workflow_transition_authorization.py::test_unresolved_persisted_duplicate_blocks_actionable_transition"]
+expected_output = "test_unresolved_persisted_duplicate_blocks_actionable_transition"
+risk = "An unresolved durable duplicate result could be ignored when a workflow no longer carries its descriptive limitation."
+
+
+[[cases]]
+id = "CS-MUT-LEAD-DUPLICATE-CANDIDATE-SCOPE-001"
+path = "src/constructionsight/lead_operator_service.py"
+search = "            LeadDuplicateResultRecord.base_candidate_id == record.base_candidate_id,\n            LeadDuplicateResultRecord.status.in_("
+replacement = "            LeadDuplicateResultRecord.base_candidate_id == record.base_candidate_id,\n            LeadDuplicateResultRecord.candidate_fingerprint_key == record.fingerprint_key,\n            LeadDuplicateResultRecord.status.in_("
+tests = ["tests/test_lead_workflow_transition_authorization.py::test_unresolved_persisted_duplicate_blocks_actionable_transition"]
+expected_output = "test_unresolved_persisted_duplicate_blocks_actionable_transition"
+risk = "A persisted near-match result with a changed or missing workflow fingerprint could bypass the pre-authorized actionability block."
+
+
+[[cases]]
+id = "CS-MUT-LEAD-DUPLICATE-RESULT-IMMUTABLE-001"
+path = "src/constructionsight/storage/lead_workflow_store.py"
+search = "    if not _duplicate_result_replay_matches(existing, result, payload_json):"
+replacement = "    if False:"
+tests = ["tests/test_lead_workflow_storage.py::test_store_duplicate_result_rejects_unreviewed_status_overwrite"]
+expected_output = "test_store_duplicate_result_rejects_unreviewed_status_overwrite"
+risk = "An unresolved persisted duplicate result could be overwritten as UNIQUE without an authenticated review decision."
+
+
+[[cases]]
+id = "CS-MUT-LEAD-DUPLICATE-STORAGE-GATE-001"
+path = "src/constructionsight/storage/lead_workflow_store.py"
+search = "        if unresolved_result is not None:"
+replacement = "        if False:"
+tests = ["tests/test_lead_workflow_storage.py::test_store_workflow_rejects_actionable_state_with_persisted_duplicate"]
+expected_output = "test_store_workflow_rejects_actionable_state_with_persisted_duplicate"
+risk = "A direct workflow persistence operation could insert READY despite an existing unresolved duplicate result, bypassing the authorized transition API."
+
+
+[[cases]]
+id = "CS-MUT-LEAD-DUPLICATE-RESCAN-001"
+path = "src/constructionsight/storage/lead_workflow_store.py"
+search = '    candidate.pop("created_at", None)'
+replacement = '    pass'
+tests = ["tests/test_lead_workflow_storage.py::test_store_duplicate_result_recheck_preserves_first_verdict_snapshot"]
+expected_output = "test_store_duplicate_result_recheck_preserves_first_verdict_snapshot"
+risk = "A routine duplicate rescan could reject the same immutable verdict merely because the newly built fingerprint has a later creation timestamp."
