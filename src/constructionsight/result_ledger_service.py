@@ -35,7 +35,7 @@ def build_result_ledger_record(
         correction_reason=None,
         status=status,
         decided_date=decided_date,
-        gross_value=normalized_gross_value,
+        gross_value=gross_value,
         share_rate=share_rate,
         reasons=reasons,
     )
@@ -161,7 +161,7 @@ def _build_revision(
         correction_reason=correction_reason,
         status=status,
         decided_date=decided_date,
-        gross_value=gross_value,
+        gross_value=normalized_gross_value,
         share_status=share_status,
         share=share,
         reasons=reasons or [],
