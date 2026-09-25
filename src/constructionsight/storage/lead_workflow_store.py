@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from constructionsight.lead_dedupe_models import (
@@ -178,7 +178,7 @@ def store_lead_workflow_event(
     event: LeadWorkflowEvent,
     workflow_id: str | None = None,
 ) -> LeadWorkflowEventRecord:
-    """Insert or update a lead workflow event."""
+    """Append one immutable workflow event or accept an exact replay."""
 
     session.flush()
     payload_json = _payload_json(event.model_dump(mode="json"))
@@ -200,12 +200,15 @@ def store_lead_workflow_event(
         )
         session.add(existing)
         return existing
-    existing.workflow_id = workflow_id
-    existing.previous_status = previous_status
-    existing.current_status = event.current_status.value
-    existing.reason = event.reason
-    existing.observed_created_at = event.created_at.isoformat()
-    existing.payload_json = payload_json
+    if (
+        existing.workflow_id != workflow_id
+        or existing.previous_status != previous_status
+        or existing.current_status != event.current_status.value
+        or existing.reason != event.reason
+        or existing.observed_created_at != event.created_at.isoformat()
+        or existing.payload_json != payload_json
+    ):
+        raise ValueError("persisted lead workflow events are immutable")
     return existing
 
 
@@ -263,6 +266,64 @@ def store_lead_workflow_record(
     for event in workflow.events:
         store_lead_workflow_event(session, event, workflow_id=workflow.workflow_id)
     return existing
+
+
+def compare_and_swap_lead_workflow_record(
+    session: Session,
+    *,
+    current: LeadWorkflowRecord,
+    updated: LeadWorkflowRecord,
+) -> LeadWorkflowRecordRow:
+    """Atomically replace one exact projection and append exactly one new event."""
+
+    if current.workflow_id != updated.workflow_id:
+        raise ValueError("lead workflow compare-and-swap cannot change workflow identity")
+    if len(updated.events) != len(current.events) + 1:
+        raise ValueError("lead workflow compare-and-swap requires exactly one appended event")
+    if updated.events[:-1] != current.events:
+        raise ValueError("lead workflow compare-and-swap cannot rewrite historical events")
+    require_duplicate_review_clear(
+        limitations=updated.limitations,
+        next_status=updated.status,
+    )
+    current_payload = _payload_json(current.to_dict())
+    updated_payload = _payload_json(updated.to_dict())
+    result = session.execute(
+        update(LeadWorkflowRecordRow)
+        .where(
+            LeadWorkflowRecordRow.workflow_id == current.workflow_id,
+            LeadWorkflowRecordRow.status == current.status.value,
+            LeadWorkflowRecordRow.payload_json == current_payload,
+        )
+        .values(
+            package_id=updated.package_id,
+            base_candidate_id=updated.base_candidate_id,
+            fingerprint_key=updated.fingerprint_key,
+            status=updated.status.value,
+            lead_score=updated.lead_score,
+            observed_created_at=updated.created_at.isoformat(),
+            observed_updated_at=updated.updated_at.isoformat(),
+            payload_json=updated_payload,
+        )
+    )
+    if result.rowcount != 1:
+        raise ValueError(
+            "lead workflow compare-and-swap rejected a stale or competing writer"
+        )
+    store_lead_workflow_event(
+        session,
+        updated.events[-1],
+        workflow_id=updated.workflow_id,
+    )
+    session.flush()
+    row = session.execute(
+        select(LeadWorkflowRecordRow).where(
+            LeadWorkflowRecordRow.workflow_id == updated.workflow_id
+        )
+    ).scalar_one()
+    if row.payload_json != updated_payload:
+        raise ValueError("lead workflow compare-and-swap did not persist the exact update")
+    return row
 
 
 def store_result_share_record(
