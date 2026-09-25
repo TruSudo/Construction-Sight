@@ -10,7 +10,6 @@ from pathlib import Path
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from constructionsight.storage.orm import Base
 from constructionsight.storage.schema_governance import initialize_governed_schema
 
 DEFAULT_DATABASE_PATH = Path("data/constructionsight.sqlite3")
