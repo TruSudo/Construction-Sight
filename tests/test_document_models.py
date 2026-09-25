@@ -2,7 +2,7 @@ import pytest
 from pydantic import ValidationError
 
 from constructionsight.document_models import DocumentRecord
-from constructionsight.provenance import Provenance
+from constructionsight.provenance import Provenance, ProvenanceConfidenceBasis
 
 
 def test_document_model_accepts_minimum_required_fields() -> None:
@@ -40,8 +40,10 @@ def test_document_model_requires_source_name() -> None:
 def test_document_model_preserves_provenance() -> None:
     provenance = Provenance(
         source_name="Synthetic Public Source",
-        confidence_score=90,
-        verified=True,
+        adapter_family="synthetic-test",
+        raw_reference="synthetic:test",
+        evidence_text="retained synthetic public evidence",
+        confidence_basis=ProvenanceConfidenceBasis.DETERMINISTIC_NORMALIZATION,
     )
     document = DocumentRecord(
         document_key="document:test:provenance",
@@ -49,4 +51,4 @@ def test_document_model_preserves_provenance() -> None:
         provenance=[provenance],
     )
 
-    assert document.provenance[0].band.value == "verified"
+    assert document.provenance[0].band.value == "high"
