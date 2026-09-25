@@ -70,7 +70,7 @@ def _report() -> OpportunityEnrichmentReport:
         signal_key="signal:test",
         signal_kind=EnrichmentSignalKind.PERMIT_TRANSITION,
         label="permit status",
-        score_delta=80,
+        score_delta=100,
         confidence_score=80,
         reason="permit status changed",
         limitations=["source needs review"],
