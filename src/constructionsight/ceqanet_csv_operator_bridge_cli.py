@@ -19,13 +19,16 @@ from sqlalchemy.orm import Session
 from constructionsight.authorization_decision import AuthorizationDeniedError
 from constructionsight.ceqanet_capture_queue import build_reviewed_ceqanet_capture_queue
 from constructionsight.ceqanet_csv_live_models import CeqanetCsvLiveExecution
-from constructionsight.ceqanet_ingestion_inbox import build_ceqanet_ingestion_inbox
 from constructionsight.ceqanet_csv_models import canonical_digest
 from constructionsight.ceqanet_csv_operator_bridge import (
     ReviewedCeqanetCsvBridge,
     build_reviewed_ceqanet_csv_bridge,
 )
 from constructionsight.ceqanet_csv_service import build_ceqanet_csv_export_request
+from constructionsight.ceqanet_ingestion_inbox import (
+    CeqanetIngestionInbox,
+    build_ceqanet_ingestion_inbox,
+)
 from constructionsight.legal import SourceAccessProfile
 from constructionsight.operator_services.ceqanet_csv_service import (
     execute_authorized_ceqanet_csv,
@@ -150,6 +153,46 @@ def _load_bound_capture_candidate(
     }
 
 
+def _load_ingestion_inbox(
+    *,
+    listing_evidence: Path,
+    queue_evidence: Path,
+    database_path: Path,
+) -> CeqanetIngestionInbox:
+    """Rebind immutable discovery artifacts and inspect current SQLite state read only."""
+
+    if listing_evidence.absolute() == queue_evidence.absolute():
+        raise ValueError("listing evidence and queue evidence must be distinct artifacts")
+    engine = None
+    try:
+        listing_raw = read_runtime_artifact(listing_evidence, max_bytes=16 * 1024 * 1024)
+        queue_raw = read_runtime_artifact(queue_evidence, max_bytes=16 * 1024 * 1024)
+        listing_payload: Any = json.loads(listing_raw.decode("utf-8"))
+        queue_payload: Any = json.loads(queue_raw.decode("utf-8"))
+        if not isinstance(listing_payload, dict) or not isinstance(queue_payload, dict):
+            raise ValueError("listing and queue evidence must each contain a JSON object")
+        engine = create_operator_read_engine(database_path)
+        with Session(engine, autoflush=False) as session:
+            return build_ceqanet_ingestion_inbox(
+                session,
+                listing_payload=listing_payload,
+                listing_bytes=listing_raw,
+                queue_payload=queue_payload,
+                queue_bytes=queue_raw,
+            )
+    except (
+        OSError,
+        ValueError,
+        TypeError,
+        UnicodeDecodeError,
+        SQLAlchemyError,
+    ) as exc:
+        raise ValueError(f"CEQAnet ingestion inbox could not be built: {exc}") from exc
+    finally:
+        if engine is not None:
+            engine.dispose()
+
+
 def _summary(bridge: ReviewedCeqanetCsvBridge) -> dict[str, object]:
     return {
         "source_sha256": bridge.source_sha256,
@@ -255,37 +298,15 @@ def ingestion_inbox(
 ) -> None:
     """Reconcile an exact reviewed discovery queue with persisted CEQA records."""
 
-    if listing_evidence.absolute() == queue_evidence.absolute():
-        raise typer.BadParameter("listing evidence and queue evidence must be distinct artifacts")
-    engine = None
     try:
-        listing_raw = read_runtime_artifact(listing_evidence, max_bytes=16 * 1024 * 1024)
-        queue_raw = read_runtime_artifact(queue_evidence, max_bytes=16 * 1024 * 1024)
-        listing_payload: Any = json.loads(listing_raw.decode("utf-8"))
-        queue_payload: Any = json.loads(queue_raw.decode("utf-8"))
-        if not isinstance(listing_payload, dict) or not isinstance(queue_payload, dict):
-            raise ValueError("listing and queue evidence must each contain a JSON object")
-        engine = create_operator_read_engine(database_path)
-        with Session(engine, autoflush=False) as session:
-            inbox = build_ceqanet_ingestion_inbox(
-                session,
-                listing_payload=listing_payload,
-                listing_bytes=listing_raw,
-                queue_payload=queue_payload,
-                queue_bytes=queue_raw,
-            )
-    except (
-        OSError,
-        ValueError,
-        TypeError,
-        UnicodeDecodeError,
-        SQLAlchemyError,
-    ) as exc:
-        typer.echo(f"CEQAnet ingestion inbox could not be built: {exc}", err=True)
+        inbox = _load_ingestion_inbox(
+            listing_evidence=listing_evidence,
+            queue_evidence=queue_evidence,
+            database_path=database_path,
+        )
+    except ValueError as exc:
+        typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
-    finally:
-        if engine is not None:
-            engine.dispose()
 
     payload = inbox.model_dump(mode="json")
     payload["next_step"] = (
@@ -294,6 +315,124 @@ def ingestion_inbox(
         "inbox to reconcile the same immutable discovery queue against SQLite."
     )
     typer.echo(json.dumps(payload, indent=2, sort_keys=True))
+
+
+@app.command("capture-next-preview")
+def capture_next_preview(
+    listing_evidence: Annotated[
+        Path,
+        typer.Option(
+            "--listing-evidence",
+            exists=True,
+            dir_okay=False,
+            readable=True,
+            help="Exact retained governed CEQAnet listing-execution JSON.",
+        ),
+    ],
+    queue_evidence: Annotated[
+        Path,
+        typer.Option(
+            "--queue-evidence",
+            exists=True,
+            dir_okay=False,
+            readable=True,
+            help="Exact reviewed SCH queue derived from the listing evidence.",
+        ),
+    ],
+    database_path: Annotated[
+        Path,
+        typer.Option(
+            "--database",
+            exists=True,
+            dir_okay=False,
+            readable=True,
+            help="Existing operator-compatible SQLite database used to skip persisted SCHs.",
+        ),
+    ],
+    output: Annotated[
+        Path,
+        typer.Option("--output", help="New path for the next retained live-execution evidence."),
+    ],
+    authorization_reason: Annotated[
+        str,
+        typer.Option(
+            "--authorization-reason",
+            help="Reason for this one exact pending public GET.",
+        ),
+    ],
+    execute_live: Annotated[
+        bool,
+        typer.Option(
+            "--execute-live",
+            help="Explicit approval to request at most one next pending SCH export.",
+        ),
+    ] = False,
+    plan_output: Annotated[
+        Path | None,
+        typer.Option("--plan-output", help="Optional new reviewed plan path."),
+    ] = None,
+    operator_id: Annotated[
+        str | None,
+        typer.Option("--operator-id", help="Optional audit label, not authentication."),
+    ] = None,
+    requires_login: Annotated[bool, typer.Option("--requires-login")] = False,
+    has_captcha: Annotated[bool, typer.Option("--has-captcha")] = False,
+    robots_disallows_collection: Annotated[
+        bool,
+        typer.Option("--robots-disallows-collection"),
+    ] = False,
+    terms_disallow_collection: Annotated[
+        bool,
+        typer.Option("--terms-disallow-collection"),
+    ] = False,
+    paywalled: Annotated[bool, typer.Option("--paywalled")] = False,
+) -> None:
+    """Capture at most one exact queue candidate not already persisted by SCH."""
+
+    try:
+        inbox = _load_ingestion_inbox(
+            listing_evidence=listing_evidence,
+            queue_evidence=queue_evidence,
+            database_path=database_path,
+        )
+    except ValueError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+    sch_number = inbox.next_pending_sch
+    if sch_number is None:
+        typer.echo(
+            json.dumps(
+                {
+                    "schema_version": "ceqanet_capture_next_result.v1",
+                    "candidate_count": inbox.candidate_count,
+                    "pending_capture_count": 0,
+                    "next_pending_sch": None,
+                    "network_executed": False,
+                    "persistence_mutated": False,
+                    "commercial_leads_created": False,
+                    "status": "no_pending_capture_candidate",
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return
+
+    capture_preview(
+        sch_number=sch_number,
+        output=output,
+        authorization_reason=authorization_reason,
+        execute_live=execute_live,
+        plan_output=plan_output,
+        operator_id=operator_id,
+        listing_evidence=listing_evidence,
+        queue_evidence=queue_evidence,
+        requires_login=requires_login,
+        has_captcha=has_captcha,
+        robots_disallows_collection=robots_disallows_collection,
+        terms_disallow_collection=terms_disallow_collection,
+        paywalled=paywalled,
+    )
 
 
 @app.command("capture-preview")
