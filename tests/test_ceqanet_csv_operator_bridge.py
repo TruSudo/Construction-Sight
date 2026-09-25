@@ -21,7 +21,7 @@ import typer
 from sqlalchemy.orm import Session
 from typer.testing import CliRunner
 
-import constructionsight.ceqanet_csv_operator_bridge_cli as capture_module
+from constructionsight import ceqanet_csv_operator_bridge_cli as capture_module
 from constructionsight.ceqanet_csv_live_models import CeqanetCsvLiveExecution
 from constructionsight.ceqanet_csv_models import canonical_digest
 from constructionsight.ceqanet_csv_operator_bridge import (
