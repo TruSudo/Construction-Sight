@@ -58,25 +58,31 @@ def _prepare_complete_closure(
     git(root, "add", ".")
     git(root, "commit", "-m", "implement assured correction")
     reviewed_commit = git(root, "rev-parse", "HEAD")
+    resolution_tree = git(root, "rev-parse", f"{reviewed_commit}^{{tree}}")
     reviewed_tree_digest = _reviewed_tree_digest(root)
     report = write_assurance(
         root,
         reviewed_commit=reviewed_commit,
         reviewed_tree_digest=reviewed_tree_digest,
     )
+    write(
+        root,
+        "docs/assurance/defect_closures/CS-SR-001.md",
+        "# CS-SR-001 closure\n\nCorrection and regression evidence retained.\n",
+    )
     closure: dict[str, object] = {
         **original,
         "resolution_summary": "Implemented and regression-tested the correction.",
         "resolution_commit": reviewed_commit,
+        "resolution_tree": resolution_tree,
+        "last_active_commit": reviewed_commit,
         "evidence_paths": ["docs/evidence.md"],
         "regression_tests": ["tests/test_resolution.py"],
-        "review_artifact": "governance/reviews/assurance_review.json",
-        "reviewed_tree_digest": reviewed_tree_digest,
+        "closure_evidence": "docs/assurance/defect_closures/CS-SR-001.md",
     }
     write(root, "governance/active_defects.toml", active_ledger([]))
     write(root, "governance/resolved_defects.toml", resolved_ledger([closure]))
     return reviewed_commit, reviewed_tree_digest, original, closure, report
-
 
 def test_assurance_binding_survives_synthetic_merge_topology(tmp_path: Path) -> None:
     initialize_repository(tmp_path)
@@ -206,17 +212,66 @@ def test_closure_rejects_changed_reviewed_defect_facts(tmp_path: Path) -> None:
 
     _audit_defects_and_review(tmp_path, findings)
 
-    assert "DEFECT-CLOSURE-003" in _codes(findings, "DEFECT-CLOSURE-")
+    assert "DEFECT-CLOSURE-009" in _codes(findings, "DEFECT-CLOSURE-")
 
 
-def test_closure_requires_complete_reviewed_id_accounting(tmp_path: Path) -> None:
-    _prepare_complete_closure(tmp_path)
-    write(tmp_path, "governance/resolved_defects.toml", resolved_ledger([]))
+def test_incremental_closure_allows_other_defects_to_remain_active(
+    tmp_path: Path,
+) -> None:
+    initialize_repository(tmp_path)
+    discovery_commit = git(tmp_path, "rev-parse", "HEAD")
+    first = {
+        "id": "CS-SR-001",
+        "severity": "P0",
+        "area": "closure-integrity",
+        "root_cause": "First root cause.",
+        "discovered_against": discovery_commit,
+        "required_resolution": "Correct first root cause.",
+    }
+    second = {
+        "id": "CS-SR-002",
+        "severity": "P1",
+        "area": "remaining-work",
+        "root_cause": "Second root cause remains active.",
+        "discovered_against": discovery_commit,
+        "required_resolution": "Correct second root cause later.",
+    }
+    write(tmp_path, "governance/active_defects.toml", active_ledger([first, second]))
+    write(tmp_path, "docs/evidence.md", "first correction evidence\n")
+    write(
+        tmp_path,
+        "tests/test_resolution.py",
+        "def test_resolution() -> None:\n    assert True\n",
+    )
+    write(tmp_path, "src/constructionsight/reviewed.py", "VALUE = 'corrected'\n")
+    git(tmp_path, "add", ".")
+    git(tmp_path, "commit", "-m", "correct first defect")
+    resolution_commit = git(tmp_path, "rev-parse", "HEAD")
+    resolution_tree = git(tmp_path, "rev-parse", f"{resolution_commit}^{{tree}}")
+    write(
+        tmp_path,
+        "docs/assurance/defect_closures/CS-SR-001.md",
+        "# CS-SR-001 closure\n",
+    )
+    closure = {
+        **first,
+        "resolution_summary": "Corrected first defect with regression coverage.",
+        "resolution_commit": resolution_commit,
+        "resolution_tree": resolution_tree,
+        "last_active_commit": resolution_commit,
+        "evidence_paths": ["docs/evidence.md"],
+        "regression_tests": ["tests/test_resolution.py"],
+        "closure_evidence": "docs/assurance/defect_closures/CS-SR-001.md",
+    }
+    write(tmp_path, "governance/active_defects.toml", active_ledger([second]))
+    write(tmp_path, "governance/resolved_defects.toml", resolved_ledger([closure]))
     findings: list[GovernanceFinding] = []
 
     _audit_defects_and_review(tmp_path, findings)
 
-    assert "DEFECT-CLOSURE-002" in _codes(findings, "DEFECT-CLOSURE-")
+    assert _codes(findings, "DEFECT-CLOSURE-") == set()
+    assert "DEFECT-ACTIVE-001" in _codes(findings, "DEFECT-ACTIVE-")
+    assert "ASSURANCE-001" in _codes(findings, "ASSURANCE-")
 
 
 def test_closure_rejects_missing_resolution_commit(tmp_path: Path) -> None:
@@ -230,7 +285,7 @@ def test_closure_rejects_missing_resolution_commit(tmp_path: Path) -> None:
 
     _audit_defects_and_review(tmp_path, findings)
 
-    assert "DEFECT-CLOSURE-005" in _codes(findings, "DEFECT-CLOSURE-")
+    assert "DEFECT-CLOSURE-004" in _codes(findings, "DEFECT-CLOSURE-")
 
 
 def test_closure_rejects_resolution_outside_reviewed_history(tmp_path: Path) -> None:
