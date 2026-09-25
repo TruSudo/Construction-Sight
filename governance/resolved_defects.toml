@@ -1,0 +1,7 @@
+schema_version = "constructionsight.resolved-defects/v2"
+
+# Historical findings remain here permanently after defect-specific correction,
+# regression evidence, Git-history provenance, and canonical validation establish
+# closure. Individual closure does not require whole-tree assurance to have already
+# passed; final zero-active-defect certification still requires Native Maximum Assurance.
+defects = []

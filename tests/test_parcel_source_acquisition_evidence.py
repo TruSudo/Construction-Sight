@@ -4,8 +4,10 @@ from pathlib import Path
 import pytest
 
 from constructionsight.parcel_source_acquisition_bundle import (
-    load_arcgis_bounded_proof_bundle,
     verify_arcgis_bounded_proof_bundle,
+)
+from constructionsight.parcel_source_acquisition_bundle_io import (
+    load_arcgis_bounded_proof_bundle,
 )
 from constructionsight.parcel_source_acquisition_models import (
     ParcelArcGISAcquisitionStatus,

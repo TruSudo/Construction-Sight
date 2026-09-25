@@ -30,7 +30,13 @@ class AccessPolicyResult:
 
 @dataclass(frozen=True)
 class SourceAccessProfile:
-    """Public access facts known about a source before collection."""
+    """Reviewed public-access facts known about a source before collection.
+
+    Restriction flags default to false because they represent observed facts, but
+    false flags are not themselves evidence that restrictions were checked.
+    access_facts_reviewed plus a nonblank review_basis is therefore required
+    before an otherwise clear profile may authorize collection.
+    """
 
     public_url: str
     requires_login: bool = False
@@ -40,21 +46,24 @@ class SourceAccessProfile:
     paywalled: bool = False
     rate_limit_known: bool = False
     rate_limit_notes: str | None = None
+    access_facts_reviewed: bool = False
+    review_basis: str | None = None
 
 
 def evaluate_access(profile: SourceAccessProfile) -> AccessPolicyResult:
     """Evaluate whether a source may be collected by ConstructionSight.
 
-    This function is intentionally conservative. Ambiguous access conditions return
-    REVIEW_REQUIRED rather than silently proceeding.
+    Explicit restrictions fail closed immediately. An all-clear profile is
+    allowed only when its restriction facts were affirmatively reviewed and the
+    review basis is retained. Unknown restriction facts require review.
     """
 
     if profile.requires_login:
         return AccessPolicyResult(
             decision=AccessDecision.REVIEW_REQUIRED,
             reason=(
-                "Source requires login; verify lawful credentials and source terms "
-                "before access."
+                "Source requires login (requires_login=true); verify lawful credentials "
+                "and source terms before access."
             ),
         )
     if profile.has_captcha:
@@ -81,7 +90,20 @@ def evaluate_access(profile: SourceAccessProfile) -> AccessPolicyResult:
             ),
         )
 
+    review_basis = (profile.review_basis or "").strip()
+    if not profile.access_facts_reviewed or not review_basis:
+        return AccessPolicyResult(
+            decision=AccessDecision.REVIEW_REQUIRED,
+            reason=(
+                "Source restriction facts are not affirmatively reviewed with a retained "
+                "basis; unknown access conditions cannot authorize collection."
+            ),
+        )
+
     return AccessPolicyResult(
         decision=AccessDecision.ALLOWED,
-        reason="No known access restriction blocks lawful public collection.",
+        reason=(
+            "Reviewed access facts identify no restriction blocking lawful public "
+            f"collection. Review basis: {review_basis}"
+        ),
     )
