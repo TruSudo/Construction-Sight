@@ -4,7 +4,7 @@ from pydantic import ValidationError
 from constructionsight.domain_types import PartyRole
 from constructionsight.entity_models import Entity
 from constructionsight.permit_models import PermitRecord
-from constructionsight.provenance import Provenance
+from constructionsight.provenance import Provenance, ProvenanceConfidenceBasis
 from constructionsight.site_models import Site
 
 
@@ -52,7 +52,11 @@ def test_permit_model_links_site_entity_and_provenance() -> None:
         role=PartyRole.GENERAL_CONTRACTOR,
     )
     provenance = Provenance(
-        source_name="Synthetic Public Source", confidence_score=90, verified=True
+        source_name="Synthetic Public Source",
+        adapter_family="synthetic-test",
+        raw_reference="synthetic:test",
+        evidence_text="retained synthetic public evidence",
+        confidence_basis=ProvenanceConfidenceBasis.DETERMINISTIC_NORMALIZATION,
     )
 
     permit = PermitRecord(
@@ -68,4 +72,4 @@ def test_permit_model_links_site_entity_and_provenance() -> None:
     assert permit.site is not None
     assert permit.site.site_key == "site:test:001"
     assert permit.entities[0].role is PartyRole.GENERAL_CONTRACTOR
-    assert permit.provenance[0].band.value == "verified"
+    assert permit.provenance[0].band.value == "high"
