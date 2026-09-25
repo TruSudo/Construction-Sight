@@ -285,6 +285,21 @@ def test_entity_network_indexes_real_retained_cross_county_source_keys() -> None
     assert 'No stored entity keys appear in this bounded retained source scan.' in script
 
 
+def test_sources_collection_displays_persisted_public_source_registry() -> None:
+    """Stored portal configuration is visible without becoming live collection authority."""
+    script = (ASSETS / "operator_command_center.js").read_text(encoding="utf-8")
+    css = (ASSETS / "operator_command_center.css").read_text(encoding="utf-8")
+    assert 'fetchJson("/api/source-registry")' in script
+    assert "function renderSourceRegistry(registry)" in script
+    assert "registry.read_only!==true || registry.network_collection_enabled!==false" in script
+    assert "registry.verification_metadata_is_authority!==false" in script
+    assert "adapter_live" in script
+    assert "verification_status" in script
+    assert "current reachability, complete jurisdiction coverage" in script
+    assert "source-registry-table" in script
+    assert ".source-registry-table" in css
+
+
 def test_sources_collection_displays_retained_exact_sch_review_queue() -> None:
     """Reviewed listing candidates feed the GUI without becoming network or write authority."""
     script = (ASSETS / "operator_command_center.js").read_text(encoding="utf-8")
