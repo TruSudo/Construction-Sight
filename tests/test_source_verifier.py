@@ -3,7 +3,7 @@ from constructionsight.http_transport_models import (
     BoundedHttpPolicy,
     HttpFailureKind,
 )
-from constructionsight.models import PlatformFamily, PublicSource
+from constructionsight.legal import SourceAccessProfile\nfrom constructionsight.models import PlatformFamily, PublicSource
 from constructionsight.verification.source_verifier import SourceVerifier
 
 
@@ -58,7 +58,7 @@ def _executor(
     return execute
 
 
-def test_verifier_detects_accela_public_search_hints() -> None:
+def _reviewed_profile(url: str) -> SourceAccessProfile:\n    return SourceAccessProfile(\n        public_url=url,\n        access_facts_reviewed=True,\n        review_basis="Reviewed synthetic public-source access facts.",\n    )\n\n\ndef test_verifier_refuses_network_when_access_facts_are_unknown() -> None:\n    called = False\n\n    def executor(url: str, method: str, policy: BoundedHttpPolicy) -> BoundedHttpObservation:\n        nonlocal called\n        called = True\n        raise AssertionError("network must not execute")\n\n    result = SourceVerifier(executor=executor).verify(_source())\n\n    assert called is False\n    assert result.url_reachable is False\n    assert result.raw_observations["access_decision"] == "review_required"\n    assert "not affirmatively reviewed" in (result.notes or "")\n\n\ndef test_verifier_detects_accela_public_search_hints() -> None:
     verifier = SourceVerifier(
         executor=_executor(
             body=(
@@ -68,7 +68,7 @@ def test_verifier_detects_accela_public_search_hints() -> None:
         )
     )
 
-    result = verifier.verify(_source())
+    source = _source()\n    result = verifier.verify(source, _reviewed_profile(str(source.public_url)))
 
     assert result.url_reachable is True
     assert result.portal_type_detected is PlatformFamily.ACCELA_ACA
@@ -83,7 +83,7 @@ def test_verifier_flags_login_hints() -> None:
         executor=_executor(body=b"Login required. Please enter username and password.")
     )
 
-    result = verifier.verify(_source("https://www.cslb.ca.gov/"))
+    source = _source("https://www.cslb.ca.gov/")\n    result = verifier.verify(source, _reviewed_profile(str(source.public_url)))
 
     assert result.url_reachable is True
     assert result.login_required is True
@@ -99,7 +99,7 @@ def test_verifier_preserves_transport_failure_class() -> None:
         )
     )
 
-    result = verifier.verify(_source())
+    source = _source()\n    result = verifier.verify(source, _reviewed_profile(str(source.public_url)))
 
     assert result.url_reachable is False
     assert result.portal_type_detected is PlatformFamily.UNKNOWN
