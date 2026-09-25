@@ -422,11 +422,14 @@ def main(*, open_browser_by_default: bool = False) -> None:
     if not 1 <= args.port <= 65535:
         parser.error("--port must be between 1 and 65535")
     try:
-        handler = create_handler(
-            args.database,
-            ceqanet_listing_evidence=args.ceqanet_listing_evidence,
-            ceqanet_queue_evidence=args.ceqanet_queue_evidence,
-        )
+        if args.ceqanet_listing_evidence is None and args.ceqanet_queue_evidence is None:
+            handler = create_handler(args.database)
+        else:
+            handler = create_handler(
+                args.database,
+                ceqanet_listing_evidence=args.ceqanet_listing_evidence,
+                ceqanet_queue_evidence=args.ceqanet_queue_evidence,
+            )
     except (OSError, ValueError) as exc:
         parser.error(f"--database must name an existing SQLite file: {exc}")
     except SQLAlchemyError:
