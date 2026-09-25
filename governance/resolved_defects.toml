@@ -635,3 +635,19 @@ last_active_commit = "96b477307c94e288ff16165b957e3b5a835d4535"
 evidence_paths = ["docs/assurance/defect_closures/CS-SR-042.md", "src/constructionsight/ceqanet_csv_live_service.py", "src/constructionsight/http_transport.py"]
 regression_tests = ["tests/test_ceqanet_csv_live.py", "tests/test_http_transport.py"]
 closure_evidence = "docs/assurance/defect_closures/CS-SR-042.md"
+
+[[defects]]
+id = "CS-SR-048"
+severity = "P0"
+area = "operational-confidence-gating"
+root_cause = "Opportunity, site-resolution, enrichment, and readiness logic can score or resolve evidence by signal presence while treating confidence as descriptive metadata, allowing inferred, ambiguous, conflicting, unverified, or zero-confidence inputs to contribute enough operational weight for actionable state."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Make evidence eligibility and confidence part of operational scoring and resolution semantics, prohibit weak or conflicting evidence from independently producing actionable or canonical state, preserve explicit review states for uncertain evidence, and add low-confidence, conflicting, inferred, and missing-evidence readiness regressions."
+
+resolution_summary = "Made confidence operational rather than descriptive: every enrichment signal now contributes confidence-weighted score, zero-confidence evidence contributes zero operational weight, aggregate confidence and score are recomputed at the model boundary, and outreach-preview readiness requires the configured actionable-confidence floor."
+resolution_commit = "13e4ebf9befbac90154110b315e855ba6b2d31dd"
+resolution_tree = "aaf777d2ab495eefc5e39dc9a336800c2080cc74"
+last_active_commit = "22ff17f177fc26d9056f2678cc18f4c9ad4894eb"
+evidence_paths = ["docs/architecture/opportunity_enrichment_spine.md", "docs/assurance/defect_closures/CS-SR-048.md", "src/constructionsight/opportunity_enrichment_models.py", "src/constructionsight/opportunity_enrichment_service.py", "src/constructionsight/opportunity_scoring_profile.py"]
+regression_tests = ["tests/test_opportunity_enrichment_models.py", "tests/test_opportunity_enrichment_service.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-048.md"
