@@ -7,9 +7,18 @@ import json
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from constructionsight.lead_dedupe_models import LeadDuplicateResult, LeadFingerprint
+from constructionsight.lead_dedupe_models import (
+    LeadDuplicateResult,
+    LeadDuplicateStatus,
+    LeadFingerprint,
+)
 from constructionsight.lead_review_models import LeadReviewPackage
-from constructionsight.lead_workflow_models import LeadWorkflowEvent, LeadWorkflowRecord
+from constructionsight.lead_workflow_models import (
+    ACTIONABLE_LEAD_WORKFLOW_STATUSES,
+    LeadWorkflowEvent,
+    LeadWorkflowRecord,
+    require_duplicate_review_clear,
+)
 from constructionsight.opportunity_enrichment_models import OpportunityEnrichmentReport
 from constructionsight.result_ledger_models import ResultLedgerRecord, ResultShareRecord
 from constructionsight.result_ledger_service import validate_result_ledger_history
@@ -139,7 +148,7 @@ def store_lead_duplicate_result(
     session: Session,
     result: LeadDuplicateResult,
 ) -> LeadDuplicateResultRecord:
-    """Insert or update a lead duplicate check result."""
+    """Insert a durable duplicate verdict or replay the same semantic decision."""
 
     session.flush()
     payload_json = _payload_json(result.to_dict())
@@ -159,11 +168,8 @@ def store_lead_duplicate_result(
         )
         session.add(existing)
         return existing
-    existing.status = result.status.value
-    existing.candidate_fingerprint_key = result.candidate.fingerprint_key
-    existing.base_candidate_id = result.candidate.base_candidate_id
-    existing.matched_count = len(result.matched_fingerprint_keys)
-    existing.payload_json = payload_json
+    if not _duplicate_result_replay_matches(existing, result, payload_json):
+        raise ValueError("persisted lead duplicate results are immutable")
     return existing
 
 
@@ -210,6 +216,22 @@ def store_lead_workflow_record(
     """Insert or update a lead workflow record and its events."""
 
     session.flush()
+    require_duplicate_review_clear(
+        limitations=workflow.limitations, next_status=workflow.status,
+    )
+    if workflow.status in ACTIONABLE_LEAD_WORKFLOW_STATUSES:
+        unresolved_result = session.execute(
+            select(LeadDuplicateResultRecord.result_id).where(
+                LeadDuplicateResultRecord.base_candidate_id == workflow.base_candidate_id,
+                LeadDuplicateResultRecord.status.in_(
+                    (LeadDuplicateStatus.DUPLICATE.value, LeadDuplicateStatus.REVIEW_NEEDED.value)
+                ),
+            ).limit(1)
+        ).scalar_one_or_none()
+        if unresolved_result is not None:
+            raise ValueError(
+                "unresolved duplicate review blocks actionable persisted lead workflow status"
+            )
     payload_json = _payload_json(workflow.to_dict())
     existing = session.execute(
         select(LeadWorkflowRecordRow).where(
@@ -314,6 +336,42 @@ def store_result_ledger_record(
     if ledger.share is not None:
         store_result_share_record(session, ledger.share)
     return row
+
+
+def _duplicate_result_replay_matches(
+    existing: LeadDuplicateResultRecord, result: LeadDuplicateResult, payload_json: str,
+) -> bool:
+    """Compare one verdict while ignoring non-decisional re-scan metadata."""
+
+    if (
+        existing.status != result.status.value
+        or existing.base_candidate_id != result.candidate.base_candidate_id
+        or existing.candidate_fingerprint_key != result.candidate.fingerprint_key
+        or existing.matched_count != len(result.matched_fingerprint_keys)
+    ):
+        return False
+    return _duplicate_decision_identity(existing.payload_json) == _duplicate_decision_identity(
+        payload_json
+    )
+
+
+def _duplicate_decision_identity(payload_json: str) -> dict[str, object]:
+    payload = json.loads(payload_json)
+    if not isinstance(payload, dict):
+        raise ValueError("persisted duplicate result must be a JSON object")
+    candidate = payload.get("candidate")
+    if not isinstance(candidate, dict):
+        raise ValueError("persisted duplicate result candidate must be an object")
+    # Repeated checks can observe a new fingerprint creation timestamp and score
+    # without changing the actual duplicate decision. Preserve the first receipt.
+    candidate.pop("created_at", None)
+    candidate.pop("lead_score", None)
+    for field in ("matched_fingerprint_keys", "reasons", "limitations"):
+        values = payload.get(field)
+        if not isinstance(values, list) or any(not isinstance(v, str) for v in values):
+            raise ValueError("persisted duplicate result has malformed decision lists")
+        payload[field] = sorted(values)
+    return payload
 
 
 def _payload_json(payload: dict[str, object]) -> str:
