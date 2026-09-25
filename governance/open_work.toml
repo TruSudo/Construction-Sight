@@ -1,0 +1,20 @@
+schema_version = "constructionsight.open-work/v1"
+
+[[overlaps]]
+repository = "TruSudo/Construction-Sight"
+pull_request = 116
+head_commit = "679f15fa6d39f222c16b8c5c3e99db7662465909"
+status = "stacked-base"
+scope = "Governed ArcGIS live-rehearsal authorization"
+handling = "The silent-risk branch was created from PR #116's exact green head. Its authorization models, chronology tests, and doctrine are preserved and treated as the feature-specific implementation beneath the general authorization registry. The repository-wide draft PR supersedes the narrower PR only after exact-head certification."
+conflicting_paths = [
+  "README.md",
+  "docs/architecture/current_implementation_status.md",
+  "docs/architecture/parcel_arcgis_acquisition.md",
+  "docs/architecture/parcel_arcgis_rehearsal_authorization.md",
+  "docs/audits/full_repo_audit_inventory.md",
+  "src/constructionsight/parcel_source_bulk_rehearsal_authorization.py",
+  "src/constructionsight/parcel_source_bulk_rehearsal_authorization_models.py",
+  "tests/test_parcel_source_bulk_rehearsal_authorization.py",
+  "tests/test_parcel_source_bulk_rehearsal_authorization_chronology.py",
+]
