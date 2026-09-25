@@ -300,9 +300,15 @@ def test_sources_collection_displays_persisted_public_source_registry() -> None:
     assert "registry metadata DIFFERS; inspect retained verification history" in script
     assert "entry.latest_verification_present" in script
     assert "entry.verification_metadata_consistent" in script
+    assert "registry.source_attribution_available" in script
+    assert "retained exact-name attribution in scan:" in script
+    assert "configured source identity scan is incomplete" in script
+    assert "Duplicate configured source names withheld from exact-name attribution" in script
+    assert "not complete local coverage counts" in script
     assert "source-registry-table" in script
     assert ".source-registry-table" in css
     assert ".source-verification-warning" in css
+    assert ".source-attribution-warning" in css
 
 
 def test_sources_collection_displays_retained_exact_sch_review_queue() -> None:
