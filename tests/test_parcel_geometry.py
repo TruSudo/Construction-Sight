@@ -92,10 +92,10 @@ def test_normalize_wkt_polygon_area_weighted_centroid() -> None:
     assert geometry.centroid_longitude == pytest.approx(2.0)
     assert geometry.envelope_min_latitude == 0.0
     assert geometry.envelope_max_longitude == 4.0
-    assert geometry.limitations == [
+    assert geometry.limitations == (
         _TOPOLOGY_VALIDITY_LIMITATION,
         _PLANAR_CENTROID_LIMITATION,
-    ]
+    )
 
 
 def test_normalize_wkt_polygon_subtracts_hole_area() -> None:
