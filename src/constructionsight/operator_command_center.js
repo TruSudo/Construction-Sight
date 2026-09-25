@@ -454,6 +454,10 @@ function renderSourceRegistry(registry) {
     registry.source_identity_rows_scanned>registry.source_identity_scan_limit ||
     registry.source_identity_scan_truncated!==(registry.total>registry.source_identity_rows_scanned) ||
     registry.source_attribution_available!==!registry.source_identity_scan_truncated ||
+    typeof registry.source_aliases_configured!=="boolean" ||
+    !Number.isSafeInteger(registry.source_alias_mapping_count) ||
+    registry.source_alias_mapping_count<0 ||
+    typeof registry.source_aliases_applied!=="boolean" ||
     !Number.isSafeInteger(registry.source_attribution_scan_limit) ||
     registry.source_attribution_scan_limit<1 ||
     !Number.isSafeInteger(registry.ceqa_records_total) || registry.ceqa_records_total<0 ||
@@ -474,6 +478,16 @@ function renderSourceRegistry(registry) {
     !Array.isArray(registry.unregistered_source_names_in_scan) ||
     typeof registry.unregistered_source_names_truncated!=="boolean")
     throw Error("Persisted source registry returned inconsistent bounds or authority state.");
+  if(registry.source_aliases_configured){
+    if(typeof registry.source_alias_artifact_sha256!=="string" ||
+      !/^[0-9a-f]{64}$/.test(registry.source_alias_artifact_sha256))
+      throw Error("Configured source alias artifact lacks its exact SHA-256 identity.");
+  }else if(registry.source_alias_artifact_sha256!==null ||
+    registry.source_alias_mapping_count!==0 || registry.source_aliases_applied)
+    throw Error("Unconfigured source aliases returned unsupported identity claims.");
+  if(registry.source_aliases_applied &&
+    (!registry.source_attribution_available || registry.source_alias_mapping_count===0))
+    throw Error("Source aliases claim application outside an available attribution scope.");
   const scannedRecords=registry.ceqa_records_scanned+registry.permit_records_scanned;
   if(registry.source_attribution_available){
     if(registry.records_with_registered_source_in_scan+
@@ -506,6 +520,9 @@ function renderSourceRegistry(registry) {
       !Number.isSafeInteger(entry.attributed_records_in_scan) ||
       entry.attributed_records_in_scan!==entry.attributed_ceqa_records_in_scan+
         entry.attributed_permit_records_in_scan ||
+      !Number.isSafeInteger(entry.attributed_via_alias_records_in_scan) ||
+      entry.attributed_via_alias_records_in_scan<0 ||
+      entry.attributed_via_alias_records_in_scan>entry.attributed_records_in_scan ||
       (!entry.attribution_name_unambiguous && entry.attributed_records_in_scan!==0))
       throw Error("Persisted source registry entry is inconsistent.");
     const latest=entry.latest_verification_present;
@@ -554,9 +571,12 @@ function renderSourceRegistry(registry) {
     const attributionDetail=!registry.source_attribution_available ?
       '<small class="source-attribution-warning">record attribution withheld: configured source identity scan is incomplete</small>' :
       (entry.attribution_name_unambiguous ?
-        '<small>retained exact-name attribution in scan: '+entry.attributed_records_in_scan+
+        '<small>retained explicit attribution in scan: '+entry.attributed_records_in_scan+
         ' record(s) · CEQA '+entry.attributed_ceqa_records_in_scan+
-        ' · permits '+entry.attributed_permit_records_in_scan+'</small>' :
+        ' · permits '+entry.attributed_permit_records_in_scan+
+        (entry.attributed_via_alias_records_in_scan?
+          ' · explicit alias used by '+entry.attributed_via_alias_records_in_scan+' record(s)':'')+
+        '</small>' :
         '<small class="source-attribution-warning">record attribution withheld: duplicate configured source name</small>');
     return '<tr><th scope="row">'+escapeText(entry.source_name)+
       '<small>'+escapeText(entry.jurisdiction_name)+' · '+escapeText(entry.county)+'</small></th>'+
@@ -581,8 +601,14 @@ function renderSourceRegistry(registry) {
     '<p class="source-attribution-warning">Record attribution is withheld because only '+
     registry.source_identity_rows_scanned+' of '+registry.total+
     ' configured source identities fit the bounded identity scan.</p>';
+  const aliasSummary=registry.source_aliases_configured ?
+    '<p>Explicit source-attribution alias artifact: '+registry.source_alias_mapping_count+
+    ' mapping(s) · SHA-256 <code>'+escapeText(registry.source_alias_artifact_sha256)+'</code> · '+
+    (registry.source_aliases_applied?'applied to this bounded local attribution':
+      'loaded but not applied to attribution')+
+    '. Alias mappings are retained operator identity assertions, not independent source verification.</p>' : '';
   const ambiguity=registry.ambiguous_registry_source_names.length ?
-    '<p class="source-attribution-warning">Duplicate configured source names withheld from exact-name attribution: '+
+    '<p class="source-attribution-warning">Duplicate configured source names withheld from explicit attribution: '+
     registry.ambiguous_registry_source_names.map(escapeText).join(", ")+'</p>' : '';
   const unregistered=registry.unregistered_source_names_in_scan.length ?
     '<p>Retained provenance source names not present in the complete configured-source identity set: '+
@@ -591,7 +617,7 @@ function renderSourceRegistry(registry) {
   return '<section class="feature-card"><span class="badge">PERSISTED SOURCE REGISTRY · READ ONLY</span>'+
     '<h2>Configured public sources ('+registry.returned+(registry.truncated?' of '+registry.total:'')+')</h2>'+
     '<p>Verification state, confidence, update cadence and adapter maturity are retained metadata. The newest linked verification observation is shown separately when available, including any disagreement with the registry row. Historical checks do not prove current reachability, complete jurisdiction coverage, or authority for recurring collection.</p>'+
-    attributionSummary+ambiguity+unregistered+
+    attributionSummary+aliasSummary+ambiguity+unregistered+
     '<div class="source-inventory-scroll"><table class="source-inventory source-registry-table"><thead>'+
     '<tr><th>Source</th><th>Platform / adapter</th><th>Registry verification</th>'+
     '<th>Declared records / cadence</th><th>Official source</th></tr></thead><tbody>'+
