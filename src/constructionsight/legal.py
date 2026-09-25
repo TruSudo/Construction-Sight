@@ -53,8 +53,8 @@ def evaluate_access(profile: SourceAccessProfile) -> AccessPolicyResult:
         return AccessPolicyResult(
             decision=AccessDecision.REVIEW_REQUIRED,
             reason=(
-                "Source requires login; verify lawful credentials and source terms "
-                "before access."
+                "Source requires login (requires_login=true); verify lawful credentials "
+                "and source terms before access."
             ),
         )
     if profile.has_captcha:
