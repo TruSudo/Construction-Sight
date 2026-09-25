@@ -1200,3 +1200,71 @@ def test_prepare_inbox_creates_exact_queue_and_pending_status_without_database_w
     assert payload["network_executed"] is False
     assert payload["persistence_mutated"] is False
     assert hashlib.sha256(database.read_bytes()).hexdigest() == before
+
+
+
+def test_inbox_does_not_treat_unrelated_same_sch_record_as_reviewed_capture(
+    tmp_path: Path,
+) -> None:
+    """Existing SCH context must not suppress a still-missing reviewed CSV enrichment."""
+
+    listing_path = tmp_path / "listing.json"
+    queue_path = tmp_path / "queue.json"
+    listing_path.write_text(
+        json.dumps(_single_candidate_listing(), sort_keys=True),
+        encoding="utf-8",
+    )
+    discovered = runner.invoke(
+        app,
+        [
+            "discover-preview",
+            "--listing-evidence",
+            str(listing_path),
+            "--output",
+            str(queue_path),
+        ],
+    )
+    assert discovered.exit_code == 0, discovered.output
+
+    database = tmp_path / "operator.sqlite3"
+    writer = create_database_engine(f"sqlite:///{database}")
+    initialize_database(writer)
+    bridge = build_reviewed_ceqanet_csv_bridge(_execution())
+    source = bridge.preview.ceqa_records[0]
+    context_record = source.model_copy(
+        update={
+            "ceqa_key": "ceqa:context:2026030377",
+            "provenance": [
+                source.provenance[0].model_copy(
+                    update={"adapter_family": "ceqanet_detail_context"}
+                )
+            ],
+        }
+    )
+    with Session(writer) as session, session.begin():
+        CeqaStore(session).upsert(context_record)
+    writer.dispose()
+
+    result = runner.invoke(
+        app,
+        [
+            "inbox",
+            "--listing-evidence",
+            str(listing_path),
+            "--queue-evidence",
+            str(queue_path),
+            "--database",
+            str(database),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    payload = json.loads(result.stdout)
+    candidate = payload["candidates"][0]
+    assert candidate["state"] == "pending_capture_existing_sch"
+    assert candidate["existing_sch_record_count"] == 1
+    assert candidate["existing_sch_record_keys"] == ["ceqa:context:2026030377"]
+    assert candidate["persisted_record_count"] == 0
+    assert candidate["persisted_record_keys"] == []
+    assert payload["pending_capture_count"] == 1
+    assert payload["persisted_candidate_count"] == 0
+    assert payload["next_pending_sch"] == "2026030377"
