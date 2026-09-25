@@ -141,7 +141,7 @@ def test_successful_live_execution_embeds_canonical_offline_inspection(
     assert execution.inspection.retained_row_count == 1
     execution.assert_integrity()
     assert verification.passed is True
-    assert verification.findings == []
+    assert verification.findings == ()
     assert verification.inspection_digest == execution.inspection.inspection_digest
 
 
