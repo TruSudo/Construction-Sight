@@ -460,3 +460,34 @@ authorize a new HTTP request, recurring collection, credential use, source
 promotion, lead qualification, outreach or bidding. Malformed retained
 verification JSON or linked source-identity disagreement fails the read instead
 of silently omitting the inconsistent evidence.
+
+## Configured-source attribution coverage in Sources & Collection
+
+The source-registry view now also performs a bounded local provenance-attribution
+scan. It compares only exact record-level `Provenance.source_name` values from
+retained CEQA and permit records with configured registry source names. It does
+not infer source identity from similar names, portal hosts, jurisdictions,
+addresses or adapter families.
+
+Configured source identities are scanned independently of the 500-row display
+limit. If that bounded identity scan is incomplete, record attribution is
+withheld entirely so an unseen configured source cannot be mislabeled as
+unregistered. Duplicate configured source names are also excluded from per-source
+attribution because an exact name alone would not identify one registry row.
+
+When source identity is complete, CEQA and permit records are each scanned under
+their own bounded cap. The panel reports records scanned versus stored totals,
+whether either record scan truncated, the count of scanned records with at least
+one unique configured source-name match, the count without such a match, and
+retained provenance source names that do not occur in the configured identity
+set. A record with multiple source provenance assertions may contribute to more
+than one per-source attribution count, but contributes only once to the
+with/without-configured-source accounting.
+
+These are local evidence-coverage diagnostics, not claims of jurisdiction-wide
+coverage or live collection. They do not establish that the source supplied every
+project in its jurisdiction, that a retained record is current, or that a project
+is an active security opportunity. Startup schema validation now requires the
+`sources` and `source_verifications` tables because Sources & Collection
+depends on them; a legacy database missing either table is rejected instead of
+failing only after the panel is opened.
