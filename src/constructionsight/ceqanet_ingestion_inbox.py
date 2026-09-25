@@ -14,6 +14,7 @@ from constructionsight.storage.domain_store import CeqaStore
 
 IngestionState = Literal[
     "pending_capture",
+    "pending_capture_existing_sch",
     "persisted_source_claim_match",
     "persisted_source_claim_conflict",
     "persisted_county_unavailable",
@@ -28,6 +29,8 @@ class CeqanetIngestionCandidate(BaseModel):
     source_claimed_title: str | None = None
     official_detail_url: str = Field(min_length=1)
     state: IngestionState
+    existing_sch_record_keys: list[str] = Field(default_factory=list)
+    existing_sch_record_count: int = Field(ge=0)
     persisted_record_keys: list[str] = Field(default_factory=list)
     persisted_known_counties: list[str] = Field(default_factory=list)
     persisted_missing_county_count: int = Field(ge=0)
@@ -55,7 +58,8 @@ class CeqanetIngestionInbox(BaseModel):
     limitations: list[str] = Field(
         default_factory=lambda: [
             "Queue membership remains a source claim, not proof of current construction activity.",
-            "Persistence status is matched only by exact State Clearinghouse number.",
+            "Completion requires exact SCH plus reviewed CEQAnet CSV provenance; other retained "
+            "records for the SCH remain context and do not suppress enrichment capture.",
             "County agreement compares retained source claims; it does not independently verify location.",
             "This inbox performs no remote collection, persistence mutation, lead qualification, outreach, or bidding.",
             "Each pending candidate still requires separate current lawful-access review and capture authorization.",
@@ -112,10 +116,18 @@ def build_ceqanet_ingestion_inbox(
             raise ValueError("reviewed queue candidate identity is malformed")
 
         records = store.list_by_state_clearinghouse_number(sch_number)
+        reviewed_records = [
+            record
+            for record in records
+            if any(
+                provenance.adapter_family == "ceqanet_csv_reviewed"
+                for provenance in record.provenance
+            )
+        ]
         known_counties = sorted(
             {
                 record.county.strip()
-                for record in records
+                for record in reviewed_records
                 if isinstance(record.county, str) and record.county.strip()
             }
         )
@@ -123,10 +135,12 @@ def build_ceqanet_ingestion_inbox(
             record.county is None
             or not isinstance(record.county, str)
             or not record.county.strip()
-            for record in records
+            for record in reviewed_records
         )
-        if not records:
-            state: IngestionState = "pending_capture"
+        if not reviewed_records:
+            state: IngestionState = (
+                "pending_capture_existing_sch" if records else "pending_capture"
+            )
         elif any(county != source_claimed_county for county in known_counties):
             state = "persisted_source_claim_conflict"
         elif missing_county_count:
@@ -141,15 +155,25 @@ def build_ceqanet_ingestion_inbox(
                 source_claimed_title=source_claimed_title,
                 official_detail_url=official_detail_url,
                 state=state,
-                persisted_record_keys=[record.ceqa_key for record in records],
+                existing_sch_record_keys=[record.ceqa_key for record in records],
+                existing_sch_record_count=len(records),
+                persisted_record_keys=[record.ceqa_key for record in reviewed_records],
                 persisted_known_counties=known_counties,
                 persisted_missing_county_count=missing_county_count,
-                persisted_record_count=len(records),
+                persisted_record_count=len(reviewed_records),
             )
         )
 
-    pending = [item for item in candidates if item.state == "pending_capture"]
-    persisted = [item for item in candidates if item.state != "pending_capture"]
+    pending = [
+        item
+        for item in candidates
+        if item.state in {"pending_capture", "pending_capture_existing_sch"}
+    ]
+    persisted = [
+        item
+        for item in candidates
+        if item.state not in {"pending_capture", "pending_capture_existing_sch"}
+    ]
     conflicts = [
         item for item in candidates if item.state == "persisted_source_claim_conflict"
     ]
