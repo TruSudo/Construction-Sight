@@ -16,7 +16,7 @@ def _plain(text: str) -> str:
     return " ".join(undecorated.split())
 
 
-def test_ceqanet_listing_dry_run_cli_renders_request_evidence_table() -> None:
+def test_ceqanet_listing_dry_run_cli_renders_fail_closed_request_table() -> None:
     result = runner.invoke(
         app,
         [
@@ -38,8 +38,8 @@ def test_ceqanet_listing_dry_run_cli_renders_request_evidence_table() -> None:
     assert "Planned requests" in result.output
     assert "Executed requests" in result.output
     assert "False" in result.output
-    assert "San+Bernardino" in result.output
-    assert "DocumentType=EIR+-+Draft+EIR" in result.output
+    assert "review_required" in result.output
+    assert "Source restriction facts are not affirmatively reviewed" in result.output
 
 
 def test_ceqanet_listing_dry_run_cli_rejects_unsupported_text_filter() -> None:
@@ -60,7 +60,7 @@ def test_ceqanet_listing_dry_run_cli_rejects_unsupported_text_filter() -> None:
     )
 
 
-def test_ceqanet_listing_dry_run_cli_emits_json_request_evidence() -> None:
+def test_ceqanet_listing_dry_run_cli_emits_json_fail_closed_evidence() -> None:
     result = runner.invoke(
         app,
         [
@@ -78,15 +78,14 @@ def test_ceqanet_listing_dry_run_cli_emits_json_request_evidence() -> None:
     assert result.exit_code == 0
     payload = json.loads(result.output)
     assert payload["metadata"]["schema_version"] == "ceqanet_listing_dry_run.v1"
-    assert payload["metadata"]["allowed"] is True
-    assert payload["metadata"]["planned_request_count"] == 1
+    assert payload["metadata"]["allowed"] is False
+    assert payload["metadata"]["access"]["decision"] == "review_required"
+    assert payload["metadata"]["planned_request_count"] == 0
     assert payload["metadata"]["executed_request_count"] == 0
     assert payload["metadata"]["downloads_documents"] is False
     assert payload["metadata"]["mutates_remote_state"] is False
     assert payload["metadata"]["query"]["lead_agencies"] == ["City of Fontana"]
-    assert payload["requests"][0]["method"] == "GET"
-    assert payload["requests"][0]["executed"] is False
-    assert "StartRange=2026-01-01" in payload["requests"][0]["url"]
+    assert payload["requests"] == []
 
 
 def test_ceqanet_listing_dry_run_cli_blocks_when_access_policy_blocks() -> None:
@@ -131,7 +130,8 @@ def test_ceqanet_listing_dry_run_cli_writes_json_output(tmp_path: Path) -> None:
     assert "Wrote CEQAnet listing dry-run JSON" in result.output
     payload = json.loads(output_path.read_text(encoding="utf-8"))
     assert payload["metadata"]["query"]["counties"] == ["Riverside"]
-    assert payload["requests"][0]["url"].endswith("County=Riverside")
+    assert payload["metadata"]["access"]["decision"] == "review_required"
+    assert payload["requests"] == []
 
 
 def test_ceqanet_listing_dry_run_cli_rejects_output_without_json(tmp_path: Path) -> None:

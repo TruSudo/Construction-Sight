@@ -67,9 +67,14 @@ class _Executor:
 
 
 def _profile(**changes: object) -> SourceAccessProfile:
+    values: dict[str, object] = {
+        "access_facts_reviewed": True,
+        "review_basis": "synthetic unit-test access review",
+    }
+    values.update(changes)
     return SourceAccessProfile(
         public_url="https://ceqanet.lci.ca.gov/",
-        **changes,
+        **values,
     )
 
 

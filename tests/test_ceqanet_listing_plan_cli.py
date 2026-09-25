@@ -16,7 +16,7 @@ def _plain(text: str) -> str:
     return " ".join(undecorated.split())
 
 
-def test_ceqanet_listing_plan_cli_renders_allowed_plan_table() -> None:
+def test_ceqanet_listing_plan_cli_renders_fail_closed_plan_table() -> None:
     result = runner.invoke(
         app,
         [
@@ -36,10 +36,10 @@ def test_ceqanet_listing_plan_cli_renders_allowed_plan_table() -> None:
     assert result.exit_code == 0
     assert "CEQAnet Read-Only Listing Plan" in result.output
     assert "Allowed" in result.output
-    assert "True" in result.output
+    assert "False" in result.output
+    assert "review_required" in result.output
     assert "Planned GET Requests" in result.output
-    assert "County=San Bernardino" in result.output
-    assert "DocumentType=EIR - Draft EIR" in result.output
+    assert "Source restriction facts are not affirmatively reviewed" in result.output
 
 
 def test_ceqanet_listing_plan_cli_rejects_unsupported_text_filter() -> None:
@@ -60,7 +60,7 @@ def test_ceqanet_listing_plan_cli_rejects_unsupported_text_filter() -> None:
     )
 
 
-def test_ceqanet_listing_plan_cli_emits_json_allowed_plan() -> None:
+def test_ceqanet_listing_plan_cli_emits_json_fail_closed_plan() -> None:
     result = runner.invoke(
         app,
         [
@@ -78,12 +78,11 @@ def test_ceqanet_listing_plan_cli_emits_json_allowed_plan() -> None:
     assert result.exit_code == 0
     payload = json.loads(result.output)
     assert payload["metadata"]["schema_version"] == "ceqanet_listing_plan.v1"
-    assert payload["metadata"]["allowed"] is True
-    assert payload["metadata"]["maximum_records"] == 25
+    assert payload["metadata"]["allowed"] is False
+    assert payload["metadata"]["access"]["decision"] == "review_required"
+    assert payload["metadata"]["maximum_records"] == 0
     assert payload["metadata"]["query"]["lead_agencies"] == ["City of Fontana"]
-    assert payload["pages"][0]["method"] == "GET"
-    assert payload["pages"][0]["downloads_documents"] is False
-    assert payload["pages"][0]["mutates_remote_state"] is False
+    assert payload["pages"] == []
 
 
 def test_ceqanet_listing_plan_cli_blocks_when_access_policy_blocks() -> None:
@@ -126,10 +125,8 @@ def test_ceqanet_listing_plan_cli_writes_json_output(tmp_path: Path) -> None:
     assert "Wrote CEQAnet listing plan JSON" in result.output
     payload = json.loads(output_path.read_text(encoding="utf-8"))
     assert payload["metadata"]["query"]["counties"] == ["Riverside"]
-    assert payload["pages"][0]["params"][0] == {
-        "name": "County",
-        "value": "Riverside",
-    }
+    assert payload["metadata"]["access"]["decision"] == "review_required"
+    assert payload["pages"] == []
 
 
 def test_ceqanet_listing_plan_cli_rejects_output_without_json(tmp_path: Path) -> None:
