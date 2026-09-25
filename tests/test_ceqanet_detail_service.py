@@ -46,10 +46,17 @@ class _Executor:
 
 
 def _profile(**changes: object) -> SourceAccessProfile:
-    return SourceAccessProfile(
-        public_url="https://ceqanet.lci.ca.gov/",
-        **changes,
-    )
+    values: dict[str, object] = {
+        "public_url": "https://ceqanet.lci.ca.gov/",
+        "requires_login": False,
+        "has_captcha": False,
+        "robots_disallows_collection": False,
+        "terms_disallow_collection": False,
+        "paywalled": False,
+        "access_fact_basis": "review:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    }
+    values.update(changes)
+    return SourceAccessProfile(**values)
 
 
 def _execute(
@@ -164,3 +171,23 @@ def test_exact_replay_returns_detail_without_repeating_execution() -> None:
 
     assert replay["snapshots"] == first["snapshots"]
     assert executor.calls == [(_DETAIL_URL, 20.0, 50_000)]
+
+
+def test_detail_authorization_state_binds_access_fact_basis() -> None:
+    first_profile = _profile(access_fact_basis="review:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee")
+    second_profile = _profile(access_fact_basis="evidence:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
+    first_access = detail_service.evaluate_access(first_profile)
+    second_access = detail_service.evaluate_access(second_profile)
+
+    first_state = detail_service._access_state(
+        first_profile,
+        decision=first_access.decision,
+        reason=first_access.reason,
+    )
+    second_state = detail_service._access_state(
+        second_profile,
+        decision=second_access.decision,
+        reason=second_access.reason,
+    )
+
+    assert first_state != second_state
