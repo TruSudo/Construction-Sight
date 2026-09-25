@@ -19,7 +19,7 @@ from constructionsight.ceqanet_endpoints import (
     CEQANET_SEARCH_URL,
 )
 from constructionsight.models import PlatformFamily, SourceVerificationResult
-from constructionsight.provenance import Provenance
+from constructionsight.provenance import Provenance, ProvenanceConfidenceBasis
 
 
 def _validate_http_url(value: str) -> HttpUrl:
@@ -61,8 +61,9 @@ class CeqanetFixtureParser:
                     adapter_family=PlatformFamily.CEQANET.value,
                     raw_reference=sch_number,
                     evidence_text=title,
-                    confidence_score=85,
-                    verified=False,
+                    confidence_basis=(
+                        ProvenanceConfidenceBasis.DETERMINISTIC_NORMALIZATION
+                    ),
                     notes=(
                         "Fixture-backed CEQAnet normalization; live verification not yet "
                         "performed."
