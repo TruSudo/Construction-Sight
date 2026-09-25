@@ -265,6 +265,91 @@ def discover_preview(
     )
 
 
+@app.command("prepare-inbox")
+def prepare_ingestion_inbox(
+    listing_evidence: Annotated[
+        Path,
+        typer.Option(
+            "--listing-evidence",
+            exists=True,
+            dir_okay=False,
+            readable=True,
+            help="Exact retained governed CEQAnet listing-execution JSON.",
+        ),
+    ],
+    queue_output: Annotated[
+        Path,
+        typer.Option(
+            "--queue-output",
+            help="New path for the exact reviewed SCH queue.",
+        ),
+    ],
+    database_path: Annotated[
+        Path,
+        typer.Option(
+            "--database",
+            exists=True,
+            dir_okay=False,
+            readable=True,
+            help="Existing operator-compatible SQLite database to reconcile read only.",
+        ),
+    ],
+) -> None:
+    """Create one immutable review queue and reconcile it with SQLite without network access."""
+
+    if queue_output.exists() or listing_evidence.absolute() == queue_output.absolute():
+        raise typer.BadParameter(
+            "review queue output must be new and distinct from listing evidence"
+        )
+    engine = None
+    try:
+        listing_raw = read_runtime_artifact(listing_evidence, max_bytes=16 * 1024 * 1024)
+        listing_payload: Any = json.loads(listing_raw.decode("utf-8"))
+        if not isinstance(listing_payload, dict):
+            raise ValueError("listing evidence must contain a JSON object")
+        queue = build_reviewed_ceqanet_capture_queue(
+            listing_payload,
+            original_bytes=listing_raw,
+        )
+        queue_text = json.dumps(queue, sort_keys=True, indent=2) + "\n"
+        queue_raw = queue_text.encode("utf-8")
+        engine = create_operator_read_engine(database_path)
+        with Session(engine, autoflush=False) as session:
+            inbox = build_ceqanet_ingestion_inbox(
+                session,
+                listing_payload=listing_payload,
+                listing_bytes=listing_raw,
+                queue_payload=queue,
+                queue_bytes=queue_raw,
+            )
+        write_runtime_text(queue_output, queue_text, overwrite=False)
+    except (
+        OSError,
+        ValueError,
+        TypeError,
+        UnicodeDecodeError,
+        SQLAlchemyError,
+    ) as exc:
+        typer.echo(f"CEQAnet discovery inbox preparation failed: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+    finally:
+        if engine is not None:
+            engine.dispose()
+
+    payload = inbox.model_dump(mode="json")
+    payload.update(
+        {
+            "queue_output_path": str(queue_output),
+            "next_step": (
+                "If next_pending_sch is present, review current source access and use "
+                "capture-next-preview with this exact listing, queue and database. "
+                "Persistence still requires the separate two-digest apply authorization."
+            ),
+        }
+    )
+    typer.echo(json.dumps(payload, indent=2, sort_keys=True))
+
+
 @app.command("inbox")
 def ingestion_inbox(
     listing_evidence: Annotated[
