@@ -18,6 +18,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from constructionsight.domain_types import PartyRole
+from constructionsight.ceqanet_ingestion_inbox import build_ceqanet_ingestion_inbox
 from constructionsight.operator_dashboard import (
     build_dashboard_snapshot,
     build_entity_neighborhood,
@@ -39,6 +40,7 @@ from constructionsight.storage.operator_read_store import (
     create_operator_read_engine,
     verify_operator_schema,
 )
+from constructionsight.storage.runtime_artifacts import read_runtime_artifact
 
 _ASSETS = {
     "/": ("operator_command_center.html", "text/html; charset=utf-8"),
@@ -139,9 +141,65 @@ def _parameters(
     )
 
 
-def create_handler(database_path: Path) -> type[BaseHTTPRequestHandler]:
+def _ingestion_payload(
+    session: Session,
+    *,
+    listing_evidence: Path | None,
+    queue_evidence: Path | None,
+) -> dict[str, object]:
+    """Read immutable CEQAnet discovery artifacts and reconcile them without mutation."""
+
+    if listing_evidence is None and queue_evidence is None:
+        return {
+            "schema_version": "ceqanet_ingestion_inbox.v1",
+            "configured": False,
+            "read_only": True,
+            "network_executed": False,
+            "persistence_mutated": False,
+            "candidate_count": 0,
+            "pending_capture_count": 0,
+            "persisted_candidate_count": 0,
+            "conflict_candidate_count": 0,
+            "next_pending_sch": None,
+            "candidates": [],
+            "limitations": [
+                "No CEQAnet listing/queue evidence pair was configured for this operator session."
+            ],
+        }
+    if listing_evidence is None or queue_evidence is None:
+        raise ValueError("CEQAnet listing and queue evidence must be configured together")
+    if listing_evidence.absolute() == queue_evidence.absolute():
+        raise ValueError("CEQAnet listing and queue evidence must be distinct artifacts")
+    try:
+        listing_raw = read_runtime_artifact(listing_evidence, max_bytes=16 * 1024 * 1024)
+        queue_raw = read_runtime_artifact(queue_evidence, max_bytes=16 * 1024 * 1024)
+        listing_payload = json.loads(listing_raw.decode("utf-8"))
+        queue_payload = json.loads(queue_raw.decode("utf-8"))
+    except (OSError, UnicodeDecodeError, ValueError) as exc:
+        raise ValueError(f"configured CEQAnet ingestion evidence is unreadable: {exc}") from exc
+    if not isinstance(listing_payload, dict) or not isinstance(queue_payload, dict):
+        raise ValueError("configured CEQAnet ingestion evidence must contain JSON objects")
+    payload = build_ceqanet_ingestion_inbox(
+        session,
+        listing_payload=listing_payload,
+        listing_bytes=listing_raw,
+        queue_payload=queue_payload,
+        queue_bytes=queue_raw,
+    ).model_dump(mode="json")
+    payload["configured"] = True
+    return cast(dict[str, object], payload)
+
+
+def create_handler(
+    database_path: Path,
+    *,
+    ceqanet_listing_evidence: Path | None = None,
+    ceqanet_queue_evidence: Path | None = None,
+) -> type[BaseHTTPRequestHandler]:
     """Bind to an existing database in SQLite read-only mode without schema changes."""
 
+    if (ceqanet_listing_evidence is None) != (ceqanet_queue_evidence is None):
+        raise ValueError("CEQAnet listing and queue evidence must be configured together")
     engine = create_operator_read_engine(database_path)
 
     class OperatorHandler(BaseHTTPRequestHandler):
@@ -189,10 +247,11 @@ def create_handler(database_path: Path) -> type[BaseHTTPRequestHandler]:
                     "/api/workflows",
                     "/api/results",
                     "/api/workflow-summary",
+                    "/api/ingestion-inbox",
                 }:
                     self._send_json({"error": "Not found."}, status=HTTPStatus.NOT_FOUND)
                     return
-                if path in {"/api/workflow-summary", "/api/source-revision"} and parsed.query:
+                if path in {"/api/workflow-summary", "/api/source-revision", "/api/ingestion-inbox"} and parsed.query:
                     raise ValueError("unfiltered status inspection rejects query parameters")
                 parameters = _parameters(
                     parsed.query,
@@ -218,6 +277,12 @@ def create_handler(database_path: Path) -> type[BaseHTTPRequestHandler]:
                         }
                     elif path == "/api/source-revision":
                         payload = build_source_revision_snapshot(session)
+                    elif path == "/api/ingestion-inbox":
+                        payload = _ingestion_payload(
+                            session,
+                            listing_evidence=ceqanet_listing_evidence,
+                            queue_evidence=ceqanet_queue_evidence,
+                        )
                     elif path == "/api/workflow-summary":
                         payload = build_workflow_status_summary(session)
                     elif path == "/api/results":
@@ -336,6 +401,16 @@ def main(*, open_browser_by_default: bool = False) -> None:
 
     parser = argparse.ArgumentParser(description="ConstructionSight operator GUI (read only)")
     parser.add_argument("--database", type=Path, default=Path("data/constructionsight.sqlite3"))
+    parser.add_argument(
+        "--ceqanet-listing-evidence",
+        type=Path,
+        help="Optional retained governed CEQAnet listing evidence for read-only inbox status.",
+    )
+    parser.add_argument(
+        "--ceqanet-queue-evidence",
+        type=Path,
+        help="Optional exact-SCH queue paired with --ceqanet-listing-evidence.",
+    )
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument(
         "--open-browser", action="store_true", default=open_browser_by_default,
@@ -345,7 +420,11 @@ def main(*, open_browser_by_default: bool = False) -> None:
     if not 1 <= args.port <= 65535:
         parser.error("--port must be between 1 and 65535")
     try:
-        handler = create_handler(args.database)
+        handler = create_handler(
+            args.database,
+            ceqanet_listing_evidence=args.ceqanet_listing_evidence,
+            ceqanet_queue_evidence=args.ceqanet_queue_evidence,
+        )
     except (OSError, ValueError) as exc:
         parser.error(f"--database must name an existing SQLite file: {exc}")
     except SQLAlchemyError:
