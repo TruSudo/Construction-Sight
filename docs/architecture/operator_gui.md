@@ -190,7 +190,7 @@ layers, relationship/history views, and the established commercial workflow.
 This slice does not complete those requirements or the private operational release.
 
 PR #119 remains stacked on draft PR #117. The inherited active ledger now
-contains 74 records (`CS-SR-001` through `CS-SR-074`) plus the separate missing
+contains 75 records (`CS-SR-001` through `CS-SR-075`) plus the separate missing
 Native Maximum Assurance report, which prevents certification. The historical
 September 18 hardening-branch CI reported 74 findings at its earlier exact head
 (73 active defects plus the missing assurance report), not this current tree.
