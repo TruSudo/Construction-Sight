@@ -25,12 +25,17 @@ class ResultAuthorityHead(BaseModel):
 
 
 class ResultAuthorityEvent(BaseModel):
-    """Append-only audit event for one authority-head selection or correction."""
+    """Append-only audit event bound to one exact result-ledger content identity."""
 
     event_id: str = Field(min_length=1)
     workflow_id: str = Field(min_length=1)
     previous_ledger_id: str | None = None
+    previous_content_digest: str | None = Field(
+        default=None,
+        pattern=r"^[0-9a-f]{64}$",
+    )
     current_ledger_id: str = Field(min_length=1)
+    current_content_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
     revision: int = Field(ge=1)
     reason: str = Field(min_length=1)
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
@@ -49,10 +54,16 @@ class ResultAuthorityEvent(BaseModel):
     def require_revision_linkage(self) -> ResultAuthorityEvent:
         """Require root and correction events to match their revision semantics."""
 
-        if self.revision == 1 and self.previous_ledger_id is not None:
-            raise ValueError("root result authority event cannot have a previous ledger")
-        if self.revision > 1 and self.previous_ledger_id is None:
-            raise ValueError("correcting result authority event requires a previous ledger")
+        if self.revision == 1:
+            if self.previous_ledger_id is not None:
+                raise ValueError("root result authority event cannot have a previous ledger")
+            if self.previous_content_digest is not None:
+                raise ValueError("root result authority event cannot have a previous digest")
+        else:
+            if self.previous_ledger_id is None:
+                raise ValueError("correcting result authority event requires a previous ledger")
+            if self.previous_content_digest is None:
+                raise ValueError("correcting result authority event requires a previous digest")
         if self.previous_ledger_id == self.current_ledger_id:
             raise ValueError("result authority event must change the ledger selection")
         return self

@@ -1,0 +1,25 @@
+{
+  "started_at": "2026-09-21T17:30:46.471969+00:00",
+  "finished_at": "2026-09-21T17:30:50.122035+00:00",
+  "cwd": "/workspace/scratch/3cb8a9b64f02/Construction-Sight",
+  "base_commit": "49c79447491bd531299331ad6a5846e64eb1c08e",
+  "diff_sha256": "a60c696f1894a0556d47b6ded0398072b1816e0b8986f4415f4180c8627ad4a6",
+  "untracked_sha256": {
+    "tests/test_runtime_output_writers.py": "445d92cd552d2d0e412c586ebabb2bc342717ec0a3ca590f95b66df43bcd4fdb"
+  },
+  "command": [
+    "/workspace/scratch/3cb8a9b64f02/Construction-Sight/.venv/bin/python",
+    "-m",
+    "pytest",
+    "tests/test_ceqanet_operator_bundle.py",
+    "tests/test_ceqanet_operator_archive.py",
+    "tests/test_ceqanet_operator_export.py",
+    "-q",
+    "-W",
+    "error",
+    "--tb=short"
+  ],
+  "returncode": 1,
+  "stdout": ".......FF.................                                               [100%]\n=================================== FAILURES ===================================\n_____ test_bundle_artifact_replaces_symlink_without_writing_external_file ______\ntests/test_ceqanet_operator_bundle.py:177: in test_bundle_artifact_replaces_symlink_without_writing_external_file\n    record = _write_text_artifact(\nsrc/constructionsight/ceqanet_operator_bundle.py:164: in _write_text_artifact\n    return _write_serialized_artifact(path, (text,), artifact_type=artifact_type)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc/constructionsight/ceqanet_operator_bundle.py:191: in _write_serialized_artifact\n    publish_runtime_artifact(path, chunks(), max_bytes=limit, replace_existing=True)\nsrc/constructionsight/storage/runtime_artifacts.py:220: in publish_runtime_artifact\n    _require_regular_replacement_target(parent, name)\nsrc/constructionsight/storage/runtime_artifacts.py:288: in _require_regular_replacement_target\n    raise RuntimeArtifactError(\"artifact replacement target must be a regular file\")\nE   constructionsight.storage.runtime_artifacts.RuntimeArtifactError: artifact replacement target must be a regular file\n______ test_bundle_artifact_failed_replace_preserves_old_and_cleans_temp _______\ntests/test_ceqanet_operator_bundle.py:195: in test_bundle_artifact_failed_replace_preserves_old_and_cleans_temp\n    monkeypatch.setattr(bundle_writer.os, \"replace\", fail_replace)\n                        ^^^^^^^^^^^^^^^^\nE   AttributeError: module 'constructionsight.ceqanet_operator_bundle' has no attribute 'os'\n=========================== short test summary info ============================\nFAILED tests/test_ceqanet_operator_bundle.py::test_bundle_artifact_replaces_symlink_without_writing_external_file\nFAILED tests/test_ceqanet_operator_bundle.py::test_bundle_artifact_failed_replace_preserves_old_and_cleans_temp\n2 failed, 24 passed in 1.39s\n",
+  "stderr": ""
+}

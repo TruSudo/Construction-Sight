@@ -67,11 +67,62 @@ def test_enrichment_report_serializes() -> None:
     report = OpportunityEnrichmentReport(
         report_id="opportunity-enrichment:test",
         base_candidate_id="candidate:test",
-        lead_score=20,
+        lead_score=16,
         confidence_score=80,
         confidence_band=confidence_band(80),
         signals=[signal],
         next_action="review",
     )
 
-    assert report.to_dict()["lead_score"] == 20
+    assert signal.operational_score_delta == 16
+    assert report.to_dict()["lead_score"] == 16
+
+
+def test_enrichment_report_rejects_unweighted_caller_score() -> None:
+    signal = OpportunityEnrichmentSignal(
+        signal_key="signal:weighted",
+        signal_kind=EnrichmentSignalKind.PERMIT_TRANSITION,
+        label="status_changed",
+        score_delta=20,
+        confidence_score=50,
+        reason="status changed",
+    )
+
+    with pytest.raises(
+        ValidationError,
+        match="lead_score must use confidence-weighted signal contributions",
+    ):
+        OpportunityEnrichmentReport(
+            report_id="opportunity-enrichment:forged-score",
+            base_candidate_id="candidate:test",
+            lead_score=20,
+            confidence_score=50,
+            confidence_band=confidence_band(50),
+            signals=[signal],
+            next_action="prepare outreach preview",
+        )
+
+
+def test_enrichment_report_rejects_caller_supplied_confidence() -> None:
+    signal = OpportunityEnrichmentSignal(
+        signal_key="signal:confidence",
+        signal_kind=EnrichmentSignalKind.PERMIT_TRANSITION,
+        label="status_changed",
+        score_delta=20,
+        confidence_score=40,
+        reason="status changed",
+    )
+
+    with pytest.raises(
+        ValidationError,
+        match="confidence_score must be derived from enrichment signals",
+    ):
+        OpportunityEnrichmentReport(
+            report_id="opportunity-enrichment:forged-confidence",
+            base_candidate_id="candidate:test",
+            lead_score=8,
+            confidence_score=90,
+            confidence_band=confidence_band(90),
+            signals=[signal],
+            next_action="review",
+        )

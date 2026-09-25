@@ -1,0 +1,210 @@
+schema_version = "constructionsight.active-defects/v1"
+certification_requires_zero = true
+
+[[defects]]
+id = "CS-SR-007"
+severity = "P2"
+area = "independent-review"
+root_cause = "High-risk changes lack a mandatory structured independent adversarial review artifact tied to the exact head."
+discovered_against = "679f15fa6d39f222c16b8c5c3e99db7662465909"
+required_resolution = "Add high-risk classification, review schema, exact-head binding, and unresolved-finding gate."
+
+[[defects]]
+id = "CS-SR-011"
+severity = "P0"
+area = "exact-head-ci"
+root_cause = "No pull-request workflow run or commit status is associated with the current hardening heads after branch updates and a draft PR reopen, while a prior branch head remains observable through the same GitHub API. Exact-head CI evidence therefore does not exist for the current tree."
+discovered_against = "ee2ee1f5d3c09b09d4b70f1f6b3b45fdfed27ab2"
+required_resolution = "Trigger the canonical CI workflow through a non-suppressed pull-request event or explicit workflow dispatch on the final exact head; require both Python jobs and retained certification artifacts before any defect resolution or merge."
+
+[[defects]]
+id = "CS-SR-018"
+severity = "P0"
+area = "network-authorization-architecture"
+root_cause = "Multiple live CLI paths import approved transport modules directly and use bare Boolean flags such as --execute-live as the operative network grant, bypassing canonical application services and the general scope-bound authorization decision contract."
+discovered_against = "857ec7527317fca93eacb956c9e79d7d067522b5"
+required_resolution = "Prohibit CLI-to-transport imports; inventory every live CLI path; move each operation behind an application service that requires exact actor, action, resource, scope, current state, validity, denied authority, audit identity, and single-use preflight; retain Boolean confirmation only as an additional gate."
+
+[[defects]]
+id = "CS-SR-023"
+severity = "P0"
+area = "synchronization-integrity"
+root_cause = "Sequential hardening commits left tests importing application functions that were not committed, placed authorization logic inside a domain-classified planning module, and allowed PR and governance inventories to lag the actual branch."
+discovered_against = "9fbd989cb20e1bf078f0ee188b9eaaf7830d172f"
+required_resolution = "Restore pure domain boundaries, add application-layer facades, align every test import and CLI call, synchronize mutation/adversarial/capability/defect contracts and PR metadata, and obtain exact-head CI evidence before resolution."
+
+[[defects]]
+id = "CS-SR-027"
+severity = "P0"
+area = "independent-review-identity-authenticity"
+root_cause = "The independent-review certifier requires only nonblank reviewer text inside a repository-controlled JSON artifact. An implementing author can therefore self-author an otherwise valid artifact, claim an arbitrary reviewer identity, and satisfy the mechanical review gate without a separately submitted GitHub review."
+discovered_against = "dcffdb41cc947388528fa9fa2c4bec34e4589299"
+required_resolution = "Bind the review artifact to a real GitHub pull-request review ID and exact reviewed commit; require canonical pull-request CI to fetch that review from GitHub and verify APPROVED state, matching reviewer login, matching commit, a human User identity distinct from the PR author and repository owner, and aggregate the external-review result as a mandatory finalization gate; add positive and spoofing regressions while retaining repository certification as the missing-review blocker before an artifact exists."
+
+[[defects]]
+id = "CS-SR-028"
+severity = "P0"
+area = "defect-closure-fact-integrity"
+root_cause = "Resolved-defect validation checks schema and evidence references but does not prove that the original active-defect facts are identical to those present in the reviewed commit, and resolution commits are not proven to exist in reviewed history."
+discovered_against = "4cc3ce763354ea91ef8c4bed28c3ce0b531379c3"
+required_resolution = "Bind closure records to the reviewed commit's complete active-defect ledger, preserve every original defect field exactly, require complete reviewed-ID accounting, and prove each resolution commit exists and is an ancestor of the reviewed implementation commit."
+
+[[defects]]
+id = "CS-SR-034"
+severity = "P0"
+area = "semantic-authorization-proof"
+root_cause = "The static semantic-authorization audit trusts authorized-looking function names without resolving imported or aliased call targets and proving that canonical authorization occurs before every reachable effect."
+discovered_against = "4cc3ce763354ea91ef8c4bed28c3ce0b531379c3"
+required_resolution = "Replace naming-convention trust with a resolved interprocedural call graph from operator entry points to effect boundaries, prove authorization and preflight precede every reachable effect, and add spoofed-name, alias, indirect-call, branch-bypass, and effect-before-authorization regressions."
+
+[[defects]]
+id = "CS-SR-043"
+severity = "P0"
+area = "effect-implementation-authority"
+root_cause = "Production-visible application and execution services can authorize an operation and then invoke caller-selected effect implementations such as executors, persisters, HTTP checkers, registries, adapters, or equivalent callbacks, so the implementation that performs the effect is not necessarily the implementation whose authority was reviewed."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Remove caller-selected effect implementations from production-visible boundaries, route effects through ConstructionSight-owned concrete implementations, retain deterministic substitutes only behind test-only seams, preserve authorized success and failure semantics, and add regressions and mutants proving post-authorization implementation substitution is impossible."
+
+[[defects]]
+id = "CS-SR-044"
+severity = "P0"
+area = "trusted-time-authority"
+root_cause = "Production-visible authorization and execution facades accept caller-controlled clocks or authorization timestamps, allowing an invented time to influence authorization validity, policy-date checks, date-scoped execution identity, and audit metadata."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Move authoritative time acquisition behind a ConstructionSight-owned production clock boundary, retain deterministic clocks only for tests, bind all time-sensitive authorization and execution state to that trusted clock, and add regressions proving callers cannot backdate or forward-date production authority."
+
+[[defects]]
+id = "CS-SR-046"
+severity = "P0"
+area = "epistemic-provenance-authority"
+root_cause = "Verification, confidence, manual-review claims, source independence, and similar epistemic states can be supplied as structurally valid caller assertions without mandatory binding to immutable evidence, evidence existence, reviewer identity, or derivation lineage."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Make authoritative verification and confidence derived states rather than caller assertions, bind them to existing immutable evidence and reviewer or derivation provenance, validate evidence lineage and independence at the trust boundary, and add forged-provenance, missing-evidence, duplicate-lineage, and self-asserted-review regressions."
+
+[[defects]]
+id = "CS-SR-047"
+severity = "P1"
+area = "derived-identity-integrity"
+root_cause = "Normalized values, fingerprints, candidate identifiers, and other derived semantic identities can be caller supplied or only partially content-bound instead of being recomputed and self-validating at authoritative model or persistence boundaries."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Define canonical versioned derivation rules for every authoritative normalized value and derived identity, recompute and validate them from source content at trust boundaries, use collision-appropriate full digests where identity is security or evidence relevant, canonicalize symmetric identity pairs, and add forged-normalization, forged-fingerprint, reversed-pair, and stale-ID regressions."
+
+[[defects]]
+id = "CS-SR-050"
+severity = "P0"
+area = "business-transition-concurrency"
+root_cause = "Lead workflow authorization checks an expected current state before mutation, but the durable state transition is performed through an ordinary read and upsert rather than a database compare-and-swap, so competing processes can authorize the same old state and race to overwrite one another."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Bind the authorized expected state to the mutation with one database compare-and-swap or equivalent serializable transition primitive, reject stale writers, preserve append-only transition evidence, and add deterministic competing-writer and stale-authorization regressions."
+
+[[defects]]
+id = "CS-SR-051"
+severity = "P1"
+area = "historical-ledger-separation"
+root_cause = "Several records that represent events, evidence, snapshots, or historical transitions use mutable upsert semantics or reusable stable IDs appropriate to current-state projections, allowing later writes to replace earlier historical state."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Separate mutable current-state projections from append-only evidence, event, snapshot, and transition ledgers; require immutable transition-specific identity and exact idempotent replay for historical records; preserve supersession explicitly; and add replay, overwrite, and historical reconstruction regressions."
+
+[[defects]]
+id = "CS-SR-053"
+severity = "P1"
+area = "financial-decimal-integrity"
+root_cause = "Result-share and royalty accounting validates decimal precision at input but performs and persists monetary arithmetic with binary floating-point values and implicit round(..., 2) semantics rather than a canonical monetary type and explicit rounding doctrine."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Represent monetary values and rates with a fixed-decimal or integer-minor-unit domain, define an explicit rounding mode and scale, persist exact decimal values, migrate affected calculations without changing legitimate business semantics, and add boundary, half-cent, accumulation, and replay regressions."
+
+[[defects]]
+id = "CS-SR-054"
+severity = "P0"
+area = "runtime-evidence-containment"
+root_cause = "Runtime evidence and artifact paths can be formed from manifest or artifact references and then resolved through ordinary filesystem operations without a uniform no-follow containment proof, permitting parent, absolute, or symlink-mediated reads or writes outside the intended evidence root."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Centralize runtime evidence path resolution, require relative canonical names and resolved containment beneath the evidence root, reject symlink or reparse traversal at every component and final target, bind verified bytes to later use, and add absolute, parent, symlink, swap, and verify-use regressions."
+
+[[defects]]
+id = "CS-SR-055"
+severity = "P1"
+area = "pre-materialization-resource-bounds"
+root_cause = "Some externally controlled local or adapter work is bounded only after materialization or is not bounded at all, including whole-file intake, ZIP entry decompression, and adapter enumeration that calls list(...) before applying max_records."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Apply byte, record, and decompression ceilings before full materialization, stream or incrementally consume bounded work, abort at the first unit beyond the reviewed ceiling, and add oversized-file, compression-ratio, infinite-generator, and max-record regressions."
+
+[[defects]]
+id = "CS-SR-057"
+severity = "P1"
+area = "foundational-domain-invariants"
+root_cause = "Foundational site, permit, planning, and related domain models do not uniformly enforce physical and lifecycle invariants, allowing impossible coordinates, negative physical measurements, contradictory dates, or similarly invalid states into durable projections."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Add the minimum domain-native validators required for physically and temporally valid state, explicitly define allowed unknown or partial states, reject contradictory lifecycle ordering at authoritative boundaries, and add boundary and chronology regressions without refactoring unrelated domain logic."
+
+[[defects]]
+id = "CS-SR-058"
+severity = "P0"
+area = "cross-artifact-commit-atomicity"
+root_cause = "Multi-artifact filesystem operations can durably write an audit or report artifact before the corresponding authoritative target is successfully committed, allowing durable evidence to claim an apply or mutation that never completed."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Define one commit protocol for coupled filesystem artifacts, stage and fsync or equivalently prepare all outputs before authoritative replacement, publish success evidence only after the target commit succeeds, recover deterministically from partial failure, and add injected late-write, replacement, and crash-point regressions."
+
+[[defects]]
+id = "CS-SR-059"
+severity = "P1"
+area = "deep-content-immutability"
+root_cause = "Some frozen or content-addressed outer models contain mutable nested models or collections, so validated content can change after identity or digest construction without forcing a new identity."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Make content-addressed evidence recursively immutable or defensively detached, use immutable collection types for digest-bound fields, prevent nested post-validation mutation, and add nested-list, nested-model, stale-digest, and copy-isolation regressions."
+
+[[defects]]
+id = "CS-SR-060"
+severity = "P0"
+area = "public-source-egress-authority"
+root_cause = "Generic source-readiness and source-verification transports derive their allowed host and exact request authority from the same caller-controlled source URL they are meant to constrain, so canonical loopback, private, link-local, reserved, or otherwise internal destinations can self-authorize a bounded HTTP request."
+discovered_against = "689e25cd9bfc36facceb0e1d271eb13b86b2aebc"
+required_resolution = "Derive executable source authority only from a separately governed source identity and public-egress policy; reject IP literals and special-use hostnames; validate every resolved address and alias as globally routable; prevent resolution-to-connect rebinding or enforce equivalent network egress controls; preserve exact request, redirect, credential, TLS, and response bounds; and add loopback, private, link-local, numeric-address, mixed-answer, CNAME, and rebinding regressions."
+
+[[defects]]
+id = "CS-SR-061"
+severity = "P0"
+area = "effect-consumption-atomicity"
+root_cause = "High-impact authorization and evidence-execution paths determine use or attempt availability from caller-selected, invocation-local, absent, or stale snapshot state and perform the effect without a ConstructionSight-owned atomic consumption reservation, allowing one logical authorization, UTC-date allowance, or recurring-run attempt identity to cause multiple effects."
+discovered_against = "689e25cd9bfc36facceb0e1d271eb13b86b2aebc"
+required_resolution = "Introduce a ConstructionSight-owned consumption service that atomically reserves the exact decision or operation identity immediately before effect execution; use durable uniqueness or compare-and-swap for cross-process database, file, evidence-series, and recurring-run operations; remove production ledger and used-ID injection; bind reservation to exact scope, current state, trusted time, and the owned implementation; make permitted exact replay return the prior committed result without repeating effects; persist terminal success or failure; and add sequential, concurrent, restart, stale-series, duplicate-sequence, and failed-effect recovery regressions."
+
+[[defects]]
+id = "CS-SR-062"
+severity = "P0"
+area = "assurance-reviewed-tree-binding"
+root_cause = "Native assurance permits reviewed_commit to be any ancestor of HEAD, while reviewed_tree_digest is verified only against the current assurance-covered index tree and is not recomputed from the reviewed commit. An assurance report can therefore bind analytical passes and quality evidence to an older commit while rebinding the digest to a newer non-finalization implementation tree."
+discovered_against = "65b2ef5e726d8ab810776d1774edc74b1b70bc4c"
+required_resolution = "Compute the assurance-covered tree digest directly from reviewed_commit using canonical Git object identities and the same finalization exclusions; require it to equal reviewed_tree_digest and the current covered tree digest; preserve permitted post-review finalization paths; and add stale-reviewed-commit, covered-tree-change, allowed-finalization, and exact-tree regression coverage."
+
+[[defects]]
+id = "CS-SR-063"
+severity = "P0"
+area = "assurance-context-isolation-integrity"
+root_cause = "Native assurance counts caller-authored completed_reviews values toward minimum context-isolated and deep-review thresholds, so one analytical pass and evidence artifact can claim multiple supposedly fresh contexts; the canonical test helper satisfies three deep reviews with one native-deep artifact."
+discovered_against = "3ba40fd4b6c4e4524af3eb258459425a4b0045a3"
+required_resolution = "Require each context-isolated review to be a distinct pass ID and distinct evidence artifact with completed_reviews exactly 1; require at least five native pass records and at least three distinct deep_repository records, bind each to a unique execution or context identity, and add aggregation, duplicate-context, exact-count regression, and focused mutation coverage."
+
+[[defects]]
+id = "CS-SR-064"
+severity = "P0"
+area = "assurance-source-provenance-integrity"
+root_cause = "Pass and quality-gate evidence treats source_artifact_sha256 as a syntax-only 64-hex assertion without a resolvable source artifact, so fabricated or stale raw-review and CI provenance, including all-zero hashes, can satisfy Native Maximum Assurance."
+discovered_against = "3ba40fd4b6c4e4524af3eb258459425a4b0045a3"
+required_resolution = "Require every source artifact identity to resolve to immutable retained bytes or an externally authenticated CI artifact identity; verify SHA-256 against those bytes or identity and exact reviewed commit or run metadata; reject placeholders and unresolvable hashes; preserve safe containment and unique ownership; and add zero-hash, missing-source, digest-mismatch, cross-commit, reused-source regression, and focused mutation coverage."
+
+[[defects]]
+id = "CS-SR-066"
+severity = "P0"
+area = "assurance-owner-acceptance-authenticity"
+root_cause = "Native Maximum Assurance requires explicit owner acceptance, but the canonical report currently treats owner_acceptance as a repository-controlled Boolean with nonblank owner and review_method text; no externally authenticated owner action binds the decision to the exact frozen commit, reviewed tree, and complete material assurance evidence set, so a committer or automation capable of writing permitted finalization artifacts can self-assert owner acceptance."
+discovered_against = "6402f0a49f80099c46c8bb37a392e740783a92b4"
+required_resolution = "Bind owner acceptance to the repository owner's real GitHub User identity, exact pull-request review ID, exact reviewed commit and tree, and a deterministic SHA-256 digest of all material assurance claims; have canonical CI re-fetch and verify the owner review with read-only GitHub authority; require exact acceptance text, COMMENTED state, OWNER association, and human User identity; keep owner acceptance distinct from independent-human review; and add spoofed-owner, stale-commit, changed-evidence, wrong-body/state, wiring, and focused-mutation regressions."
+
+[[defects]]
+id = "CS-SR-075"
+severity = "P1"
+area = "artifact-remediation-quality-regression"
+root_cause = "Recent artifact and consumption corrections introduced nine mandatory Ruff violations on hardening, ten on the stacked GUI, and a prohibited conditional pytest skip decorator. Raw exact-head CI logs for hardening 1a8f1b1e38e9f7ab11adcf629400fb4123c8ddf8 and GUI a3392b8c1b7f44eb0c3c536b737bdae1420c646f show lint failure and CERT-SUPPRESS-001 even though continue-on-error step conclusions say success; native structural preflight fails independently of active-defect and missing-assurance blockers."
+discovered_against = "1a8f1b1e38e9f7ab11adcf629400fb4123c8ddf8"
+required_resolution = "Correct the five shared import-order violations and the additional GUI source-candidate docket import-order violation, nested context-manager violation, and three loop-variable capture violations; replace the platform skip with meaningful platform-capability coverage without suppressing a required check; preserve runtime assertions and certification rules; rerun exact-head Python 3.11 and 3.12 lint, tests, mutations and structural preflight on both stacked branches; retain actual command outcomes and keep the finding active until legitimate Native Maximum Assurance closure."

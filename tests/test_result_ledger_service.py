@@ -151,3 +151,31 @@ def test_validate_result_ledger_history_rejects_revision_gap() -> None:
 
     with pytest.raises(ValueError, match="contiguous from one"):
         validate_result_ledger_history([original, gapped])
+
+
+def test_materially_different_results_have_distinct_content_digests() -> None:
+    first = build_result_ledger_record(
+        workflow=_workflow(),
+        status=ResultLedgerStatus.LOST,
+        reasons=["not selected"],
+    )
+    second = build_result_ledger_record(
+        workflow=_workflow(),
+        status=ResultLedgerStatus.LOST,
+        reasons=["budget cancelled"],
+    )
+
+    assert first.ledger_id == second.ledger_id
+    assert first.content_digest != second.content_digest
+
+
+def test_content_digest_rejects_post_validation_material_mutation() -> None:
+    ledger = build_result_ledger_record(
+        workflow=_workflow(),
+        status=ResultLedgerStatus.LOST,
+        reasons=["not selected"],
+    )
+    tampered = ledger.model_copy(update={"reasons": ["changed later"]})
+
+    with pytest.raises(ValueError, match="material content changed"):
+        tampered.to_dict()

@@ -11,21 +11,24 @@ from rich.console import Console
 from rich.table import Table
 
 from constructionsight.adapters import default_adapter_family_specs
+from constructionsight.authorization_decision import AuthorizationDeniedError
 from constructionsight.models import PublicSource
 from constructionsight.source_verification_checklist_models import (
     SourceVerificationObservation,
 )
 from constructionsight.source_verification_checklist_service import (
+    build_authorized_source_verification_checklist_report,
     build_source_observation_templates,
     build_source_verification_checklist_report,
 )
+from constructionsight.storage.runtime_artifacts import read_runtime_text, write_runtime_text
 
 app = typer.Typer(help="ConstructionSight source verification checklist tools.")
 console = Console()
 
 
 def _load_sources_from_json(path: Path) -> list[PublicSource]:
-    data: Any = json.loads(path.read_text(encoding="utf-8"))
+    data: Any = json.loads(read_runtime_text(path))
     if not isinstance(data, list):
         raise typer.BadParameter("Registry JSON must be a list.")
     return [PublicSource.model_validate(item) for item in data]
@@ -34,7 +37,7 @@ def _load_sources_from_json(path: Path) -> list[PublicSource]:
 def _load_observations(path: Path | None) -> list[SourceVerificationObservation]:
     if path is None:
         return []
-    data: Any = json.loads(path.read_text(encoding="utf-8"))
+    data: Any = json.loads(read_runtime_text(path))
     if not isinstance(data, list):
         raise typer.BadParameter("Observation JSON must be a list.")
     return [SourceVerificationObservation.model_validate(item) for item in data]
@@ -59,8 +62,7 @@ def source_observation_template(
     payload = [template.model_dump(mode="json") for template in templates]
     rendered = json.dumps(payload, indent=2)
     if output is not None:
-        output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_text(f"{rendered}\n", encoding="utf-8")
+        write_runtime_text(output, f"{rendered}\n")
         console.print(f"Wrote source observation template to {output}")
         return
     console.print_json(rendered)
@@ -74,16 +76,57 @@ def source_verification_checklist(
         typer.Option("--observations-path", help="Optional operator observation JSON list."),
     ] = None,
     json_output: Annotated[bool, typer.Option("--json-output")] = False,
-    check_http: Annotated[bool, typer.Option("--check-http")] = False,
+    check_http: Annotated[
+        bool,
+        typer.Option(
+            "--check-http",
+            help=(
+                "Additional confirmation for bounded live verification GETs. "
+                "This Boolean is not the operative authorization decision."
+            ),
+        ),
+    ] = False,
+    operator_id: Annotated[
+        str | None,
+        typer.Option(
+            "--operator-id",
+            help="Optional local audit identity; this is not authentication.",
+        ),
+    ] = None,
+    authorization_reason: Annotated[
+        str,
+        typer.Option(
+            "--authorization-reason",
+            help="Reason for this exact source and observation-set verification.",
+        ),
+    ] = "Perform one reviewed source-verification evidence check.",
 ) -> None:
-    """Build a report-only manual source-verification checklist."""
+    """Build a manual checklist; authorize only the optional HTTP evidence branch."""
 
-    report = build_source_verification_checklist_report(
-        _load_sources_from_json(registry_path),
-        default_adapter_family_specs(),
-        check_http=check_http,
-        observations=_load_observations(observations_path),
-    )
+    sources = _load_sources_from_json(registry_path)
+    observations = _load_observations(observations_path)
+    adapter_specs = default_adapter_family_specs()
+    try:
+        report = (
+            build_authorized_source_verification_checklist_report(
+                sources,
+                adapter_specs,
+                observations=observations,
+                caller_confirmation=True,
+                authorization_reason=authorization_reason,
+                operator_id=operator_id,
+            )
+            if check_http
+            else build_source_verification_checklist_report(
+                sources,
+                adapter_specs,
+                check_http=False,
+                observations=observations,
+            )
+        )
+    except (AuthorizationDeniedError, ValueError) as exc:
+        typer.echo(f"Source verification checklist blocked: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
     if json_output:
         console.print_json(json.dumps(report.to_dict()))
         return

@@ -1,9 +1,51 @@
+import hashlib
 import json
+import os
 from pathlib import Path
 
 import pytest
 
-from constructionsight.ceqanet_operator_bundle import build_ceqanet_operator_bundle
+import constructionsight.ceqanet_operator_bundle as bundle_writer
+from constructionsight.ceqanet_operator_bundle import (
+    _write_json_artifact,
+    _write_text_artifact,
+    build_ceqanet_operator_bundle,
+)
+
+
+@pytest.mark.parametrize("attack", ("ancestor", "final", "swap"))
+def test_bundle_publication_rejects_unsafe_output(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, attack: str,
+) -> None:
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    output = tmp_path / "bundle"
+    if attack == "ancestor":
+        output.symlink_to(outside, target_is_directory=True)
+        output = output / "nested"
+    else:
+        output.mkdir()
+    original = outside / "original.json"
+    original.write_bytes(b"prior evidence")
+    if attack == "final":
+        (output / "operator-package.json").symlink_to(original)
+    if attack == "swap":
+        opened = os.open
+        swapped = False
+
+        def swap(path, flags, *args, **kwargs):
+            nonlocal swapped
+            if not swapped and flags & os.O_CREAT:
+                swapped = True
+                output.rename(tmp_path / "parked")
+                output.symlink_to(outside, target_is_directory=True)
+            return opened(path, flags, *args, **kwargs)
+
+        monkeypatch.setattr(os, "open", swap)
+    with pytest.raises((OSError, ValueError)):
+        build_ceqanet_operator_bundle(_operator_package(), output_dir=output)
+    assert original.read_bytes() == b"prior evidence"
+    assert list(outside.iterdir()) == [original]
 
 
 def _operator_package() -> dict[str, object]:
@@ -108,3 +150,106 @@ def test_build_ceqanet_operator_bundle_rejects_missing_component(tmp_path: Path)
 
     with pytest.raises(ValueError, match="write_plan object"):
         build_ceqanet_operator_bundle(package, output_dir=tmp_path)
+
+
+def test_bundle_artifact_rejects_oversize_before_touching_existing_file(
+    tmp_path: Path,
+) -> None:
+    existing = tmp_path / "operator-report.md"
+    existing.write_bytes(b"keep the previous artifact")
+    with pytest.raises(ValueError, match="exceeds the byte limit"):
+        _write_text_artifact(
+            existing,
+            "x" * (16 * 1024 * 1024 + 1),
+            artifact_type="operator_report_markdown",
+        )
+    assert existing.read_bytes() == b"keep the previous artifact"
+    assert list(tmp_path.glob(".ceqanet-bundle-*.tmp")) == []
+
+
+def test_bundle_artifact_rejects_symlink_without_writing_external_file(
+    tmp_path: Path,
+) -> None:
+    outside = tmp_path / "external-artifact.txt"
+    outside.write_bytes(b"external evidence must not be overwritten")
+    output = tmp_path / "operator-report.md"
+    output.symlink_to(outside)
+    with pytest.raises(ValueError, match="regular file"):
+        _write_text_artifact(
+            output, "new verified artifact", artifact_type="operator_report_markdown"
+        )
+    assert output.is_symlink()
+    assert outside.read_bytes() == b"external evidence must not be overwritten"
+
+
+def test_bundle_artifact_failed_replace_preserves_old_and_cleans_temp(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    existing = tmp_path / "operator-report.md"
+    existing.write_bytes(b"retain previous artifact")
+
+    def fail_replace(_source: str, _target: str, **_kwargs: int) -> None:
+        raise OSError("synthetic artifact publication failure")
+
+    monkeypatch.setattr(os, "replace", fail_replace)
+    with pytest.raises(OSError, match="publication failure"):
+        _write_text_artifact(
+            existing, "new artifact", artifact_type="operator_report_markdown"
+        )
+    assert existing.read_bytes() == b"retain previous artifact"
+    assert list(tmp_path.iterdir()) == [existing]
+
+
+def test_bundle_output_rejects_symlinked_root(tmp_path: Path) -> None:
+    real = tmp_path / "real-output"
+    real.mkdir()
+    linked = tmp_path / "linked-output"
+    linked.symlink_to(real, target_is_directory=True)
+    with pytest.raises(ValueError, match="symlinked directory"):
+        build_ceqanet_operator_bundle(_operator_package(), output_dir=linked)
+    assert list(real.iterdir()) == []
+
+
+def test_bundle_json_matches_canonical_indented_encoding(tmp_path: Path) -> None:
+    payload = {"z": ["Ω", {"b": 2, "a": 1}], "a": {"empty": None}}
+    destination = tmp_path / "operator-package.json"
+    result = _write_json_artifact(
+        destination, payload, artifact_type="operator_package_json"
+    )
+    expected = (json.dumps(payload, indent=2, sort_keys=True, default=str) + "\n").encode(
+        "utf-8"
+    )
+    assert destination.read_bytes() == expected
+    assert result.byte_count == len(expected)
+    assert result.sha256 == hashlib.sha256(expected).hexdigest()
+
+
+def test_bundle_json_streams_without_full_json_dumps(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def forbid_full_materialization(*_args: object, **_kwargs: object) -> str:
+        raise AssertionError("json.dumps must not materialize the artifact")
+
+    monkeypatch.setattr(bundle_writer.json, "dumps", forbid_full_materialization)
+    result = _write_json_artifact(
+        tmp_path / "operator-package.json",
+        {"a": ["value", "other"], "z": 1},
+        artifact_type="operator_package_json",
+    )
+    assert result.byte_count > 0
+    assert result.sha256
+
+
+def test_bundle_oversized_json_preserves_previous_artifact(
+    tmp_path: Path,
+) -> None:
+    destination = tmp_path / "operator-package.json"
+    destination.write_bytes(b"old output must remain")
+    with pytest.raises(ValueError, match="exceeds the byte limit"):
+        _write_json_artifact(
+            destination,
+            {"payload": "x" * (16 * 1024 * 1024 + 1)},
+            artifact_type="operator_package_json",
+        )
+    assert destination.read_bytes() == b"old output must remain"
+    assert list(tmp_path.glob(".ceqanet-bundle-*.tmp")) == []
