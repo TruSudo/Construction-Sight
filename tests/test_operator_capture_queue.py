@@ -16,7 +16,7 @@ def _payload() -> dict[str, object]:
         "listing_artifact_sha256": "b" * 64,
         "listing_plan_id": "fixture-plan",
         "listing_pages_reviewed": 2,
-        "listing_records_parsed": 5,
+        "listing_records_parsed": 6,
         "candidate_count": 1,
         "excluded_observations": {
             "missing_or_ambiguous_sch": 1,
@@ -68,6 +68,7 @@ def test_operator_queue_reduces_retained_artifact_to_read_only_presentation(tmp_
     [
         (lambda value: value.update(candidate_count=2), "candidate count"),
         (lambda value: value.update(network_executed=True), "authority state"),
+        (lambda value: value.update(listing_records_parsed=7), "observation accounting"),
         (
             lambda value: value["candidates"][0].update(
                 source_claimed_county="Orange"
