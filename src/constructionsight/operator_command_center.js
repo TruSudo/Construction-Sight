@@ -486,14 +486,21 @@ function renderSourceRegistry(registry) {
       entry.latest_verification_notes!==null ||
       entry.verification_metadata_consistent!==null
     )) throw Error("Absent source verification carries unexpected retained claims.");
+    const searchState=entry.latest_public_search_available===null ? "search availability unrecorded" :
+      (entry.latest_public_search_available ? "public search observed" : "public search not observed");
+    const loginState=entry.latest_login_required===null ? "login requirement unrecorded" :
+      (entry.latest_login_required ? "login reported required" : "login reported not required");
     const latestDetail=latest ?
       '<small class="'+(entry.verification_metadata_consistent?'source-verification-ok':'source-verification-warning')+
       '">latest retained check: '+(entry.latest_verification_url_reachable?'reachable':'not reachable')+
       ' · '+escapeText(entry.latest_verification_checked_at)+
       ' · detected '+escapeText(entry.latest_detected_platform_family)+
-      ' · confidence '+entry.latest_verification_confidence_score+'/100'+
+      ' · confidence '+entry.latest_verification_confidence_score+'/100 · '+
+      searchState+' · '+loginState+
       (entry.verification_metadata_consistent?' · registry metadata agrees':
-        ' · registry metadata DIFFERS; inspect retained verification history')+'</small>' :
+        ' · registry metadata DIFFERS; inspect retained verification history')+'</small>'+
+      (entry.latest_verification_notes?
+        '<small>latest check note: '+escapeText(entry.latest_verification_notes)+'</small>':'') :
       '<small>no linked retained verification observation</small>';
     return '<tr><th scope="row">'+escapeText(entry.source_name)+
       '<small>'+escapeText(entry.jurisdiction_name)+' · '+escapeText(entry.county)+'</small></th>'+
