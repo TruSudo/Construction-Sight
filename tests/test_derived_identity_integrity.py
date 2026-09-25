@@ -197,8 +197,14 @@ def test_artifact_observation_and_fingerprint_reject_forged_derived_state() -> N
 
 
 def test_resolution_candidate_identity_is_symmetric_and_rejects_stale_override() -> None:
-    left = _fingerprint("project:a", _observation(source_name="Source A", evidence_record_id="ev:a"))
-    right = _fingerprint("project:b", _observation(source_name="Source B", evidence_record_id="ev:b"))
+    left = _fingerprint(
+        "project:a",
+        _observation(source_name="Source A", evidence_record_id="ev:a"),
+    )
+    right = _fingerprint(
+        "project:b",
+        _observation(source_name="Source B", evidence_record_id="ev:b"),
+    )
     service = ArtifactResolutionService()
 
     forward = service.resolve_fingerprints(left, right)
