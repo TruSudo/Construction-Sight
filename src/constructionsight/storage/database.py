@@ -17,6 +17,7 @@ _ORM_MODULE_NAMES = (
     "constructionsight.storage.domain_orm",
     "constructionsight.storage.intelligence_orm",
     "constructionsight.storage.lead_workflow_orm",
+    "constructionsight.storage.source_candidate_docket_orm",
     "constructionsight.storage.movement_identity_orm",
     "constructionsight.storage.parcel_site_orm",
     "constructionsight.storage.result_authority_orm",
