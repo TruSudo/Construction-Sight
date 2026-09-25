@@ -435,3 +435,28 @@ presenting the generic share calculation as a paid royalty.
 The dedicated AI Center remains OFF / no provider connected. These new read-only
 capabilities operate independently of AI. The entire new increment remains
 development-stage until exact-head CI and actual browser acceptance are reviewed.
+
+
+## Retained source-verification reconciliation in Sources & Collection
+
+The configured-source table now distinguishes the persisted source-registry row
+from the newest linked `source_verifications` observation. The server selects
+the newest observation per source by `checked_at` and verification-row identity,
+revalidates its complete typed `SourceVerificationResult`, and requires its
+source name and canonical public URL to agree with the linked registry row.
+
+When a retained verification exists, the Command Center shows its observation
+time, reachability result, detected platform family, public-search observation,
+login-requirement observation, confidence and retained note separately from the
+registry's stored verification status and confidence. The operator also reports
+whether the registry status, confidence and last-checked date are consistent with
+the newest retained check under the same status derivation used by
+`VerificationStore`. A disagreement is displayed as a review warning; the read
+surface does not overwrite either record to make them appear consistent.
+
+These observations remain historical evidence. A prior successful reachability
+check, a `verified` registry label, or a live-capable adapter status does not
+authorize a new HTTP request, recurring collection, credential use, source
+promotion, lead qualification, outreach or bidding. Malformed retained
+verification JSON or linked source-identity disagreement fails the read instead
+of silently omitting the inconsistent evidence.
