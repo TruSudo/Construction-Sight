@@ -61,11 +61,9 @@ class ConfidenceBand(StrEnum):
     VERIFIED = "verified"
 
 
-def confidence_band(score: int, *, verified: bool = False) -> ConfidenceBand:
-    """Convert confidence to a band without conflating score and verification."""
+def confidence_band(score: int) -> ConfidenceBand:
+    """Convert numeric confidence without ever manufacturing verification."""
 
-    if verified:
-        return ConfidenceBand.VERIFIED
     if score >= 75:
         return ConfidenceBand.HIGH
     if score >= 50:
