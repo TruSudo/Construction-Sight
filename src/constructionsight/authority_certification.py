@@ -13,6 +13,7 @@ from constructionsight.assurance_certification import (
 from constructionsight.assurance_source_certification import (
     audit_assurance_source_semantics,
 )
+from constructionsight.defect_closure_certification import audit_defect_closure
 from constructionsight.governance_certification_core import (
     _ACTIVE_DEFECT_SCHEMA,
     _ASSURANCE_CONTRACT_SCHEMA,
@@ -426,6 +427,7 @@ def _audit_defects_and_review(
             findings,
         )
     )
+    audit_defect_closure(root, active, resolved, findings)
     audit_assurance_review(root, contract, active, resolved, findings)
     audit_assurance_source_semantics(root, findings)
     audit_owner_acceptance_binding(root, findings)
