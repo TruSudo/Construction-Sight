@@ -43,7 +43,7 @@ def build_source_candidate_preview(
     if record is None:
         raise SourceRecordNotFound("source record not found")
     canonical = json.dumps(
-        record.model_dump(mode="json"), sort_keys=True, separators=(",", ":"),
+        record.model_dump(mode="json", round_trip=True), sort_keys=True, separators=(",", ":"),
         ensure_ascii=False, allow_nan=False,
     ).encode("utf-8")
     source_digest = hashlib.sha256(canonical).hexdigest()
