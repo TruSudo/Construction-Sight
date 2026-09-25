@@ -101,3 +101,40 @@ PR #153 should remain draft and unmerged while defect closure is being reconcile
 The correct objective is not to make CI green by deleting, ignoring, or suppressing defect records. The objective is to prove which defects are actually remediated, formally close them with exact-tree evidence, and leave genuinely unresolved defects active.
 
 No change in this triage authorizes a merge to `main`.
+
+
+## Exact-head retained artifact inspection — run 36105667808
+
+The retained Python 3.11 certification artifact was inspected directly.
+
+- `assurance-preflight-py311.json`: passed=true, finding_count=0, allowed_transaction_blocker_count=76.
+- `repository-certification-py311.json`: exactly 76 findings.
+- Those 76 findings are exactly one `ASSURANCE-001` missing Native Maximum Assurance report plus one `DEFECT-ACTIVE-001` finding for each CS-SR-001 through CS-SR-075.
+- No additional repository, governance, source, architecture, authorization, dependency, or semantic finding is present in the retained exact-head certification report.
+- The focused mutation artifact retains killed witnesses for effect-consumption reservation, cross-process uniqueness, stale authorization, replay, terminal failure, and related security invariants.
+
+This materially narrows the consolidation problem: canonical certification is not currently reporting an untracked implementation defect outside the authoritative defect ledger. Formal closure still requires exact-tree assurance and ADR-0008 finalization.
+
+## Updated implementation triage after the September 21 snapshot
+
+### CS-SR-049 — duplicate-review-gate
+
+The September 21 reconciliation classified CS-SR-049 as unresolved. Later exact-history commits materially change that assessment:
+
+- `fe5fabc0cd78f313ac7bfcf940f61895c8f940c1` — block unresolved duplicate review from actionable workflow states.
+- `e3d72015a497446dd2c896eb693d6572294b3a91` — enforce persisted duplicate review across fingerprint drift and direct writes.
+- `ceea88953af6...` — retain immutable duplicate verdict across safe rescans.
+- `fa756e75cced...` — integrate the runtime corrections into the stacked head.
+
+The current exact-head Python 3.11/3.12 pytest and mutation matrices pass. CS-SR-049 is therefore reclassified here as **correction evidenced, formal closure pending assurance**. This is not a ledger closure.
+
+### CS-SR-045 — lawful-access-fact-authority
+
+Current-tree inspection confirms the original root cause still exists:
+
+- `SourceAccessProfile` restriction facts still default to `False`.
+- `evaluate_access()` returns ALLOWED when no restriction flag is true.
+- generic adapter preflight can construct that empty profile.
+- `SourceVerifier.verify()` constructs that empty profile before performing a public HTTP verification request.
+
+Accordingly CS-SR-045 remains **unresolved** and is the next P0 implementation target. The planned correction is to make unknown restriction facts fail closed and require an evidence/review basis before an all-clear access profile can authorize a live source request.
