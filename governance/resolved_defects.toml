@@ -661,7 +661,7 @@ resolution_summary = "Pinned checkout, setup-python, and upload-artifact to immu
 resolution_commit = "6e568d2c266550be14f50f1270f4a5d13889d787"
 resolution_tree = "7fcfec16460c11694f2ab54650f070cf4ad00732"
 last_active_commit = "93467d37b1876b9732f07ad0ad8a61c02db67b9f"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-068.md", ".github/workflows/ci.yml", "src/constructionsight/ci_action_certification.py"]
+evidence_paths = [".github/workflows/ci.yml", "docs/assurance/defect_closures/CS-SR-068.md", "src/constructionsight/ci_action_certification.py"]
 regression_tests = ["tests/test_ci_action_certification.py"]
 closure_evidence = "docs/assurance/defect_closures/CS-SR-068.md"
 
@@ -676,8 +676,8 @@ resolution_summary = "Removed resolver-selected vulnerability scanner bootstrap 
 resolution_commit = "6e568d2c266550be14f50f1270f4a5d13889d787"
 resolution_tree = "7fcfec16460c11694f2ab54650f070cf4ad00732"
 last_active_commit = "93467d37b1876b9732f07ad0ad8a61c02db67b9f"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-069.md", ".github/workflows/ci.yml", "scripts/acquire_vulnerability_sources.py", "src/constructionsight/vulnerability_certification.py", "src/constructionsight/vulnerability_ci_certification.py"]
-regression_tests = ["tests/test_vulnerability_certification.py", "tests/test_vulnerability_collection.py", "tests/test_vulnerability_ci_certification.py"]
+evidence_paths = [".github/workflows/ci.yml", "docs/assurance/defect_closures/CS-SR-069.md", "scripts/acquire_vulnerability_sources.py", "src/constructionsight/vulnerability_certification.py", "src/constructionsight/vulnerability_ci_certification.py"]
+regression_tests = ["tests/test_vulnerability_certification.py", "tests/test_vulnerability_ci_certification.py", "tests/test_vulnerability_collection.py"]
 closure_evidence = "docs/assurance/defect_closures/CS-SR-069.md"
 
 [[defects]]
@@ -691,7 +691,7 @@ resolution_summary = "Neutralized Bash startup hooks at every security-critical 
 resolution_commit = "6e568d2c266550be14f50f1270f4a5d13889d787"
 resolution_tree = "7fcfec16460c11694f2ab54650f070cf4ad00732"
 last_active_commit = "93467d37b1876b9732f07ad0ad8a61c02db67b9f"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-071.md", ".github/workflows/ci.yml", "src/constructionsight/vulnerability_ci_certification.py"]
+evidence_paths = [".github/workflows/ci.yml", "docs/assurance/defect_closures/CS-SR-071.md", "src/constructionsight/vulnerability_ci_certification.py"]
 regression_tests = ["tests/test_vulnerability_ci_certification.py", "tests/test_vulnerability_ci_startup.py"]
 closure_evidence = "docs/assurance/defect_closures/CS-SR-071.md"
 
@@ -706,7 +706,7 @@ resolution_summary = "Moved every canonical CI run step to the reviewed absolute
 resolution_commit = "6e568d2c266550be14f50f1270f4a5d13889d787"
 resolution_tree = "7fcfec16460c11694f2ab54650f070cf4ad00732"
 last_active_commit = "93467d37b1876b9732f07ad0ad8a61c02db67b9f"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-072.md", ".github/workflows/ci.yml", "src/constructionsight/ci_execution_certification.py"]
+evidence_paths = [".github/workflows/ci.yml", "docs/assurance/defect_closures/CS-SR-072.md", "src/constructionsight/ci_execution_certification.py"]
 regression_tests = ["tests/test_ci_execution_certification.py"]
 closure_evidence = "docs/assurance/defect_closures/CS-SR-072.md"
 
@@ -721,7 +721,7 @@ resolution_summary = "Removed candidate-project installation and build execution
 resolution_commit = "6e568d2c266550be14f50f1270f4a5d13889d787"
 resolution_tree = "7fcfec16460c11694f2ab54650f070cf4ad00732"
 last_active_commit = "93467d37b1876b9732f07ad0ad8a61c02db67b9f"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-073.md", ".github/workflows/ci.yml", "src/constructionsight/ci_execution_certification.py", "docs/adr/ADR-0009-native-maximum-assurance.md"]
+evidence_paths = [".github/workflows/ci.yml", "docs/adr/ADR-0009-native-maximum-assurance.md", "docs/assurance/defect_closures/CS-SR-073.md", "src/constructionsight/ci_execution_certification.py"]
 regression_tests = ["tests/test_ci_execution_certification.py"]
 closure_evidence = "docs/assurance/defect_closures/CS-SR-073.md"
 
