@@ -13,11 +13,13 @@ from pathlib import Path
 from typing import Annotated, Any
 
 import typer
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from constructionsight.authorization_decision import AuthorizationDeniedError
 from constructionsight.ceqanet_capture_queue import build_reviewed_ceqanet_capture_queue
 from constructionsight.ceqanet_csv_live_models import CeqanetCsvLiveExecution
+from constructionsight.ceqanet_ingestion_inbox import build_ceqanet_ingestion_inbox
 from constructionsight.ceqanet_csv_models import canonical_digest
 from constructionsight.ceqanet_csv_operator_bridge import (
     ReviewedCeqanetCsvBridge,
@@ -197,6 +199,82 @@ def discover_preview(
             indent=2,
         )
     )
+
+
+@app.command("inbox")
+def ingestion_inbox(
+    listing_evidence: Annotated[
+        Path,
+        typer.Option(
+            "--listing-evidence",
+            exists=True,
+            dir_okay=False,
+            readable=True,
+            help="Exact retained governed CEQAnet listing-execution JSON.",
+        ),
+    ],
+    queue_evidence: Annotated[
+        Path,
+        typer.Option(
+            "--queue-evidence",
+            exists=True,
+            dir_okay=False,
+            readable=True,
+            help="Exact reviewed SCH queue derived from the listing evidence.",
+        ),
+    ],
+    database_path: Annotated[
+        Path,
+        typer.Option(
+            "--database",
+            exists=True,
+            dir_okay=False,
+            readable=True,
+            help="Existing operator-compatible SQLite database to inspect read only.",
+        ),
+    ],
+) -> None:
+    """Reconcile an exact reviewed discovery queue with persisted CEQA records."""
+
+    if listing_evidence.absolute() == queue_evidence.absolute():
+        raise typer.BadParameter("listing evidence and queue evidence must be distinct artifacts")
+    engine = None
+    try:
+        listing_raw = read_runtime_artifact(listing_evidence, max_bytes=16 * 1024 * 1024)
+        queue_raw = read_runtime_artifact(queue_evidence, max_bytes=16 * 1024 * 1024)
+        listing_payload: Any = json.loads(listing_raw.decode("utf-8"))
+        queue_payload: Any = json.loads(queue_raw.decode("utf-8"))
+        if not isinstance(listing_payload, dict) or not isinstance(queue_payload, dict):
+            raise ValueError("listing and queue evidence must each contain a JSON object")
+        engine = create_operator_read_engine(database_path)
+        with Session(engine, autoflush=False) as session:
+            inbox = build_ceqanet_ingestion_inbox(
+                session,
+                listing_payload=listing_payload,
+                listing_bytes=listing_raw,
+                queue_payload=queue_payload,
+                queue_bytes=queue_raw,
+            )
+    except (
+        OSError,
+        ValueError,
+        TypeError,
+        UnicodeDecodeError,
+        SQLAlchemyError,
+    ) as exc:
+        typer.echo(f"CEQAnet ingestion inbox could not be built: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+    finally:
+        if engine is not None:
+            engine.dispose()
+
+    payload = inbox.model_dump(mode="json")
+    payload["next_step"] = (
+        "Review next_pending_sch, verify current public access, then run one bound "
+        "capture-preview. After independent two-digest approval and apply, rerun this "
+        "inbox to reconcile the same immutable discovery queue against SQLite."
+    )
+    typer.echo(json.dumps(payload, indent=2, sort_keys=True))
 
 
 @app.command("capture-preview")
