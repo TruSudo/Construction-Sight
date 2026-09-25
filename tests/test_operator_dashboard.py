@@ -1,5 +1,4 @@
 """Database-to-operator integration tests using explicitly synthetic records."""
-
 from __future__ import annotations
 
 import hashlib
