@@ -62,10 +62,8 @@ class ConfidenceBand(StrEnum):
 
 
 def confidence_band(score: int) -> ConfidenceBand:
-    """Convert a numeric score to a confidence band."""
+    """Convert numeric confidence without ever manufacturing verification."""
 
-    if score >= 90:
-        return ConfidenceBand.VERIFIED
     if score >= 75:
         return ConfidenceBand.HIGH
     if score >= 50:

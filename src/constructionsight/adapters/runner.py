@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from itertools import islice
 from typing import Any
 
 from pydantic import BaseModel
@@ -16,6 +17,8 @@ from constructionsight.adapters.base import (
 from constructionsight.adapters.registry import AdapterRegistry, default_adapter_registry
 from constructionsight.legal import AccessDecision
 from constructionsight.models import PublicSource
+
+_MAX_ADAPTER_RECORDS = 5_000
 
 
 class AdapterRunner:
@@ -39,18 +42,33 @@ class AdapterRunner:
     ) -> AdapterOperationResult[BaseModel]:
         """Run an adapter instance through the standard lifecycle."""
 
-        preflight = adapter.preflight()
-        if preflight.decision is not AccessDecision.ALLOWED:
-            return adapter.blocked_result("run_adapter", preflight)
-
         try:
-            adapter.discover_search()
-            raw_records = list(adapter.list_records())
-            if adapter.context.max_records is not None:
-                raw_records = raw_records[: adapter.context.max_records]
+            limit = adapter.context.max_records
+            if limit is None:
+                limit = _MAX_ADAPTER_RECORDS
+            if isinstance(limit, bool) or not isinstance(limit, int):
+                raise ValueError("adapter max_records must be an integer")
+            if not 0 <= limit <= _MAX_ADAPTER_RECORDS:
+                raise ValueError(
+                    f"adapter max_records must be between 0 and {_MAX_ADAPTER_RECORDS}"
+                )
+            if adapter.context.dry_run and limit == 0:
+                return AdapterOperationResult(
+                    source_name=adapter.source_name,
+                    operation="run_adapter",
+                    outcome=AdapterOutcome.SUCCESS,
+                    records=(),
+                    notes="Dry run requested zero records; no source access was performed.",
+                )
 
+            if adapter.requires_access_preflight:
+                preflight = adapter.preflight()
+                if preflight.decision is not AccessDecision.ALLOWED:
+                    return adapter.blocked_result("run_adapter", preflight)
+
+            adapter.discover_search()
             normalized: list[BaseModel] = []
-            for raw_record in raw_records:
+            for raw_record in islice(adapter.list_records(), limit):
                 detailed = adapter.extract_record_detail(raw_record)
                 normalized.append(adapter.normalize(detailed))
 
@@ -59,6 +77,10 @@ class AdapterRunner:
                 operation="run_adapter",
                 outcome=AdapterOutcome.SUCCESS,
                 records=tuple(normalized),
+                notes=(
+                    f"Processed at most {limit} raw records; "
+                    "source enumeration may contain further records."
+                ),
             )
         except Exception as exc:
             return AdapterOperationResult(

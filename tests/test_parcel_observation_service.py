@@ -144,7 +144,7 @@ def test_newer_source_effective_time_wins_over_arrival_order() -> None:
         if item.observation_id == stale_late_arrival.observation_id
     )
     assert stale_disposition.status is ParcelObservationDispositionStatus.SUPERSEDED
-    assert stale_disposition.superseded_by_observation_ids == [newer.observation_id]
+    assert stale_disposition.superseded_by_observation_ids == (newer.observation_id,)
 
 
 def test_observation_time_is_used_only_when_all_effective_times_are_absent() -> None:
@@ -181,8 +181,8 @@ def test_mixed_time_bases_block_current_selection() -> None:
     assert selection.status is ParcelSourceSelectionStatus.AMBIGUOUS
     assert selection.time_basis is ParcelObservationTimeBasis.MIXED_UNCOMPARABLE
     assert selection.current_observation_id is None
-    assert selection.candidate_observation_ids == sorted(
-        [effective.observation_id, undated.observation_id]
+    assert selection.candidate_observation_ids == tuple(
+        sorted([effective.observation_id, undated.observation_id])
     )
 
 
@@ -208,7 +208,7 @@ def test_same_time_content_conflict_preserves_candidates_and_supersession() -> N
         [residential, older, industrial]
     )
     selection = report.source_selections[0]
-    candidate_ids = sorted([industrial.observation_id, residential.observation_id])
+    candidate_ids = tuple(sorted([industrial.observation_id, residential.observation_id]))
 
     assert selection.status is ParcelSourceSelectionStatus.AMBIGUOUS
     assert selection.current_observation_id is None
@@ -456,7 +456,7 @@ def test_selection_store_rejects_identity_collision() -> None:
         generated_at=BASE_TIME,
     )
     different = report.model_copy(
-        update={"limitations": ["changed without changing identity"]}
+        update={"limitations": ("changed without changing identity",)}
     )
 
     with managed_session(factory) as session:

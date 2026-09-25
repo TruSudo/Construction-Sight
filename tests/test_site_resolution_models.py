@@ -52,7 +52,7 @@ def test_result_model_rejects_unresolved_with_candidate() -> None:
         site_key="site:abc",
         match_strength=SiteMatchStrength.STRONG,
         confidence_score=90,
-        confidence_band=ConfidenceBand.VERIFIED,
+        confidence_band=ConfidenceBand.HIGH,
     )
 
     with pytest.raises(ValidationError):

@@ -57,10 +57,25 @@ def _source() -> PublicSource:
     )
 
 
-def test_adapter_preflight_allows_plain_public_source() -> None:
+def test_adapter_preflight_requires_review_for_unknown_access_facts() -> None:
     adapter = SyntheticAdapter(_source())
 
     result = adapter.preflight()
+
+    assert result.allowed is False
+    assert result.decision.value == "review_required"
+
+
+def test_adapter_preflight_allows_affirmatively_reviewed_public_source() -> None:
+    adapter = SyntheticAdapter(_source())
+
+    result = adapter.preflight(
+        SourceAccessProfile(
+            public_url="https://example.gov/records",
+            access_facts_reviewed=True,
+            review_basis="Reviewed source access conditions.",
+        )
+    )
 
     assert result.allowed is True
 

@@ -4,7 +4,7 @@ from pydantic import ValidationError
 from constructionsight.ceqa_models import CeqaRecord
 from constructionsight.domain_types import PartyRole
 from constructionsight.entity_models import Entity
-from constructionsight.provenance import Provenance
+from constructionsight.provenance import Provenance, ProvenanceConfidenceBasis
 from constructionsight.site_models import Site
 
 
@@ -42,7 +42,11 @@ def test_ceqa_record_links_site_entity_and_provenance() -> None:
         role=PartyRole.AGENCY,
     )
     provenance = Provenance(
-        source_name="Synthetic Public Source", confidence_score=90, verified=True
+        source_name="Synthetic Public Source",
+        adapter_family="synthetic-test",
+        raw_reference="synthetic:test",
+        evidence_text="retained synthetic public evidence",
+        confidence_basis=ProvenanceConfidenceBasis.DETERMINISTIC_NORMALIZATION,
     )
 
     record = CeqaRecord(
@@ -57,4 +61,4 @@ def test_ceqa_record_links_site_entity_and_provenance() -> None:
     assert record.site is not None
     assert record.site.site_key == "site:test:ceqa"
     assert record.entities[0].role is PartyRole.AGENCY
-    assert record.provenance[0].band.value == "verified"
+    assert record.provenance[0].band.value == "high"
