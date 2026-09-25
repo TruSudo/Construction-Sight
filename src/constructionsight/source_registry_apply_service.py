@@ -34,6 +34,55 @@ class SourceRegistryApplyError(ValueError):
     """Raised when a source registry plan cannot be safely applied."""
 
 
+def validate_source_registry_apply_snapshot(
+    sources: list[PublicSource],
+    plan: SourceRegistryUpdatePlanReport,
+    updated: list[PublicSource],
+    report: SourceRegistryApplyReport,
+    *,
+    approved_plan_digest: str,
+) -> None:
+    """Verify a retained result without consuming authority or repeating an effect."""
+
+    _validate_plan(sources, plan, approved_plan_digest=approved_plan_digest)
+    if plan.update_count == 0 or len(report.rows) != len(plan.rows):
+        raise SourceRegistryApplyError("pending apply does not cover the approved changes")
+    index = _source_index(sources)
+    expected_updates: dict[str, PublicSource] = {}
+    for row, audit_row in zip(plan.rows, report.rows, strict=True):
+        source = index.get(row.source_key)
+        if source is None:
+            raise SourceRegistryApplyError("pending plan source is absent from registry")
+        result = _validated_update(source, row) if row.update_required else source
+        expected_updates[row.source_key] = result
+        expected = SourceRegistryApplyRow(
+            source_key=row.source_key,
+            source_name=row.source_name,
+            planned_action=row.planned_action,
+            previous_verification_status=source.verification_status.value,
+            resulting_verification_status=result.verification_status.value,
+            applied=row.update_required,
+            reasons=row.reasons,
+            limitations=_apply_limitations(row, applied=row.update_required),
+            evidence_refs=row.evidence_refs,
+            applied_at=audit_row.applied_at,
+        )
+        if expected != audit_row:
+            raise SourceRegistryApplyError("pending audit row differs from the approved plan")
+    expected_sources = [expected_updates[source_registry_key(source)] for source in sources]
+    if updated != expected_sources:
+        raise SourceRegistryApplyError("pending registry differs from the approved transitions")
+    expected_report = SourceRegistryApplyReport.from_rows(
+        plan_digest=approved_plan_digest,
+        original_registry_digest=source_registry_digest(sources),
+        updated_registry_digest=source_registry_digest(updated),
+        rows=report.rows,
+    )
+    expected_report.applied_at = report.applied_at
+    if report != expected_report:
+        raise SourceRegistryApplyError("pending audit summary differs from its verified rows")
+
+
 def apply_source_registry_update_plan(
     sources: list[PublicSource],
     plan: SourceRegistryUpdatePlanReport,

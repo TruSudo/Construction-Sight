@@ -793,7 +793,7 @@ def _required_string(payload: dict[str, Any], key: str) -> str:
 
 def _service_version(payload: dict[str, Any]) -> str:
     value = payload.get("currentVersion")
-    if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+    if isinstance(value, bool) or not isinstance(value, int | float | str):
         raise ValueError("ArcGIS metadata requires currentVersion")
     text = str(value).strip()
     if not text:
