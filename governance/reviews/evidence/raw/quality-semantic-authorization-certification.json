@@ -1,0 +1,20 @@
+{
+  "schema_version": "constructionsight.assurance-source-artifact/v1",
+  "reviewed_commit": "539939a8cdef813b919b1c725fa1439d03d97ea7",
+  "kind": "quality_gate",
+  "context_id": "semantic-authorization-certification",
+  "producer": "github-actions",
+  "payload": {
+    "gate_id": "semantic-authorization-certification",
+    "status": "passed",
+    "result": "GitHub Actions CI run 1552 canonical step completed successfully.",
+    "run_id": 36193895479,
+    "job_id": 108265173257,
+    "job_name": "Python 3.12 quality gate",
+    "step_name": "Native assurance preflight certification",
+    "head_sha": "539939a8cdef813b919b1c725fa1439d03d97ea7",
+    "workflow_name": "CI",
+    "event": "pull_request",
+    "pull_request_number": 193
+  }
+}
