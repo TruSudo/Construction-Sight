@@ -624,6 +624,7 @@ def test_capture_preview_rejects_result_from_another_sch_without_ever_importing(
         json.loads(path.read_text("utf-8"))
     ).request.sch_number == "2026030377"
 
+
 def test_listing_queue_bound_capture_apply_and_operator_http_end_to_end(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
