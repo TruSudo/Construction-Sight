@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-
 from constructionsight.contractor_identity_models import (
     ContractorIdentity,
     ContractorIdentityResolution,
@@ -15,6 +14,7 @@ from constructionsight.contractor_identity_models import (
     normalize_contractor_name_value,
 )
 from constructionsight.domain_types import confidence_band
+
 
 def normalize_contractor_name(value: str) -> str:
     """Normalize contractor names for deterministic matching."""
