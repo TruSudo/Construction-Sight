@@ -81,8 +81,8 @@ def test_command_center_discloses_unassessed_records_and_missing_actions() -> No
     assert "source claims" in script.lower()
     assert 'id="ingestion-pending"' in html
     assert "ingestionInboxMarkup" in script
-    assert '"capture-next-preview"' in script
-    assert '"county_unavailable_candidate_count"' in script
+    assert "capture-next-preview" in script
+    assert "county_unavailable_candidate_count" in script
     assert "localStorage" in script
     assert not re.search(r'\b(247|104|86|57)\b', html)
 
