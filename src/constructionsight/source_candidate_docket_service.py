@@ -77,7 +77,7 @@ def _canonical_preview(preview: SourceCandidatePreview) -> str:
     """Canonicalize only the detached, typed source-review preview."""
 
     payload = json.dumps(
-        preview.model_dump(mode="json"), sort_keys=True, separators=(",", ":"),
+        preview.model_dump(mode="json", round_trip=True), sort_keys=True, separators=(",", ":"),
         ensure_ascii=False, allow_nan=False,
     )
     if len(payload.encode("utf-8")) > _MAX_PREVIEW_BYTES:
@@ -120,7 +120,7 @@ def _read_entry(row: SourceCandidateDocketRow, *, recorded_new: bool) -> Candida
     preview = SourceCandidatePreview.model_validate_json(row.preview_json)
     payload = _canonical_preview(preview)
     source_json = json.dumps(
-        preview.source_snapshot.model_dump(mode="json"),
+        preview.source_snapshot.model_dump(mode="json", round_trip=True),
         sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False,
     )
     expected_candidate = "source-candidate:" + _sha256(
