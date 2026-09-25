@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 from datetime import UTC, datetime
@@ -16,13 +17,15 @@ from sqlalchemy import (
     Table,
     inspect,
     select,
+    text,
 )
 from sqlalchemy.engine import Connection
 from sqlalchemy.sql.schema import ForeignKeyConstraint, UniqueConstraint
 
+from constructionsight.money import money_text, rate_text, storage_money_text
 from constructionsight.storage.orm import Base
 
-CURRENT_SCHEMA_VERSION = 1
+CURRENT_SCHEMA_VERSION = 2
 SCHEMA_MIGRATION_TABLE = "construction_sight_schema_migrations"
 
 _SCHEMA_METADATA = MetaData()
@@ -37,13 +40,22 @@ _SCHEMA_MIGRATIONS = Table(
     Column("applied_at", String(64), nullable=False),
 )
 
+_V2_EXACT_COLUMNS = {
+    "result_ledgers": ("gross_value_exact",),
+    "result_share_records": (
+        "gross_value_exact",
+        "share_rate_exact",
+        "share_value_exact",
+    ),
+}
+
 
 class SchemaCompatibilityError(ValueError):
     """Raised when persisted database shape cannot be proven compatible."""
 
 
 def initialize_governed_schema(engine: Engine) -> None:
-    """Create, adopt, or verify the exact repository-owned schema."""
+    """Create, adopt, migrate, or verify the exact repository-owned schema."""
 
     expected = expected_schema_contract()
     expected_digest = schema_contract_digest(expected)
@@ -58,7 +70,7 @@ def initialize_governed_schema(engine: Engine) -> None:
             _record_version(
                 connection,
                 from_version=None,
-                migration_id="schema-v1:fresh-create",
+                migration_id="schema-v2:fresh-create",
                 schema_digest=expected_digest,
                 provenance="fresh_create",
             )
@@ -77,7 +89,7 @@ def initialize_governed_schema(engine: Engine) -> None:
             _record_version(
                 connection,
                 from_version=None,
-                migration_id="schema-v1:adopt-exact-unversioned",
+                migration_id="schema-v2:adopt-exact-unversioned",
                 schema_digest=expected_digest,
                 provenance="exact_unversioned_adoption",
             )
@@ -85,17 +97,43 @@ def initialize_governed_schema(engine: Engine) -> None:
         return
 
     _assert_migration_table_shape(engine)
+    records = _migration_records(engine)
+    latest = records[-1]
+    if latest["version"] == 1:
+        _migrate_v1_to_v2(engine, latest)
+    elif latest["version"] != CURRENT_SCHEMA_VERSION:
+        raise SchemaCompatibilityError(
+            f"unsupported database schema version: {latest['version']}"
+        )
     _assert_version_state(engine, expected_digest)
     _assert_current_shape(engine, expected)
 
 
-def expected_schema_contract() -> dict[str, Any]:
-    """Return canonical schema shape expected by the loaded ORM metadata."""
+def expected_schema_contract(version: int | None = None) -> dict[str, Any]:
+    """Return the canonical schema shape for the current or supported prior version."""
 
-    return {
+    current = {
         table_name: _table_contract_from_metadata(table)
         for table_name, table in sorted(Base.metadata.tables.items())
     }
+    target = CURRENT_SCHEMA_VERSION if version is None else version
+    if target == CURRENT_SCHEMA_VERSION:
+        return current
+    if target != 1:
+        raise SchemaCompatibilityError(f"unsupported schema contract version: {target}")
+    prior = copy.deepcopy(current)
+    for table_name, column_names in _V2_EXACT_COLUMNS.items():
+        table = prior.get(table_name)
+        if table is None:
+            raise SchemaCompatibilityError(
+                f"schema v1 reconstruction is missing table: {table_name}"
+            )
+        table["columns"] = [
+            column
+            for column in table["columns"]
+            if column["name"] not in set(column_names)
+        ]
+    return prior
 
 
 def actual_schema_contract(engine: Engine) -> dict[str, Any]:
@@ -122,21 +160,129 @@ def schema_contract_digest(contract: dict[str, Any]) -> str:
 
 
 def current_schema_record(engine: Engine) -> dict[str, Any]:
-    """Return the sole current schema-version record after shape validation."""
+    """Return the current schema-version record after history validation."""
 
     _assert_migration_table_shape(engine)
-    with engine.connect() as connection:
-        rows = connection.execute(select(_SCHEMA_MIGRATIONS)).mappings().all()
-    if len(rows) != 1:
-        raise SchemaCompatibilityError(
-            "schema migration ledger must contain exactly one version-1 record"
-        )
-    row = dict(rows[0])
+    rows = _migration_records(engine)
+    row = rows[-1]
     if row["version"] != CURRENT_SCHEMA_VERSION:
         raise SchemaCompatibilityError(
             f"unsupported database schema version: {row['version']}"
         )
     return row
+
+
+def _migration_records(engine: Engine) -> list[dict[str, Any]]:
+    with engine.connect() as connection:
+        rows = connection.execute(
+            select(_SCHEMA_MIGRATIONS).order_by(_SCHEMA_MIGRATIONS.c.version)
+        ).mappings().all()
+    if not rows:
+        raise SchemaCompatibilityError("schema migration ledger must contain a version record")
+    records = [dict(row) for row in rows]
+    versions = [record["version"] for record in records]
+    if versions not in ([1], [2], [1, 2]):
+        raise SchemaCompatibilityError(
+            f"schema migration ledger has unsupported version history: {versions}"
+        )
+    if versions == [1, 2] and records[-1]["from_version"] != 1:
+        raise SchemaCompatibilityError("schema v2 migration must declare from_version = 1")
+    if versions in ([1], [2]) and records[0]["from_version"] is not None:
+        raise SchemaCompatibilityError("initial schema record must not declare from_version")
+    return records
+
+
+def _migrate_v1_to_v2(engine: Engine, record: dict[str, Any]) -> None:
+    """Migrate the exact governed v1 result schema to fixed-decimal persistence."""
+
+    expected_v1 = expected_schema_contract(1)
+    expected_v1_digest = schema_contract_digest(expected_v1)
+    if record["schema_digest"] != expected_v1_digest:
+        raise SchemaCompatibilityError(
+            "schema v1 digest does not match the repository-supported predecessor"
+        )
+    if actual_schema_contract(engine) != expected_v1:
+        raise SchemaCompatibilityError(
+            "schema v1 persisted shape does not match the supported predecessor"
+        )
+
+    with engine.begin() as connection:
+        connection.exec_driver_sql(
+            "ALTER TABLE result_ledgers ADD COLUMN gross_value_exact VARCHAR(64)"
+        )
+        connection.exec_driver_sql(
+            "ALTER TABLE result_share_records ADD COLUMN gross_value_exact VARCHAR(64)"
+        )
+        connection.exec_driver_sql(
+            "ALTER TABLE result_share_records ADD COLUMN share_rate_exact VARCHAR(64)"
+        )
+        connection.exec_driver_sql(
+            "ALTER TABLE result_share_records ADD COLUMN share_value_exact VARCHAR(64)"
+        )
+        _backfill_exact_result_values(connection)
+        _record_version(
+            connection,
+            from_version=1,
+            migration_id="schema-v2:fixed-decimal-result-accounting",
+            schema_digest=schema_contract_digest(expected_schema_contract()),
+            provenance="governed_v1_to_v2",
+        )
+
+
+def _backfill_exact_result_values(connection: Connection) -> None:
+    ledger_rows = connection.execute(
+        text("SELECT id, payload_json FROM result_ledgers")
+    ).mappings()
+    for row in ledger_rows:
+        payload = _payload_object(row["payload_json"], "result ledger")
+        gross = payload.get("gross_value")
+        exact = None if gross is None else storage_money_text(gross)
+        connection.execute(
+            text(
+                "UPDATE result_ledgers SET gross_value_exact = :exact "
+                "WHERE id = :row_id"
+            ),
+            {"exact": exact, "row_id": row["id"]},
+        )
+
+    share_rows = connection.execute(
+        text("SELECT id, payload_json FROM result_share_records")
+    ).mappings()
+    for row in share_rows:
+        payload = _payload_object(row["payload_json"], "result share")
+        try:
+            gross_exact = money_text(payload["gross_value"])
+            rate_exact = rate_text(payload["share_rate"])
+            share_exact = money_text(payload["share_value"])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise SchemaCompatibilityError(
+                "result share payload cannot be migrated to fixed-decimal storage"
+            ) from exc
+        connection.execute(
+            text(
+                "UPDATE result_share_records "
+                "SET gross_value_exact = :gross, share_rate_exact = :rate, "
+                "share_value_exact = :share WHERE id = :row_id"
+            ),
+            {
+                "gross": gross_exact,
+                "rate": rate_exact,
+                "share": share_exact,
+                "row_id": row["id"],
+            },
+        )
+
+
+def _payload_object(raw: object, label: str) -> dict[str, Any]:
+    if not isinstance(raw, str):
+        raise SchemaCompatibilityError(f"{label} payload is not text")
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise SchemaCompatibilityError(f"{label} payload is malformed JSON") from exc
+    if not isinstance(payload, dict):
+        raise SchemaCompatibilityError(f"{label} payload must be a JSON object")
+    return {str(key): value for key, value in payload.items()}
 
 
 def _assert_current_shape(engine: Engine, expected: dict[str, Any]) -> None:
