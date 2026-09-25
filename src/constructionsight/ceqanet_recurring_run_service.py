@@ -398,6 +398,7 @@ def verify_ceqanet_recurring_run_execution(
         manifest,
         execution.execution_report,
         findings,
+        attempt_sequence=execution.attempt_sequence,
     )
     if executed_count is not None:
         expected_network_executed = executed_count > 0
@@ -777,6 +778,8 @@ def _verify_execution_report(
     manifest: CeqanetRecurringRunManifest,
     report: dict[str, Any],
     findings: list[str],
+    *,
+    attempt_sequence: int,
 ) -> int | None:
     metadata = report.get("metadata")
     snapshots = report.get("snapshots")
@@ -794,16 +797,28 @@ def _verify_execution_report(
     }:
         findings.append("execution report schema_version mismatch")
     if schema_version == "ceqanet_listing_execution.v2":
-        attempt_sequence = metadata.get("attempt_sequence")
-        if isinstance(attempt_sequence, bool) or not isinstance(attempt_sequence, int):
+        metadata_attempt = metadata.get("attempt_sequence")
+        if isinstance(metadata_attempt, bool) or not isinstance(metadata_attempt, int):
             findings.append("execution report attempt_sequence is not an integer")
         else:
             _compare(
                 findings,
-                metadata.get("plan_id"),
-                _recurring_listing_plan_id(manifest, attempt_sequence),
-                "execution report plan_id does not match manifest attempt",
+                metadata_attempt,
+                attempt_sequence,
+                "execution report attempt_sequence does not match execution",
             )
+        _compare(
+            findings,
+            metadata.get("plan_id"),
+            _recurring_listing_plan_id(manifest, attempt_sequence),
+            "execution report plan_id does not match manifest attempt",
+        )
+        _compare(
+            findings,
+            metadata.get("allowed"),
+            True,
+            "execution report allowed flag is not true",
+        )
         access = metadata.get("access")
         authorization = metadata.get("authorization")
         if not isinstance(access, dict) or access.get("decision") != "allowed":
