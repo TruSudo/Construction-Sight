@@ -338,6 +338,9 @@ def test_real_riverside_csv_cli_authorized_apply_to_operator_sqlite(tmp_path: Pa
     payload = json.loads(result.stdout)
     assert payload["applied_operations"] == bridge.write_plan.operation_count == 4
     assert payload["operator_readback_verified"] is True
+    assert payload["operator_dashboard_visibility_verified"] is True
+    assert payload["operator_dashboard_imported_records_visible"] == 2
+    assert payload["operator_dashboard_matching_sch_records"] >= 2
     assert payload["commercial_leads_created"] is False
     assert payload["source_review_state"] == "unassessed"
     reader = create_operator_read_engine(path)
@@ -742,6 +745,8 @@ def test_listing_queue_bound_capture_apply_and_operator_http_end_to_end(
     assert applied.exit_code == 0, applied.output
     applied_payload = json.loads(applied.stdout)
     assert applied_payload["operator_readback_verified"] is True
+    assert applied_payload["operator_dashboard_visibility_verified"] is True
+    assert applied_payload["operator_dashboard_imported_records_visible"] == 2
     assert applied_payload["discovery_binding_verified"] is True
 
     with _real_source_operator_server(database) as port:
