@@ -24,7 +24,7 @@ _NETWORK_SCHEMA: Final = "constructionsight.network-contract/v1"
 _AUTHORIZATION_SCHEMA: Final = "constructionsight.authorization-contract/v1"
 _TEST_SCHEMA: Final = "constructionsight.adversarial-test-contract/v1"
 _ACTIVE_DEFECT_SCHEMA: Final = "constructionsight.active-defects/v1"
-_RESOLVED_DEFECT_SCHEMA: Final = "constructionsight.resolved-defects/v1"
+_RESOLVED_DEFECT_SCHEMA: Final = "constructionsight.resolved-defects/v2"
 _ASSURANCE_CONTRACT_SCHEMA: Final = "constructionsight.assurance-contract/v1"
 _ASSURANCE_REVIEW_SCHEMA: Final = "constructionsight.assurance-review/v1"
 
