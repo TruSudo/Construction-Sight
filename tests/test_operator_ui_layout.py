@@ -6,7 +6,6 @@ import re
 from html.parser import HTMLParser
 from pathlib import Path
 
-
 ASSETS = Path(__file__).resolve().parents[1] / "src" / "constructionsight"
 
 
