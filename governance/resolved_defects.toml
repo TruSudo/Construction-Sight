@@ -80,3 +80,48 @@ last_active_commit = "4f3e45ef4fe35262f5ec89214933b4112d1c3def"
 evidence_paths = ["docs/architecture/database_schema_governance.md", "docs/assurance/defect_closures/CS-SR-056.md", "src/constructionsight/storage/database.py", "src/constructionsight/storage/schema_governance.py"]
 regression_tests = ["tests/test_schema_governance.py"]
 closure_evidence = "docs/assurance/defect_closures/CS-SR-056.md"
+
+[[defects]]
+id = "CS-SR-065"
+severity = "P2"
+area = "assurance-quality-gate-compliance"
+root_cause = "Assurance provenance and mutation-overlay hardening introduced six overlong Python lines, an unsorted import block, and a nested conditional rejected by the mandatory Ruff rules. Exact-head CI 1146 on 7c302bc925884d5c6aa3d9fc0191e68672c2a37a reports eight Ruff errors and a failed lint outcome, so that candidate does not satisfy the Native Maximum Assurance quality baseline even though tests and focused mutants pass."
+discovered_against = "7c302bc925884d5c6aa3d9fc0191e68672c2a37a"
+required_resolution = "Correct all eight Ruff violations without suppressions, rule changes, or weakened predicates; preserve behavior and mutation anchors; rerun the complete exact-head Python 3.11 and 3.12 matrix; and verify the retained raw Ruff output and actual gate outcomes rather than a continue-on-error step conclusion before making any clean-quality claim."
+resolution_summary = "Corrected the assurance/mutation Ruff violations without suppression or predicate weakening and validated clean Ruff plus the full exact-head Python 3.11/3.12 quality and mutation matrices."
+resolution_commit = "74598ce80a57c02c87e2d5cde68d3bd172d4bca0"
+resolution_tree = "200e913fec0c29ef6e3160533737e9ea0b895638"
+last_active_commit = "a972cabef8ada46e2af35b9d8d208961368b79c9"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-065.md", "src/constructionsight/assurance_certification.py", "src/constructionsight/assurance_source_certification.py"]
+regression_tests = ["tests/test_assurance_certification.py", "tests/test_assurance_source_certification.py", "tests/test_mutation_governance_overlay.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-065.md"
+
+[[defects]]
+id = "CS-SR-067"
+severity = "P2"
+area = "assurance-quality-gate-compliance"
+root_cause = "The semantic CI-permission regression helper creates its workflow directory without exist_ok=True, but test_scalar_or_duplicate_permissions_fail_closed rewrites the same temporary workflow twice. Exact-head CI #1153 on 99081b3cd2f4d6dc1916f13c36e09ecda76ac7e1 therefore fails full pytest on both Python 3.11 and 3.12 with FileExistsError despite the production permission certifier, focused mutations, preflight, and repository certification otherwise behaving as intended."
+discovered_against = "99081b3cd2f4d6dc1916f13c36e09ecda76ac7e1"
+required_resolution = "Make the test workflow helper idempotently create its parent directory, rerun the complete exact-head Python 3.11 and 3.12 matrix, require all 1323 tests to pass, preserve 92/92 focused mutation results, and confirm canonical repository certification contains only ASSURANCE-001 plus the active-defect blockers."
+resolution_summary = "Made the CI-permission test fixture idempotent and validated the complete exact-head pytest, mutation, preflight, and repository-certification path on Python 3.11 and 3.12."
+resolution_commit = "74598ce80a57c02c87e2d5cde68d3bd172d4bca0"
+resolution_tree = "200e913fec0c29ef6e3160533737e9ea0b895638"
+last_active_commit = "a972cabef8ada46e2af35b9d8d208961368b79c9"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-067.md", "src/constructionsight/ci_permissions_certification.py"]
+regression_tests = ["tests/test_assurance_preflight_certification.py", "tests/test_ci_permissions_certification.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-067.md"
+
+[[defects]]
+id = "CS-SR-070"
+severity = "P2"
+area = "assurance-quality-gate-compliance"
+root_cause = "CS-SR-068 Action-provenance hardening introduced two overlong expressions in src/constructionsight/ci_action_certification.py. Retained CI #1155 evidence reports Ruff E501, so exact head 7fe708e1ea49044b2b847a9624da5c80c765a679 is not a clean-quality or assurance-freeze candidate."
+discovered_against = "7fe708e1ea49044b2b847a9624da5c80c765a679"
+required_resolution = "Split both overlong expressions without suppression, rule changes, or weakened predicates; preserve Action identity/runtime semantics and mutation anchors; rerun the complete Python 3.11 and 3.12 matrix; and verify retained raw Ruff output is clean before assurance freeze."
+resolution_summary = "Corrected the CI action-certification Ruff E501 violations without suppression or semantic weakening and validated clean Ruff plus the complete supported-runtime quality matrix."
+resolution_commit = "74598ce80a57c02c87e2d5cde68d3bd172d4bca0"
+resolution_tree = "200e913fec0c29ef6e3160533737e9ea0b895638"
+last_active_commit = "a972cabef8ada46e2af35b9d8d208961368b79c9"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-070.md", "src/constructionsight/ci_action_certification.py"]
+regression_tests = ["tests/test_assurance_preflight_certification.py", "tests/test_ci_action_certification.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-070.md"
