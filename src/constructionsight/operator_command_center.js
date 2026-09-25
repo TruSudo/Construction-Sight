@@ -440,6 +440,57 @@ function prepareCeqanetCapture() {
     '<p>Review the retained source rows, county scope and the source/plan SHA-256 digests printed by that command. To import, independently approve both exact digests using the separate <code>constructionsight-ceqanet-reviewed-import apply --help</code> workflow and its explicit write authorization. Once applied to this operator database, the Command Center refreshes on the next local revision check. No collection, import, lead qualification, outreach or bids have been initiated by this preview.</p>';
   byId("capture-command").textContent=command;
 }
+function renderCaptureQueue(queue) {
+  if(!queue || queue.schema_version!=="constructionsight.operator_capture_queue.v1" ||
+    queue.read_only!==true || queue.network_executed!==false ||
+    queue.persistence_mutated!==false || queue.commercial_leads_created!==false ||
+    !Number.isSafeInteger(queue.candidate_count) || queue.candidate_count<0 ||
+    !Array.isArray(queue.candidates) || queue.candidate_count!==queue.candidates.length)
+    throw Error("Retained exact-SCH review queue returned an inconsistent authority state.");
+  if(!queue.configured){
+    if(queue.candidate_count!==0)
+      throw Error("Unconfigured review queue reported retained candidates.");
+    return '<section class="feature-card"><h2>Exact-SCH review queue</h2>'+
+      '<p>No retained review queue is configured for this operator session. To display one, restart the local '+
+      'operator with <code>--capture-queue &lt;review-queue.json&gt;</code>. This does not enable remote collection.</p></section>';
+  }
+  const seen=new Set();
+  for(const item of queue.candidates){
+    if(!item || typeof item.sch_number!=="string" || !/^[0-9]{10}$/.test(item.sch_number) ||
+      seen.has(item.sch_number) || !["San Bernardino","Riverside"].includes(item.source_claimed_county) ||
+      typeof item.source_claimed_title!=="string" || !item.source_claimed_title ||
+      item.candidate_only!==true || item.review_state!=="unverified_source_claim" ||
+      item.network_executed_for_candidate!==false || item.persistence_mutated!==false)
+      throw Error("Retained exact-SCH review queue candidate is inconsistent.");
+    seen.add(item.sch_number);
+  }
+  const rows=queue.candidates.map((item,index)=>
+    '<div class="capture-queue-entry"><div><strong>'+escapeText(item.source_claimed_title)+
+    '</strong><small>SCH '+escapeText(item.sch_number)+' · '+escapeText(item.source_claimed_county)+
+    ' · observed '+item.source_observation_count+' time(s) in retained listing evidence'+
+    (item.title_requires_detail_enrichment?' · title/detail enrichment still required':'')+
+    '</small></div><div class="capture-queue-actions">'+safeSourceLink(item.official_detail_url)+
+    '<button type="button" class="action" data-capture-queue="'+index+'">Prepare reviewed capture →</button></div></div>'
+  ).join("") || '<p>No target-county exact-SCH candidates were retained in this reviewed listing queue.</p>';
+  return '<section class="feature-card"><span class="badge">RETAINED REVIEW QUEUE · CANDIDATES ONLY</span>'+
+    '<h2>Exact-SCH review queue ('+queue.candidate_count+')</h2>'+
+    '<p>Derived from '+queue.listing_pages_reviewed+' retained listing page(s) and '+
+    queue.listing_records_parsed+' parsed source observations. Listing artifact SHA-256: <code>'+
+    escapeText(queue.listing_artifact_sha256)+'</code>. Candidates are source claims, not verified active '+
+    'construction sites. Selecting one only prepares the existing local one-request capture instructions.</p>'+
+    '<div class="capture-queue">'+rows+'</div></section>';
+}
+function bindCaptureQueue(queue) {
+  if(!queue || !queue.configured)return;
+  byId("feature-body").querySelectorAll("[data-capture-queue]").forEach(button=>button.onclick=()=>{
+    const item=queue.candidates[Number(button.dataset.captureQueue)];
+    if(!item || !/^[0-9]{10}$/.test(item.sch_number))return;
+    byId("capture-sch-number").value=item.sch_number;
+    prepareCeqanetCapture();
+    byId("capture-source-form").scrollIntoView({block:"nearest",behavior:"auto"});
+  });
+}
+
 async function showSources() {
   const token=++featureRequest;
   featureIntro("Sources & Collection", "Actual retained CEQA and permit counts from the selected local database");
@@ -447,9 +498,14 @@ async function showSources() {
   const families=["ceqa","permit"], counties=["","San Bernardino","Riverside"];
   try {
     const queries=families.flatMap(kind=>counties.map(county=>({kind,county})));
-    const data=await Promise.all(queries.map(async item=>
-      fetchJson("/api/snapshot?"+new URLSearchParams({kind:item.kind,county:item.county,limit:"1",offset:"0"}))
-    ));
+    const [data,captureQueue]=await Promise.all([
+      Promise.all(queries.map(async item=>
+        fetchJson("/api/snapshot?"+new URLSearchParams({
+          kind:item.kind,county:item.county,limit:"1",offset:"0"
+        }))
+      )),
+      fetchJson("/api/capture-queue")
+    ]);
     if(token!==featureRequest || byId("feature-view").hidden)return;
     if(data.some((result,index)=>result.selection!==queries[index].kind || !Number.isSafeInteger(result.total) || result.total<0))
       throw Error("Stored source scope changed or could not be verified.");
@@ -464,12 +520,14 @@ async function showSources() {
       '<div class="source-inventory-scroll"><table class="source-inventory"><thead><tr><th>Source family</th><th>All counties</th><th>San Bernardino</th><th>Riverside</th><th>Other / unknown</th></tr></thead><tbody>'+rows+'</tbody></table></div></section>'+
       '<section class="feature-card"><h2>Collection status</h2><p>This local operator does not run live source acquisition, subscription monitoring, scheduled updates or remote data import. Import and retained-source validation remain separate governed workflows.</p>'+
       '<a href="/workspace#records">Inspect stored source evidence →</a></section>'+
+      renderCaptureQueue(captureQueue)+
       '<section class="feature-card"><h2>Review a newly available CEQAnet project</h2><p>Prepare a single-project, manually authorized capture using the existing offline-review and SQLite import services. This read-only dashboard cannot issue remote requests or authorize imports.</p>'+
       '<form id="capture-source-form"><label for="capture-sch-number">Official 10-digit SCH number</label> <input id="capture-sch-number" type="text" inputmode="numeric" maxlength="10" pattern="[0-9]{10}" placeholder="0000000000" required> <button type="submit" class="action">Prepare local capture instructions</button></form>'+
       '<div id="capture-instructions" aria-live="polite"><p>No collection has been attempted. Verify the public source and its access conditions before executing any command.</p></div></section>'+
       '<section class="feature-card"><h2>Historical source activity</h2><p>Inspect dated historical observations for the current search, source-family and county filters. This is not real-time site monitoring.</p>'+
       '<button type="button" class="action" id="show-historical-pulse">Load retained timeline →</button><div id="historical-pulse"></div></section>';
     byId("capture-source-form").onsubmit=event=>{event.preventDefault();prepareCeqanetCapture();};
+    bindCaptureQueue(captureQueue);
     byId("show-historical-pulse").onclick=showHistoricalPulse;
     byId("feature-body").querySelectorAll("[data-source-kind]").forEach(button=>button.onclick=()=>{
       const kind=button.dataset.sourceKind, county=button.dataset.sourceCounty;

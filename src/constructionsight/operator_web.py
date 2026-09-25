@@ -26,6 +26,10 @@ from constructionsight.operator_dashboard import (
     build_workflow_snapshot,
     build_workflow_status_summary,
 )
+from constructionsight.operator_capture_queue import (
+    empty_operator_capture_queue,
+    load_operator_capture_queue,
+)
 from constructionsight.operator_dashboard_models import RecordSelection
 from constructionsight.operator_entity_index import build_entity_index
 from constructionsight.operator_parcel_candidates import inspect_parcel_candidates
@@ -145,9 +149,16 @@ def _parameters(
     )
 
 
-def create_handler(database_path: Path) -> type[BaseHTTPRequestHandler]:
-    """Bind to an existing database in SQLite read-only mode without schema changes."""
+def create_handler(
+    database_path: Path, *, capture_queue_path: Path | None = None,
+) -> type[BaseHTTPRequestHandler]:
+    """Bind to existing local evidence in read-only mode without schema changes."""
 
+    capture_queue = (
+        empty_operator_capture_queue()
+        if capture_queue_path is None
+        else load_operator_capture_queue(capture_queue_path)
+    )
     engine = create_operator_read_engine(database_path)
 
     class OperatorHandler(BaseHTTPRequestHandler):
@@ -191,6 +202,7 @@ def create_handler(database_path: Path) -> type[BaseHTTPRequestHandler]:
                     "/api/entity-neighborhood",
                     "/api/entity-index",
                     "/api/candidate-preview",
+                    "/api/capture-queue",
                     "/api/parcel-candidates",
                     "/api/workflows",
                     "/api/results",
@@ -198,7 +210,11 @@ def create_handler(database_path: Path) -> type[BaseHTTPRequestHandler]:
                 }:
                     self._send_json({"error": "Not found."}, status=HTTPStatus.NOT_FOUND)
                     return
-                if path in {"/api/workflow-summary", "/api/source-revision"} and parsed.query:
+                if path in {
+                    "/api/workflow-summary",
+                    "/api/source-revision",
+                    "/api/capture-queue",
+                } and parsed.query:
                     raise ValueError("unfiltered status inspection rejects query parameters")
                 parameters = _parameters(
                     parsed.query,
@@ -222,6 +238,8 @@ def create_handler(database_path: Path) -> type[BaseHTTPRequestHandler]:
                             "read_only": True,
                             "live_collection_enabled": False,
                         }
+                    elif path == "/api/capture-queue":
+                        payload = capture_queue
                     elif path == "/api/source-revision":
                         payload = build_source_revision_snapshot(session)
                     elif path == "/api/workflow-summary":
@@ -344,6 +362,15 @@ def main(*, open_browser_by_default: bool = False) -> None:
     parser.add_argument("--database", type=Path, default=Path("data/constructionsight.sqlite3"))
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument(
+        "--capture-queue",
+        type=Path,
+        default=None,
+        help=(
+            "Optional retained ceqanet_exact_sch_capture_queue.v1 JSON to expose "
+            "read-only in Sources & Collection."
+        ),
+    )
+    parser.add_argument(
         "--open-browser", action="store_true", default=open_browser_by_default,
         help="Open the local operator in the default browser after the server binds.",
     )
@@ -351,9 +378,12 @@ def main(*, open_browser_by_default: bool = False) -> None:
     if not 1 <= args.port <= 65535:
         parser.error("--port must be between 1 and 65535")
     try:
-        handler = create_handler(args.database)
+        handler = create_handler(args.database, capture_queue_path=args.capture_queue)
     except (OSError, ValueError) as exc:
-        parser.error(f"--database must name an existing SQLite file: {exc}")
+        parser.error(
+            "Configured local database or capture queue could not be opened safely: "
+            f"{exc}"
+        )
     except SQLAlchemyError:
         parser.error(
             "--database is unreadable or its schema is incompatible with the operator. "
