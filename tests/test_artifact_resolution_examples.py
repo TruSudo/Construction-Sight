@@ -5,6 +5,10 @@ from typing import Any
 from typer.testing import CliRunner
 
 from constructionsight.cli import app
+from constructionsight.intelligence.artifact_identity import (
+    ResolutionTargetKind,
+    canonical_resolution_candidate_id,
+)
 
 runner = CliRunner()
 EXAMPLE_DIR = Path(__file__).resolve().parents[1] / "examples" / "artifact_resolution"
@@ -27,7 +31,11 @@ def test_commerce_center_match_example_is_valid_preview_input() -> None:
 
     assert result.exit_code == 0
     payload = json.loads(result.output)
-    assert payload["candidate_id"] == "fixture-commerce-center-match"
+    assert payload["candidate_id"] == canonical_resolution_candidate_id(
+        "project-commerce-center-ceqa",
+        "project-commerce-center-agenda",
+        target_kind=ResolutionTargetKind.PROJECT,
+    )
     assert payload["resolution_score"] == 80
     assert payload["recommended_decision"] == "needs_review"
     assert payload["has_near_unique_support"] is True
@@ -43,7 +51,11 @@ def test_conflicting_ceqa_sch_example_is_valid_preview_input() -> None:
 
     assert result.exit_code == 0
     payload = json.loads(result.output)
-    assert payload["candidate_id"] == "fixture-conflicting-ceqa-sch"
+    assert payload["candidate_id"] == canonical_resolution_candidate_id(
+        "project-commerce-center-one",
+        "project-commerce-center-two",
+        target_kind=ResolutionTargetKind.PROJECT,
+    )
     assert payload["recommended_decision"] == "reject_match"
     assert payload["has_near_unique_conflict"] is True
     assert {match["artifact_type"] for match in payload["supporting_matches"]} == {
