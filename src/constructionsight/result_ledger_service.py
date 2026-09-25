@@ -8,6 +8,14 @@ from datetime import date
 from decimal import Decimal
 
 from constructionsight.lead_workflow_models import LeadWorkflowRecord
+from constructionsight.money import (
+    DecimalInput,
+    calculate_share,
+    money_decimal,
+    money_text,
+    rate_decimal,
+    rate_identity_text,
+)
 from constructionsight.result_ledger_models import (
     ResultLedgerRecord,
     ResultLedgerStatus,
@@ -21,8 +29,8 @@ def build_result_ledger_record(
     workflow: LeadWorkflowRecord,
     status: ResultLedgerStatus,
     decided_date: date | None = None,
-    gross_value: float | None = None,
-    share_rate: float | None = None,
+    gross_value: DecimalInput | None = None,
+    share_rate: DecimalInput | None = None,
     reasons: list[str] | None = None,
 ) -> ResultLedgerRecord:
     """Build the root immutable result ledger revision for a workflow."""
@@ -47,8 +55,8 @@ def supersede_result_ledger_record(
     status: ResultLedgerStatus,
     correction_reason: str,
     decided_date: date | None = None,
-    gross_value: float | None = None,
-    share_rate: float | None = None,
+    gross_value: DecimalInput | None = None,
+    share_rate: DecimalInput | None = None,
     reasons: list[str] | None = None,
 ) -> ResultLedgerRecord:
     """Append one authoritative revision without mutating the prior result."""
@@ -109,11 +117,11 @@ def _build_revision(
     correction_reason: str | None,
     status: ResultLedgerStatus,
     decided_date: date | None,
-    gross_value: float | None,
-    share_rate: float | None,
+    gross_value: DecimalInput | None,
+    share_rate: DecimalInput | None,
     reasons: list[str] | None,
 ) -> ResultLedgerRecord:
-    """Build one internally consistent immutable ledger revision."""
+    """Build one internally consistent fixed-decimal ledger revision."""
 
     if status != ResultLedgerStatus.WON:
         if gross_value is not None:
@@ -122,25 +130,32 @@ def _build_revision(
             raise ValueError("share_rate may be provided only for won results")
     if status == ResultLedgerStatus.WON and gross_value is None and share_rate is not None:
         raise ValueError("share_rate requires gross_value")
-    if gross_value is not None:
-        _require_decimal_places(gross_value, maximum=2, field_name="gross_value")
-    if share_rate is not None:
-        _require_decimal_places(share_rate, maximum=6, field_name="share_rate")
+
+    gross = (
+        money_decimal(gross_value, field_name="gross_value")
+        if gross_value is not None
+        else None
+    )
+    rate = (
+        rate_decimal(share_rate, field_name="share_rate")
+        if share_rate is not None
+        else None
+    )
 
     share = None
     share_status = ResultShareStatus.NOT_APPLICABLE
     limitations: list[str] = []
     ledger_id = _ledger_id(workflow_id, status, revision)
     if status == ResultLedgerStatus.WON:
-        if gross_value is None:
+        if gross is None:
             share_status = ResultShareStatus.PENDING_GROSS_VALUE
             limitations.append("gross value is missing")
-        elif share_rate is None:
+        elif rate is None:
             share_status = ResultShareStatus.PENDING_SHARE_RATE
             limitations.append("share rate is missing")
         else:
             share_status = ResultShareStatus.CALCULATED
-            share = _share_record(ledger_id, workflow_id, gross_value, share_rate)
+            share = _share_record(ledger_id, workflow_id, gross, rate)
     return ResultLedgerRecord(
         ledger_id=ledger_id,
         workflow_id=workflow_id,
@@ -150,7 +165,7 @@ def _build_revision(
         correction_reason=correction_reason,
         status=status,
         decided_date=decided_date,
-        gross_value=gross_value,
+        gross_value=gross,
         share_status=share_status,
         share=share,
         reasons=reasons or [],
@@ -161,12 +176,12 @@ def _build_revision(
 def _share_record(
     ledger_id: str,
     workflow_id: str,
-    gross_value: float,
-    share_rate: float,
+    gross_value: Decimal,
+    share_rate: Decimal,
 ) -> ResultShareRecord:
-    """Build a calculated share record bound to one ledger revision."""
+    """Build a calculated share record using explicit cent rounding."""
 
-    share_value = round(gross_value * share_rate, 2)
+    share_value = calculate_share(gross_value, share_rate)
     return ResultShareRecord(
         share_record_id=_share_id(ledger_id, gross_value, share_rate),
         workflow_id=workflow_id,
@@ -185,34 +200,13 @@ def _ledger_id(workflow_id: str, status: ResultLedgerStatus, revision: int) -> s
     return f"result-ledger:{_short_hash('|'.join(values))}"
 
 
-def _share_id(ledger_id: str, gross_value: float, share_rate: float) -> str:
-    """Build deterministic share identity scoped to one ledger revision."""
+def _share_id(ledger_id: str, gross_value: Decimal, share_rate: Decimal) -> str:
+    """Build deterministic share identity with exact fixed-decimal inputs."""
 
-    rate_decimal = Decimal(str(share_rate))
-    exponent = rate_decimal.as_tuple().exponent
-    if not isinstance(exponent, int):
-        raise ValueError("share_rate must be finite")
-    rate_places = max(4, max(0, -exponent))
-    rate_text = f"{share_rate:.{rate_places}f}"
-    basis = "|".join([ledger_id, f"{gross_value:.2f}", rate_text])
+    basis = "|".join(
+        [ledger_id, money_text(gross_value), rate_identity_text(share_rate)]
+    )
     return f"result-share:{_short_hash(basis)}"
-
-
-def _require_decimal_places(
-    value: float,
-    *,
-    maximum: int,
-    field_name: str,
-) -> None:
-    """Require finite input precision for newly constructed result revisions."""
-
-    decimal_value = Decimal(str(value))
-    exponent = decimal_value.as_tuple().exponent
-    if not isinstance(exponent, int):
-        raise ValueError(f"{field_name} must be finite")
-    decimal_places = max(0, -exponent)
-    if decimal_places > maximum:
-        raise ValueError(f"{field_name} must use at most {maximum} decimal places")
 
 
 def _short_hash(value: str) -> str:

@@ -5,10 +5,13 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import UTC, date, datetime
+from decimal import Decimal
 from enum import StrEnum
 from typing import Any
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_serializer, field_validator, model_validator
+
+from constructionsight.money import calculate_share, money_decimal, rate_decimal
 
 
 class ResultLedgerStatus(StrEnum):
@@ -35,10 +38,30 @@ class ResultShareRecord(BaseModel):
 
     share_record_id: str = Field(min_length=1)
     workflow_id: str = Field(min_length=1)
-    gross_value: float = Field(ge=0)
-    share_rate: float = Field(ge=0, le=1)
-    share_value: float = Field(ge=0)
+    gross_value: Decimal = Field(ge=0)
+    share_rate: Decimal = Field(ge=0, le=1)
+    share_value: Decimal = Field(ge=0)
     notes: list[str] = Field(default_factory=list)
+
+    @field_validator("gross_value", "share_value", mode="before")
+    @classmethod
+    def normalize_money(cls, value: object) -> Decimal:
+        """Require canonical cent precision for calculated monetary values."""
+
+        return money_decimal(value, field_name="result money")  # type: ignore[arg-type]
+
+    @field_validator("share_rate", mode="before")
+    @classmethod
+    def normalize_rate(cls, value: object) -> Decimal:
+        """Require canonical rate precision."""
+
+        return rate_decimal(value, field_name="share_rate")  # type: ignore[arg-type]
+
+    @field_serializer("gross_value", "share_rate", "share_value", when_used="json")
+    def serialize_decimal(self, value: Decimal) -> float:
+        """Preserve the historical JSON number surface while arithmetic stays decimal."""
+
+        return float(value)
 
     @field_validator("notes")
     @classmethod
@@ -51,10 +74,10 @@ class ResultShareRecord(BaseModel):
 
     @model_validator(mode="after")
     def require_share_math(self) -> ResultShareRecord:
-        """Require share value to match gross value and rate."""
+        """Require exact fixed-decimal share math."""
 
-        expected = round(self.gross_value * self.share_rate, 2)
-        if round(self.share_value, 2) != expected:
+        expected = calculate_share(self.gross_value, self.share_rate)
+        if self.share_value != expected:
             raise ValueError("share_value must equal gross_value times share_rate")
         return self
 
@@ -70,13 +93,19 @@ class ResultLedgerRecord(BaseModel):
     correction_reason: str | None = None
     status: ResultLedgerStatus
     decided_date: date | None = None
-    gross_value: float | None = Field(default=None, ge=0)
+    gross_value: Decimal | None = Field(default=None, ge=0)
     share_status: ResultShareStatus = ResultShareStatus.NOT_APPLICABLE
     share: ResultShareRecord | None = None
     reasons: list[str] = Field(default_factory=list)
     limitations: list[str] = Field(default_factory=list)
     content_digest: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    @field_serializer("gross_value", when_used="json")
+    def serialize_gross_value(self, value: Decimal | None) -> float | None:
+        """Preserve legacy JSON compatibility; exact storage is maintained separately."""
+
+        return None if value is None else float(value)
 
     @field_validator("reasons", "limitations")
     @classmethod
@@ -153,15 +182,15 @@ class ResultLedgerRecord(BaseModel):
         return self
 
     def material_content(self) -> dict[str, Any]:
-        """Return canonical material outcome content, excluding revision pointer identity."""
+        """Return canonical material content with legacy-stable JSON number identity."""
 
         share_payload: dict[str, Any] | None = None
         if self.share is not None:
             share_payload = {
                 "workflow_id": self.share.workflow_id,
-                "gross_value": self.share.gross_value,
-                "share_rate": self.share.share_rate,
-                "share_value": self.share.share_value,
+                "gross_value": float(self.share.gross_value),
+                "share_rate": float(self.share.share_rate),
+                "share_value": float(self.share.share_value),
                 "notes": list(self.share.notes),
             }
         return {
@@ -172,7 +201,7 @@ class ResultLedgerRecord(BaseModel):
             "correction_reason": self.correction_reason,
             "status": self.status.value,
             "decided_date": self.decided_date.isoformat() if self.decided_date else None,
-            "gross_value": self.gross_value,
+            "gross_value": None if self.gross_value is None else float(self.gross_value),
             "share_status": self.share_status.value,
             "share": share_payload,
             "reasons": list(self.reasons),
