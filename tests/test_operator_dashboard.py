@@ -78,6 +78,42 @@ def _provenance():
     return [Provenance(source_name="Synthetic integration fixture", evidence_text="Fixture only")]
 
 
+def _capture_queue_payload():
+    return {
+        "schema_version": "ceqanet_exact_sch_capture_queue.v1",
+        "listing_artifact_sha256": "a" * 64,
+        "listing_plan_id": "fixture-listing-plan",
+        "listing_pages_reviewed": 2,
+        "listing_records_parsed": 4,
+        "candidate_count": 1,
+        "excluded_observations": {
+            "missing_or_ambiguous_sch": 1,
+            "outside_target_counties": 2,
+        },
+        "candidates": [
+            {
+                "sch_number": "2026012345",
+                "source_claimed_county": "San Bernardino",
+                "source_claimed_title": "Synthetic retained listing candidate",
+                "title_requires_detail_enrichment": False,
+                "official_detail_url": (
+                    "https://ceqanet.lci.ca.gov/Project/2026012345"
+                ),
+                "observation_pages": [1, 2],
+                "source_observation_count": 2,
+                "review_state": "unverified_source_claim",
+                "candidate_only": True,
+                "network_executed_for_candidate": False,
+                "persistence_mutated": False,
+            }
+        ],
+        "network_executed": False,
+        "persistence_mutated": False,
+        "commercial_leads_created": False,
+        "limitations": ["Fixture input only."],
+    }
+
+
 def _record(key="fixture:one", **updates):
     values = dict(
         ceqa_key=key,
@@ -117,8 +153,11 @@ def database(tmp_path):
 
 
 @contextmanager
-def _server(path):
-    server = ThreadingHTTPServer(("127.0.0.1", 0), create_handler(path))
+def _server(path, *, capture_queue_path=None):
+    server = ThreadingHTTPServer(
+        ("127.0.0.1", 0),
+        create_handler(path, capture_queue_path=capture_queue_path),
+    )
     thread = Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
     thread.start()
     try:
@@ -634,6 +673,53 @@ def test_operator_rejects_legacy_column_shape_before_serving(database):
     with pytest.raises(OperationalError, match="no such column"):
         create_handler(path)
     assert path.read_bytes() == before
+
+
+def test_capture_queue_endpoint_is_optional_bounded_and_read_only(database, tmp_path):
+    path, _ = database
+    before = hashlib.sha256(path.read_bytes()).hexdigest()
+
+    with _server(path) as port:
+        status, _, body = _get(port, "/api/capture-queue")
+        assert status == 200
+        empty = json.loads(body)
+        assert empty["configured"] is False
+        assert empty["candidate_count"] == 0
+        assert empty["read_only"] is True
+        assert _get(port, "/api/capture-queue?unexpected=1")[0] == 400
+
+    queue_path = tmp_path / "capture-queue.json"
+    queue_path.write_text(json.dumps(_capture_queue_payload()), encoding="utf-8")
+    with _server(path, capture_queue_path=queue_path) as port:
+        status, _, body = _get(port, "/api/capture-queue")
+        assert status == 200
+        queue = json.loads(body)
+        assert queue["schema_version"] == "constructionsight.operator_capture_queue.v1"
+        assert queue["configured"] is True
+        assert queue["candidate_count"] == 1
+        assert queue["candidates"][0]["sch_number"] == "2026012345"
+        assert queue["candidates"][0]["candidate_only"] is True
+        assert queue["network_executed"] is False
+        assert queue["persistence_mutated"] is False
+        assert queue["commercial_leads_created"] is False
+
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == before
+
+
+def test_invalid_capture_queue_blocks_operator_startup_without_database_mutation(
+    database, tmp_path
+):
+    path, _ = database
+    before = hashlib.sha256(path.read_bytes()).hexdigest()
+    queue_path = tmp_path / "bad-capture-queue.json"
+    payload = _capture_queue_payload()
+    payload["candidates"][0]["official_detail_url"] = "https://example.com/Project/2026012345"
+    queue_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="official SCH page"):
+        create_handler(path, capture_queue_path=queue_path)
+
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == before
 
 
 def test_health_rechecks_schema_after_startup(database):
