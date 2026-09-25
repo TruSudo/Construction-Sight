@@ -227,6 +227,7 @@ def test_discover_preview_cli_blocks_bad_snapshot_without_queue(
     assert result.exit_code == 1
     assert not queue_path.exists()
 
+
 def test_capture_preview_rebinds_queue_to_exact_listing_before_any_network(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
