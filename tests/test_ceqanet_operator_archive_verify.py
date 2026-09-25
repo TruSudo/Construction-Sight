@@ -3,6 +3,9 @@ import json
 import zipfile
 from pathlib import Path
 
+import pytest
+
+import constructionsight.ceqanet_operator_archive_verify as archive_verification
 from constructionsight.ceqanet_operator_archive import build_ceqanet_operator_archive
 from constructionsight.ceqanet_operator_archive_verify import verify_ceqanet_operator_archive
 
@@ -136,6 +139,74 @@ def test_verify_ceqanet_operator_archive_detects_artifact_mismatch(
     ]
 
 
+def test_archive_verification_rejects_unlisted_extra_zip_member(tmp_path: Path) -> None:
+    export_dir = tmp_path / "export"
+    archive_path = tmp_path / "operator-export.zip"
+    _write_export_dir(export_dir)
+    _write_archive_from_export_dir(export_dir, archive_path)
+    with zipfile.ZipFile(archive_path, mode="a") as archive_file:
+        _write_archive_entry(
+            archive_file, filename="unlisted.txt", data=b"unlisted content",
+        )
+
+    verification = verify_ceqanet_operator_archive(archive_path=archive_path).to_dict()
+
+    assert verification["metadata"]["passed"] is False
+    assert verification["metadata"]["verified_count"] == 5
+    assert verification["archive_issues"] == [
+        {"filename": "unlisted.txt", "reason": "archive member not listed in manifest"},
+    ]
+
+
+def test_archive_verification_rejects_duplicate_manifest_inventory_claim(
+    tmp_path: Path,
+) -> None:
+    export_dir = tmp_path / "export"
+    archive_path = tmp_path / "operator-export.zip"
+    _write_export_dir(export_dir)
+    manifest = json.loads((export_dir / "manifest.json").read_text(encoding="utf-8"))
+    manifest["artifacts"].append(dict(manifest["artifacts"][0]))
+    manifest["metadata"]["artifact_count"] = 6
+    _write_archive_from_export_dir(
+        export_dir, archive_path,
+        overrides={"manifest.json": json.dumps(manifest).encode("utf-8")},
+    )
+
+    verification = verify_ceqanet_operator_archive(archive_path=archive_path).to_dict()
+
+    assert verification["metadata"]["passed"] is False
+    assert verification["metadata"]["verified_count"] == 6
+    assert verification["archive_issues"] == [
+        {
+            "filename": "operator-package.json",
+            "reason": "duplicate manifest artifact filename",
+        },
+    ]
+
+
+@pytest.mark.parametrize("declared_count", [True, 99])
+def test_archive_verification_rejects_inaccurate_manifest_artifact_count(
+    tmp_path: Path, declared_count: object,
+) -> None:
+    export_dir = tmp_path / "export"
+    archive_path = tmp_path / "operator-export.zip"
+    _write_export_dir(export_dir)
+    manifest = json.loads((export_dir / "manifest.json").read_text(encoding="utf-8"))
+    manifest["metadata"]["artifact_count"] = declared_count
+    _write_archive_from_export_dir(
+        export_dir, archive_path,
+        overrides={"manifest.json": json.dumps(manifest).encode("utf-8")},
+    )
+
+    verification = verify_ceqanet_operator_archive(archive_path=archive_path).to_dict()
+
+    assert verification["metadata"]["passed"] is False
+    assert verification["metadata"]["verified_count"] == 5
+    assert verification["archive_issues"] == [
+        {"filename": "manifest.json", "reason": "manifest artifact_count mismatch"},
+    ]
+
+
 def test_verify_ceqanet_operator_archive_detects_missing_manifest(tmp_path: Path) -> None:
     archive_path = tmp_path / "operator-export.zip"
     with zipfile.ZipFile(archive_path, mode="w") as archive_file:
@@ -172,3 +243,153 @@ def test_verify_ceqanet_operator_archive_detects_nondeterministic_zip_metadata(
     assert verification["archive_issues"] == [
         {"filename": "manifest.json", "reason": "timestamp must be (2026, 1, 1, 0, 0, 0)"}
     ]
+
+
+def test_archive_verification_rejects_oversized_manifest_before_json(
+    tmp_path: Path,
+) -> None:
+    archive_path = tmp_path / "oversized-manifest.zip"
+    with zipfile.ZipFile(archive_path, mode="w") as archive_file:
+        _write_archive_entry(
+            archive_file,
+            filename="manifest.json",
+            data=b" " * (1024 * 1024 + 1),
+        )
+    with pytest.raises(ValueError, match="decompressed byte limit"):
+        verify_ceqanet_operator_archive(archive_path=archive_path)
+
+
+def test_archive_verification_rejects_too_many_entries_before_member_read(
+    tmp_path: Path,
+) -> None:
+    archive_path = tmp_path / "too-many-entries.zip"
+    with zipfile.ZipFile(archive_path, mode="w") as archive_file:
+        for index in range(129):
+            _write_archive_entry(
+                archive_file, filename=f"member-{index}.txt", data=b"x"
+            )
+    with pytest.raises(ValueError, match="ZIP entry limit"):
+        verify_ceqanet_operator_archive(archive_path=archive_path)
+
+
+def test_archive_verification_rejects_oversized_artifact_metadata(
+    tmp_path: Path,
+) -> None:
+    archive_path = tmp_path / "oversized-artifact.zip"
+    with zipfile.ZipFile(archive_path, mode="w") as archive_file:
+        _write_archive_entry(
+            archive_file,
+            filename="large.txt",
+            data=b"A" * (16 * 1024 * 1024 + 1),
+        )
+    with pytest.raises(ValueError, match="entry byte limit"):
+        verify_ceqanet_operator_archive(archive_path=archive_path)
+
+
+def test_archive_verification_rejects_cumulative_budget_before_decompression(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    export_dir = tmp_path / "export"
+    archive_path = tmp_path / "operator-export.zip"
+    _write_export_dir(export_dir)
+    _write_archive_from_export_dir(export_dir, archive_path)
+    monkeypatch.setattr(archive_verification, "_MAX_ZIP_TOTAL_BYTES", 100)
+    with pytest.raises(ValueError, match="total ZIP byte limit"):
+        verify_ceqanet_operator_archive(archive_path=archive_path)
+
+
+def test_archive_verification_streams_members_without_zipfile_read(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    export_dir = tmp_path / "export"
+    archive_path = tmp_path / "operator-export.zip"
+    _write_export_dir(export_dir)
+    _write_archive_from_export_dir(export_dir, archive_path)
+
+    def _forbid_unbounded_read(*_args: object, **_kwargs: object) -> bytes:
+        raise AssertionError("unbounded ZipFile.read is prohibited")
+
+    monkeypatch.setattr(zipfile.ZipFile, "read", _forbid_unbounded_read)
+    result = verify_ceqanet_operator_archive(archive_path=archive_path)
+    assert result.passed is True
+
+
+@pytest.mark.parametrize("linked_parent", [False, True])
+def test_archive_verification_rejects_symlink_traversal(
+    tmp_path: Path, linked_parent: bool,
+) -> None:
+    export_dir = tmp_path / "export"
+    actual = tmp_path / "actual"
+    actual.mkdir()
+    archive_path = actual / "proof.zip"
+    _write_export_dir(export_dir)
+    _write_archive_from_export_dir(export_dir, archive_path)
+    alias = tmp_path / "alias"
+    alias.symlink_to(
+        actual if linked_parent else archive_path, target_is_directory=linked_parent,
+    )
+
+    with pytest.raises((OSError, ValueError)):
+        verify_ceqanet_operator_archive(
+            archive_path=alias / "proof.zip" if linked_parent else alias,
+        )
+
+
+def test_archive_entry_limit_precedes_zip_directory_materialization(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = tmp_path / "many.zip"
+    with zipfile.ZipFile(path, mode="w") as archive:
+        for index in range(129):
+            _write_archive_entry(archive, filename=f"{index}.txt", data=b"x")
+
+    def forbidden_materialization(*args, **kwargs):
+        raise AssertionError("ZipFile materialized an excessive central directory")
+
+    monkeypatch.setattr(zipfile, "ZipFile", forbidden_materialization)
+    with pytest.raises(ValueError, match="ZIP entry limit"):
+        verify_ceqanet_operator_archive(archive_path=path)
+
+
+def test_archive_directory_count_cannot_hide_extra_entries(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = tmp_path / "forged-count.zip"
+    with zipfile.ZipFile(path, mode="w") as archive:
+        for index in range(129):
+            _write_archive_entry(archive, filename=f"{index}.txt", data=b"x")
+    content = bytearray(path.read_bytes())
+    end = content.rfind(b"PK\x05\x06")
+    content[end + 8 : end + 12] = b"\x00" * 4
+    path.write_bytes(content)
+
+    def forbidden_materialization(*args, **kwargs):
+        raise AssertionError("forged count bypassed the directory entry ceiling")
+
+    monkeypatch.setattr(zipfile, "ZipFile", forbidden_materialization)
+    with pytest.raises(ValueError, match="ZIP entry limit"):
+        verify_ceqanet_operator_archive(archive_path=path)
+
+
+def test_archive_verification_uses_bytes_bound_before_path_replacement(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    export = tmp_path / "export"
+    path = tmp_path / "archive.zip"
+    _write_export_dir(export)
+    _write_archive_from_export_dir(export, path)
+    original_zipfile = zipfile.ZipFile
+    substituted = False
+
+    def substitute_after_bounded_read(*args, **kwargs):
+        nonlocal substituted
+        substituted = True
+        path.write_bytes(b"substituted invalid archive")
+        return original_zipfile(*args, **kwargs)
+
+    monkeypatch.setattr(zipfile, "ZipFile", substitute_after_bounded_read)
+    result = verify_ceqanet_operator_archive(archive_path=path)
+    assert substituted
+    assert result.passed is True
+    assert len(result.artifacts) == 5
+    assert path.read_bytes() == b"substituted invalid archive"

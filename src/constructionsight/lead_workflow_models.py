@@ -22,6 +22,30 @@ class LeadWorkflowStatus(StrEnum):
     CLOSED_NO_FIT = "closed_no_fit"
 
 
+ACTIONABLE_LEAD_WORKFLOW_STATUSES: frozenset[LeadWorkflowStatus] = frozenset(
+    {
+        LeadWorkflowStatus.READY,
+        LeadWorkflowStatus.ACTIVE,
+        LeadWorkflowStatus.PAUSED,
+        LeadWorkflowStatus.CLOSED_SUCCESS,
+    }
+)
+_UNRESOLVED_DUPLICATE_LIMITATIONS = frozenset(
+    {"lead fingerprint needs review", "lead fingerprint is a duplicate"}
+)
+
+
+def require_duplicate_review_clear(
+    *, limitations: list[str], next_status: LeadWorkflowStatus,
+) -> None:
+    """Refuse actionable status while a persisted duplicate limitation is unresolved."""
+
+    if next_status in ACTIONABLE_LEAD_WORKFLOW_STATUSES and (
+        _UNRESOLVED_DUPLICATE_LIMITATIONS.intersection(limitations)
+    ):
+        raise ValueError("unresolved duplicate review blocks actionable lead workflow status")
+
+
 class LeadWorkflowEvent(BaseModel):
     """One lead workflow status event."""
 
@@ -65,6 +89,7 @@ class LeadWorkflowRecord(BaseModel):
             raise ValueError("lead workflow event ids must be unique")
         if self.events and self.events[-1].current_status != self.status:
             raise ValueError("latest workflow event must match record status")
+        require_duplicate_review_clear(limitations=self.limitations, next_status=self.status)
         return self
 
     def to_dict(self) -> dict[str, Any]:

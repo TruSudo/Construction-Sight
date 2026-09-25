@@ -365,6 +365,17 @@ class CeqaStore:
             return None
         return self._to_model(record)
 
+    def list_by_state_clearinghouse_number(self, sch_number: str) -> list[CeqaRecord]:
+        """Return CEQA rows carrying one exact State Clearinghouse number."""
+
+        self.session.flush()
+        records = self.session.scalars(
+            select(CeqaDomainRecord)
+            .where(CeqaDomainRecord.state_clearinghouse_number == sch_number)
+            .order_by(CeqaDomainRecord.ceqa_key)
+        ).all()
+        return [self._to_model(record) for record in records]
+
     @staticmethod
     def _to_model(record: CeqaDomainRecord) -> CeqaRecord:
         """Convert an ORM CEQA record to a Pydantic model."""
