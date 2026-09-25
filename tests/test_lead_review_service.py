@@ -15,7 +15,7 @@ def _signal(score_delta: int = 80, limitation: str | None = None) -> Opportunity
         signal_kind=EnrichmentSignalKind.PERMIT_TRANSITION,
         label="permit",
         score_delta=score_delta,
-        confidence_score=80,
+        confidence_score=100,
         reason="permit status changed",
         limitations=limitations,
     )
@@ -27,7 +27,7 @@ def _report(
     signals: list[OpportunityEnrichmentSignal],
     limitations: list[str] | None = None,
 ) -> OpportunityEnrichmentReport:
-    confidence_score = 80 if signals else 0
+    confidence_score = 100 if signals else 0
     return OpportunityEnrichmentReport(
         report_id="opportunity-enrichment:test",
         base_candidate_id="candidate:test",

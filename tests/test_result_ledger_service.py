@@ -1,7 +1,11 @@
 import pytest
 
 from constructionsight.lead_workflow_models import LeadWorkflowRecord, LeadWorkflowStatus
-from constructionsight.result_ledger_models import ResultLedgerStatus, ResultShareStatus
+from constructionsight.result_ledger_models import (
+    ResultLedgerRecord,
+    ResultLedgerStatus,
+    ResultShareStatus,
+)
 from constructionsight.result_ledger_service import (
     build_result_ledger_record,
     supersede_result_ledger_record,
@@ -131,7 +135,10 @@ def test_validate_result_ledger_history_rejects_branch() -> None:
         gross_value=1000.0,
         share_rate=0.1,
     )
-    branched = third.model_copy(update={"supersedes_ledger_id": original.ledger_id})
+    payload = third.model_dump(mode="python")
+    payload["supersedes_ledger_id"] = original.ledger_id
+    payload["content_digest"] = None
+    branched = ResultLedgerRecord.model_validate(payload)
 
     with pytest.raises(ValueError, match="unbranched supersession chain"):
         validate_result_ledger_history([original, second, branched])
@@ -147,7 +154,10 @@ def test_validate_result_ledger_history_rejects_revision_gap() -> None:
         status=ResultLedgerStatus.LOST,
         correction_reason="correction",
     )
-    gapped = second.model_copy(update={"revision": 3})
+    payload = second.model_dump(mode="python")
+    payload["revision"] = 3
+    payload["content_digest"] = None
+    gapped = ResultLedgerRecord.model_validate(payload)
 
     with pytest.raises(ValueError, match="contiguous from one"):
         validate_result_ledger_history([original, gapped])

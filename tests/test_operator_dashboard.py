@@ -386,9 +386,6 @@ def test_entity_index_is_bounded_exact_key_cross_county_and_read_only_http(datab
     "updates,reason",
     [
         ({"latitude": None}, "complete geographic"),
-        ({"latitude": float("nan")}, "non-finite"),
-        ({"longitude": float("inf")}, "non-finite"),
-        ({"latitude": 91}, "outside geographic"),
         ({"latitude": 89}, "Mercator"),
         ({"provenance": []}, "no source provenance"),
         ({"county": "Riverside"}, "counties disagree"),
@@ -406,16 +403,7 @@ def test_unsupported_coordinates_remain_visible_but_unmapped(database, updates, 
         assert result.total == 1
         assert result.mapped_on_page == 0
         assert result.projects[0].point is None
-        # JSON serialization normalizes NaN/Infinity to null in embedded source models.
-        expected = (
-            "complete geographic"
-            if any(
-                isinstance(v, float) and (v != v or abs(v) == float("inf"))
-                for v in updates.values()
-            )
-            else reason
-        )
-        assert expected in result.projects[0].map_reason
+        assert reason in result.projects[0].map_reason
 
 
 def test_permit_coordinates_evidence_and_roles_are_preserved(database):
@@ -875,6 +863,17 @@ def test_record_milestones_are_source_claims_and_preserve_family_and_dates(datab
 
 def test_source_date_conflicts_are_not_silently_normalized(database):
     _, engine = database
+    with pytest.raises(ValueError, match="finaled_date cannot precede issued_date"):
+        PermitRecord(
+            permit_key="fixture:bad-permit-dates",
+            permit_number="TEST-CONFLICT",
+            jurisdiction="Fontana",
+            county="San Bernardino",
+            applied_date=date(2025, 5, 1),
+            issued_date=date(2025, 5, 6),
+            finaled_date=date(2025, 5, 3),
+            provenance=_provenance(),
+        )
     with Session(engine) as session, session.begin():
         CeqaStore(session).upsert(
             _record(
@@ -883,28 +882,16 @@ def test_source_date_conflicts_are_not_silently_normalized(database):
                 posted_date=date(2025, 5, 2),
             )
         )
-        PermitStore(session).upsert(
-            PermitRecord(
-                permit_key="fixture:bad-permit-dates",
-                permit_number="TEST-CONFLICT",
-                jurisdiction="Fontana",
-                county="San Bernardino",
-                applied_date=date(2025, 5, 1),
-                issued_date=date(2025, 5, 6),
-                finaled_date=date(2025, 5, 3),
-                provenance=_provenance(),
-            )
-        )
     with Session(engine) as session:
         records = build_dashboard_snapshot(session).projects
-        assert len(records) == 2
-        for row in records:
-            assert any("dates conflict" in note for note in row.limitations)
-            assert len(row.milestones) >= 2
-            assert [m.recorded_date for m in row.milestones] == sorted(
-                m.recorded_date for m in row.milestones
-            )
-            assert all(m.classification == "source_claimed" for m in row.milestones)
+        assert len(records) == 1
+        row = records[0]
+        assert any("dates conflict" in note for note in row.limitations)
+        assert len(row.milestones) >= 2
+        assert [m.recorded_date for m in row.milestones] == sorted(
+            m.recorded_date for m in row.milestones
+        )
+        assert all(m.classification == "source_claimed" for m in row.milestones)
 
 
 

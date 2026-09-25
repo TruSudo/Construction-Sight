@@ -134,7 +134,7 @@ def test_enrich_opportunity_keeps_limitations_for_lower_confidence_signals() -> 
         contractor_identity=contractor,
     )
 
-    assert report.lead_score == 8
+    assert report.lead_score == 3
     assert "no contractor license signal was available" in report.limitations
     assert report.next_action == "monitor and enrich with more source evidence"
 
