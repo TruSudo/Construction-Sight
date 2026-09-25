@@ -164,8 +164,8 @@ def _build_revision(
         gross_value=normalized_gross_value,
         share_status=share_status,
         share=share,
-        reasons=reasons or [],
-        limitations=limitations,
+        reasons=tuple(reasons or ()),
+        limitations=tuple(limitations),
     )
 
 
