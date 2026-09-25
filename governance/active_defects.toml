@@ -370,14 +370,6 @@ discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
 required_resolution = "Make evidence eligibility and confidence part of operational scoring and resolution semantics, prohibit weak or conflicting evidence from independently producing actionable or canonical state, preserve explicit review states for uncertain evidence, and add low-confidence, conflicting, inferred, and missing-evidence readiness regressions."
 
 [[defects]]
-id = "CS-SR-049"
-severity = "P0"
-area = "duplicate-review-gate"
-root_cause = "A lead classified as duplicate REVIEW_NEEDED can retain a READY workflow state because duplicate uncertainty is recorded only as a limitation, and the workflow transition matrix permits READY to ACTIVE without proving duplicate review has been resolved."
-discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
-required_resolution = "Make unresolved duplicate review a hard non-actionable workflow invariant, prohibit activation or outreach-relevant transitions while duplicate review remains unresolved, bind the transition check to durable duplicate-review state, and add READY, ACTIVE, and concurrent transition regressions."
-
-[[defects]]
 id = "CS-SR-050"
 severity = "P0"
 area = "business-transition-concurrency"

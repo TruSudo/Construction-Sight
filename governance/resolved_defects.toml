@@ -35,3 +35,18 @@ last_active_commit = "d8397479da583db7d935f6eeaff1eeb47901b186"
 evidence_paths = ["docs/assurance/defect_closures/CS-SR-045.md", "src/constructionsight/legal.py", "src/constructionsight/verification/source_verifier.py"]
 regression_tests = ["tests/test_access_policy.py", "tests/test_adapter_base.py", "tests/test_source_verifier.py"]
 closure_evidence = "docs/assurance/defect_closures/CS-SR-045.md"
+
+[[defects]]
+id = "CS-SR-049"
+severity = "P0"
+area = "duplicate-review-gate"
+root_cause = "A lead classified as duplicate REVIEW_NEEDED can retain a READY workflow state because duplicate uncertainty is recorded only as a limitation, and the workflow transition matrix permits READY to ACTIVE without proving duplicate review has been resolved."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Make unresolved duplicate review a hard non-actionable workflow invariant, prohibit activation or outreach-relevant transitions while duplicate review remains unresolved, bind the transition check to durable duplicate-review state, and add READY, ACTIVE, and concurrent transition regressions."
+resolution_summary = "Made unresolved duplicate review a hard durable non-actionable invariant across initial workflow creation, authorized transitions, direct persistence, fingerprint drift, and concurrent attempts; made persisted duplicate results immutable and retained dedicated mutation/regression witnesses."
+resolution_commit = "ceea88953af6eb39a49717946934d7abe64b59b5"
+resolution_tree = "5f69c77b9dbbbda9ef3baf0cf2415d0aaf204f6e"
+last_active_commit = "059234e6ff5de2fc6e7ebfb7dbcfa5bd795ab3e5"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-049.md", "src/constructionsight/lead_operator_service.py", "src/constructionsight/lead_workflow_models.py", "src/constructionsight/storage/lead_workflow_store.py"]
+regression_tests = ["tests/test_lead_workflow_models.py", "tests/test_lead_workflow_service.py", "tests/test_lead_workflow_storage.py", "tests/test_lead_workflow_transition_authorization.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-049.md"
