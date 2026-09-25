@@ -8,10 +8,16 @@ from pydantic import HttpUrl
 from typer.testing import CliRunner
 
 from constructionsight.ceqanet_recurring_run_cli import app
+from constructionsight.ceqanet_capture_queue import build_reviewed_ceqanet_capture_queue
 from constructionsight.ceqanet_recurring_run_models import (
     CeqanetRecurringRunDefinition,
+    CeqanetRecurringRunExecution,
     CeqanetRecurringRunManifest,
     CeqanetRunReadiness,
+    canonical_digest,
+)
+from constructionsight.ceqanet_recurring_run_service import (
+    bind_authorized_recurring_listing_evidence,
 )
 from constructionsight.models import (
     ExtractionDifficulty,
@@ -195,3 +201,117 @@ def test_cli_execute_refuses_without_explicit_live_authorization(tmp_path: Path)
     assert result.exit_code == 1
     assert "explicit live execution authorization is required" in result.output
     assert not execution_path.exists()
+
+
+
+def test_cli_exports_verified_authorized_recurring_attempt_for_discovery_queue(
+    tmp_path: Path,
+) -> None:
+    """Recurring discovery can feed the exact same reviewed SCH queue without another GET."""
+
+    registry_path, checklist_path, definition_path, manifest_path = _build_cli_artifacts(
+        tmp_path
+    )
+    definition = CeqanetRecurringRunDefinition.model_validate_json(
+        definition_path.read_text(encoding="utf-8")
+    )
+    manifest = CeqanetRecurringRunManifest.model_validate_json(
+        manifest_path.read_text(encoding="utf-8")
+    )
+    html = (
+        '<div class="search-result">'
+        '<a href="/Project/2026030377">Cabazon Infrastructure Plan</a>'
+        '<span>SCH Number</span><span>2026030377</span>'
+        '<span>County</span><span>Riverside</span>'
+        '</div>'
+    )
+    low_level = CeqanetRecurringRunExecution(
+        run_id=manifest.run_id,
+        attempt_sequence=1,
+        attempt_id=canonical_digest(
+            {
+                "run_id": manifest.run_id,
+                "manifest_digest": manifest.manifest_digest,
+                "attempt_sequence": 1,
+            }
+        ),
+        definition_digest=definition.definition_digest,
+        manifest_digest=manifest.manifest_digest,
+        source_key=manifest.source_key,
+        execution_report={
+            "metadata": {
+                "schema_version": "ceqanet_listing_execution.v1",
+                "allowed": True,
+                "reason": "Synthetic complete bounded listing execution.",
+                "planned_request_count": 1,
+                "executed_request_count": 1,
+                "successful_response_count": 1,
+                "failed_response_count": 0,
+                "maximum_records": 50,
+                "query": manifest.query,
+            },
+            "snapshots": [
+                {
+                    "page_number": 1,
+                    "method": "GET",
+                    "request_url": "https://ceqanet.lci.ca.gov/Search?County=Riverside",
+                    "final_url": "https://ceqanet.lci.ca.gov/Search?County=Riverside",
+                    "status_code": 200,
+                    "content_type": "text/html; charset=utf-8",
+                    "body_text": html,
+                    "body_length": len(html),
+                    "body_truncated": False,
+                    "executed": True,
+                    "error": None,
+                    "failure_kind": "none",
+                    "reachable": True,
+                }
+            ],
+        },
+        network_executed=True,
+    )
+    execution = bind_authorized_recurring_listing_evidence(
+        low_level,
+        manifest,
+        authorization={
+            "action": "execute-ceqanet-recurring-run-attempt",
+            "decision_id": "recurring-export-test-decision",
+        },
+    )
+    execution_path = tmp_path / "execution.json"
+    execution_path.write_text(
+        json.dumps(execution.model_dump(mode="json"), indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    listing_path = tmp_path / "listing-v2.json"
+    exported = runner.invoke(
+        app,
+        [
+            "export-listing-evidence",
+            "--definition",
+            str(definition_path),
+            "--manifest",
+            str(manifest_path),
+            "--execution",
+            str(execution_path),
+            "--registry",
+            str(registry_path),
+            "--checklist",
+            str(checklist_path),
+            "--output",
+            str(listing_path),
+        ],
+    )
+    assert exported.exit_code == 0, exported.output
+    raw = listing_path.read_bytes()
+    listing = json.loads(raw)
+    assert listing["metadata"]["schema_version"] == "ceqanet_listing_execution.v2"
+    assert listing["metadata"]["authorization"]["decision_id"] == (
+        "recurring-export-test-decision"
+    )
+    queue = build_reviewed_ceqanet_capture_queue(listing, original_bytes=raw)
+    assert queue["candidate_count"] == 1
+    assert queue["candidates"][0]["sch_number"] == "2026030377"
+    assert queue["candidates"][0]["source_claimed_county"] == "Riverside"
+    assert queue["network_executed"] is False
+    assert queue["persistence_mutated"] is False

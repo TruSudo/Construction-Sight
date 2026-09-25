@@ -1,0 +1,37 @@
+schema_version = "constructionsight.resolved-defects/v2"
+
+# Historical findings remain here permanently after defect-specific correction,
+# regression evidence, Git-history provenance, and canonical validation establish
+# closure. Individual closure does not require whole-tree assurance to have already
+# passed; final zero-active-defect certification still requires Native Maximum Assurance.
+defects = []
+
+[[defects]]
+id = "CS-SR-026"
+severity = "P0"
+area = "defect-closure-ledger-integrity"
+root_cause = "Canonical governance-shape certification validates active defect entries but does not validate resolved defect entry shape, evidence paths, resolution provenance, duplicate IDs, or active/resolved disjointness. The ledger comment also requires exact-tree certification before a defect can move to resolved even though exact-tree certification is mechanically blocked while any defect remains active, creating a circular and unenforceable closure rule."
+discovered_against = "e24eaea49fd9d05b256c2fac438e1a3d8d816657"
+required_resolution = "Define and enforce an exact resolved-defect evidence schema; require unique IDs, full discovery and resolution commit provenance, nonblank resolution summary, safe existing regression/evidence paths, independent-review binding, and active/resolved disjointness; revise closure doctrine so correction, regression evidence, and independent review authorize the ledger move and canonical exact-tree CI certifies the resulting zero-active-defect tree; add malformed, duplicate, overlap, unsafe-path, and valid-closure regressions."
+resolution_summary = "Replaced the circular all-at-once assurance prerequisite with an incremental Git-bound v2 closure model that preserves historical defect facts, exact correction/tree provenance, safe evidence and regression paths, active/resolved disjointness, and one-at-a-time permanent closure while retaining final zero-active Native Maximum Assurance."
+resolution_commit = "53845f5bfa0d9b9c312de49eadfd7aae0178e8d9"
+resolution_tree = "1f2a7265d0c2eb448d994c585a367580f8dd09d1"
+last_active_commit = "6dc1698b988d1cc6f5d8b983af3ddd3ba65af86e"
+evidence_paths = ["docs/adr/ADR-0008-reviewed-defect-closure-history.md", "docs/assurance/defect_closures/CS-SR-026.md"]
+regression_tests = ["tests/test_governance_contract_schema.py", "tests/test_review_binding_certification.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-026.md"
+
+[[defects]]
+id = "CS-SR-045"
+severity = "P0"
+area = "lawful-access-fact-authority"
+root_cause = "Generic source preflight paths can construct an access profile whose login, captcha, robots, terms, paywall, and related restriction facts default to false without evidence that those facts were actually established, so an unknown restriction state can be treated as an affirmative lawful-access clearance."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Represent unknown access facts explicitly, require evidence-backed or reviewed access facts before live authority is granted, prohibit default-false restriction construction from satisfying lawful preflight, and add regressions for unknown login, captcha, robots, terms, and paywall states."
+resolution_summary = "Made unknown access facts fail closed, required an affirmative reviewed-facts marker plus retained review basis before an otherwise unrestricted source can be allowed, preserved explicit restriction blocking, and proved SourceVerifier does not execute network transport without reviewed access authority."
+resolution_commit = "e8fb0753be361bf909405cd0f452164e8912c817"
+resolution_tree = "4394aa0d9f704b5b08da456d4d7b3523775df005"
+last_active_commit = "d8397479da583db7d935f6eeaff1eeb47901b186"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-045.md", "src/constructionsight/legal.py", "src/constructionsight/verification/source_verifier.py"]
+regression_tests = ["tests/test_access_policy.py", "tests/test_adapter_base.py", "tests/test_source_verifier.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-045.md"

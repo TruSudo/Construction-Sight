@@ -3,7 +3,7 @@ import json
 from typer.testing import CliRunner
 
 from constructionsight import cli
-from constructionsight.adapters.ceqanet import CeqanetDiscoveryResult
+from constructionsight.ceqanet_discovery_http import CeqanetDiscoveryResult
 from constructionsight.storage.database import (
     create_database_engine,
     managed_session,
@@ -13,19 +13,18 @@ from constructionsight.storage.source_registry import SourceRegistryStore
 from constructionsight.storage.verification_store import VerificationStore
 
 
-class SuccessfulCeqanetDiscovery:
-    def discover(self) -> CeqanetDiscoveryResult:
-        return CeqanetDiscoveryResult(
-            url="https://ceqanet.lci.ca.gov/Search/Advanced",
-            reachable=True,
-            status_code=200,
-            advanced_search_available=True,
-            sch_number_field_detected=True,
-            document_type_field_detected=True,
-            date_field_detected=True,
-            lead_agency_field_detected=True,
-            notes="Synthetic persisted CLI discovery.",
-        )
+def _successful_discovery() -> CeqanetDiscoveryResult:
+    return CeqanetDiscoveryResult(
+        url="https://ceqanet.lci.ca.gov/Search/Advanced",
+        reachable=True,
+        status_code=200,
+        advanced_search_available=True,
+        sch_number_field_detected=True,
+        document_type_field_detected=True,
+        date_field_detected=True,
+        lead_agency_field_detected=True,
+        notes="Synthetic persisted CLI discovery.",
+    )
 
 
 def test_ceqanet_discovery_converts_to_source_verification_result() -> None:
@@ -58,7 +57,7 @@ def test_ceqanet_discovery_converts_to_source_verification_result() -> None:
 
 
 def test_discover_ceqanet_cli_persists_verification_result(monkeypatch, tmp_path) -> None:
-    monkeypatch.setattr(cli, "CeqanetLiveDiscovery", SuccessfulCeqanetDiscovery)
+    monkeypatch.setattr(cli, "discover_ceqanet_public_search", _successful_discovery)
 
     database_path = tmp_path / "constructionsight.sqlite3"
     database_url = f"sqlite+pysqlite:///{database_path}"
