@@ -13,6 +13,7 @@ from constructionsight.lead_dedupe_models import (
     LeadFingerprint,
 )
 from constructionsight.lead_review_models import LeadReviewPackage
+from constructionsight.money import money_text, rate_text, storage_money_text
 from constructionsight.lead_workflow_models import (
     ACTIONABLE_LEAD_WORKFLOW_STATUSES,
     LeadWorkflowEvent,
@@ -285,9 +286,12 @@ def store_result_share_record(
     existing = ResultShareRecordRow(
         share_record_id=share.share_record_id,
         workflow_id=share.workflow_id,
-        gross_value=share.gross_value,
-        share_rate=share.share_rate,
-        share_value=share.share_value,
+        gross_value=float(share.gross_value),
+        gross_value_exact=money_text(share.gross_value),
+        share_rate=float(share.share_rate),
+        share_rate_exact=rate_text(share.share_rate),
+        share_value=float(share.share_value),
+        share_value_exact=money_text(share.share_value),
         payload_json=payload_json,
     )
     session.add(existing)
@@ -326,7 +330,10 @@ def store_result_ledger_record(
         package_id=ledger.package_id,
         status=ledger.status.value,
         decided_date=decided_date,
-        gross_value=ledger.gross_value,
+        gross_value=None if ledger.gross_value is None else float(ledger.gross_value),
+        gross_value_exact=(
+            None if ledger.gross_value is None else storage_money_text(ledger.gross_value)
+        ),
         share_status=ledger.share_status.value,
         share_record_id=share_record_id,
         observed_created_at=ledger.created_at.isoformat(),

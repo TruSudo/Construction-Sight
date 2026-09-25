@@ -215,12 +215,12 @@ def record_result(
         ),
     ] = None,
     gross_value: Annotated[
-        float | None,
-        typer.Option(help="Optional won-result gross value, limited to cents."),
+        str | None,
+        typer.Option(help="Optional exact won-result gross value, limited to cents."),
     ] = None,
     share_rate: Annotated[
-        float | None,
-        typer.Option(help="Optional won-result share rate from 0 through 1."),
+        str | None,
+        typer.Option(help="Optional exact won-result share rate from 0 through 1."),
     ] = None,
     outcome_reason: Annotated[
         list[str] | None,

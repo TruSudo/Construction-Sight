@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from constructionsight.lead_operator_service import load_persisted_lead_workflow
+from constructionsight.money import DecimalInput, money_decimal, rate_decimal, storage_money_text
 from constructionsight.result_authority_models import (
     ResultAuthorityApplyReport,
     ResultAuthorityEvent,
@@ -159,8 +160,8 @@ def apply_authoritative_result(
     status: ResultLedgerStatus,
     authority_reason: str,
     decided_date: date | None = None,
-    gross_value: float | None = None,
-    share_rate: float | None = None,
+    gross_value: DecimalInput | None = None,
+    share_rate: DecimalInput | None = None,
     outcome_reasons: list[str] | None = None,
 ) -> ResultAuthorityApplyReport:
     """Create or correct one result with explicit stale-state and audit controls."""
@@ -339,6 +340,7 @@ def _ledger_from_row(row: ResultLedgerRecordRow) -> ResultLedgerRecord:
         row.status,
         row.decided_date,
         row.gross_value,
+        row.gross_value_exact,
         row.share_status,
         row.share_record_id,
         row.observed_created_at,
@@ -349,7 +351,8 @@ def _ledger_from_row(row: ResultLedgerRecordRow) -> ResultLedgerRecord:
         ledger.package_id,
         ledger.status.value,
         decided_date,
-        ledger.gross_value,
+        None if ledger.gross_value is None else float(ledger.gross_value),
+        None if ledger.gross_value is None else storage_money_text(ledger.gross_value),
         ledger.share_status.value,
         share_record_id,
         ledger.created_at.isoformat(),
@@ -422,16 +425,29 @@ def _same_outcome(
     *,
     status: ResultLedgerStatus,
     decided_date: date | None,
-    gross_value: float | None,
-    share_rate: float | None,
+    gross_value: DecimalInput | None,
+    share_rate: DecimalInput | None,
     outcome_reasons: list[str] | None,
 ) -> bool:
     current_rate = current.share.share_rate if current.share is not None else None
+    try:
+        normalized_gross = (
+            money_decimal(gross_value, field_name="gross_value")
+            if gross_value is not None
+            else None
+        )
+        normalized_rate = (
+            rate_decimal(share_rate, field_name="share_rate")
+            if share_rate is not None
+            else None
+        )
+    except ValueError:
+        return False
     return (
         current.status == status
         and current.decided_date == decided_date
-        and current.gross_value == gross_value
-        and current_rate == share_rate
+        and current.gross_value == normalized_gross
+        and current_rate == normalized_rate
         and current.reasons == (outcome_reasons or [])
     )
 
