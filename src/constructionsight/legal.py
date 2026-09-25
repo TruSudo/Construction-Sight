@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
+import re
 
 
 class AccessDecision(StrEnum):
@@ -120,6 +121,15 @@ def evaluate_access(profile: SourceAccessProfile) -> AccessPolicyResult:
             reason=(
                 "Lawful-access restriction facts have no retained evidence or reviewed "
                 "fact basis; an all-clear profile cannot authorize live access."
+            ),
+        )
+
+    if re.fullmatch(r"(?:review|evidence):[0-9a-f]{64}", fact_basis) is None:
+        return AccessPolicyResult(
+            decision=AccessDecision.REVIEW_REQUIRED,
+            reason=(
+                "Lawful-access fact basis must be an immutable review or evidence "
+                "SHA-256 identity."
             ),
         )
 
