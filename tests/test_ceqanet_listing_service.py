@@ -67,10 +67,17 @@ class _Executor:
 
 
 def _profile(**changes: object) -> SourceAccessProfile:
-    return SourceAccessProfile(
-        public_url="https://ceqanet.lci.ca.gov/",
-        **changes,
-    )
+    values: dict[str, object] = {
+        "public_url": "https://ceqanet.lci.ca.gov/",
+        "requires_login": False,
+        "has_captcha": False,
+        "robots_disallows_collection": False,
+        "terms_disallow_collection": False,
+        "paywalled": False,
+        "access_fact_basis": "review:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    }
+    values.update(changes)
+    return SourceAccessProfile(**values)
 
 
 def _plan(profile: SourceAccessProfile | None = None) -> CeqanetListingPlan:
@@ -181,3 +188,23 @@ def test_listing_service_rejects_retry_expansion() -> None:
             max_attempts=3,
             retry_delays_seconds=(0.25, 1.0),
         )
+
+
+def test_listing_authorization_state_binds_access_fact_basis() -> None:
+    first_profile = _profile(access_fact_basis="review:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd")
+    second_profile = _profile(access_fact_basis="review:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
+
+    first_state = listing_service._access_state(
+        first_profile,
+        decision=evaluate_access(first_profile).decision,
+        reason=evaluate_access(first_profile).reason,
+        plan_id="plan:test",
+    )
+    second_state = listing_service._access_state(
+        second_profile,
+        decision=evaluate_access(second_profile).decision,
+        reason=evaluate_access(second_profile).reason,
+        plan_id="plan:test",
+    )
+
+    assert first_state != second_state
