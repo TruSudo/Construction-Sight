@@ -1,3 +1,5 @@
+from datetime import date
+
 import pytest
 from pydantic import ValidationError
 
@@ -41,6 +43,53 @@ def test_planning_case_requires_case_number() -> None:
             jurisdiction="Test Jurisdiction",
             county="Test County",
         )
+
+
+@pytest.mark.parametrize(
+    ("filed", "hearing", "approval"),
+    (
+        (date(2026, 3, 2), date(2026, 3, 1), None),
+        (date(2026, 3, 2), None, date(2026, 3, 1)),
+        (None, date(2026, 3, 2), date(2026, 3, 1)),
+    ),
+)
+def test_planning_case_rejects_contradictory_lifecycle_dates(
+    filed: date | None,
+    hearing: date | None,
+    approval: date | None,
+) -> None:
+    with pytest.raises(ValidationError):
+        PlanningCaseRecord(
+            case_key="planning:test:chronology",
+            case_number="PC-CHRONO",
+            jurisdiction="Test Jurisdiction",
+            county="Test County",
+            filed_date=filed,
+            hearing_date=hearing,
+            approval_date=approval,
+        )
+
+
+def test_planning_case_allows_partial_and_ordered_lifecycle_dates() -> None:
+    partial = PlanningCaseRecord(
+        case_key="planning:test:partial",
+        case_number="PC-PARTIAL",
+        jurisdiction="Test Jurisdiction",
+        county="Test County",
+        hearing_date=date(2026, 3, 2),
+    )
+    ordered = PlanningCaseRecord(
+        case_key="planning:test:ordered",
+        case_number="PC-ORDERED",
+        jurisdiction="Test Jurisdiction",
+        county="Test County",
+        filed_date=date(2026, 3, 1),
+        hearing_date=date(2026, 3, 2),
+        approval_date=date(2026, 3, 3),
+    )
+
+    assert partial.filed_date is None
+    assert ordered.approval_date == date(2026, 3, 3)
 
 
 def test_planning_case_links_site_entity_and_provenance() -> None:
