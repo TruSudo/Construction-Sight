@@ -6,6 +6,7 @@ remain offline, and no command automatically approves or writes a source capture
 
 from __future__ import annotations
 
+import hashlib
 import json
 from datetime import UTC, datetime
 from pathlib import Path
@@ -66,6 +67,64 @@ def _load_evidence(path: Path) -> ReviewedCeqanetCsvBridge:
 
 def _plan_digest(bridge: ReviewedCeqanetCsvBridge) -> str:
     return canonical_digest(bridge.write_plan.to_dict())
+
+
+def _load_bound_capture_candidate(
+    *, listing_evidence: Path, queue_evidence: Path, sch_number: str,
+) -> dict[str, object]:
+    """Re-derive a saved queue from its exact listing bytes and bind one SCH candidate."""
+
+    if listing_evidence.absolute() == queue_evidence.absolute():
+        raise typer.BadParameter("listing evidence and queue evidence must be distinct artifacts")
+    try:
+        listing_raw = read_runtime_artifact(listing_evidence, max_bytes=16 * 1024 * 1024)
+        queue_raw = read_runtime_artifact(queue_evidence, max_bytes=16 * 1024 * 1024)
+        listing_payload: Any = json.loads(listing_raw.decode("utf-8"))
+        queue_payload: Any = json.loads(queue_raw.decode("utf-8"))
+        if not isinstance(listing_payload, dict) or not isinstance(queue_payload, dict):
+            raise ValueError("listing and queue evidence must each contain a JSON object")
+        regenerated = build_reviewed_ceqanet_capture_queue(
+            listing_payload, original_bytes=listing_raw,
+        )
+        if queue_payload != regenerated:
+            raise ValueError("saved queue does not exactly match a fresh derivation from listing evidence")
+        candidates = regenerated.get("candidates")
+        if not isinstance(candidates, list):
+            raise ValueError("saved queue candidates are malformed")
+        matches = [
+            item for item in candidates
+            if isinstance(item, dict) and item.get("sch_number") == sch_number
+        ]
+        if len(matches) != 1:
+            raise ValueError("exact SCH is not uniquely present in the reviewed capture queue")
+        candidate = matches[0]
+        if (
+            candidate.get("candidate_only") is not True
+            or candidate.get("review_state") != "unverified_source_claim"
+            or candidate.get("network_executed_for_candidate") is not False
+            or candidate.get("persistence_mutated") is not False
+            or not isinstance(candidate.get("source_claimed_county"), str)
+            or not isinstance(candidate.get("official_detail_url"), str)
+        ):
+            raise ValueError("reviewed queue candidate has an invalid or promoted state")
+    except (OSError, ValueError, UnicodeDecodeError, TypeError) as exc:
+        raise typer.BadParameter(
+            f"capture queue could not be independently rebound to listing evidence: {exc}"
+        ) from exc
+
+    return {
+        "schema_version": "ceqanet_listing_capture_binding.v1",
+        "sch_number": sch_number,
+        "listing_artifact_sha256": hashlib.sha256(listing_raw).hexdigest(),
+        "queue_artifact_sha256": hashlib.sha256(queue_raw).hexdigest(),
+        "listing_plan_id": regenerated.get("listing_plan_id"),
+        "source_claimed_county": candidate["source_claimed_county"],
+        "source_claimed_title": candidate.get("source_claimed_title"),
+        "official_detail_url": candidate["official_detail_url"],
+        "observation_pages": candidate.get("observation_pages"),
+        "source_observation_count": candidate.get("source_observation_count"),
+        "claim_state": "unverified_source_claim",
+    }
 
 
 def _summary(bridge: ReviewedCeqanetCsvBridge) -> dict[str, object]:
@@ -158,6 +217,20 @@ def capture_preview(
     operator_id: Annotated[
         str | None, typer.Option("--operator-id", help="Optional audit label, not authentication."),
     ] = None,
+    listing_evidence: Annotated[
+        Path | None,
+        typer.Option(
+            "--listing-evidence",
+            help="Optional retained listing evidence used to independently re-derive the queue.",
+        ),
+    ] = None,
+    queue_evidence: Annotated[
+        Path | None,
+        typer.Option(
+            "--queue-evidence",
+            help="Optional exact-SCH review queue; requires --listing-evidence.",
+        ),
+    ] = None,
     requires_login: Annotated[bool, typer.Option("--requires-login")] = False,
     has_captcha: Annotated[bool, typer.Option("--has-captcha")] = False,
     robots_disallows_collection: Annotated[
@@ -180,6 +253,24 @@ def capture_preview(
         plan_output.absolute() == output.absolute() or plan_output.exists()
     ):
         raise typer.BadParameter("plan output must be new and distinct from source evidence")
+    if (listing_evidence is None) != (queue_evidence is None):
+        raise typer.BadParameter(
+            "--listing-evidence and --queue-evidence must be supplied together"
+        )
+    discovery_binding: dict[str, object] | None = None
+    if listing_evidence is not None and queue_evidence is not None:
+        protected_paths = {listing_evidence.absolute(), queue_evidence.absolute()}
+        if output.absolute() in protected_paths or (
+            plan_output is not None and plan_output.absolute() in protected_paths
+        ):
+            raise typer.BadParameter(
+                "capture and plan outputs must be distinct from listing and queue evidence"
+            )
+        discovery_binding = _load_bound_capture_candidate(
+            listing_evidence=listing_evidence,
+            queue_evidence=queue_evidence,
+            sch_number=sch_number,
+        )
     requested_at = datetime.now(UTC)
     try:
         request = build_ceqanet_csv_export_request(sch_number=sch_number)
@@ -209,10 +300,19 @@ def capture_preview(
     # before attempting offline decoding or target-county normalization. Never
     # replace older evidence even when a source returns an unexpected format.
     try:
+        execution_payload = authorized.execution.model_dump(mode="json")
+        retained_payload: dict[str, object]
+        if discovery_binding is None:
+            retained_payload = execution_payload
+        else:
+            retained_payload = {
+                "schema_version": "ceqanet_bound_project_capture.v1",
+                "discovery_binding": discovery_binding,
+                "live_execution": execution_payload,
+            }
         write_runtime_text(
             output,
-            json.dumps(authorized.execution.model_dump(mode="json"), indent=2, sort_keys=True)
-            + "\n",
+            json.dumps(retained_payload, indent=2, sort_keys=True) + "\n",
             overwrite=False,
         )
     except (OSError, ValueError) as exc:
@@ -252,6 +352,13 @@ def capture_preview(
     # conflicting schema or >100 rows cannot be silently omitted or imported.
     try:
         bridge = _load_evidence(output)
+        if discovery_binding is not None:
+            claimed_county = discovery_binding["source_claimed_county"]
+            captured_counties = {record.county for record in bridge.preview.ceqa_records}
+            if captured_counties != {claimed_county}:
+                raise ValueError(
+                    "captured project county does not match the exact queued source claim"
+                )
         if plan_output is not None:
             write_runtime_text(
                 plan_output,
@@ -274,6 +381,7 @@ def capture_preview(
                 "plan_output_path": str(plan_output) if plan_output is not None else None,
                 "source_verification_passed": True,
                 "execution_timestamp_within_invocation": True,
+                "discovery_binding": discovery_binding,
                 "source_claims_verified": False,
                 "persistence_mutated": False,
                 "next_step": (
