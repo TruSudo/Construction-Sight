@@ -346,14 +346,6 @@ discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
 required_resolution = "Move authoritative time acquisition behind a ConstructionSight-owned production clock boundary, retain deterministic clocks only for tests, bind all time-sensitive authorization and execution state to that trusted clock, and add regressions proving callers cannot backdate or forward-date production authority."
 
 [[defects]]
-id = "CS-SR-045"
-severity = "P0"
-area = "lawful-access-fact-authority"
-root_cause = "Generic source preflight paths can construct an access profile whose login, captcha, robots, terms, paywall, and related restriction facts default to false without evidence that those facts were actually established, so an unknown restriction state can be treated as an affirmative lawful-access clearance."
-discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
-required_resolution = "Represent unknown access facts explicitly, require evidence-backed or reviewed access facts before live authority is granted, prohibit default-false restriction construction from satisfying lawful preflight, and add regressions for unknown login, captcha, robots, terms, and paywall states."
-
-[[defects]]
 id = "CS-SR-046"
 severity = "P0"
 area = "epistemic-provenance-authority"
