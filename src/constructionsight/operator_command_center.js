@@ -440,6 +440,46 @@ function prepareCeqanetCapture() {
     '<p>Review the retained source rows, county scope and the source/plan SHA-256 digests printed by that command. To import, independently approve both exact digests using the separate <code>constructionsight-ceqanet-reviewed-import apply --help</code> workflow and its explicit write authorization. Once applied to this operator database, the Command Center refreshes on the next local revision check. No collection, import, lead qualification, outreach or bids have been initiated by this preview.</p>';
   byId("capture-command").textContent=command;
 }
+function renderSourceRegistry(registry) {
+  if(!registry || registry.read_only!==true || registry.network_collection_enabled!==false ||
+    registry.verification_metadata_is_authority!==false || !Number.isSafeInteger(registry.total) ||
+    registry.total<0 || !Number.isSafeInteger(registry.returned) || registry.returned<0 ||
+    !Number.isSafeInteger(registry.result_limit) || registry.result_limit<1 ||
+    !Array.isArray(registry.entries) || registry.returned!==registry.entries.length ||
+    registry.returned>registry.result_limit || registry.truncated!==(registry.total>registry.returned))
+    throw Error("Persisted source registry returned inconsistent bounds or authority state.");
+  const statuses=new Set(["unverified","verified","partial","failed","blocked"]);
+  const rows=registry.entries.map(entry=>{
+    if(!entry || typeof entry.source_name!=="string" || !entry.source_name ||
+      typeof entry.jurisdiction_name!=="string" || !entry.jurisdiction_name ||
+      typeof entry.county!=="string" || !entry.county ||
+      typeof entry.platform_family!=="string" || !entry.platform_family ||
+      !Array.isArray(entry.record_categories) || !statuses.has(entry.verification_status) ||
+      typeof entry.adapter_status!=="string" || !entry.adapter_status ||
+      typeof entry.adapter_live!=="boolean")
+      throw Error("Persisted source registry entry is inconsistent.");
+    return '<tr><th scope="row">'+escapeText(entry.source_name)+
+      '<small>'+escapeText(entry.jurisdiction_name)+' · '+escapeText(entry.county)+'</small></th>'+
+      '<td>'+escapeText(entry.platform_family)+'<small>adapter '+escapeText(entry.adapter_status)+
+      (entry.adapter_live?' · live-capable software':' · not live-capable')+'</small></td>'+
+      '<td>'+escapeText(entry.verification_status)+'<small>stored confidence '+
+      escapeText(entry.confidence_score)+'/100 · checked '+
+      escapeText(valueOrUnknown(entry.last_checked_date))+'</small></td>'+
+      '<td>'+escapeText(entry.record_categories.join(", ") || "No categories")+
+      '<small>'+escapeText(valueOrUnknown(entry.update_frequency))+'</small></td>'+
+      '<td>'+safeSourceLink(entry.public_url)+'</td></tr>';
+  }).join("") || '<tr><td colspan="5">No public-source registry rows are retained in this database.</td></tr>';
+  return '<section class="feature-card"><span class="badge">PERSISTED SOURCE REGISTRY · READ ONLY</span>'+
+    '<h2>Configured public sources ('+registry.returned+(registry.truncated?' of '+registry.total:'')+')</h2>'+
+    '<p>Verification state, confidence, update cadence and adapter maturity are retained metadata. They do not prove current reachability, complete jurisdiction coverage, or authority for recurring collection.</p>'+
+    '<div class="source-inventory-scroll"><table class="source-inventory source-registry-table"><thead>'+
+    '<tr><th>Source</th><th>Platform / adapter</th><th>Registry verification</th>'+
+    '<th>Declared records / cadence</th><th>Official source</th></tr></thead><tbody>'+
+    rows+'</tbody></table></div>'+
+    (registry.truncated?'<p>Registry display is truncated at '+registry.result_limit+' rows.</p>':'')+
+    '</section>';
+}
+
 function renderCaptureQueue(queue) {
   if(!queue || queue.schema_version!=="constructionsight.operator_capture_queue.v1" ||
     queue.read_only!==true || queue.network_executed!==false ||
@@ -498,13 +538,14 @@ async function showSources() {
   const families=["ceqa","permit"], counties=["","San Bernardino","Riverside"];
   try {
     const queries=families.flatMap(kind=>counties.map(county=>({kind,county})));
-    const [data,captureQueue]=await Promise.all([
+    const [data,captureQueue,sourceRegistry]=await Promise.all([
       Promise.all(queries.map(async item=>
         fetchJson("/api/snapshot?"+new URLSearchParams({
           kind:item.kind,county:item.county,limit:"1",offset:"0"
         }))
       )),
-      fetchJson("/api/capture-queue")
+      fetchJson("/api/capture-queue"),
+      fetchJson("/api/source-registry")
     ]);
     if(token!==featureRequest || byId("feature-view").hidden)return;
     if(data.some((result,index)=>result.selection!==queries[index].kind || !Number.isSafeInteger(result.total) || result.total<0))
@@ -518,6 +559,7 @@ async function showSources() {
     byId("feature-body").innerHTML='<section class="feature-card"><span class="badge">RETAINED SQLITE RECORDS · READ ONLY</span><h2>Source inventory</h2>'+
       '<p>Counts are source records, not deduplicated projects, live construction sites, or approved commercial leads. Other/unknown includes records with missing or out-of-scope county claims.</p>'+
       '<div class="source-inventory-scroll"><table class="source-inventory"><thead><tr><th>Source family</th><th>All counties</th><th>San Bernardino</th><th>Riverside</th><th>Other / unknown</th></tr></thead><tbody>'+rows+'</tbody></table></div></section>'+
+      renderSourceRegistry(sourceRegistry)+
       '<section class="feature-card"><h2>Collection status</h2><p>This local operator does not run live source acquisition, subscription monitoring, scheduled updates or remote data import. Import and retained-source validation remain separate governed workflows.</p>'+
       '<a href="/workspace#records">Inspect stored source evidence →</a></section>'+
       renderCaptureQueue(captureQueue)+

@@ -38,6 +38,7 @@ from constructionsight.operator_source_candidate import (
     SourceRecordNotFound,
     build_source_candidate_preview,
 )
+from constructionsight.operator_source_registry import build_operator_source_registry
 from constructionsight.operator_source_revision import build_source_revision_snapshot
 from constructionsight.storage.operator_read_store import (
     create_operator_read_engine,
@@ -195,6 +196,7 @@ def create_handler(
                     return
                 if path not in {
                     "/api/health",
+                    "/api/source-registry",
                     "/api/source-revision",
                     "/api/snapshot",
                     "/api/footprint",
@@ -212,6 +214,7 @@ def create_handler(
                     return
                 if path in {
                     "/api/workflow-summary",
+                    "/api/source-registry",
                     "/api/source-revision",
                     "/api/capture-queue",
                 } and parsed.query:
@@ -240,6 +243,8 @@ def create_handler(
                         }
                     elif path == "/api/capture-queue":
                         payload = capture_queue
+                    elif path == "/api/source-registry":
+                        payload = build_operator_source_registry(session).model_dump(mode="json")
                     elif path == "/api/source-revision":
                         payload = build_source_revision_snapshot(session)
                     elif path == "/api/workflow-summary":
