@@ -9,6 +9,9 @@ identity convergence and ripple workflows.
 
 from __future__ import annotations
 
+import hashlib
+import json
+import re
 from collections.abc import Iterable
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -173,6 +176,89 @@ def _require_unique_values(values: Iterable[str], field_name: str) -> None:
         raise ValueError(f"{field_name} must contain unique values")
 
 
+_SPACE_RE = re.compile(r"\s+")
+_APN_PREFIX_RE = re.compile(r"^\s*APN\s*[:#-]?\s*", re.IGNORECASE)
+
+
+def normalize_artifact_value(
+    artifact_type: IdentityArtifactType,
+    raw_value: str,
+) -> str:
+    """Return the versioned canonical normalized value for an identity artifact."""
+
+    value = _strip_required(raw_value)
+    if artifact_type is IdentityArtifactType.APN:
+        value = _APN_PREFIX_RE.sub("", value)
+    return _SPACE_RE.sub(" ", value).strip().casefold()
+
+
+def canonical_artifact_observation_id(
+    *,
+    artifact_type: IdentityArtifactType,
+    normalized_value: str,
+    source_name: str,
+    source_family: str | None,
+    source_record_id: str | None,
+    jurisdiction: str | None,
+    observed_field: str | None,
+    evidence_record_id: str | None,
+) -> str:
+    """Return a full-digest v2 observation identity over semantic source content."""
+
+    payload = {
+        "version": "constructionsight.artifact-observation/v2",
+        "artifact_type": artifact_type.value,
+        "normalized_value": normalized_value,
+        "source_name": source_name.strip(),
+        "source_family": source_family or "",
+        "source_record_id": source_record_id or "",
+        "jurisdiction": jurisdiction or "",
+        "observed_field": observed_field or "",
+        "evidence_record_id": evidence_record_id or "",
+    }
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    return f"artifact-observation:v2:{hashlib.sha256(encoded.encode('utf-8')).hexdigest()}"
+
+
+def canonical_identity_fingerprint_id(
+    *,
+    target_identity_id: str,
+    target_kind: ResolutionTargetKind,
+    observation_ids: Iterable[str],
+    evidence_record_ids: Iterable[str],
+) -> str:
+    """Return a full-digest v2 fingerprint identity over the complete artifact set."""
+
+    payload = {
+        "version": "constructionsight.identity-fingerprint/v2",
+        "target_identity_id": target_identity_id,
+        "target_kind": target_kind.value,
+        "observation_ids": sorted(observation_ids),
+        "evidence_record_ids": sorted(evidence_record_ids),
+    }
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    return f"identity-fingerprint:v2:{hashlib.sha256(encoded.encode('utf-8')).hexdigest()}"
+
+
+def canonical_resolution_candidate_id(
+    left_identity_id: str,
+    right_identity_id: str,
+    *,
+    target_kind: ResolutionTargetKind,
+) -> str:
+    """Return an order-independent full-digest v2 candidate identity."""
+
+    left, right = sorted((left_identity_id, right_identity_id))
+    payload = {
+        "version": "constructionsight.identity-resolution-candidate/v2",
+        "left_identity_id": left,
+        "right_identity_id": right,
+        "target_kind": target_kind.value,
+    }
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    return f"artifact-resolution:v2:{hashlib.sha256(encoded.encode('utf-8')).hexdigest()}"
+
+
 class ArtifactObservation(BaseModel):
     """One provenance-bound observation of an identity artifact in a public source."""
 
@@ -196,6 +282,27 @@ class ArtifactObservation(BaseModel):
         """Strip and reject blank artifact values."""
 
         return _strip_required(value)
+
+    @model_validator(mode="after")
+    def require_canonical_derived_identity(self) -> ArtifactObservation:
+        """Recompute normalization and observation identity from retained source content."""
+
+        expected_value = normalize_artifact_value(self.artifact_type, self.raw_value)
+        if self.normalized_value != expected_value:
+            raise ValueError("normalized_value does not match canonical raw artifact derivation")
+        expected_id = canonical_artifact_observation_id(
+            artifact_type=self.artifact_type,
+            normalized_value=expected_value,
+            source_name=self.source_name,
+            source_family=self.source_family,
+            source_record_id=self.source_record_id,
+            jurisdiction=self.jurisdiction,
+            observed_field=self.observed_field,
+            evidence_record_id=self.evidence_record_id,
+        )
+        if self.observation_id != expected_id:
+            raise ValueError("observation_id does not match canonical artifact content")
+        return self
 
     @property
     def tier(self) -> ArtifactTier:
@@ -231,6 +338,14 @@ class IdentityFingerprint(BaseModel):
         observation_ids = [observation.observation_id for observation in self.artifact_observations]
         _require_unique_values(observation_ids, "artifact observation IDs")
         _require_unique_values(self.evidence_record_ids, "evidence record IDs")
+        expected_id = canonical_identity_fingerprint_id(
+            target_identity_id=self.target_identity_id,
+            target_kind=self.target_kind,
+            observation_ids=observation_ids,
+            evidence_record_ids=self.evidence_record_ids,
+        )
+        if self.fingerprint_id != expected_id:
+            raise ValueError("fingerprint_id does not match canonical artifact set")
         return self
 
     @property
@@ -368,6 +483,16 @@ class IdentityResolutionCandidate(BaseModel):
 
         if self.left_identity_id == self.right_identity_id:
             raise ValueError("identity resolution candidate cannot compare an identity to itself")
+        canonical_pair = sorted((self.left_identity_id, self.right_identity_id))
+        if [self.left_identity_id, self.right_identity_id] != canonical_pair:
+            raise ValueError("identity resolution pair must use canonical sorted orientation")
+        expected_id = canonical_resolution_candidate_id(
+            self.left_identity_id,
+            self.right_identity_id,
+            target_kind=self.target_kind,
+        )
+        if self.candidate_id != expected_id:
+            raise ValueError("candidate_id does not match canonical identity pair")
         if not self.supporting_matches and not self.conflicts:
             raise ValueError("identity resolution candidate requires support or conflict artifacts")
         return self

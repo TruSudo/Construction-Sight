@@ -100,7 +100,7 @@ def test_ceqanet_fixture_parser_preserves_provenance() -> None:
     assert record.provenance[0].source_name == "CEQAnet State Clearinghouse"
     assert str(record.provenance[0].source_url) == "https://ceqanet.lci.ca.gov/2026000001"
     assert record.provenance[0].adapter_family == "ceqanet"
-    assert record.provenance[0].confidence_score == 85
+    assert record.provenance[0].confidence_score == 75
 
 
 def test_ceqanet_adapter_discovers_public_search_descriptor() -> None:

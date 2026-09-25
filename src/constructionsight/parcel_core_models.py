@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from constructionsight.site_resolution_service import normalize_address, normalize_apn
 
@@ -23,6 +23,8 @@ class ParcelGeometryKind(StrEnum):
 class ParcelGeometry(BaseModel):
     """Provider-neutral parcel geometry summary."""
 
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
     geometry_kind: ParcelGeometryKind
     raw_geometry: str | None = None
     geometry_hash: str | None = None
@@ -33,11 +35,11 @@ class ParcelGeometry(BaseModel):
     envelope_max_latitude: float | None = Field(default=None, ge=-90, le=90)
     envelope_max_longitude: float | None = Field(default=None, ge=-180, le=180)
     spatial_reference: str | None = None
-    limitations: list[str] = Field(default_factory=list)
+    limitations: tuple[str, ...] = ()
 
     @field_validator("limitations")
     @classmethod
-    def require_unique_limitations(cls, values: list[str]) -> list[str]:
+    def require_unique_limitations(cls, values: tuple[str, ...]) -> tuple[str, ...]:
         """Reject duplicate geometry limitations."""
 
         if len(values) != len(set(values)):
@@ -59,6 +61,8 @@ class ParcelGeometry(BaseModel):
 class ParcelCoreRecord(BaseModel):
     """Canonical provider-neutral parcel identity record."""
 
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
     parcel_record_id: str = Field(min_length=1)
     source_key: str = Field(min_length=1)
     source_record_id: str | None = None
@@ -74,12 +78,12 @@ class ParcelCoreRecord(BaseModel):
     acreage: float | None = Field(default=None, ge=0)
     geometry: ParcelGeometry | None = None
     source_updated_at: datetime | None = None
-    limitations: list[str] = Field(default_factory=list)
+    limitations: tuple[str, ...] = ()
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     @field_validator("limitations")
     @classmethod
-    def require_unique_limitations(cls, values: list[str]) -> list[str]:
+    def require_unique_limitations(cls, values: tuple[str, ...]) -> tuple[str, ...]:
         """Reject duplicate parcel limitations."""
 
         if len(values) != len(set(values)):

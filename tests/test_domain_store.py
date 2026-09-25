@@ -5,7 +5,7 @@ from constructionsight.domain_types import PartyRole, RelationshipType
 from constructionsight.entity_models import Entity
 from constructionsight.permit_models import PermitRecord
 from constructionsight.planning_models import PlanningCaseRecord
-from constructionsight.provenance import Provenance
+from constructionsight.provenance import Provenance, ProvenanceConfidenceBasis
 from constructionsight.relationship_models import RelationshipRecord
 from constructionsight.site_models import Site
 from constructionsight.storage.database import (
@@ -31,7 +31,11 @@ def test_site_store_round_trip() -> None:
     initialize_database(engine)
     factory = session_factory(engine)
     provenance = Provenance(
-        source_name="Synthetic Public Source", confidence_score=90, verified=True
+        source_name="Synthetic Public Source",
+        adapter_family="synthetic-test",
+        raw_reference="synthetic:test",
+        evidence_text="retained synthetic public evidence",
+        confidence_basis=ProvenanceConfidenceBasis.DETERMINISTIC_NORMALIZATION,
     )
     site = Site(
         site_key="site:test:001",
@@ -49,7 +53,7 @@ def test_site_store_round_trip() -> None:
     assert persisted is not None
     assert persisted.site_key == "site:test:001"
     assert persisted.apn == "0000-000-00-0000"
-    assert persisted.provenance[0].band.value == "verified"
+    assert persisted.provenance[0].band.value == "high"
 
 
 def test_entity_store_round_trip_and_update() -> None:
@@ -86,7 +90,11 @@ def test_permit_store_round_trip_and_update() -> None:
         role=PartyRole.APPLICANT,
     )
     provenance = Provenance(
-        source_name="Synthetic Public Source", confidence_score=90, verified=True
+        source_name="Synthetic Public Source",
+        adapter_family="synthetic-test",
+        raw_reference="synthetic:test",
+        evidence_text="retained synthetic public evidence",
+        confidence_basis=ProvenanceConfidenceBasis.DETERMINISTIC_NORMALIZATION,
     )
     permit = PermitRecord(
         permit_key="permit:test:001",
@@ -113,7 +121,7 @@ def test_permit_store_round_trip_and_update() -> None:
     assert persisted.site is not None
     assert persisted.site.site_key == "site:test:permit"
     assert persisted.entities[0].role is PartyRole.APPLICANT
-    assert persisted.provenance[0].band.value == "verified"
+    assert persisted.provenance[0].band.value == "high"
     assert len(all_permits) == 1
 
 
@@ -127,7 +135,13 @@ def test_planning_case_store_round_trip_and_update() -> None:
         name="Synthetic Planning Applicant LLC",
         role=PartyRole.APPLICANT,
     )
-    provenance = Provenance(source_name="Synthetic Public Source", confidence_score=75)
+    provenance = Provenance(
+        source_name="Synthetic Public Source",
+        adapter_family="synthetic-test",
+        raw_reference="synthetic:test",
+        evidence_text="retained synthetic public evidence",
+        confidence_basis=ProvenanceConfidenceBasis.DETERMINISTIC_NORMALIZATION,
+    )
     planning_case = PlanningCaseRecord(
         case_key="planning:test:001",
         case_number="PC-001",
@@ -162,7 +176,11 @@ def test_ceqa_store_round_trip() -> None:
     initialize_database(engine)
     factory = session_factory(engine)
     provenance = Provenance(
-        source_name="Synthetic Public Source", confidence_score=90, verified=True
+        source_name="Synthetic Public Source",
+        adapter_family="synthetic-test",
+        raw_reference="synthetic:test",
+        evidence_text="retained synthetic public evidence",
+        confidence_basis=ProvenanceConfidenceBasis.DETERMINISTIC_NORMALIZATION,
     )
     record = CeqaRecord(
         ceqa_key="ceqa:test:001",
@@ -180,7 +198,7 @@ def test_ceqa_store_round_trip() -> None:
     assert persisted is not None
     assert persisted.is_high_signal_document is True
     assert persisted.has_state_clearinghouse_number is True
-    assert persisted.provenance[0].band.value == "verified"
+    assert persisted.provenance[0].band.value == "high"
 
 
 def test_agenda_item_store_round_trip() -> None:
@@ -211,7 +229,13 @@ def test_document_store_round_trip() -> None:
     engine = create_database_engine("sqlite+pysqlite:///:memory:")
     initialize_database(engine)
     factory = session_factory(engine)
-    provenance = Provenance(source_name="Synthetic Public Source", confidence_score=80)
+    provenance = Provenance(
+        source_name="Synthetic Public Source",
+        adapter_family="synthetic-test",
+        raw_reference="synthetic:test",
+        evidence_text="retained synthetic public evidence",
+        confidence_basis=ProvenanceConfidenceBasis.DETERMINISTIC_NORMALIZATION,
+    )
     document = DocumentRecord(
         document_key="document:test:001",
         source_name="Synthetic Public Source",
@@ -236,7 +260,11 @@ def test_relationship_store_round_trip() -> None:
     initialize_database(engine)
     factory = session_factory(engine)
     provenance = Provenance(
-        source_name="Synthetic Public Source", confidence_score=90, verified=True
+        source_name="Synthetic Public Source",
+        adapter_family="synthetic-test",
+        raw_reference="synthetic:test",
+        evidence_text="retained synthetic public evidence",
+        confidence_basis=ProvenanceConfidenceBasis.DETERMINISTIC_NORMALIZATION,
     )
     relationship = RelationshipRecord(
         relationship_key="relationship:test:001",
@@ -255,4 +283,4 @@ def test_relationship_store_round_trip() -> None:
     assert persisted is not None
     assert persisted.is_high_confidence is True
     assert persisted.relationship_type is RelationshipType.ASSOCIATED_WITH
-    assert persisted.provenance[0].band.value == "verified"
+    assert persisted.provenance[0].band.value == "high"

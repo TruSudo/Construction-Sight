@@ -141,7 +141,7 @@ def test_successful_live_execution_embeds_canonical_offline_inspection(
     assert execution.inspection.retained_row_count == 1
     execution.assert_integrity()
     assert verification.passed is True
-    assert verification.findings == []
+    assert verification.findings == ()
     assert verification.inspection_digest == execution.inspection.inspection_digest
 
 
@@ -300,7 +300,7 @@ def test_live_model_rejects_unknown_fields(monkeypatch: pytest.MonkeyPatch) -> N
         CeqanetCsvLiveExecution.model_validate(payload)
 
 
-def test_execute_cli_refuses_missing_scope_bound_authorization(tmp_path: Path) -> None:
+def test_execute_cli_refuses_unreviewed_access_facts(tmp_path: Path) -> None:
     result = runner.invoke(
         app,
         [
@@ -313,7 +313,9 @@ def test_execute_cli_refuses_missing_scope_bound_authorization(tmp_path: Path) -
     )
 
     assert result.exit_code != 0
-    assert "caller confirmation is required" in _plain_terminal(result.output)
+    output = _plain_terminal(result.output)
+    assert "lawful access preflight denied execution" in output
+    assert "review_required" in output
     assert not (tmp_path / "execution.json").exists()
 
 

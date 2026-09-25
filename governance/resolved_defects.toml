@@ -4,8 +4,6 @@ schema_version = "constructionsight.resolved-defects/v2"
 # regression evidence, Git-history provenance, and canonical validation establish
 # closure. Individual closure does not require whole-tree assurance to have already
 # passed; final zero-active-defect certification still requires Native Maximum Assurance.
-defects = []
-
 [[defects]]
 id = "CS-SR-026"
 severity = "P0"
@@ -663,7 +661,7 @@ resolution_summary = "Pinned checkout, setup-python, and upload-artifact to immu
 resolution_commit = "6e568d2c266550be14f50f1270f4a5d13889d787"
 resolution_tree = "7fcfec16460c11694f2ab54650f070cf4ad00732"
 last_active_commit = "93467d37b1876b9732f07ad0ad8a61c02db67b9f"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-068.md", ".github/workflows/ci.yml", "src/constructionsight/ci_action_certification.py"]
+evidence_paths = [".github/workflows/ci.yml", "docs/assurance/defect_closures/CS-SR-068.md", "src/constructionsight/ci_action_certification.py"]
 regression_tests = ["tests/test_ci_action_certification.py"]
 closure_evidence = "docs/assurance/defect_closures/CS-SR-068.md"
 
@@ -678,8 +676,8 @@ resolution_summary = "Removed resolver-selected vulnerability scanner bootstrap 
 resolution_commit = "6e568d2c266550be14f50f1270f4a5d13889d787"
 resolution_tree = "7fcfec16460c11694f2ab54650f070cf4ad00732"
 last_active_commit = "93467d37b1876b9732f07ad0ad8a61c02db67b9f"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-069.md", ".github/workflows/ci.yml", "scripts/acquire_vulnerability_sources.py", "src/constructionsight/vulnerability_certification.py", "src/constructionsight/vulnerability_ci_certification.py"]
-regression_tests = ["tests/test_vulnerability_certification.py", "tests/test_vulnerability_collection.py", "tests/test_vulnerability_ci_certification.py"]
+evidence_paths = [".github/workflows/ci.yml", "docs/assurance/defect_closures/CS-SR-069.md", "scripts/acquire_vulnerability_sources.py", "src/constructionsight/vulnerability_certification.py", "src/constructionsight/vulnerability_ci_certification.py"]
+regression_tests = ["tests/test_vulnerability_certification.py", "tests/test_vulnerability_ci_certification.py", "tests/test_vulnerability_collection.py"]
 closure_evidence = "docs/assurance/defect_closures/CS-SR-069.md"
 
 [[defects]]
@@ -693,7 +691,7 @@ resolution_summary = "Neutralized Bash startup hooks at every security-critical 
 resolution_commit = "6e568d2c266550be14f50f1270f4a5d13889d787"
 resolution_tree = "7fcfec16460c11694f2ab54650f070cf4ad00732"
 last_active_commit = "93467d37b1876b9732f07ad0ad8a61c02db67b9f"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-071.md", ".github/workflows/ci.yml", "src/constructionsight/vulnerability_ci_certification.py"]
+evidence_paths = [".github/workflows/ci.yml", "docs/assurance/defect_closures/CS-SR-071.md", "src/constructionsight/vulnerability_ci_certification.py"]
 regression_tests = ["tests/test_vulnerability_ci_certification.py", "tests/test_vulnerability_ci_startup.py"]
 closure_evidence = "docs/assurance/defect_closures/CS-SR-071.md"
 
@@ -708,7 +706,7 @@ resolution_summary = "Moved every canonical CI run step to the reviewed absolute
 resolution_commit = "6e568d2c266550be14f50f1270f4a5d13889d787"
 resolution_tree = "7fcfec16460c11694f2ab54650f070cf4ad00732"
 last_active_commit = "93467d37b1876b9732f07ad0ad8a61c02db67b9f"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-072.md", ".github/workflows/ci.yml", "src/constructionsight/ci_execution_certification.py"]
+evidence_paths = [".github/workflows/ci.yml", "docs/assurance/defect_closures/CS-SR-072.md", "src/constructionsight/ci_execution_certification.py"]
 regression_tests = ["tests/test_ci_execution_certification.py"]
 closure_evidence = "docs/assurance/defect_closures/CS-SR-072.md"
 
@@ -723,7 +721,7 @@ resolution_summary = "Removed candidate-project installation and build execution
 resolution_commit = "6e568d2c266550be14f50f1270f4a5d13889d787"
 resolution_tree = "7fcfec16460c11694f2ab54650f070cf4ad00732"
 last_active_commit = "93467d37b1876b9732f07ad0ad8a61c02db67b9f"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-073.md", ".github/workflows/ci.yml", "src/constructionsight/ci_execution_certification.py", "docs/adr/ADR-0009-native-maximum-assurance.md"]
+evidence_paths = [".github/workflows/ci.yml", "docs/adr/ADR-0009-native-maximum-assurance.md", "docs/assurance/defect_closures/CS-SR-073.md", "src/constructionsight/ci_execution_certification.py"]
 regression_tests = ["tests/test_ci_execution_certification.py"]
 closure_evidence = "docs/assurance/defect_closures/CS-SR-073.md"
 
@@ -741,3 +739,393 @@ last_active_commit = "93467d37b1876b9732f07ad0ad8a61c02db67b9f"
 evidence_paths = ["docs/assurance/defect_closures/CS-SR-074.md", "requirements/py311.lock", "requirements/py312.lock", "scripts/acquire_vulnerability_sources.py", "src/constructionsight/vulnerability_certification.py"]
 regression_tests = ["tests/test_vulnerability_certification.py", "tests/test_vulnerability_collection.py"]
 closure_evidence = "docs/assurance/defect_closures/CS-SR-074.md"
+
+[[defects]]
+id = "CS-SR-060"
+severity = "P0"
+area = "public-source-egress-authority"
+root_cause = "Generic source-readiness and source-verification transports derive their allowed host and exact request authority from the same caller-controlled source URL they are meant to constrain, so canonical loopback, private, link-local, reserved, or otherwise internal destinations can self-authorize a bounded HTTP request."
+discovered_against = "689e25cd9bfc36facceb0e1d271eb13b86b2aebc"
+required_resolution = "Derive executable source authority only from a separately governed source identity and public-egress policy; reject IP literals and special-use hostnames; validate every resolved address and alias as globally routable; prevent resolution-to-connect rebinding or enforce equivalent network egress controls; preserve exact request, redirect, credential, TLS, and response bounds; and add loopback, private, link-local, numeric-address, mixed-answer, CNAME, and rebinding regressions."
+resolution_summary = "Replaced caller-derived network authority with separately governed exact source identities and an owned public-egress transport that rejects IP literals and special-use hosts, validates every resolved address as globally routable, pins the selected address to the connection while preserving TLS hostname identity, and retains exact request and bounded-response controls."
+resolution_commit = "d15f0742512d02fe3952719e14d99000c6692be9"
+resolution_tree = "559092eb40c99722bb6c0db0adee51c5091d0bb6"
+last_active_commit = "07710b9d9b6ca35d5fe3c4a046112d9e04ed8f8f"
+evidence_paths = ["artifacts/remediation_evidence_2026-08-22_cs_sr_060.md", "docs/assurance/defect_closures/CS-SR-060.md", "src/constructionsight/source_verification_http.py", "src/constructionsight/verification/source_verifier.py"]
+regression_tests = ["tests/test_http_transport.py", "tests/test_source_http_effect_ownership.py", "tests/test_source_readiness_workflow.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-060.md"
+
+[[defects]]
+id = "CS-SR-061"
+severity = "P0"
+area = "effect-consumption-atomicity"
+root_cause = "High-impact authorization and evidence-execution paths determine use or attempt availability from caller-selected, invocation-local, absent, or stale snapshot state and perform the effect without a ConstructionSight-owned atomic consumption reservation, allowing one logical authorization, UTC-date allowance, or recurring-run attempt identity to cause multiple effects."
+discovered_against = "689e25cd9bfc36facceb0e1d271eb13b86b2aebc"
+required_resolution = "Introduce a ConstructionSight-owned consumption service that atomically reserves the exact decision or operation identity immediately before effect execution; use durable uniqueness or compare-and-swap for cross-process database, file, evidence-series, and recurring-run operations; remove production ledger and used-ID injection; bind reservation to exact scope, current state, trusted time, and the owned implementation; make permitted exact replay return the prior committed result without repeating effects; persist terminal success or failure; and add sequential, concurrent, restart, stale-series, duplicate-sequence, and failed-effect recovery regressions."
+resolution_summary = "Introduced a ConstructionSight-owned SQLite consumption lifecycle with durable unique reservation, BEGIN IMMEDIATE and compare-and-swap transitions, internally acquired trusted time, exact operation and implementation binding, terminal success/failure persistence, and exact committed replay without effect re-execution; production effect paths reject caller-selected ledgers, clocks, executors, and consumption backends."
+resolution_commit = "0f26546f8e415fdf37910b0b26d39bf2ca84dbae"
+resolution_tree = "24b66aa15ad9b192347e8dba9322d3c0da5074c3"
+last_active_commit = "07710b9d9b6ca35d5fe3c4a046112d9e04ed8f8f"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-061.md", "docs/audits/cs_sr_061_effect_consumption_remediation_2026-08-22.md", "src/constructionsight/effect_consumption.py", "src/constructionsight/storage/effect_consumption_store.py"]
+regression_tests = ["tests/test_effect_consumption.py", "tests/test_semantic_authorization_certification.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-061.md"
+
+[[defects]]
+id = "CS-SR-075"
+severity = "P1"
+area = "artifact-remediation-quality-regression"
+root_cause = "Recent artifact and consumption corrections introduced nine mandatory Ruff violations on hardening, ten on the stacked GUI, and a prohibited conditional pytest skip decorator. Raw exact-head CI logs for hardening 1a8f1b1e38e9f7ab11adcf629400fb4123c8ddf8 and GUI a3392b8c1b7f44eb0c3c536b737bdae1420c646f show lint failure and CERT-SUPPRESS-001 even though continue-on-error step conclusions say success; native structural preflight fails independently of active-defect and missing-assurance blockers."
+discovered_against = "1a8f1b1e38e9f7ab11adcf629400fb4123c8ddf8"
+required_resolution = "Correct the five shared import-order violations and the additional GUI source-candidate docket import-order violation, nested context-manager violation, and three loop-variable capture violations; replace the platform skip with meaningful platform-capability coverage without suppressing a required check; preserve runtime assertions and certification rules; rerun exact-head Python 3.11 and 3.12 lint, tests, mutations and structural preflight on both stacked branches; retain actual command outcomes and keep the finding active until legitimate Native Maximum Assurance closure."
+resolution_summary = "Corrected the recorded import-order, nested-context and loop-capture Ruff violations and replaced the prohibited conditional skip with executable platform-capability coverage without suppressing certification; subsequent exact-head Python 3.11/3.12 runs pass Ruff, full pytest, focused mutation certification and Native assurance preflight."
+resolution_commit = "008a1a29cf3dccbff2ecf3113c50777607fa33fb"
+resolution_tree = "3b7eb4801095f49f73de42dd07d011c1e7e91389"
+last_active_commit = "07710b9d9b6ca35d5fe3c4a046112d9e04ed8f8f"
+evidence_paths = ["docs/assurance/consolidation_defect_triage_2026-09-24.md", "docs/assurance/defect_closures/CS-SR-075.md", "tests/test_ceqanet_operator_bundle_verify.py", "tests/test_effect_consumption.py"]
+regression_tests = ["tests/test_ceqanet_operator_archive.py", "tests/test_ceqanet_operator_bundle.py", "tests/test_ceqanet_operator_bundle_verify.py", "tests/test_effect_consumption.py", "tests/test_parcel_source_acquisition_bundle.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-075.md"
+
+[[defects]]
+id = "CS-SR-028"
+severity = "P0"
+area = "defect-closure-fact-integrity"
+root_cause = "Resolved-defect validation checks schema and evidence references but does not prove that the original active-defect facts are identical to those present in the reviewed commit, and resolution commits are not proven to exist in reviewed history."
+discovered_against = "4cc3ce763354ea91ef8c4bed28c3ce0b531379c3"
+required_resolution = "Bind closure records to the reviewed commit's complete active-defect ledger, preserve every original defect field exactly, require complete reviewed-ID accounting, and prove each resolution commit exists and is an ancestor of the reviewed implementation commit."
+resolution_summary = "Canonical defect closure now reloads the named last-active ledger from immutable Git history, requires every historical defect field to match exactly, verifies resolution and last-active commits exist in current ancestry, proves the correction commit predates the last-active commit, verifies the resolution tree, and binds assurance to a digest of the complete reviewed active-defect facts."
+resolution_commit = "3f932df4a275f894796c8779fb376fb6bd8eb4f5"
+resolution_tree = "316fff8506714d00fb1ca3a8cc4f5c06ff372ce5"
+last_active_commit = "35bf620b8bd434ad8ca83192d2f92581efc54696"
+evidence_paths = ["docs/adr/ADR-0008-reviewed-defect-closure-history.md", "docs/assurance/defect_closures/CS-SR-028.md", "src/constructionsight/defect_closure_certification.py"]
+regression_tests = ["tests/test_governance_contract_schema.py", "tests/test_review_binding_certification.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-028.md"
+
+[[defects]]
+id = "CS-SR-062"
+severity = "P0"
+area = "assurance-reviewed-tree-binding"
+root_cause = "Native assurance permits reviewed_commit to be any ancestor of HEAD, while reviewed_tree_digest is verified only against the current assurance-covered index tree and is not recomputed from the reviewed commit. An assurance report can therefore bind analytical passes and quality evidence to an older commit while rebinding the digest to a newer non-finalization implementation tree."
+discovered_against = "65b2ef5e726d8ab810776d1774edc74b1b70bc4c"
+required_resolution = "Compute the assurance-covered tree digest directly from reviewed_commit using canonical Git object identities and the same finalization exclusions; require it to equal reviewed_tree_digest and the current covered tree digest; preserve permitted post-review finalization paths; and add stale-reviewed-commit, covered-tree-change, allowed-finalization, and exact-tree regression coverage."
+resolution_summary = "Assurance certification now computes the assurance-covered digest directly from the reviewed commit's Git tree with canonical finalization exclusions, requires it to match the report digest and current covered tree, and rejects stale reviewed commits or covered implementation drift while permitting only explicitly finalization-only changes."
+resolution_commit = "ecf85a78878aa368de0025bd8633ac94d5e1c7e9"
+resolution_tree = "b388d55cb43d698cfc655d18c4f7054c26d9c068"
+last_active_commit = "35bf620b8bd434ad8ca83192d2f92581efc54696"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-062.md", "src/constructionsight/governance_certification.py"]
+regression_tests = ["tests/test_assurance_reviewed_tree_binding.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-062.md"
+
+[[defects]]
+id = "CS-SR-063"
+severity = "P0"
+area = "assurance-context-isolation-integrity"
+root_cause = "Native assurance counts caller-authored completed_reviews values toward minimum context-isolated and deep-review thresholds, so one analytical pass and evidence artifact can claim multiple supposedly fresh contexts; the canonical test helper satisfies three deep reviews with one native-deep artifact."
+discovered_against = "3ba40fd4b6c4e4524af3eb258459425a4b0045a3"
+required_resolution = "Require each context-isolated review to be a distinct pass ID and distinct evidence artifact with completed_reviews exactly 1; require at least five native pass records and at least three distinct deep_repository records, bind each to a unique execution or context identity, and add aggregation, duplicate-context, exact-count regression, and focused mutation coverage."
+resolution_summary = "Native assurance now requires completed_reviews exactly 1 for every pass, distinct pass IDs and evidence/source artifacts, at least five distinct context-isolated native pass records and three distinct deep_repository records, and rejects aggregated counts, reused contexts and reused evidence identities."
+resolution_commit = "aaa96290b45da6fdf12f61ff1919f458f8e9d7a0"
+resolution_tree = "e43b62587f2f595eaa6a7b8a3eaf1eb448745099"
+last_active_commit = "35bf620b8bd434ad8ca83192d2f92581efc54696"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-063.md", "src/constructionsight/assurance_certification.py"]
+regression_tests = ["tests/test_assurance_certification.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-063.md"
+
+[[defects]]
+id = "CS-SR-064"
+severity = "P0"
+area = "assurance-source-provenance-integrity"
+root_cause = "Pass and quality-gate evidence treats source_artifact_sha256 as a syntax-only 64-hex assertion without a resolvable source artifact, so fabricated or stale raw-review and CI provenance, including all-zero hashes, can satisfy Native Maximum Assurance."
+discovered_against = "3ba40fd4b6c4e4524af3eb258459425a4b0045a3"
+required_resolution = "Require every source artifact identity to resolve to immutable retained bytes or an externally authenticated CI artifact identity; verify SHA-256 against those bytes or identity and exact reviewed commit or run metadata; reject placeholders and unresolvable hashes; preserve safe containment and unique ownership; and add zero-hash, missing-source, digest-mismatch, cross-commit, reused-source regression, and focused mutation coverage."
+resolution_summary = "Assurance source provenance now resolves retained source artifacts, recomputes SHA-256 from retained bytes, binds artifacts to exact reviewed commit/context, rejects zero or unresolvable placeholders and cross-commit/reused sources, and binds quality-gate provenance to authoritative GitHub Actions run metadata in canonical preflight."
+resolution_commit = "0285bc90314052a72faf10aa6a609213f7927838"
+resolution_tree = "902150b7bb069dac6729d825b6661ac24763f33e"
+last_active_commit = "35bf620b8bd434ad8ca83192d2f92581efc54696"
+evidence_paths = [".github/workflows/ci.yml", "docs/assurance/defect_closures/CS-SR-064.md", "src/constructionsight/assurance_certification.py", "src/constructionsight/assurance_source_certification.py"]
+regression_tests = ["tests/test_assurance_certification.py", "tests/test_assurance_preflight_certification.py", "tests/test_assurance_source_certification.py", "tests/test_github_actions_certification.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-064.md"
+
+[[defects]]
+id = "CS-SR-054"
+severity = "P0"
+area = "runtime-evidence-containment"
+root_cause = "Runtime evidence and artifact paths can be formed from manifest or artifact references and then resolved through ordinary filesystem operations without a uniform no-follow containment proof, permitting parent, absolute, or symlink-mediated reads or writes outside the intended evidence root."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Centralize runtime evidence path resolution, require relative canonical names and resolved containment beneath the evidence root, reject symlink or reparse traversal at every component and final target, bind verified bytes to later use, and add absolute, parent, symlink, swap, and verify-use regressions."
+resolution_summary = "Centralized runtime artifact access behind canonical path validation and descriptor-relative no-follow traversal, pins every parent and final file identity, rejects unsupported containment primitives and symlink/ancestor substitution, binds bounded verified bytes to the opened handle, and uses the same contained publication protocol for runtime outputs."
+resolution_commit = "62d747172892adb9be24a4d331428080edd91ad2"
+resolution_tree = "1225a6fe9f94a164609654cd467994fb35fef2ab"
+last_active_commit = "c633af8716159d0db01b1f5893fe6d25c28d8351"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-054.md", "docs/audits/evidence/2026-09-21-loader-batch/manifest.json", "docs/audits/evidence/2026-09-21-output-batch/manifest.json", "src/constructionsight/storage/runtime_artifacts.py"]
+regression_tests = ["tests/test_runtime_artifact_publication.py", "tests/test_runtime_artifacts.py", "tests/test_runtime_evidence_loaders.py", "tests/test_runtime_output_writers.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-054.md"
+
+[[defects]]
+id = "CS-SR-055"
+severity = "P1"
+area = "pre-materialization-resource-bounds"
+root_cause = "Some externally controlled local or adapter work is bounded only after materialization or is not bounded at all, including whole-file intake, ZIP entry decompression, and adapter enumeration that calls list(...) before applying max_records."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Apply byte, record, and decompression ceilings before full materialization, stream or incrementally consume bounded work, abort at the first unit beyond the reviewed ceiling, and add oversized-file, compression-ratio, infinite-generator, and max-record regressions."
+resolution_summary = "Applied pre-materialization ceilings across local intake, runtime evidence, archive and proof loaders, and adapter enumeration: local files are size-bounded before full reads, ZIP members and cumulative decompression are streamed under limits, and adapters are consumed with islice under an enforced 5000-record maximum rather than list materialization."
+resolution_commit = "49c79447491bd531299331ad6a5846e64eb1c08e"
+resolution_tree = "383837c5d2ca7900ae0e501153cd902f2967e6ea"
+last_active_commit = "c633af8716159d0db01b1f5893fe6d25c28d8351"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-055.md", "docs/audits/evidence/2026-09-21-loader-batch/manifest.json", "src/constructionsight/adapters/runner.py", "src/constructionsight/intake_service.py", "src/constructionsight/storage/runtime_artifacts.py"]
+regression_tests = ["tests/test_adapter_runner.py", "tests/test_ceqanet_operator_archive_verify.py", "tests/test_intake_service.py", "tests/test_parcel_source_acquisition_bundle.py", "tests/test_runtime_evidence_loaders.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-055.md"
+
+[[defects]]
+id = "CS-SR-018"
+severity = "P0"
+area = "network-authorization-architecture"
+root_cause = "Multiple live CLI paths import approved transport modules directly and use bare Boolean flags such as --execute-live as the operative network grant, bypassing canonical application services and the general scope-bound authorization decision contract."
+discovered_against = "857ec7527317fca93eacb956c9e79d7d067522b5"
+required_resolution = "Prohibit CLI-to-transport imports; inventory every live CLI path; move each operation behind an application service that requires exact actor, action, resource, scope, current state, validity, denied authority, audit identity, and single-use preflight; retain Boolean confirmation only as an additional gate."
+resolution_summary = "The repository now mechanically forbids CLI-to-transport imports through the architecture contract, routes live operations through application/operator services, and path-sensitively requires canonical scope-bound authorization plus durable owned effect consumption before reachable network or persistence effects; Boolean confirmation remains an additional gate rather than operative authority."
+resolution_commit = "0f26546f8e415fdf37910b0b26d39bf2ca84dbae"
+resolution_tree = "24b66aa15ad9b192347e8dba9322d3c0da5074c3"
+last_active_commit = "93442dc0dc5eb2db26bf2e0a652a2c45db55598e"
+evidence_paths = ["docs/adr/ADR-0004-authorization-boundaries.md", "docs/assurance/defect_closures/CS-SR-018.md", "governance/architecture_contract.toml", "src/constructionsight/architecture_boundary_certification.py", "src/constructionsight/semantic_authorization_certification.py"]
+regression_tests = ["tests/test_architecture_boundary_certification.py", "tests/test_semantic_authorization_certification.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-018.md"
+
+[[defects]]
+id = "CS-SR-034"
+severity = "P0"
+area = "semantic-authorization-proof"
+root_cause = "The static semantic-authorization audit trusts authorized-looking function names without resolving imported or aliased call targets and proving that canonical authorization occurs before every reachable effect."
+discovered_against = "4cc3ce763354ea91ef8c4bed28c3ce0b531379c3"
+required_resolution = "Replace naming-convention trust with a resolved interprocedural call graph from operator entry points to effect boundaries, prove authorization and preflight precede every reachable effect, and add spoofed-name, alias, indirect-call, branch-bypass, and effect-before-authorization regressions."
+resolution_summary = "Replaced authorized-looking-name trust with a resolved, path-sensitive interprocedural AST call graph that follows imports and aliases, tracks authorization phases, fails closed on unresolved authorized-looking calls and indirect effect selection, and proves canonical authorization/preflight and owned effect consumption dominate every reachable high-impact effect."
+resolution_commit = "b76be5c8d3a57ec68aeb4490b486c1802f66ba30"
+resolution_tree = "ede507fe2df4107804f75b58d6e6b4d984674b4b"
+last_active_commit = "93442dc0dc5eb2db26bf2e0a652a2c45db55598e"
+evidence_paths = ["docs/adr/ADR-0004-authorization-boundaries.md", "docs/assurance/defect_closures/CS-SR-034.md", "src/constructionsight/semantic_authorization_certification.py"]
+regression_tests = ["tests/test_semantic_authorization_certification.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-034.md"
+
+[[defects]]
+id = "CS-SR-043"
+severity = "P0"
+area = "effect-implementation-authority"
+root_cause = "Production-visible application and execution services can authorize an operation and then invoke caller-selected effect implementations such as executors, persisters, HTTP checkers, registries, adapters, or equivalent callbacks, so the implementation that performs the effect is not necessarily the implementation whose authority was reviewed."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Remove caller-selected effect implementations from production-visible boundaries, route effects through ConstructionSight-owned concrete implementations, retain deterministic substitutes only behind test-only seams, preserve authorized success and failure semantics, and add regressions and mutants proving post-authorization implementation substitution is impossible."
+resolution_summary = "Production authorization facades now execute effects only through ConstructionSight-owned concrete services and the durable effect-consumption boundary; caller-selected executors, persisters, HTTP clients/checkers, registries, adapters, ledgers and equivalent implementation seams are rejected from authorized production signatures and by semantic certification, while deterministic substitutes remain behind test-only seams."
+resolution_commit = "0f26546f8e415fdf37910b0b26d39bf2ca84dbae"
+resolution_tree = "24b66aa15ad9b192347e8dba9322d3c0da5074c3"
+last_active_commit = "93442dc0dc5eb2db26bf2e0a652a2c45db55598e"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-043.md", "docs/audits/cs_sr_061_effect_consumption_remediation_2026-08-22.md", "src/constructionsight/effect_consumption.py", "src/constructionsight/semantic_authorization_certification.py"]
+regression_tests = ["tests/test_adversarial_semantic_witnesses.py", "tests/test_effect_consumption.py", "tests/test_semantic_authorization_certification.py", "tests/test_source_http_effect_ownership.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-043.md"
+
+[[defects]]
+id = "CS-SR-044"
+severity = "P0"
+area = "trusted-time-authority"
+root_cause = "Production-visible authorization and execution facades accept caller-controlled clocks or authorization timestamps, allowing an invented time to influence authorization validity, policy-date checks, date-scoped execution identity, and audit metadata."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Move authoritative time acquisition behind a ConstructionSight-owned production clock boundary, retain deterministic clocks only for tests, bind all time-sensitive authorization and execution state to that trusted clock, and add regressions proving callers cannot backdate or forward-date production authority."
+resolution_summary = "Authoritative effect time is now acquired internally by ConstructionSight's owned effect-consumption boundary and bound into operation validity and audit state; production authorized services reject caller-selected clocks and authorization-time seams, while deterministic time substitution is restricted to tests and semantic certification treats clock parameters as prohibited dynamic authority."
+resolution_commit = "0f26546f8e415fdf37910b0b26d39bf2ca84dbae"
+resolution_tree = "24b66aa15ad9b192347e8dba9322d3c0da5074c3"
+last_active_commit = "93442dc0dc5eb2db26bf2e0a652a2c45db55598e"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-044.md", "docs/audits/cs_sr_061_effect_consumption_remediation_2026-08-22.md", "src/constructionsight/effect_consumption.py", "src/constructionsight/semantic_authorization_certification.py"]
+regression_tests = ["tests/test_effect_consumption.py", "tests/test_semantic_authorization_certification.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-044.md"
+
+[[defects]]
+id = "CS-SR-050"
+severity = "P0"
+area = "business-transition-concurrency"
+root_cause = "Lead workflow authorization checks an expected current state before mutation, but the durable state transition is performed through an ordinary read and upsert rather than a database compare-and-swap, so competing processes can authorize the same old state and race to overwrite one another."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Bind the authorized expected state to the mutation with one database compare-and-swap or equivalent serializable transition primitive, reject stale writers, preserve append-only transition evidence, and add deterministic competing-writer and stale-authorization regressions."
+resolution_summary = "Bound durable lead-workflow transitions to an exact database compare-and-swap over workflow identity, expected status, and prior payload; reject stale competing writers; and append immutable transition evidence only after the conditional state mutation succeeds."
+resolution_commit = "a90615d23039a3b0ce5cf989ce6006f352825af6"
+resolution_tree = "454bf65e924ea0a40fea8fcd68675cd6b1209acb"
+last_active_commit = "63ca6ca95e1574b912efc8254b1b60adbbaf2a85"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-050.md", "src/constructionsight/lead_operator_service.py", "src/constructionsight/storage/lead_workflow_store.py"]
+regression_tests = ["tests/test_lead_workflow_storage.py", "tests/test_lead_workflow_transition_authorization.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-050.md"
+
+[[defects]]
+id = "CS-SR-051"
+severity = "P1"
+area = "historical-ledger-separation"
+root_cause = "Several records that represent events, evidence, snapshots, or historical transitions use mutable upsert semantics or reusable stable IDs appropriate to current-state projections, allowing later writes to replace earlier historical state."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Separate mutable current-state projections from append-only evidence, event, snapshot, and transition ledgers; require immutable transition-specific identity and exact idempotent replay for historical records; preserve supersession explicitly; and add replay, overwrite, and historical reconstruction regressions."
+resolution_summary = "Separated mutable workflow projection updates from immutable transition history, made event identities append-only with exact idempotent replay, rejected historical rewrites, and retained explicit result-ledger supersession for outcome history."
+resolution_commit = "a90615d23039a3b0ce5cf989ce6006f352825af6"
+resolution_tree = "454bf65e924ea0a40fea8fcd68675cd6b1209acb"
+last_active_commit = "63ca6ca95e1574b912efc8254b1b60adbbaf2a85"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-051.md", "src/constructionsight/result_ledger_service.py", "src/constructionsight/storage/lead_workflow_store.py"]
+regression_tests = ["tests/test_lead_workflow_storage.py", "tests/test_result_ledger_supersession.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-051.md"
+
+[[defects]]
+id = "CS-SR-053"
+severity = "P1"
+area = "financial-decimal-integrity"
+root_cause = "Result-share and royalty accounting validates decimal precision at input but performs and persists monetary arithmetic with binary floating-point values and implicit round(..., 2) semantics rather than a canonical monetary type and explicit rounding doctrine."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Represent monetary values and rates with a fixed-decimal or integer-minor-unit domain, define an explicit rounding mode and scale, persist exact decimal values, migrate affected calculations without changing legitimate business semantics, and add boundary, half-cent, accumulation, and replay regressions."
+resolution_summary = "Replaced authoritative share arithmetic with exact integer minor units and millionth-rate units, explicit round-half-even doctrine, exact-unit persistence and identity, and validation that legacy display projections agree with the governed exact values."
+resolution_commit = "30b911d0fa01c5dff84d99b2c8ed98a396bbc744"
+resolution_tree = "c6f0f492bc47e082e48561b92c913c9f544d6373"
+last_active_commit = "63ca6ca95e1574b912efc8254b1b60adbbaf2a85"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-053.md", "src/constructionsight/result_ledger_service.py", "src/constructionsight/storage/lead_workflow_orm.py", "src/constructionsight/storage/lead_workflow_store.py"]
+regression_tests = ["tests/test_lead_workflow_storage.py", "tests/test_result_ledger_precision.py", "tests/test_result_ledger_service.py", "tests/test_result_ledger_share_state.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-053.md"
+
+[[defects]]
+id = "CS-SR-057"
+severity = "P1"
+area = "foundational-domain-invariants"
+root_cause = "Foundational site, permit, planning, and related domain models do not uniformly enforce physical and lifecycle invariants, allowing impossible coordinates, negative physical measurements, contradictory dates, or similarly invalid states into durable projections."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Add the minimum domain-native validators required for physically and temporally valid state, explicitly define allowed unknown or partial states, reject contradictory lifecycle ordering at authoritative boundaries, and add boundary and chronology regressions without refactoring unrelated domain logic."
+resolution_summary = "Enforced valid site coordinate and nonnegative physical bounds and added permit/planning lifecycle chronology validators that reject contradictory known dates while preserving explicitly unknown or partial lifecycle states."
+resolution_commit = "f0086bebd54a8261311741eea66379c27e9edcf8"
+resolution_tree = "cd853dd0da066466199d995a9ceda525846c3487"
+last_active_commit = "63ca6ca95e1574b912efc8254b1b60adbbaf2a85"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-057.md", "src/constructionsight/permit_models.py", "src/constructionsight/planning_models.py", "src/constructionsight/site_models.py"]
+regression_tests = ["tests/test_permit_models.py", "tests/test_planning_models.py", "tests/test_site_models.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-057.md"
+
+[[defects]]
+id = "CS-SR-007"
+severity = "P2"
+area = "independent-review"
+root_cause = "High-risk changes lack a mandatory structured independent adversarial review artifact tied to the exact head."
+discovered_against = "679f15fa6d39f222c16b8c5c3e99db7662465909"
+required_resolution = "Add high-risk classification, review schema, exact-head binding, and unresolved-finding gate."
+resolution_summary = "Replaced an escapable high-risk-only review obligation with mandatory structured Native Maximum Assurance for every final candidate, including exact commit/tree binding, distinct adversarial passes, blind candidate union, and zero unresolved/deferred candidates, while authenticating optional genuinely independent review when claimed."
+resolution_commit = "65b2ef5e726d8ab810776d1774edc74b1b70bc4c"
+resolution_tree = "0930ed4c5e9ffe508e8677b1d311f38606bc2a52"
+last_active_commit = "0440c7dbf61fc526875a736f577fccdaa878f3ee"
+evidence_paths = ["docs/adr/ADR-0009-native-maximum-assurance.md", "docs/assurance/defect_closures/CS-SR-007.md", "governance/assurance_contract.toml", "src/constructionsight/assurance_certification.py"]
+regression_tests = ["tests/test_assurance_certification.py", "tests/test_assurance_reviewed_tree_binding.py", "tests/test_review_binding_certification.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-007.md"
+
+[[defects]]
+id = "CS-SR-027"
+severity = "P0"
+area = "independent-review-identity-authenticity"
+root_cause = "The independent-review certifier requires only nonblank reviewer text inside a repository-controlled JSON artifact. An implementing author can therefore self-author an otherwise valid artifact, claim an arbitrary reviewer identity, and satisfy the mechanical review gate without a separately submitted GitHub review."
+discovered_against = "dcffdb41cc947388528fa9fa2c4bec34e4589299"
+required_resolution = "Bind the review artifact to a real GitHub pull-request review ID and exact reviewed commit; require canonical pull-request CI to fetch that review from GitHub and verify APPROVED state, matching reviewer login, matching commit, a human User identity distinct from the PR author and repository owner, and aggregate the external-review result as a mandatory finalization gate; add positive and spoofing regressions while retaining repository certification as the missing-review blocker before an artifact exists."
+resolution_summary = "Bound independent-human assurance to a real GitHub review ID, reviewer login, pull request, and exact reviewed commit; canonical CI re-fetches APPROVED review evidence and rejects author/owner self-review, bots, stale commits, wrong IDs, and mismatched reviewer identities."
+resolution_commit = "65b2ef5e726d8ab810776d1774edc74b1b70bc4c"
+resolution_tree = "0930ed4c5e9ffe508e8677b1d311f38606bc2a52"
+last_active_commit = "0440c7dbf61fc526875a736f577fccdaa878f3ee"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-027.md", "src/constructionsight/github_review_certification.py"]
+regression_tests = ["tests/test_ci_exact_head_contract.py", "tests/test_github_review_certification.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-027.md"
+
+[[defects]]
+id = "CS-SR-066"
+severity = "P0"
+area = "assurance-owner-acceptance-authenticity"
+root_cause = "Native Maximum Assurance requires explicit owner acceptance, but the canonical report currently treats owner_acceptance as a repository-controlled Boolean with nonblank owner and review_method text; no externally authenticated owner action binds the decision to the exact frozen commit, reviewed tree, and complete material assurance evidence set, so a committer or automation capable of writing permitted finalization artifacts can self-assert owner acceptance."
+discovered_against = "6402f0a49f80099c46c8bb37a392e740783a92b4"
+required_resolution = "Bind owner acceptance to the repository owner's real GitHub User identity, exact pull-request review ID, exact reviewed commit and tree, and a deterministic SHA-256 digest of all material assurance claims; have canonical CI re-fetch and verify the owner review with read-only GitHub authority; require exact acceptance text, COMMENTED state, OWNER association, and human User identity; keep owner acceptance distinct from independent-human review; and add spoofed-owner, stale-commit, changed-evidence, wrong-body/state, wiring, and focused-mutation regressions."
+resolution_summary = "Made owner acceptance externally authenticated: the report binds owner login, PR/review ID, exact reviewed commit/tree, and a deterministic digest of material assurance claims; CI re-fetches the COMMENTED OWNER review from a human GitHub User and verifies the exact acceptance body and evidence identity."
+resolution_commit = "ba5c837ee5c549697944df04d0264b28e36e87c4"
+resolution_tree = "4c222ce11a3dc4734227df93a3428cb4698bb1d4"
+last_active_commit = "0440c7dbf61fc526875a736f577fccdaa878f3ee"
+evidence_paths = ["docs/adr/ADR-0009-native-maximum-assurance.md", "docs/assurance/defect_closures/CS-SR-066.md", "src/constructionsight/owner_acceptance_certification.py"]
+regression_tests = ["tests/test_ci_exact_head_contract.py", "tests/test_owner_acceptance_certification.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-066.md"
+
+[[defects]]
+id = "CS-SR-023"
+severity = "P0"
+area = "synchronization-integrity"
+root_cause = "Sequential hardening commits left tests importing application functions that were not committed, placed authorization logic inside a domain-classified planning module, and allowed PR and governance inventories to lag the actual branch."
+discovered_against = "9fbd989cb20e1bf078f0ee188b9eaaf7830d172f"
+required_resolution = "Restore pure domain boundaries, add application-layer facades, align every test import and CLI call, synchronize mutation/adversarial/capability/defect contracts and PR metadata, and obtain exact-head CI evidence before resolution."
+resolution_summary = "Restored synchronized domain/application boundaries and callers, aligned governance and mutation inventories, repaired exact-head regression drift without suppressions, and obtained retained exact-head Python 3.11/3.12 CI evidence on the fully integrated tree."
+resolution_commit = "6cd5c369b4c82abbcf678e971bc2c1f3376e7772"
+resolution_tree = "09fc0a45f1a25178cf04859928ec777ea3a3031b"
+last_active_commit = "02ab5cd8b3be9e703fde4c9295fb25772b403b0c"
+evidence_paths = [".github/workflows/ci.yml", "docs/assurance/defect_closures/CS-SR-023.md", "governance/mutation_contract.toml", "src/constructionsight/architecture_boundary_certification.py"]
+regression_tests = ["tests/test_architecture_boundary_certification.py", "tests/test_ci_exact_head_contract.py", "tests/test_governance_contract_schema.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-023.md"
+
+[[defects]]
+id = "CS-SR-046"
+severity = "P0"
+area = "epistemic-provenance-authority"
+root_cause = "Verification, confidence, manual-review claims, source independence, and similar epistemic states can be supplied as structurally valid caller assertions without mandatory binding to immutable evidence, evidence existence, reviewer identity, or derivation lineage."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Make authoritative verification and confidence derived states rather than caller assertions, bind them to existing immutable evidence and reviewer or derivation provenance, validate evidence lineage and independence at the trust boundary, and add forged-provenance, missing-evidence, duplicate-lineage, and self-asserted-review regressions."
+resolution_summary = "Removed caller-authored generic verification/confidence authority, derived generic confidence from retained evidence and declared basis, kept generic provenance non-authoritative, excluded computed epistemic projections from persistence/replay payloads, and retained dedicated forged/self-assertion regressions."
+resolution_commit = "6cd5c369b4c82abbcf678e971bc2c1f3376e7772"
+resolution_tree = "09fc0a45f1a25178cf04859928ec777ea3a3031b"
+last_active_commit = "02ab5cd8b3be9e703fde4c9295fb25772b403b0c"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-046.md", "src/constructionsight/ceqanet_persistence_preview.py", "src/constructionsight/provenance.py", "src/constructionsight/source_candidate_docket_service.py"]
+regression_tests = ["tests/test_ceqanet_persistence_preview.py", "tests/test_provenance_authority.py", "tests/test_source_candidate_docket.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-046.md"
+
+[[defects]]
+id = "CS-SR-047"
+severity = "P1"
+area = "derived-identity-integrity"
+root_cause = "Normalized values, fingerprints, candidate identifiers, and other derived semantic identities can be caller supplied or only partially content-bound instead of being recomputed and self-validating at authoritative model or persistence boundaries."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Define canonical versioned derivation rules for every authoritative normalized value and derived identity, recompute and validate them from source content at trust boundaries, use collision-appropriate full digests where identity is security or evidence relevant, canonicalize symmetric identity pairs, and add forged-normalization, forged-fingerprint, reversed-pair, and stale-ID regressions."
+resolution_summary = "Introduced canonical versioned normalization and full-digest identities for authoritative derived identity paths, recomputed them at model boundaries, canonicalized symmetric resolution pairs, and migrated callers/fixtures to reject forged normalization, stale fingerprints, and caller-selected candidate IDs."
+resolution_commit = "6cd5c369b4c82abbcf678e971bc2c1f3376e7772"
+resolution_tree = "09fc0a45f1a25178cf04859928ec777ea3a3031b"
+last_active_commit = "02ab5cd8b3be9e703fde4c9295fb25772b403b0c"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-047.md", "src/constructionsight/contractor_identity_models.py", "src/constructionsight/intelligence/artifact_identity.py", "src/constructionsight/lead_dedupe_models.py"]
+regression_tests = ["tests/test_artifact_resolution_service.py", "tests/test_derived_identity_integrity.py", "tests/test_lead_dedupe_models.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-047.md"
+
+[[defects]]
+id = "CS-SR-058"
+severity = "P0"
+area = "cross-artifact-commit-atomicity"
+root_cause = "Multi-artifact filesystem operations can durably write an audit or report artifact before the corresponding authoritative target is successfully committed, allowing durable evidence to claim an apply or mutation that never completed."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Define one commit protocol for coupled filesystem artifacts, stage and fsync or equivalently prepare all outputs before authoritative replacement, publish success evidence only after the target commit succeeds, recover deterministically from partial failure, and add injected late-write, replacement, and crash-point regressions."
+resolution_summary = "Implemented a staged, serialized coupled-artifact publication transaction with durable pending state, success-manifest-last semantics, deterministic recovery from partial publication and cleanup failure, and adversarial late-failure regressions."
+resolution_commit = "6cd5c369b4c82abbcf678e971bc2c1f3376e7772"
+resolution_tree = "09fc0a45f1a25178cf04859928ec777ea3a3031b"
+last_active_commit = "02ab5cd8b3be9e703fde4c9295fb25772b403b0c"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-058.md", "src/constructionsight/ceqanet_operator_bundle.py", "src/constructionsight/storage/runtime_artifacts.py"]
+regression_tests = ["tests/test_ceqanet_operator_bundle.py", "tests/test_runtime_evidence_loaders.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-058.md"
+
+[[defects]]
+id = "CS-SR-059"
+severity = "P1"
+area = "deep-content-immutability"
+root_cause = "Some frozen or content-addressed outer models contain mutable nested models or collections, so validated content can change after identity or digest construction without forcing a new identity."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Make content-addressed evidence recursively immutable or defensively detached, use immutable collection types for digest-bound fields, prevent nested post-validation mutation, and add nested-list, nested-model, stale-digest, and copy-isolation regressions."
+resolution_summary = "Made digest-bound and evidence-bearing nested collections recursively immutable across result, parcel, CEQAnet live/evidence-series and related models, synchronized constructors to immutable collection contracts, and proved post-validation mutation is rejected without stale identities."
+resolution_commit = "6cd5c369b4c82abbcf678e971bc2c1f3376e7772"
+resolution_tree = "09fc0a45f1a25178cf04859928ec777ea3a3031b"
+last_active_commit = "02ab5cd8b3be9e703fde4c9295fb25772b403b0c"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-059.md", "src/constructionsight/ceqanet_csv_live_models.py", "src/constructionsight/parcel_core_models.py", "src/constructionsight/result_ledger_models.py"]
+regression_tests = ["tests/test_deep_content_immutability.py", "tests/test_parcel_observation_service.py", "tests/test_result_ledger_service.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-059.md"
+
+[[defects]]
+id = "CS-SR-011"
+severity = "P0"
+area = "exact-head-ci"
+root_cause = "No pull-request workflow run or commit status is associated with the current hardening heads after branch updates and a draft PR reopen, while a prior branch head remains observable through the same GitHub API. Exact-head CI evidence therefore does not exist for the current tree."
+discovered_against = "ee2ee1f5d3c09b09d4b70f1f6b3b45fdfed27ab2"
+required_resolution = "Trigger the canonical CI workflow through a non-suppressed pull-request event or explicit workflow dispatch on the final exact head; require both Python jobs and retained certification artifacts before any defect resolution or merge."
+resolution_summary = "Canonical pull-request CI run #1551 executed against exact last-active commit 381a64ecc4e35601453091ac880af0d6328d85a9. Retained Python 3.11 and 3.12 artifacts each prove 2134/2134 tests passed and 164/164 focused mutants killed; Ruff, strict mypy, compilation, isolated vulnerability audits, adapter/source audits, Native assurance preflight, GitHub Actions provenance verification, repository/semantic certification, and diff hygiene all passed. Raw repository certification reduced to only ASSURANCE-001 plus CS-SR-011 itself."
+resolution_commit = "381a64ecc4e35601453091ac880af0d6328d85a9"
+resolution_tree = "ec4523d97cb9d67f8b9c195c1b6caf59cebe80c3"
+last_active_commit = "381a64ecc4e35601453091ac880af0d6328d85a9"
+evidence_paths = [".github/workflows/ci.yml", "docs/assurance/defect_closures/CS-SR-011.md"]
+regression_tests = ["tests/test_assurance_preflight_certification.py", "tests/test_ci_exact_head_contract.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-011.md"

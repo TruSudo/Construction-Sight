@@ -1,0 +1,20 @@
+{
+  "schema_version": "constructionsight.assurance-source-artifact/v1",
+  "reviewed_commit": "539939a8cdef813b919b1c725fa1439d03d97ea7",
+  "kind": "quality_gate",
+  "context_id": "lock-verification-py311",
+  "producer": "github-actions",
+  "payload": {
+    "gate_id": "lock-verification-py311",
+    "status": "passed",
+    "result": "GitHub Actions CI run 1552 canonical step completed successfully.",
+    "run_id": 36193895479,
+    "job_id": 108265173081,
+    "job_name": "Python 3.11 quality gate",
+    "step_name": "Verify exact lock",
+    "head_sha": "539939a8cdef813b919b1c725fa1439d03d97ea7",
+    "workflow_name": "CI",
+    "event": "pull_request",
+    "pull_request_number": 193
+  }
+}

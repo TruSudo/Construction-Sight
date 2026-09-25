@@ -100,6 +100,7 @@ class _Executor:
                 workflow_id=workflow_id,
                 previous_ledger_id=None,
                 current_ledger_id=ledger.ledger_id,
+                current_content_digest=ledger.content_digest,
                 revision=ledger.revision,
                 reason=authority_reason,
                 created_at=_NOW,

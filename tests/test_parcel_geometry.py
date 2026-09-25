@@ -25,7 +25,7 @@ def test_normalize_wkt_point_geometry() -> None:
     assert geometry.envelope_min_latitude == 34.1
     assert geometry.envelope_max_longitude == -117.2
     assert geometry.geometry_hash is not None
-    assert geometry.limitations == []
+    assert geometry.limitations == ()
 
 
 def test_normalize_geojson_polygon_geometry() -> None:
@@ -56,10 +56,10 @@ def test_normalize_geojson_polygon_geometry() -> None:
     assert geometry.envelope_max_longitude == -117.0
     assert geometry.centroid_latitude == pytest.approx(34.05)
     assert geometry.centroid_longitude == pytest.approx(-117.05)
-    assert geometry.limitations == [
+    assert geometry.limitations == (
         _TOPOLOGY_VALIDITY_LIMITATION,
         _PLANAR_CENTROID_LIMITATION,
-    ]
+    )
 
 
 def test_normalize_geojson_feature_geometry() -> None:
@@ -92,10 +92,10 @@ def test_normalize_wkt_polygon_area_weighted_centroid() -> None:
     assert geometry.centroid_longitude == pytest.approx(2.0)
     assert geometry.envelope_min_latitude == 0.0
     assert geometry.envelope_max_longitude == 4.0
-    assert geometry.limitations == [
+    assert geometry.limitations == (
         _TOPOLOGY_VALIDITY_LIMITATION,
         _PLANAR_CENTROID_LIMITATION,
-    ]
+    )
 
 
 def test_normalize_wkt_polygon_subtracts_hole_area() -> None:

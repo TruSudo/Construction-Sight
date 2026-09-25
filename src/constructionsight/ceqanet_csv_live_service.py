@@ -194,7 +194,7 @@ def verify_ceqanet_csv_live_execution(
     return CeqanetCsvLiveVerification(
         passed=not findings,
         finding_count=len(findings),
-        findings=findings,
+        findings=tuple(findings),
         request_url=execution.request_url,
         status_code=execution.status_code,
         inspection_digest=(

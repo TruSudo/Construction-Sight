@@ -1,7 +1,7 @@
 from constructionsight.contractor_identity_service import build_contractor_identity
-from constructionsight.domain_types import confidence_band
 from constructionsight.decision_record_models import DecisionKind, DecisionSourceKind
 from constructionsight.decision_record_service import build_decision_record
+from constructionsight.domain_types import confidence_band
 from constructionsight.opportunity_enrichment_models import EnrichmentSignalKind
 from constructionsight.opportunity_enrichment_service import enrich_opportunity
 from constructionsight.opportunity_scoring_profile import OpportunityScoringProfile
@@ -24,7 +24,7 @@ def _site_result() -> SiteResolutionResult:
                 site_key="site:test",
                 match_strength="exact",
                 confidence_score=90,
-                confidence_band="verified",
+                confidence_band=confidence_band(90),
                 reasons=["site matched"],
             )
         ],
@@ -134,7 +134,7 @@ def test_enrich_opportunity_keeps_limitations_for_lower_confidence_signals() -> 
         contractor_identity=contractor,
     )
 
-    assert report.lead_score == 8
+    assert report.lead_score == 3
     assert "no contractor license signal was available" in report.limitations
     assert report.next_action == "monitor and enrich with more source evidence"
 

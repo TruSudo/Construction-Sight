@@ -356,8 +356,8 @@ risk = "Finalization could rewrite original severity, area, root cause, discover
 [[cases]]
 id = "CS-MUT-DEFECT-ANCESTRY-001"
 path = "src/constructionsight/defect_closure_certification.py"
-search = "        if not ancestor:"
-replacement = "        if False and not ancestor:"
+search = "            if not _is_ancestor(root, resolution_commit, last_active_commit):"
+replacement = "            if False and not _is_ancestor(root, resolution_commit, last_active_commit):"
 tests = ["tests/test_review_binding_certification.py::test_closure_rejects_resolution_outside_reviewed_history"]
 expected_output = "test_closure_rejects_resolution_outside_reviewed_history"
 risk = "A resolution commit outside the reviewed implementation history could be claimed as closure evidence."
@@ -1002,8 +1002,14 @@ risk = "The registry CLI could discard its no-overwrite policy at the actual pub
 [[cases]]
 id = "CS-MUT-BUNDLE-OUTPUT-CONTAINMENT-001"
 path = "src/constructionsight/ceqanet_operator_bundle.py"
-search = "    publish_runtime_artifact(path, chunks(), max_bytes=limit, replace_existing=True)"
-replacement = "    path.write_text(\"\".join(fragments), encoding=\"utf-8\")"
+search = '''        publish_runtime_artifact(
+            output_path,
+            chunks(),
+            max_bytes=limit,
+            replace_existing=True,
+            parent=parent,
+        )'''
+replacement = '''        output_path.write_bytes(b"".join(chunks()))'''
 tests = ["tests/test_ceqanet_operator_bundle.py::test_bundle_publication_rejects_unsafe_output"]
 expected_output = "test_bundle_publication_rejects_unsafe_output"
 risk = "Bundle output could follow a replaced ancestor or final symlink."

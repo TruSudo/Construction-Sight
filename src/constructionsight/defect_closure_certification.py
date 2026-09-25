@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import re
 import subprocess
 import tomllib
@@ -144,6 +146,25 @@ def _active_entries(payload: Mapping[str, Any]) -> dict[str, dict[str, str]]:
             raise DefectClosureError(f"active-defect ledger duplicates {defect_id}")
         entries[defect_id] = facts
     return entries
+
+
+def reviewed_active_defects_digest(root: Path, reviewed_commit: str) -> str:
+    """Return a canonical digest of every active defect fact at one reviewed commit."""
+
+    if _COMMIT_PATTERN.fullmatch(reviewed_commit) is None or not _commit_exists(
+        root, reviewed_commit
+    ):
+        raise DefectClosureError("reviewed active-defect commit does not exist")
+    payload = _read_commit_toml(root, reviewed_commit, _ACTIVE_LEDGER_PATH)
+    entries = _active_entries(payload)
+    canonical = [entries[defect_id] for defect_id in sorted(entries)]
+    encoded = json.dumps(
+        canonical,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
 
 
 def _resolved_entries(payload: Mapping[str, Any]) -> dict[str, dict[str, Any]]:

@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from constructionsight.lead_workflow_models import LeadWorkflowRecord, LeadWorkflowStatus
-from constructionsight.result_ledger_models import ResultLedgerStatus
+from constructionsight.result_ledger_models import ResultLedgerRecord, ResultLedgerStatus
 from constructionsight.result_ledger_service import (
     build_result_ledger_record,
     supersede_result_ledger_record,
@@ -73,7 +73,7 @@ def test_store_result_ledger_record_rejects_immutable_payload_rewrite() -> None:
     with managed_session(_factory()) as session:
         store_result_ledger_record(session, original)
         session.flush()
-        with pytest.raises(ValueError, match="immutable"):
+        with pytest.raises(ValueError, match="material content changed"):
             store_result_ledger_record(session, tampered)
 
 
@@ -87,7 +87,10 @@ def test_store_result_ledger_record_rejects_noncontiguous_append() -> None:
         status=ResultLedgerStatus.LOST,
         correction_reason="confirmed loss",
     )
-    gapped = corrected.model_copy(update={"revision": 3})
+    payload = corrected.model_dump(mode="python")
+    payload["revision"] = 3
+    payload["content_digest"] = None
+    gapped = ResultLedgerRecord.model_validate(payload)
 
     with managed_session(_factory()) as session:
         store_result_ledger_record(session, original)

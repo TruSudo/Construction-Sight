@@ -31,7 +31,9 @@ from constructionsight.storage.lead_workflow_orm import (
     ResultLedgerRecordRow,
     ResultShareRecordRow,
 )
-from constructionsight.storage.lead_workflow_store import store_lead_workflow_record
+from constructionsight.storage.lead_workflow_store import (
+    compare_and_swap_lead_workflow_record,
+)
 
 
 class LeadOperatorError(ValueError):
@@ -360,7 +362,14 @@ def transition_persisted_lead_workflow(
         next_status=next_status,
         reason=normalized_reason,
     )
-    store_lead_workflow_record(session, updated)
+    try:
+        compare_and_swap_lead_workflow_record(
+            session,
+            current=record,
+            updated=updated,
+        )
+    except ValueError as exc:
+        raise LeadOperatorError(str(exc)) from exc
     session.flush()
     event = updated.events[-1]
     return LeadWorkflowTransitionReport(

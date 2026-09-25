@@ -4,24 +4,21 @@ from __future__ import annotations
 
 import hashlib
 import json
-import re
 
 from constructionsight.lead_dedupe_models import (
     LeadDuplicateResult,
     LeadDuplicateStatus,
     LeadFingerprint,
+    canonical_lead_fingerprint_key,
+    normalize_lead_title_value,
 )
 from constructionsight.lead_review_models import LeadReviewPackage
-
-_SPACE_RE = re.compile(r"\s+")
-_NON_WORD_RE = re.compile(r"[^A-Z0-9]+")
 
 
 def normalize_lead_title(value: str) -> str:
     """Normalize lead title text for duplicate checks."""
 
-    cleaned = _NON_WORD_RE.sub(" ", value.upper())
-    return _SPACE_RE.sub(" ", cleaned).strip()
+    return normalize_lead_title_value(value)
 
 
 def build_lead_fingerprint(
@@ -35,7 +32,7 @@ def build_lead_fingerprint(
     """Build deterministic lead fingerprint from review package and source hints."""
 
     normalized_title = normalize_lead_title(title) if title else None
-    fingerprint_key = _fingerprint_key(
+    fingerprint_key = canonical_lead_fingerprint_key(
         site_key=site_key,
         source_key=source_key,
         source_record_id=source_record_id,
@@ -47,6 +44,7 @@ def build_lead_fingerprint(
         site_key=site_key,
         source_key=source_key,
         source_record_id=source_record_id,
+        raw_title=title,
         normalized_title=normalized_title,
         lead_score=package.lead_score,
     )
@@ -106,21 +104,6 @@ def _same_source_record(candidate: LeadFingerprint, existing: LeadFingerprint) -
         and candidate.source_key == existing.source_key
         and candidate.source_record_id == existing.source_record_id
     )
-
-
-def _fingerprint_key(
-    *,
-    site_key: str | None,
-    source_key: str | None,
-    source_record_id: str | None,
-    normalized_title: str | None,
-) -> str:
-    """Build deterministic lead fingerprint key."""
-
-    basis = "|".join(
-        [site_key or "", source_key or "", source_record_id or "", normalized_title or ""]
-    )
-    return f"lead-fingerprint:{_short_hash(basis)}"
 
 
 def _result_id(

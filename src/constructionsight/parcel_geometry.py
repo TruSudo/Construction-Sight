@@ -151,7 +151,7 @@ def normalize_parcel_geometry(
         envelope_max_latitude=envelope[2],
         envelope_max_longitude=envelope[3],
         spatial_reference=effective_spatial_reference,
-        limitations=_unique(limitations),
+        limitations=tuple(_unique(limitations)),
     )
 
 
