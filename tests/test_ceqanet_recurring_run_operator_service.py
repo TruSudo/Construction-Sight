@@ -143,7 +143,13 @@ class _Executor:
             definition_digest=definition.definition_digest,
             manifest_digest=manifest.manifest_digest,
             source_key=manifest.source_key,
-            execution_report={"metadata": {"executed_request_count": 0}},
+            execution_report={
+                "metadata": {
+                    "schema_version": "ceqanet_listing_execution.v1",
+                    "executed_request_count": 0,
+                },
+                "snapshots": [],
+            },
             network_executed=False,
         )
 
@@ -185,6 +191,13 @@ def test_recurring_run_facade_binds_manual_attempt_and_negative_authority(
     assert "automatic recurrence" in authorization["denied_authority"]
     assert "background scheduling" in authorization["denied_authority"]
     assert result.execution.attempt_sequence == 1
+    metadata = result.execution.execution_report["metadata"]
+    assert metadata["schema_version"] == "ceqanet_listing_execution.v2"
+    assert metadata["attempt_sequence"] == 1
+    assert metadata["authorization"]["decision_id"] == authorization["decision_id"]
+    assert metadata["authorization"]["action"] == authorization["action"]
+    assert metadata["access"]["decision"] == "allowed"
+    result.execution.assert_integrity()
     assert executor.calls == [(result.execution.run_id, 1, True)]
 
 
