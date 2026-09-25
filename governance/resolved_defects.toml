@@ -739,3 +739,48 @@ last_active_commit = "93467d37b1876b9732f07ad0ad8a61c02db67b9f"
 evidence_paths = ["docs/assurance/defect_closures/CS-SR-074.md", "requirements/py311.lock", "requirements/py312.lock", "scripts/acquire_vulnerability_sources.py", "src/constructionsight/vulnerability_certification.py"]
 regression_tests = ["tests/test_vulnerability_certification.py", "tests/test_vulnerability_collection.py"]
 closure_evidence = "docs/assurance/defect_closures/CS-SR-074.md"
+
+[[defects]]
+id = "CS-SR-060"
+severity = "P0"
+area = "public-source-egress-authority"
+root_cause = "Generic source-readiness and source-verification transports derive their allowed host and exact request authority from the same caller-controlled source URL they are meant to constrain, so canonical loopback, private, link-local, reserved, or otherwise internal destinations can self-authorize a bounded HTTP request."
+discovered_against = "689e25cd9bfc36facceb0e1d271eb13b86b2aebc"
+required_resolution = "Derive executable source authority only from a separately governed source identity and public-egress policy; reject IP literals and special-use hostnames; validate every resolved address and alias as globally routable; prevent resolution-to-connect rebinding or enforce equivalent network egress controls; preserve exact request, redirect, credential, TLS, and response bounds; and add loopback, private, link-local, numeric-address, mixed-answer, CNAME, and rebinding regressions."
+resolution_summary = "Replaced caller-derived network authority with separately governed exact source identities and an owned public-egress transport that rejects IP literals and special-use hosts, validates every resolved address as globally routable, pins the selected address to the connection while preserving TLS hostname identity, and retains exact request and bounded-response controls."
+resolution_commit = "d15f0742512d02fe3952719e14d99000c6692be9"
+resolution_tree = "559092eb40c99722bb6c0db0adee51c5091d0bb6"
+last_active_commit = "07710b9d9b6ca35d5fe3c4a046112d9e04ed8f8f"
+evidence_paths = ["artifacts/remediation_evidence_2026-08-22_cs_sr_060.md", "docs/assurance/defect_closures/CS-SR-060.md", "src/constructionsight/source_verification_http.py", "src/constructionsight/verification/source_verifier.py"]
+regression_tests = ["tests/test_http_transport.py", "tests/test_source_http_effect_ownership.py", "tests/test_source_readiness_workflow.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-060.md"
+
+[[defects]]
+id = "CS-SR-061"
+severity = "P0"
+area = "effect-consumption-atomicity"
+root_cause = "High-impact authorization and evidence-execution paths determine use or attempt availability from caller-selected, invocation-local, absent, or stale snapshot state and perform the effect without a ConstructionSight-owned atomic consumption reservation, allowing one logical authorization, UTC-date allowance, or recurring-run attempt identity to cause multiple effects."
+discovered_against = "689e25cd9bfc36facceb0e1d271eb13b86b2aebc"
+required_resolution = "Introduce a ConstructionSight-owned consumption service that atomically reserves the exact decision or operation identity immediately before effect execution; use durable uniqueness or compare-and-swap for cross-process database, file, evidence-series, and recurring-run operations; remove production ledger and used-ID injection; bind reservation to exact scope, current state, trusted time, and the owned implementation; make permitted exact replay return the prior committed result without repeating effects; persist terminal success or failure; and add sequential, concurrent, restart, stale-series, duplicate-sequence, and failed-effect recovery regressions."
+resolution_summary = "Introduced a ConstructionSight-owned SQLite consumption lifecycle with durable unique reservation, BEGIN IMMEDIATE and compare-and-swap transitions, internally acquired trusted time, exact operation and implementation binding, terminal success/failure persistence, and exact committed replay without effect re-execution; production effect paths reject caller-selected ledgers, clocks, executors, and consumption backends."
+resolution_commit = "0f26546f8e415fdf37910b0b26d39bf2ca84dbae"
+resolution_tree = "24b66aa15ad9b192347e8dba9322d3c0da5074c3"
+last_active_commit = "07710b9d9b6ca35d5fe3c4a046112d9e04ed8f8f"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-061.md", "docs/audits/cs_sr_061_effect_consumption_remediation_2026-08-22.md", "src/constructionsight/effect_consumption.py", "src/constructionsight/storage/effect_consumption_store.py"]
+regression_tests = ["tests/test_effect_consumption.py", "tests/test_semantic_authorization_certification.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-061.md"
+
+[[defects]]
+id = "CS-SR-075"
+severity = "P1"
+area = "artifact-remediation-quality-regression"
+root_cause = "Recent artifact and consumption corrections introduced nine mandatory Ruff violations on hardening, ten on the stacked GUI, and a prohibited conditional pytest skip decorator. Raw exact-head CI logs for hardening 1a8f1b1e38e9f7ab11adcf629400fb4123c8ddf8 and GUI a3392b8c1b7f44eb0c3c536b737bdae1420c646f show lint failure and CERT-SUPPRESS-001 even though continue-on-error step conclusions say success; native structural preflight fails independently of active-defect and missing-assurance blockers."
+discovered_against = "1a8f1b1e38e9f7ab11adcf629400fb4123c8ddf8"
+required_resolution = "Correct the five shared import-order violations and the additional GUI source-candidate docket import-order violation, nested context-manager violation, and three loop-variable capture violations; replace the platform skip with meaningful platform-capability coverage without suppressing a required check; preserve runtime assertions and certification rules; rerun exact-head Python 3.11 and 3.12 lint, tests, mutations and structural preflight on both stacked branches; retain actual command outcomes and keep the finding active until legitimate Native Maximum Assurance closure."
+resolution_summary = "Corrected the recorded import-order, nested-context and loop-capture Ruff violations and replaced the prohibited conditional skip with executable platform-capability coverage without suppressing certification; subsequent exact-head Python 3.11/3.12 runs pass Ruff, full pytest, focused mutation certification and Native assurance preflight."
+resolution_commit = "008a1a29cf3dccbff2ecf3113c50777607fa33fb"
+resolution_tree = "3b7eb4801095f49f73de42dd07d011c1e7e91389"
+last_active_commit = "07710b9d9b6ca35d5fe3c4a046112d9e04ed8f8f"
+evidence_paths = ["docs/assurance/consolidation_defect_triage_2026-09-24.md", "docs/assurance/defect_closures/CS-SR-075.md", "tests/test_ceqanet_operator_bundle_verify.py", "tests/test_effect_consumption.py"]
+regression_tests = ["tests/test_ceqanet_operator_archive.py", "tests/test_ceqanet_operator_bundle.py", "tests/test_ceqanet_operator_bundle_verify.py", "tests/test_effect_consumption.py", "tests/test_parcel_source_acquisition_bundle.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-075.md"

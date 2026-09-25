@@ -154,22 +154,6 @@ discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
 required_resolution = "Make content-addressed evidence recursively immutable or defensively detached, use immutable collection types for digest-bound fields, prevent nested post-validation mutation, and add nested-list, nested-model, stale-digest, and copy-isolation regressions."
 
 [[defects]]
-id = "CS-SR-060"
-severity = "P0"
-area = "public-source-egress-authority"
-root_cause = "Generic source-readiness and source-verification transports derive their allowed host and exact request authority from the same caller-controlled source URL they are meant to constrain, so canonical loopback, private, link-local, reserved, or otherwise internal destinations can self-authorize a bounded HTTP request."
-discovered_against = "689e25cd9bfc36facceb0e1d271eb13b86b2aebc"
-required_resolution = "Derive executable source authority only from a separately governed source identity and public-egress policy; reject IP literals and special-use hostnames; validate every resolved address and alias as globally routable; prevent resolution-to-connect rebinding or enforce equivalent network egress controls; preserve exact request, redirect, credential, TLS, and response bounds; and add loopback, private, link-local, numeric-address, mixed-answer, CNAME, and rebinding regressions."
-
-[[defects]]
-id = "CS-SR-061"
-severity = "P0"
-area = "effect-consumption-atomicity"
-root_cause = "High-impact authorization and evidence-execution paths determine use or attempt availability from caller-selected, invocation-local, absent, or stale snapshot state and perform the effect without a ConstructionSight-owned atomic consumption reservation, allowing one logical authorization, UTC-date allowance, or recurring-run attempt identity to cause multiple effects."
-discovered_against = "689e25cd9bfc36facceb0e1d271eb13b86b2aebc"
-required_resolution = "Introduce a ConstructionSight-owned consumption service that atomically reserves the exact decision or operation identity immediately before effect execution; use durable uniqueness or compare-and-swap for cross-process database, file, evidence-series, and recurring-run operations; remove production ledger and used-ID injection; bind reservation to exact scope, current state, trusted time, and the owned implementation; make permitted exact replay return the prior committed result without repeating effects; persist terminal success or failure; and add sequential, concurrent, restart, stale-series, duplicate-sequence, and failed-effect recovery regressions."
-
-[[defects]]
 id = "CS-SR-062"
 severity = "P0"
 area = "assurance-reviewed-tree-binding"
@@ -200,11 +184,3 @@ area = "assurance-owner-acceptance-authenticity"
 root_cause = "Native Maximum Assurance requires explicit owner acceptance, but the canonical report currently treats owner_acceptance as a repository-controlled Boolean with nonblank owner and review_method text; no externally authenticated owner action binds the decision to the exact frozen commit, reviewed tree, and complete material assurance evidence set, so a committer or automation capable of writing permitted finalization artifacts can self-assert owner acceptance."
 discovered_against = "6402f0a49f80099c46c8bb37a392e740783a92b4"
 required_resolution = "Bind owner acceptance to the repository owner's real GitHub User identity, exact pull-request review ID, exact reviewed commit and tree, and a deterministic SHA-256 digest of all material assurance claims; have canonical CI re-fetch and verify the owner review with read-only GitHub authority; require exact acceptance text, COMMENTED state, OWNER association, and human User identity; keep owner acceptance distinct from independent-human review; and add spoofed-owner, stale-commit, changed-evidence, wrong-body/state, wiring, and focused-mutation regressions."
-
-[[defects]]
-id = "CS-SR-075"
-severity = "P1"
-area = "artifact-remediation-quality-regression"
-root_cause = "Recent artifact and consumption corrections introduced nine mandatory Ruff violations on hardening, ten on the stacked GUI, and a prohibited conditional pytest skip decorator. Raw exact-head CI logs for hardening 1a8f1b1e38e9f7ab11adcf629400fb4123c8ddf8 and GUI a3392b8c1b7f44eb0c3c536b737bdae1420c646f show lint failure and CERT-SUPPRESS-001 even though continue-on-error step conclusions say success; native structural preflight fails independently of active-defect and missing-assurance blockers."
-discovered_against = "1a8f1b1e38e9f7ab11adcf629400fb4123c8ddf8"
-required_resolution = "Correct the five shared import-order violations and the additional GUI source-candidate docket import-order violation, nested context-manager violation, and three loop-variable capture violations; replace the platform skip with meaningful platform-capability coverage without suppressing a required check; preserve runtime assertions and certification rules; rerun exact-head Python 3.11 and 3.12 lint, tests, mutations and structural preflight on both stacked branches; retain actual command outcomes and keep the finding active until legitimate Native Maximum Assurance closure."
