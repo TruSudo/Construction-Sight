@@ -195,7 +195,7 @@ def test_store_opportunity_enrichment_report_roundtrip() -> None:
         session.flush()
         row = session.execute(select(OpportunityEnrichmentReportRecord)).scalar_one()
 
-        assert row.confidence_band == "high"
+        assert row.confidence_band == "verified"
         assert row.scoring_profile_key == "opportunity-scoring:default"
         assert row.scoring_profile_version == "2026-06-30.1"
         payload = json.loads(row.payload_json)
