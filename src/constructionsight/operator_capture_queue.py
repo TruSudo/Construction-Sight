@@ -40,7 +40,10 @@ def empty_operator_capture_queue() -> dict[str, Any]:
         "candidates": [],
         "limitations": [
             "No retained exact-SCH capture queue was configured for this operator session.",
-            "The dashboard cannot discover, fetch, import, qualify, contact, or bid from this state.",
+            (
+                "The dashboard cannot discover, fetch, import, qualify, contact, or bid "
+                "from this state."
+            ),
         ],
     }
 
@@ -206,7 +209,10 @@ def load_operator_capture_queue(path: Path) -> dict[str, Any]:
         "limitations": [
             "Candidates are retained source claims, not verified current projects or active sites.",
             "Queue metadata is not independent authentication of the original listing execution.",
-            "Each SCH requires a separate current lawful-access review and one-request authorization.",
+            (
+                "Each SCH requires a separate current lawful-access review and one-request "
+                "authorization."
+            ),
             "The local dashboard cannot fetch, import, qualify, contact, bid, or create a lead.",
         ],
     }
