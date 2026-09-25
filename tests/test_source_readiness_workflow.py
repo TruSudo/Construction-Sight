@@ -17,7 +17,10 @@ from constructionsight.source_readiness_models import (
     HttpReachabilityResult,
     SourceReadinessStatus,
 )
-from constructionsight.source_readiness_service import build_source_readiness_report
+from constructionsight.source_readiness_service import (
+    _build_source_readiness_report_with_results,
+    build_source_readiness_report,
+)
 
 
 def _source(
@@ -81,11 +84,11 @@ def test_source_readiness_seed_only_without_http_check() -> None:
 
 
 def test_source_readiness_reachable_unverified_is_not_verified() -> None:
-    report = build_source_readiness_report(
-        [_source(status=VerificationStatus.UNVERIFIED)],
+    source = _source(status=VerificationStatus.UNVERIFIED)
+    report = _build_source_readiness_report_with_results(
+        [source],
         default_adapter_family_specs(),
-        check_http=True,
-        http_checker=_reachable,
+        http_results=(_reachable(source),),
     )
     row = report.rows[0]
 
@@ -95,11 +98,11 @@ def test_source_readiness_reachable_unverified_is_not_verified() -> None:
 
 
 def test_source_readiness_blocked_http_response() -> None:
-    report = build_source_readiness_report(
-        [_source()],
+    source = _source()
+    report = _build_source_readiness_report_with_results(
+        [source],
         default_adapter_family_specs(),
-        check_http=True,
-        http_checker=_blocked,
+        http_results=(_blocked(source),),
     )
     row = report.rows[0]
 
@@ -109,11 +112,11 @@ def test_source_readiness_blocked_http_response() -> None:
 
 
 def test_source_readiness_failed_http_response() -> None:
-    report = build_source_readiness_report(
-        [_source()],
+    source = _source()
+    report = _build_source_readiness_report_with_results(
+        [source],
         default_adapter_family_specs(),
-        check_http=True,
-        http_checker=_failed,
+        http_results=(_failed(source),),
     )
     row = report.rows[0]
 
@@ -122,11 +125,11 @@ def test_source_readiness_failed_http_response() -> None:
 
 
 def test_source_readiness_verified_placeholder_adapter_is_partial() -> None:
-    report = build_source_readiness_report(
-        [_source(status=VerificationStatus.VERIFIED)],
+    source = _source(status=VerificationStatus.VERIFIED)
+    report = _build_source_readiness_report_with_results(
+        [source],
         default_adapter_family_specs(),
-        check_http=True,
-        http_checker=_reachable,
+        http_results=(_reachable(source),),
     )
     row = report.rows[0]
 
@@ -141,12 +144,11 @@ def test_source_readiness_verified_live_adapter_is_candidate() -> None:
         platform_family=PlatformFamily.ACCELA_ACA,
         status=AdapterImplementationStatus.LIVE_READ_ONLY,
     )
-
-    report = build_source_readiness_report(
-        [_source(status=VerificationStatus.VERIFIED)],
+    source = _source(status=VerificationStatus.VERIFIED)
+    report = _build_source_readiness_report_with_results(
+        [source],
         specs,
-        check_http=True,
-        http_checker=_reachable,
+        http_results=(_reachable(source),),
     )
     row = report.rows[0]
 

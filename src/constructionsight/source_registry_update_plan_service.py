@@ -9,16 +9,18 @@ from constructionsight.adapters.specs import AdapterFamilySpec
 from constructionsight.models import PlatformFamily, PublicSource
 from constructionsight.source_promotion_plan_models import (
     SourcePromotionPlanAction,
+    SourcePromotionPlanReport,
     SourcePromotionPlanRow,
 )
 from constructionsight.source_promotion_plan_service import build_source_promotion_plan
-from constructionsight.source_readiness_service import HttpReachabilityChecker
 from constructionsight.source_registry_integrity import source_registry_digest
 from constructionsight.source_registry_update_plan_models import (
     SourceRegistryUpdatePlanReport,
     SourceRegistryUpdatePlanRow,
 )
-from constructionsight.source_verification_checklist_models import SourceVerificationObservation
+from constructionsight.source_verification_checklist_models import (
+    SourceVerificationObservation,
+)
 from constructionsight.source_verification_evidence_service import (
     build_source_verification_evidence_package,
 )
@@ -29,20 +31,30 @@ def build_source_registry_update_plan(
     adapter_specs: dict[PlatformFamily, AdapterFamilySpec],
     *,
     check_http: bool = False,
-    http_checker: HttpReachabilityChecker | None = None,
     observations: Iterable[SourceVerificationObservation] | None = None,
 ) -> SourceRegistryUpdatePlanReport:
     """Build a dry-run registry update plan without writing registry files."""
 
-    source_index = {source_registry_key(source): source for source in sources}
     promotion_plan = build_source_promotion_plan(
         sources,
         adapter_specs,
         check_http=check_http,
-        http_checker=http_checker,
         observations=observations,
     )
-    rows = [_update_row(row, source_index[row.source_key]) for row in promotion_plan.rows]
+    return _build_source_registry_update_plan_from_promotion_plan(
+        sources,
+        promotion_plan,
+    )
+
+
+def _build_source_registry_update_plan_from_promotion_plan(
+    sources: list[PublicSource],
+    promotion_plan: SourcePromotionPlanReport,
+) -> SourceRegistryUpdatePlanReport:
+    source_index = {source_registry_key(source): source for source in sources}
+    rows = [
+        _update_row(row, source_index[row.source_key]) for row in promotion_plan.rows
+    ]
     return SourceRegistryUpdatePlanReport.from_rows(
         rows,
         registry_digest=source_registry_digest(sources),
@@ -109,7 +121,11 @@ def _next_action(action: SourcePromotionPlanAction, update_required: bool) -> st
 def source_registry_key(source: PublicSource) -> str:
     """Return the canonical source key used across verification workflows."""
 
-    evidence_package = build_source_verification_evidence_package([source], {}, check_http=False)
+    evidence_package = build_source_verification_evidence_package(
+        [source],
+        {},
+        check_http=False,
+    )
     return evidence_package.rows[0].source_key
 
 
