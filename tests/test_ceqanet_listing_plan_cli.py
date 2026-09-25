@@ -31,7 +31,7 @@ def test_ceqanet_listing_plan_cli_renders_allowed_plan_table() -> None:
             "--max-pages",
             "2",
             "--access-fact-basis",
-            "review:test-listing-plan",
+            "review:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
         ],
     )
 
@@ -74,7 +74,7 @@ def test_ceqanet_listing_plan_cli_emits_json_allowed_plan() -> None:
             "--received-to",
             "2026-01-31",
             "--access-fact-basis",
-            "review:test-listing-plan",
+            "review:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
             "--json-output",
         ],
     )
@@ -121,7 +121,7 @@ def test_ceqanet_listing_plan_cli_writes_json_output(tmp_path: Path) -> None:
             "--county",
             "Riverside",
             "--access-fact-basis",
-            "review:test-listing-plan",
+            "review:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
             "--json-output",
             "--output",
             str(output_path),
