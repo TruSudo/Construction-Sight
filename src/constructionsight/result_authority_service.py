@@ -439,7 +439,7 @@ def _same_outcome(
         and current.decided_date == decided_date
         and current.gross_value == gross_value
         and current_rate == share_rate
-        and current.reasons == (outcome_reasons or [])
+        and current.reasons == tuple(outcome_reasons or [])
     )
 
 
