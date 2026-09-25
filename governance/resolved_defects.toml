@@ -994,3 +994,48 @@ last_active_commit = "63ca6ca95e1574b912efc8254b1b60adbbaf2a85"
 evidence_paths = ["docs/assurance/defect_closures/CS-SR-057.md", "src/constructionsight/permit_models.py", "src/constructionsight/planning_models.py", "src/constructionsight/site_models.py"]
 regression_tests = ["tests/test_permit_models.py", "tests/test_planning_models.py", "tests/test_site_models.py"]
 closure_evidence = "docs/assurance/defect_closures/CS-SR-057.md"
+
+[[defects]]
+id = "CS-SR-007"
+severity = "P2"
+area = "independent-review"
+root_cause = "High-risk changes lack a mandatory structured independent adversarial review artifact tied to the exact head."
+discovered_against = "679f15fa6d39f222c16b8c5c3e99db7662465909"
+required_resolution = "Add high-risk classification, review schema, exact-head binding, and unresolved-finding gate."
+resolution_summary = "Replaced an escapable high-risk-only review obligation with mandatory structured Native Maximum Assurance for every final candidate, including exact commit/tree binding, distinct adversarial passes, blind candidate union, and zero unresolved/deferred candidates, while authenticating optional genuinely independent review when claimed."
+resolution_commit = "65b2ef5e726d8ab810776d1774edc74b1b70bc4c"
+resolution_tree = "0930ed4c5e9ffe508e8677b1d311f38606bc2a52"
+last_active_commit = "0440c7dbf61fc526875a736f577fccdaa878f3ee"
+evidence_paths = ["docs/adr/ADR-0009-native-maximum-assurance.md", "docs/assurance/defect_closures/CS-SR-007.md", "governance/assurance_contract.toml", "src/constructionsight/assurance_certification.py"]
+regression_tests = ["tests/test_assurance_certification.py", "tests/test_assurance_reviewed_tree_binding.py", "tests/test_review_binding_certification.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-007.md"
+
+[[defects]]
+id = "CS-SR-027"
+severity = "P0"
+area = "independent-review-identity-authenticity"
+root_cause = "The independent-review certifier requires only nonblank reviewer text inside a repository-controlled JSON artifact. An implementing author can therefore self-author an otherwise valid artifact, claim an arbitrary reviewer identity, and satisfy the mechanical review gate without a separately submitted GitHub review."
+discovered_against = "dcffdb41cc947388528fa9fa2c4bec34e4589299"
+required_resolution = "Bind the review artifact to a real GitHub pull-request review ID and exact reviewed commit; require canonical pull-request CI to fetch that review from GitHub and verify APPROVED state, matching reviewer login, matching commit, a human User identity distinct from the PR author and repository owner, and aggregate the external-review result as a mandatory finalization gate; add positive and spoofing regressions while retaining repository certification as the missing-review blocker before an artifact exists."
+resolution_summary = "Bound independent-human assurance to a real GitHub review ID, reviewer login, pull request, and exact reviewed commit; canonical CI re-fetches APPROVED review evidence and rejects author/owner self-review, bots, stale commits, wrong IDs, and mismatched reviewer identities."
+resolution_commit = "65b2ef5e726d8ab810776d1774edc74b1b70bc4c"
+resolution_tree = "0930ed4c5e9ffe508e8677b1d311f38606bc2a52"
+last_active_commit = "0440c7dbf61fc526875a736f577fccdaa878f3ee"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-027.md", "src/constructionsight/github_review_certification.py"]
+regression_tests = ["tests/test_ci_exact_head_contract.py", "tests/test_github_review_certification.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-027.md"
+
+[[defects]]
+id = "CS-SR-066"
+severity = "P0"
+area = "assurance-owner-acceptance-authenticity"
+root_cause = "Native Maximum Assurance requires explicit owner acceptance, but the canonical report currently treats owner_acceptance as a repository-controlled Boolean with nonblank owner and review_method text; no externally authenticated owner action binds the decision to the exact frozen commit, reviewed tree, and complete material assurance evidence set, so a committer or automation capable of writing permitted finalization artifacts can self-assert owner acceptance."
+discovered_against = "6402f0a49f80099c46c8bb37a392e740783a92b4"
+required_resolution = "Bind owner acceptance to the repository owner's real GitHub User identity, exact pull-request review ID, exact reviewed commit and tree, and a deterministic SHA-256 digest of all material assurance claims; have canonical CI re-fetch and verify the owner review with read-only GitHub authority; require exact acceptance text, COMMENTED state, OWNER association, and human User identity; keep owner acceptance distinct from independent-human review; and add spoofed-owner, stale-commit, changed-evidence, wrong-body/state, wiring, and focused-mutation regressions."
+resolution_summary = "Made owner acceptance externally authenticated: the report binds owner login, PR/review ID, exact reviewed commit/tree, and a deterministic digest of material assurance claims; CI re-fetches the COMMENTED OWNER review from a human GitHub User and verifies the exact acceptance body and evidence identity."
+resolution_commit = "ba5c837ee5c549697944df04d0264b28e36e87c4"
+resolution_tree = "4c222ce11a3dc4734227df93a3428cb4698bb1d4"
+last_active_commit = "0440c7dbf61fc526875a736f577fccdaa878f3ee"
+evidence_paths = ["docs/adr/ADR-0009-native-maximum-assurance.md", "docs/assurance/defect_closures/CS-SR-066.md", "src/constructionsight/owner_acceptance_certification.py"]
+regression_tests = ["tests/test_ci_exact_head_contract.py", "tests/test_owner_acceptance_certification.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-066.md"
