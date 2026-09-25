@@ -36,7 +36,6 @@ def build_lead_fingerprint(
         site_key=site_key,
         source_key=source_key,
         source_record_id=source_record_id,
-        raw_title=title,
         normalized_title=normalized_title,
     )
     return LeadFingerprint(
@@ -45,6 +44,7 @@ def build_lead_fingerprint(
         site_key=site_key,
         source_key=source_key,
         source_record_id=source_record_id,
+        raw_title=title,
         normalized_title=normalized_title,
         lead_score=package.lead_score,
     )
