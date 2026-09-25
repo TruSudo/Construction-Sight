@@ -87,7 +87,9 @@ def _load_bound_capture_candidate(
             listing_payload, original_bytes=listing_raw,
         )
         if queue_payload != regenerated:
-            raise ValueError(\n                "saved queue does not exactly match a fresh derivation from listing evidence"\n            )
+            raise ValueError(
+                "saved queue does not exactly match a fresh derivation from listing evidence"
+            )
         candidates = regenerated.get("candidates")
         if not isinstance(candidates, list):
             raise ValueError("saved queue candidates are malformed")
