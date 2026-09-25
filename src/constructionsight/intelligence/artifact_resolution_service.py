@@ -18,6 +18,7 @@ from constructionsight.intelligence.artifact_identity import (
     IdentityArtifactType,
     IdentityFingerprint,
     IdentityResolutionCandidate,
+    ResolutionTargetKind,
     artifact_tier,
     canonical_resolution_candidate_id,
 )
