@@ -50,3 +50,33 @@ last_active_commit = "059234e6ff5de2fc6e7ebfb7dbcfa5bd795ab3e5"
 evidence_paths = ["docs/assurance/defect_closures/CS-SR-049.md", "src/constructionsight/lead_operator_service.py", "src/constructionsight/lead_workflow_models.py", "src/constructionsight/storage/lead_workflow_store.py"]
 regression_tests = ["tests/test_lead_workflow_models.py", "tests/test_lead_workflow_service.py", "tests/test_lead_workflow_storage.py", "tests/test_lead_workflow_transition_authorization.py"]
 closure_evidence = "docs/assurance/defect_closures/CS-SR-049.md"
+
+[[defects]]
+id = "CS-SR-052"
+severity = "P1"
+area = "result-ledger-content-identity"
+root_cause = "Result ledger identity is derived from workflow, status, and revision without binding all semantically material outcome content, so materially different result records can share the same nominal ledger identifier."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Define canonical result-ledger serialization and a full content digest covering every material outcome field, bind authority events to that digest, keep revision or head identity separate from content identity, and add regressions proving any material mutation changes the content identity."
+resolution_summary = "Added a canonical full-content SHA-256 digest across material result outcome fields, recomputed and validated it at model/history boundaries, separated revision identity from content identity, bound authority events to predecessor/current content digests, and added mutation/tamper regressions."
+resolution_commit = "de1007dd04300b521b1b6ad5713b98ab82b11ddc"
+resolution_tree = "a9c7c4f1a1d3221acb875550e0c82deff7df5d76"
+last_active_commit = "4f3e45ef4fe35262f5ec89214933b4112d1c3def"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-052.md", "src/constructionsight/result_authority_models.py", "src/constructionsight/result_authority_service.py", "src/constructionsight/result_ledger_models.py", "src/constructionsight/result_ledger_service.py"]
+regression_tests = ["tests/test_result_authority_event_integrity.py", "tests/test_result_ledger_service.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-052.md"
+
+[[defects]]
+id = "CS-SR-056"
+severity = "P1"
+area = "database-schema-evolution"
+root_cause = "Database initialization relies on SQLAlchemy metadata create_all without a governed schema-version or migration mechanism, so existing databases can retain obsolete columns, constraints, or table shapes while current ORM models and certification assume a newer schema."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Introduce a deterministic repository-native schema version and migration or fail-closed compatibility mechanism, verify the persisted schema before application effects, provide explicit upgrade provenance, and add old-schema, partial-upgrade, wrong-version, and fresh-database regressions."
+resolution_summary = "Added repository-owned schema version 1, canonical schema identity, fail-closed compatibility verification, provenance-bound adoption for exact unversioned schemas, no-mutation rejection for incompatible legacy schemas, and regression coverage for fresh, partial, wrong-version, and shape-drift states."
+resolution_commit = "1866453b6cfcf63b6c0cd2af4cbb234daa59581f"
+resolution_tree = "93e1e6893e33253adcf921e1739af8972638b4b6"
+last_active_commit = "4f3e45ef4fe35262f5ec89214933b4112d1c3def"
+evidence_paths = ["docs/architecture/database_schema_governance.md", "docs/assurance/defect_closures/CS-SR-056.md", "src/constructionsight/storage/database.py", "src/constructionsight/storage/schema_governance.py"]
+regression_tests = ["tests/test_schema_governance.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-056.md"
