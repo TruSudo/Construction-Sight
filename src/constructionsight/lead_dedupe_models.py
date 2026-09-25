@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
 import hashlib
 import re
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
@@ -34,7 +34,6 @@ def canonical_lead_fingerprint_key(
         [site_key or "", source_key or "", source_record_id or "", normalized_title or ""]
     )
     return f"lead-fingerprint:v2:{hashlib.sha256(basis.encode('utf-8')).hexdigest()}"
-
 
 
 class LeadDuplicateStatus(StrEnum):
