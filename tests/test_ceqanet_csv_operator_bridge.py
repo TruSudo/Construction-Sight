@@ -1047,3 +1047,108 @@ def test_bound_apply_rejects_tampered_discovery_envelope_before_sqlite_write(
     assert result.exit_code == 2
     assert "discovery lineage differs" in result.output
     assert hashlib.sha256(database.read_bytes()).hexdigest() == before
+
+
+
+def test_capture_next_preview_selects_pending_sch_and_stops_after_persistence(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Queue orchestration performs at most one capture and never auto-applies it."""
+
+    listing_path = tmp_path / "listing.json"
+    queue_path = tmp_path / "queue.json"
+    listing_path.write_text(
+        json.dumps(_single_candidate_listing(), sort_keys=True),
+        encoding="utf-8",
+    )
+    discovered = runner.invoke(
+        app,
+        [
+            "discover-preview",
+            "--listing-evidence",
+            str(listing_path),
+            "--output",
+            str(queue_path),
+        ],
+    )
+    assert discovered.exit_code == 0, discovered.output
+
+    database = tmp_path / "operator.sqlite3"
+    engine = create_database_engine(f"sqlite:///{database}")
+    initialize_database(engine)
+    engine.dispose()
+    database_before_capture = hashlib.sha256(database.read_bytes()).hexdigest()
+
+    calls: list[dict[str, object]] = []
+
+    def capture_once(**kwargs: object) -> SimpleNamespace:
+        calls.append(kwargs)
+        return SimpleNamespace(
+            execution=_execution().model_copy(update={"executed_at": datetime.now(UTC)}),
+            verification=SimpleNamespace(passed=True),
+        )
+
+    monkeypatch.setattr(capture_module, "execute_authorized_ceqanet_csv", capture_once)
+    evidence = tmp_path / "next-capture.json"
+    plan = tmp_path / "next-plan.json"
+    captured = runner.invoke(
+        app,
+        [
+            "capture-next-preview",
+            "--listing-evidence",
+            str(listing_path),
+            "--queue-evidence",
+            str(queue_path),
+            "--database",
+            str(database),
+            "--output",
+            str(evidence),
+            "--plan-output",
+            str(plan),
+            "--authorization-reason",
+            "Capture one next pending reviewed SCH",
+            "--execute-live",
+        ],
+    )
+    assert captured.exit_code == 0, captured.output
+    payload = json.loads(captured.stdout)
+    assert len(calls) == 1
+    assert calls[0]["request"].sch_number == "2026030377"
+    assert payload["discovery_binding"]["sch_number"] == "2026030377"
+    assert payload["network_executed"] is True
+    assert payload["persistence_mutated"] is False
+    assert evidence.is_file() and plan.is_file()
+    assert hashlib.sha256(database.read_bytes()).hexdigest() == database_before_capture
+
+    bridge = build_reviewed_ceqanet_csv_bridge(_execution())
+    writer = create_database_engine(f"sqlite:///{database}")
+    assert execute_ceqanet_write_plan(
+        bridge.write_plan.to_dict(),
+        engine=writer,
+    ).applied_count == bridge.write_plan.operation_count
+    writer.dispose()
+
+    unused_output = tmp_path / "must-not-capture.json"
+    no_pending = runner.invoke(
+        app,
+        [
+            "capture-next-preview",
+            "--listing-evidence",
+            str(listing_path),
+            "--queue-evidence",
+            str(queue_path),
+            "--database",
+            str(database),
+            "--output",
+            str(unused_output),
+            "--authorization-reason",
+            "No second request is allowed for a persisted SCH",
+        ],
+    )
+    assert no_pending.exit_code == 0, no_pending.output
+    no_pending_payload = json.loads(no_pending.stdout)
+    assert no_pending_payload["status"] == "no_pending_capture_candidate"
+    assert no_pending_payload["pending_capture_count"] == 0
+    assert no_pending_payload["network_executed"] is False
+    assert len(calls) == 1
+    assert not unused_output.exists()
