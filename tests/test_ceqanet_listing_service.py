@@ -208,3 +208,22 @@ def test_listing_authorization_state_binds_access_fact_basis() -> None:
     )
 
     assert first_state != second_state
+
+
+def test_listing_plan_cannot_be_rebound_to_different_access_review() -> None:
+    executor = _Executor()
+    plan_profile = _profile(access_fact_basis="review:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd")
+    execution_profile = _profile(access_fact_basis="review:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
+    plan = _plan(plan_profile)
+
+    with pytest.raises(
+        AuthorizationDeniedError,
+        match="current lawful-access state does not match",
+    ):
+        _execute(
+            executor,
+            plan=plan,
+            profile=execution_profile,
+        )
+
+    assert executor.calls == []
