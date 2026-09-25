@@ -416,13 +416,42 @@ async function showHistoricalPulse() {
       target.innerHTML='<p role="alert">Historical source milestones unavailable: '+escapeText(error.message||error)+'</p>';
   }
 }
-function prepareCeqanetCapture() {
+async function prepareCeqanetCapture() {
   const raw=byId("capture-sch-number").value.trim();
   const target=byId("capture-instructions");
   if(!/^[0-9]{10}$/.test(raw)){
     target.textContent="Enter an exact 10-digit SCH number from the official public source. No collection was attempted.";
     return;
   }
+  target.innerHTML='<p role="status">Checking this local database for the exact SCH before preparing any capture…</p>';
+  try {
+    const retained=await fetchJson("/api/snapshot?"+new URLSearchParams({
+      kind:"ceqa",q:raw,limit:"100",offset:"0"
+    }));
+    if(retained.read_only!==true || retained.live_collection_enabled!==false ||
+      retained.selection!=="ceqa" || !Array.isArray(retained.projects) ||
+      retained.returned!==retained.projects.length || !Number.isSafeInteger(retained.total))
+      throw Error("Local CEQA source lookup returned inconsistent scope.");
+    const exact=retained.projects.filter(row=>
+      row && row.record_kind==="ceqa" && row.source_record_number===raw
+    );
+    if(exact.length){
+      target.innerHTML='<span class="badge">EXACT SCH ALREADY RETAINED</span>'+
+        '<p>This database already exposes '+exact.length+' retained CEQA source record'+
+        (exact.length===1?'':'s')+' for SCH '+escapeText(raw)+
+        '. No duplicate capture command was prepared. Search this SCH in Project Intelligence or inspect the existing source evidence before deciding whether a separately reviewed refresh is necessary.</p>'+
+        '<p>No collection, import, lead qualification, outreach or bids have been initiated.</p>';
+      return;
+    }
+    if(retained.has_more)
+      throw Error("Exact-SCH duplicate check exceeded the bounded 100-record page.");
+  } catch(error) {
+    target.innerHTML='<p role="alert">Local duplicate check unavailable: '+
+      escapeText(error.message||error)+
+      '. No capture command was prepared and no remote collection was attempted.</p>';
+    return;
+  }
+
   // This is a command preview, not a network request or automatic approval.
   // The operator must verify public access, execute the command locally, then
   // independently inspect both exact digests before the separately governed apply.
@@ -435,9 +464,9 @@ function prepareCeqanetCapture() {
     " --execute-live";
   target.innerHTML='<p>Official CEQAnet project page: <a href="https://ceqanet.lci.ca.gov/'+raw+
     '" target="_blank" rel="noopener noreferrer">Inspect SCH '+raw+' ↗</a></p>'+
-    '<p>After checking applicable source-access restrictions, run this command locally. It performs one separately authorized public GET and produces retained evidence plus a proposed, unapplied write plan:</p>'+
+    '<p>The exact SCH is not currently retained in this local database. After checking applicable source-access restrictions, run this command locally. It performs one separately authorized public GET and produces retained evidence plus a proposed, unapplied write plan:</p>'+
     '<pre class="capture-command" id="capture-command"></pre>'+
-    '<p>Review the retained source rows, county scope and the source/plan SHA-256 digests printed by that command. To import, independently approve both exact digests using the separate <code>constructionsight-ceqanet-reviewed-import apply --help</code> workflow and its explicit write authorization. Once applied to this operator database, the Command Center refreshes on the next local revision check. No collection, import, lead qualification, outreach or bids have been initiated by this preview.</p>';
+    '<p>For discovery-queue candidates, prefer the lineage-bound <code>inbox</code> and <code>capture-next-preview</code> workflow so the exact listing and queue remain attached through apply. Review the retained source rows, county scope and the source/plan SHA-256 digests printed by the command. To import, independently approve both exact digests using the separate <code>constructionsight-ceqanet-reviewed-import apply --help</code> workflow and its explicit write authorization. Once applied to this operator database, the Command Center refreshes on the next local revision check. No collection, import, lead qualification, outreach or bids have been initiated by this preview.</p>';
   byId("capture-command").textContent=command;
 }
 async function showSources() {
@@ -469,7 +498,7 @@ async function showSources() {
       '<div id="capture-instructions" aria-live="polite"><p>No collection has been attempted. Verify the public source and its access conditions before executing any command.</p></div></section>'+
       '<section class="feature-card"><h2>Historical source activity</h2><p>Inspect dated historical observations for the current search, source-family and county filters. This is not real-time site monitoring.</p>'+
       '<button type="button" class="action" id="show-historical-pulse">Load retained timeline →</button><div id="historical-pulse"></div></section>';
-    byId("capture-source-form").onsubmit=event=>{event.preventDefault();prepareCeqanetCapture();};
+    byId("capture-source-form").onsubmit=async event=>{event.preventDefault();await prepareCeqanetCapture();};
     byId("show-historical-pulse").onclick=showHistoricalPulse;
     byId("feature-body").querySelectorAll("[data-source-kind]").forEach(button=>button.onclick=()=>{
       const kind=button.dataset.sourceKind, county=button.dataset.sourceCounty;
