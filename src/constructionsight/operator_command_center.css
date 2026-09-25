@@ -29,3 +29,6 @@
 #capture-source-form label{font-size:12px;color:#d8d5cf}
 #capture-source-form input{width:155px;max-width:100%;background:#272925;color:#f0ede7;border:1px solid #65512e;border-radius:5px;padding:8px 10px;font-size:12px}
 .capture-command{overflow:auto;max-width:100%;white-space:pre-wrap;overflow-wrap:anywhere;background:#151612;border:1px solid #64512c;border-radius:6px;padding:12px;font-size:12px;line-height:1.6;color:#f4c174}
+
+/* CEQAnet ingestion reconciliation links stay compact inside the source inventory. */
+.ingestion-record-links{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}.ingestion-record-links .action{padding:4px 7px;font-size:10px}
