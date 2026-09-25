@@ -185,13 +185,18 @@ def _render_plan(plan: CeqanetListingPlan) -> None:
     console.print(pages)
 
 
-def _render_dry_run(report: CeqanetListingDryRunReport) -> None:
+def _render_dry_run(
+    report: CeqanetListingDryRunReport,
+    plan: CeqanetListingPlan,
+) -> None:
     """Render a CEQAnet listing dry-run report as Rich tables."""
 
     summary = Table(title="CEQAnet Listing Dry Run")
     summary.add_column("Field")
     summary.add_column("Value")
     summary.add_row("Allowed", str(report.allowed))
+    summary.add_row("Access decision", plan.access_result.decision.value)
+    summary.add_row("Access reason", plan.access_result.reason)
     summary.add_row("Reason", report.reason)
     summary.add_row("Planned requests", str(report.planned_request_count))
     summary.add_row("Executed requests", str(report.executed_request_count))
@@ -515,4 +520,4 @@ def dry_run_ceqanet_listing(
         )
         return
 
-    _render_dry_run(report)
+    _render_dry_run(report, plan)
