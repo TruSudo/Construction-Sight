@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import base64
 from datetime import datetime
-from pathlib import PurePosixPath
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -25,6 +24,7 @@ from constructionsight.parcel_source_bulk_rehearsal_artifacts import (
 from constructionsight.parcel_source_bulk_rehearsal_http import (
     ParcelArcGISBulkRehearsalPlan,
 )
+from constructionsight.storage.runtime_artifacts import runtime_artifact_parts
 
 _BUNDLE_SCHEMA_VERSION = "parcel-arcgis-bulk-rehearsal-proof-bundle/v1"
 
@@ -44,13 +44,8 @@ class ParcelArcGISBulkPortableArtifact(BaseModel):
     @field_validator("artifact_reference")
     @classmethod
     def require_safe_artifact_reference(cls, value: str) -> str:
-        if value != value.strip() or "\\" in value:
-            raise ValueError("ArcGIS portable artifact reference must be trimmed and portable")
-        path = PurePosixPath(value)
-        if path.is_absolute() or len(path.parts) != 1 or path.name != value:
+        if len(runtime_artifact_parts(value)) != 1:
             raise ValueError("ArcGIS portable artifact reference must be a single file name")
-        if value in {".", ".."}:
-            raise ValueError("ArcGIS portable artifact reference is unsafe")
         return value
 
     @model_validator(mode="after")

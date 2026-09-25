@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#171717"><title>ConstructionSight · Command Center</title><link rel="stylesheet" href="/operator_command_center.css"><script defer src="/operator_command_center.js"></script></head>
+<body>
+<div class="shell">
+<aside class="sidebar" aria-label="Primary navigation">
+ <div class="brand"><img class="brand-emblem" src="/operator_brand.webp" alt="ConstructionSight construction crosshair emblem"><div class="brand-name"><span>CONSTRUCTION</span>SIGHT</div><div class="brand-caption">TARGETED SITE LEADS</div></div>
+ <nav aria-label="Application sections">
+  <a class="nav-item current" href="/" aria-current="page"><span class="nav-icon">▦</span>Command Center</a>
+  <a class="nav-item" href="/workspace#records"><span class="nav-icon">▥</span>Project Intelligence</a>
+  <a class="nav-item" href="/workspace#map"><span class="nav-icon">⌖</span>Site Map</a>
+  <button class="nav-item" data-section="entities" type="button"><span class="nav-icon">♧</span>Entity Network</button>
+  <button class="nav-item" data-section="evidence" type="button"><span class="nav-icon">▤</span>Evidence Chains</button>
+  <div class="nav-divider"></div><div class="nav-label">COMMERCIAL</div>
+  <button class="nav-item" data-section="leads" type="button"><span class="nav-icon">◎</span>Lead Console</button>
+  <button class="nav-item" data-section="outreach" type="button"><span class="nav-icon">➤</span>Outreach</button>
+  <button class="nav-item" data-section="bid" type="button"><span class="nav-icon">▤</span>Bid Studio</button>
+  <button class="nav-item" data-section="royalty" type="button"><span class="nav-icon">$</span>Royalty Ledger</button>
+  <div class="nav-divider"></div><div class="nav-label">INTELLIGENCE</div>
+  <button class="nav-item" data-section="watchlist" type="button"><span class="nav-icon">☆</span>Watchlist <span id="watched-count" class="nav-count">0</span></button>
+  <button class="nav-item" data-section="sources" type="button"><span class="nav-icon">◈</span>Sources &amp; Collection</button>
+  <div class="nav-divider"></div><div class="nav-label">AI AUGMENTATION</div>
+  <button class="nav-item" data-section="ai" type="button" aria-label="AI Center, not connected"><span class="nav-icon" aria-hidden="true">✧</span>AI Center <span class="nav-count ai-off-indicator">OFF</span></button>
+ </nav><div class="sidebar-foot">INTELLIGENCE<br>BUILDS<br>OPPORTUNITY.<small>PRIVATE LOCAL WORKSPACE · READ ONLY</small></div>
+</aside>
+<div class="stage">
+<header class="utility"><form id="global-search" class="global-search"><label for="search-term" class="sr-only">Search retained source records</label><span aria-hidden="true">⌕</span><input id="search-term" name="q" maxlength="200" placeholder="Search retained sites, permits, entities, addresses…" type="search"><label for="filter-kind" class="sr-only">Source family</label><select id="filter-kind" name="kind" aria-label="Source family"><option value="all">All sources</option><option value="ceqa">CEQA</option><option value="permit">Permits</option></select><label for="filter-county" class="sr-only">County</label><select id="filter-county" name="county" aria-label="County"><option value="">Both counties / all</option><option value="San Bernardino">San Bernardino</option><option value="Riverside">Riverside</option></select><button type="submit">Search</button></form><span class="location">SAN BERNARDINO + RIVERSIDE</span><button id="notification-button" type="button" title="Open browser-local watchlist">☆ <span id="notification-count">0</span></button><span class="utility-mode">LOCAL · READ ONLY</span></header>
+<main id="main-content">
+<section id="command-view">
+ <header class="hero"><div><p class="eyebrow">COMMAND CENTER</p><h1>Construction intelligence, one workspace.</h1><p>From retained public-source signals through evidence-backed review and commercial workflows.</p></div><div class="hero-right">SITES.<br>PEOPLE.<br>PERMITS.<br>OPPORTUNITY.<span>BUILD A<br>SMARTER<br>PIPELINE.</span></div></header>
+ <div class="notice" id="global-notice" role="status">Reading retained local records. Readiness, outreach, bids, and live watchlist alerts are not enabled in this operator.</div>
+ <section class="stats" aria-label="ConstructionSight status summary">
+  <button class="stat" id="source-stat" type="button"><small>▤ &nbsp; Matching Source Records</small><strong id="source-total">—</strong><span>Not deduplicated projects or leads</span></button>
+  <a class="stat" href="/workspace#workflow"><small><i class="dot green"></i> Workflow: Ready</small><strong id="workflow-ready">—</strong><span>Stored status, not outreach approval</span></a>
+  <a class="stat" href="/workspace#workflow"><small><i class="dot yellow"></i> Workflow: In Review</small><strong id="workflow-review">—</strong><span>Persisted workflow records only</span></a>
+  <a class="stat" href="/workspace#workflow"><small><i class="dot red"></i> Workflow: Hold</small><strong id="workflow-hold">—</strong><span>Persisted workflow records only</span></a>
+  <a class="stat" href="/workspace#workflow"><small>◷ &nbsp; Persisted Workflows</small><strong id="workflow-total">—</strong><span>Inspect retained workflow records →</span></a>
+ </section>
+ <div class="dashboard-grid">
+  <section class="panel map-panel"><header class="panel-header"><h2>⌖ &nbsp; Site Map</h2><span>Stored, source-claimed coordinates</span><a href="/workspace#map">Open full map →</a></header><div class="map-area"><svg id="command-map" role="img" aria-label="Coordinate overview of retained source locations; not a street map"></svg><div id="map-message" class="map-message">Loading stored coordinate footprint…</div><div class="map-legend"><span><i class="dot unknown"></i> Unassessed source locations</span><small>No readiness colors until qualified</small></div></div><footer id="map-scope" class="panel-foot">Coordinate overview only · No street tiles, parcel boundaries or verified active jobsites</footer></section>
+  <section class="panel dossier-panel"><header class="panel-header"><h2>▤ &nbsp; Project Dossier</h2><span class="pill">UNASSESSED</span></header><div class="dossier-body" id="command-dossier"><p class="empty">Select a retained source record to inspect its recorded facts and evidence.</p></div></section>
+  <section class="panel list-panel"><header class="panel-header"><h2>◈ &nbsp; Stored Source Records</h2><span>Not yet qualified opportunities</span><a href="/workspace#records">View all →</a></header><div id="command-records" class="records"><p class="empty">Loading retained source records…</p></div><footer class="panel-foot records-footer"><span id="records-scope">Showing the first bounded page, not all construction opportunities.</span><div class="record-pager"><button id="previous-records" type="button" disabled aria-label="Previous fifty source records">← Previous</button><button id="next-records" type="button" disabled aria-label="Next fifty source records">Next →</button></div></footer></section>
+  <section class="panel watch-panel"><header class="panel-header"><h2>☆ &nbsp; Watchlist &amp; Reminders</h2><button id="open-watchlist" type="button">View all →</button></header><div id="watchlist-summary" class="watchlist-rows"><p class="empty">No watched source records in this browser.</p></div><footer class="panel-foot">Browser-local bookmarks only. No monitoring or notifications.</footer></section>
+ </div>
+</section>
+<section id="feature-view" hidden aria-live="polite"><header class="hero compact"><div><p class="eyebrow">CONSTRUCTIONSIGHT / WORKSPACE</p><h1 id="feature-heading"></h1><p id="feature-description"></p></div></header><div id="feature-body" class="feature-body"></div></section>
+</main>
+</div></div>
+</body></html>
