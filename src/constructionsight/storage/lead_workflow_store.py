@@ -21,7 +21,12 @@ from constructionsight.lead_workflow_models import (
 )
 from constructionsight.opportunity_enrichment_models import OpportunityEnrichmentReport
 from constructionsight.result_ledger_models import ResultLedgerRecord, ResultShareRecord
-from constructionsight.result_ledger_service import validate_result_ledger_history
+from constructionsight.result_ledger_service import (
+    calculate_share_minor_units,
+    money_minor_units,
+    share_rate_ppm_units,
+    validate_result_ledger_history,
+)
 from constructionsight.storage.lead_workflow_orm import (
     LeadDuplicateResultRecord,
     LeadFingerprintRecord,
@@ -343,12 +348,20 @@ def store_result_share_record(
         if existing.payload_json != payload_json:
             raise ValueError("persisted result share records are immutable")
         return existing
+    gross_minor = money_minor_units(share.gross_value, field_name="gross_value")
+    rate_ppm = share_rate_ppm_units(share.share_rate, field_name="share_rate")
+    share_minor = calculate_share_minor_units(gross_minor, rate_ppm)
+    if money_minor_units(share.share_value, field_name="share_value") != share_minor:
+        raise ValueError("result share exact-unit arithmetic disagrees with payload")
     existing = ResultShareRecordRow(
         share_record_id=share.share_record_id,
         workflow_id=share.workflow_id,
         gross_value=share.gross_value,
+        gross_value_minor=gross_minor,
         share_rate=share.share_rate,
+        share_rate_ppm=rate_ppm,
         share_value=share.share_value,
+        share_value_minor=share_minor,
         payload_json=payload_json,
     )
     session.add(existing)
@@ -381,6 +394,11 @@ def store_result_ledger_record(
 
     share_record_id = ledger.share.share_record_id if ledger.share else None
     decided_date = ledger.decided_date.isoformat() if ledger.decided_date else None
+    gross_value_minor = (
+        money_minor_units(ledger.gross_value, field_name="gross_value")
+        if ledger.gross_value is not None
+        else None
+    )
     row = ResultLedgerRecordRow(
         ledger_id=ledger.ledger_id,
         workflow_id=ledger.workflow_id,
@@ -388,6 +406,7 @@ def store_result_ledger_record(
         status=ledger.status.value,
         decided_date=decided_date,
         gross_value=ledger.gross_value,
+        gross_value_minor=gross_value_minor,
         share_status=ledger.share_status.value,
         share_record_id=share_record_id,
         observed_created_at=ledger.created_at.isoformat(),

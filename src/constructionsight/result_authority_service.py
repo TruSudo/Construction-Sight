@@ -20,6 +20,7 @@ from constructionsight.result_authority_models import (
 from constructionsight.result_ledger_models import ResultLedgerRecord, ResultLedgerStatus
 from constructionsight.result_ledger_service import (
     build_result_ledger_record,
+    money_minor_units,
     supersede_result_ledger_record,
     validate_result_ledger_history,
 )
@@ -339,6 +340,7 @@ def _ledger_from_row(row: ResultLedgerRecordRow) -> ResultLedgerRecord:
         row.status,
         row.decided_date,
         row.gross_value,
+        row.gross_value_minor,
         row.share_status,
         row.share_record_id,
         row.observed_created_at,
@@ -350,6 +352,11 @@ def _ledger_from_row(row: ResultLedgerRecordRow) -> ResultLedgerRecord:
         ledger.status.value,
         decided_date,
         ledger.gross_value,
+        (
+            money_minor_units(ledger.gross_value, field_name="gross_value")
+            if ledger.gross_value is not None
+            else None
+        ),
         ledger.share_status.value,
         share_record_id,
         ledger.created_at.isoformat(),
