@@ -733,6 +733,12 @@ def test_source_registry_endpoint_is_read_only_and_rejects_query_parameters(data
         assert payload["network_collection_enabled"] is False
         assert payload["verification_metadata_is_authority"] is False
         assert payload["total"] == payload["returned"] == 0
+        assert payload["source_identity_scan_truncated"] is False
+        assert payload["source_attribution_available"] is True
+        assert payload["ceqa_records_total"] == payload["ceqa_records_scanned"] == 0
+        assert payload["permit_records_total"] == payload["permit_records_scanned"] == 0
+        assert payload["records_with_registered_source_in_scan"] == 0
+        assert payload["records_without_registered_source_in_scan"] == 0
         assert payload["entries"] == []
         assert _get(port, "/api/source-registry?kind=permit")[0] == 400
     assert hashlib.sha256(path.read_bytes()).hexdigest() == before
