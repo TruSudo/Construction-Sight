@@ -6,10 +6,10 @@ claim that its source observations reflect present construction activity.
 
 from __future__ import annotations
 
-from contextlib import contextmanager
-from datetime import UTC, datetime
 import hashlib
 import json
+from contextlib import contextmanager
+from datetime import UTC, datetime
 from http.client import HTTPConnection
 from http.server import ThreadingHTTPServer
 from pathlib import Path
