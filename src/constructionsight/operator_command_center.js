@@ -456,22 +456,59 @@ function renderSourceRegistry(registry) {
       typeof entry.platform_family!=="string" || !entry.platform_family ||
       !Array.isArray(entry.record_categories) || !statuses.has(entry.verification_status) ||
       typeof entry.adapter_status!=="string" || !entry.adapter_status ||
-      typeof entry.adapter_live!=="boolean")
+      typeof entry.adapter_live!=="boolean" ||
+      typeof entry.latest_verification_present!=="boolean")
       throw Error("Persisted source registry entry is inconsistent.");
+    const latest=entry.latest_verification_present;
+    if(latest && (
+      typeof entry.latest_verification_checked_at!=="string" ||
+      !entry.latest_verification_checked_at ||
+      typeof entry.latest_verification_url_reachable!=="boolean" ||
+      typeof entry.latest_detected_platform_family!=="string" ||
+      !entry.latest_detected_platform_family ||
+      !Number.isSafeInteger(entry.latest_verification_confidence_score) ||
+      entry.latest_verification_confidence_score<0 ||
+      entry.latest_verification_confidence_score>100 ||
+      typeof entry.verification_metadata_consistent!=="boolean" ||
+      ![null,true,false].includes(entry.latest_public_search_available) ||
+      ![null,true,false].includes(entry.latest_login_required) ||
+      ![null,"string"].includes(
+        entry.latest_verification_notes===null ? null : typeof entry.latest_verification_notes
+      )
+    )) throw Error("Latest retained source verification is inconsistent.");
+    if(!latest && (
+      entry.latest_verification_checked_at!==null ||
+      entry.latest_verification_url_reachable!==null ||
+      entry.latest_detected_platform_family!==null ||
+      entry.latest_public_search_available!==null ||
+      entry.latest_login_required!==null ||
+      entry.latest_verification_confidence_score!==null ||
+      entry.latest_verification_notes!==null ||
+      entry.verification_metadata_consistent!==null
+    )) throw Error("Absent source verification carries unexpected retained claims.");
+    const latestDetail=latest ?
+      '<small class="'+(entry.verification_metadata_consistent?'source-verification-ok':'source-verification-warning')+
+      '">latest retained check: '+(entry.latest_verification_url_reachable?'reachable':'not reachable')+
+      ' · '+escapeText(entry.latest_verification_checked_at)+
+      ' · detected '+escapeText(entry.latest_detected_platform_family)+
+      ' · confidence '+entry.latest_verification_confidence_score+'/100'+
+      (entry.verification_metadata_consistent?' · registry metadata agrees':
+        ' · registry metadata DIFFERS; inspect retained verification history')+'</small>' :
+      '<small>no linked retained verification observation</small>';
     return '<tr><th scope="row">'+escapeText(entry.source_name)+
       '<small>'+escapeText(entry.jurisdiction_name)+' · '+escapeText(entry.county)+'</small></th>'+
       '<td>'+escapeText(entry.platform_family)+'<small>adapter '+escapeText(entry.adapter_status)+
       (entry.adapter_live?' · live-capable software':' · not live-capable')+'</small></td>'+
       '<td>'+escapeText(entry.verification_status)+'<small>stored confidence '+
       escapeText(entry.confidence_score)+'/100 · checked '+
-      escapeText(valueOrUnknown(entry.last_checked_date))+'</small></td>'+
+      escapeText(valueOrUnknown(entry.last_checked_date))+'</small>'+latestDetail+'</td>'+
       '<td>'+escapeText(entry.record_categories.join(", ") || "No categories")+
       '<small>'+escapeText(valueOrUnknown(entry.update_frequency))+'</small></td>'+
       '<td>'+safeSourceLink(entry.public_url)+'</td></tr>';
   }).join("") || '<tr><td colspan="5">No public-source registry rows are retained in this database.</td></tr>';
   return '<section class="feature-card"><span class="badge">PERSISTED SOURCE REGISTRY · READ ONLY</span>'+
     '<h2>Configured public sources ('+registry.returned+(registry.truncated?' of '+registry.total:'')+')</h2>'+
-    '<p>Verification state, confidence, update cadence and adapter maturity are retained metadata. They do not prove current reachability, complete jurisdiction coverage, or authority for recurring collection.</p>'+
+    '<p>Verification state, confidence, update cadence and adapter maturity are retained metadata. The newest linked verification observation is shown separately when available, including any disagreement with the registry row. Historical checks do not prove current reachability, complete jurisdiction coverage, or authority for recurring collection.</p>'+
     '<div class="source-inventory-scroll"><table class="source-inventory source-registry-table"><thead>'+
     '<tr><th>Source</th><th>Platform / adapter</th><th>Registry verification</th>'+
     '<th>Declared records / cadence</th><th>Official source</th></tr></thead><tbody>'+
