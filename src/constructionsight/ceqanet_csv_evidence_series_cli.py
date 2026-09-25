@@ -36,6 +36,7 @@ from constructionsight.ceqanet_maturity_proposal_models import (
     CeqanetSourceMaturityProposalVerification,
 )
 from constructionsight.models import PublicSource
+from constructionsight.storage.runtime_artifacts import read_runtime_text, write_runtime_text
 
 app = typer.Typer(help="ConstructionSight governed CEQAnet CSV evidence series.")
 console = Console()
@@ -52,7 +53,7 @@ PolicyContext = tuple[
 
 
 def _load_json(path: Path) -> Any:
-    return json.loads(path.read_text(encoding="utf-8"))
+    return json.loads(read_runtime_text(path))
 
 
 def _load_policy_context(
@@ -152,7 +153,6 @@ def _require_output_available(
         raise ValueError(
             f"output already exists: {output}; pass --overwrite to replace it"
         )
-    output.parent.mkdir(parents=True, exist_ok=True)
 
 
 def _write_json(
@@ -168,9 +168,7 @@ def _write_json(
         overwrite=overwrite,
     )
     rendered = json.dumps(payload, indent=2, sort_keys=True, default=str)
-    temporary = output.with_name(f".{output.name}.tmp")
-    temporary.write_text(f"{rendered}\n", encoding="utf-8")
-    temporary.replace(output)
+    write_runtime_text(output, f"{rendered}\n", overwrite=overwrite)
 
 
 @app.callback()
