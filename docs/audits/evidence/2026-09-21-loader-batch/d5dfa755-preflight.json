@@ -1,0 +1,7 @@
+{
+  "allowed_transaction_blocker_count": 76,
+  "finding_count": 0,
+  "findings": [],
+  "passed": true,
+  "schema_version": "constructionsight.assurance-preflight/v1"
+}

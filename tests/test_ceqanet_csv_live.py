@@ -7,9 +7,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import httpx
 import pytest
 from typer.testing import CliRunner
 
+import constructionsight.http_transport as http_transport_module
 from constructionsight.ceqanet_csv_cli import app
 from constructionsight.ceqanet_csv_live_models import CeqanetCsvLiveExecution
 from constructionsight.ceqanet_csv_live_service import (
@@ -40,42 +42,53 @@ class _Response:
     headers: dict[str, str]
 
 
-class _Client:
+class _Client(httpx.Client):
     def __init__(self, response: _Response) -> None:
         self.response = response
-        self.calls: list[tuple[str, bool, float]] = []
+        self.calls: list[tuple[str, float]] = []
+        super().__init__(
+            transport=httpx.MockTransport(self._handle_request),
+            follow_redirects=False,
+            trust_env=False,
+        )
 
-    def get(
-        self,
-        url: str,
-        *,
-        follow_redirects: bool,
-        timeout: float,
-    ) -> _Response:
-        self.calls.append((url, follow_redirects, timeout))
-        return self.response
+    def _handle_request(self, request: httpx.Request) -> httpx.Response:
+        self.calls.append(
+            (str(request.url), float(request.extensions["timeout"]["read"]))
+        )
+        return httpx.Response(
+            self.response.status_code,
+            content=self.response.content,
+            headers=self.response.headers,
+            request=request,
+        )
+
+
+def _install_client(monkeypatch: pytest.MonkeyPatch, client: _Client) -> None:
+    monkeypatch.setattr(http_transport_module, "_build_http_client", lambda: client)
 
 
 def _request() -> CeqanetCsvExportRequest:
     return build_ceqanet_csv_export_request(sch_number="2026030377")
 
 
-def _successful_execution() -> CeqanetCsvLiveExecution:
+def _successful_execution(monkeypatch: pytest.MonkeyPatch) -> CeqanetCsvLiveExecution:
     request = _request()
+    client = _Client(
+        _Response(
+            status_code=200,
+            content=PROJECT_FIXTURE.read_bytes(),
+            url=request.source_url,
+            headers={
+                "content-type": "text/csv; charset=utf-8",
+                "content-disposition": 'attachment; filename="project.csv"',
+            },
+        )
+    )
+    _install_client(monkeypatch, client)
     return execute_ceqanet_csv_live_request(
         request,
         execute_live=True,
-        client=_Client(
-            _Response(
-                status_code=200,
-                content=PROJECT_FIXTURE.read_bytes(),
-                url=request.source_url,
-                headers={
-                    "content-type": "text/csv; charset=utf-8",
-                    "content-disposition": 'attachment; filename="project.csv"',
-                },
-            )
-        ),
         timeout_seconds=12.5,
         max_retained_rows=1,
     )
@@ -86,7 +99,9 @@ def test_live_execution_requires_explicit_authorization() -> None:
         execute_ceqanet_csv_live_request(_request(), execute_live=False)
 
 
-def test_live_execution_performs_exactly_one_get_without_retry() -> None:
+def test_live_execution_performs_exactly_one_get_without_redirect_or_retry(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     request = _request()
     client = _Client(
         _Response(
@@ -96,15 +111,15 @@ def test_live_execution_performs_exactly_one_get_without_retry() -> None:
             headers={"content-type": "text/csv"},
         )
     )
+    _install_client(monkeypatch, client)
 
     execution = execute_ceqanet_csv_live_request(
         request,
         execute_live=True,
-        client=client,
         timeout_seconds=12.5,
     )
 
-    assert client.calls == [(request.source_url, True, 12.5)]
+    assert client.calls == [(request.source_url, 12.5)]
     assert execution.method == "GET"
     assert execution.retry_count == 0
     assert execution.network_executed is True
@@ -112,8 +127,10 @@ def test_live_execution_performs_exactly_one_get_without_retry() -> None:
     assert execution.persistence_mutated is False
 
 
-def test_successful_live_execution_embeds_canonical_offline_inspection() -> None:
-    execution = _successful_execution()
+def test_successful_live_execution_embeds_canonical_offline_inspection(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    execution = _successful_execution(monkeypatch)
     verification = verify_ceqanet_csv_live_execution(execution)
 
     assert execution.status_code == 200
@@ -128,68 +145,106 @@ def test_successful_live_execution_embeds_canonical_offline_inspection() -> None
     assert verification.inspection_digest == execution.inspection.inspection_digest
 
 
-def test_http_403_is_preserved_without_bypass_or_inspection_claim() -> None:
+def test_http_403_is_terminal_without_body_retention_or_bypass(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     request = _request()
+    client = _Client(
+        _Response(
+            status_code=403,
+            content=b"Forbidden",
+            url=request.source_url,
+            headers={"content-type": "text/plain"},
+        )
+    )
+    _install_client(monkeypatch, client)
     execution = execute_ceqanet_csv_live_request(
         request,
         execute_live=True,
-        client=_Client(
-            _Response(
-                status_code=403,
-                content=b"Forbidden",
-                url=request.source_url,
-                headers={"content-type": "text/plain"},
-            )
-        ),
     )
     verification = verify_ceqanet_csv_live_execution(execution)
 
     assert execution.status_code == 403
     assert execution.inspection is None
-    assert execution.error is None
+    assert execution.error == "AccessControlStatus"
     assert execution.retry_count == 0
-    assert execution.retained_body_bytes() == b"Forbidden"
+    assert execution.retained_body_bytes() == b""
+    assert execution.retained_body_complete is False
     assert verification.passed is False
     assert "live CSV response status is not 200: 403" in verification.findings
+    assert any("AccessControlStatus" in item for item in verification.findings)
 
 
-def test_csv_validation_failure_is_retained_as_evidence() -> None:
+def test_redirect_is_terminal_and_location_body_is_not_retained(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     request = _request()
+    client = _Client(
+        _Response(
+            status_code=302,
+            content=b"redirect response",
+            url=request.source_url,
+            headers={"location": "https://example.invalid/"},
+        )
+    )
+    _install_client(monkeypatch, client)
+
     execution = execute_ceqanet_csv_live_request(
         request,
         execute_live=True,
-        client=_Client(
-            _Response(
-                status_code=200,
-                content=b"<html>Forbidden</html>",
-                url=request.source_url,
-                headers={"content-type": "text/html"},
-            )
-        ),
+    )
+
+    assert client.calls == [(request.source_url, 20.0)]
+    assert execution.status_code == 302
+    assert execution.error == "RedirectDenied"
+    assert execution.retained_body_bytes() == b""
+    assert execution.retained_body_complete is False
+
+
+def test_csv_validation_failure_is_retained_as_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    request = _request()
+    client = _Client(
+        _Response(
+            status_code=200,
+            content=b"<html>Forbidden</html>",
+            url=request.source_url,
+            headers={"content-type": "text/html"},
+        )
+    )
+    _install_client(monkeypatch, client)
+    execution = execute_ceqanet_csv_live_request(
+        request,
+        execute_live=True,
     )
     verification = verify_ceqanet_csv_live_execution(execution)
 
     assert execution.inspection is None
-    assert execution.inspection_error is not None
-    assert "unsupported CEQAnet CSV content type" in execution.inspection_error
+    assert execution.inspection_error is None
+    assert execution.error == "UnexpectedMediaType"
+    assert execution.retained_body_bytes() == b""
+    assert execution.retained_body_complete is False
     assert verification.passed is False
-    assert any("offline inspection failed" in finding for finding in verification.findings)
-    assert any("inspection recorded error" in finding for finding in verification.findings)
+    assert any("UnexpectedMediaType" in finding for finding in verification.findings)
 
 
-def test_oversized_response_is_hashed_but_not_partially_retained() -> None:
+def test_oversized_response_is_not_partially_retained_or_claimed_hashed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     request = _request()
+    client = _Client(
+        _Response(
+            status_code=200,
+            content=PROJECT_FIXTURE.read_bytes(),
+            url=request.source_url,
+            headers={"content-type": "text/csv"},
+        )
+    )
+    _install_client(monkeypatch, client)
     execution = execute_ceqanet_csv_live_request(
         request,
         execute_live=True,
-        client=_Client(
-            _Response(
-                status_code=200,
-                content=PROJECT_FIXTURE.read_bytes(),
-                url=request.source_url,
-                headers={"content-type": "text/csv"},
-            )
-        ),
         max_body_bytes=1,
     )
     verification = verify_ceqanet_csv_live_execution(execution)
@@ -202,8 +257,10 @@ def test_oversized_response_is_hashed_but_not_partially_retained() -> None:
     assert "live CSV response body was not retained completely" in verification.findings
 
 
-def test_verifier_rejects_tampered_body_and_digest() -> None:
-    execution = _successful_execution()
+def test_verifier_rejects_tampered_body_and_digest(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    execution = _successful_execution(monkeypatch)
     tampered = execution.model_copy(
         update={
             "retained_body_base64": base64.b64encode(b"changed").decode("ascii"),
@@ -217,8 +274,10 @@ def test_verifier_rejects_tampered_body_and_digest() -> None:
     assert "retained CSV SHA-256 does not match response evidence" in verification.findings
 
 
-def test_verifier_rejects_final_url_identity_drift() -> None:
-    execution = _successful_execution().model_copy(
+def test_verifier_rejects_final_url_identity_drift(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    execution = _successful_execution(monkeypatch).model_copy(
         update={
             "final_url": "https://ceqanet.lci.ca.gov/Search?OutputFormat=CSV&Sch=2026070311"
         }
@@ -233,15 +292,15 @@ def test_verifier_rejects_final_url_identity_drift() -> None:
     )
 
 
-def test_live_model_rejects_unknown_fields() -> None:
-    payload: dict[str, Any] = _successful_execution().model_dump(mode="json")
+def test_live_model_rejects_unknown_fields(monkeypatch: pytest.MonkeyPatch) -> None:
+    payload: dict[str, Any] = _successful_execution(monkeypatch).model_dump(mode="json")
     payload["unexpected"] = True
 
     with pytest.raises(ValueError, match="Extra inputs are not permitted"):
         CeqanetCsvLiveExecution.model_validate(payload)
 
 
-def test_execute_cli_refuses_missing_authorization(tmp_path: Path) -> None:
+def test_execute_cli_refuses_missing_scope_bound_authorization(tmp_path: Path) -> None:
     result = runner.invoke(
         app,
         [
@@ -254,17 +313,18 @@ def test_execute_cli_refuses_missing_authorization(tmp_path: Path) -> None:
     )
 
     assert result.exit_code != 0
-    assert (
-        "explicit --execute-live authorization is required"
-        in _plain_terminal(result.output)
-    )
+    assert "caller confirmation is required" in _plain_terminal(result.output)
+    assert not (tmp_path / "execution.json").exists()
 
 
-def test_verify_execution_cli_operates_offline(tmp_path: Path) -> None:
+def test_verify_execution_cli_operates_offline(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     execution_path = tmp_path / "execution.json"
     verification_path = tmp_path / "verification.json"
     execution_path.write_text(
-        json.dumps(_successful_execution().model_dump(mode="json")),
+        json.dumps(_successful_execution(monkeypatch).model_dump(mode="json")),
         encoding="utf-8",
     )
 

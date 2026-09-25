@@ -1,0 +1,48 @@
+{
+  "case_count": 4,
+  "contract_schema_version": "constructionsight.mutation-contract/v1",
+  "invalid_failure_count": 0,
+  "killed_count": 4,
+  "passed": true,
+  "results": [
+    {
+      "id": "CS-MUT-DEDUPE-ORDER-001",
+      "output_excerpt": "F                                                                        [100%]\n=================================== FAILURES ===================================\n_____________ test_duplicate_result_identity_is_order_independent ______________\n\n    def test_duplicate_result_identity_is_order_independent() -> None:\n        candidate = build_lead_fingerprint(\n            package=_review_package(\"candidate:new\"),\n            site_key=\"site:shared\",\n            source_key=\"permit:new\",\n            source_record_id=\"new\",\n            title=\"New Warehouse\",\n        )\n        first = build_lead_fingerprint(\n            package=_review_package(\"candidate:first\"),\n            site_key=\"site:shared\",\n            source_key=\"permit:first\",\n            source_record_id=\"first\",\n            title=\"First Warehouse\",\n        )\n        second = build_lead_fingerprint(\n            package=_review_package(\"candidate:second\"),\n            site_key=\"site:shared\",\n            source_key=\"permit:second\",\n            source_record_id=\"second\",\n            title=\"Second Warehouse\",\n        )\n    \n        forward = check_lead_duplicate(candidate, [first, second])\n        reversed_result = check_lead_duplicate(candidate, [second, first])\n    \n        assert forward.status == LeadDuplicateStatus.REVIEW_NEEDED\n        assert reversed_result.status == LeadDuplicateStatus.REVIEW_NEEDED\n>       assert forward.result_id == reversed_result.result_id\nE       AssertionError: assert 'lead-duplica...54180e3d187ce' == 'lead-duplica...69a43df1e219e'\nE         \nE         - lead-duplicate:v2:13f855df2cf3e9ce5bb02606244d64df66d2afcfe38712ef55b69a43df1e219e\nE         + lead-duplicate:v2:9260f2419887e850b50337c6dbd7439c4d136964dac28efd5be54180e3d187ce\n\ntests/test_adversarial_semantic_witnesses.py:208: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_adversarial_semantic_witnesses.py::test_duplicate_result_identity_is_order_independent\n1 failed in 0.15s\n",
+      "output_sha256": "01230c2b3b4ceddd4c3d8ef25aac57a27147c09978815b25fb3b48b22be72fa9",
+      "path": "src/constructionsight/lead_dedupe_service.py",
+      "return_code": 1,
+      "risk": "Duplicate-result identity could depend on input enumeration order rather than the semantic match set.",
+      "status": "killed"
+    },
+    {
+      "id": "CS-MUT-DEDUPE-CANDIDATE-001",
+      "output_excerpt": "F                                                                        [100%]\n=================================== FAILURES ===================================\n_____ test_duplicate_checks_for_distinct_candidates_can_both_be_persisted ______\n\n    def test_duplicate_checks_for_distinct_candidates_can_both_be_persisted() -> None:\n        _engine, factory = _session_factory()\n        first = build_lead_fingerprint(package=_package(), site_key=\"site:shared\")\n        second = first.model_copy(update={\"base_candidate_id\": \"candidate:second\"})\n        results = [check_lead_duplicate(candidate, []) for candidate in (first, second)]\n        with managed_session(factory) as session:\n            for result in results:\n>               store_lead_duplicate_result(session, result)\n\ntests/test_lead_workflow_storage.py:293: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nsession = <sqlalchemy.orm.session.Session object at 0x7fd589cdbe00>\nresult = LeadDuplicateResult(result_id='lead-duplicate:v2:54e4d13c45a50f98372fb7456dc8201ccef82a773f35c20cd533d02a7af0c644', st...=datetime.timezone.utc)), matched_fingerprint_keys=[], reasons=['no duplicate lead fingerprint found'], limitations=[])\n\n    def store_lead_duplicate_result(\n        session: Session,\n        result: LeadDuplicateResult,\n    ) -> LeadDuplicateResultRecord:\n        \"\"\"Insert a durable duplicate verdict or replay the same semantic decision.\"\"\"\n    \n        session.flush()\n        payload_json = _payload_json(result.to_dict())\n        existing = session.execute(\n            select(LeadDuplicateResultRecord).where(\n                LeadDuplicateResultRecord.result_id == result.result_id\n            )\n        ).scalar_one_or_none()\n        if existing is None:\n            existing = LeadDuplicateResultRecord(\n                result_id=result.result_id,\n                status=result.status.value,\n                candidate_fingerprint_key=result.candidate.fingerprint_key,\n                base_candidate_id=result.candidate.base_candidate_id,\n                matched_count=len(result.matched_fingerprint_keys),\n                payload_json=payload_json,\n            )\n            session.add(existing)\n            return existing\n        if not _duplicate_result_replay_matches(existing, result, payload_json):\n>           raise ValueError(\"persisted lead duplicate results are immutable\")\nE           ValueError: persisted lead duplicate results are immutable\n\nsrc/constructionsight/storage/lead_workflow_store.py:172: ValueError\n=========================== short test summary info ============================\nFAILED tests/test_lead_workflow_storage.py::test_duplicate_checks_for_distinct_candidates_can_both_be_persisted\n1 failed in 0.27s\n",
+      "output_sha256": "41bf792358bee3e885715f05bb96c3574cc36bc36fe71a885f4066fdc4212808",
+      "path": "src/constructionsight/lead_dedupe_service.py",
+      "return_code": 1,
+      "risk": "Distinct candidates sharing a match fingerprint could collide and abort a normal persistence transaction.",
+      "status": "killed"
+    },
+    {
+      "id": "CS-MUT-DEDUPE-RATIONALE-001",
+      "output_excerpt": "F                                                                        [100%]\n=================================== FAILURES ===================================\n_______ test_duplicate_result_identity_binds_changed_decision_rationale ________\n\n    def test_duplicate_result_identity_binds_changed_decision_rationale() -> None:\n        candidate = build_lead_fingerprint(\n            package=_package(), site_key=\"site:shared\", source_key=\"source:test\", source_record_id=\"1\",\n        )\n        exact = candidate.model_copy(update={\"base_candidate_id\": \"candidate:other\"})\n        near = build_lead_fingerprint(\n            package=_package(\"candidate:near\"), source_key=\"source:test\", source_record_id=\"1\",\n        )\n        first = check_lead_duplicate(candidate, [exact])\n        changed = check_lead_duplicate(candidate, [exact, near])\n        assert first.status == changed.status == LeadDuplicateStatus.DUPLICATE\n        assert first.matched_fingerprint_keys == changed.matched_fingerprint_keys\n        assert first.reasons != changed.reasons\n>       assert first.result_id != changed.result_id\nE       AssertionError: assert 'lead-duplicate:v2:792b80f8bd6a22a25badf08cb859494d8522815a6b05202ef125dda301156799' != 'lead-duplicate:v2:792b80f8bd6a22a25badf08cb859494d8522815a6b05202ef125dda301156799'\nE        +  where 'lead-duplicate:v2:792b80f8bd6a22a25badf08cb859494d8522815a6b05202ef125dda301156799' = LeadDuplicateResult(result_id='lead-duplicate:v2:792b80f8bd6a22a25badf08cb859494d8522815a6b05202ef125dda301156799', st...gerprint_keys=['lead-fingerprint:15a1b41e90478d35'], reasons=['exact lead fingerprint already exists'], limitations=[]).result_id\nE        +  and   'lead-duplicate:v2:792b80f8bd6a22a25badf08cb859494d8522815a6b05202ef125dda301156799' = LeadDuplicateResult(result_id='lead-duplicate:v2:792b80f8bd6a22a25badf08cb859494d8522815a6b05202ef125dda301156799', st...35'], reasons=['exact lead fingerprint already exists', 'same source record appears in existing lead'], limitations=[]).result_id\n\ntests/test_lead_dedupe_service.py:110: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_lead_dedupe_service.py::test_duplicate_result_identity_binds_changed_decision_rationale\n1 failed in 0.06s\n",
+      "output_sha256": "e801a1e39dd91348ee9f80a4a41aa5fc98b4eed83b116cbc19c7e71eb0b64539",
+      "path": "src/constructionsight/lead_dedupe_service.py",
+      "return_code": 1,
+      "risk": "A new duplicate decision rationale could reuse an immutable result identity and fail during rescan persistence.",
+      "status": "killed"
+    },
+    {
+      "id": "CS-MUT-INIT-DEFAULT-DIRECTORY-001",
+      "output_excerpt": "\nno tests ran in 0.00s\nERROR: file or directory not found: tests/test_cli_init_db.py::test_init_db_creates_default_directory_on_first_run\n\n",
+      "output_sha256": "5fc94ce2b9d4293dcb213970f6f600d00a3c5c7c40424d385a70913ebe44a94a",
+      "path": "src/constructionsight/cli.py",
+      "return_code": 4,
+      "risk": "First-run initialization outside a checkout could fail because the default data directory does not exist.",
+      "status": "killed"
+    }
+  ],
+  "schema_version": "constructionsight.mutation-report/v1",
+  "survived_count": 0,
+  "timeout_count": 0
+}
