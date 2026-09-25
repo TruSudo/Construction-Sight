@@ -1,4 +1,4 @@
-from constructionsight.provenance import Provenance
+from constructionsight.provenance import Provenance, ProvenanceConfidenceBasis
 from constructionsight.site_models import Site
 
 
@@ -13,8 +13,10 @@ def test_site_model_accepts_minimum_required_fields() -> None:
 def test_site_model_preserves_provenance() -> None:
     provenance = Provenance(
         source_name="Synthetic Public Source",
-        confidence_score=90,
-        verified=True,
+        adapter_family="synthetic-test",
+        raw_reference="synthetic:test",
+        evidence_text="retained synthetic public evidence",
+        confidence_basis=ProvenanceConfidenceBasis.DETERMINISTIC_NORMALIZATION,
     )
     site = Site(
         site_key="site:test:apn-0000",
@@ -24,4 +26,4 @@ def test_site_model_preserves_provenance() -> None:
     )
 
     assert site.provenance[0].source_name == "Synthetic Public Source"
-    assert site.provenance[0].band.value == "verified"
+    assert site.provenance[0].band.value == "high"
