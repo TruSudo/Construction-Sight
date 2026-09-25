@@ -67,6 +67,25 @@ def _load_evidence(path: Path) -> ReviewedCeqanetCsvBridge:
         ) from exc
 
 
+def _load_discovery_binding(path: Path) -> dict[str, object] | None:
+    """Return a retained bound-capture lineage envelope, when one is present."""
+
+    try:
+        payload: Any = json.loads(read_runtime_text(path))
+        if not isinstance(payload, dict):
+            raise ValueError("source execution artifact must contain a JSON object")
+        if payload.get("schema_version") != "ceqanet_bound_project_capture.v1":
+            return None
+        binding = payload.get("discovery_binding")
+        if not isinstance(binding, dict):
+            raise ValueError("bound source evidence is missing its discovery binding")
+        return dict(binding)
+    except (OSError, ValueError, TypeError) as exc:
+        raise typer.BadParameter(
+            f"retained CEQAnet discovery binding could not be read: {exc}"
+        ) from exc
+
+
 def _plan_digest(bridge: ReviewedCeqanetCsvBridge) -> str:
     return canonical_digest(bridge.write_plan.to_dict())
 
@@ -538,6 +557,20 @@ def apply(
         str | None,
         typer.Option("--operator-id", help="Optional local audit identity, not authentication."),
     ] = None,
+    listing_evidence: Annotated[
+        Path | None,
+        typer.Option(
+            "--listing-evidence",
+            help="Exact listing evidence required when applying a bound project capture.",
+        ),
+    ] = None,
+    queue_evidence: Annotated[
+        Path | None,
+        typer.Option(
+            "--queue-evidence",
+            help="Exact reviewed queue required when applying a bound project capture.",
+        ),
+    ] = None,
 ) -> None:
     """Apply only the reviewed exact plan through existing governed persistence."""
 
@@ -551,6 +584,37 @@ def apply(
         raise typer.BadParameter("the retained source or write plan differs from reviewed hashes")
     if not authorization_reason.strip():
         raise typer.BadParameter("authorization reason cannot be blank")
+    if (listing_evidence is None) != (queue_evidence is None):
+        raise typer.BadParameter(
+            "--listing-evidence and --queue-evidence must be supplied together"
+        )
+    discovery_binding = _load_discovery_binding(evidence_path)
+    bound_sch: str | None = None
+    bound_county: str | None = None
+    if discovery_binding is not None:
+        if listing_evidence is None or queue_evidence is None:
+            raise typer.BadParameter(
+                "bound capture apply requires the exact --listing-evidence and --queue-evidence"
+            )
+        raw_sch = discovery_binding.get("sch_number")
+        raw_county = discovery_binding.get("source_claimed_county")
+        if not isinstance(raw_sch, str) or not isinstance(raw_county, str):
+            raise typer.BadParameter("bound capture discovery identity is malformed")
+        rebound = _load_bound_capture_candidate(
+            listing_evidence=listing_evidence,
+            queue_evidence=queue_evidence,
+            sch_number=raw_sch,
+        )
+        if rebound != discovery_binding:
+            raise typer.BadParameter(
+                "bound capture discovery lineage differs from the reviewed listing and queue"
+            )
+        bound_sch = raw_sch
+        bound_county = raw_county
+    elif listing_evidence is not None or queue_evidence is not None:
+        raise typer.BadParameter(
+            "listing and queue evidence may only accompany a bound project capture"
+        )
     try:
         # Refuse a destination that the existing GUI cannot read; never migrate it
         # silently just to complete an import.
@@ -577,6 +641,13 @@ def apply(
                         != expected.provenance[0].raw_reference
                     ):
                         raise ValueError("operator could not retrieve the exact imported source")
+                    if bound_sch is not None and (
+                        actual.state_clearinghouse_number != bound_sch
+                        or actual.county != bound_county
+                    ):
+                        raise ValueError(
+                            "persisted source no longer agrees with the rebound discovery lineage"
+                        )
         finally:
             engine.dispose()
     except (AuthorizationDeniedError, OSError, RuntimeError, ValueError) as exc:
@@ -589,6 +660,7 @@ def apply(
                 "persistence_mutated": True,
                 "applied_operations": result.execution.applied_count,
                 "operator_readback_verified": True,
+                "discovery_binding_verified": discovery_binding is not None,
                 "source_review_state": "unassessed",
                 "commercial_leads_created": False,
                 "operator_command": (
