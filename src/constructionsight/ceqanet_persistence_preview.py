@@ -49,9 +49,15 @@ class CeqanetPersistencePreview:
                 "network_executed": False,
                 "persistence_mutated": False,
             },
-            "ceqa_records": [\n                record.model_dump(mode="json", round_trip=True)\n                for record in self.ceqa_records\n            ],
+            "ceqa_records": [
+                record.model_dump(mode="json", round_trip=True)
+                for record in self.ceqa_records
+            ],
             "sites": [site.model_dump(mode="json", round_trip=True) for site in self.sites],
-            "entities": [\n                entity.model_dump(mode="json", round_trip=True)\n                for entity in self.entities\n            ],
+            "entities": [
+                entity.model_dump(mode="json", round_trip=True)
+                for entity in self.entities
+            ],
             "skipped_records": list(self.skipped_records),
         }
 
