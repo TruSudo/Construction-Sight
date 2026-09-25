@@ -33,7 +33,6 @@ from constructionsight.storage.lead_workflow_orm import (
 )
 from constructionsight.storage.lead_workflow_store import (
     compare_and_swap_lead_workflow_record,
-    store_lead_workflow_record,
 )
 
 
