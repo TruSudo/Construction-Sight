@@ -26,15 +26,26 @@ def canonical_lead_fingerprint_key(
     site_key: str | None,
     source_key: str | None,
     source_record_id: str | None,
-    normalized_title: str | None,
+    raw_title: str | None = None,
+    normalized_title: str | None = None,
 ) -> str:
-    """Return a full-digest v2 lead fingerprint identity."""
+    """Return a full-digest v2 lead fingerprint identity from canonical content."""
 
+    canonical_title = (
+        normalize_lead_title_value(raw_title)
+        if raw_title is not None
+        else normalized_title
+    )
+    if (
+        raw_title is not None
+        and normalized_title is not None
+        and normalized_title != canonical_title
+    ):
+        raise ValueError("normalized_title does not match canonical raw_title derivation")
     basis = "|".join(
-        [site_key or "", source_key or "", source_record_id or "", normalized_title or ""]
+        [site_key or "", source_key or "", source_record_id or "", canonical_title or ""]
     )
     return f"lead-fingerprint:v2:{hashlib.sha256(basis.encode('utf-8')).hexdigest()}"
-
 
 class LeadDuplicateStatus(StrEnum):
     """Duplicate suppression result status."""
@@ -80,6 +91,7 @@ class LeadFingerprint(BaseModel):
             site_key=self.site_key,
             source_key=self.source_key,
             source_record_id=self.source_record_id,
+            raw_title=self.raw_title,
             normalized_title=self.normalized_title,
         )
         if self.fingerprint_key != expected_key:
