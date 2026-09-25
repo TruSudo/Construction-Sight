@@ -75,10 +75,13 @@ def test_command_center_discloses_unassessed_records_and_missing_actions() -> No
         assert required in html + script
     for endpoint in (
         "/api/snapshot?", "/api/footprint?", "/api/workflows?",
-        "/api/health", "/api/workflow-summary",
+        "/api/health", "/api/workflow-summary", "/api/ingestion-inbox",
     ):
         assert endpoint in script
     assert "source claims" in script.lower()
+    assert 'id="ingestion-pending"' in html
+    assert "ingestionInboxMarkup" in script
+    assert "capture-next-preview" in script
     assert "localStorage" in script
     assert not re.search(r'\b(247|104|86|57)\b', html)
 
