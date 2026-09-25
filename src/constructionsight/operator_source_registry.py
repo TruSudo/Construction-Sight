@@ -14,6 +14,7 @@ from constructionsight.adapters.specs import default_adapter_family_specs
 from constructionsight.ceqa_models import CeqaRecord
 from constructionsight.models import PublicSource, SourceVerificationResult
 from constructionsight.operator_read_store import read_project_page
+from constructionsight.operator_source_aliases import LoadedSourceAttributionAliases
 from constructionsight.permit_models import PermitRecord
 from constructionsight.storage.orm import SourceRecord, VerificationRecord
 
@@ -57,6 +58,7 @@ class OperatorSourceRegistryEntry(BaseModel):
     attributed_ceqa_records_in_scan: int = Field(ge=0)
     attributed_permit_records_in_scan: int = Field(ge=0)
     attributed_records_in_scan: int = Field(ge=0)
+    attributed_via_alias_records_in_scan: int = Field(ge=0)
 
 
 class OperatorSourceRegistrySnapshot(BaseModel):
@@ -73,6 +75,10 @@ class OperatorSourceRegistrySnapshot(BaseModel):
     source_identity_rows_scanned: int = Field(ge=0)
     source_identity_scan_truncated: bool
     source_attribution_available: bool
+    source_aliases_configured: bool
+    source_alias_artifact_sha256: str | None = None
+    source_alias_mapping_count: int = Field(ge=0)
+    source_aliases_applied: bool
     source_attribution_scan_limit: int = Field(ge=1)
     ceqa_records_total: int = Field(ge=0)
     ceqa_records_scanned: int = Field(ge=0)
@@ -190,31 +196,70 @@ def _latest_verifications(
     return result
 
 
+def _validated_alias_map(
+    aliases: LoadedSourceAttributionAliases | None,
+    *,
+    source_name_counts: Counter[str],
+    identity_scan_truncated: bool,
+) -> dict[str, str]:
+    if aliases is None or identity_scan_truncated:
+        return {}
+    result = aliases.alias_to_canonical()
+    for alias_name, canonical_name in result.items():
+        if source_name_counts.get(canonical_name) != 1:
+            raise ValueError(
+                "source attribution alias canonical source is missing or ambiguous"
+            )
+        if alias_name in source_name_counts:
+            raise ValueError(
+                "source attribution alias collides with a configured source name"
+            )
+    return result
+
+
 def _attribution(
     records: list[CeqaRecord | PermitRecord],
     *,
     configured_names: set[str],
     unambiguous_names: set[str],
-) -> tuple[Counter[str], int, int, set[str]]:
+    aliases: dict[str, str],
+) -> tuple[Counter[str], Counter[str], int, int, set[str]]:
     counts: Counter[str] = Counter()
+    alias_counts: Counter[str] = Counter()
     with_registered = 0
     without_registered = 0
     unregistered_names: set[str] = set()
     for record in records:
         names = {item.source_name for item in record.provenance}
-        matches = names & unambiguous_names
+        direct_matches = names & unambiguous_names
+        alias_matches = {aliases[name] for name in names if name in aliases}
+        matches = direct_matches | alias_matches
         if matches:
             with_registered += 1
             for name in matches:
                 counts[name] += 1
+            for name in alias_matches:
+                alias_counts[name] += 1
         else:
             without_registered += 1
-        unregistered_names.update(names - configured_names)
-    return counts, with_registered, without_registered, unregistered_names
+        unregistered_names.update(
+            name for name in names if name not in configured_names and name not in aliases
+        )
+    return (
+        counts,
+        alias_counts,
+        with_registered,
+        without_registered,
+        unregistered_names,
+    )
 
 
-def build_operator_source_registry(session: Session) -> OperatorSourceRegistrySnapshot:
-    """Return configured sources plus bounded exact-name record attribution."""
+def build_operator_source_registry(
+    session: Session,
+    *,
+    source_aliases: LoadedSourceAttributionAliases | None = None,
+) -> OperatorSourceRegistrySnapshot:
+    """Return configured sources plus bounded explicit record attribution."""
 
     total = session.scalar(select(func.count(SourceRecord.id))) or 0
     rows = session.scalars(
@@ -253,6 +298,11 @@ def build_operator_source_registry(session: Session) -> OperatorSourceRegistrySn
         if not source_identity_scan_truncated
         else []
     )
+    alias_map = _validated_alias_map(
+        source_aliases,
+        source_name_counts=source_name_counts,
+        identity_scan_truncated=source_identity_scan_truncated,
+    )
 
     ceqa_records, ceqa_total = read_project_page(
         session,
@@ -273,18 +323,34 @@ def build_operator_source_registry(session: Session) -> OperatorSourceRegistrySn
     if source_identity_scan_truncated:
         ceqa_counts: Counter[str] = Counter()
         permit_counts: Counter[str] = Counter()
+        ceqa_alias_counts: Counter[str] = Counter()
+        permit_alias_counts: Counter[str] = Counter()
         ceqa_with = ceqa_without = permit_with = permit_without = 0
         unregistered_names: list[str] = []
     else:
-        ceqa_counts, ceqa_with, ceqa_without, ceqa_unregistered = _attribution(
+        (
+            ceqa_counts,
+            ceqa_alias_counts,
+            ceqa_with,
+            ceqa_without,
+            ceqa_unregistered,
+        ) = _attribution(
             ceqa_records,
             configured_names=configured_names,
             unambiguous_names=unambiguous_names,
+            aliases=alias_map,
         )
-        permit_counts, permit_with, permit_without, permit_unregistered = _attribution(
+        (
+            permit_counts,
+            permit_alias_counts,
+            permit_with,
+            permit_without,
+            permit_unregistered,
+        ) = _attribution(
             permit_records,
             configured_names=configured_names,
             unambiguous_names=unambiguous_names,
+            aliases=alias_map,
         )
         unregistered_names = sorted(ceqa_unregistered | permit_unregistered)
     displayed_unregistered = unregistered_names[:UNREGISTERED_SOURCE_NAME_RESULT_LIMIT]
@@ -316,6 +382,12 @@ def build_operator_source_registry(session: Session) -> OperatorSourceRegistrySn
         )
         attributed_permit = (
             permit_counts[source.source_name]
+            if source.source_name in unambiguous_names
+            else 0
+        )
+        attributed_via_alias = (
+            ceqa_alias_counts[source.source_name]
+            + permit_alias_counts[source.source_name]
             if source.source_name in unambiguous_names
             else 0
         )
@@ -374,6 +446,7 @@ def build_operator_source_registry(session: Session) -> OperatorSourceRegistrySn
                 attributed_ceqa_records_in_scan=attributed_ceqa,
                 attributed_permit_records_in_scan=attributed_permit,
                 attributed_records_in_scan=attributed_ceqa + attributed_permit,
+                attributed_via_alias_records_in_scan=attributed_via_alias,
             )
         )
     return OperatorSourceRegistrySnapshot(
@@ -385,6 +458,14 @@ def build_operator_source_registry(session: Session) -> OperatorSourceRegistrySn
         source_identity_rows_scanned=len(identity_names),
         source_identity_scan_truncated=source_identity_scan_truncated,
         source_attribution_available=not source_identity_scan_truncated,
+        source_aliases_configured=source_aliases is not None,
+        source_alias_artifact_sha256=(
+            source_aliases.artifact_sha256 if source_aliases is not None else None
+        ),
+        source_alias_mapping_count=(
+            source_aliases.mapping_count if source_aliases is not None else 0
+        ),
+        source_aliases_applied=bool(alias_map),
         source_attribution_scan_limit=SOURCE_ATTRIBUTION_SCAN_LIMIT,
         ceqa_records_total=ceqa_total,
         ceqa_records_scanned=len(ceqa_records),
@@ -411,8 +492,12 @@ def build_operator_source_registry(session: Session) -> OperatorSourceRegistrySn
                 "authorize a new request or recurring collection."
             ),
             (
-                "Record attribution uses only exact record-level provenance source_name "
-                "matches to one unambiguous configured registry name."
+                "Record attribution uses exact record-level provenance source_name values "
+                "and only explicit retained aliases to one unambiguous configured source."
+            ),
+            (
+                "Alias mappings are operator-supplied identity assertions with evidence "
+                "references; they are not independent verification of source equivalence."
             ),
             (
                 "If the bounded source-identity scan is incomplete, attribution is withheld "
