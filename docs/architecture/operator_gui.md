@@ -20,6 +20,25 @@ PYTHONPATH=src python -m constructionsight.operator_web --database /absolute/pat
 
 Open `http://127.0.0.1:8765`. An optional `--port` selects another loopback port.
 
+To display a previously reviewed exact-SCH queue produced by
+`constructionsight-ceqanet-reviewed-import discover-preview`, add its retained
+JSON artifact explicitly:
+
+```bash
+constructionsight-operator \
+  --database /absolute/path/to/constructionsight.sqlite3 \
+  --capture-queue /absolute/path/to/review-queue.json
+```
+
+The queue is loaded through bounded no-follow runtime-artifact handling and must
+validate as `ceqanet_exact_sch_capture_queue.v1`. Invalid schema, source digest,
+SCH identity, official CEQAnet detail URL, target-county scope, duplicate/order,
+count, or authority-state metadata blocks startup. The dashboard receives a
+reduced read-only queue projection from `GET /api/capture-queue`. Selecting a
+candidate only populates the existing local single-SCH capture command preview;
+it does not issue a network request, write SQLite, create a lead, authorize
+outreach, or prepare a bid. Restart the operator to bind a different queue.
+
 For a GUI entry point that explicitly opens the local browser after the server
 binds, run:
 
@@ -116,6 +135,16 @@ Populate the database through existing governed intake/persistence commands.
   workflow references. It does not substitute the newest review for the same
   candidate. Missing exact reviews remain visible as limitations; contradictory
   identities fail the request. Workflows have separate pagination.
+- An optional retained exact-SCH capture queue can be bound at operator startup.
+  The browser reads only a validated, reduced projection from
+  `/api/capture-queue`. The queue may contain only exact ten-digit SCH candidates
+  in San Bernardino or Riverside County whose official detail URL encodes the
+  same SCH identity and whose retained authority flags remain candidate-only,
+  network-not-executed and persistence-not-mutated. Queue metadata is not
+  independent authentication of the original listing execution, and a candidate
+  is not evidence of a current jobsite. The Sources & Collection panel can copy
+  that exact SCH into the separately governed one-request capture-instruction
+  workflow; no remote collection or import occurs in the GET-only operator.
 - Both views are read-only. Source records are not deduplicated projects or
   qualified leads. No source record is silently promoted to an outreach-ready
   opportunity, and an old document/permit status is not a current phase assertion.
