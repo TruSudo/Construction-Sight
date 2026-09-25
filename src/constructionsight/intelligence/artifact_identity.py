@@ -9,10 +9,10 @@ identity convergence and ripple workflows.
 
 from __future__ import annotations
 
-from collections.abc import Iterable
 import hashlib
 import json
 import re
+from collections.abc import Iterable
 from datetime import UTC, datetime
 from enum import StrEnum
 
