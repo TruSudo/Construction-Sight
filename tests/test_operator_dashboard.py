@@ -738,6 +738,15 @@ def test_source_registry_endpoint_is_read_only_and_rejects_query_parameters(data
     assert hashlib.sha256(path.read_bytes()).hexdigest() == before
 
 
+def test_operator_startup_requires_source_registry_schema(database):
+    path, engine = database
+    with engine.begin() as connection:
+        connection.execute(text("DROP TABLE source_verifications"))
+
+    with pytest.raises(OperationalError):
+        create_handler(path)
+
+
 def test_health_rechecks_schema_after_startup(database):
     path, engine = database
     with _server(path) as port:
