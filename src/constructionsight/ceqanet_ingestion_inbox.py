@@ -92,13 +92,6 @@ def build_ceqanet_ingestion_inbox(
         raise ValueError(
             "saved queue does not exactly match a fresh derivation from listing evidence"
         )
-    if hashlib.sha256(queue_bytes).hexdigest() != hashlib.sha256(
-        json.dumps(queue_payload, sort_keys=True, indent=2).encode("utf-8")
-    ).hexdigest():
-        # Queue bytes are retained for identity, while semantic equality is enforced above.
-        # Do not require a particular pretty-print/newline representation.
-        pass
-
     raw_candidates = regenerated.get("candidates")
     if not isinstance(raw_candidates, list):
         raise ValueError("reviewed queue candidates are malformed")
