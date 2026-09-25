@@ -17,7 +17,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from itertools import chain
 from pathlib import Path
-from typing import Any, BinaryIO, cast
+from typing import Any, cast
 
 from constructionsight.ceqanet_operator_bundle_verify import (
     verify_ceqanet_operator_bundle,
@@ -267,7 +267,9 @@ def _regular_entry_exists(parent: int, name: str, *, required: bool = False) -> 
         info = os.stat(name, dir_fd=parent, follow_symlinks=False)
     except FileNotFoundError:
         if required:
-            raise RuntimeArtifactError(f"required bundle transaction entry is absent: {name}")
+            raise RuntimeArtifactError(
+                f"required bundle transaction entry is absent: {name}"
+            ) from None
         return False
     if not stat.S_ISREG(info.st_mode):
         raise RuntimeArtifactError("bundle transaction entries must be regular files")
