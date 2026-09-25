@@ -1009,7 +1009,7 @@ search = '''        publish_runtime_artifact(
             replace_existing=True,
             parent=parent,
         )'''
-replacement = "        output_path.write_bytes(b\"\\".join(chunks()))"
+replacement = '''        output_path.write_bytes(b"".join(chunks()))'''
 tests = ["tests/test_ceqanet_operator_bundle.py::test_bundle_publication_rejects_unsafe_output"]
 expected_output = "test_bundle_publication_rejects_unsafe_output"
 risk = "Bundle output could follow a replaced ancestor or final symlink."
