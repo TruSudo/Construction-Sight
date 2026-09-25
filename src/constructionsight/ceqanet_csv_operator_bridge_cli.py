@@ -30,6 +30,7 @@ from constructionsight.ceqanet_ingestion_inbox import (
     build_ceqanet_ingestion_inbox,
 )
 from constructionsight.legal import SourceAccessProfile
+from constructionsight.operator_dashboard import build_dashboard_snapshot
 from constructionsight.operator_services.ceqanet_csv_service import (
     execute_authorized_ceqanet_csv,
 )
@@ -773,6 +774,15 @@ def apply(
         try:
             with Session(engine, autoflush=False) as session:
                 store = CeqaStore(session)
+                expected_record_keys = set(bridge.source_record_keys)
+                source_sch_numbers = {
+                    record.state_clearinghouse_number
+                    for record in bridge.preview.ceqa_records
+                    if record.state_clearinghouse_number is not None
+                }
+                if len(source_sch_numbers) != 1:
+                    raise ValueError("reviewed project import does not retain one exact SCH identity")
+                source_sch = next(iter(source_sch_numbers))
                 for expected in bridge.preview.ceqa_records:
                     actual = store.get(expected.ceqa_key)
                     if actual is None or actual.title != expected.title or (
@@ -787,6 +797,19 @@ def apply(
                         raise ValueError(
                             "persisted source no longer agrees with the rebound discovery lineage"
                         )
+                dashboard_page = build_dashboard_snapshot(
+                    session,
+                    kind="ceqa",
+                    query=source_sch,
+                    limit=500,
+                )
+                dashboard_visible_keys = {
+                    project.record_id for project in dashboard_page.projects
+                }
+                if not expected_record_keys.issubset(dashboard_visible_keys):
+                    raise ValueError(
+                        "operator dashboard read model does not expose every imported source record"
+                    )
         finally:
             engine.dispose()
     except (AuthorizationDeniedError, OSError, RuntimeError, ValueError) as exc:
@@ -799,6 +822,11 @@ def apply(
                 "persistence_mutated": True,
                 "applied_operations": result.execution.applied_count,
                 "operator_readback_verified": True,
+                "operator_dashboard_visibility_verified": True,
+                "operator_dashboard_matching_sch_records": dashboard_page.total,
+                "operator_dashboard_imported_records_visible": len(
+                    expected_record_keys & dashboard_visible_keys
+                ),
                 "discovery_binding_verified": discovery_binding is not None,
                 "source_review_state": "unassessed",
                 "commercial_leads_created": False,
