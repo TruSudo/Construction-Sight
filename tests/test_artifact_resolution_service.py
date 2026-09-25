@@ -34,7 +34,7 @@ def _observation(
             normalized_value=normalized_value,
             source_name="Synthetic Public Source",
             source_family=source_family,
-            source_record_id=None,
+            source_record_id=observation_id,
             jurisdiction=None,
             observed_field=None,
             evidence_record_id=evidence_record_id,
