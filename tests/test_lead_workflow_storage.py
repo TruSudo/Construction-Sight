@@ -9,6 +9,7 @@ from constructionsight.lead_dedupe_models import (
     LeadDuplicateResult,
     LeadDuplicateStatus,
     LeadFingerprint,
+    canonical_lead_fingerprint_key,
 )
 from constructionsight.lead_dedupe_service import build_lead_fingerprint, check_lead_duplicate
 from constructionsight.lead_review_models import (
@@ -109,11 +110,17 @@ def _package(score: int = 80) -> LeadReviewPackage:
 
 def _fingerprint(score: int = 80) -> LeadFingerprint:
     return LeadFingerprint(
-        fingerprint_key="lead-fingerprint:test",
+        fingerprint_key=canonical_lead_fingerprint_key(
+            site_key="site:test",
+            source_key="permit:test",
+            source_record_id="permit:1",
+            normalized_title="WAREHOUSE PHASE II",
+        ),
         base_candidate_id="candidate:test",
         site_key="site:test",
         source_key="permit:test",
         source_record_id="permit:1",
+        raw_title="Warehouse Phase II",
         normalized_title="WAREHOUSE PHASE II",
         lead_score=score,
     )
