@@ -15,8 +15,9 @@ CONSTRUCTIONSIGHT_PYTHON=python3.12 bash scripts/test-drive.sh
 
 The helper installs the repository's hashed dependency lock into a separate
 environment, installs the current checkout, verifies the retained CEQAnet CSV
-replay, creates a new trial database, applies a four-operation reviewed write
-plan through the existing authorized persistence command, and opens the operator
+replay, creates a new trial database, loads the canonical public-source registry
+without contacting those sources, applies a four-operation reviewed write plan
+through the existing authorized persistence command, and opens the operator
 at `http://127.0.0.1:8765`. Stop it with Ctrl+C. Each invocation creates a new trial;
 the printed database path remains available for reopening with
 `constructionsight-operator --database <printed-path>` from the trial environment.
@@ -24,8 +25,10 @@ The default trial environment is under
 `~/.local/share/ConstructionSight/test-drive/venv` (or `$XDG_DATA_HOME`).
 `--no-browser` starts the same server without opening a browser automatically.
 
-The trial contains two **real, retained public-source observations from July 12,
-2026**, not fresh discoveries: the EIR and NOP for the Cabazon Infrastructure Plan
+The trial contains the configured source-registry rows from
+`data/source_registry.seed.json` plus two **real, retained public-source
+observations from July 12, 2026**, not fresh discoveries: the EIR and NOP for the
+Cabazon Infrastructure Plan
 and Cabazon Community Plan, SCH 2026030377. They describe a community planning
 area, not two construction jobs. The map point is the source's geographic
 reference converted from degrees/minutes/seconds; it is not a verified parcel,
@@ -44,9 +47,17 @@ Try this sequence:
 5. Check the parcel inspection's missing-exact-parcel explanation.
 6. Open the workflow view; it is empty because no commercial leads were created.
 7. Bookmark one Cabazon source record from the Command Center and verify that the browser-local Watchlist displays it. Reload the same browser profile; it is not a persisted backend watch rule.
-8. Refresh and restart using the printed database path to check source-record persistence and the read-only operator. Use the same browser profile for bookmark retention.
+8. Open **Sources & Collection**. Confirm that the configured CEQAnet, CSLB,
+   San Bernardino EZOP and Riverside PLUS rows are visible even though no fresh
+   source request was made. The retained Cabazon evidence uses more specific
+   historical provenance labels than the canonical CEQAnet registry name, so the
+   exact-name attribution diagnostic should expose that identity gap rather than
+   pretending the records are canonically attributed.
+9. Refresh and restart using the printed database path to check source-record persistence and the read-only operator. Use the same browser profile for bookmark retention.
 
-The browser interface reads local records. Fresh collection, candidate-docket
+The browser interface reads local records. Loading the source registry is a local
+configuration write only; it does not verify reachability or contact any listed
+portal. Fresh collection, candidate-docket
 staging, commercial workflow changes, outreach and bidding are separate commands
 and are not triggered by this trial. Source access and a populated current-data
 run still require their own runtime verification. The current interface has an
