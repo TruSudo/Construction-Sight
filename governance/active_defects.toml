@@ -386,14 +386,6 @@ discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
 required_resolution = "Separate mutable current-state projections from append-only evidence, event, snapshot, and transition ledgers; require immutable transition-specific identity and exact idempotent replay for historical records; preserve supersession explicitly; and add replay, overwrite, and historical reconstruction regressions."
 
 [[defects]]
-id = "CS-SR-052"
-severity = "P1"
-area = "result-ledger-content-identity"
-root_cause = "Result ledger identity is derived from workflow, status, and revision without binding all semantically material outcome content, so materially different result records can share the same nominal ledger identifier."
-discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
-required_resolution = "Define canonical result-ledger serialization and a full content digest covering every material outcome field, bind authority events to that digest, keep revision or head identity separate from content identity, and add regressions proving any material mutation changes the content identity."
-
-[[defects]]
 id = "CS-SR-053"
 severity = "P1"
 area = "financial-decimal-integrity"
@@ -416,14 +408,6 @@ area = "pre-materialization-resource-bounds"
 root_cause = "Some externally controlled local or adapter work is bounded only after materialization or is not bounded at all, including whole-file intake, ZIP entry decompression, and adapter enumeration that calls list(...) before applying max_records."
 discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
 required_resolution = "Apply byte, record, and decompression ceilings before full materialization, stream or incrementally consume bounded work, abort at the first unit beyond the reviewed ceiling, and add oversized-file, compression-ratio, infinite-generator, and max-record regressions."
-
-[[defects]]
-id = "CS-SR-056"
-severity = "P1"
-area = "database-schema-evolution"
-root_cause = "Database initialization relies on SQLAlchemy metadata create_all without a governed schema-version or migration mechanism, so existing databases can retain obsolete columns, constraints, or table shapes while current ORM models and certification assume a newer schema."
-discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
-required_resolution = "Introduce a deterministic repository-native schema version and migration or fail-closed compatibility mechanism, verify the persisted schema before application effects, provide explicit upgrade provenance, and add old-schema, partial-upgrade, wrong-version, and fresh-database regressions."
 
 [[defects]]
 id = "CS-SR-057"
