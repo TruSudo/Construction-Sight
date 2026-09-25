@@ -44,6 +44,7 @@ def _observation(
         normalized_value=normalized_value,
         source_name="Synthetic Public Source",
         source_family=source_family,
+        source_record_id=observation_id,
         evidence_record_id=evidence_record_id,
         confidence_score=90,
     )
