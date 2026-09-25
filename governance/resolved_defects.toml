@@ -874,3 +874,63 @@ last_active_commit = "c633af8716159d0db01b1f5893fe6d25c28d8351"
 evidence_paths = ["docs/assurance/defect_closures/CS-SR-055.md", "docs/audits/evidence/2026-09-21-loader-batch/manifest.json", "src/constructionsight/adapters/runner.py", "src/constructionsight/intake_service.py", "src/constructionsight/storage/runtime_artifacts.py"]
 regression_tests = ["tests/test_adapter_runner.py", "tests/test_ceqanet_operator_archive_verify.py", "tests/test_intake_service.py", "tests/test_parcel_source_acquisition_bundle.py", "tests/test_runtime_evidence_loaders.py"]
 closure_evidence = "docs/assurance/defect_closures/CS-SR-055.md"
+
+[[defects]]
+id = "CS-SR-018"
+severity = "P0"
+area = "network-authorization-architecture"
+root_cause = "Multiple live CLI paths import approved transport modules directly and use bare Boolean flags such as --execute-live as the operative network grant, bypassing canonical application services and the general scope-bound authorization decision contract."
+discovered_against = "857ec7527317fca93eacb956c9e79d7d067522b5"
+required_resolution = "Prohibit CLI-to-transport imports; inventory every live CLI path; move each operation behind an application service that requires exact actor, action, resource, scope, current state, validity, denied authority, audit identity, and single-use preflight; retain Boolean confirmation only as an additional gate."
+resolution_summary = "The repository now mechanically forbids CLI-to-transport imports through the architecture contract, routes live operations through application/operator services, and path-sensitively requires canonical scope-bound authorization plus durable owned effect consumption before reachable network or persistence effects; Boolean confirmation remains an additional gate rather than operative authority."
+resolution_commit = "0f26546f8e415fdf37910b0b26d39bf2ca84dbae"
+resolution_tree = "24b66aa15ad9b192347e8dba9322d3c0da5074c3"
+last_active_commit = "93442dc0dc5eb2db26bf2e0a652a2c45db55598e"
+evidence_paths = ["docs/adr/ADR-0004-authorization-boundaries.md", "docs/assurance/defect_closures/CS-SR-018.md", "governance/architecture_contract.toml", "src/constructionsight/architecture_boundary_certification.py", "src/constructionsight/semantic_authorization_certification.py"]
+regression_tests = ["tests/test_architecture_boundary_certification.py", "tests/test_semantic_authorization_certification.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-018.md"
+
+[[defects]]
+id = "CS-SR-034"
+severity = "P0"
+area = "semantic-authorization-proof"
+root_cause = "The static semantic-authorization audit trusts authorized-looking function names without resolving imported or aliased call targets and proving that canonical authorization occurs before every reachable effect."
+discovered_against = "4cc3ce763354ea91ef8c4bed28c3ce0b531379c3"
+required_resolution = "Replace naming-convention trust with a resolved interprocedural call graph from operator entry points to effect boundaries, prove authorization and preflight precede every reachable effect, and add spoofed-name, alias, indirect-call, branch-bypass, and effect-before-authorization regressions."
+resolution_summary = "Replaced authorized-looking-name trust with a resolved, path-sensitive interprocedural AST call graph that follows imports and aliases, tracks authorization phases, fails closed on unresolved authorized-looking calls and indirect effect selection, and proves canonical authorization/preflight and owned effect consumption dominate every reachable high-impact effect."
+resolution_commit = "b76be5c8d3a57ec68aeb4490b486c1802f66ba30"
+resolution_tree = "ede507fe2df4107804f75b58d6e6b4d984674b4b"
+last_active_commit = "93442dc0dc5eb2db26bf2e0a652a2c45db55598e"
+evidence_paths = ["docs/adr/ADR-0004-authorization-boundaries.md", "docs/assurance/defect_closures/CS-SR-034.md", "src/constructionsight/semantic_authorization_certification.py"]
+regression_tests = ["tests/test_semantic_authorization_certification.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-034.md"
+
+[[defects]]
+id = "CS-SR-043"
+severity = "P0"
+area = "effect-implementation-authority"
+root_cause = "Production-visible application and execution services can authorize an operation and then invoke caller-selected effect implementations such as executors, persisters, HTTP checkers, registries, adapters, or equivalent callbacks, so the implementation that performs the effect is not necessarily the implementation whose authority was reviewed."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Remove caller-selected effect implementations from production-visible boundaries, route effects through ConstructionSight-owned concrete implementations, retain deterministic substitutes only behind test-only seams, preserve authorized success and failure semantics, and add regressions and mutants proving post-authorization implementation substitution is impossible."
+resolution_summary = "Production authorization facades now execute effects only through ConstructionSight-owned concrete services and the durable effect-consumption boundary; caller-selected executors, persisters, HTTP clients/checkers, registries, adapters, ledgers and equivalent implementation seams are rejected from authorized production signatures and by semantic certification, while deterministic substitutes remain behind test-only seams."
+resolution_commit = "0f26546f8e415fdf37910b0b26d39bf2ca84dbae"
+resolution_tree = "24b66aa15ad9b192347e8dba9322d3c0da5074c3"
+last_active_commit = "93442dc0dc5eb2db26bf2e0a652a2c45db55598e"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-043.md", "docs/audits/cs_sr_061_effect_consumption_remediation_2026-08-22.md", "src/constructionsight/effect_consumption.py", "src/constructionsight/semantic_authorization_certification.py"]
+regression_tests = ["tests/test_adversarial_semantic_witnesses.py", "tests/test_effect_consumption.py", "tests/test_semantic_authorization_certification.py", "tests/test_source_http_effect_ownership.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-043.md"
+
+[[defects]]
+id = "CS-SR-044"
+severity = "P0"
+area = "trusted-time-authority"
+root_cause = "Production-visible authorization and execution facades accept caller-controlled clocks or authorization timestamps, allowing an invented time to influence authorization validity, policy-date checks, date-scoped execution identity, and audit metadata."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Move authoritative time acquisition behind a ConstructionSight-owned production clock boundary, retain deterministic clocks only for tests, bind all time-sensitive authorization and execution state to that trusted clock, and add regressions proving callers cannot backdate or forward-date production authority."
+resolution_summary = "Authoritative effect time is now acquired internally by ConstructionSight's owned effect-consumption boundary and bound into operation validity and audit state; production authorized services reject caller-selected clocks and authorization-time seams, while deterministic time substitution is restricted to tests and semantic certification treats clock parameters as prohibited dynamic authority."
+resolution_commit = "0f26546f8e415fdf37910b0b26d39bf2ca84dbae"
+resolution_tree = "24b66aa15ad9b192347e8dba9322d3c0da5074c3"
+last_active_commit = "93442dc0dc5eb2db26bf2e0a652a2c45db55598e"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-044.md", "docs/audits/cs_sr_061_effect_consumption_remediation_2026-08-22.md", "src/constructionsight/effect_consumption.py", "src/constructionsight/semantic_authorization_certification.py"]
+regression_tests = ["tests/test_effect_consumption.py", "tests/test_semantic_authorization_certification.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-044.md"
