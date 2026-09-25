@@ -81,7 +81,8 @@ def test_build_ceqanet_persistence_preview_creates_domain_records() -> None:
     assert first_record["site"]["site_key"] == "site:ceqanet:2017101033"
     assert first_record["entities"][0]["role"] == "agency"
     assert "verified" not in first_record["provenance"][0]
-    assert first_record["provenance"][0]["confidence_score"] == 90
+    assert "confidence_score" not in first_record["provenance"][0]
+    assert first_record["provenance"][0]["confidence_basis"] == "deterministic_normalization"
 
 
 def test_build_ceqanet_persistence_preview_skips_unusable_records() -> None:
