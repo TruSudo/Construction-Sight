@@ -934,3 +934,63 @@ last_active_commit = "93442dc0dc5eb2db26bf2e0a652a2c45db55598e"
 evidence_paths = ["docs/assurance/defect_closures/CS-SR-044.md", "docs/audits/cs_sr_061_effect_consumption_remediation_2026-08-22.md", "src/constructionsight/effect_consumption.py", "src/constructionsight/semantic_authorization_certification.py"]
 regression_tests = ["tests/test_effect_consumption.py", "tests/test_semantic_authorization_certification.py"]
 closure_evidence = "docs/assurance/defect_closures/CS-SR-044.md"
+
+[[defects]]
+id = "CS-SR-050"
+severity = "P0"
+area = "business-transition-concurrency"
+root_cause = "Lead workflow authorization checks an expected current state before mutation, but the durable state transition is performed through an ordinary read and upsert rather than a database compare-and-swap, so competing processes can authorize the same old state and race to overwrite one another."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Bind the authorized expected state to the mutation with one database compare-and-swap or equivalent serializable transition primitive, reject stale writers, preserve append-only transition evidence, and add deterministic competing-writer and stale-authorization regressions."
+resolution_summary = "Bound durable lead-workflow transitions to an exact database compare-and-swap over workflow identity, expected status, and prior payload; reject stale competing writers; and append immutable transition evidence only after the conditional state mutation succeeds."
+resolution_commit = "a90615d23039a3b0ce5cf989ce6006f352825af6"
+resolution_tree = "454bf65e924ea0a40fea8fcd68675cd6b1209acb"
+last_active_commit = "63ca6ca95e1574b912efc8254b1b60adbbaf2a85"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-050.md", "src/constructionsight/lead_operator_service.py", "src/constructionsight/storage/lead_workflow_store.py"]
+regression_tests = ["tests/test_lead_workflow_storage.py", "tests/test_lead_workflow_transition_authorization.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-050.md"
+
+[[defects]]
+id = "CS-SR-051"
+severity = "P1"
+area = "historical-ledger-separation"
+root_cause = "Several records that represent events, evidence, snapshots, or historical transitions use mutable upsert semantics or reusable stable IDs appropriate to current-state projections, allowing later writes to replace earlier historical state."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Separate mutable current-state projections from append-only evidence, event, snapshot, and transition ledgers; require immutable transition-specific identity and exact idempotent replay for historical records; preserve supersession explicitly; and add replay, overwrite, and historical reconstruction regressions."
+resolution_summary = "Separated mutable workflow projection updates from immutable transition history, made event identities append-only with exact idempotent replay, rejected historical rewrites, and retained explicit result-ledger supersession for outcome history."
+resolution_commit = "a90615d23039a3b0ce5cf989ce6006f352825af6"
+resolution_tree = "454bf65e924ea0a40fea8fcd68675cd6b1209acb"
+last_active_commit = "63ca6ca95e1574b912efc8254b1b60adbbaf2a85"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-051.md", "src/constructionsight/result_ledger_service.py", "src/constructionsight/storage/lead_workflow_store.py"]
+regression_tests = ["tests/test_lead_workflow_storage.py", "tests/test_result_ledger_supersession.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-051.md"
+
+[[defects]]
+id = "CS-SR-053"
+severity = "P1"
+area = "financial-decimal-integrity"
+root_cause = "Result-share and royalty accounting validates decimal precision at input but performs and persists monetary arithmetic with binary floating-point values and implicit round(..., 2) semantics rather than a canonical monetary type and explicit rounding doctrine."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Represent monetary values and rates with a fixed-decimal or integer-minor-unit domain, define an explicit rounding mode and scale, persist exact decimal values, migrate affected calculations without changing legitimate business semantics, and add boundary, half-cent, accumulation, and replay regressions."
+resolution_summary = "Replaced authoritative share arithmetic with exact integer minor units and millionth-rate units, explicit round-half-even doctrine, exact-unit persistence and identity, and validation that legacy display projections agree with the governed exact values."
+resolution_commit = "30b911d0fa01c5dff84d99b2c8ed98a396bbc744"
+resolution_tree = "c6f0f492bc47e082e48561b92c913c9f544d6373"
+last_active_commit = "63ca6ca95e1574b912efc8254b1b60adbbaf2a85"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-053.md", "src/constructionsight/result_ledger_service.py", "src/constructionsight/storage/lead_workflow_orm.py", "src/constructionsight/storage/lead_workflow_store.py"]
+regression_tests = ["tests/test_lead_workflow_storage.py", "tests/test_result_ledger_precision.py", "tests/test_result_ledger_service.py", "tests/test_result_ledger_share_state.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-053.md"
+
+[[defects]]
+id = "CS-SR-057"
+severity = "P1"
+area = "foundational-domain-invariants"
+root_cause = "Foundational site, permit, planning, and related domain models do not uniformly enforce physical and lifecycle invariants, allowing impossible coordinates, negative physical measurements, contradictory dates, or similarly invalid states into durable projections."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Add the minimum domain-native validators required for physically and temporally valid state, explicitly define allowed unknown or partial states, reject contradictory lifecycle ordering at authoritative boundaries, and add boundary and chronology regressions without refactoring unrelated domain logic."
+resolution_summary = "Enforced valid site coordinate and nonnegative physical bounds and added permit/planning lifecycle chronology validators that reject contradictory known dates while preserving explicitly unknown or partial lifecycle states."
+resolution_commit = "f0086bebd54a8261311741eea66379c27e9edcf8"
+resolution_tree = "cd853dd0da066466199d995a9ceda525846c3487"
+last_active_commit = "63ca6ca95e1574b912efc8254b1b60adbbaf2a85"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-057.md", "src/constructionsight/permit_models.py", "src/constructionsight/planning_models.py", "src/constructionsight/site_models.py"]
+regression_tests = ["tests/test_permit_models.py", "tests/test_planning_models.py", "tests/test_site_models.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-057.md"
