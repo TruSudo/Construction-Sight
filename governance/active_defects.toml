@@ -202,14 +202,6 @@ discovered_against = "684cc01aa3d2094bd743484280634e182d9f3626"
 required_resolution = "Make reviewed-tree digest computation fail closed when any staged, unstaged, or untracked path exists outside the explicit post-review finalization allowlist; retain permitted finalization behavior; and add staged, unstaged, untracked, and allowed-path regression coverage."
 
 [[defects]]
-id = "CS-SR-026"
-severity = "P0"
-area = "defect-closure-ledger-integrity"
-root_cause = "Canonical governance-shape certification validates active defect entries but does not validate resolved defect entry shape, evidence paths, resolution provenance, duplicate IDs, or active/resolved disjointness. The ledger comment also requires exact-tree certification before a defect can move to resolved even though exact-tree certification is mechanically blocked while any defect remains active, creating a circular and unenforceable closure rule."
-discovered_against = "e24eaea49fd9d05b256c2fac438e1a3d8d816657"
-required_resolution = "Define and enforce an exact resolved-defect evidence schema; require unique IDs, full discovery and resolution commit provenance, nonblank resolution summary, safe existing regression/evidence paths, independent-review binding, and active/resolved disjointness; revise closure doctrine so correction, regression evidence, and independent review authorize the ledger move and canonical exact-tree CI certifies the resulting zero-active-defect tree; add malformed, duplicate, overlap, unsafe-path, and valid-closure regressions."
-
-[[defects]]
 id = "CS-SR-027"
 severity = "P0"
 area = "independent-review-identity-authenticity"
