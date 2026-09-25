@@ -142,3 +142,60 @@ These are resolution candidates, not resolved records.
 
 PR #157 is the only canonical frozen consolidation candidate. Ongoing development
 branches must not be substituted for this SHA during assurance or defect closure.
+
+
+## Fresh unresolved-set re-review findings
+
+### CS-SR-045 — remains unresolved
+
+The frozen tree still defines generic `SourceAccessProfile` restriction facts as
+Boolean fields defaulting to `False`. A profile constructed with only
+`public_url` therefore reaches `ALLOWED` with the reason "No known access
+restriction blocks lawful public collection." This is the original default-false
+authority defect. The CEQAnet-specific governed policy is stronger, but it does not
+eliminate the generic source-preflight defect.
+
+Required next work: introduce explicit unknown restriction states and an
+evidence/review-bound construction path before generic live authority can become
+`ALLOWED`; update adapter and verifier call sites so omission cannot self-authorize.
+
+### CS-SR-049 — fresh correction evidence found
+
+The frozen tree now contains multiple independent enforcement layers:
+
+- `LeadWorkflowRecord` rejects actionable statuses when unresolved duplicate
+  limitations remain.
+- `store_lead_workflow_record` queries durable duplicate-result state and rejects
+  READY/ACTIVE-class persistence when a DUPLICATE or REVIEW_NEEDED record exists.
+- `apply_authorized_lead_workflow_transition` invokes
+  `require_persisted_duplicate_review_clear` before reserving one-shot transition
+  authority.
+- regressions cover unresolved transitions, persisted duplicate state, repeated
+  attempts, and concurrent database writers.
+
+This is strong current-tree correction evidence. Formal resolution still requires
+exact resolution-commit ancestry and assurance-pass confirmation.
+
+### CS-SR-052 — remains unresolved on the frozen baseline
+
+The frozen implementation derives `ledger_id` from workflow ID, status, and
+revision. Materially different reasons, dates, monetary values, and other outcome
+content can therefore share one nominal ledger identity. A remediation branch now
+adds a full material-content SHA-256 and binds result-authority events to that
+digest; see PR #159 / CI-only PR #160. The frozen baseline itself remains
+unresolved until that remediation is validated and incorporated into a new
+candidate.
+
+### CS-SR-053 — remains unresolved
+
+The frozen result/share models and ORM still use binary `float` values and
+`round(..., 2)` arithmetic. Input decimal-place validation does not satisfy the
+required fixed-decimal monetary doctrine. This finding remains a real blocker.
+
+### CS-SR-056 — remains unresolved
+
+`initialize_database()` still imports ORM modules and calls
+`Base.metadata.create_all(engine)` without a repository-owned persisted schema
+version, compatibility check, migration transaction, or upgrade provenance.
+Existing databases can therefore drift from the current ORM model. This remains a
+real blocker and is coupled to the exact-money persistence remediation.
