@@ -10,14 +10,6 @@ discovered_against = "679f15fa6d39f222c16b8c5c3e99db7662465909"
 required_resolution = "Add high-risk classification, review schema, exact-head binding, and unresolved-finding gate."
 
 [[defects]]
-id = "CS-SR-008"
-severity = "P0"
-area = "supply-chain-vulnerability"
-root_cause = "The first exact supported-environment audit found known vulnerabilities in Click 8.2.1, IDNA 3.10, pip 25.1.1, Pygments 2.19.2, and pytest 8.4.1."
-discovered_against = "c0cefeb61ff6e23d527c4d56918c26b70865b560"
-required_resolution = "Upgrade only the affected exact identities to reviewed fixed releases, update declarations and registry evidence, rerun both Python audits, and retain zero-vulnerability reports."
-
-[[defects]]
 id = "CS-SR-011"
 severity = "P0"
 area = "exact-head-ci"
@@ -34,60 +26,12 @@ discovered_against = "857ec7527317fca93eacb956c9e79d7d067522b5"
 required_resolution = "Prohibit CLI-to-transport imports; inventory every live CLI path; move each operation behind an application service that requires exact actor, action, resource, scope, current state, validity, denied authority, audit identity, and single-use preflight; retain Boolean confirmation only as an additional gate."
 
 [[defects]]
-id = "CS-SR-019"
-severity = "P0"
-area = "authorization-construction"
-root_cause = "The general authorization builders validated placeholder all-zero decision and preflight IDs before computing the content digest, so valid scope-bound decisions and preflights could not be constructed."
-discovered_against = "857ec7527317fca93eacb956c9e79d7d067522b5"
-required_resolution = "Construct canonical identity payloads without running final digest validators, compute the real digest, validate the completed model, and add direct decision/preflight identity regression coverage."
-
-[[defects]]
-id = "CS-SR-020"
-severity = "P0"
-area = "bounded-response-enforcement"
-root_cause = "CEQAnet listing and CSV paths followed redirects or materialized complete response bodies before enforcing declared size ceilings, so untrusted response bytes could exceed policy before rejection."
-discovered_against = "e47e33514ef906244d1f5959af49cc193b271305"
-required_resolution = "Route production listing and CSV requests through the streamed bounded HTTP engine, deny redirects before following Location, stop reading at the byte ceiling, classify terminal responses, discard incomplete body evidence, and add redirect and oversize regressions."
-
-[[defects]]
-id = "CS-SR-021"
-severity = "P0"
-area = "intent-implementation-divergence"
-root_cause = "The CEQAnet listing application service imported a nonexistent model generation while the live CLI bypassed that service and constructed the legacy executor directly, allowing documented architecture and executable behavior to diverge."
-discovered_against = "e47e33514ef906244d1f5959af49cc193b271305"
-required_resolution = "Reconcile the listing plan, executor, service, CLI, and tests around one canonical model; enforce one-attempt retry doctrine; prohibit direct CLI transport construction; and add an import/runtime branch obligation that detects nonexistent service dependencies."
-
-[[defects]]
-id = "CS-SR-022"
-severity = "P0"
-area = "atomic-persistence"
-root_cause = "CEQAnet persistence execution could commit valid operations while reporting other operations as failed or skipped, and the CLI treated a bare Boolean as the operative write grant."
-discovered_against = "9fbd989cb20e1bf078f0ee188b9eaaf7830d172f"
-required_resolution = "Prevalidate the complete reviewed write plan, execute all operations in one transaction, roll back on any runtime failure, route the CLI through an exact plan-and-destination authorization facade, and retain zero-partial-commit regressions."
-
-[[defects]]
 id = "CS-SR-023"
 severity = "P0"
 area = "synchronization-integrity"
 root_cause = "Sequential hardening commits left tests importing application functions that were not committed, placed authorization logic inside a domain-classified planning module, and allowed PR and governance inventories to lag the actual branch."
 discovered_against = "9fbd989cb20e1bf078f0ee188b9eaaf7830d172f"
 required_resolution = "Restore pure domain boundaries, add application-layer facades, align every test import and CLI call, synchronize mutation/adversarial/capability/defect contracts and PR metadata, and obtain exact-head CI evidence before resolution."
-
-[[defects]]
-id = "CS-SR-024"
-severity = "P0"
-area = "independent-review-binding"
-root_cause = "The independent-review certifier binds reviewed_commit to HEAD^ and diffs reviewed_commit..HEAD, but canonical pull-request CI checks out a shallow synthetic merge ref whose first parent is main rather than the reviewed branch implementation. A legitimate review can therefore fail solely because of GitHub merge topology, and the binding is not stable across an equivalent squash-merged tree."
-discovered_against = "3d2cd3ad81e6fe4a3f5ec0b637f95a57315c1c55"
-required_resolution = "Replace parent-topology binding with a deterministic reviewed-tree digest that covers every tracked path except explicitly permitted post-review governance artifacts; retain reviewed commit provenance; reject any non-permitted tree drift; and add synthetic-merge, shallow-history, allowed-finalization, and tamper regressions."
-
-[[defects]]
-id = "CS-SR-025"
-severity = "P0"
-area = "independent-review-worktree-binding"
-root_cause = "The reviewed-tree digest is computed from Git index object identities without first rejecting dirty non-permitted worktree state. A reviewer could therefore compute a digest that represents the committed index while inspecting or executing unstaged, staged, or untracked non-permitted content not represented by that digest."
-discovered_against = "684cc01aa3d2094bd743484280634e182d9f3626"
-required_resolution = "Make reviewed-tree digest computation fail closed when any staged, unstaged, or untracked path exists outside the explicit post-review finalization allowlist; retain permitted finalization behavior; and add staged, unstaged, untracked, and allowed-path regression coverage."
 
 [[defects]]
 id = "CS-SR-027"
@@ -106,116 +50,12 @@ discovered_against = "4cc3ce763354ea91ef8c4bed28c3ce0b531379c3"
 required_resolution = "Bind closure records to the reviewed commit's complete active-defect ledger, preserve every original defect field exactly, require complete reviewed-ID accounting, and prove each resolution commit exists and is an ancestor of the reviewed implementation commit."
 
 [[defects]]
-id = "CS-SR-029"
-severity = "P0"
-area = "http-url-canonicalization"
-root_cause = "The bounded HTTP layer can authorize one URL path representation while the HTTP client transmits a different normalized representation, and ambiguous encoded path forms are not rejected consistently."
-discovered_against = "4cc3ce763354ea91ef8c4bed28c3ce0b531379c3"
-required_resolution = "Derive one canonical outbound URL, validate and authorize that exact representation, reject ambiguous encoded separators, dot segments, backslashes, fragments, user information, and noncanonical percent encodings, and transmit only the authorized representation."
-
-[[defects]]
-id = "CS-SR-030"
-severity = "P0"
-area = "persistence-authorization-toctou"
-root_cause = "The CEQAnet persistence facade authorizes a caller-owned mutable write-plan object and later gives the same object to the effect boundary, permitting authorization and execution content to diverge."
-discovered_against = "4cc3ce763354ea91ef8c4bed28c3ce0b531379c3"
-required_resolution = "Create a detached canonical write-plan snapshot before authorization, validate and hash that snapshot, recheck its exact identity immediately before the effect, execute only the detached snapshot, and add nested and callback-time mutation regressions."
-
-[[defects]]
-id = "CS-SR-031"
-severity = "P0"
-area = "ci-environment-identity"
-root_cause = "The exact installed Python environment is verified before vulnerability tooling runs, but the vulnerability action installs additional distributions into the same interpreter before lint, type, test, mutation, and repository-certification gates execute."
-discovered_against = "4cc3ce763354ea91ef8c4bed28c3ce0b531379c3"
-required_resolution = "Run vulnerability tooling in an isolated job or interpreter and verify the supported interpreter's exact installed-distribution identity immediately before and after every executable quality-gate sequence."
-
-[[defects]]
-id = "CS-SR-032"
-severity = "P0"
-area = "ceqanet-redirect-doctrine"
-root_cause = "A production-visible CEQAnet compatibility client path enables redirect following even though the canonical network contract requires redirects to be denied at request time, and current regression coverage preserves the conflicting behavior."
-discovered_against = "4cc3ce763354ea91ef8c4bed28c3ce0b531379c3"
-required_resolution = "Deny redirects at request time on every production-visible CEQAnet path, remove or route the compatibility transport through the common bounded engine, and replace the conflicting regression with fail-closed redirect coverage."
-
-[[defects]]
-id = "CS-SR-033"
-severity = "P0"
-area = "repository-evidence-containment"
-root_cause = "Tracked symbolic links are not prohibited and several governance evidence, test, ADR, lock, and mutation references are accepted without proving their resolved targets remain inside the reviewed repository tree."
-discovered_against = "4cc3ce763354ea91ef8c4bed28c3ce0b531379c3"
-required_resolution = "Reject Git mode 120000 tracked symbolic links and require one centralized, symlink-resistant repository-containment check for every governance evidence, test, ADR, lock, review, and mutation reference."
-
-[[defects]]
 id = "CS-SR-034"
 severity = "P0"
 area = "semantic-authorization-proof"
 root_cause = "The static semantic-authorization audit trusts authorized-looking function names without resolving imported or aliased call targets and proving that canonical authorization occurs before every reachable effect."
 discovered_against = "4cc3ce763354ea91ef8c4bed28c3ce0b531379c3"
 required_resolution = "Replace naming-convention trust with a resolved interprocedural call graph from operator entry points to effect boundaries, prove authorization and preflight precede every reachable effect, and add spoofed-name, alias, indirect-call, branch-bypass, and effect-before-authorization regressions."
-
-[[defects]]
-id = "CS-SR-035"
-severity = "P0"
-area = "network-query-authority"
-root_cause = "Exact network query scope remains partly prose because the bounded HTTP policy does not represent query authority and the CEQAnet listing planner accepts caller-supplied base search URLs."
-discovered_against = "4cc3ce763354ea91ef8c4bed28c3ce0b531379c3"
-required_resolution = "Represent exact query scope or canonical request identity in executable network policy, remove arbitrary base-URL injection from the CEQAnet planner, and reject any request whose host, path, query keys, query values, or canonical identity exceeds reviewed authority."
-
-[[defects]]
-id = "CS-SR-036"
-severity = "P0"
-area = "supply-chain-vulnerability"
-root_cause = "Exact-head CI run #1056 discovered newly published advisory PYSEC-2026-3721 against the locked pip 26.1.2 bootstrap distribution, so both supported environments now fail the mandatory zero-known-vulnerability gate."
-discovered_against = "730a036038d1e18f9a54b0915f5440c5b4e414a1"
-required_resolution = "Upgrade both artifact-hashed environment locks and bootstrap doctrine to pip 26.2 or later using the reviewed exact wheel identity, rerun the full Python 3.11/3.12 vulnerability matrix, and retain zero-vulnerability evidence without an exception."
-
-[[defects]]
-id = "CS-SR-037"
-severity = "P0"
-area = "http-exact-request-identity"
-root_cause = "The bounded HTTP engine validates a canonical URL before passing it to an injected httpx.Client stream call, where client-level query parameters can be merged before transmission; the exact authorized identity can therefore diverge from the wire request despite CS-SR-029."
-discovered_against = "1296b6053da3a5f30cbed702cc1333e9365bb307"
-required_resolution = "Build one explicit request outside injected-client configuration, prevent client defaults and request hooks from changing its authorized URL or method before transmission, and add a regression proving client-level query configuration cannot cause an unauthorized request."
-
-[[defects]]
-id = "CS-SR-038"
-severity = "P0"
-area = "http-response-evidence-integrity"
-root_cause = "Injected httpx.Client response hooks execute before the bounded HTTP engine inspects the response, so a hook can alter status, headers, body, or request evidence after transport and before policy classification."
-discovered_against = "ffaa745dea866dadc3d21e0272c6361128a80901"
-required_resolution = "Reject configured response hooks before transport execution or replace client injection with a constrained transport-only boundary, and add a regression proving a response hook cannot transform an access-control response into accepted evidence."
-
-[[defects]]
-id = "CS-SR-039"
-severity = "P0"
-area = "http-environment-and-transport-authority"
-root_cause = "The bounded HTTP engine creates its owned httpx.Client with the default trust_env=True and accepts preconfigured injected clients, so environment proxy routing, proxy credentials, CA trust, and client-certificate state can be introduced beneath exact URL and auth checks; auth=None does not neutralize transport-level environment or TLS credential configuration."
-discovered_against = "5f714c68f07d0820516046349210067dc5ad8c93"
-required_resolution = "Construct the production client with trust_env=False and explicit reviewed TLS settings, remove effect-capable preconfigured client injection from production-visible boundaries, isolate deterministic test transport behind a non-production boundary, and add regression and mutation coverage proving environment proxies, CA overrides, proxy credentials, and client certificates cannot alter production HTTP execution."
-
-[[defects]]
-id = "CS-SR-040"
-severity = "P0"
-area = "arcgis-exact-request-and-evidence-integrity"
-root_cause = "ArcGIS acquisition and rehearsal effect boundaries accept caller-configured httpx.Client instances and call Client.get or Client.stream, allowing client query defaults, authentication, hooks, redirect policy, environment proxy or TLS state, and custom transports to alter the request or response evidence beneath the reviewed plan; post-response history and endpoint checks occur only after effects, and the acquisition path does not reject redirect history."
-discovered_against = "5f714c68f07d0820516046349210067dc5ad8c93"
-required_resolution = "Route every production ArcGIS request through an environment-independent bounded transport that constructs and authorizes one exact canonical URL including its complete query, denies redirects before execution, rejects unauthorized authentication and hooks, removes effect-capable client injection from production-visible APIs, and adds query-default, auth, hook, redirect, proxy, TLS, and forged-evidence regressions plus focused mutants."
-
-[[defects]]
-id = "CS-SR-041"
-severity = "P0"
-area = "arcgis-bounded-response-enforcement"
-root_cause = "The ArcGIS capability and probe transport calls Client.get and accesses response.content before comparing its length with max_response_bytes, so an untrusted response is fully materialized before the declared memory ceiling is enforced."
-discovered_against = "5f714c68f07d0820516046349210067dc5ad8c93"
-required_resolution = "Use the shared streamed bounded-response engine or an equivalent pre-read Content-Length check and incrementally bounded stream, stop at the first byte beyond the ceiling, retain no incomplete body as successful evidence, and add declared-length and chunked-oversize regressions and mutants."
-
-[[defects]]
-id = "CS-SR-042"
-severity = "P1"
-area = "network-media-type-contract-drift"
-root_cause = "CS-NET-003 omits text/html from its approved CEQAnet CSV media types while the executable _ACCEPTED_MEDIA_TYPES allowlist includes text/html, so the machine-readable network contract and runtime acceptance boundary disagree."
-discovered_against = "5f714c68f07d0820516046349210067dc5ad8c93"
-required_resolution = "Remove HTML from the CSV transport success allowlist unless separately authorized by an exact reviewed policy, mechanically reconcile declared and executable media types, and add a regression proving a 200 HTML login, denial, or error page cannot enter the CSV evidence path as an accepted transport response."
 
 [[defects]]
 id = "CS-SR-043"
@@ -248,14 +88,6 @@ area = "derived-identity-integrity"
 root_cause = "Normalized values, fingerprints, candidate identifiers, and other derived semantic identities can be caller supplied or only partially content-bound instead of being recomputed and self-validating at authoritative model or persistence boundaries."
 discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
 required_resolution = "Define canonical versioned derivation rules for every authoritative normalized value and derived identity, recompute and validate them from source content at trust boundaries, use collision-appropriate full digests where identity is security or evidence relevant, canonicalize symmetric identity pairs, and add forged-normalization, forged-fingerprint, reversed-pair, and stale-ID regressions."
-
-[[defects]]
-id = "CS-SR-048"
-severity = "P0"
-area = "operational-confidence-gating"
-root_cause = "Opportunity, site-resolution, enrichment, and readiness logic can score or resolve evidence by signal presence while treating confidence as descriptive metadata, allowing inferred, ambiguous, conflicting, unverified, or zero-confidence inputs to contribute enough operational weight for actionable state."
-discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
-required_resolution = "Make evidence eligibility and confidence part of operational scoring and resolution semantics, prohibit weak or conflicting evidence from independently producing actionable or canonical state, preserve explicit review states for uncertain evidence, and add low-confidence, conflicting, inferred, and missing-evidence readiness regressions."
 
 [[defects]]
 id = "CS-SR-050"
@@ -368,54 +200,6 @@ area = "assurance-owner-acceptance-authenticity"
 root_cause = "Native Maximum Assurance requires explicit owner acceptance, but the canonical report currently treats owner_acceptance as a repository-controlled Boolean with nonblank owner and review_method text; no externally authenticated owner action binds the decision to the exact frozen commit, reviewed tree, and complete material assurance evidence set, so a committer or automation capable of writing permitted finalization artifacts can self-assert owner acceptance."
 discovered_against = "6402f0a49f80099c46c8bb37a392e740783a92b4"
 required_resolution = "Bind owner acceptance to the repository owner's real GitHub User identity, exact pull-request review ID, exact reviewed commit and tree, and a deterministic SHA-256 digest of all material assurance claims; have canonical CI re-fetch and verify the owner review with read-only GitHub authority; require exact acceptance text, COMMENTED state, OWNER association, and human User identity; keep owner acceptance distinct from independent-human review; and add spoofed-owner, stale-commit, changed-evidence, wrong-body/state, wiring, and focused-mutation regressions."
-
-[[defects]]
-id = "CS-SR-068"
-severity = "P1"
-area = "supply-chain-action-runtime-provenance"
-root_cause = "Canonical CI pins third-party GitHub Action source commits, but the pinned checkout, setup-python, and upload-artifact commits declare Node 20 while current GitHub-hosted runners forcibly execute those bundles under Node 24. The immutable source SHA therefore no longer fixes the interpreter semantics actually executing in CI, and the workflow lacks a native binding from Action identity to a reviewed runtime class."
-discovered_against = "99081b3cd2f4d6dc1916f13c36e09ecda76ac7e1"
-required_resolution = "Review and pin Node-24-native checkout, setup-python, and upload-artifact releases by immutable commit; preserve existing least-privilege and quality semantics; machine-certify the exact Action repositories, commits, occurrence counts, and reviewed runtime annotations; retain the composite pip-audit identity; rerun the complete exact-head matrix; and require the Node-20 forced-runtime warning to disappear before assurance freeze."
-
-[[defects]]
-id = "CS-SR-069"
-severity = "P1"
-area = "supply-chain-vulnerability-toolchain-reproducibility"
-root_cause = "The immutable pypa/gh-action-pip-audit composite source does not pin the scanner implementation it executes: its requirements allow resolver-selected pip-audit and transitive versions, so the mandatory vulnerability gate can change without a ConstructionSight tree or Action-SHA change."
-discovered_against = "7fe708e1ea49044b2b847a9624da5c80c765a679"
-required_resolution = "Remove the resolver-selected vulnerability-scanner bootstrap; use a repository-owned deterministic vulnerability certifier with explicit fail-closed advisory provenance or a fully artifact-hashed exact scanner environment; preserve isolated zero-known-vulnerability enforcement and retained evidence; add negative network, schema, advisory, and mutation coverage; and rerun the complete supported-runtime matrix."
-
-[[defects]]
-id = "CS-SR-071"
-severity = "P0"
-area = "assurance-execution-integrity"
-root_cause = "The isolated vulnerability job invokes three noninteractive Bash steps without step-local BASH_ENV neutralization. A workflow, job, runner, or inherited environment can therefore point BASH_ENV at attacker-controlled startup content that Bash evaluates before the canonically certified step body, allowing the execution semantics to diverge from the text the vulnerability CI certifier binds."
-discovered_against = "235b322da599bcb8ff34ff5d20b18893fc487b14"
-required_resolution = "Set BASH_ENV to /dev/null at each security-critical vulnerability Bash step, bind all occurrences and their placement into the exact vulnerability-job execution contract, add missing-or-weakened neutralizer regressions and focused mutation coverage, rerun the complete exact-head supported-runtime matrix, and retain CS-SR-071 as active until exact-tree Native Maximum Assurance legitimately closes the reviewed defect history."
-
-[[defects]]
-id = "CS-SR-072"
-severity = "P0"
-area = "ci-inherited-execution-controls"
-root_cause = "The canonical CI workflow launches noninteractive Bash without suppressing inherited shell options and exported functions. SHELLOPTS=noexec skips a failing script and exits successfully even with BASH_ENV=/dev/null; an imported test function can also turn failed enforcement into success. A workflow-level noexec setting outside the literal vulnerability-job block passes the complete existing structural preflight, and quality-job shells remain exposed to inherited startup hooks."
-discovered_against = "71c34f275a8d6fa99692e730ff7254b932da7983"
-required_resolution = "Use an explicit reviewed Bash executable and startup-isolated launch flags for every canonical CI run step, preserving errexit and pipefail; bind all workflow bytes including global settings and quality-job controls into structural and final certification; preserve the existing BASH_ENV neutralizers and vulnerability-job contract; add real inherited-option, exported-function, startup-hook, command-resolution, and failure-propagation regressions plus digest and integration mutation witnesses; rerun the complete supported-runtime matrix; and retain the defect until exact-tree Native Maximum Assurance closure."
-
-[[defects]]
-id = "CS-SR-073"
-severity = "P0"
-area = "ci-pre-gate-build-execution"
-root_cause = "The quality job installed the pull-request candidate with pip install --no-deps --no-build-isolation -e . before the structural and assurance gates. Because the candidate controls its PEP 517 build backend and build configuration, repository-controlled build code could execute before those gates and mutate runner command files or the checkout, allowing later gate execution to diverge from the reviewed workflow while the whole-workflow digest itself remained unchanged."
-discovered_against = "af8758343a6a554f23e7ef10ea6aeb849f082718"
-required_resolution = "Remove all candidate project installation and build execution from the pre-gate quality bootstrap; install only the exact hash-locked third-party environment; execute canonical source through a reviewed PYTHONPATH binding; certify the dependency-only install block and prohibit additional project-install commands independently of the workflow digest; verify source-project identity without invoking a build backend and reject installed-project shadowing; add regression and mutation coverage; rerun both supported runtimes; and retain CS-SR-073 as active until exact-tree Native Maximum Assurance legitimately closes reviewed defect history."
-
-[[defects]]
-id = "CS-SR-074"
-severity = "P0"
-area = "supply-chain-newly-disclosed-anyio-advisories"
-root_cause = "Both supported artifact-hashed dependency locks retained AnyIO 4.9.0 when exact-head CI newly detected active GHSA-5p39-cfhj-2xmp (CVE-2026-64847) and GHSA-82r6-8w77-94w6 (CVE-2026-63374); their distinct public disclosure dates are not inferred from the CI detection date. The canonical 2026-09-20 exact-head CI vulnerability audits identified both as active and failed, invalidating reliance on the older no-active-advisory checkpoint. Exposure of affected AnyIO code paths within ConstructionSight has not been independently established."
-discovered_against = "3be6ee6529ed5d8cbb69d88c064de9fd6174c0a4"
-required_resolution = "Retain independent source evidence for both advisories and the reviewed fixed AnyIO release; pin exact PyPI-published universal wheel identity and SHA-256 consistently for Python 3.11 and 3.12; validate strict hash-locked installation, dependency compatibility, network/TLS behavior, full tests and independent fresh vulnerability collection at an exact new head; propagate the fix to stacked GUI and hardening trees; keep this defect active until Native Maximum Assurance, reviewed closure and authenticated owner acceptance legitimately succeed."
 
 [[defects]]
 id = "CS-SR-075"
