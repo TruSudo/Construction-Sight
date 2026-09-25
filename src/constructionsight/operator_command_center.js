@@ -435,10 +435,15 @@ async function prepareCeqanetCapture() {
     const exact=retained.projects.filter(row=>
       row && row.record_kind==="ceqa" && row.source_record_number===raw
     );
-    if(exact.length){
-      target.innerHTML='<span class="badge">EXACT SCH ALREADY RETAINED</span>'+
-        '<p>This database already exposes '+exact.length+' retained CEQA source record'+
-        (exact.length===1?'':'s')+' for SCH '+escapeText(raw)+
+    const reviewed=exact.filter(row=>
+      Array.isArray(row.provenance) && row.provenance.some(item=>
+        item && item.adapter_family==="ceqanet_csv_reviewed"
+      )
+    );
+    if(reviewed.length){
+      target.innerHTML='<span class="badge">REVIEWED CSV CAPTURE ALREADY RETAINED</span>'+
+        '<p>This database already exposes '+reviewed.length+' reviewed CEQAnet CSV source record'+
+        (reviewed.length===1?'':'s')+' for SCH '+escapeText(raw)+
         '. No duplicate capture command was prepared. Search this SCH in Project Intelligence or inspect the existing source evidence before deciding whether a separately reviewed refresh is necessary.</p>'+
         '<p>No collection, import, lead qualification, outreach or bids have been initiated.</p>';
       return;
@@ -462,9 +467,15 @@ async function prepareCeqanetCapture() {
     " --plan-output "+base+"-reviewed-plan.json"+
     " --authorization-reason 'Operator-reviewed official public CEQAnet project CSV'"+
     " --execute-live";
+  const contextNotice=exact.length
+    ? '<p><span class="badge">EXISTING SCH CONTEXT</span> '+exact.length+
+      ' other retained CEQA source record'+(exact.length===1?'':'s')+
+      ' use this SCH, but none carries reviewed CEQAnet CSV provenance. They do not suppress this enrichment capture.</p>'
+    : '<p>No retained CEQA source record currently uses this exact SCH.</p>';
   target.innerHTML='<p>Official CEQAnet project page: <a href="https://ceqanet.lci.ca.gov/'+raw+
     '" target="_blank" rel="noopener noreferrer">Inspect SCH '+raw+' ↗</a></p>'+
-    '<p>The exact SCH is not currently retained in this local database. After checking applicable source-access restrictions, run this command locally. It performs one separately authorized public GET and produces retained evidence plus a proposed, unapplied write plan:</p>'+
+    contextNotice+
+    '<p>After checking applicable source-access restrictions, run this command locally. It performs one separately authorized public GET and produces retained evidence plus a proposed, unapplied write plan:</p>'+
     '<pre class="capture-command" id="capture-command"></pre>'+
     '<p>For discovery-queue candidates, prefer the lineage-bound <code>inbox</code> and <code>capture-next-preview</code> workflow so the exact listing and queue remain attached through apply. Review the retained source rows, county scope and the source/plan SHA-256 digests printed by the command. To import, independently approve both exact digests using the separate <code>constructionsight-ceqanet-reviewed-import apply --help</code> workflow and its explicit write authorization. Once applied to this operator database, the Command Center refreshes on the next local revision check. No collection, import, lead qualification, outreach or bids have been initiated by this preview.</p>';
   byId("capture-command").textContent=command;
