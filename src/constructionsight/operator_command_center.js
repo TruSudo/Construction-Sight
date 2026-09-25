@@ -446,8 +446,48 @@ function renderSourceRegistry(registry) {
     registry.total<0 || !Number.isSafeInteger(registry.returned) || registry.returned<0 ||
     !Number.isSafeInteger(registry.result_limit) || registry.result_limit<1 ||
     !Array.isArray(registry.entries) || registry.returned!==registry.entries.length ||
-    registry.returned>registry.result_limit || registry.truncated!==(registry.total>registry.returned))
+    registry.returned>registry.result_limit || registry.truncated!==(registry.total>registry.returned) ||
+    !Number.isSafeInteger(registry.source_identity_scan_limit) ||
+    registry.source_identity_scan_limit<1 ||
+    !Number.isSafeInteger(registry.source_identity_rows_scanned) ||
+    registry.source_identity_rows_scanned<0 ||
+    registry.source_identity_rows_scanned>registry.source_identity_scan_limit ||
+    registry.source_identity_scan_truncated!==(registry.total>registry.source_identity_rows_scanned) ||
+    registry.source_attribution_available!==!registry.source_identity_scan_truncated ||
+    !Number.isSafeInteger(registry.source_attribution_scan_limit) ||
+    registry.source_attribution_scan_limit<1 ||
+    !Number.isSafeInteger(registry.ceqa_records_total) || registry.ceqa_records_total<0 ||
+    !Number.isSafeInteger(registry.ceqa_records_scanned) || registry.ceqa_records_scanned<0 ||
+    registry.ceqa_records_scanned>registry.source_attribution_scan_limit ||
+    !Number.isSafeInteger(registry.permit_records_total) || registry.permit_records_total<0 ||
+    !Number.isSafeInteger(registry.permit_records_scanned) || registry.permit_records_scanned<0 ||
+    registry.permit_records_scanned>registry.source_attribution_scan_limit ||
+    registry.attribution_scan_truncated!==(
+      registry.ceqa_records_total>registry.ceqa_records_scanned ||
+      registry.permit_records_total>registry.permit_records_scanned
+    ) ||
+    !Number.isSafeInteger(registry.records_with_registered_source_in_scan) ||
+    registry.records_with_registered_source_in_scan<0 ||
+    !Number.isSafeInteger(registry.records_without_registered_source_in_scan) ||
+    registry.records_without_registered_source_in_scan<0 ||
+    !Array.isArray(registry.ambiguous_registry_source_names) ||
+    !Array.isArray(registry.unregistered_source_names_in_scan) ||
+    typeof registry.unregistered_source_names_truncated!=="boolean")
     throw Error("Persisted source registry returned inconsistent bounds or authority state.");
+  const scannedRecords=registry.ceqa_records_scanned+registry.permit_records_scanned;
+  if(registry.source_attribution_available){
+    if(registry.records_with_registered_source_in_scan+
+      registry.records_without_registered_source_in_scan!==scannedRecords)
+      throw Error("Source attribution accounting disagrees with the bounded record scan.");
+  }else if(registry.records_with_registered_source_in_scan!==0 ||
+    registry.records_without_registered_source_in_scan!==0 ||
+    registry.unregistered_source_names_in_scan.length!==0)
+    throw Error("Unavailable source attribution returned unsupported coverage claims.");
+  const validateNames=items=>items.every((item,index)=>
+    typeof item==="string" && item && (index===0 || items[index-1]<item));
+  if(!validateNames(registry.ambiguous_registry_source_names) ||
+    !validateNames(registry.unregistered_source_names_in_scan))
+    throw Error("Source attribution names are not canonical unique strings.");
   const statuses=new Set(["unverified","verified","partial","failed","blocked"]);
   const rows=registry.entries.map(entry=>{
     if(!entry || typeof entry.source_name!=="string" || !entry.source_name ||
@@ -457,7 +497,16 @@ function renderSourceRegistry(registry) {
       !Array.isArray(entry.record_categories) || !statuses.has(entry.verification_status) ||
       typeof entry.adapter_status!=="string" || !entry.adapter_status ||
       typeof entry.adapter_live!=="boolean" ||
-      typeof entry.latest_verification_present!=="boolean")
+      typeof entry.latest_verification_present!=="boolean" ||
+      typeof entry.attribution_name_unambiguous!=="boolean" ||
+      !Number.isSafeInteger(entry.attributed_ceqa_records_in_scan) ||
+      entry.attributed_ceqa_records_in_scan<0 ||
+      !Number.isSafeInteger(entry.attributed_permit_records_in_scan) ||
+      entry.attributed_permit_records_in_scan<0 ||
+      !Number.isSafeInteger(entry.attributed_records_in_scan) ||
+      entry.attributed_records_in_scan!==entry.attributed_ceqa_records_in_scan+
+        entry.attributed_permit_records_in_scan ||
+      (!entry.attribution_name_unambiguous && entry.attributed_records_in_scan!==0))
       throw Error("Persisted source registry entry is inconsistent.");
     const latest=entry.latest_verification_present;
     if(latest && (
@@ -502,6 +551,13 @@ function renderSourceRegistry(registry) {
       (entry.latest_verification_notes?
         '<small>latest check note: '+escapeText(entry.latest_verification_notes)+'</small>':'') :
       '<small>no linked retained verification observation</small>';
+    const attributionDetail=!registry.source_attribution_available ?
+      '<small class="source-attribution-warning">record attribution withheld: configured source identity scan is incomplete</small>' :
+      (entry.attribution_name_unambiguous ?
+        '<small>retained exact-name attribution in scan: '+entry.attributed_records_in_scan+
+        ' record(s) · CEQA '+entry.attributed_ceqa_records_in_scan+
+        ' · permits '+entry.attributed_permit_records_in_scan+'</small>' :
+        '<small class="source-attribution-warning">record attribution withheld: duplicate configured source name</small>');
     return '<tr><th scope="row">'+escapeText(entry.source_name)+
       '<small>'+escapeText(entry.jurisdiction_name)+' · '+escapeText(entry.county)+'</small></th>'+
       '<td>'+escapeText(entry.platform_family)+'<small>adapter '+escapeText(entry.adapter_status)+
@@ -510,12 +566,32 @@ function renderSourceRegistry(registry) {
       escapeText(entry.confidence_score)+'/100 · checked '+
       escapeText(valueOrUnknown(entry.last_checked_date))+'</small>'+latestDetail+'</td>'+
       '<td>'+escapeText(entry.record_categories.join(", ") || "No categories")+
-      '<small>'+escapeText(valueOrUnknown(entry.update_frequency))+'</small></td>'+
+      '<small>'+escapeText(valueOrUnknown(entry.update_frequency))+'</small>'+
+      attributionDetail+'</td>'+
       '<td>'+safeSourceLink(entry.public_url)+'</td></tr>';
   }).join("") || '<tr><td colspan="5">No public-source registry rows are retained in this database.</td></tr>';
+  const attributionSummary=registry.source_attribution_available ?
+    '<p>Bounded exact-name attribution scanned '+registry.ceqa_records_scanned+' of '+
+    registry.ceqa_records_total+' retained CEQA records and '+registry.permit_records_scanned+
+    ' of '+registry.permit_records_total+' retained permit records. '+
+    registry.records_with_registered_source_in_scan+' scanned record(s) matched at least one '+
+    'unambiguous configured source name; '+registry.records_without_registered_source_in_scan+
+    ' did not.'+(registry.attribution_scan_truncated?
+      ' The record scan is truncated, so these are not complete local coverage counts.':'')+'</p>' :
+    '<p class="source-attribution-warning">Record attribution is withheld because only '+
+    registry.source_identity_rows_scanned+' of '+registry.total+
+    ' configured source identities fit the bounded identity scan.</p>';
+  const ambiguity=registry.ambiguous_registry_source_names.length ?
+    '<p class="source-attribution-warning">Duplicate configured source names withheld from exact-name attribution: '+
+    registry.ambiguous_registry_source_names.map(escapeText).join(", ")+'</p>' : '';
+  const unregistered=registry.unregistered_source_names_in_scan.length ?
+    '<p>Retained provenance source names not present in the complete configured-source identity set: '+
+    registry.unregistered_source_names_in_scan.map(escapeText).join(", ")+
+    (registry.unregistered_source_names_truncated?' … list truncated':'')+'</p>' : '';
   return '<section class="feature-card"><span class="badge">PERSISTED SOURCE REGISTRY · READ ONLY</span>'+
     '<h2>Configured public sources ('+registry.returned+(registry.truncated?' of '+registry.total:'')+')</h2>'+
     '<p>Verification state, confidence, update cadence and adapter maturity are retained metadata. The newest linked verification observation is shown separately when available, including any disagreement with the registry row. Historical checks do not prove current reachability, complete jurisdiction coverage, or authority for recurring collection.</p>'+
+    attributionSummary+ambiguity+unregistered+
     '<div class="source-inventory-scroll"><table class="source-inventory source-registry-table"><thead>'+
     '<tr><th>Source</th><th>Platform / adapter</th><th>Registry verification</th>'+
     '<th>Declared records / cadence</th><th>Official source</th></tr></thead><tbody>'+
