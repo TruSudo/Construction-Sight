@@ -84,7 +84,7 @@ def _capture_queue_payload():
         "listing_artifact_sha256": "a" * 64,
         "listing_plan_id": "fixture-listing-plan",
         "listing_pages_reviewed": 2,
-        "listing_records_parsed": 4,
+        "listing_records_parsed": 5,
         "candidate_count": 1,
         "excluded_observations": {
             "missing_or_ambiguous_sch": 1,
