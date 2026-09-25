@@ -2,6 +2,7 @@ from collections.abc import Iterable
 
 from constructionsight.adapters.base import (
     AdapterOutcome,
+    AdapterRunContext,
     AdapterSearchDescriptor,
     SourceAdapter,
 )
@@ -102,3 +103,13 @@ def test_adapter_search_descriptor_validation() -> None:
 
     assert descriptor.search_name == "Synthetic Search"
     assert descriptor.record_types == ["permit"]
+
+
+def test_live_adapter_preflight_requires_established_access_facts() -> None:
+    adapter = SyntheticAdapter(_source(), AdapterRunContext(dry_run=False))
+
+    result = adapter.preflight()
+
+    assert result.allowed is False
+    assert result.decision.value == "review_required"
+    assert "unknown" in result.reason.lower()

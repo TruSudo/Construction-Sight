@@ -1,4 +1,3 @@
-import json
 from pathlib import Path
 
 from typer.testing import CliRunner
@@ -15,7 +14,7 @@ def test_ceqanet_listing_execute_cli_requires_explicit_live_consent() -> None:
     assert "Refusing live execution without --execute-live" in result.output
 
 
-def test_ceqanet_listing_execute_cli_blocks_without_network_when_access_policy_blocks() -> None:
+def test_ceqanet_listing_execute_cli_blocks_captcha_access() -> None:
     result = runner.invoke(
         app,
         [
@@ -28,22 +27,15 @@ def test_ceqanet_listing_execute_cli_blocks_without_network_when_access_policy_b
         ],
     )
 
-    assert result.exit_code == 0
-    payload = json.loads(result.output)
-    assert payload["metadata"]["schema_version"] == "ceqanet_listing_execution.v1"
-    assert payload["metadata"]["allowed"] is False
-    assert payload["metadata"]["access"]["decision"] == "blocked"
-    assert payload["metadata"]["planned_request_count"] == 0
-    assert payload["metadata"]["executed_request_count"] == 0
-    assert payload["metadata"]["successful_response_count"] == 0
-    assert payload["metadata"]["failed_response_count"] == 0
-    assert payload["snapshots"] == []
-    assert "captcha" in payload["metadata"]["reason"]
+    assert result.exit_code == 1
+    assert "lawful access preflight denied execution" in result.output
+    assert "captcha" in result.output.lower()
 
 
-def test_ceqanet_listing_execute_cli_writes_blocked_json_output(tmp_path: Path) -> None:
+def test_ceqanet_listing_execute_cli_does_not_write_blocked_output(
+    tmp_path: Path,
+) -> None:
     output_path = tmp_path / "execution.json"
-
     result = runner.invoke(
         app,
         [
@@ -58,17 +50,15 @@ def test_ceqanet_listing_execute_cli_writes_blocked_json_output(tmp_path: Path) 
         ],
     )
 
-    assert result.exit_code == 0
-    assert "Wrote CEQAnet listing execution JSON" in result.output
-    payload = json.loads(output_path.read_text(encoding="utf-8"))
-    assert payload["metadata"]["allowed"] is False
-    assert payload["metadata"]["query"]["counties"] == ["Riverside"]
-    assert payload["snapshots"] == []
+    assert result.exit_code == 1
+    assert "robots" in result.output.lower()
+    assert not output_path.exists()
 
 
-def test_ceqanet_listing_execute_cli_rejects_output_without_json(tmp_path: Path) -> None:
+def test_ceqanet_listing_execute_cli_rejects_output_without_json(
+    tmp_path: Path,
+) -> None:
     output_path = tmp_path / "execution.json"
-
     result = runner.invoke(
         app,
         [
@@ -90,3 +80,20 @@ def test_ceqanet_listing_execute_cli_rejects_unbounded_query_even_with_live_cons
 
     assert result.exit_code != 0
     assert "requires at least one bounding query filter" in result.output
+
+
+def test_ceqanet_listing_execute_cli_requires_access_fact_basis() -> None:
+    result = runner.invoke(
+        app,
+        [
+            "execute",
+            "--county",
+            "San Bernardino",
+            "--execute-live",
+            "--json-output",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "lawful access preflight denied execution" in result.output
+    assert "fact basis" in result.output

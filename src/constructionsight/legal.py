@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from enum import StrEnum
 
@@ -30,49 +31,66 @@ class AccessPolicyResult:
 
 @dataclass(frozen=True)
 class SourceAccessProfile:
-    """Public access facts known about a source before collection."""
+    """Evidence/review-bound public access facts known before collection.
+
+    Restriction facts are tri-state. None means the fact has not been
+    established and therefore cannot authorize live collection. An all-clear
+    profile also requires a nonblank access_fact_basis that identifies the
+    retained evidence or reviewed artifact supporting the asserted facts.
+    """
 
     public_url: str
-    requires_login: bool = False
-    has_captcha: bool = False
-    robots_disallows_collection: bool = False
-    terms_disallow_collection: bool = False
-    paywalled: bool = False
+    requires_login: bool | None = None
+    has_captcha: bool | None = None
+    robots_disallows_collection: bool | None = None
+    terms_disallow_collection: bool | None = None
+    paywalled: bool | None = None
+    access_fact_basis: str | None = None
     rate_limit_known: bool = False
     rate_limit_notes: str | None = None
+
+
+_RESTRICTION_FACTS = (
+    "requires_login",
+    "has_captcha",
+    "robots_disallows_collection",
+    "terms_disallow_collection",
+    "paywalled",
+)
 
 
 def evaluate_access(profile: SourceAccessProfile) -> AccessPolicyResult:
     """Evaluate whether a source may be collected by ConstructionSight.
 
-    This function is intentionally conservative. Ambiguous access conditions return
-    REVIEW_REQUIRED rather than silently proceeding.
+    Known restrictions fail closed. Unknown restriction facts require review.
+    An all-clear profile is allowed only when the caller binds those facts to a
+    retained evidence or reviewed-artifact identity.
     """
 
-    if profile.requires_login:
+    if profile.requires_login is True:
         return AccessPolicyResult(
             decision=AccessDecision.REVIEW_REQUIRED,
             reason=(
-                "Source requires login; verify lawful credentials and source terms "
-                "before access."
+                "Source requires login (requires_login=true); verify lawful credentials "
+                "and source terms before access."
             ),
         )
-    if profile.has_captcha:
+    if profile.has_captcha is True:
         return AccessPolicyResult(
             decision=AccessDecision.BLOCKED,
             reason="Source presents captcha; ConstructionSight does not bypass captchas.",
         )
-    if profile.robots_disallows_collection:
+    if profile.robots_disallows_collection is True:
         return AccessPolicyResult(
             decision=AccessDecision.BLOCKED,
             reason="Robots policy disallows collection for the intended path.",
         )
-    if profile.terms_disallow_collection:
+    if profile.terms_disallow_collection is True:
         return AccessPolicyResult(
             decision=AccessDecision.BLOCKED,
             reason="Source terms disallow the intended automated collection.",
         )
-    if profile.paywalled:
+    if profile.paywalled is True:
         return AccessPolicyResult(
             decision=AccessDecision.BLOCKED,
             reason=(
@@ -81,7 +99,44 @@ def evaluate_access(profile: SourceAccessProfile) -> AccessPolicyResult:
             ),
         )
 
+    unknown_facts = [
+        fact_name
+        for fact_name in _RESTRICTION_FACTS
+        if getattr(profile, fact_name) is None
+    ]
+    if unknown_facts:
+        return AccessPolicyResult(
+            decision=AccessDecision.REVIEW_REQUIRED,
+            reason=(
+                "Lawful-access restriction facts are unknown: "
+                + ", ".join(unknown_facts)
+                + ". Establish and retain reviewed access facts before live access."
+            ),
+        )
+
+    fact_basis = profile.access_fact_basis
+    if fact_basis is None or not fact_basis.strip():
+        return AccessPolicyResult(
+            decision=AccessDecision.REVIEW_REQUIRED,
+            reason=(
+                "Lawful-access restriction facts have no retained evidence or reviewed "
+                "fact basis; an all-clear profile cannot authorize live access."
+            ),
+        )
+
+    if re.fullmatch(r"(?:review|evidence):[0-9a-f]{64}", fact_basis) is None:
+        return AccessPolicyResult(
+            decision=AccessDecision.REVIEW_REQUIRED,
+            reason=(
+                "Lawful-access fact basis must be an immutable review or evidence "
+                "SHA-256 identity."
+            ),
+        )
+
     return AccessPolicyResult(
         decision=AccessDecision.ALLOWED,
-        reason="No known access restriction blocks lawful public collection.",
+        reason=(
+            f"Reviewed access facts {fact_basis} identify no restriction "
+            "blocking public collection."
+        ),
     )

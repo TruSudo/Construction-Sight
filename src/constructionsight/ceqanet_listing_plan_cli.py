@@ -28,6 +28,7 @@ from constructionsight.adapters.ceqanet_listing_dry_run import (
     CeqanetListingDryRunReport,
 )
 from constructionsight.legal import SourceAccessProfile, evaluate_access
+from constructionsight.storage.runtime_artifacts import write_runtime_text
 
 app = typer.Typer(help="Preview bounded CEQAnet read-only listing plans.")
 console = Console(width=240, color_system=None)
@@ -150,11 +151,9 @@ def _query_to_dict(query: CeqanetListingQuery) -> dict[str, Any]:
 
 def _write_json_file(output_path: Path, payload: dict[str, Any]) -> None:
     """Write deterministic UTF-8 JSON output."""
-
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(
+    write_runtime_text(
+        output_path,
         json.dumps(payload, indent=2, sort_keys=True, default=str) + "\n",
-        encoding="utf-8",
     )
 
 
@@ -254,6 +253,7 @@ def _build_plan(
     *,
     query: CeqanetListingQuery,
     public_url: str,
+    access_fact_basis: str | None,
     requires_login: bool,
     has_captcha: bool,
     robots_disallows_collection: bool,
@@ -265,6 +265,7 @@ def _build_plan(
     access_result = evaluate_access(
         SourceAccessProfile(
             public_url=public_url,
+            access_fact_basis=access_fact_basis,
             requires_login=requires_login,
             has_captcha=has_captcha,
             robots_disallows_collection=robots_disallows_collection,
@@ -342,6 +343,13 @@ def plan_ceqanet_listing(
         str,
         typer.Option(help="Public CEQAnet URL evaluated by access policy."),
     ] = "https://ceqanet.lci.ca.gov/",
+    access_fact_basis: Annotated[
+        str | None,
+        typer.Option(
+            "--access-fact-basis",
+            help="Retained evidence or reviewed-artifact identity for access facts.",
+        ),
+    ] = None,
     requires_login: Annotated[
         bool,
         typer.Option(help="Mark source as requiring login for access-policy preview."),
@@ -390,6 +398,7 @@ def plan_ceqanet_listing(
     plan = _build_plan(
         query=query,
         public_url=public_url,
+        access_fact_basis=access_fact_basis,
         requires_login=requires_login,
         has_captcha=has_captcha,
         robots_disallows_collection=robots_disallows_collection,
@@ -452,6 +461,13 @@ def dry_run_ceqanet_listing(
         str,
         typer.Option(help="Public CEQAnet URL evaluated by access policy."),
     ] = "https://ceqanet.lci.ca.gov/",
+    access_fact_basis: Annotated[
+        str | None,
+        typer.Option(
+            "--access-fact-basis",
+            help="Retained evidence or reviewed-artifact identity for access facts.",
+        ),
+    ] = None,
     requires_login: Annotated[
         bool,
         typer.Option(help="Mark source as requiring login for access-policy preview."),
@@ -500,6 +516,7 @@ def dry_run_ceqanet_listing(
     plan = _build_plan(
         query=query,
         public_url=public_url,
+        access_fact_basis=access_fact_basis,
         requires_login=requires_login,
         has_captcha=has_captcha,
         robots_disallows_collection=robots_disallows_collection,

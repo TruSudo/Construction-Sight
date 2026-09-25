@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from datetime import date
 from typing import Any
 from urllib.parse import urlparse
@@ -14,7 +14,6 @@ from constructionsight.adapters.ceqanet_listing import (
 )
 from constructionsight.adapters.ceqanet_listing_executor import (
     CeqanetListingExecutionReport,
-    CeqanetListingHttpClient,
     CeqanetListingReadOnlyExecutor,
     CeqanetListingResponseSnapshot,
 )
@@ -226,7 +225,6 @@ def execute_ceqanet_recurring_run(
     *,
     attempt_sequence: int,
     execute_live: bool,
-    client: CeqanetListingHttpClient | None = None,
 ) -> CeqanetRecurringRunExecution:
     """Execute one manifest through the existing bounded listing executor."""
 
@@ -242,6 +240,7 @@ def execute_ceqanet_recurring_run(
     access_result = evaluate_access(
         SourceAccessProfile(
             public_url=manifest.execution_base_url,
+            access_fact_basis=f"evidence:{definition.checklist_evidence_digest}",
             requires_login=manifest.access_assumptions.requires_login,
             has_captcha=manifest.access_assumptions.has_captcha,
             robots_disallows_collection=(
@@ -257,9 +256,8 @@ def execute_ceqanet_recurring_run(
     search_url = f"{manifest.execution_base_url.rstrip('/')}/Search"
     if search_url != CEQANET_SEARCH_URL:
         raise ValueError("manifest execution base does not resolve to the CEQAnet search contract")
-    plan = CeqanetReadOnlyListingPlanner(search_url=search_url).build_plan(query, access_result)
+    plan = CeqanetReadOnlyListingPlanner().build_plan(query, access_result)
     report = CeqanetListingReadOnlyExecutor(
-        client=client,
         timeout_seconds=manifest.timeout_seconds,
         max_body_chars=manifest.max_body_chars,
     ).run(plan)
@@ -275,6 +273,71 @@ def execute_ceqanet_recurring_run(
         network_executed=report.executed_request_count > 0,
         persistence_mutated=False,
     )
+
+
+def bind_authorized_recurring_listing_evidence(
+    execution: CeqanetRecurringRunExecution,
+    manifest: CeqanetRecurringRunManifest,
+    *,
+    authorization: Mapping[str, Any],
+) -> CeqanetRecurringRunExecution:
+    """Bind a manual recurring attempt to queue-compatible v2 listing evidence."""
+
+    execution.assert_integrity()
+    manifest.assert_integrity()
+    if execution.run_id != manifest.run_id or execution.manifest_digest != manifest.manifest_digest:
+        raise ValueError("recurring execution does not match the manifest being bound")
+    decision_id = authorization.get("decision_id")
+    if not isinstance(decision_id, str) or not decision_id:
+        raise ValueError("recurring authorization decision identity is missing")
+    if authorization.get("action") != "execute-ceqanet-recurring-run-attempt":
+        raise ValueError("recurring authorization action is not the expected manual attempt")
+
+    report = execution.execution_report
+    metadata = report.get("metadata")
+    snapshots = report.get("snapshots")
+    if not isinstance(metadata, dict) or not isinstance(snapshots, list):
+        raise ValueError("recurring execution report is incomplete")
+    if metadata.get("schema_version") not in {
+        "ceqanet_listing_execution.v1",
+        "ceqanet_listing_execution.v2",
+    }:
+        raise ValueError("recurring execution report schema is unsupported")
+
+    bound_metadata = dict(metadata)
+    bound_metadata.update(
+        {
+            "schema_version": "ceqanet_listing_execution.v2",
+            "plan_id": _recurring_listing_plan_id(manifest, execution.attempt_sequence),
+            "attempt_sequence": execution.attempt_sequence,
+            "access": {
+                "decision": "allowed",
+                "reason": "Reviewed recurring-run access assumptions permit this manual attempt.",
+                "state_identity": canonical_digest(
+                    {
+                        "manifest_digest": manifest.manifest_digest,
+                        "access_assumptions": manifest.access_assumptions.model_dump(mode="json"),
+                    }
+                ),
+            },
+            "authorization": dict(authorization),
+        }
+    )
+    bound_report = {
+        "metadata": bound_metadata,
+        "snapshots": [dict(snapshot) if isinstance(snapshot, dict) else snapshot for snapshot in snapshots],
+    }
+    payload = execution.model_dump(
+        mode="json",
+        exclude={"execution_report", "execution_digest"},
+    )
+    rebound = CeqanetRecurringRunExecution(
+        **payload,
+        execution_report=bound_report,
+        execution_digest="",
+    )
+    rebound.assert_integrity()
+    return rebound
 
 
 def verify_ceqanet_recurring_run_execution(
@@ -336,6 +399,7 @@ def verify_ceqanet_recurring_run_execution(
         manifest,
         execution.execution_report,
         findings,
+        attempt_sequence=execution.attempt_sequence,
     )
     if executed_count is not None:
         expected_network_executed = executed_count > 0
@@ -569,6 +633,7 @@ def _snapshot_to_dict(snapshot: CeqanetListingResponseSnapshot) -> dict[str, Any
         "body_truncated": snapshot.body_truncated,
         "executed": snapshot.executed,
         "error": snapshot.error,
+        "failure_kind": snapshot.failure_kind,
         "reachable": snapshot.reachable,
     }
 
@@ -694,10 +759,28 @@ def _compare(findings: list[str], actual: object, expected: object, message: str
         findings.append(message)
 
 
+def _recurring_listing_plan_id(
+    manifest: CeqanetRecurringRunManifest,
+    attempt_sequence: int,
+) -> str:
+    """Return a stable identity for one exact manifest listing attempt."""
+
+    return canonical_digest(
+        {
+            "kind": "ceqanet-recurring-listing-attempt",
+            "run_id": manifest.run_id,
+            "manifest_digest": manifest.manifest_digest,
+            "attempt_sequence": attempt_sequence,
+        }
+    )
+
+
 def _verify_execution_report(
     manifest: CeqanetRecurringRunManifest,
     report: dict[str, Any],
     findings: list[str],
+    *,
+    attempt_sequence: int,
 ) -> int | None:
     metadata = report.get("metadata")
     snapshots = report.get("snapshots")
@@ -708,12 +791,46 @@ def _verify_execution_report(
         findings.append("execution report snapshots are missing")
         return None
 
-    _compare(
-        findings,
-        metadata.get("schema_version"),
+    schema_version = metadata.get("schema_version")
+    if schema_version not in {
         "ceqanet_listing_execution.v1",
-        "execution report schema_version mismatch",
-    )
+        "ceqanet_listing_execution.v2",
+    }:
+        findings.append("execution report schema_version mismatch")
+    if schema_version == "ceqanet_listing_execution.v2":
+        metadata_attempt = metadata.get("attempt_sequence")
+        if isinstance(metadata_attempt, bool) or not isinstance(metadata_attempt, int):
+            findings.append("execution report attempt_sequence is not an integer")
+        else:
+            _compare(
+                findings,
+                metadata_attempt,
+                attempt_sequence,
+                "execution report attempt_sequence does not match execution",
+            )
+        _compare(
+            findings,
+            metadata.get("plan_id"),
+            _recurring_listing_plan_id(manifest, attempt_sequence),
+            "execution report plan_id does not match manifest attempt",
+        )
+        _compare(
+            findings,
+            metadata.get("allowed"),
+            True,
+            "execution report allowed flag is not true",
+        )
+        access = metadata.get("access")
+        authorization = metadata.get("authorization")
+        if not isinstance(access, dict) or access.get("decision") != "allowed":
+            findings.append("execution report access decision is not allowed")
+        if (
+            not isinstance(authorization, dict)
+            or not isinstance(authorization.get("decision_id"), str)
+            or not authorization.get("decision_id")
+            or authorization.get("action") != "execute-ceqanet-recurring-run-attempt"
+        ):
+            findings.append("execution report authorization identity is invalid")
     _compare(
         findings,
         metadata.get("query"),

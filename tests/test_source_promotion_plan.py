@@ -14,9 +14,15 @@ from constructionsight.models import (
 )
 from constructionsight.source_promotion_plan_cli import app
 from constructionsight.source_promotion_plan_models import SourcePromotionPlanAction
-from constructionsight.source_promotion_plan_service import build_source_promotion_plan
+from constructionsight.source_promotion_plan_service import (
+    _build_source_promotion_plan_from_checklist,
+    build_source_promotion_plan,
+)
 from constructionsight.source_readiness_models import HttpReachabilityResult
 from constructionsight.source_verification_checklist_models import SourceVerificationObservation
+from constructionsight.source_verification_checklist_service import (
+    _build_source_verification_checklist_report_from_results,
+)
 
 
 def _source() -> PublicSource:
@@ -65,12 +71,14 @@ def _reachable(source: PublicSource) -> HttpReachabilityResult:
 
 
 def test_plan_keeps_unverified_without_manual_evidence() -> None:
-    report = build_source_promotion_plan(
-        [_source()],
+    source = _source()
+    checklist = _build_source_verification_checklist_report_from_results(
+        [source],
         default_adapter_family_specs(),
-        check_http=True,
-        http_checker=_reachable,
+        http_results=(_reachable(source),),
+        observations=None,
     )
+    report = _build_source_promotion_plan_from_checklist(checklist)
     row = report.rows[0]
 
     assert row.planned_action == SourcePromotionPlanAction.KEEP_UNVERIFIED
@@ -79,11 +87,11 @@ def test_plan_keeps_unverified_without_manual_evidence() -> None:
 
 
 def test_plan_marks_partial_for_placeholder_adapter_with_complete_evidence() -> None:
-    report = build_source_promotion_plan(
-        [_source()],
+    source = _source()
+    checklist = _build_source_verification_checklist_report_from_results(
+        [source],
         default_adapter_family_specs(),
-        check_http=True,
-        http_checker=_reachable,
+        http_results=(_reachable(source),),
         observations=[
             SourceVerificationObservation(
                 source_name="Test Source",
@@ -97,6 +105,7 @@ def test_plan_marks_partial_for_placeholder_adapter_with_complete_evidence() -> 
             )
         ],
     )
+    report = _build_source_promotion_plan_from_checklist(checklist)
     row = report.rows[0]
 
     assert row.planned_action == SourcePromotionPlanAction.MARK_PARTIAL_CANDIDATE
@@ -109,11 +118,11 @@ def test_plan_marks_verified_candidate_for_mature_adapter_with_complete_evidence
         platform_family=PlatformFamily.ACCELA_ACA,
         status=AdapterImplementationStatus.LIVE_READ_ONLY,
     )
-    report = build_source_promotion_plan(
-        [_source()],
+    source = _source()
+    checklist = _build_source_verification_checklist_report_from_results(
+        [source],
         specs,
-        check_http=True,
-        http_checker=_reachable,
+        http_results=(_reachable(source),),
         observations=[
             SourceVerificationObservation(
                 source_name="Test Source",
@@ -127,6 +136,7 @@ def test_plan_marks_verified_candidate_for_mature_adapter_with_complete_evidence
             )
         ],
     )
+    report = _build_source_promotion_plan_from_checklist(checklist)
     row = report.rows[0]
 
     assert row.planned_action == SourcePromotionPlanAction.VERIFIED_CANDIDATE_REVIEW

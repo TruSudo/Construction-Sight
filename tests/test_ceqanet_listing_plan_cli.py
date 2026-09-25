@@ -30,6 +30,8 @@ def test_ceqanet_listing_plan_cli_renders_allowed_plan_table() -> None:
             "50",
             "--max-pages",
             "2",
+            "--access-fact-basis",
+            "review:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
         ],
     )
 
@@ -71,6 +73,8 @@ def test_ceqanet_listing_plan_cli_emits_json_allowed_plan() -> None:
             "2026-01-01",
             "--received-to",
             "2026-01-31",
+            "--access-fact-basis",
+            "review:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
             "--json-output",
         ],
     )
@@ -116,6 +120,8 @@ def test_ceqanet_listing_plan_cli_writes_json_output(tmp_path: Path) -> None:
             "plan",
             "--county",
             "Riverside",
+            "--access-fact-basis",
+            "review:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
             "--json-output",
             "--output",
             str(output_path),
@@ -173,3 +179,21 @@ def test_ceqanet_listing_plan_cli_rejects_reversed_date_range() -> None:
 
     assert result.exit_code != 0
     assert "received_from must be on or before received_to" in result.output
+
+
+def test_ceqanet_listing_plan_cli_requires_access_fact_basis_for_all_clear() -> None:
+    result = runner.invoke(
+        app,
+        [
+            "plan",
+            "--county",
+            "San Bernardino",
+            "--json-output",
+        ],
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.output)
+    assert payload["metadata"]["allowed"] is False
+    assert payload["metadata"]["access"]["decision"] == "review_required"
+    assert "fact basis" in payload["metadata"]["reason"]
