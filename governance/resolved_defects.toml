@@ -1039,3 +1039,78 @@ last_active_commit = "0440c7dbf61fc526875a736f577fccdaa878f3ee"
 evidence_paths = ["docs/adr/ADR-0009-native-maximum-assurance.md", "docs/assurance/defect_closures/CS-SR-066.md", "src/constructionsight/owner_acceptance_certification.py"]
 regression_tests = ["tests/test_ci_exact_head_contract.py", "tests/test_owner_acceptance_certification.py"]
 closure_evidence = "docs/assurance/defect_closures/CS-SR-066.md"
+
+[[defects]]
+id = "CS-SR-023"
+severity = "P0"
+area = "synchronization-integrity"
+root_cause = "Sequential hardening commits left tests importing application functions that were not committed, placed authorization logic inside a domain-classified planning module, and allowed PR and governance inventories to lag the actual branch."
+discovered_against = "9fbd989cb20e1bf078f0ee188b9eaaf7830d172f"
+required_resolution = "Restore pure domain boundaries, add application-layer facades, align every test import and CLI call, synchronize mutation/adversarial/capability/defect contracts and PR metadata, and obtain exact-head CI evidence before resolution."
+resolution_summary = "Restored synchronized domain/application boundaries and callers, aligned governance and mutation inventories, repaired exact-head regression drift without suppressions, and obtained retained exact-head Python 3.11/3.12 CI evidence on the fully integrated tree."
+resolution_commit = "6cd5c369b4c82abbcf678e971bc2c1f3376e7772"
+resolution_tree = "09fc0a45f1a25178cf04859928ec777ea3a3031b"
+last_active_commit = "02ab5cd8b3be9e703fde4c9295fb25772b403b0c"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-023.md", "governance/mutation_contract.toml", "src/constructionsight/architecture_boundary_certification.py", ".github/workflows/ci.yml"]
+regression_tests = ["tests/test_architecture_boundary_certification.py", "tests/test_governance_contract_schema.py", "tests/test_ci_exact_head_contract.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-023.md"
+
+[[defects]]
+id = "CS-SR-046"
+severity = "P0"
+area = "epistemic-provenance-authority"
+root_cause = "Verification, confidence, manual-review claims, source independence, and similar epistemic states can be supplied as structurally valid caller assertions without mandatory binding to immutable evidence, evidence existence, reviewer identity, or derivation lineage."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Make authoritative verification and confidence derived states rather than caller assertions, bind them to existing immutable evidence and reviewer or derivation provenance, validate evidence lineage and independence at the trust boundary, and add forged-provenance, missing-evidence, duplicate-lineage, and self-asserted-review regressions."
+resolution_summary = "Removed caller-authored generic verification/confidence authority, derived generic confidence from retained evidence and declared basis, kept generic provenance non-authoritative, excluded computed epistemic projections from persistence/replay payloads, and retained dedicated forged/self-assertion regressions."
+resolution_commit = "6cd5c369b4c82abbcf678e971bc2c1f3376e7772"
+resolution_tree = "09fc0a45f1a25178cf04859928ec777ea3a3031b"
+last_active_commit = "02ab5cd8b3be9e703fde4c9295fb25772b403b0c"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-046.md", "src/constructionsight/provenance.py", "src/constructionsight/ceqanet_persistence_preview.py", "src/constructionsight/source_candidate_docket_service.py"]
+regression_tests = ["tests/test_provenance_authority.py", "tests/test_ceqanet_persistence_preview.py", "tests/test_source_candidate_docket.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-046.md"
+
+[[defects]]
+id = "CS-SR-047"
+severity = "P1"
+area = "derived-identity-integrity"
+root_cause = "Normalized values, fingerprints, candidate identifiers, and other derived semantic identities can be caller supplied or only partially content-bound instead of being recomputed and self-validating at authoritative model or persistence boundaries."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Define canonical versioned derivation rules for every authoritative normalized value and derived identity, recompute and validate them from source content at trust boundaries, use collision-appropriate full digests where identity is security or evidence relevant, canonicalize symmetric identity pairs, and add forged-normalization, forged-fingerprint, reversed-pair, and stale-ID regressions."
+resolution_summary = "Introduced canonical versioned normalization and full-digest identities for authoritative derived identity paths, recomputed them at model boundaries, canonicalized symmetric resolution pairs, and migrated callers/fixtures to reject forged normalization, stale fingerprints, and caller-selected candidate IDs."
+resolution_commit = "6cd5c369b4c82abbcf678e971bc2c1f3376e7772"
+resolution_tree = "09fc0a45f1a25178cf04859928ec777ea3a3031b"
+last_active_commit = "02ab5cd8b3be9e703fde4c9295fb25772b403b0c"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-047.md", "src/constructionsight/intelligence/artifact_identity.py", "src/constructionsight/lead_dedupe_models.py", "src/constructionsight/contractor_identity_models.py"]
+regression_tests = ["tests/test_derived_identity_integrity.py", "tests/test_artifact_resolution_service.py", "tests/test_lead_dedupe_models.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-047.md"
+
+[[defects]]
+id = "CS-SR-058"
+severity = "P0"
+area = "cross-artifact-commit-atomicity"
+root_cause = "Multi-artifact filesystem operations can durably write an audit or report artifact before the corresponding authoritative target is successfully committed, allowing durable evidence to claim an apply or mutation that never completed."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Define one commit protocol for coupled filesystem artifacts, stage and fsync or equivalently prepare all outputs before authoritative replacement, publish success evidence only after the target commit succeeds, recover deterministically from partial failure, and add injected late-write, replacement, and crash-point regressions."
+resolution_summary = "Implemented a staged, serialized coupled-artifact publication transaction with durable pending state, success-manifest-last semantics, deterministic recovery from partial publication and cleanup failure, and adversarial late-failure regressions."
+resolution_commit = "6cd5c369b4c82abbcf678e971bc2c1f3376e7772"
+resolution_tree = "09fc0a45f1a25178cf04859928ec777ea3a3031b"
+last_active_commit = "02ab5cd8b3be9e703fde4c9295fb25772b403b0c"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-058.md", "src/constructionsight/ceqanet_operator_bundle.py", "src/constructionsight/storage/runtime_artifacts.py"]
+regression_tests = ["tests/test_ceqanet_operator_bundle.py", "tests/test_runtime_evidence_loaders.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-058.md"
+
+[[defects]]
+id = "CS-SR-059"
+severity = "P1"
+area = "deep-content-immutability"
+root_cause = "Some frozen or content-addressed outer models contain mutable nested models or collections, so validated content can change after identity or digest construction without forcing a new identity."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Make content-addressed evidence recursively immutable or defensively detached, use immutable collection types for digest-bound fields, prevent nested post-validation mutation, and add nested-list, nested-model, stale-digest, and copy-isolation regressions."
+resolution_summary = "Made digest-bound and evidence-bearing nested collections recursively immutable across result, parcel, CEQAnet live/evidence-series and related models, synchronized constructors to immutable collection contracts, and proved post-validation mutation is rejected without stale identities."
+resolution_commit = "6cd5c369b4c82abbcf678e971bc2c1f3376e7772"
+resolution_tree = "09fc0a45f1a25178cf04859928ec777ea3a3031b"
+last_active_commit = "02ab5cd8b3be9e703fde4c9295fb25772b403b0c"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-059.md", "src/constructionsight/result_ledger_models.py", "src/constructionsight/parcel_core_models.py", "src/constructionsight/ceqanet_csv_live_models.py"]
+regression_tests = ["tests/test_deep_content_immutability.py", "tests/test_result_ledger_service.py", "tests/test_parcel_observation_service.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-059.md"
