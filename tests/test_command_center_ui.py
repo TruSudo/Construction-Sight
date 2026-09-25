@@ -291,7 +291,10 @@ def test_sources_collection_prepares_bounded_sch_capture_without_browser_network
     assert '"/api/snapshot?"+new URLSearchParams({' in script
     assert 'kind:"ceqa",q:raw,limit:"100",offset:"0"' in script
     assert 'row.source_record_number===raw' in script
-    assert "EXACT SCH ALREADY RETAINED" in script
+    assert 'item.adapter_family==="ceqanet_csv_reviewed"' in script
+    assert "REVIEWED CSV CAPTURE ALREADY RETAINED" in script
+    assert "EXISTING SCH CONTEXT" in script
+    assert "none carries reviewed CEQAnet CSV provenance" in script
     assert "No duplicate capture command was prepared" in script
     assert "capture-next-preview" in script
     assert '"constructionsight-ceqanet-reviewed-import capture-preview"' in script
