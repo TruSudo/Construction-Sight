@@ -105,6 +105,7 @@ class CeqanetAdapter(SourceAdapter[dict[str, Any], CeqaRecord]):
     """CEQAnet adapter with fixture-backed normalization and no network authority."""
 
     platform_family = PlatformFamily.CEQANET
+    requires_access_preflight = False
 
     def __init__(
         self, *args: Any, fixture_rows: list[dict[str, Any]] | None = None, **kwargs: Any
