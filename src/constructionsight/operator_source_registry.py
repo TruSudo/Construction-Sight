@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections import Counter
 from datetime import date, datetime
 
 from pydantic import BaseModel, Field
@@ -10,10 +11,16 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from constructionsight.adapters.specs import default_adapter_family_specs
+from constructionsight.ceqa_models import CeqaRecord
 from constructionsight.models import PublicSource, SourceVerificationResult
+from constructionsight.operator_read_store import read_project_page
+from constructionsight.permit_models import PermitRecord
 from constructionsight.storage.orm import SourceRecord, VerificationRecord
 
 SOURCE_REGISTRY_RESULT_LIMIT = 500
+SOURCE_IDENTITY_SCAN_LIMIT = 5_000
+SOURCE_ATTRIBUTION_SCAN_LIMIT = 5_000
+UNREGISTERED_SOURCE_NAME_RESULT_LIMIT = 100
 
 
 class OperatorSourceRegistryEntry(BaseModel):
@@ -46,6 +53,10 @@ class OperatorSourceRegistryEntry(BaseModel):
     latest_verification_confidence_score: int | None = Field(default=None, ge=0, le=100)
     latest_verification_notes: str | None = None
     verification_metadata_consistent: bool | None = None
+    attribution_name_unambiguous: bool
+    attributed_ceqa_records_in_scan: int = Field(ge=0)
+    attributed_permit_records_in_scan: int = Field(ge=0)
+    attributed_records_in_scan: int = Field(ge=0)
 
 
 class OperatorSourceRegistrySnapshot(BaseModel):
@@ -58,6 +69,21 @@ class OperatorSourceRegistrySnapshot(BaseModel):
     returned: int = Field(ge=0)
     result_limit: int = Field(ge=1)
     truncated: bool
+    source_identity_scan_limit: int = Field(ge=1)
+    source_identity_rows_scanned: int = Field(ge=0)
+    source_identity_scan_truncated: bool
+    source_attribution_available: bool
+    source_attribution_scan_limit: int = Field(ge=1)
+    ceqa_records_total: int = Field(ge=0)
+    ceqa_records_scanned: int = Field(ge=0)
+    permit_records_total: int = Field(ge=0)
+    permit_records_scanned: int = Field(ge=0)
+    attribution_scan_truncated: bool
+    records_with_registered_source_in_scan: int = Field(ge=0)
+    records_without_registered_source_in_scan: int = Field(ge=0)
+    ambiguous_registry_source_names: list[str]
+    unregistered_source_names_in_scan: list[str]
+    unregistered_source_names_truncated: bool
     entries: list[OperatorSourceRegistryEntry]
     limitations: list[str]
 
@@ -92,7 +118,7 @@ def _public_source(row: SourceRecord) -> PublicSource:
 
 
 def _verification(
-    row: VerificationRecord, source: PublicSource,
+    row: VerificationRecord, source: PublicSource
 ) -> SourceVerificationResult:
     try:
         raw_observations: object = json.loads(row.raw_observations_json)
@@ -138,7 +164,7 @@ def _expected_registry_status(result: SourceVerificationResult) -> str:
 
 
 def _latest_verifications(
-    session: Session, source_ids: list[int],
+    session: Session, source_ids: list[int]
 ) -> dict[int, VerificationRecord]:
     if not source_ids:
         return {}
@@ -164,8 +190,31 @@ def _latest_verifications(
     return result
 
 
+def _attribution(
+    records: list[CeqaRecord | PermitRecord],
+    *,
+    configured_names: set[str],
+    unambiguous_names: set[str],
+) -> tuple[Counter[str], int, int, set[str]]:
+    counts: Counter[str] = Counter()
+    with_registered = 0
+    without_registered = 0
+    unregistered_names: set[str] = set()
+    for record in records:
+        names = {item.source_name for item in record.provenance}
+        matches = names & unambiguous_names
+        if matches:
+            with_registered += 1
+            for name in matches:
+                counts[name] += 1
+        else:
+            without_registered += 1
+        unregistered_names.update(names - configured_names)
+    return counts, with_registered, without_registered, unregistered_names
+
+
 def build_operator_source_registry(session: Session) -> OperatorSourceRegistrySnapshot:
-    """Return a bounded validated view of stored public-source configuration."""
+    """Return configured sources plus bounded exact-name record attribution."""
 
     total = session.scalar(select(func.count(SourceRecord.id))) or 0
     rows = session.scalars(
@@ -179,11 +228,71 @@ def build_operator_source_registry(session: Session) -> OperatorSourceRegistrySn
         )
         .limit(SOURCE_REGISTRY_RESULT_LIMIT)
     ).all()
-    verifications = _latest_verifications(session, [row.id for row in rows])
+    sources = [(row, _public_source(row)) for row in rows]
+    identity_names = list(
+        session.scalars(
+            select(SourceRecord.source_name)
+            .order_by(SourceRecord.id)
+            .limit(SOURCE_IDENTITY_SCAN_LIMIT)
+        ).all()
+    )
+    source_identity_scan_truncated = total > len(identity_names)
+    source_name_counts = Counter(identity_names)
+    configured_names = (
+        set(source_name_counts) if not source_identity_scan_truncated else set()
+    )
+    unambiguous_names = (
+        {
+            name for name, count in source_name_counts.items() if count == 1
+        }
+        if not source_identity_scan_truncated
+        else set()
+    )
+    ambiguous_names = (
+        sorted(name for name, count in source_name_counts.items() if count > 1)
+        if not source_identity_scan_truncated
+        else []
+    )
+
+    ceqa_records, ceqa_total = read_project_page(
+        session,
+        kind="ceqa",
+        query="",
+        county="",
+        limit=SOURCE_ATTRIBUTION_SCAN_LIMIT,
+        offset=0,
+    )
+    permit_records, permit_total = read_project_page(
+        session,
+        kind="permit",
+        query="",
+        county="",
+        limit=SOURCE_ATTRIBUTION_SCAN_LIMIT,
+        offset=0,
+    )
+    if source_identity_scan_truncated:
+        ceqa_counts: Counter[str] = Counter()
+        permit_counts: Counter[str] = Counter()
+        ceqa_with = ceqa_without = permit_with = permit_without = 0
+        unregistered_names: list[str] = []
+    else:
+        ceqa_counts, ceqa_with, ceqa_without, ceqa_unregistered = _attribution(
+            ceqa_records,
+            configured_names=configured_names,
+            unambiguous_names=unambiguous_names,
+        )
+        permit_counts, permit_with, permit_without, permit_unregistered = _attribution(
+            permit_records,
+            configured_names=configured_names,
+            unambiguous_names=unambiguous_names,
+        )
+        unregistered_names = sorted(ceqa_unregistered | permit_unregistered)
+    displayed_unregistered = unregistered_names[:UNREGISTERED_SOURCE_NAME_RESULT_LIMIT]
+
+    verifications = _latest_verifications(session, [row.id for row, _ in sources])
     specs = default_adapter_family_specs()
     entries: list[OperatorSourceRegistryEntry] = []
-    for row in rows:
-        source = _public_source(row)
+    for row, source in sources:
         spec = specs.get(source.platform_family)
         verification_row = verifications.get(row.id)
         verification = (
@@ -199,6 +308,16 @@ def build_operator_source_registry(session: Session) -> OperatorSourceRegistrySn
                 and source.confidence_score == verification.confidence_score
                 and source.last_checked_date == verification.checked_at.date()
             )
+        )
+        attributed_ceqa = (
+            ceqa_counts[source.source_name]
+            if source.source_name in unambiguous_names
+            else 0
+        )
+        attributed_permit = (
+            permit_counts[source.source_name]
+            if source.source_name in unambiguous_names
+            else 0
         )
         entries.append(
             OperatorSourceRegistryEntry(
@@ -249,6 +368,12 @@ def build_operator_source_registry(session: Session) -> OperatorSourceRegistrySn
                     verification.notes if verification is not None else None
                 ),
                 verification_metadata_consistent=metadata_consistent,
+                attribution_name_unambiguous=(
+                    source.source_name in unambiguous_names
+                ),
+                attributed_ceqa_records_in_scan=attributed_ceqa,
+                attributed_permit_records_in_scan=attributed_permit,
+                attributed_records_in_scan=attributed_ceqa + attributed_permit,
             )
         )
     return OperatorSourceRegistrySnapshot(
@@ -256,6 +381,25 @@ def build_operator_source_registry(session: Session) -> OperatorSourceRegistrySn
         returned=len(entries),
         result_limit=SOURCE_REGISTRY_RESULT_LIMIT,
         truncated=total > len(entries),
+        source_identity_scan_limit=SOURCE_IDENTITY_SCAN_LIMIT,
+        source_identity_rows_scanned=len(identity_names),
+        source_identity_scan_truncated=source_identity_scan_truncated,
+        source_attribution_available=not source_identity_scan_truncated,
+        source_attribution_scan_limit=SOURCE_ATTRIBUTION_SCAN_LIMIT,
+        ceqa_records_total=ceqa_total,
+        ceqa_records_scanned=len(ceqa_records),
+        permit_records_total=permit_total,
+        permit_records_scanned=len(permit_records),
+        attribution_scan_truncated=(
+            ceqa_total > len(ceqa_records) or permit_total > len(permit_records)
+        ),
+        records_with_registered_source_in_scan=ceqa_with + permit_with,
+        records_without_registered_source_in_scan=ceqa_without + permit_without,
+        ambiguous_registry_source_names=ambiguous_names,
+        unregistered_source_names_in_scan=displayed_unregistered,
+        unregistered_source_names_truncated=(
+            len(unregistered_names) > len(displayed_unregistered)
+        ),
         entries=entries,
         limitations=[
             (
@@ -267,12 +411,24 @@ def build_operator_source_registry(session: Session) -> OperatorSourceRegistrySn
                 "authorize a new request or recurring collection."
             ),
             (
+                "Record attribution uses only exact record-level provenance source_name "
+                "matches to one unambiguous configured registry name."
+            ),
+            (
+                "If the bounded source-identity scan is incomplete, attribution is withheld "
+                "rather than treating unseen configured sources as unregistered."
+            ),
+            (
+                "Attribution scans are bounded independently for CEQA and permit records; "
+                "truncation prevents complete local coverage conclusions."
+            ),
+            (
                 "Adapter status describes implemented software capability; it does not grant "
                 "network collection authority."
             ),
             (
-                "No registry row is evidence that all permits or projects in a jurisdiction "
-                "have been acquired."
+                "No registry row or attributed record count establishes complete jurisdiction "
+                "coverage, a current active jobsite, or a qualified commercial lead."
             ),
         ],
     )
