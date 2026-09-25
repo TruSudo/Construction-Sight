@@ -3,12 +3,50 @@
 from __future__ import annotations
 
 from datetime import UTC, date, datetime
+import hashlib
+import re
 from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from constructionsight.domain_types import ConfidenceBand, confidence_band
+
+_SPACE_RE = re.compile(r"\s+")
+_NON_WORD_RE = re.compile(r"[^A-Z0-9]+")
+_LICENSE_RE = re.compile(r"\d+")
+
+
+def normalize_contractor_name_value(value: str) -> str:
+    """Return the canonical contractor-name derivation."""
+
+    cleaned = _NON_WORD_RE.sub(" ", value.upper())
+    return _SPACE_RE.sub(" ", cleaned).strip()
+
+
+def normalize_contractor_license_value(value: str) -> str:
+    """Return the canonical digits-only contractor license identity."""
+
+    return "".join(_LICENSE_RE.findall(value))
+
+
+def canonical_contractor_key(
+    *,
+    normalized_name: str,
+    license_number: str | None,
+    contractor_group_key: str | None,
+) -> str:
+    """Return the full-digest v2 contractor identity key."""
+
+    basis = "|".join([normalized_name, license_number or "", contractor_group_key or ""])
+    return f"contractor:v2:{hashlib.sha256(basis.encode('utf-8')).hexdigest()}"
+
+
+def canonical_contractor_resolution_id(contractor_keys: list[str]) -> str:
+    """Return an order-independent full-digest contractor resolution identity."""
+
+    basis = "|".join(sorted(contractor_keys))
+    return f"contractor-resolution:v2:{hashlib.sha256(basis.encode('utf-8')).hexdigest()}"
 
 
 class ContractorIdentityStatus(StrEnum):
@@ -48,7 +86,7 @@ class ContractorLicense(BaseModel):
     def normalize_license_number(cls, value: str) -> str:
         """Normalize license number spacing."""
 
-        normalized = "".join(part for part in value.strip().split())
+        normalized = normalize_contractor_license_value(value)
         if not normalized:
             raise ValueError("license_number cannot be blank")
         return normalized
@@ -101,11 +139,21 @@ class ContractorIdentity(BaseModel):
         return values
 
     @model_validator(mode="after")
-    def require_confidence_consistency(self) -> ContractorIdentity:
-        """Require confidence band to match score."""
+    def require_derived_identity_consistency(self) -> ContractorIdentity:
+        """Recompute normalized name, key, and confidence-derived state."""
 
-        expected = confidence_band(self.confidence_score)
-        if self.confidence_band != expected:
+        expected_name = normalize_contractor_name_value(self.display_name)
+        if self.normalized_name != expected_name:
+            raise ValueError("normalized_name does not match canonical display_name derivation")
+        expected_key = canonical_contractor_key(
+            normalized_name=expected_name,
+            license_number=self.license.license_number if self.license else None,
+            contractor_group_key=self.contractor_group_key,
+        )
+        if self.contractor_key != expected_key:
+            raise ValueError("contractor_key does not match canonical identity content")
+        expected_band = confidence_band(self.confidence_score)
+        if self.confidence_band != expected_band:
             raise ValueError("confidence_band must match confidence_score")
         return self
 
@@ -135,7 +183,7 @@ class ContractorIdentityResolution(BaseModel):
 
     @model_validator(mode="after")
     def require_primary_candidate_consistency(self) -> ContractorIdentityResolution:
-        """Require primary key to be among candidates."""
+        """Require canonical resolution identity and a valid primary candidate."""
 
         candidate_keys = {candidate.contractor_key for candidate in self.candidates}
         primary_key_missing = (
@@ -144,6 +192,9 @@ class ContractorIdentityResolution(BaseModel):
         )
         if primary_key_missing:
             raise ValueError("primary_contractor_key must be in candidates")
+        expected_id = canonical_contractor_resolution_id(list(candidate_keys))
+        if self.resolution_id != expected_id:
+            raise ValueError("resolution_id does not match canonical candidate identity set")
         return self
 
     def to_dict(self) -> dict[str, Any]:
