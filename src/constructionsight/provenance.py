@@ -67,7 +67,6 @@ class Provenance(BaseModel):
         return self
 
     @computed_field
-    @property
     def evidence_sha256(self) -> str | None:
         """Return the digest of retained evidence bytes represented by evidence_text."""
 
@@ -76,7 +75,6 @@ class Provenance(BaseModel):
         return hashlib.sha256(self.evidence_text.encode("utf-8")).hexdigest()
 
     @computed_field
-    @property
     def lineage_id(self) -> str:
         """Return a deterministic source-lineage identity, not a caller assertion."""
 
@@ -87,14 +85,12 @@ class Provenance(BaseModel):
         return f"provenance-lineage:{hashlib.sha256(payload.encode('utf-8')).hexdigest()}"
 
     @computed_field
-    @property
     def confidence_score(self) -> int:
         """Return confidence derived only from the declared supported basis."""
 
         return _DERIVED_CONFIDENCE[self.confidence_basis]
 
     @computed_field
-    @property
     def verified(self) -> bool:
         """Generic provenance cannot self-certify an authoritative verification."""
 
