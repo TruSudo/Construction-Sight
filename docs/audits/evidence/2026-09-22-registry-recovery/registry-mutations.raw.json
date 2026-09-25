@@ -1,0 +1,20 @@
+{
+  "started_at": "2026-09-22T00:06:02.256118+00:00",
+  "finished_at": "2026-09-22T00:08:25.046950+00:00",
+  "cwd": "/workspace/scratch/9a28012c2f9f/Construction-Sight",
+  "base_commit": "c00df16369b23aa801c3ee031a0c7bc35ed24f73",
+  "diff_sha256": "d1312e06857162f64d7517e056e11e590794b224c49f800448cb014dbc290ac4",
+  "untracked_sha256": {},
+  "command": [
+    "/workspace/scratch/d29604697a81/cs-venv/bin/python",
+    "-m",
+    "constructionsight.mutation_certification",
+    "--root",
+    ".",
+    "--output",
+    "../evidence/registry-mutations-report.json"
+  ],
+  "returncode": 0,
+  "stdout": "Mutation certification passed: 146/146 mutants killed.\n",
+  "stderr": ""
+}

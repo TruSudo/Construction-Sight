@@ -1,0 +1,183 @@
+schema_version = "constructionsight.adversarial-test-contract/v2"
+contract_id = "construction-sight-adversarial-tests-2026-07-15"
+required_categories = [
+  "audit-failure-rollback",
+  "authority-expansion-reuse-expiry",
+  "boundary-overflow-excessive-size",
+  "conflicting-same-time-evidence",
+  "dependency-source-drift",
+  "duplicates-ordering",
+  "empty-absent-null-unknown-extra",
+  "malformed-identity-schema",
+  "oversized-malformed-terminal-access-control",
+  "partial-interrupted-write-cleanup",
+  "replay-conflicting-replay-idempotency",
+  "retry-exhaustion-cancellation",
+  "stale-concurrent-writers",
+  "stale-future-naive-time",
+  "tampering-hash-mismatch",
+  "traversal-symlink",
+  "unicode-normalization",
+]
+
+[[matrices]]
+id = "CS-TEST-001"
+capability_ids = ["CS-CAP-001", "CS-CAP-002", "CS-CAP-003", "CS-CAP-004", "CS-CAP-005", "CS-CAP-006", "CS-CAP-007", "CS-CAP-008", "CS-CAP-009", "CS-CAP-010"]
+tests = [
+  "tests/test_adversarial_contract_certification.py",
+  "tests/test_adversarial_semantic_witnesses.py",
+  "tests/test_architecture_boundary_certification.py",
+  "tests/test_assurance_certification.py",
+  "tests/test_audit_package_cli.py",
+  "tests/test_authorization_decision.py",
+  "tests/test_ceqanet_adapter.py",
+  "tests/test_ceqanet_csv_evidence_series.py",
+  "tests/test_ceqanet_csv_live.py",
+  "tests/test_ceqanet_csv_operator_service.py",
+  "tests/test_ceqanet_detail_service.py",
+  "tests/test_ceqanet_listing_executor.py",
+  "tests/test_ceqanet_listing_service.py",
+  "tests/test_ceqanet_persistence_execute.py",
+  "tests/test_ceqanet_persistence_operator_service.py",
+  "tests/test_ceqanet_recurring_run_operator_service.py",
+  "tests/test_ci_exact_head_contract.py",
+  "tests/test_dependency_certification.py",
+  "tests/test_effect_consumption.py",
+  "tests/test_github_review_certification.py",
+  "tests/test_governance_certification.py",
+  "tests/test_governance_contract_schema.py",
+  "tests/test_governance_link_certification.py",
+  "tests/test_http_transport.py",
+  "tests/test_lead_workflow_transition_authorization.py",
+  "tests/test_local_operator_authorization.py",
+  "tests/test_mutation_detection.py",
+  "tests/test_parcel_arcgis_operator_service.py",
+  "tests/test_parcel_assurance.py",
+  "tests/test_parcel_source_bulk_rehearsal_authorization.py",
+  "tests/test_parcel_source_bulk_rehearsal_authorization_chronology.py",
+  "tests/test_repository_certification.py",
+  "tests/test_repository_path_certification.py",
+  "tests/test_result_authority_apply_authorization.py",
+  "tests/test_review_binding_certification.py",
+  "tests/test_semantic_authorization_certification.py",
+  "tests/test_source_promotion_authorization.py",
+  "tests/test_source_promotion_plan.py",
+  "tests/test_source_readiness_authorization.py",
+  "tests/test_source_registry_authorization.py",
+  "tests/test_source_registry_update_plan.py",
+  "tests/test_source_verification_checklist_authorization.py",
+  "tests/test_source_verification_evidence_authorization.py",
+  "tests/test_source_verifier.py",
+  "tests/test_supply_chain.py",
+  "tests/test_vulnerability_certification.py",
+  "tests/test_vulnerability_collection.py",
+]
+categories = [
+  "audit-failure-rollback",
+  "authority-expansion-reuse-expiry",
+  "boundary-overflow-excessive-size",
+  "conflicting-same-time-evidence",
+  "dependency-source-drift",
+  "duplicates-ordering",
+  "empty-absent-null-unknown-extra",
+  "malformed-identity-schema",
+  "oversized-malformed-terminal-access-control",
+  "partial-interrupted-write-cleanup",
+  "replay-conflicting-replay-idempotency",
+  "retry-exhaustion-cancellation",
+  "stale-concurrent-writers",
+  "stale-future-naive-time",
+  "tampering-hash-mismatch",
+  "traversal-symlink",
+  "unicode-normalization",
+]
+exclusions = []
+branch_testing = "required for authorization, identity, transport, persistence, and certification decisions"
+mutation_testing = "every mandatory risk category requires one exact pytest-node witness backed by a controlled focused mutant"
+property_testing = "deterministic generative loops for serialization, ordering, graph constraints, time, uniqueness, and replay"
+concurrency_testing = "stale writers, authorization reuse, duplicate consumers, interrupted persistence, audit failure, and rollback"
+
+[[matrices.witnesses]]
+category = "audit-failure-rollback"
+test = "tests/test_adversarial_semantic_witnesses.py::test_result_audit_failure_rolls_back_authoritative_transaction"
+mutation_id = "CS-MUT-RESULT-AUDIT-ROLLBACK-001"
+
+[[matrices.witnesses]]
+category = "authority-expansion-reuse-expiry"
+test = "tests/test_authorization_decision.py::test_preflight_rejects_expiry_revocation_scope_and_stale_state"
+mutation_id = "CS-MUT-AUTH-EXPIRY-001"
+
+[[matrices.witnesses]]
+category = "boundary-overflow-excessive-size"
+test = "tests/test_http_transport.py::test_bounded_http_rejects_declared_oversized_response_without_body_read"
+mutation_id = "CS-MUT-NET-SIZE-001"
+
+[[matrices.witnesses]]
+category = "conflicting-same-time-evidence"
+test = "tests/test_parcel_assurance.py::test_conflict_retains_each_value_and_requires_review"
+mutation_id = "CS-MUT-PARCEL-CONFLICT-001"
+
+[[matrices.witnesses]]
+category = "dependency-source-drift"
+test = "tests/test_dependency_certification.py::test_registry_version_must_equal_direct_declaration"
+mutation_id = "CS-MUT-DEPENDENCY-DRIFT-001"
+
+[[matrices.witnesses]]
+category = "duplicates-ordering"
+test = "tests/test_adversarial_semantic_witnesses.py::test_duplicate_result_identity_is_order_independent"
+mutation_id = "CS-MUT-DEDUPE-ORDER-001"
+
+[[matrices.witnesses]]
+category = "empty-absent-null-unknown-extra"
+test = "tests/test_adversarial_semantic_witnesses.py::test_authorization_decision_rejects_unknown_extra_fields"
+mutation_id = "CS-MUT-AUTH-EXTRA-001"
+
+[[matrices.witnesses]]
+category = "malformed-identity-schema"
+test = "tests/test_adversarial_semantic_witnesses.py::test_authorization_decision_rejects_malformed_identity_schema"
+mutation_id = "CS-MUT-AUTH-ID-SCHEMA-001"
+
+[[matrices.witnesses]]
+category = "oversized-malformed-terminal-access-control"
+test = "tests/test_ceqanet_csv_live.py::test_csv_validation_failure_is_retained_as_evidence"
+mutation_id = "CS-MUT-NET-CSV-MEDIA-001"
+
+[[matrices.witnesses]]
+category = "partial-interrupted-write-cleanup"
+test = "tests/test_adversarial_semantic_witnesses.py::test_mid_transaction_failure_rolls_back_partial_writes"
+mutation_id = "CS-MUT-PERSIST-INTERRUPT-ROLLBACK-001"
+
+[[matrices.witnesses]]
+category = "replay-conflicting-replay-idempotency"
+test = "tests/test_effect_consumption.py::test_sequential_exact_replay_returns_retained_result_without_effect"
+mutation_id = "CS-MUT-CONSUME-REPLAY-001"
+
+[[matrices.witnesses]]
+category = "retry-exhaustion-cancellation"
+test = "tests/test_ceqanet_listing_executor.py::test_ceqanet_listing_executor_rejects_invalid_runtime_bounds"
+mutation_id = "CS-MUT-LISTING-RETRY-001"
+
+[[matrices.witnesses]]
+category = "stale-concurrent-writers"
+test = "tests/test_lead_workflow_transition_authorization.py::test_concurrent_database_writers_apply_exact_transition_at_most_once"
+mutation_id = "CS-MUT-CONSUME-CHECK-THEN-ACT-001"
+
+[[matrices.witnesses]]
+category = "stale-future-naive-time"
+test = "tests/test_adversarial_semantic_witnesses.py::test_preflight_rejects_naive_checked_at"
+mutation_id = "CS-MUT-AUTH-NAIVE-PREFLIGHT-001"
+
+[[matrices.witnesses]]
+category = "tampering-hash-mismatch"
+test = "tests/test_ceqanet_persistence_operator_service.py::test_persistence_facade_rechecks_snapshot_identity_before_effect"
+mutation_id = "CS-MUT-PERSIST-RECHECK-001"
+
+[[matrices.witnesses]]
+category = "traversal-symlink"
+test = "tests/test_repository_path_certification.py::test_repository_file_resolution_rejects_external_and_internal_symlinks"
+mutation_id = "CS-MUT-REPO-SYMLINK-001"
+
+[[matrices.witnesses]]
+category = "unicode-normalization"
+test = "tests/test_local_operator_authorization.py::test_local_authorization_normalizes_identity_and_emits_redacted_audit"
+mutation_id = "CS-MUT-AUTH-UNICODE-001"

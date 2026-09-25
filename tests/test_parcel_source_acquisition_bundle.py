@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
+import constructionsight.parcel_source_acquisition_bundle_io as bounded_proof
 from constructionsight.parcel_source_acquisition import (
     build_arcgis_acquisition_assessment,
     build_arcgis_probe_plan,
@@ -14,8 +15,10 @@ from constructionsight.parcel_source_acquisition import (
 from constructionsight.parcel_source_acquisition_bundle import (
     build_arcgis_bounded_proof_bundle,
     build_arcgis_proof_persistence_receipt,
-    load_arcgis_bounded_proof_bundle,
     verify_arcgis_bounded_proof_bundle,
+)
+from constructionsight.parcel_source_acquisition_bundle_io import (
+    load_arcgis_bounded_proof_bundle,
 )
 from constructionsight.parcel_source_acquisition_bundle_models import (
     ParcelArcGISBoundedProofBundle,
@@ -200,3 +203,36 @@ def test_persistence_receipt_binds_exact_bundle_and_remains_bounded() -> None:
     assert receipt.replay_policy == "insert_or_exact_replay"
     assert receipt.bulk_run_authorized is False
     assert receipt.observation_ids == tuple(sorted(receipt.observation_ids))
+
+
+def test_bounded_proof_loader_stops_before_oversized_full_read(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = tmp_path / "oversized-proof.json"
+    path.write_bytes(b" " * 65)
+    monkeypatch.setattr(bounded_proof, "_MAX_BOUNDED_PROOF_FILE_BYTES", 64)
+    with pytest.raises(ValueError, match="file byte limit"):
+        load_arcgis_bounded_proof_bundle(path)
+
+
+def test_bounded_proof_loader_rejects_invalid_utf8(tmp_path: Path) -> None:
+    path = tmp_path / "invalid-utf8-proof.json"
+    path.write_bytes(b"\xff\xfe\xfa")
+    with pytest.raises(ValueError, match="cannot load ArcGIS bounded-proof bundle"):
+        load_arcgis_bounded_proof_bundle(path)
+
+
+@pytest.mark.parametrize("linked_parent", [False, True])
+def test_bounded_proof_loader_rejects_symlink_traversal(
+    tmp_path: Path, linked_parent: bool,
+) -> None:
+    actual = tmp_path / "actual"
+    actual.mkdir()
+    proof = actual / "proof.json"
+    proof.write_text(json.dumps(_bounded_bundle().to_dict()), encoding="utf-8")
+    alias = tmp_path / "alias"
+    alias.symlink_to(actual if linked_parent else proof, target_is_directory=linked_parent)
+    candidate = alias / "proof.json" if linked_parent else alias
+
+    with pytest.raises((OSError, ValueError)):
+        load_arcgis_bounded_proof_bundle(candidate)
