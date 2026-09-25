@@ -12,6 +12,16 @@ from constructionsight.site_models import Site
 
 
 class RunnerSyntheticAdapter(SourceAdapter[dict[str, str], Site]):
+    def preflight(self, profile: SourceAccessProfile | None = None):
+        return super().preflight(
+            profile
+            or SourceAccessProfile(
+                public_url=str(self.source.public_url),
+                access_facts_reviewed=True,
+                review_basis="Reviewed synthetic adapter access facts.",
+            )
+        )
+
     def verify_source(self) -> SourceVerificationResult:
         return SourceVerificationResult(
             source_name=self.source_name,

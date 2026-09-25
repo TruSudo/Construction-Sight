@@ -37,10 +37,16 @@ class SourceVerifier:
         self.executor = executor
         self.timeout_seconds = timeout_seconds
 
-    def verify(self, source: PublicSource) -> SourceVerificationResult:
+    def verify(
+        self,
+        source: PublicSource,
+        access_profile: SourceAccessProfile | None = None,
+    ) -> SourceVerificationResult:
         """Verify one public source without crossing lawful-access boundaries."""
 
-        access_profile = SourceAccessProfile(public_url=str(source.public_url))
+        access_profile = access_profile or SourceAccessProfile(
+            public_url=str(source.public_url)
+        )
         access_result = evaluate_access(access_profile)
         if access_result.decision is not AccessDecision.ALLOWED:
             return SourceVerificationResult(
