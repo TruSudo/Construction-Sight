@@ -718,17 +718,31 @@ def test_listing_queue_bound_capture_apply_and_operator_http_end_to_end(
     engine = create_database_engine(f"sqlite:///{database}")
     initialize_database(engine)
     engine.dispose()
+    apply_args = [
+        "apply", "--evidence", str(evidence), "--database", str(database),
+        "--approved-source-sha256", preview["source_sha256"],
+        "--approved-plan-digest", preview["approved_plan_digest_required"],
+        "--authorization-reason", "Independent approval of exact bound source and plan",
+    ]
+    before_lineage_approval = hashlib.sha256(database.read_bytes()).hexdigest()
+    missing_lineage = runner.invoke(app, [*apply_args, "--execute-write"])
+    assert missing_lineage.exit_code == 2
+    assert "bound capture apply requires" in missing_lineage.output
+    assert hashlib.sha256(database.read_bytes()).hexdigest() == before_lineage_approval
+
     applied = runner.invoke(
-        app, [
-            "apply", "--evidence", str(evidence), "--database", str(database),
-            "--approved-source-sha256", preview["source_sha256"],
-            "--approved-plan-digest", preview["approved_plan_digest_required"],
-            "--authorization-reason", "Independent approval of exact bound source and plan",
+        app,
+        [
+            *apply_args,
+            "--listing-evidence", str(listing_path),
+            "--queue-evidence", str(queue_path),
             "--execute-write",
         ],
     )
     assert applied.exit_code == 0, applied.output
-    assert json.loads(applied.stdout)["operator_readback_verified"] is True
+    applied_payload = json.loads(applied.stdout)
+    assert applied_payload["operator_readback_verified"] is True
+    assert applied_payload["discovery_binding_verified"] is True
 
     with _real_source_operator_server(database) as port:
         status, raw = _http_get(
@@ -943,4 +957,93 @@ def test_ingestion_inbox_rejects_queue_tampering_before_database_reconciliation(
     )
     assert result.exit_code == 1
     assert "fresh derivation" in result.output
+    assert hashlib.sha256(database.read_bytes()).hexdigest() == before
+
+
+
+def test_bound_apply_rejects_tampered_discovery_envelope_before_sqlite_write(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The live body and write plan are insufficient when discovery lineage was changed."""
+
+    listing_path = tmp_path / "listing.json"
+    queue_path = tmp_path / "queue.json"
+    evidence = tmp_path / "bound-capture.json"
+    plan = tmp_path / "bound-plan.json"
+    listing_path.write_text(
+        json.dumps(_single_candidate_listing(), sort_keys=True),
+        encoding="utf-8",
+    )
+    discovered = runner.invoke(
+        app,
+        [
+            "discover-preview",
+            "--listing-evidence",
+            str(listing_path),
+            "--output",
+            str(queue_path),
+        ],
+    )
+    assert discovered.exit_code == 0, discovered.output
+    monkeypatch.setattr(
+        capture_module,
+        "execute_authorized_ceqanet_csv",
+        lambda **_: SimpleNamespace(
+            execution=_execution().model_copy(update={"executed_at": datetime.now(UTC)}),
+            verification=SimpleNamespace(passed=True),
+        ),
+    )
+    captured = runner.invoke(
+        app,
+        [
+            "capture-preview",
+            "--sch-number",
+            "2026030377",
+            "--listing-evidence",
+            str(listing_path),
+            "--queue-evidence",
+            str(queue_path),
+            "--output",
+            str(evidence),
+            "--plan-output",
+            str(plan),
+            "--authorization-reason",
+            "Build bound evidence for tamper regression",
+            "--execute-live",
+        ],
+    )
+    assert captured.exit_code == 0, captured.output
+    preview = json.loads(captured.stdout)
+    retained = json.loads(evidence.read_text("utf-8"))
+    retained["discovery_binding"]["source_claimed_title"] = "substituted lineage"
+    evidence.write_text(json.dumps(retained, sort_keys=True), encoding="utf-8")
+
+    database = tmp_path / "operator.sqlite3"
+    engine = create_database_engine(f"sqlite:///{database}")
+    initialize_database(engine)
+    engine.dispose()
+    before = hashlib.sha256(database.read_bytes()).hexdigest()
+    result = runner.invoke(
+        app,
+        [
+            "apply",
+            "--evidence",
+            str(evidence),
+            "--database",
+            str(database),
+            "--approved-source-sha256",
+            preview["source_sha256"],
+            "--approved-plan-digest",
+            preview["approved_plan_digest_required"],
+            "--authorization-reason",
+            "Tampered lineage must fail before write",
+            "--listing-evidence",
+            str(listing_path),
+            "--queue-evidence",
+            str(queue_path),
+            "--execute-write",
+        ],
+    )
+    assert result.exit_code == 2
+    assert "discovery lineage differs" in result.output
     assert hashlib.sha256(database.read_bytes()).hexdigest() == before
