@@ -45,24 +45,24 @@ def test_live_csv_evidence_is_replayable_and_does_not_promote_source() -> None:
     assert execution.persistence_mutated is False
     execution.assert_integrity()
     assert stored_verification.passed is False
-    assert stored_verification.findings == [
+    assert stored_verification.findings == (
         "live CSV offline inspection failed: "
         "CEQAnet CSV body must use UTF-8 or UTF-8 with BOM",
         "live CSV inspection recorded error: "
         "CEQAnet CSV body must use UTF-8 or UTF-8 with BOM",
-    ]
+    )
     assert recomputed.passed is False
-    assert recomputed.findings == [
+    assert recomputed.findings == (
         "live CSV execution lacks the successful offline inspection",
         "live CSV inspection recorded error: "
         "CEQAnet CSV body must use UTF-8 or UTF-8 with BOM",
-    ]
+    )
 
     if stored_verification.passed:
         assert execution.status_code == 200
         assert execution.inspection is not None
         assert execution.inspection_error is None
-        assert stored_verification.findings == []
+        assert stored_verification.findings == ()
     else:
         assert stored_verification.finding_count > 0
         assert stored_verification.findings
