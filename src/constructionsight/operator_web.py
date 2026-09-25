@@ -27,14 +27,14 @@ from constructionsight.operator_dashboard import (
     build_workflow_status_summary,
 )
 from constructionsight.operator_dashboard_models import RecordSelection
-from constructionsight.operator_parcel_candidates import inspect_parcel_candidates
 from constructionsight.operator_entity_index import build_entity_index
+from constructionsight.operator_parcel_candidates import inspect_parcel_candidates
 from constructionsight.operator_results import build_result_ledger_snapshot
-from constructionsight.operator_source_revision import build_source_revision_snapshot
 from constructionsight.operator_source_candidate import (
     SourceRecordNotFound,
     build_source_candidate_preview,
 )
+from constructionsight.operator_source_revision import build_source_revision_snapshot
 from constructionsight.storage.operator_read_store import (
     create_operator_read_engine,
     verify_operator_schema,
@@ -66,8 +66,14 @@ class _RequestParameters:
 
 
 def _parameters(
-    query: str, *, workflow: bool = False, footprint: bool = False,
-    entity: bool = False, entity_index: bool = False, candidate: bool = False, timeline: bool = False,
+    query: str,
+    *,
+    workflow: bool = False,
+    footprint: bool = False,
+    entity: bool = False,
+    entity_index: bool = False,
+    candidate: bool = False,
+    timeline: bool = False,
     results: bool = False,
 ) -> _RequestParameters:
     values = parse_qs(query, keep_blank_values=True, max_num_fields=5)
