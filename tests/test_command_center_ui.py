@@ -296,8 +296,13 @@ def test_sources_collection_displays_persisted_public_source_registry() -> None:
     assert "adapter_live" in script
     assert "verification_status" in script
     assert "current reachability, complete jurisdiction coverage" in script
+    assert "latest retained check:" in script
+    assert "registry metadata DIFFERS; inspect retained verification history" in script
+    assert "entry.latest_verification_present" in script
+    assert "entry.verification_metadata_consistent" in script
     assert "source-registry-table" in script
     assert ".source-registry-table" in css
+    assert ".source-verification-warning" in css
 
 
 def test_sources_collection_displays_retained_exact_sch_review_queue() -> None:

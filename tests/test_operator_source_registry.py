@@ -2,19 +2,20 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import UTC, date, datetime
 
 import pytest
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from constructionsight.models import PublicSource
+from constructionsight.models import PlatformFamily, PublicSource, SourceVerificationResult
 from constructionsight.operator_source_registry import (
     SOURCE_REGISTRY_RESULT_LIMIT,
     build_operator_source_registry,
 )
 from constructionsight.storage.database import create_database_engine, initialize_database
 from constructionsight.storage.source_registry import SourceRegistryStore
+from constructionsight.storage.verification_store import VerificationStore
 
 
 def _source(
@@ -74,6 +75,8 @@ def test_source_registry_projection_preserves_stored_scope_and_adapter_maturity(
     assert entry.adapter_live is False
     assert entry.adapter_requires_javascript is True
     assert entry.record_categories == ["permit", "inspection"]
+    assert entry.latest_verification_present is False
+    assert entry.verification_metadata_consistent is None
     engine.dispose()
 
 
@@ -118,4 +121,103 @@ def test_source_registry_projection_reports_bounded_truncation(tmp_path, monkeyp
     assert result.returned == result.result_limit == 1
     assert result.truncated is True
     assert result.entries[0].source_name == "First portal"
+    engine.dispose()
+
+
+
+def _verification(
+    *, checked_at: datetime, reachable: bool, confidence: int
+) -> SourceVerificationResult:
+    return SourceVerificationResult(
+        source_name="Synthetic San Bernardino portal",
+        public_url="https://example.invalid/public/",
+        checked_at=checked_at,
+        url_reachable=reachable,
+        portal_type_detected=PlatformFamily.ACCELA_ACA,
+        public_search_available=True,
+        login_required=False,
+        permit_details_visible=True,
+        confidence_score=confidence,
+        notes="Synthetic retained verification observation.",
+        raw_observations={"fixture": True},
+    )
+
+
+def test_source_registry_projection_uses_latest_retained_verification(tmp_path):
+    path = tmp_path / "registry-verification.sqlite3"
+    engine = create_database_engine(f"sqlite:///{path}")
+    initialize_database(engine)
+    older = datetime(2026, 9, 19, 10, 0, tzinfo=UTC)
+    newer = datetime(2026, 9, 21, 11, 30, tzinfo=UTC)
+    with Session(engine) as session, session.begin():
+        SourceRegistryStore(session).upsert_source(_source())
+        store = VerificationStore(session)
+        store.add_result(_verification(checked_at=older, reachable=True, confidence=55))
+        store.add_result(_verification(checked_at=newer, reachable=True, confidence=88))
+
+    with Session(engine) as session:
+        entry = build_operator_source_registry(session).entries[0]
+
+    assert entry.latest_verification_present is True
+    assert entry.latest_verification_checked_at is not None
+    assert entry.latest_verification_checked_at.date() == newer.date()
+    assert entry.latest_verification_url_reachable is True
+    assert entry.latest_detected_platform_family == "accela_aca"
+    assert entry.latest_public_search_available is True
+    assert entry.latest_login_required is False
+    assert entry.latest_verification_confidence_score == 88
+    assert entry.verification_status == "verified"
+    assert entry.confidence_score == 88
+    assert entry.last_checked_date == newer.date()
+    assert entry.verification_metadata_consistent is True
+    engine.dispose()
+
+
+def test_source_registry_projection_discloses_stale_registry_metadata(tmp_path):
+    path = tmp_path / "registry-verification-mismatch.sqlite3"
+    engine = create_database_engine(f"sqlite:///{path}")
+    initialize_database(engine)
+    checked_at = datetime(2026, 9, 21, 11, 30, tzinfo=UTC)
+    with Session(engine) as session, session.begin():
+        SourceRegistryStore(session).upsert_source(_source())
+        VerificationStore(session).add_result(
+            _verification(checked_at=checked_at, reachable=True, confidence=88)
+        )
+        session.execute(
+            text(
+                "UPDATE sources SET confidence_score = 7, "
+                "verification_status = 'unverified', last_checked_date = '2026-09-01'"
+            )
+        )
+
+    with Session(engine) as session:
+        entry = build_operator_source_registry(session).entries[0]
+
+    assert entry.latest_verification_present is True
+    assert entry.latest_verification_confidence_score == 88
+    assert entry.confidence_score == 7
+    assert entry.verification_status == "unverified"
+    assert entry.verification_metadata_consistent is False
+    engine.dispose()
+
+
+def test_source_registry_projection_rejects_corrupted_latest_verification(tmp_path):
+    path = tmp_path / "registry-verification-corrupt.sqlite3"
+    engine = create_database_engine(f"sqlite:///{path}")
+    initialize_database(engine)
+    checked_at = datetime(2026, 9, 21, 11, 30, tzinfo=UTC)
+    with Session(engine) as session, session.begin():
+        SourceRegistryStore(session).upsert_source(_source())
+        VerificationStore(session).add_result(
+            _verification(checked_at=checked_at, reachable=True, confidence=88)
+        )
+        session.execute(
+            text("UPDATE source_verifications SET raw_observations_json = '[]'")
+        )
+
+    with Session(engine) as session, pytest.raises(
+        ValueError, match="observations are not an object"
+    ):
+        build_operator_source_registry(session)
+
     engine.dispose()
