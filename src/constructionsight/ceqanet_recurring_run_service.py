@@ -240,10 +240,7 @@ def execute_ceqanet_recurring_run(
     access_result = evaluate_access(
         SourceAccessProfile(
             public_url=manifest.execution_base_url,
-            access_fact_basis=(
-                "source-verification-checklist:"
-                f"{definition.checklist_evidence_digest}"
-            ),
+            access_fact_basis=f"evidence:{definition.checklist_evidence_digest}",
             requires_login=manifest.access_assumptions.requires_login,
             has_captcha=manifest.access_assumptions.has_captcha,
             robots_disallows_collection=(
