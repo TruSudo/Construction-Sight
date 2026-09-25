@@ -1,14 +1,14 @@
 {
-  "candidate_id": "fixture-conflicting-ceqa-sch",
+  "candidate_id": "artifact-resolution:v2:8268c8138254c90743a7f6e0c925e05abc88e8cd605ec7330cb056f4a9c76165",
   "left": {
-    "fingerprint_id": "fingerprint-commerce-center-one",
+    "fingerprint_id": "identity-fingerprint:v2:377612c0682dc910931b5b44f9d3d579204c4c487353486fa62c3da262cfefa7",
     "target_identity_id": "project-commerce-center-one",
     "target_kind": "project",
     "artifact_observations": [
       {
-        "observation_id": "left-sch-2025060123",
+        "observation_id": "artifact-observation:v2:e1136e23bbed2ee958e335e153c07ef85ec7cf3684f119fb95215306da67736a",
         "artifact_type": "ceqa_sch_number",
-        "raw_value": "SCH No. 2025060123",
+        "raw_value": "sch-2025060123",
         "normalized_value": "sch-2025060123",
         "source_name": "Synthetic CEQA Notice One",
         "source_family": "ceqanet",
@@ -19,7 +19,7 @@
         "confidence_score": 100
       },
       {
-        "observation_id": "left-title-commerce-center",
+        "observation_id": "artifact-observation:v2:b7973758523f8450c6e8777a5d8c0e5529b80f50871b17398d640354e35849d7",
         "artifact_type": "project_title",
         "raw_value": "Commerce Center II",
         "normalized_value": "commerce center ii",
@@ -34,14 +34,14 @@
     ]
   },
   "right": {
-    "fingerprint_id": "fingerprint-commerce-center-two",
+    "fingerprint_id": "identity-fingerprint:v2:bfce656ef5b0b7078e4e5c76f935bf766f85abeba552a220bac73bdbde841b67",
     "target_identity_id": "project-commerce-center-two",
     "target_kind": "project",
     "artifact_observations": [
       {
-        "observation_id": "right-sch-2025999999",
+        "observation_id": "artifact-observation:v2:d3cc505ef0e2953a30fe1bb8513c8dd85aa502defc7c7e0d23b9785c0a21f949",
         "artifact_type": "ceqa_sch_number",
-        "raw_value": "SCH No. 2025999999",
+        "raw_value": "sch-2025999999",
         "normalized_value": "sch-2025999999",
         "source_name": "Synthetic CEQA Notice Two",
         "source_family": "ceqanet",
@@ -52,7 +52,7 @@
         "confidence_score": 100
       },
       {
-        "observation_id": "right-title-commerce-center",
+        "observation_id": "artifact-observation:v2:64c422c14d56ea858ba7fe0b9967b3f4b2f2b01dbc37ace8fde085c1a1b097df",
         "artifact_type": "project_title",
         "raw_value": "Commerce Center II",
         "normalized_value": "commerce center ii",
