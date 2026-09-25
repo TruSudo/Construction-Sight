@@ -333,3 +333,82 @@ def test_source_registry_projection_withholds_ambiguous_name_attribution(tmp_pat
     assert all(not entry.attribution_name_unambiguous for entry in result.entries)
     assert all(entry.attributed_records_in_scan == 0 for entry in result.entries)
     engine.dispose()
+
+
+
+def test_source_attribution_is_withheld_when_registry_identity_scan_is_incomplete(
+    tmp_path, monkeypatch
+):
+    path = tmp_path / "registry-attribution-identity-cap.sqlite3"
+    engine = create_database_engine(f"sqlite:///{path}")
+    initialize_database(engine)
+    with Session(engine) as session, session.begin():
+        store = SourceRegistryStore(session)
+        store.upsert_source(_source("First configured portal"))
+        store.upsert_source(
+            _source(
+                "Second configured portal",
+                public_url="https://second.example.invalid/public/",
+            )
+        )
+        CeqaStore(session).upsert(
+            CeqaRecord(
+                ceqa_key="fixture:ceqa:identity-cap",
+                title="Identity cap fixture",
+                county="San Bernardino",
+                provenance=[Provenance(source_name="First configured portal")],
+            )
+        )
+
+    monkeypatch.setattr(
+        "constructionsight.operator_source_registry.SOURCE_IDENTITY_SCAN_LIMIT", 1
+    )
+    with Session(engine) as session:
+        result = build_operator_source_registry(session)
+
+    assert result.source_identity_scan_limit == 1
+    assert result.source_identity_rows_scanned == 1
+    assert result.source_identity_scan_truncated is True
+    assert result.source_attribution_available is False
+    assert result.records_with_registered_source_in_scan == 0
+    assert result.records_without_registered_source_in_scan == 0
+    assert result.unregistered_source_names_in_scan == []
+    assert all(not entry.attribution_name_unambiguous for entry in result.entries)
+    assert all(entry.attributed_records_in_scan == 0 for entry in result.entries)
+    engine.dispose()
+
+
+def test_source_attribution_discloses_bounded_record_scan_truncation(
+    tmp_path, monkeypatch
+):
+    path = tmp_path / "registry-attribution-record-cap.sqlite3"
+    engine = create_database_engine(f"sqlite:///{path}")
+    initialize_database(engine)
+    source_name = "Synthetic San Bernardino portal"
+    with Session(engine) as session, session.begin():
+        SourceRegistryStore(session).upsert_source(_source())
+        store = CeqaStore(session)
+        for index in range(2):
+            store.upsert(
+                CeqaRecord(
+                    ceqa_key=f"fixture:ceqa:record-cap:{index}",
+                    title=f"Record cap fixture {index}",
+                    county="San Bernardino",
+                    provenance=[Provenance(source_name=source_name)],
+                )
+            )
+
+    monkeypatch.setattr(
+        "constructionsight.operator_source_registry.SOURCE_ATTRIBUTION_SCAN_LIMIT", 1
+    )
+    with Session(engine) as session:
+        result = build_operator_source_registry(session)
+
+    assert result.source_attribution_available is True
+    assert result.ceqa_records_total == 2
+    assert result.ceqa_records_scanned == 1
+    assert result.attribution_scan_truncated is True
+    assert result.records_with_registered_source_in_scan == 1
+    assert result.records_without_registered_source_in_scan == 0
+    assert result.entries[0].attributed_ceqa_records_in_scan == 1
+    engine.dispose()
