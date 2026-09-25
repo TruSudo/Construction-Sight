@@ -14,6 +14,7 @@ from constructionsight.ceqanet_recurring_run_models import (
     CeqanetRecurringRunExecution,
     CeqanetRecurringRunManifest,
     CeqanetRunReadiness,
+    canonical_digest,
 )
 from constructionsight.ceqanet_recurring_run_service import (
     bind_authorized_recurring_listing_evidence,
@@ -227,7 +228,13 @@ def test_cli_exports_verified_authorized_recurring_attempt_for_discovery_queue(
     low_level = CeqanetRecurringRunExecution(
         run_id=manifest.run_id,
         attempt_sequence=1,
-        attempt_id="a" * 64,
+        attempt_id=canonical_digest(
+            {
+                "run_id": manifest.run_id,
+                "manifest_digest": manifest.manifest_digest,
+                "attempt_sequence": 1,
+            }
+        ),
         definition_digest=definition.definition_digest,
         manifest_digest=manifest.manifest_digest,
         source_key=manifest.source_key,
