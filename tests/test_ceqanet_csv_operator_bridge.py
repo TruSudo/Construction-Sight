@@ -38,6 +38,7 @@ from constructionsight.operator_dashboard import (
 from constructionsight.operator_source_candidate import build_source_candidate_preview
 from constructionsight.operator_web import create_handler
 from constructionsight.storage.database import create_database_engine, initialize_database
+from constructionsight.storage.domain_store import CeqaStore
 from constructionsight.storage.operator_read_store import create_operator_read_engine
 
 EVIDENCE = (
@@ -741,3 +742,205 @@ def test_listing_queue_bound_capture_apply_and_operator_http_end_to_end(
         )
         assert all(row["county"] == "Riverside" for row in page["projects"])
 
+
+
+
+def _single_candidate_listing() -> dict[str, object]:
+    html = (
+        '<div class="search-result">'
+        '<a href="/Project/2026030377">Cabazon Infrastructure Plan</a>'
+        '<span>SCH Number</span><span>2026030377</span>'
+        '<span>County</span><span>Riverside</span>'
+        '</div>'
+    )
+    return {
+        "metadata": {
+            "schema_version": "ceqanet_listing_execution.v2",
+            "allowed": True,
+            "planned_request_count": 1,
+            "executed_request_count": 1,
+            "successful_response_count": 1,
+            "failed_response_count": 0,
+            "plan_id": "ingestion-inbox-test-listing",
+            "access": {"decision": "allowed"},
+            "authorization": {"decision_id": "ingestion-inbox-test-authorization"},
+        },
+        "snapshots": [{
+            "page_number": 1,
+            "method": "GET",
+            "request_url": "https://ceqanet.lci.ca.gov/Search?County=Riverside",
+            "final_url": "https://ceqanet.lci.ca.gov/Search?County=Riverside",
+            "status_code": 200,
+            "content_type": "text/html; charset=utf-8",
+            "body_text": html,
+            "body_length": len(html),
+            "body_truncated": False,
+            "executed": True,
+            "reachable": True,
+            "error": None,
+            "failure_kind": "none",
+        }],
+    }
+
+
+def test_ingestion_inbox_reconciles_pending_persisted_and_conflicting_sch(
+    tmp_path: Path,
+) -> None:
+    """One immutable discovery queue can be rerun as SQLite import state advances."""
+
+    listing_path = tmp_path / "listing.json"
+    queue_path = tmp_path / "queue.json"
+    listing_path.write_text(
+        json.dumps(_single_candidate_listing(), sort_keys=True),
+        encoding="utf-8",
+    )
+    discovered = runner.invoke(
+        app,
+        [
+            "discover-preview",
+            "--listing-evidence",
+            str(listing_path),
+            "--output",
+            str(queue_path),
+        ],
+    )
+    assert discovered.exit_code == 0, discovered.output
+
+    database = tmp_path / "operator.sqlite3"
+    engine = create_database_engine(f"sqlite:///{database}")
+    initialize_database(engine)
+    engine.dispose()
+
+    before = hashlib.sha256(database.read_bytes()).hexdigest()
+    pending = runner.invoke(
+        app,
+        [
+            "inbox",
+            "--listing-evidence",
+            str(listing_path),
+            "--queue-evidence",
+            str(queue_path),
+            "--database",
+            str(database),
+        ],
+    )
+    assert pending.exit_code == 0, pending.output
+    pending_payload = json.loads(pending.stdout)
+    assert pending_payload["candidate_count"] == 1
+    assert pending_payload["pending_capture_count"] == 1
+    assert pending_payload["persisted_candidate_count"] == 0
+    assert pending_payload["next_pending_sch"] == "2026030377"
+    assert pending_payload["candidates"][0]["state"] == "pending_capture"
+    assert pending_payload["read_only"] is True
+    assert pending_payload["network_executed"] is False
+    assert pending_payload["persistence_mutated"] is False
+    assert hashlib.sha256(database.read_bytes()).hexdigest() == before
+
+    bridge = build_reviewed_ceqanet_csv_bridge(_execution())
+    writer = create_database_engine(f"sqlite:///{database}")
+    assert execute_ceqanet_write_plan(
+        bridge.write_plan.to_dict(),
+        engine=writer,
+    ).applied_count == bridge.write_plan.operation_count
+    writer.dispose()
+
+    persisted = runner.invoke(
+        app,
+        [
+            "inbox",
+            "--listing-evidence",
+            str(listing_path),
+            "--queue-evidence",
+            str(queue_path),
+            "--database",
+            str(database),
+        ],
+    )
+    assert persisted.exit_code == 0, persisted.output
+    persisted_payload = json.loads(persisted.stdout)
+    candidate = persisted_payload["candidates"][0]
+    assert persisted_payload["pending_capture_count"] == 0
+    assert persisted_payload["persisted_candidate_count"] == 1
+    assert persisted_payload["next_pending_sch"] is None
+    assert candidate["state"] == "persisted_source_claim_match"
+    assert candidate["persisted_record_count"] == 2
+    assert candidate["persisted_known_counties"] == ["Riverside"]
+    assert set(candidate["persisted_record_keys"]) == set(bridge.source_record_keys)
+
+    writer = create_database_engine(f"sqlite:///{database}")
+    with Session(writer) as session, session.begin():
+        store = CeqaStore(session)
+        changed = bridge.preview.ceqa_records[0].model_copy(
+            update={"county": "San Bernardino"}
+        )
+        store.upsert(changed)
+    writer.dispose()
+
+    conflict = runner.invoke(
+        app,
+        [
+            "inbox",
+            "--listing-evidence",
+            str(listing_path),
+            "--queue-evidence",
+            str(queue_path),
+            "--database",
+            str(database),
+        ],
+    )
+    assert conflict.exit_code == 0, conflict.output
+    conflict_payload = json.loads(conflict.stdout)
+    conflict_candidate = conflict_payload["candidates"][0]
+    assert conflict_payload["conflict_candidate_count"] == 1
+    assert conflict_candidate["state"] == "persisted_source_claim_conflict"
+    assert conflict_candidate["persisted_known_counties"] == [
+        "Riverside",
+        "San Bernardino",
+    ]
+
+
+def test_ingestion_inbox_rejects_queue_tampering_before_database_reconciliation(
+    tmp_path: Path,
+) -> None:
+    listing_path = tmp_path / "listing.json"
+    queue_path = tmp_path / "queue.json"
+    listing_path.write_text(
+        json.dumps(_single_candidate_listing(), sort_keys=True),
+        encoding="utf-8",
+    )
+    discovered = runner.invoke(
+        app,
+        [
+            "discover-preview",
+            "--listing-evidence",
+            str(listing_path),
+            "--output",
+            str(queue_path),
+        ],
+    )
+    assert discovered.exit_code == 0, discovered.output
+    queue = json.loads(queue_path.read_text("utf-8"))
+    queue["candidates"][0]["source_claimed_title"] = "tampered title"
+    queue_path.write_text(json.dumps(queue, sort_keys=True), encoding="utf-8")
+
+    database = tmp_path / "operator.sqlite3"
+    engine = create_database_engine(f"sqlite:///{database}")
+    initialize_database(engine)
+    engine.dispose()
+    before = hashlib.sha256(database.read_bytes()).hexdigest()
+
+    result = runner.invoke(
+        app,
+        [
+            "inbox",
+            "--listing-evidence",
+            str(listing_path),
+            "--queue-evidence",
+            str(queue_path),
+            "--database",
+            str(database),
+        ],
+    )
+    assert result.exit_code == 1
+    assert "fresh derivation" in result.output
+    assert hashlib.sha256(database.read_bytes()).hexdigest() == before
