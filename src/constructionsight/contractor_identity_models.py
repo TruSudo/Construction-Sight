@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import UTC, date, datetime
 import hashlib
 import re
+from datetime import UTC, date, datetime
 from enum import StrEnum
 from typing import Any
 
