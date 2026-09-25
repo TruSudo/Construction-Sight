@@ -1,0 +1,14 @@
+{
+  "allowed_transaction_blocker_count": 75,
+  "finding_count": 1,
+  "findings": [
+    {
+      "code": "CERT-SUPPRESS-001",
+      "line": 190,
+      "message": "pytest skip marker is prohibited by certification doctrine",
+      "path": "tests/test_ceqanet_operator_bundle_verify.py"
+    }
+  ],
+  "passed": false,
+  "schema_version": "constructionsight.assurance-preflight/v1"
+}

@@ -1,0 +1,562 @@
+schema_version = "constructionsight.active-defects/v1"
+certification_requires_zero = true
+
+[[defects]]
+id = "CS-SR-001"
+severity = "P1"
+area = "architecture"
+root_cause = "No strict machine-readable layer and capability-acquisition contract is enforced across the tracked production tree."
+discovered_against = "679f15fa6d39f222c16b8c5c3e99db7662465909"
+required_resolution = "Add exact module classification, AST import graph, capability permissions, exceptions, cycle checks, and regression fixtures."
+
+[[defects]]
+id = "CS-SR-002"
+severity = "P1"
+area = "capability-traceability"
+root_cause = "Implemented, guarded, planned, and deprecated capabilities are documented but not cross-checked against production modules, tests, doctrine, authority, and future entry conditions."
+discovered_against = "679f15fa6d39f222c16b8c5c3e99db7662465909"
+required_resolution = "Add a strict capability registry and fail-closed tree reconciliation."
+
+[[defects]]
+id = "CS-SR-003"
+severity = "P1"
+area = "supply-chain"
+root_cause = "Direct dependencies use open-ended minimum versions, CI installs with resolver-selected upgrades, and third-party Actions use mutable major tags."
+discovered_against = "679f15fa6d39f222c16b8c5c3e99db7662465909"
+required_resolution = "Pin declarations, add governed artifact-hashed locks and inventory, pin Actions to immutable SHAs, and add vulnerability/SBOM gates."
+
+[[defects]]
+id = "CS-SR-004"
+severity = "P1"
+area = "network-resilience"
+root_cause = "Network boundaries are individually hardened but no complete inventory mechanically rejects unapproved clients or requests without a declared policy."
+discovered_against = "679f15fa6d39f222c16b8c5c3e99db7662465909"
+required_resolution = "Add a network contract, approved transport classification, AST enforcement, policy completeness checks, and adversarial fixtures."
+
+[[defects]]
+id = "CS-SR-005"
+severity = "P1"
+area = "authorization"
+root_cause = "Strong feature-specific authorization exists, including PR #116, but no repository-wide decision contract and mutation inventory mechanically prevents boolean-only or scope-free authority."
+discovered_against = "679f15fa6d39f222c16b8c5c3e99db7662465909"
+required_resolution = "Add a general scope-bound authorization decision contract and classify every authority-bearing capability."
+
+[[defects]]
+id = "CS-SR-006"
+severity = "P1"
+area = "certification"
+root_cause = "The canonical certifier does not yet enforce architecture, capability, dependency, network, authorization, adversarial-test, ADR, action-pin, or review doctrine."
+discovered_against = "679f15fa6d39f222c16b8c5c3e99db7662465909"
+required_resolution = "Expand deterministic certification and CI with stable finding codes and fail-closed governance parsing."
+
+[[defects]]
+id = "CS-SR-007"
+severity = "P2"
+area = "independent-review"
+root_cause = "High-risk changes lack a mandatory structured independent adversarial review artifact tied to the exact head."
+discovered_against = "679f15fa6d39f222c16b8c5c3e99db7662465909"
+required_resolution = "Add high-risk classification, review schema, exact-head binding, and unresolved-finding gate."
+
+[[defects]]
+id = "CS-SR-008"
+severity = "P0"
+area = "supply-chain-vulnerability"
+root_cause = "The first exact supported-environment audit found known vulnerabilities in Click 8.2.1, IDNA 3.10, pip 25.1.1, Pygments 2.19.2, and pytest 8.4.1."
+discovered_against = "c0cefeb61ff6e23d527c4d56918c26b70865b560"
+required_resolution = "Upgrade only the affected exact identities to reviewed fixed releases, update declarations and registry evidence, rerun both Python audits, and retain zero-vulnerability reports."
+
+[[defects]]
+id = "CS-SR-009"
+severity = "P1"
+area = "dependency-certification"
+root_cause = "The canonical dependency audit parsed lock files one physical line at a time, so secure backslash-continued artifact hashes would be misclassified or omitted from direct-dependency reconciliation."
+discovered_against = "671169400e83136756335905cadf9bddeb33d1d1"
+required_resolution = "Use one fail-closed logical-row parser for installation verification, SBOM generation, dependency agreement, and canonical certification; add multiline and unhashed regression fixtures."
+
+[[defects]]
+id = "CS-SR-010"
+severity = "P1"
+area = "adversarial-testing"
+root_cause = "A focused mutation certifier and mutation contract existed in production code, but the Python CI matrix did not execute or enforce its result."
+discovered_against = "c43f460eedef8f3e51b6cc4fe62b9e9ee903b915"
+required_resolution = "Execute focused mutation certification in both supported Python CI jobs, retain its deterministic report, and include its outcome in the aggregate fail-closed quality gate."
+
+[[defects]]
+id = "CS-SR-011"
+severity = "P0"
+area = "exact-head-ci"
+root_cause = "No pull-request workflow run or commit status is associated with the current hardening heads after branch updates and a draft PR reopen, while a prior branch head remains observable through the same GitHub API. Exact-head CI evidence therefore does not exist for the current tree."
+discovered_against = "ee2ee1f5d3c09b09d4b70f1f6b3b45fdfed27ab2"
+required_resolution = "Trigger the canonical CI workflow through a non-suppressed pull-request event or explicit workflow dispatch on the final exact head; require both Python jobs and retained certification artifacts before any defect resolution or merge."
+
+[[defects]]
+id = "CS-SR-012"
+severity = "P1"
+area = "installed-environment-inventory"
+root_cause = "Installed-version verification required locked distributions but did not reject additional installed distributions, duplicate installed metadata, or a missing/mismatched ConstructionSight distribution. Undeclared code could therefore remain importable while absent from the certified inventory."
+discovered_against = "aaaf20ebd937bbc9b5dfb7b77416917e0c060e69"
+required_resolution = "Reject every installed distribution outside the exact lock and exact ConstructionSight project identity; include bootstrap tooling in the lock; reject duplicate/malformed installed metadata; add adversarial fixtures."
+
+[[defects]]
+id = "CS-SR-013"
+severity = "P1"
+area = "sbom-provenance"
+root_cause = "The deterministic SBOM represented only locked package versions, omitted reviewed artifact hashes, could use an unsupported PyPI project identity for the local application, parsed project metadata URLs imprecisely, and took a second inventory snapshot after verification."
+discovered_against = "3e8fe3ee510f18329c1450be1a7407fa42a696a1"
+required_resolution = "Bind the SBOM to one verified inventory snapshot, include the local application as the root generic component, include approved SHA-256 artifact identities for locked libraries, validate external URLs, and generate a deterministic standards-conformant serial."
+
+[[defects]]
+id = "CS-SR-014"
+severity = "P1"
+area = "dependency-policy-traceability"
+root_cause = "Dependency registry and top-level policy validation could silently collapse duplicate canonical identities, discard non-table entries, accept stale hash-policy statements, permit unsafe lock paths, and omit checks that CI actually enforces the declared installation and mutation gates."
+discovered_against = "459ec451bc75d0cf3395d61f3613fd4fd972822f"
+required_resolution = "Fail closed on unknown/missing top-level fields, canonical and duplicate registry identities, non-table entries, required policy values, safe artifact paths, bootstrap and cross-lock agreement, authoritative source URLs, and mandatory CI commands."
+
+[[defects]]
+id = "CS-SR-015"
+severity = "P1"
+area = "governance-schema"
+root_cause = "Schema versions were checked, but unknown or misspelled top-level fields across architecture, capability, network, authorization, adversarial-test, mutation, defect, overlap, and vulnerability-exception contracts could remain inert without a finding. Mutation, overlap, and vulnerability-exception contracts were not loaded by canonical repository certification."
+discovered_against = "d6e6209de1bc5f6cd0eb139db6e96f1b894744de"
+required_resolution = "Load every machine-readable governance surface in the canonical certifier; enforce exact top-level fields and nonexpansion boundaries; validate active-defect, overlap, and vulnerability-exception identities; add negative fixtures."
+
+[[defects]]
+id = "CS-SR-016"
+severity = "P1"
+area = "cross-contract-traceability"
+root_cause = "Capability, network-policy, authorization-operation, dependency, and adversarial-matrix references were independently parsed but not bidirectionally reconciled. Invented references, orphaned policies, and capabilities omitted from adversarial matrices could therefore survive certification."
+discovered_against = "02720edb7b475011f536aa5a0b33990887f8476e"
+required_resolution = "Build a bidirectional governance reference graph; require exact policy and operation ownership, valid dependency capability references, and adversarial matrix coverage for every registered capability; add orphan and invented-reference fixtures."
+
+[[defects]]
+id = "CS-SR-017"
+severity = "P1"
+area = "adversarial-contract-doctrine"
+root_cause = "Adversarial matrices could accept unknown fields, category contraction or invention, unsafe or missing test references, malformed exclusions, and empty prose obligations while still appearing to cover all required risk classes."
+discovered_against = "35f23048b2d9bc2f9b16e5440ba74d589c70dc99"
+required_resolution = "Enforce the exact mandatory category set, exact matrix and exclusion fields, canonical lists, safe existing test paths, complete category coverage or justified exclusion, and nonblank branch/mutation/property/concurrency doctrine; add negative fixtures."
+
+[[defects]]
+id = "CS-SR-018"
+severity = "P0"
+area = "network-authorization-architecture"
+root_cause = "Multiple live CLI paths import approved transport modules directly and use bare Boolean flags such as --execute-live as the operative network grant, bypassing canonical application services and the general scope-bound authorization decision contract."
+discovered_against = "857ec7527317fca93eacb956c9e79d7d067522b5"
+required_resolution = "Prohibit CLI-to-transport imports; inventory every live CLI path; move each operation behind an application service that requires exact actor, action, resource, scope, current state, validity, denied authority, audit identity, and single-use preflight; retain Boolean confirmation only as an additional gate."
+
+[[defects]]
+id = "CS-SR-019"
+severity = "P0"
+area = "authorization-construction"
+root_cause = "The general authorization builders validated placeholder all-zero decision and preflight IDs before computing the content digest, so valid scope-bound decisions and preflights could not be constructed."
+discovered_against = "857ec7527317fca93eacb956c9e79d7d067522b5"
+required_resolution = "Construct canonical identity payloads without running final digest validators, compute the real digest, validate the completed model, and add direct decision/preflight identity regression coverage."
+
+[[defects]]
+id = "CS-SR-020"
+severity = "P0"
+area = "bounded-response-enforcement"
+root_cause = "CEQAnet listing and CSV paths followed redirects or materialized complete response bodies before enforcing declared size ceilings, so untrusted response bytes could exceed policy before rejection."
+discovered_against = "e47e33514ef906244d1f5959af49cc193b271305"
+required_resolution = "Route production listing and CSV requests through the streamed bounded HTTP engine, deny redirects before following Location, stop reading at the byte ceiling, classify terminal responses, discard incomplete body evidence, and add redirect and oversize regressions."
+
+[[defects]]
+id = "CS-SR-021"
+severity = "P0"
+area = "intent-implementation-divergence"
+root_cause = "The CEQAnet listing application service imported a nonexistent model generation while the live CLI bypassed that service and constructed the legacy executor directly, allowing documented architecture and executable behavior to diverge."
+discovered_against = "e47e33514ef906244d1f5959af49cc193b271305"
+required_resolution = "Reconcile the listing plan, executor, service, CLI, and tests around one canonical model; enforce one-attempt retry doctrine; prohibit direct CLI transport construction; and add an import/runtime branch obligation that detects nonexistent service dependencies."
+
+[[defects]]
+id = "CS-SR-022"
+severity = "P0"
+area = "atomic-persistence"
+root_cause = "CEQAnet persistence execution could commit valid operations while reporting other operations as failed or skipped, and the CLI treated a bare Boolean as the operative write grant."
+discovered_against = "9fbd989cb20e1bf078f0ee188b9eaaf7830d172f"
+required_resolution = "Prevalidate the complete reviewed write plan, execute all operations in one transaction, roll back on any runtime failure, route the CLI through an exact plan-and-destination authorization facade, and retain zero-partial-commit regressions."
+
+[[defects]]
+id = "CS-SR-023"
+severity = "P0"
+area = "synchronization-integrity"
+root_cause = "Sequential hardening commits left tests importing application functions that were not committed, placed authorization logic inside a domain-classified planning module, and allowed PR and governance inventories to lag the actual branch."
+discovered_against = "9fbd989cb20e1bf078f0ee188b9eaaf7830d172f"
+required_resolution = "Restore pure domain boundaries, add application-layer facades, align every test import and CLI call, synchronize mutation/adversarial/capability/defect contracts and PR metadata, and obtain exact-head CI evidence before resolution."
+
+[[defects]]
+id = "CS-SR-024"
+severity = "P0"
+area = "independent-review-binding"
+root_cause = "The independent-review certifier binds reviewed_commit to HEAD^ and diffs reviewed_commit..HEAD, but canonical pull-request CI checks out a shallow synthetic merge ref whose first parent is main rather than the reviewed branch implementation. A legitimate review can therefore fail solely because of GitHub merge topology, and the binding is not stable across an equivalent squash-merged tree."
+discovered_against = "3d2cd3ad81e6fe4a3f5ec0b637f95a57315c1c55"
+required_resolution = "Replace parent-topology binding with a deterministic reviewed-tree digest that covers every tracked path except explicitly permitted post-review governance artifacts; retain reviewed commit provenance; reject any non-permitted tree drift; and add synthetic-merge, shallow-history, allowed-finalization, and tamper regressions."
+
+[[defects]]
+id = "CS-SR-025"
+severity = "P0"
+area = "independent-review-worktree-binding"
+root_cause = "The reviewed-tree digest is computed from Git index object identities without first rejecting dirty non-permitted worktree state. A reviewer could therefore compute a digest that represents the committed index while inspecting or executing unstaged, staged, or untracked non-permitted content not represented by that digest."
+discovered_against = "684cc01aa3d2094bd743484280634e182d9f3626"
+required_resolution = "Make reviewed-tree digest computation fail closed when any staged, unstaged, or untracked path exists outside the explicit post-review finalization allowlist; retain permitted finalization behavior; and add staged, unstaged, untracked, and allowed-path regression coverage."
+
+[[defects]]
+id = "CS-SR-027"
+severity = "P0"
+area = "independent-review-identity-authenticity"
+root_cause = "The independent-review certifier requires only nonblank reviewer text inside a repository-controlled JSON artifact. An implementing author can therefore self-author an otherwise valid artifact, claim an arbitrary reviewer identity, and satisfy the mechanical review gate without a separately submitted GitHub review."
+discovered_against = "dcffdb41cc947388528fa9fa2c4bec34e4589299"
+required_resolution = "Bind the review artifact to a real GitHub pull-request review ID and exact reviewed commit; require canonical pull-request CI to fetch that review from GitHub and verify APPROVED state, matching reviewer login, matching commit, a human User identity distinct from the PR author and repository owner, and aggregate the external-review result as a mandatory finalization gate; add positive and spoofing regressions while retaining repository certification as the missing-review blocker before an artifact exists."
+
+[[defects]]
+id = "CS-SR-028"
+severity = "P0"
+area = "defect-closure-fact-integrity"
+root_cause = "Resolved-defect validation checks schema and evidence references but does not prove that the original active-defect facts are identical to those present in the reviewed commit, and resolution commits are not proven to exist in reviewed history."
+discovered_against = "4cc3ce763354ea91ef8c4bed28c3ce0b531379c3"
+required_resolution = "Bind closure records to the reviewed commit's complete active-defect ledger, preserve every original defect field exactly, require complete reviewed-ID accounting, and prove each resolution commit exists and is an ancestor of the reviewed implementation commit."
+
+[[defects]]
+id = "CS-SR-029"
+severity = "P0"
+area = "http-url-canonicalization"
+root_cause = "The bounded HTTP layer can authorize one URL path representation while the HTTP client transmits a different normalized representation, and ambiguous encoded path forms are not rejected consistently."
+discovered_against = "4cc3ce763354ea91ef8c4bed28c3ce0b531379c3"
+required_resolution = "Derive one canonical outbound URL, validate and authorize that exact representation, reject ambiguous encoded separators, dot segments, backslashes, fragments, user information, and noncanonical percent encodings, and transmit only the authorized representation."
+
+[[defects]]
+id = "CS-SR-030"
+severity = "P0"
+area = "persistence-authorization-toctou"
+root_cause = "The CEQAnet persistence facade authorizes a caller-owned mutable write-plan object and later gives the same object to the effect boundary, permitting authorization and execution content to diverge."
+discovered_against = "4cc3ce763354ea91ef8c4bed28c3ce0b531379c3"
+required_resolution = "Create a detached canonical write-plan snapshot before authorization, validate and hash that snapshot, recheck its exact identity immediately before the effect, execute only the detached snapshot, and add nested and callback-time mutation regressions."
+
+[[defects]]
+id = "CS-SR-031"
+severity = "P0"
+area = "ci-environment-identity"
+root_cause = "The exact installed Python environment is verified before vulnerability tooling runs, but the vulnerability action installs additional distributions into the same interpreter before lint, type, test, mutation, and repository-certification gates execute."
+discovered_against = "4cc3ce763354ea91ef8c4bed28c3ce0b531379c3"
+required_resolution = "Run vulnerability tooling in an isolated job or interpreter and verify the supported interpreter's exact installed-distribution identity immediately before and after every executable quality-gate sequence."
+
+[[defects]]
+id = "CS-SR-032"
+severity = "P0"
+area = "ceqanet-redirect-doctrine"
+root_cause = "A production-visible CEQAnet compatibility client path enables redirect following even though the canonical network contract requires redirects to be denied at request time, and current regression coverage preserves the conflicting behavior."
+discovered_against = "4cc3ce763354ea91ef8c4bed28c3ce0b531379c3"
+required_resolution = "Deny redirects at request time on every production-visible CEQAnet path, remove or route the compatibility transport through the common bounded engine, and replace the conflicting regression with fail-closed redirect coverage."
+
+[[defects]]
+id = "CS-SR-033"
+severity = "P0"
+area = "repository-evidence-containment"
+root_cause = "Tracked symbolic links are not prohibited and several governance evidence, test, ADR, lock, and mutation references are accepted without proving their resolved targets remain inside the reviewed repository tree."
+discovered_against = "4cc3ce763354ea91ef8c4bed28c3ce0b531379c3"
+required_resolution = "Reject Git mode 120000 tracked symbolic links and require one centralized, symlink-resistant repository-containment check for every governance evidence, test, ADR, lock, review, and mutation reference."
+
+[[defects]]
+id = "CS-SR-034"
+severity = "P0"
+area = "semantic-authorization-proof"
+root_cause = "The static semantic-authorization audit trusts authorized-looking function names without resolving imported or aliased call targets and proving that canonical authorization occurs before every reachable effect."
+discovered_against = "4cc3ce763354ea91ef8c4bed28c3ce0b531379c3"
+required_resolution = "Replace naming-convention trust with a resolved interprocedural call graph from operator entry points to effect boundaries, prove authorization and preflight precede every reachable effect, and add spoofed-name, alias, indirect-call, branch-bypass, and effect-before-authorization regressions."
+
+[[defects]]
+id = "CS-SR-035"
+severity = "P0"
+area = "network-query-authority"
+root_cause = "Exact network query scope remains partly prose because the bounded HTTP policy does not represent query authority and the CEQAnet listing planner accepts caller-supplied base search URLs."
+discovered_against = "4cc3ce763354ea91ef8c4bed28c3ce0b531379c3"
+required_resolution = "Represent exact query scope or canonical request identity in executable network policy, remove arbitrary base-URL injection from the CEQAnet planner, and reject any request whose host, path, query keys, query values, or canonical identity exceeds reviewed authority."
+
+[[defects]]
+id = "CS-SR-036"
+severity = "P0"
+area = "supply-chain-vulnerability"
+root_cause = "Exact-head CI run #1056 discovered newly published advisory PYSEC-2026-3721 against the locked pip 26.1.2 bootstrap distribution, so both supported environments now fail the mandatory zero-known-vulnerability gate."
+discovered_against = "730a036038d1e18f9a54b0915f5440c5b4e414a1"
+required_resolution = "Upgrade both artifact-hashed environment locks and bootstrap doctrine to pip 26.2 or later using the reviewed exact wheel identity, rerun the full Python 3.11/3.12 vulnerability matrix, and retain zero-vulnerability evidence without an exception."
+
+[[defects]]
+id = "CS-SR-037"
+severity = "P0"
+area = "http-exact-request-identity"
+root_cause = "The bounded HTTP engine validates a canonical URL before passing it to an injected httpx.Client stream call, where client-level query parameters can be merged before transmission; the exact authorized identity can therefore diverge from the wire request despite CS-SR-029."
+discovered_against = "1296b6053da3a5f30cbed702cc1333e9365bb307"
+required_resolution = "Build one explicit request outside injected-client configuration, prevent client defaults and request hooks from changing its authorized URL or method before transmission, and add a regression proving client-level query configuration cannot cause an unauthorized request."
+
+[[defects]]
+id = "CS-SR-038"
+severity = "P0"
+area = "http-response-evidence-integrity"
+root_cause = "Injected httpx.Client response hooks execute before the bounded HTTP engine inspects the response, so a hook can alter status, headers, body, or request evidence after transport and before policy classification."
+discovered_against = "ffaa745dea866dadc3d21e0272c6361128a80901"
+required_resolution = "Reject configured response hooks before transport execution or replace client injection with a constrained transport-only boundary, and add a regression proving a response hook cannot transform an access-control response into accepted evidence."
+
+[[defects]]
+id = "CS-SR-039"
+severity = "P0"
+area = "http-environment-and-transport-authority"
+root_cause = "The bounded HTTP engine creates its owned httpx.Client with the default trust_env=True and accepts preconfigured injected clients, so environment proxy routing, proxy credentials, CA trust, and client-certificate state can be introduced beneath exact URL and auth checks; auth=None does not neutralize transport-level environment or TLS credential configuration."
+discovered_against = "5f714c68f07d0820516046349210067dc5ad8c93"
+required_resolution = "Construct the production client with trust_env=False and explicit reviewed TLS settings, remove effect-capable preconfigured client injection from production-visible boundaries, isolate deterministic test transport behind a non-production boundary, and add regression and mutation coverage proving environment proxies, CA overrides, proxy credentials, and client certificates cannot alter production HTTP execution."
+
+[[defects]]
+id = "CS-SR-040"
+severity = "P0"
+area = "arcgis-exact-request-and-evidence-integrity"
+root_cause = "ArcGIS acquisition and rehearsal effect boundaries accept caller-configured httpx.Client instances and call Client.get or Client.stream, allowing client query defaults, authentication, hooks, redirect policy, environment proxy or TLS state, and custom transports to alter the request or response evidence beneath the reviewed plan; post-response history and endpoint checks occur only after effects, and the acquisition path does not reject redirect history."
+discovered_against = "5f714c68f07d0820516046349210067dc5ad8c93"
+required_resolution = "Route every production ArcGIS request through an environment-independent bounded transport that constructs and authorizes one exact canonical URL including its complete query, denies redirects before execution, rejects unauthorized authentication and hooks, removes effect-capable client injection from production-visible APIs, and adds query-default, auth, hook, redirect, proxy, TLS, and forged-evidence regressions plus focused mutants."
+
+[[defects]]
+id = "CS-SR-041"
+severity = "P0"
+area = "arcgis-bounded-response-enforcement"
+root_cause = "The ArcGIS capability and probe transport calls Client.get and accesses response.content before comparing its length with max_response_bytes, so an untrusted response is fully materialized before the declared memory ceiling is enforced."
+discovered_against = "5f714c68f07d0820516046349210067dc5ad8c93"
+required_resolution = "Use the shared streamed bounded-response engine or an equivalent pre-read Content-Length check and incrementally bounded stream, stop at the first byte beyond the ceiling, retain no incomplete body as successful evidence, and add declared-length and chunked-oversize regressions and mutants."
+
+[[defects]]
+id = "CS-SR-042"
+severity = "P1"
+area = "network-media-type-contract-drift"
+root_cause = "CS-NET-003 omits text/html from its approved CEQAnet CSV media types while the executable _ACCEPTED_MEDIA_TYPES allowlist includes text/html, so the machine-readable network contract and runtime acceptance boundary disagree."
+discovered_against = "5f714c68f07d0820516046349210067dc5ad8c93"
+required_resolution = "Remove HTML from the CSV transport success allowlist unless separately authorized by an exact reviewed policy, mechanically reconcile declared and executable media types, and add a regression proving a 200 HTML login, denial, or error page cannot enter the CSV evidence path as an accepted transport response."
+
+[[defects]]
+id = "CS-SR-043"
+severity = "P0"
+area = "effect-implementation-authority"
+root_cause = "Production-visible application and execution services can authorize an operation and then invoke caller-selected effect implementations such as executors, persisters, HTTP checkers, registries, adapters, or equivalent callbacks, so the implementation that performs the effect is not necessarily the implementation whose authority was reviewed."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Remove caller-selected effect implementations from production-visible boundaries, route effects through ConstructionSight-owned concrete implementations, retain deterministic substitutes only behind test-only seams, preserve authorized success and failure semantics, and add regressions and mutants proving post-authorization implementation substitution is impossible."
+
+[[defects]]
+id = "CS-SR-044"
+severity = "P0"
+area = "trusted-time-authority"
+root_cause = "Production-visible authorization and execution facades accept caller-controlled clocks or authorization timestamps, allowing an invented time to influence authorization validity, policy-date checks, date-scoped execution identity, and audit metadata."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Move authoritative time acquisition behind a ConstructionSight-owned production clock boundary, retain deterministic clocks only for tests, bind all time-sensitive authorization and execution state to that trusted clock, and add regressions proving callers cannot backdate or forward-date production authority."
+
+[[defects]]
+id = "CS-SR-046"
+severity = "P0"
+area = "epistemic-provenance-authority"
+root_cause = "Verification, confidence, manual-review claims, source independence, and similar epistemic states can be supplied as structurally valid caller assertions without mandatory binding to immutable evidence, evidence existence, reviewer identity, or derivation lineage."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Make authoritative verification and confidence derived states rather than caller assertions, bind them to existing immutable evidence and reviewer or derivation provenance, validate evidence lineage and independence at the trust boundary, and add forged-provenance, missing-evidence, duplicate-lineage, and self-asserted-review regressions."
+
+[[defects]]
+id = "CS-SR-047"
+severity = "P1"
+area = "derived-identity-integrity"
+root_cause = "Normalized values, fingerprints, candidate identifiers, and other derived semantic identities can be caller supplied or only partially content-bound instead of being recomputed and self-validating at authoritative model or persistence boundaries."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Define canonical versioned derivation rules for every authoritative normalized value and derived identity, recompute and validate them from source content at trust boundaries, use collision-appropriate full digests where identity is security or evidence relevant, canonicalize symmetric identity pairs, and add forged-normalization, forged-fingerprint, reversed-pair, and stale-ID regressions."
+
+[[defects]]
+id = "CS-SR-048"
+severity = "P0"
+area = "operational-confidence-gating"
+root_cause = "Opportunity, site-resolution, enrichment, and readiness logic can score or resolve evidence by signal presence while treating confidence as descriptive metadata, allowing inferred, ambiguous, conflicting, unverified, or zero-confidence inputs to contribute enough operational weight for actionable state."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Make evidence eligibility and confidence part of operational scoring and resolution semantics, prohibit weak or conflicting evidence from independently producing actionable or canonical state, preserve explicit review states for uncertain evidence, and add low-confidence, conflicting, inferred, and missing-evidence readiness regressions."
+
+[[defects]]
+id = "CS-SR-050"
+severity = "P0"
+area = "business-transition-concurrency"
+root_cause = "Lead workflow authorization checks an expected current state before mutation, but the durable state transition is performed through an ordinary read and upsert rather than a database compare-and-swap, so competing processes can authorize the same old state and race to overwrite one another."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Bind the authorized expected state to the mutation with one database compare-and-swap or equivalent serializable transition primitive, reject stale writers, preserve append-only transition evidence, and add deterministic competing-writer and stale-authorization regressions."
+
+[[defects]]
+id = "CS-SR-051"
+severity = "P1"
+area = "historical-ledger-separation"
+root_cause = "Several records that represent events, evidence, snapshots, or historical transitions use mutable upsert semantics or reusable stable IDs appropriate to current-state projections, allowing later writes to replace earlier historical state."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Separate mutable current-state projections from append-only evidence, event, snapshot, and transition ledgers; require immutable transition-specific identity and exact idempotent replay for historical records; preserve supersession explicitly; and add replay, overwrite, and historical reconstruction regressions."
+
+[[defects]]
+id = "CS-SR-053"
+severity = "P1"
+area = "financial-decimal-integrity"
+root_cause = "Result-share and royalty accounting validates decimal precision at input but performs and persists monetary arithmetic with binary floating-point values and implicit round(..., 2) semantics rather than a canonical monetary type and explicit rounding doctrine."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Represent monetary values and rates with a fixed-decimal or integer-minor-unit domain, define an explicit rounding mode and scale, persist exact decimal values, migrate affected calculations without changing legitimate business semantics, and add boundary, half-cent, accumulation, and replay regressions."
+
+[[defects]]
+id = "CS-SR-054"
+severity = "P0"
+area = "runtime-evidence-containment"
+root_cause = "Runtime evidence and artifact paths can be formed from manifest or artifact references and then resolved through ordinary filesystem operations without a uniform no-follow containment proof, permitting parent, absolute, or symlink-mediated reads or writes outside the intended evidence root."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Centralize runtime evidence path resolution, require relative canonical names and resolved containment beneath the evidence root, reject symlink or reparse traversal at every component and final target, bind verified bytes to later use, and add absolute, parent, symlink, swap, and verify-use regressions."
+
+[[defects]]
+id = "CS-SR-055"
+severity = "P1"
+area = "pre-materialization-resource-bounds"
+root_cause = "Some externally controlled local or adapter work is bounded only after materialization or is not bounded at all, including whole-file intake, ZIP entry decompression, and adapter enumeration that calls list(...) before applying max_records."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Apply byte, record, and decompression ceilings before full materialization, stream or incrementally consume bounded work, abort at the first unit beyond the reviewed ceiling, and add oversized-file, compression-ratio, infinite-generator, and max-record regressions."
+
+[[defects]]
+id = "CS-SR-057"
+severity = "P1"
+area = "foundational-domain-invariants"
+root_cause = "Foundational site, permit, planning, and related domain models do not uniformly enforce physical and lifecycle invariants, allowing impossible coordinates, negative physical measurements, contradictory dates, or similarly invalid states into durable projections."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Add the minimum domain-native validators required for physically and temporally valid state, explicitly define allowed unknown or partial states, reject contradictory lifecycle ordering at authoritative boundaries, and add boundary and chronology regressions without refactoring unrelated domain logic."
+
+[[defects]]
+id = "CS-SR-058"
+severity = "P0"
+area = "cross-artifact-commit-atomicity"
+root_cause = "Multi-artifact filesystem operations can durably write an audit or report artifact before the corresponding authoritative target is successfully committed, allowing durable evidence to claim an apply or mutation that never completed."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Define one commit protocol for coupled filesystem artifacts, stage and fsync or equivalently prepare all outputs before authoritative replacement, publish success evidence only after the target commit succeeds, recover deterministically from partial failure, and add injected late-write, replacement, and crash-point regressions."
+
+[[defects]]
+id = "CS-SR-059"
+severity = "P1"
+area = "deep-content-immutability"
+root_cause = "Some frozen or content-addressed outer models contain mutable nested models or collections, so validated content can change after identity or digest construction without forcing a new identity."
+discovered_against = "5f101b7bdddfd695904eb02144350e06207d9ded"
+required_resolution = "Make content-addressed evidence recursively immutable or defensively detached, use immutable collection types for digest-bound fields, prevent nested post-validation mutation, and add nested-list, nested-model, stale-digest, and copy-isolation regressions."
+
+[[defects]]
+id = "CS-SR-060"
+severity = "P0"
+area = "public-source-egress-authority"
+root_cause = "Generic source-readiness and source-verification transports derive their allowed host and exact request authority from the same caller-controlled source URL they are meant to constrain, so canonical loopback, private, link-local, reserved, or otherwise internal destinations can self-authorize a bounded HTTP request."
+discovered_against = "689e25cd9bfc36facceb0e1d271eb13b86b2aebc"
+required_resolution = "Derive executable source authority only from a separately governed source identity and public-egress policy; reject IP literals and special-use hostnames; validate every resolved address and alias as globally routable; prevent resolution-to-connect rebinding or enforce equivalent network egress controls; preserve exact request, redirect, credential, TLS, and response bounds; and add loopback, private, link-local, numeric-address, mixed-answer, CNAME, and rebinding regressions."
+
+[[defects]]
+id = "CS-SR-061"
+severity = "P0"
+area = "effect-consumption-atomicity"
+root_cause = "High-impact authorization and evidence-execution paths determine use or attempt availability from caller-selected, invocation-local, absent, or stale snapshot state and perform the effect without a ConstructionSight-owned atomic consumption reservation, allowing one logical authorization, UTC-date allowance, or recurring-run attempt identity to cause multiple effects."
+discovered_against = "689e25cd9bfc36facceb0e1d271eb13b86b2aebc"
+required_resolution = "Introduce a ConstructionSight-owned consumption service that atomically reserves the exact decision or operation identity immediately before effect execution; use durable uniqueness or compare-and-swap for cross-process database, file, evidence-series, and recurring-run operations; remove production ledger and used-ID injection; bind reservation to exact scope, current state, trusted time, and the owned implementation; make permitted exact replay return the prior committed result without repeating effects; persist terminal success or failure; and add sequential, concurrent, restart, stale-series, duplicate-sequence, and failed-effect recovery regressions."
+
+[[defects]]
+id = "CS-SR-062"
+severity = "P0"
+area = "assurance-reviewed-tree-binding"
+root_cause = "Native assurance permits reviewed_commit to be any ancestor of HEAD, while reviewed_tree_digest is verified only against the current assurance-covered index tree and is not recomputed from the reviewed commit. An assurance report can therefore bind analytical passes and quality evidence to an older commit while rebinding the digest to a newer non-finalization implementation tree."
+discovered_against = "65b2ef5e726d8ab810776d1774edc74b1b70bc4c"
+required_resolution = "Compute the assurance-covered tree digest directly from reviewed_commit using canonical Git object identities and the same finalization exclusions; require it to equal reviewed_tree_digest and the current covered tree digest; preserve permitted post-review finalization paths; and add stale-reviewed-commit, covered-tree-change, allowed-finalization, and exact-tree regression coverage."
+
+[[defects]]
+id = "CS-SR-063"
+severity = "P0"
+area = "assurance-context-isolation-integrity"
+root_cause = "Native assurance counts caller-authored completed_reviews values toward minimum context-isolated and deep-review thresholds, so one analytical pass and evidence artifact can claim multiple supposedly fresh contexts; the canonical test helper satisfies three deep reviews with one native-deep artifact."
+discovered_against = "3ba40fd4b6c4e4524af3eb258459425a4b0045a3"
+required_resolution = "Require each context-isolated review to be a distinct pass ID and distinct evidence artifact with completed_reviews exactly 1; require at least five native pass records and at least three distinct deep_repository records, bind each to a unique execution or context identity, and add aggregation, duplicate-context, exact-count regression, and focused mutation coverage."
+
+[[defects]]
+id = "CS-SR-064"
+severity = "P0"
+area = "assurance-source-provenance-integrity"
+root_cause = "Pass and quality-gate evidence treats source_artifact_sha256 as a syntax-only 64-hex assertion without a resolvable source artifact, so fabricated or stale raw-review and CI provenance, including all-zero hashes, can satisfy Native Maximum Assurance."
+discovered_against = "3ba40fd4b6c4e4524af3eb258459425a4b0045a3"
+required_resolution = "Require every source artifact identity to resolve to immutable retained bytes or an externally authenticated CI artifact identity; verify SHA-256 against those bytes or identity and exact reviewed commit or run metadata; reject placeholders and unresolvable hashes; preserve safe containment and unique ownership; and add zero-hash, missing-source, digest-mismatch, cross-commit, reused-source regression, and focused mutation coverage."
+
+[[defects]]
+id = "CS-SR-065"
+severity = "P2"
+area = "assurance-quality-gate-compliance"
+root_cause = "Assurance provenance and mutation-overlay hardening introduced six overlong Python lines, an unsorted import block, and a nested conditional rejected by the mandatory Ruff rules. Exact-head CI 1146 on 7c302bc925884d5c6aa3d9fc0191e68672c2a37a reports eight Ruff errors and a failed lint outcome, so that candidate does not satisfy the Native Maximum Assurance quality baseline even though tests and focused mutants pass."
+discovered_against = "7c302bc925884d5c6aa3d9fc0191e68672c2a37a"
+required_resolution = "Correct all eight Ruff violations without suppressions, rule changes, or weakened predicates; preserve behavior and mutation anchors; rerun the complete exact-head Python 3.11 and 3.12 matrix; and verify the retained raw Ruff output and actual gate outcomes rather than a continue-on-error step conclusion before making any clean-quality claim."
+
+[[defects]]
+id = "CS-SR-066"
+severity = "P0"
+area = "assurance-owner-acceptance-authenticity"
+root_cause = "Native Maximum Assurance requires explicit owner acceptance, but the canonical report currently treats owner_acceptance as a repository-controlled Boolean with nonblank owner and review_method text; no externally authenticated owner action binds the decision to the exact frozen commit, reviewed tree, and complete material assurance evidence set, so a committer or automation capable of writing permitted finalization artifacts can self-assert owner acceptance."
+discovered_against = "6402f0a49f80099c46c8bb37a392e740783a92b4"
+required_resolution = "Bind owner acceptance to the repository owner's real GitHub User identity, exact pull-request review ID, exact reviewed commit and tree, and a deterministic SHA-256 digest of all material assurance claims; have canonical CI re-fetch and verify the owner review with read-only GitHub authority; require exact acceptance text, COMMENTED state, OWNER association, and human User identity; keep owner acceptance distinct from independent-human review; and add spoofed-owner, stale-commit, changed-evidence, wrong-body/state, wiring, and focused-mutation regressions."
+
+[[defects]]
+id = "CS-SR-067"
+severity = "P2"
+area = "assurance-quality-gate-compliance"
+root_cause = "The semantic CI-permission regression helper creates its workflow directory without exist_ok=True, but test_scalar_or_duplicate_permissions_fail_closed rewrites the same temporary workflow twice. Exact-head CI #1153 on 99081b3cd2f4d6dc1916f13c36e09ecda76ac7e1 therefore fails full pytest on both Python 3.11 and 3.12 with FileExistsError despite the production permission certifier, focused mutations, preflight, and repository certification otherwise behaving as intended."
+discovered_against = "99081b3cd2f4d6dc1916f13c36e09ecda76ac7e1"
+required_resolution = "Make the test workflow helper idempotently create its parent directory, rerun the complete exact-head Python 3.11 and 3.12 matrix, require all 1323 tests to pass, preserve 92/92 focused mutation results, and confirm canonical repository certification contains only ASSURANCE-001 plus the active-defect blockers."
+
+[[defects]]
+id = "CS-SR-068"
+severity = "P1"
+area = "supply-chain-action-runtime-provenance"
+root_cause = "Canonical CI pins third-party GitHub Action source commits, but the pinned checkout, setup-python, and upload-artifact commits declare Node 20 while current GitHub-hosted runners forcibly execute those bundles under Node 24. The immutable source SHA therefore no longer fixes the interpreter semantics actually executing in CI, and the workflow lacks a native binding from Action identity to a reviewed runtime class."
+discovered_against = "99081b3cd2f4d6dc1916f13c36e09ecda76ac7e1"
+required_resolution = "Review and pin Node-24-native checkout, setup-python, and upload-artifact releases by immutable commit; preserve existing least-privilege and quality semantics; machine-certify the exact Action repositories, commits, occurrence counts, and reviewed runtime annotations; retain the composite pip-audit identity; rerun the complete exact-head matrix; and require the Node-20 forced-runtime warning to disappear before assurance freeze."
+
+[[defects]]
+id = "CS-SR-069"
+severity = "P1"
+area = "supply-chain-vulnerability-toolchain-reproducibility"
+root_cause = "The immutable pypa/gh-action-pip-audit composite source does not pin the scanner implementation it executes: its requirements allow resolver-selected pip-audit and transitive versions, so the mandatory vulnerability gate can change without a ConstructionSight tree or Action-SHA change."
+discovered_against = "7fe708e1ea49044b2b847a9624da5c80c765a679"
+required_resolution = "Remove the resolver-selected vulnerability-scanner bootstrap; use a repository-owned deterministic vulnerability certifier with explicit fail-closed advisory provenance or a fully artifact-hashed exact scanner environment; preserve isolated zero-known-vulnerability enforcement and retained evidence; add negative network, schema, advisory, and mutation coverage; and rerun the complete supported-runtime matrix."
+
+[[defects]]
+id = "CS-SR-070"
+severity = "P2"
+area = "assurance-quality-gate-compliance"
+root_cause = "CS-SR-068 Action-provenance hardening introduced two overlong expressions in src/constructionsight/ci_action_certification.py. Retained CI #1155 evidence reports Ruff E501, so exact head 7fe708e1ea49044b2b847a9624da5c80c765a679 is not a clean-quality or assurance-freeze candidate."
+discovered_against = "7fe708e1ea49044b2b847a9624da5c80c765a679"
+required_resolution = "Split both overlong expressions without suppression, rule changes, or weakened predicates; preserve Action identity/runtime semantics and mutation anchors; rerun the complete Python 3.11 and 3.12 matrix; and verify retained raw Ruff output is clean before assurance freeze."
+
+[[defects]]
+id = "CS-SR-071"
+severity = "P0"
+area = "assurance-execution-integrity"
+root_cause = "The isolated vulnerability job invokes three noninteractive Bash steps without step-local BASH_ENV neutralization. A workflow, job, runner, or inherited environment can therefore point BASH_ENV at attacker-controlled startup content that Bash evaluates before the canonically certified step body, allowing the execution semantics to diverge from the text the vulnerability CI certifier binds."
+discovered_against = "235b322da599bcb8ff34ff5d20b18893fc487b14"
+required_resolution = "Set BASH_ENV to /dev/null at each security-critical vulnerability Bash step, bind all occurrences and their placement into the exact vulnerability-job execution contract, add missing-or-weakened neutralizer regressions and focused mutation coverage, rerun the complete exact-head supported-runtime matrix, and retain CS-SR-071 as active until exact-tree Native Maximum Assurance legitimately closes the reviewed defect history."
+
+[[defects]]
+id = "CS-SR-072"
+severity = "P0"
+area = "ci-inherited-execution-controls"
+root_cause = "The canonical CI workflow launches noninteractive Bash without suppressing inherited shell options and exported functions. SHELLOPTS=noexec skips a failing script and exits successfully even with BASH_ENV=/dev/null; an imported test function can also turn failed enforcement into success. A workflow-level noexec setting outside the literal vulnerability-job block passes the complete existing structural preflight, and quality-job shells remain exposed to inherited startup hooks."
+discovered_against = "71c34f275a8d6fa99692e730ff7254b932da7983"
+required_resolution = "Use an explicit reviewed Bash executable and startup-isolated launch flags for every canonical CI run step, preserving errexit and pipefail; bind all workflow bytes including global settings and quality-job controls into structural and final certification; preserve the existing BASH_ENV neutralizers and vulnerability-job contract; add real inherited-option, exported-function, startup-hook, command-resolution, and failure-propagation regressions plus digest and integration mutation witnesses; rerun the complete supported-runtime matrix; and retain the defect until exact-tree Native Maximum Assurance closure."
+
+[[defects]]
+id = "CS-SR-073"
+severity = "P0"
+area = "ci-pre-gate-build-execution"
+root_cause = "The quality job installed the pull-request candidate with pip install --no-deps --no-build-isolation -e . before the structural and assurance gates. Because the candidate controls its PEP 517 build backend and build configuration, repository-controlled build code could execute before those gates and mutate runner command files or the checkout, allowing later gate execution to diverge from the reviewed workflow while the whole-workflow digest itself remained unchanged."
+discovered_against = "af8758343a6a554f23e7ef10ea6aeb849f082718"
+required_resolution = "Remove all candidate project installation and build execution from the pre-gate quality bootstrap; install only the exact hash-locked third-party environment; execute canonical source through a reviewed PYTHONPATH binding; certify the dependency-only install block and prohibit additional project-install commands independently of the workflow digest; verify source-project identity without invoking a build backend and reject installed-project shadowing; add regression and mutation coverage; rerun both supported runtimes; and retain CS-SR-073 as active until exact-tree Native Maximum Assurance legitimately closes reviewed defect history."
+
+[[defects]]
+id = "CS-SR-074"
+severity = "P0"
+area = "supply-chain-newly-disclosed-anyio-advisories"
+root_cause = "Both supported artifact-hashed dependency locks retained AnyIO 4.9.0 when exact-head CI newly detected active GHSA-5p39-cfhj-2xmp (CVE-2026-64847) and GHSA-82r6-8w77-94w6 (CVE-2026-63374); their distinct public disclosure dates are not inferred from the CI detection date. The canonical 2026-09-20 exact-head CI vulnerability audits identified both as active and failed, invalidating reliance on the older no-active-advisory checkpoint. Exposure of affected AnyIO code paths within ConstructionSight has not been independently established."
+discovered_against = "3be6ee6529ed5d8cbb69d88c064de9fd6174c0a4"
+required_resolution = "Retain independent source evidence for both advisories and the reviewed fixed AnyIO release; pin exact PyPI-published universal wheel identity and SHA-256 consistently for Python 3.11 and 3.12; validate strict hash-locked installation, dependency compatibility, network/TLS behavior, full tests and independent fresh vulnerability collection at an exact new head; propagate the fix to stacked GUI and hardening trees; keep this defect active until Native Maximum Assurance, reviewed closure and authenticated owner acceptance legitimately succeed."
+
+[[defects]]
+id = "CS-SR-075"
+severity = "P1"
+area = "artifact-remediation-quality-regression"
+root_cause = "Recent artifact and consumption corrections introduced nine mandatory Ruff violations on hardening, ten on the stacked GUI, and a prohibited conditional pytest skip decorator. Raw exact-head CI logs for hardening 1a8f1b1e38e9f7ab11adcf629400fb4123c8ddf8 and GUI a3392b8c1b7f44eb0c3c536b737bdae1420c646f show lint failure and CERT-SUPPRESS-001 even though continue-on-error step conclusions say success; native structural preflight fails independently of active-defect and missing-assurance blockers."
+discovered_against = "1a8f1b1e38e9f7ab11adcf629400fb4123c8ddf8"
+required_resolution = "Correct the five shared import-order violations and the additional GUI source-candidate docket import-order violation, nested context-manager violation, and three loop-variable capture violations; replace the platform skip with meaningful platform-capability coverage without suppressing a required check; preserve runtime assertions and certification rules; rerun exact-head Python 3.11 and 3.12 lint, tests, mutations and structural preflight on both stacked branches; retain actual command outcomes and keep the finding active until legitimate Native Maximum Assurance closure."

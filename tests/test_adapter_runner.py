@@ -1,4 +1,4 @@
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 
 from constructionsight.adapters.base import (
     AdapterRunContext,
@@ -12,6 +12,16 @@ from constructionsight.site_models import Site
 
 
 class RunnerSyntheticAdapter(SourceAdapter[dict[str, str], Site]):
+    def preflight(self, profile: SourceAccessProfile | None = None):
+        return super().preflight(
+            profile
+            or SourceAccessProfile(
+                public_url=str(self.source.public_url),
+                access_facts_reviewed=True,
+                review_basis="Reviewed synthetic adapter access facts.",
+            )
+        )
+
     def verify_source(self) -> SourceVerificationResult:
         return SourceVerificationResult(
             source_name=self.source_name,
@@ -106,3 +116,59 @@ def test_adapter_runner_returns_failure_result_on_adapter_exception() -> None:
     assert result.succeeded is False
     assert result.outcome.value == "failed"
     assert result.errors[0].details == {"exception_type": "RuntimeError"}
+
+
+class EndlessSyntheticAdapter(RunnerSyntheticAdapter):
+    """Synthetic unbounded source used to prove the runner does not materialize it."""
+
+    def __init__(
+        self, source: PublicSource, context: AdapterRunContext | None = None
+    ) -> None:
+        super().__init__(source, context)
+        self.produced = 0
+
+    def list_records(self) -> Iterator[dict[str, str]]:
+        while True:
+            self.produced += 1
+            yield {
+                "site_key": f"site:test:{self.produced:06d}",
+                "county": "Test County",
+            }
+
+
+def test_adapter_runner_consumes_only_explicit_limit_from_unbounded_source() -> None:
+    adapter = EndlessSyntheticAdapter(_source(), AdapterRunContext(max_records=3))
+    result = AdapterRunner().run_adapter(adapter)
+
+    assert result.succeeded is True
+    assert len(result.records) == 3
+    assert adapter.produced == 3
+    assert result.notes is not None
+    assert "may contain further records" in result.notes
+
+
+def test_adapter_runner_applies_default_ceiling_without_explicit_max() -> None:
+    adapter = EndlessSyntheticAdapter(_source())
+    result = AdapterRunner().run_adapter(adapter)
+
+    assert result.succeeded is True
+    assert len(result.records) == 5_000
+    assert adapter.produced == 5_000
+
+
+def test_adapter_runner_rejects_invalid_and_unbounded_overrides() -> None:
+    for limit in (-1, 5_001):
+        adapter = EndlessSyntheticAdapter(_source(), AdapterRunContext(max_records=limit))
+        result = AdapterRunner().run_adapter(adapter)
+        assert result.succeeded is False
+        assert result.errors[0].details == {"exception_type": "ValueError"}
+        assert adapter.produced == 0
+
+
+def test_adapter_runner_accepts_zero_as_deliberate_no_records_mode() -> None:
+    adapter = EndlessSyntheticAdapter(_source(), AdapterRunContext(max_records=0))
+    result = AdapterRunner().run_adapter(adapter)
+
+    assert result.succeeded is True
+    assert result.records == ()
+    assert adapter.produced == 0

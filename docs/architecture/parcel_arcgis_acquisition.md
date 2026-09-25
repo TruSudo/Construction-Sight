@@ -111,6 +111,12 @@ A successful complete-rehearsal execution can now be converted into a self-conta
 
 Offline verification rebuilds the HTTP plan and manifest, reconstructs the hardened execution receipt contract, reparses every count and page body, compares every object-ID sequence and response digest to the structured manifest evidence, and rebuilds the bundle identity. Atomic save requires the exact expected bundle ID and accepts an existing path only as an identical independently verified replay. See `parcel_arcgis_rehearsal_proof_bundle.md`.
 
+## Live-rehearsal authorization and preflight
+
+`ParcelArcGISBulkRehearsalAuthorization` separates implemented capability from permission to use it. Issuance requires an explicit caller decision and binds the exact snapshot, profile, rehearsal plan, source, county, HTTPS query endpoint, object-ID field, page/checkpoint/retry policy, execution nonce, issuer, reason, and a window of no more than 24 hours. Authority is limited to one execution, two count requests, GET-only geometry-disabled access, and mandatory exact-response, checkpoint, portable-bundle, and independent-verification retention. Credential use, access-control bypass, parcel import, profile promotion, recurring execution, and production bulk collection are fixed false.
+
+Offline preflight requires the exact expected authorization identity, matching snapshot and plan, a current not-before/expiration window, and an authorization identity absent from a caller-supplied consumed-ID set. No authorization artifact or durable consumption ledger is committed in this phase, and no live command consumes the authorization. Before live execution, a later phase must atomically append consumption evidence binding authorization, preflight, execution, portable bundle, and independent verification identities. See `parcel_arcgis_rehearsal_authorization.md`.
+
 ## Portable verification and explicit persistence
 
 A saved bundle can be checked without network or database access:
@@ -156,7 +162,7 @@ Six additive tables preserve the chain:
 
 Writes are dependency-ordered and immutable. Exact replays are idempotent; conflicting indexed fields, payload changes, missing parents, or a second observation for one request are rejected. One identical request may be shared by multiple bounded plans. Typed loads revalidate every digest and model invariant, and stored assessments are recomputed from their persisted snapshots, plans, observations, and optional manifests.
 
-The read-only upstream operator exposes all six record kinds with applicable source, county, and status filters. The parcel-source CLI exposes canonical metadata snapshots, bounded plans, current assessments, the explicit live bounded probe command, offline bounded-bundle verification, and explicitly authorized persistence. The complete-rehearsal executor, HTTP adapter, and portable rehearsal proof bundle remain service/test boundaries until a separately authorized live proof phase exists.
+The read-only upstream operator exposes all six record kinds with applicable source, county, and status filters. The parcel-source CLI exposes canonical metadata snapshots, bounded plans, current assessments, the explicit live bounded probe command, offline bounded-bundle verification, and explicitly authorized persistence. The complete-rehearsal executor, HTTP adapter, portable proof bundle, authorization builder, and preflight service remain service/test boundaries; no issued authorization, consumption ledger, or live county rehearsal command exists.
 
 ## Current official boundary
 
@@ -164,10 +170,10 @@ The retained 2026-07-14 evidence records one refreshed metadata request and four
 
 | Source | Advertised page limit | Observed count | Canonical state | Missing proof |
 |---|---:|---:|---|---|
-| San Bernardino County parcel FeatureServer layer | 1,000 | 839,794 | `bounded_query_verified` | Live exact-response rehearsal execution and independent verification |
-| Riverside County Assessor MapServer layer | 2,000 | 846,251 | `bounded_query_verified` | Live exact-response rehearsal execution and independent verification |
+| San Bernardino County parcel FeatureServer layer | 1,000 | 839,794 | `bounded_query_verified` | Durable authorization consumption, issued exact-plan authorization, live rehearsal, and independent saved-bundle verification |
+| Riverside County Assessor MapServer layer | 2,000 | 846,251 | `bounded_query_verified` | Durable authorization consumption, issued exact-plan authorization, live rehearsal, and independent saved-bundle verification |
 
-Both retained bounded-proof bundles independently recompute their metadata, plans, response digests, replay agreement, and assessments. Each exact bounded identity also passed transactional insert-or-exact-replay persistence against an ephemeral database. The complete-rehearsal executor, exact-byte artifact store, digest-bound HTTP plan/adapter, and portable independently verifiable rehearsal proof bundle now exist and pass deterministic offline tests, but neither official county source has undergone that live rehearsal. Neither source is bulk-rehearsal-verified, profile-promoted, bulk-authorized, or import-ready.
+Both retained bounded-proof bundles independently recompute their metadata, plans, response digests, replay agreement, and assessments. The complete-rehearsal executor, exact-byte store, HTTP adapter, portable verifier, and single-use authorization/preflight contract now pass deterministic tests, but no authorization artifact has been issued, no durable consumption ledger exists, and neither official county source has undergone a live complete rehearsal. Neither source is bulk-rehearsal-verified, profile-promoted, bulk-authorized, or import-ready.
 
 The exact schema reconciliation also removes a stale synthetic `Shape` attribute from the San Bernardino profile and includes Riverside's observed `LAND` and `STRUCTURES` attributes. Geometry remains represented by the verification profile's explicit synthetic `geometry` role rather than an unobserved attribute name.
 
