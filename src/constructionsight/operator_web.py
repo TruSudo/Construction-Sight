@@ -34,6 +34,7 @@ from constructionsight.operator_dashboard_models import RecordSelection
 from constructionsight.operator_entity_index import build_entity_index
 from constructionsight.operator_parcel_candidates import inspect_parcel_candidates
 from constructionsight.operator_results import build_result_ledger_snapshot
+from constructionsight.operator_source_aliases import load_source_attribution_aliases
 from constructionsight.operator_source_candidate import (
     SourceRecordNotFound,
     build_source_candidate_preview,
@@ -151,7 +152,10 @@ def _parameters(
 
 
 def create_handler(
-    database_path: Path, *, capture_queue_path: Path | None = None,
+    database_path: Path,
+    *,
+    capture_queue_path: Path | None = None,
+    source_attribution_aliases_path: Path | None = None,
 ) -> type[BaseHTTPRequestHandler]:
     """Bind to existing local evidence in read-only mode without schema changes."""
 
@@ -159,6 +163,11 @@ def create_handler(
         empty_operator_capture_queue()
         if capture_queue_path is None
         else load_operator_capture_queue(capture_queue_path)
+    )
+    source_aliases = (
+        None
+        if source_attribution_aliases_path is None
+        else load_source_attribution_aliases(source_attribution_aliases_path)
     )
     engine = create_operator_read_engine(database_path)
 
@@ -244,7 +253,9 @@ def create_handler(
                     elif path == "/api/capture-queue":
                         payload = capture_queue
                     elif path == "/api/source-registry":
-                        payload = build_operator_source_registry(session).model_dump(mode="json")
+                        payload = build_operator_source_registry(
+                            session, source_aliases=source_aliases
+                        ).model_dump(mode="json")
                     elif path == "/api/source-revision":
                         payload = build_source_revision_snapshot(session)
                     elif path == "/api/workflow-summary":
@@ -376,6 +387,15 @@ def main(*, open_browser_by_default: bool = False) -> None:
         ),
     )
     parser.add_argument(
+        "--source-attribution-aliases",
+        type=Path,
+        default=None,
+        help=(
+            "Optional retained constructionsight.source_attribution_aliases.v1 JSON "
+            "for explicit local provenance attribution."
+        ),
+    )
+    parser.add_argument(
         "--open-browser", action="store_true", default=open_browser_by_default,
         help="Open the local operator in the default browser after the server binds.",
     )
@@ -383,10 +403,14 @@ def main(*, open_browser_by_default: bool = False) -> None:
     if not 1 <= args.port <= 65535:
         parser.error("--port must be between 1 and 65535")
     try:
-        handler = create_handler(args.database, capture_queue_path=args.capture_queue)
+        handler = create_handler(
+            args.database,
+            capture_queue_path=args.capture_queue,
+            source_attribution_aliases_path=args.source_attribution_aliases,
+        )
     except (OSError, ValueError) as exc:
         parser.error(
-            "Configured local database or capture queue could not be opened safely: "
+            "Configured local database or retained operator artifact could not be opened safely: "
             f"{exc}"
         )
     except SQLAlchemyError:
