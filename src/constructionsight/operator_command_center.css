@@ -47,3 +47,6 @@
 .source-registry-table .source-verification-warning{color:#f0b85a}
 .source-registry-table .source-verification-ok{color:#a8b7a5}
 .source-attribution-warning{color:#f0b85a}
+
+/* CEQAnet ingestion reconciliation links stay compact inside the source inventory. */
+.ingestion-record-links{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}.ingestion-record-links .action{padding:4px 7px;font-size:10px}

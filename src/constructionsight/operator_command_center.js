@@ -431,9 +431,17 @@ async function ingestionInboxMarkup(inbox) {
       '<h2>Discovery queue status</h2><p>Start this local operator with both <code>--ceqanet-listing-evidence</code> and '+
       '<code>--ceqanet-queue-evidence</code> to reconcile one exact reviewed discovery queue against the selected SQLite database. '+
       'The dashboard performs no remote collection and no persistence mutation.</p></section>';
-  const rows=inbox.candidates.map(item=>'<tr><td>'+escapeText(item.sch_number)+'</td><td>'+
-    escapeText(valueOrUnknown(item.source_claimed_county))+'</td><td>'+escapeText(item.state.replaceAll("_"," "))+
-    '</td><td>'+escapeText(String(item.persisted_record_count))+'</td></tr>').join("");
+  const rows=inbox.candidates.map((item,candidateIndex)=>{
+    const recordLinks=Array.isArray(item.persisted_record_keys) ? item.persisted_record_keys.map((recordKey,recordIndex)=>
+      '<button type="button" class="action" data-ingestion-candidate="'+candidateIndex+
+      '" data-ingestion-record="'+recordIndex+'">Open reviewed record '+(recordIndex+1)+'</button>'
+    ).join(" ") : "";
+    return '<tr><td>'+escapeText(item.sch_number)+'</td><td>'+
+      escapeText(valueOrUnknown(item.source_claimed_county))+'</td><td>'+escapeText(item.state.replaceAll("_"," "))+
+      '</td><td>'+escapeText(String(item.persisted_record_count))+'</td><td>'+
+      safeSourceLink(item.official_detail_url)+(recordLinks?'<div class="ingestion-record-links">'+recordLinks+'</div>':'')+
+      '</td></tr>';
+  }).join("");
   const next=inbox.next_pending_sch ?
     '<p><strong>Next reviewed pending SCH:</strong> '+escapeText(inbox.next_pending_sch)+
     '. Continue with <code>constructionsight-ceqanet-reviewed-import capture-next-preview</code> using the same exact listing, queue and database. '+
@@ -443,7 +451,7 @@ async function ingestionInboxMarkup(inbox) {
     '<h2>Reviewed discovery → persistence status</h2><p>'+inbox.candidate_count+' reviewed candidates · '+
     inbox.pending_capture_count+' pending capture · '+inbox.persisted_candidate_count+' reviewed captures persisted · '+
     inbox.conflict_candidate_count+' county conflicts · '+inbox.county_unavailable_candidate_count+' county unavailable.</p>'+next+
-    '<div class="source-inventory-scroll"><table class="source-inventory"><thead><tr><th>SCH</th><th>Source county</th><th>State</th><th>Reviewed rows</th></tr></thead><tbody>'+
+    '<div class="source-inventory-scroll"><table class="source-inventory"><thead><tr><th>SCH</th><th>Source county</th><th>State</th><th>Reviewed rows</th><th>Evidence / record</th></tr></thead><tbody>'+
     rows+'</tbody></table></div><p>Same-SCH contextual records do not suppress missing reviewed CSV enrichment. '+
     'No browser request, database mutation, lead qualification, outreach, or bid action is authorized by this status view.</p></section>';
 }
@@ -762,6 +770,17 @@ async function showSources() {
       '<section class="feature-card"><h2>Historical source activity</h2><p>Inspect dated historical observations for the current search, source-family and county filters. This is not real-time site monitoring.</p>'+
       '<button type="button" class="action" id="show-historical-pulse">Load retained timeline →</button><div id="historical-pulse"></div></section>';
     byId("capture-source-form").onsubmit=async event=>{event.preventDefault();await prepareCeqanetCapture();};
+    byId("feature-body").querySelectorAll("[data-ingestion-candidate]").forEach(button=>button.onclick=()=>{
+      const candidate=inbox.candidates[Number(button.dataset.ingestionCandidate)];
+      const recordKey=candidate && Array.isArray(candidate.persisted_record_keys) ?
+        candidate.persisted_record_keys[Number(button.dataset.ingestionRecord)] : null;
+      if(typeof recordKey==="string" && recordKey)
+        openExactStoredRecord(
+          {record_kind:"ceqa",record_id:recordKey},
+          "ceqa:"+recordKey,
+          "CEQAnet ingestion inbox"
+        );
+    });
     bindCaptureQueue(captureQueue);
     byId("show-historical-pulse").onclick=showHistoricalPulse;
     byId("feature-body").querySelectorAll("[data-source-kind]").forEach(button=>button.onclick=()=>{
