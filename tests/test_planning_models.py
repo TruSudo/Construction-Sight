@@ -4,7 +4,7 @@ from pydantic import ValidationError
 from constructionsight.domain_types import PartyRole
 from constructionsight.entity_models import Entity
 from constructionsight.planning_models import PlanningCaseRecord
-from constructionsight.provenance import Provenance
+from constructionsight.provenance import Provenance, ProvenanceConfidenceBasis
 from constructionsight.site_models import Site
 
 
@@ -50,7 +50,13 @@ def test_planning_case_links_site_entity_and_provenance() -> None:
         name="Synthetic Applicant LLC",
         role=PartyRole.APPLICANT,
     )
-    provenance = Provenance(source_name="Synthetic Public Source", confidence_score=75)
+    provenance = Provenance(
+        source_name="Synthetic Public Source",
+        adapter_family="synthetic-test",
+        raw_reference="synthetic:test",
+        evidence_text="retained synthetic public evidence",
+        confidence_basis=ProvenanceConfidenceBasis.DETERMINISTIC_NORMALIZATION,
+    )
 
     case = PlanningCaseRecord(
         case_key="planning:test:linked",
