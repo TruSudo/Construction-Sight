@@ -55,6 +55,11 @@ def _prepare_complete_closure(
         "def test_resolution() -> None:\n    assert True\n",
     )
     write(root, "src/constructionsight/reviewed.py", "VALUE = 'corrected'\n")
+    write(
+        root,
+        "docs/assurance/defect_closures/CS-SR-001.md",
+        "# CS-SR-001 closure\n\nCorrection and regression evidence retained.\n",
+    )
     git(root, "add", ".")
     git(root, "commit", "-m", "implement assured correction")
     reviewed_commit = git(root, "rev-parse", "HEAD")
@@ -64,11 +69,6 @@ def _prepare_complete_closure(
         root,
         reviewed_commit=reviewed_commit,
         reviewed_tree_digest=reviewed_tree_digest,
-    )
-    write(
-        root,
-        "docs/assurance/defect_closures/CS-SR-001.md",
-        "# CS-SR-001 closure\n\nCorrection and regression evidence retained.\n",
     )
     closure: dict[str, object] = {
         **original,
