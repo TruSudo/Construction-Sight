@@ -128,6 +128,11 @@ class SourceAdapter(ABC, Generic[RawRecord, NormalizedRecord]):
     def preflight(self, profile: SourceAccessProfile | None = None) -> AccessPolicyResult:
         """Run the required lawful-access preflight for this source."""
 
+        if profile is None and self.context.dry_run:
+            return AccessPolicyResult(
+                decision=AccessDecision.ALLOWED,
+                reason="Offline adapter dry-run performs no live source access.",
+            )
         return self.evaluate_access(
             profile or SourceAccessProfile(public_url=str(self.source.public_url))
         )
