@@ -1,5 +1,4 @@
 """Database-to-operator integration tests using explicitly synthetic records."""
-
 from __future__ import annotations
 
 import hashlib
@@ -34,6 +33,7 @@ from constructionsight.operator_dashboard import (
     build_workflow_snapshot,
     build_workflow_status_summary,
 )
+from constructionsight.operator_entity_index import build_entity_index
 from constructionsight.operator_results import build_result_ledger_snapshot
 from constructionsight.operator_services.ceqanet_persistence_service import (
     execute_authorized_ceqanet_write_plan,
@@ -42,7 +42,6 @@ from constructionsight.operator_source_candidate import (
     SourceRecordNotFound,
     build_source_candidate_preview,
 )
-from constructionsight.operator_entity_index import build_entity_index
 from constructionsight.operator_web import _parameters, create_handler
 from constructionsight.parcel_core_models import (
     ParcelCoreRecord,

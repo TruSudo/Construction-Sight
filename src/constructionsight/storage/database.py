@@ -10,7 +10,7 @@ from pathlib import Path
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from constructionsight.storage.orm import Base
+from constructionsight.storage.schema_governance import initialize_governed_schema
 
 DEFAULT_DATABASE_PATH = Path("data/constructionsight.sqlite3")
 _ORM_MODULE_NAMES = (
@@ -38,15 +38,15 @@ def create_database_engine(database_url: str | None = None) -> Engine:
 
 
 def initialize_database(engine: Engine) -> None:
-    """Create all known tables.
+    """Create, adopt, or verify the exact governed database schema.
 
-    SQLAlchemy only creates tables whose ORM classes have been imported into
-    metadata. Load every registered ORM module before calling ``create_all()``.
+    SQLAlchemy only knows tables whose ORM classes have been imported into
+    metadata. Load every registered ORM module before schema governance runs.
     """
 
     for module_name in _ORM_MODULE_NAMES:
         import_module(module_name)
-    Base.metadata.create_all(engine)
+    initialize_governed_schema(engine)
 
 
 def session_factory(engine: Engine) -> sessionmaker[Session]:

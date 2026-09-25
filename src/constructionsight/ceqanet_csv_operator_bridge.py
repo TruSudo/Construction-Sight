@@ -18,11 +18,11 @@ from pydantic import HttpUrl
 from constructionsight.ceqa_models import CeqaRecord
 from constructionsight.ceqanet_csv_live_models import CeqanetCsvLiveExecution
 from constructionsight.ceqanet_csv_models import CeqanetCsvExportKind
-from constructionsight.ceqanet_csv_service import parse_ceqanet_csv_export_url
 from constructionsight.ceqanet_csv_replay_service import (
     build_ceqanet_csv_encoding_replay,
     verify_ceqanet_csv_encoding_replay,
 )
+from constructionsight.ceqanet_csv_service import parse_ceqanet_csv_export_url
 from constructionsight.ceqanet_persistence_preview import CeqanetPersistencePreview
 from constructionsight.ceqanet_write_plan import CeqanetWritePlan, build_ceqanet_write_plan
 from constructionsight.domain_types import PartyRole
@@ -127,15 +127,18 @@ def build_reviewed_ceqanet_csv_bridge(
         or not 1 <= inspection.row_count <= _MAX_ROWS
     ):
         raise ValueError("reviewed CSV project bridge requires all rows, up to 100")
-    if execution.inspection is not None and execution.inspection != inspection:
-        # Compare the invariant complete column/data projection, not an inspection
-        # digest that may have been generated under a different retained-row cap.
-        if (
+    # Compare the invariant complete column/data projection, not an inspection
+    # digest that may have been generated under a different retained-row cap.
+    if (
+        execution.inspection is not None
+        and execution.inspection != inspection
+        and (
             execution.inspection.rows_truncated
             or execution.inspection.rows != inspection.rows
             or execution.inspection.columns != inspection.columns
-        ):
-            raise ValueError("source inspection and replay disagree")
+        )
+    ):
+        raise ValueError("source inspection and replay disagree")
     ceqa_records: list[CeqaRecord] = []
     sites: list[Site] = []
     entities: list[Entity] = []

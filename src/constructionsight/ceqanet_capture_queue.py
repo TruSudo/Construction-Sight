@@ -7,7 +7,6 @@ project, write the database, qualify a lead, or assert current construction.
 from __future__ import annotations
 
 import hashlib
-import json
 import re
 from collections.abc import Mapping
 from typing import Any
@@ -170,11 +169,23 @@ def build_reviewed_ceqanet_capture_queue(
         "persistence_mutated": False,
         "commercial_leads_created": False,
         "limitations": [
-            "Stored listing execution metadata is not independently authenticated by this offline queue.",
-            "A listing search candidate is a source claim, not a verified current project or active site.",
-            "Only exact 10-digit SCH/detail URL agreement and explicitly target-county rows are queued.",
+            (
+                "Stored listing execution metadata is not independently authenticated "
+                "by this offline queue."
+            ),
+            (
+                "A listing search candidate is a source claim, not a verified current "
+                "project or active site."
+            ),
+            (
+                "Only exact 10-digit SCH/detail URL agreement and explicitly target-county "
+                "rows are queued."
+            ),
             "A retained snapshot can be historical; its capture timestamp is not established here.",
-            "Each candidate requires separate current lawful-access review and one-request authorization.",
+            (
+                "Each candidate requires separate current lawful-access review and "
+                "one-request authorization."
+            ),
             "A repeated exact SCH may replay old evidence; capture-preview refuses to call it new.",
             "The existing two-digest reviewed import remains separate and is never auto-approved.",
         ],
