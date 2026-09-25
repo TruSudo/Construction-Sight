@@ -438,7 +438,7 @@ def stage_authorized_source_candidate(
             ),
             replay_policy=EffectReplayPolicy.EXACT,
             effect=effect,
-            encode_result=lambda result: result.model_dump(mode="json"),
+            encode_result=lambda result: result.model_dump(mode="json", round_trip=True),
             decode_result=lambda payload: CandidateDocketEntry.model_validate(payload),
         )
         # Reservation replay alone does not prove the separately stored entry
