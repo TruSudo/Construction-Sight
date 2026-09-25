@@ -103,7 +103,7 @@ class CeqanetCsvLiveVerification(BaseModel):
     )
     passed: bool
     finding_count: int = Field(ge=0)
-    findings: list[str]
+    findings: tuple[str, ...]
     request_url: str = Field(min_length=1)
     status_code: int | None = Field(default=None, ge=100, le=599)
     inspection_digest: str | None = Field(
