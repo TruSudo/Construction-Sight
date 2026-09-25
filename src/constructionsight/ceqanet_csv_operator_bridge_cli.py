@@ -1,7 +1,8 @@
 """Governed one-request CEQAnet capture, offline review and explicitly approved import.
 
-Only capture-preview can make one separately authorized GET. Preview and apply
-remain offline, and no command automatically approves or writes a source capture.
+Only the explicit capture commands can make one separately authorized GET.
+Discovery, inbox, preview and apply remain offline, and no command automatically
+approves a captured source or bypasses the separately authorized write boundary.
 """
 
 from __future__ import annotations
