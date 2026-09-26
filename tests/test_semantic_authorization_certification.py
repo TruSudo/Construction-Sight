@@ -542,3 +542,40 @@ def test_new_storage_mutator_is_derived_without_manual_effect_registration(
     )
 
     assert "AUTH-BYPASS-001" in _codes(findings)
+
+
+def test_unresolved_local_method_name_alone_is_not_an_effect_boundary(
+    tmp_path: Path,
+) -> None:
+    findings = _audit(
+        tmp_path,
+        """
+        def execute() -> None:
+            values = []
+            values.append("audit-only")
+        """,
+    )
+
+    assert "AUTH-INDIRECT-001" not in _codes(findings)
+
+
+def test_non_authoritative_storage_engine_factory_is_not_a_governed_effect(
+    tmp_path: Path,
+) -> None:
+    findings = _audit_sources(
+        tmp_path,
+        {
+            _CLI_PATH: """
+                from constructionsight.storage.database import create_database_engine
+
+                def execute() -> None:
+                    create_database_engine()
+            """,
+            "src/constructionsight/storage/database.py": """
+                def create_database_engine():
+                    return object()
+            """,
+        },
+    )
+
+    assert "AUTH-BYPASS-001" not in _codes(findings)

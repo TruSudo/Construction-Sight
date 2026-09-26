@@ -150,6 +150,7 @@ def test_high_nominal_signal_cannot_become_actionable_with_low_confidence() -> N
     )
     site = SiteResolutionResult(
         source_name="test source",
+        evidence_id="evidence:low-confidence",
         status=SiteResolutionStatus.RESOLVED,
         primary_site_key=candidate.site_key,
         candidates=[candidate],
@@ -193,6 +194,7 @@ def test_zero_confidence_signal_contributes_no_operational_score() -> None:
     )
     site = SiteResolutionResult(
         source_name="test source",
+        evidence_id="evidence:zero-confidence",
         status=SiteResolutionStatus.RESOLVED,
         primary_site_key=candidate.site_key,
         candidates=[candidate],

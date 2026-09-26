@@ -123,6 +123,18 @@ _EFFECT_TARGETS: Final = frozenset(
         "store_arcgis_bounded_proof_bundle_chain",
     }
 )
+# These infrastructure/publication helpers have separate integrity controls and do
+# not mutate authoritative application state. Treating their generic create/write
+# names as operator-authorized effects makes the semantic scanner recursively
+# classify ordinary setup and evidence publication as protected business mutations.
+_NON_AUTHORITATIVE_STORAGE_TARGETS: Final = frozenset(
+    {
+        "constructionsight.storage.database.create_database_engine",
+        "constructionsight.storage.operator_read_store.create_operator_read_engine",
+        "constructionsight.storage.orm.Base.metadata.create_all",
+        "constructionsight.storage.runtime_artifacts.write_runtime_text",
+    }
+)
 _DYNAMIC_EFFECT_PARAMETERS: Final = frozenset(
     {
         "consumption_store",
@@ -174,6 +186,8 @@ def _effect_leaf_is_high_impact(leaf: str) -> bool:
 def _target_looks_high_impact_effect(target: str) -> bool:
     if target in _EFFECT_TARGETS:
         return True
+    if target in _NON_AUTHORITATIVE_STORAGE_TARGETS:
+        return False
     lowered = target.casefold()
     leaf = lowered.rpartition(".")[2]
     if lowered.startswith("constructionsight.storage.") and _effect_leaf_is_high_impact(
@@ -186,10 +200,13 @@ def _target_looks_high_impact_effect(target: str) -> bool:
 
 
 def _unresolved_call_looks_high_impact(node: ast.expr) -> bool:
+    # A free function with a mutation/effect name is genuinely unresolved and must
+    # fail closed. Bare attribute names are not sufficient evidence: list.append,
+    # dict.update, parser.add_argument, and similar local methods otherwise become
+    # hundreds of false protected-effect boundaries. Resolved ConstructionSight
+    # class methods and dynamic effect parameters are handled before this fallback.
     if isinstance(node, ast.Name):
         return _effect_leaf_is_high_impact(node.id)
-    if isinstance(node, ast.Attribute):
-        return _effect_leaf_is_high_impact(node.attr)
     return False
 
 
