@@ -1,0 +1,24 @@
+{
+  "schema_version": "constructionsight.defect-closure-proof/v1",
+  "defect_id": "CS-SR-080",
+  "required_resolution_sha256": "ba1f6b3cbabeeb4d1c91554a0e51d6f146687faf772d59c7baeddafd9713867d",
+  "implementation_assertions": [
+    {
+      "path": "src/constructionsight/permit_transition_models.py",
+      "operator": "contains",
+      "value": "return f\"permit-snapshot:v2:{digest}\""
+    },
+    {
+      "path": "src/constructionsight/permit_transition_models.py",
+      "operator": "not_contains",
+      "value": "    snapshot_id: str = Field(min_length=1)"
+    }
+  ],
+  "regression_assertions": [
+    {
+      "path": "tests/test_permit_transition_models.py",
+      "operator": "contains",
+      "value": "CS-SR-080"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "schema_version": "constructionsight.defect-closure-proof/v1",
+  "defect_id": "CS-SR-076",
+  "required_resolution_sha256": "b5dd60a096a42b8627d509712d4386124205d7c6ad6b97ff2e131c954e89b537",
+  "implementation_assertions": [
+    {
+      "path": "src/constructionsight/storage/intelligence_store.py",
+      "operator": "contains",
+      "value": "Append one immutable full before/after revision event when state changes."
+    },
+    {
+      "path": "src/constructionsight/storage/intelligence_store.py",
+      "operator": "not_contains",
+      "value": "record.payload_json = _model_to_json(entity)"
+    }
+  ],
+  "regression_assertions": [
+    {
+      "path": "tests/test_intelligence_store.py",
+      "operator": "contains",
+      "value": "CS-SR-076"
+    }
+  ]
+}

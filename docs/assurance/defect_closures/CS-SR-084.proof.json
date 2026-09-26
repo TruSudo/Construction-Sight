@@ -1,0 +1,24 @@
+{
+  "schema_version": "constructionsight.defect-closure-proof/v1",
+  "defect_id": "CS-SR-084",
+  "required_resolution_sha256": "ff0ee872732f14f4d9704dc1cbae1ee802f1470d45088c6f55f906823ef499cb",
+  "implementation_assertions": [
+    {
+      "path": "src/constructionsight/effect_consumption.py",
+      "operator": "contains",
+      "value": "Path.home() / \".local\" / \"state\" / \"constructionsight\" / \"effect-consumption.sqlite3\""
+    },
+    {
+      "path": "src/constructionsight/effect_consumption.py",
+      "operator": "not_contains",
+      "value": "_CONSUMPTION_DATABASE_PATH = Path(\"data/constructionsight-effect-consumption.sqlite3\")"
+    }
+  ],
+  "regression_assertions": [
+    {
+      "path": "tests/test_effect_consumption.py",
+      "operator": "contains",
+      "value": "CS-SR-084"
+    }
+  ]
+}

@@ -68,10 +68,10 @@ def test_direct_resolved_effect_is_rejected_without_authorization(
     findings = _audit(
         tmp_path,
         """
-        from constructionsight.http_transport import execute_bounded_http
+        from constructionsight.lead_operator_service import transition_persisted_lead_workflow
 
         def execute(execute_live: bool) -> None:
-            execute_bounded_http()
+            transition_persisted_lead_workflow()
         """,
     )
 
