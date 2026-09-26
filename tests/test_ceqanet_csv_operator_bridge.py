@@ -3,6 +3,7 @@
 The committed source artifact was captured in July 2026; this test makes no
 claim that its source observations reflect present construction activity.
 """
+
 from __future__ import annotations
 
 import hashlib

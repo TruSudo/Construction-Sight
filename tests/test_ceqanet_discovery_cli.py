@@ -1,8 +1,8 @@
 from typer.testing import CliRunner
 
+import constructionsight.operator_services.ceqanet_discovery_service as discovery_operator
 from constructionsight import cli
 from constructionsight.ceqanet_discovery_http import CeqanetDiscoveryResult
-import constructionsight.operator_services.ceqanet_discovery_service as discovery_operator
 
 runner = CliRunner()
 

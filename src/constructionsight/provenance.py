@@ -85,6 +85,7 @@ class Provenance(BaseModel):
         return f"provenance-lineage:{hashlib.sha256(payload.encode('utf-8')).hexdigest()}"
 
     @computed_field
+    @property
     def confidence_score(self) -> int:
         """Return confidence derived only from the declared supported basis."""
 

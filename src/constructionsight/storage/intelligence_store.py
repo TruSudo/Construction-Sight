@@ -231,12 +231,10 @@ class IntelligenceStore:
     def upsert_entity(self, entity: EntityIdentity) -> IntelligenceEntityRecord:
         """Insert or update an intelligence entity identity."""
 
-        if entity.identity_status is not IdentityStatus.UNRESOLVED:
-            self._require_evidence_ids(
-                entity.evidence_record_ids,
-                label=f"entity {entity.entity_id}",
-            )
-        elif entity.evidence_record_ids:
+        if (
+            entity.identity_status is not IdentityStatus.UNRESOLVED
+            or entity.evidence_record_ids
+        ):
             self._require_evidence_ids(
                 entity.evidence_record_ids,
                 label=f"entity {entity.entity_id}",

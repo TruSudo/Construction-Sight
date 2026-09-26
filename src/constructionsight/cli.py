@@ -21,14 +21,6 @@ from constructionsight.adapters import (
 from constructionsight.adapters.base import AdapterRunContext
 from constructionsight.adapters.runner import AdapterRunner
 from constructionsight.authorization_decision import AuthorizationDeniedError
-from constructionsight.models import PlatformFamily, PublicSource, SourceVerificationResult
-from constructionsight.operator_services.ceqanet_discovery_service import (
-    execute_authorized_ceqanet_discovery,
-)
-from constructionsight.operator_services.source_registry_persistence_service import (
-    persist_authorized_source_registry_records,
-    persist_authorized_source_verification_result,
-)
 from constructionsight.intelligence.artifact_identity import (
     IdentityFingerprint,
     IdentityResolutionCandidate,
@@ -39,6 +31,14 @@ from constructionsight.intelligence.graph_neighborhood_service import (
     GraphNeighborhoodService,
 )
 from constructionsight.intelligence.relationship_query_service import RelationshipQueryService
+from constructionsight.models import PlatformFamily, PublicSource, SourceVerificationResult
+from constructionsight.operator_services.ceqanet_discovery_service import (
+    execute_authorized_ceqanet_discovery,
+)
+from constructionsight.operator_services.source_registry_persistence_service import (
+    persist_authorized_source_registry_records,
+    persist_authorized_source_verification_result,
+)
 from constructionsight.storage.database import (
     DEFAULT_DATABASE_PATH,
     create_database_engine,

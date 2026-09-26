@@ -13,15 +13,15 @@ from constructionsight.agenda_models import AgendaItemRecord
 from constructionsight.ceqa_models import CeqaRecord
 from constructionsight.document_models import DocumentRecord
 from constructionsight.entity_models import Entity
-from constructionsight.permit_models import PermitRecord
-from constructionsight.planning_models import PlanningCaseRecord
-from constructionsight.relationship_models import RelationshipRecord
-from constructionsight.site_models import Site
 from constructionsight.intelligence.schemas import (
     RuntimeEvent,
     RuntimeEventSeverity,
     RuntimeEventType,
 )
+from constructionsight.permit_models import PermitRecord
+from constructionsight.planning_models import PlanningCaseRecord
+from constructionsight.relationship_models import RelationshipRecord
+from constructionsight.site_models import Site
 from constructionsight.storage.domain_orm import (
     AgendaDomainRecord,
     CeqaDomainRecord,
@@ -32,7 +32,6 @@ from constructionsight.storage.domain_orm import (
     RelationshipDomainRecord,
     SiteRecord,
 )
-from constructionsight.storage.intelligence_store import IntelligenceStore
 from constructionsight.storage.domain_serialization import (
     json_to_dict,
     json_to_list,
@@ -41,6 +40,7 @@ from constructionsight.storage.domain_serialization import (
     models_to_json,
     strings_to_json,
 )
+from constructionsight.storage.intelligence_store import IntelligenceStore
 
 
 def _append_domain_history(
