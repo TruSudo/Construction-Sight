@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
+from datetime import UTC, datetime
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -13,6 +17,11 @@ from constructionsight.permit_models import PermitRecord
 from constructionsight.planning_models import PlanningCaseRecord
 from constructionsight.relationship_models import RelationshipRecord
 from constructionsight.site_models import Site
+from constructionsight.intelligence.schemas import (
+    RuntimeEvent,
+    RuntimeEventSeverity,
+    RuntimeEventType,
+)
 from constructionsight.storage.domain_orm import (
     AgendaDomainRecord,
     CeqaDomainRecord,
@@ -23,6 +32,7 @@ from constructionsight.storage.domain_orm import (
     RelationshipDomainRecord,
     SiteRecord,
 )
+from constructionsight.storage.intelligence_store import IntelligenceStore
 from constructionsight.storage.domain_serialization import (
     json_to_dict,
     json_to_list,
@@ -31,6 +41,51 @@ from constructionsight.storage.domain_serialization import (
     models_to_json,
     strings_to_json,
 )
+
+
+def _append_domain_history(
+    session: Session,
+    *,
+    record_type: str,
+    record_key: str,
+    previous: dict[str, object] | None,
+    current: dict[str, object],
+) -> None:
+    """Append one immutable before/after event for a changed normalized projection."""
+
+    if previous == current:
+        return
+    occurred_at = datetime.now(UTC)
+    payload: dict[str, object] = {
+        "record_type": record_type,
+        "record_key": record_key,
+        "previous": previous,
+        "current": current,
+        "occurred_at": occurred_at.isoformat(),
+    }
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    event_id = "event:domain-history:" + hashlib.sha256(
+        canonical.encode("utf-8")
+    ).hexdigest()
+    IntelligenceStore(session).add_runtime_event(
+        RuntimeEvent(
+            event_id=event_id,
+            event_type=(
+                RuntimeEventType.SOURCE_RECORD_DISCOVERED
+                if previous is None
+                else RuntimeEventType.SOURCE_RECORD_CHANGED
+            ),
+            severity=RuntimeEventSeverity.LOW,
+            created_at=occurred_at,
+            source_service="normalized_domain_store",
+            source_record_refs=[f"{record_type}:{record_key}"],
+            payload=payload,
+            message=(
+                f"Normalized {record_type} projection "
+                f"{'created' if previous is None else 'changed'}."
+            ),
+        )
+    )
 
 
 class SiteStore:
@@ -43,6 +98,14 @@ class SiteStore:
         """Insert or update a site record."""
 
         record = self.session.scalar(select(SiteRecord).where(SiteRecord.site_key == site.site_key))
+        previous = self._to_model(record).model_dump(mode="json") if record is not None else None
+        _append_domain_history(
+            self.session,
+            record_type="site",
+            record_key=site.site_key,
+            previous=previous,
+            current=site.model_dump(mode="json"),
+        )
         if record is None:
             record = SiteRecord()
             self.session.add(record)
@@ -111,6 +174,14 @@ class EntityStore:
         record = self.session.scalar(
             select(EntityRecord).where(EntityRecord.entity_key == entity.entity_key)
         )
+        previous = self._to_model(record).model_dump(mode="json") if record is not None else None
+        _append_domain_history(
+            self.session,
+            record_type="entity",
+            record_key=entity.entity_key,
+            previous=previous,
+            current=entity.model_dump(mode="json"),
+        )
         if record is None:
             record = EntityRecord()
             self.session.add(record)
@@ -176,6 +247,14 @@ class PermitStore:
 
         record = self.session.scalar(
             select(PermitDomainRecord).where(PermitDomainRecord.permit_key == permit.permit_key)
+        )
+        previous = self._to_model(record).model_dump(mode="json") if record is not None else None
+        _append_domain_history(
+            self.session,
+            record_type="permit",
+            record_key=permit.permit_key,
+            previous=previous,
+            current=permit.model_dump(mode="json"),
         )
         if record is None:
             record = PermitDomainRecord()
@@ -257,6 +336,14 @@ class PlanningCaseStore:
         record = self.session.scalar(
             select(PlanningDomainRecord).where(PlanningDomainRecord.case_key == case.case_key)
         )
+        previous = self._to_model(record).model_dump(mode="json") if record is not None else None
+        _append_domain_history(
+            self.session,
+            record_type="planning_case",
+            record_key=case.case_key,
+            previous=previous,
+            current=case.model_dump(mode="json"),
+        )
         if record is None:
             record = PlanningDomainRecord()
             self.session.add(record)
@@ -332,6 +419,14 @@ class CeqaStore:
 
         record = self.session.scalar(
             select(CeqaDomainRecord).where(CeqaDomainRecord.ceqa_key == record_model.ceqa_key)
+        )
+        previous = self._to_model(record).model_dump(mode="json") if record is not None else None
+        _append_domain_history(
+            self.session,
+            record_type="ceqa",
+            record_key=record_model.ceqa_key,
+            previous=previous,
+            current=record_model.model_dump(mode="json"),
         )
         if record is None:
             record = CeqaDomainRecord()
@@ -411,6 +506,14 @@ class AgendaItemStore:
         record = self.session.scalar(
             select(AgendaDomainRecord).where(AgendaDomainRecord.agenda_key == item.agenda_key)
         )
+        previous = self._to_model(record).model_dump(mode="json") if record is not None else None
+        _append_domain_history(
+            self.session,
+            record_type="agenda",
+            record_key=item.agenda_key,
+            previous=previous,
+            current=item.model_dump(mode="json"),
+        )
         if record is None:
             record = AgendaDomainRecord()
             self.session.add(record)
@@ -478,6 +581,14 @@ class DocumentStore:
                 DocumentDomainRecord.document_key == document.document_key
             )
         )
+        previous = self._to_model(record).model_dump(mode="json") if record is not None else None
+        _append_domain_history(
+            self.session,
+            record_type="document",
+            record_key=document.document_key,
+            previous=previous,
+            current=document.model_dump(mode="json"),
+        )
         if record is None:
             record = DocumentDomainRecord()
             self.session.add(record)
@@ -536,6 +647,14 @@ class RelationshipStore:
             select(RelationshipDomainRecord).where(
                 RelationshipDomainRecord.relationship_key == relationship.relationship_key
             )
+        )
+        previous = self._to_model(record).model_dump(mode="json") if record is not None else None
+        _append_domain_history(
+            self.session,
+            record_type="relationship",
+            record_key=relationship.relationship_key,
+            previous=previous,
+            current=relationship.model_dump(mode="json"),
         )
         if record is None:
             record = RelationshipDomainRecord()
