@@ -14,7 +14,6 @@ from constructionsight.storage.database import (
     managed_session,
     session_factory,
 )
-from constructionsight.storage.intelligence_store import IntelligenceStore
 from constructionsight.storage.domain_store import (
     AgendaItemStore,
     CeqaStore,
@@ -25,6 +24,7 @@ from constructionsight.storage.domain_store import (
     RelationshipStore,
     SiteStore,
 )
+from constructionsight.storage.intelligence_store import IntelligenceStore
 
 
 def test_site_store_round_trip() -> None:

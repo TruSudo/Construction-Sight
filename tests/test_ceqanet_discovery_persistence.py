@@ -3,10 +3,10 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
+import constructionsight.operator_services.ceqanet_discovery_service as discovery_operator
 from constructionsight import cli
 from constructionsight.ceqanet_discovery_http import CeqanetDiscoveryResult
 from constructionsight.models import PublicSource
-import constructionsight.operator_services.ceqanet_discovery_service as discovery_operator
 from constructionsight.storage.database import (
     create_database_engine,
     initialize_database,

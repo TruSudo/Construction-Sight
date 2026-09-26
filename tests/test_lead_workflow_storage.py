@@ -413,9 +413,10 @@ def test_store_existing_workflow_rejects_mutation_outside_compare_and_swap() -> 
     with managed_session(factory) as session:
         store_lead_workflow_record(session, current)
 
-    with managed_session(factory) as session:
-        with pytest.raises(ValueError, match="requires compare-and-swap"):
-            store_lead_workflow_record(session, updated)
+    with managed_session(factory) as session, pytest.raises(
+        ValueError, match="requires compare-and-swap"
+    ):
+        store_lead_workflow_record(session, updated)
 
     with managed_session(factory) as session:
         row = session.execute(

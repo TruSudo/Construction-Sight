@@ -32,10 +32,11 @@ def _site_result() -> SiteResolutionResult:
 
 def _permit_transition() -> PermitTransition:
     return PermitTransition(
-        transition_id="permit-transition:test",
         transition_kind=PermitTransitionKind.STATUS_CHANGED,
         source_key="permit:test",
         source_record_id="permit:1",
+        previous_snapshot_id="permit-snapshot:test:previous",
+        current_snapshot_id="permit-snapshot:test:current",
         field_name="status",
         previous_value="applied",
         current_value="issued",
