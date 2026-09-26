@@ -387,6 +387,52 @@ def test_store_lead_workflow_event_accepts_exact_replay_and_rejects_rewrite() ->
             )
 
 
+
+def test_store_existing_workflow_rejects_mutation_outside_compare_and_swap() -> None:
+    _engine, factory = _session_factory()
+    current = LeadWorkflowRecord(
+        workflow_id="lead-workflow:direct-mutation",
+        package_id="lead-review:direct-mutation",
+        base_candidate_id="candidate:direct-mutation",
+        status=LeadWorkflowStatus.MONITOR,
+        lead_score=50,
+        events=[
+            LeadWorkflowEvent(
+                event_id="lead-workflow-event:direct-initial",
+                current_status=LeadWorkflowStatus.MONITOR,
+                reason="initial state",
+            )
+        ],
+    )
+    updated = transition_lead_workflow(
+        record=current,
+        next_status=LeadWorkflowStatus.REVIEW,
+        reason="must use compare-and-swap",
+    )
+
+    with managed_session(factory) as session:
+        store_lead_workflow_record(session, current)
+
+    with managed_session(factory) as session:
+        with pytest.raises(ValueError, match="requires compare-and-swap"):
+            store_lead_workflow_record(session, updated)
+
+    with managed_session(factory) as session:
+        row = session.execute(
+            select(LeadWorkflowRecordRow).where(
+                LeadWorkflowRecordRow.workflow_id == current.workflow_id
+            )
+        ).scalar_one()
+        events = session.execute(
+            select(LeadWorkflowEventRecord).where(
+                LeadWorkflowEventRecord.workflow_id == current.workflow_id
+            )
+        ).scalars().all()
+
+    assert row.status == LeadWorkflowStatus.MONITOR.value
+    assert len(events) == 1
+    assert events[0].event_id == current.events[0].event_id
+
 def test_lead_workflow_compare_and_swap_rejects_stale_competing_writer() -> None:
     _engine, factory = _session_factory()
     current = LeadWorkflowRecord(
