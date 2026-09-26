@@ -36,24 +36,22 @@ class IntelligenceGraphService:
     def record_evidence(self, evidence: EvidenceRecord) -> EvidenceRecord:
         """Persist an evidence record and emit a source-record event."""
 
-        was_existing = self.store.get_evidence(evidence.evidence_id) is not None
+        existing = self.store.get_evidence(evidence.evidence_id)
         self.store.upsert_evidence(evidence)
+        if existing is not None:
+            return evidence
         self._emit_event(
             event_id=f"event:evidence:{evidence.evidence_id}",
-            event_type=RuntimeEventType.SOURCE_RECORD_CHANGED
-            if was_existing
-            else RuntimeEventType.SOURCE_RECORD_DISCOVERED,
+            event_type=RuntimeEventType.SOURCE_RECORD_DISCOVERED,
             severity=RuntimeEventSeverity.LOW,
-            message=(
-                f"Evidence {'updated' if was_existing else 'recorded'} from "
-                f"{evidence.source_name}."
-            ),
+            message=f"Evidence recorded from {evidence.source_name}.",
             source_record_refs=[evidence.evidence_id],
             payload={
-                "operation": "updated" if was_existing else "created",
+                "operation": "created",
                 "evidence_id": evidence.evidence_id,
                 "source_name": evidence.source_name,
                 "record_type": evidence.record_type,
+                "content_hash": evidence.content_hash,
             },
         )
         return evidence
