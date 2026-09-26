@@ -165,12 +165,27 @@ def test_intelligence_store_upsert_replaces_payload_without_duplicate_rows(tmp_p
         store.upsert_entity(second)
 
     with managed_session(factory) as session:
-        records = IntelligenceStore(session).list_entities(limit=10)
+        store = IntelligenceStore(session)
+        records = store.list_entities(limit=10)
+        revision_events = [
+            event
+            for event in store.list_runtime_events(limit=20)
+            if event.source_service == "intelligence_store_revision"
+            and event.payload.get("record_kind") == "entity"
+            and event.payload.get("logical_id") == "gc-1"
+        ]
 
     assert len(records) == 1
     assert records[0].canonical_name == "ABC Construction Inc."
     assert records[0].confidence_score == 95
     assert records[0].identity_status == IdentityStatus.CONFIRMED_SAME
+    assert len(revision_events) == 2
+    assert any(event.payload["previous_payload"] is None for event in revision_events)
+    assert any(
+        event.payload["previous_payload"] is not None
+        and event.payload["current_payload"]["canonical_name"] == "ABC Construction Inc."
+        for event in revision_events
+    )
 
 
 def test_intelligence_store_filters_watchlist_items_by_workspace(tmp_path) -> None:
@@ -257,3 +272,56 @@ def test_intelligence_store_rejects_missing_evidence_and_dangling_targets(tmp_pa
                     supporting_evidence_ids=["ev-1"],
                 )
             )
+
+
+
+def test_intelligence_evidence_id_cannot_be_rebound_to_changed_content(tmp_path) -> None:
+    engine = create_database_engine(_database_url(tmp_path))
+    initialize_database(engine)
+    factory = session_factory(engine)
+
+    first = EvidenceRecord(
+        evidence_id="ev-immutable",
+        source_name="Synthetic Permit Portal",
+        record_type="permit",
+        evidence_value="ABC Construction",
+    )
+    changed = EvidenceRecord(
+        evidence_id="ev-immutable",
+        source_name="Synthetic Permit Portal",
+        record_type="permit",
+        evidence_value="Different Contractor",
+    )
+
+    with managed_session(factory) as session:
+        store = IntelligenceStore(session)
+        store.upsert_evidence(first)
+        with pytest.raises(ValueError, match="evidence ID collision"):
+            store.upsert_evidence(changed)
+
+
+def test_runtime_event_id_is_immutable(tmp_path) -> None:
+    engine = create_database_engine(_database_url(tmp_path))
+    initialize_database(engine)
+    factory = session_factory(engine)
+
+    first = RuntimeEvent(
+        event_id="evt-immutable",
+        event_type=RuntimeEventType.ENTITY_CREATED,
+        source_service="test",
+        message="First retained event.",
+        payload={"revision": 1},
+    )
+    changed = RuntimeEvent(
+        event_id="evt-immutable",
+        event_type=RuntimeEventType.ENTITY_CREATED,
+        source_service="test",
+        message="Changed event must fail.",
+        payload={"revision": 2},
+    )
+
+    with managed_session(factory) as session:
+        store = IntelligenceStore(session)
+        store.add_runtime_event(first)
+        with pytest.raises(ValueError, match="runtime event ID collision"):
+            store.add_runtime_event(changed)
