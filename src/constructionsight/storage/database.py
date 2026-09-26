@@ -6,8 +6,9 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from importlib import import_module
 from pathlib import Path
+from sqlite3 import Connection as SQLiteConnection
 
-from sqlalchemy import Engine, create_engine
+from sqlalchemy import Engine, create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
 from constructionsight.storage.schema_governance import initialize_governed_schema
@@ -30,11 +31,30 @@ def database_url_from_path(path: Path = DEFAULT_DATABASE_PATH) -> str:
     return f"sqlite:///{path}"
 
 
+def _enable_sqlite_foreign_keys(
+    dbapi_connection: SQLiteConnection,
+    _connection_record: object,
+) -> None:
+    """Enable and verify SQLite foreign-key enforcement for every connection."""
+
+    cursor = dbapi_connection.cursor()
+    try:
+        cursor.execute("PRAGMA foreign_keys = ON")
+        row = cursor.execute("PRAGMA foreign_keys").fetchone()
+    finally:
+        cursor.close()
+    if row is None or int(row[0]) != 1:
+        raise RuntimeError("SQLite foreign-key enforcement could not be enabled")
+
+
 def create_database_engine(database_url: str | None = None) -> Engine:
-    """Create a SQLAlchemy database engine."""
+    """Create a SQLAlchemy database engine with governed SQLite integrity."""
 
     url = database_url or database_url_from_path()
-    return create_engine(url, future=True)
+    engine = create_engine(url, future=True)
+    if engine.dialect.name == "sqlite":
+        event.listen(engine, "connect", _enable_sqlite_foreign_keys)
+    return engine
 
 
 def initialize_database(engine: Engine) -> None:

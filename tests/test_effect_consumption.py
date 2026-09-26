@@ -8,7 +8,7 @@ import sqlite3
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from queue import Empty
 from threading import Event, Lock
@@ -504,3 +504,92 @@ def test_parallel_first_use_initializes_wal_without_lock_error(tmp_path: Path) -
         assert retained.status is EffectConsumptionStatus.RESERVED
         with sqlite3.connect(store_path) as connection:
             assert connection.execute("PRAGMA journal_mode").fetchone()[0] == "wal"
+
+
+def test_owned_store_is_independent_of_process_working_directory(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    application_root = tmp_path / "application"
+    application_root.mkdir()
+    canonical = application_root / "data" / "consumption.sqlite3"
+    monkeypatch.setattr(effect_consumption, "_CONSUMPTION_DATABASE_PATH", canonical)
+    first = effect_consumption._owned_store()
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    previous = Path.cwd()
+    try:
+        os.chdir(elsewhere)
+        second = effect_consumption._owned_store()
+    finally:
+        os.chdir(previous)
+
+    assert first._database_path == canonical
+    assert second._database_path == canonical
+
+
+def test_owned_store_rejects_symlinked_database_parent(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    real_parent = tmp_path / "real"
+    real_parent.mkdir()
+    linked_parent = tmp_path / "linked"
+    linked_parent.symlink_to(real_parent, target_is_directory=True)
+    monkeypatch.setattr(
+        effect_consumption,
+        "_CONSUMPTION_DATABASE_PATH",
+        linked_parent / "consumption.sqlite3",
+    )
+
+    with pytest.raises(EffectConsumptionError, match="non-symlink"):
+        effect_consumption._owned_store()
+
+
+def test_required_utc_date_is_rechecked_at_last_pre_effect_boundary(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import constructionsight.local_operator_authorization as local_authorization
+
+    granted_at = datetime(2026, 8, 22, 23, 59, 58, tzinfo=UTC)
+    monkeypatch.setattr(
+        local_authorization,
+        "_trusted_authorization_time",
+        lambda: granted_at,
+    )
+    monkeypatch.setattr(
+        effect_consumption,
+        "_CONSUMPTION_DATABASE_PATH",
+        tmp_path / "midnight.sqlite3",
+    )
+    authorization = _authorization()
+    observed = iter(
+        [
+            granted_at + timedelta(seconds=1),
+            granted_at + timedelta(seconds=3),
+            granted_at + timedelta(seconds=4),
+        ]
+    )
+    monkeypatch.setattr(effect_consumption, "trusted_utc_now", lambda: next(observed))
+    calls = 0
+
+    def effect(_trusted_at: datetime) -> dict[str, object]:
+        nonlocal calls
+        calls += 1
+        return {"outcome": "must-not-run"}
+
+    with pytest.raises(EffectConsumptionError, match="changed before protected effect"):
+        _execute_owned_effect(
+            authorization,
+            allowance_identity="daily:2026-08-22",
+            content_identity="content:midnight",
+            implementation_id="tests.midnight",
+            replay_policy=EffectReplayPolicy.EXACT,
+            effect=effect,
+            encode_result=lambda result: result,
+            decode_result=lambda payload: dict(payload),
+            required_utc_date=granted_at.date(),
+        )
+
+    assert calls == 0

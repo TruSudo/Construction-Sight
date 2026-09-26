@@ -21,7 +21,10 @@ from constructionsight.storage.effect_consumption_store import (
 
 T = TypeVar("T")
 
-_CONSUMPTION_DATABASE_PATH = Path("data/constructionsight-effect-consumption.sqlite3")
+_APPLICATION_ROOT = Path(__file__).resolve().parents[2]
+_CONSUMPTION_DATABASE_PATH = (
+    _APPLICATION_ROOT / "data" / "constructionsight-effect-consumption.sqlite3"
+)
 _MAX_RESULT_BYTES = 25_000_000
 
 
@@ -32,7 +35,20 @@ def trusted_utc_now() -> datetime:
 
 
 def _owned_store() -> EffectConsumptionStore:
-    return EffectConsumptionStore(_CONSUMPTION_DATABASE_PATH)
+    """Return the one canonical application-owned protected-effect ledger."""
+
+    path = _CONSUMPTION_DATABASE_PATH
+    if not path.is_absolute():
+        raise EffectConsumptionError("consumption database path must be absolute")
+    parent = path.parent
+    parent.mkdir(parents=True, exist_ok=True)
+    if parent.is_symlink() or parent.resolve() != parent:
+        raise EffectConsumptionError(
+            "consumption database parent must be a canonical non-symlink directory"
+        )
+    if path.exists() and path.is_symlink():
+        raise EffectConsumptionError("consumption database must not be a symbolic link")
+    return EffectConsumptionStore(path)
 
 
 def _canonical_result(payload: Mapping[str, Any]) -> str:
@@ -198,6 +214,10 @@ def _execute_owned_effect(
     effect_started = False
     try:
         started_at = trusted_utc_now()
+        if required_utc_date is not None and started_at.date() != required_utc_date:
+            raise EffectConsumptionError(
+                "trusted UTC date changed before protected effect start"
+            )
         store.mark_effect_started(operation, started_at=started_at)
         effect_started = True
         result = effect(started_at)

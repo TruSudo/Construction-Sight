@@ -52,6 +52,16 @@ _EFFECT_TARGETS: Final = frozenset(
         "store_arcgis_bounded_proof_bundle_chain",
     }
 )
+_STORAGE_MUTATION_PREFIXES: Final = (
+    "add_",
+    "compare_and_swap_",
+    "delete_",
+    "insert_",
+    "store_",
+    "update_",
+    "upsert_",
+)
+
 _DYNAMIC_EFFECT_PARAMETERS: Final = frozenset(
     {
         "consumption_store",
@@ -389,8 +399,6 @@ class _AuthorizationGraphAudit:
             if self._layer_by_module.get(function.module) != "cli":
                 continue
             confirmations = set(function.parameters) & _HIGH_IMPACT_CONFIRMATIONS
-            if not confirmations:
-                continue
             initial = _State(
                 phase=_AuthorizationPhase.NONE,
                 booleans={parameter: frozenset({False, True}) for parameter in function.parameters},
@@ -401,7 +409,7 @@ class _AuthorizationGraphAudit:
                 },
             )
             outcomes = self._analyze_function(function, initial, ())
-            if not any(state.authorized_once for state in outcomes):
+            if confirmations and not any(state.authorized_once for state in outcomes):
                 self._record(
                     "AUTH-BOOLEAN-002",
                     function,
@@ -818,7 +826,7 @@ class _AuthorizationGraphAudit:
                 state.phase = _AuthorizationPhase.CONSUMED
                 state.authorized_once = True
             return [state]
-        if target == _DYNAMIC_EFFECT or target in _EFFECT_TARGETS:
+        if target == _DYNAMIC_EFFECT or self._is_effect_target(target):
             detail = "dynamic injected effect boundary" if target == _DYNAMIC_EFFECT else target
             self._record(
                 "AUTH-BYPASS-001",
@@ -851,6 +859,15 @@ class _AuthorizationGraphAudit:
                 f"tracked implementation: {target}",
             )
         return [state]
+
+    def _is_effect_target(self, target: str) -> bool:
+        if target in _EFFECT_TARGETS:
+            return True
+        callee = self._program.functions.get(target)
+        if callee is None or not callee.module.startswith("constructionsight.storage."):
+            return False
+        leaf = target.rpartition(".")[2]
+        return leaf.startswith(_STORAGE_MUTATION_PREFIXES)
 
     def _bind_call(
         self,

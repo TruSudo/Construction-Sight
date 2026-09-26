@@ -446,3 +446,43 @@ def test_non_cli_module_is_outside_operator_entry_rule(tmp_path: Path) -> None:
     )
 
     assert findings == []
+
+
+def test_cli_effect_without_confirmation_parameter_is_still_audited(
+    tmp_path: Path,
+) -> None:
+    findings = _audit(
+        tmp_path,
+        """
+        from constructionsight.http_transport import execute_bounded_http
+
+        def discover() -> None:
+            execute_bounded_http()
+        """,
+    )
+
+    assert "AUTH-BYPASS-001" in _codes(findings)
+
+
+def test_direct_storage_mutation_is_treated_as_protected_effect(
+    tmp_path: Path,
+) -> None:
+    findings = _audit_sources(
+        tmp_path,
+        {
+            _CLI_PATH: """
+                from constructionsight.storage.example_store import ExampleStore
+
+                def load() -> None:
+                    store = ExampleStore()
+                    store.upsert_record()
+            """,
+            "src/constructionsight/storage/example_store.py": """
+                class ExampleStore:
+                    def upsert_record(self) -> None:
+                        return None
+            """,
+        },
+    )
+
+    assert "AUTH-BYPASS-001" in _codes(findings)
