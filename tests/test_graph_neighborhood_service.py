@@ -29,6 +29,14 @@ def _database_url(tmp_path) -> str:
 
 
 def _seed_neighborhood_graph(store: IntelligenceStore) -> None:
+    store.upsert_evidence(
+        EvidenceRecord(
+            evidence_id="ev-graph",
+            source_name="Synthetic Graph Evidence",
+            record_type="synthetic",
+            evidence_value="retained graph support",
+        )
+    )
     store.upsert_entity(
         EntityIdentity(
             entity_id="gc-1",

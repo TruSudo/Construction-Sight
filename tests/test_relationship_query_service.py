@@ -29,6 +29,14 @@ def _database_url(tmp_path) -> str:
 
 
 def _seed_relationship_graph(store: IntelligenceStore) -> None:
+    store.upsert_evidence(
+        EvidenceRecord(
+            evidence_id="ev-graph",
+            source_name="Synthetic Graph Evidence",
+            record_type="synthetic",
+            evidence_value="retained graph support",
+        )
+    )
     store.upsert_entity(
         EntityIdentity(
             entity_id="gc-1",
@@ -150,14 +158,6 @@ def test_relationship_query_service_returns_entity_relationships_and_connected_e
 
     with managed_session(factory) as session:
         store = IntelligenceStore(session)
-        store.upsert_evidence(
-            EvidenceRecord(
-                evidence_id="ev-graph",
-                source_name="Synthetic Graph Evidence",
-                record_type="synthetic",
-                evidence_value="retained graph support",
-            )
-        )
         _seed_relationship_graph(store)
 
     with managed_session(factory) as session:
@@ -213,3 +213,76 @@ def test_relationship_query_service_returns_direct_and_project_derived_entity_op
 
     assert {opportunity.opportunity_id for opportunity in gc_opportunities} == {"opp-1"}
     assert {opportunity.opportunity_id for opportunity in developer_opportunities} == {"opp-1"}
+
+
+
+def test_relationship_query_does_not_truncate_records_older_than_one_hundred(tmp_path) -> None:
+    engine = create_database_engine(_database_url(tmp_path))
+    initialize_database(engine)
+    factory = session_factory(engine)
+
+    with managed_session(factory) as session:
+        store = IntelligenceStore(session)
+        store.upsert_evidence(
+            EvidenceRecord(
+                evidence_id="ev-scale",
+                source_name="Synthetic Scale Evidence",
+                record_type="synthetic",
+                evidence_value="retained scale support",
+            )
+        )
+        store.upsert_entity(
+            EntityIdentity(
+                entity_id="target-entity",
+                entity_type=EntityType.ORGANIZATION,
+                canonical_name="Target Entity",
+                identity_status=IdentityStatus.CONFIRMED_SAME,
+                evidence_record_ids=["ev-scale"],
+            )
+        )
+        store.upsert_project_cluster(
+            ProjectCluster(
+                project_cluster_id="scale-project",
+                project_name="Scale Project",
+                evidence_record_ids=["ev-scale"],
+            )
+        )
+        store.upsert_relationship(
+            RelationshipAssertion(
+                relationship_id="target-old-relationship",
+                subject_entity_id="target-entity",
+                predicate="associated_with",
+                object_entity_id="scale-project",
+                evidence_summary="Old target relationship remains queryable.",
+                supporting_evidence_ids=["ev-scale"],
+            )
+        )
+        for index in range(105):
+            entity_id = f"noise-{index:03d}"
+            store.upsert_entity(
+                EntityIdentity(
+                    entity_id=entity_id,
+                    entity_type=EntityType.ORGANIZATION,
+                    canonical_name=f"Noise Entity {index:03d}",
+                    identity_status=IdentityStatus.CONFIRMED_SAME,
+                    evidence_record_ids=["ev-scale"],
+                )
+            )
+            store.upsert_relationship(
+                RelationshipAssertion(
+                    relationship_id=f"noise-rel-{index:03d}",
+                    subject_entity_id=entity_id,
+                    predicate="associated_with",
+                    object_entity_id="scale-project",
+                    evidence_summary="Synthetic noise relationship.",
+                    supporting_evidence_ids=["ev-scale"],
+                )
+            )
+
+    with managed_session(factory) as session:
+        service = RelationshipQueryService(IntelligenceStore(session))
+        relationships = service.get_relationships_for_entity("target-entity")
+
+    assert [item.relationship_id for item in relationships] == [
+        "target-old-relationship"
+    ]
