@@ -1198,9 +1198,9 @@ root_cause = "Permit snapshots use caller-selected IDs that may be reused for ch
 discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
 required_resolution = "Bind snapshot identities to immutable observation content, represent repeated transition occurrences distinctly, reject semantic ID collisions instead of overwriting history, and add repeated-cycle and replay regressions."
 resolution_summary = "Machine-verified closure proof for CS-SR-080: required_resolution_sha256=ba1f6b3cbabeeb4d1c91554a0e51d6f146687faf772d59c7baeddafd9713867d; implementation_paths=[src/constructionsight/permit_transition_models.py]; regression_tests=[tests/test_permit_transition_models.py]."
-resolution_commit = "31cd281bbb1c31b145107bdeadbfc7f4758225e7"
-resolution_tree = "fa4940d642ba4fd4dd714adca110c2bbd965e8d6"
-last_active_commit = "31cd281bbb1c31b145107bdeadbfc7f4758225e7"
+resolution_commit = "469af692749168f66e604ee1008816b6151249e2"
+resolution_tree = "57fe5dfd2b6814d45ddfa505638ad1d47cdf0450"
+last_active_commit = "469af692749168f66e604ee1008816b6151249e2"
 evidence_paths = ["docs/assurance/defect_closures/CS-SR-080.md","docs/assurance/defect_closures/CS-SR-080.proof.json","src/constructionsight/permit_transition_models.py"]
 regression_tests = ["tests/test_permit_transition_models.py"]
 closure_evidence = "docs/assurance/defect_closures/CS-SR-080.md"
