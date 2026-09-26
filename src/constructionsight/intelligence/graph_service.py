@@ -33,9 +33,7 @@ class IntelligenceGraphService:
     def record_evidence(self, evidence: EvidenceRecord) -> EvidenceRecord:
         """Persist an evidence record and emit a source-record event."""
 
-        was_existing = any(
-            record.evidence_id == evidence.evidence_id for record in self.store.list_evidence()
-        )
+        was_existing = self.store.get_evidence(evidence.evidence_id) is not None
         self.store.upsert_evidence(evidence)
         self._emit_event(
             event_id=f"event:evidence:{evidence.evidence_id}",
@@ -60,9 +58,7 @@ class IntelligenceGraphService:
     def upsert_entity(self, entity: EntityIdentity) -> EntityIdentity:
         """Persist an entity identity and emit a create/update event."""
 
-        was_existing = any(
-            record.entity_id == entity.entity_id for record in self.store.list_entities()
-        )
+        was_existing = self.store.get_entity(entity.entity_id) is not None
         self.store.upsert_entity(entity)
         self._emit_event(
             event_id=f"event:entity:{entity.entity_id}",
@@ -86,10 +82,7 @@ class IntelligenceGraphService:
     def upsert_relationship(self, relationship: RelationshipAssertion) -> RelationshipAssertion:
         """Persist an evidence-backed relationship and emit a graph event."""
 
-        was_existing = any(
-            record.relationship_id == relationship.relationship_id
-            for record in self.store.list_relationships()
-        )
+        was_existing = self.store.get_relationship(relationship.relationship_id) is not None
         self.store.upsert_relationship(relationship)
         self._emit_event(
             event_id=f"event:relationship:{relationship.relationship_id}",
@@ -118,10 +111,7 @@ class IntelligenceGraphService:
     def upsert_project_cluster(self, cluster: ProjectCluster) -> ProjectCluster:
         """Persist a project cluster and emit a project-cluster event."""
 
-        was_existing = any(
-            record.project_cluster_id == cluster.project_cluster_id
-            for record in self.store.list_project_clusters()
-        )
+        was_existing = self.store.get_project_cluster(cluster.project_cluster_id) is not None
         self.store.upsert_project_cluster(cluster)
         self._emit_event(
             event_id=f"event:project_cluster:{cluster.project_cluster_id}",
@@ -150,10 +140,7 @@ class IntelligenceGraphService:
     def upsert_opportunity(self, opportunity: OpportunitySignal) -> OpportunitySignal:
         """Persist an opportunity signal and emit an opportunity event."""
 
-        was_existing = any(
-            record.opportunity_id == opportunity.opportunity_id
-            for record in self.store.list_opportunities()
-        )
+        was_existing = self.store.get_opportunity(opportunity.opportunity_id) is not None
         self.store.upsert_opportunity(opportunity)
         self._emit_event(
             event_id=f"event:opportunity:{opportunity.opportunity_id}",

@@ -272,6 +272,7 @@ class EntityIdentity(BaseModel):
     addresses: list[str] = Field(default_factory=list)
     jurisdictions: list[str] = Field(default_factory=list)
     related_source_record_ids: list[str] = Field(default_factory=list)
+    evidence_record_ids: list[str] = Field(default_factory=list)
     confidence_score: int = Field(default=0, ge=0, le=100)
     identity_status: IdentityStatus = IdentityStatus.UNRESOLVED
     first_seen: datetime = Field(default_factory=utc_now)
@@ -281,7 +282,12 @@ class EntityIdentity(BaseModel):
     contradiction_summary: str | None = None
 
     @field_validator(
-        "aliases", "source_names", "addresses", "jurisdictions", "related_source_record_ids"
+        "aliases",
+        "source_names",
+        "addresses",
+        "jurisdictions",
+        "related_source_record_ids",
+        "evidence_record_ids",
     )
     @classmethod
     def require_unique_values(cls, value: list[str]) -> list[str]:
