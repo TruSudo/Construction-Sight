@@ -501,3 +501,44 @@ def test_direct_source_registry_store_mutation_is_a_governed_effect(
     )
 
     assert "AUTH-BYPASS-001" in _codes(findings)
+
+
+def test_unresolved_new_effect_like_call_and_alternate_confirmation_fail_closed(
+    tmp_path: Path,
+) -> None:
+    # Regression: CS-SR-096
+    findings = _audit(
+        tmp_path,
+        """
+        def execute(confirm: bool) -> None:
+            if confirm:
+                persist_new_records()
+        """,
+    )
+
+    assert "AUTH-INDIRECT-001" in _codes(findings)
+    assert "AUTH-BOOLEAN-002" in _codes(findings)
+
+
+def test_new_storage_mutator_is_derived_without_manual_effect_registration(
+    tmp_path: Path,
+) -> None:
+    # Regression: CS-SR-096
+    findings = _audit_sources(
+        tmp_path,
+        {
+            _CLI_PATH: """
+                from constructionsight.storage.future_store import FutureStore
+
+                def execute(confirm: bool) -> None:
+                    FutureStore().delete_records()
+            """,
+            "src/constructionsight/storage/future_store.py": """
+                class FutureStore:
+                    def delete_records(self) -> None:
+                        return None
+            """,
+        },
+    )
+
+    assert "AUTH-BYPASS-001" in _codes(findings)
