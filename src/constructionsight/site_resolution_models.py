@@ -59,7 +59,7 @@ class SiteIdentifier(BaseModel):
     identifier_kind: SiteIdentifierKind
     value: str = Field(min_length=1)
     normalized_value: str = Field(min_length=1)
-    evidence_id: str | None = None
+    evidence_id: str = Field(min_length=1)
     fact_id: str | None = None
     source_field: str | None = None
     confidence_score: int = Field(default=50, ge=0, le=100)
@@ -82,7 +82,7 @@ class GeometryHint(BaseModel):
     longitude: float | None = Field(default=None, ge=-180, le=180)
     raw_geometry: str | None = None
     source_name: str = Field(min_length=1)
-    evidence_id: str | None = None
+    evidence_id: str = Field(min_length=1)
     confidence_score: int = Field(default=50, ge=0, le=100)
 
     @model_validator(mode="after")
