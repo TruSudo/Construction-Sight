@@ -1,3 +1,5 @@
+import pytest
+
 from constructionsight.intelligence import (
     CoverageStatus,
     EntityIdentity,
@@ -52,6 +54,7 @@ def test_intelligence_store_round_trips_core_records(tmp_path) -> None:
         normalized_name="abc construction",
         confidence_score=93,
         identity_status=IdentityStatus.CONFIRMED_SAME,
+        evidence_record_ids=["ev-1"],
     )
     cluster = ProjectCluster(
         project_cluster_id="pc-1",
@@ -136,6 +139,7 @@ def test_intelligence_store_upsert_replaces_payload_without_duplicate_rows(tmp_p
         canonical_name="ABC Construction",
         confidence_score=70,
         identity_status=IdentityStatus.POSSIBLE_SAME,
+        evidence_record_ids=["ev-1"],
     )
     second = EntityIdentity(
         entity_id="gc-1",
@@ -144,10 +148,19 @@ def test_intelligence_store_upsert_replaces_payload_without_duplicate_rows(tmp_p
         confidence_score=95,
         identity_status=IdentityStatus.CONFIRMED_SAME,
         aliases=["ABC Construction"],
+        evidence_record_ids=["ev-1"],
     )
 
     with managed_session(factory) as session:
         store = IntelligenceStore(session)
+        store.upsert_evidence(
+            EvidenceRecord(
+                evidence_id="ev-1",
+                source_name="Synthetic Permit Portal",
+                record_type="permit",
+                evidence_value="ABC Construction",
+            )
+        )
         store.upsert_entity(first)
         store.upsert_entity(second)
 
@@ -193,3 +206,54 @@ def test_intelligence_store_filters_watchlist_items_by_workspace(tmp_path) -> No
     assert len(workspace_one_items) == 1
     assert workspace_one_items[0].watchlist_item_id == "watch-1"
     assert workspace_one_items[0].workspace_id == "workspace-1"
+
+
+
+def test_intelligence_store_rejects_missing_evidence_and_dangling_targets(tmp_path) -> None:
+    engine = create_database_engine(_database_url(tmp_path))
+    initialize_database(engine)
+    factory = session_factory(engine)
+
+    with managed_session(factory) as session:
+        store = IntelligenceStore(session)
+        store.upsert_evidence(
+            EvidenceRecord(
+                evidence_id="ev-1",
+                source_name="Synthetic Permit Portal",
+                record_type="permit",
+                evidence_value="ABC Construction",
+            )
+        )
+        store.upsert_entity(
+            EntityIdentity(
+                entity_id="gc-1",
+                entity_type=EntityType.GENERAL_CONTRACTOR,
+                canonical_name="ABC Construction Inc.",
+                confidence_score=92,
+                identity_status=IdentityStatus.CONFIRMED_SAME,
+                evidence_record_ids=["ev-1"],
+            )
+        )
+
+        with pytest.raises(ValueError, match="retained evidence"):
+            store.upsert_relationship(
+                RelationshipAssertion(
+                    relationship_id="rel-no-evidence",
+                    subject_entity_id="gc-1",
+                    predicate="general_contractor_for",
+                    object_entity_id="pc-missing",
+                    evidence_summary="Unsupported relationship must fail.",
+                )
+            )
+
+        with pytest.raises(ValueError, match="missing graph target"):
+            store.upsert_relationship(
+                RelationshipAssertion(
+                    relationship_id="rel-dangling",
+                    subject_entity_id="gc-1",
+                    predicate="general_contractor_for",
+                    object_entity_id="pc-missing",
+                    evidence_summary="Referenced evidence exists but target does not.",
+                    supporting_evidence_ids=["ev-1"],
+                )
+            )

@@ -2,6 +2,7 @@ from constructionsight.intelligence import (
     CoverageStatus,
     EntityIdentity,
     EntityType,
+    EvidenceRecord,
     IdentityStatus,
     LifecyclePhase,
     MonitoringStatus,
@@ -35,6 +36,7 @@ def _seed_neighborhood_graph(store: IntelligenceStore) -> None:
             canonical_name="ABC Construction Inc.",
             confidence_score=92,
             identity_status=IdentityStatus.CONFIRMED_SAME,
+            evidence_record_ids=["ev-graph"],
         )
     )
     store.upsert_entity(
@@ -44,6 +46,7 @@ def _seed_neighborhood_graph(store: IntelligenceStore) -> None:
             canonical_name="XYZ Development LLC",
             confidence_score=88,
             identity_status=IdentityStatus.PROBABLE_SAME,
+            evidence_record_ids=["ev-graph"],
         )
     )
     store.upsert_project_cluster(
@@ -57,6 +60,7 @@ def _seed_neighborhood_graph(store: IntelligenceStore) -> None:
             cluster_status=ProjectClusterStatus.PROBABLE,
             lifecycle_phase=LifecyclePhase.VERTICAL_CONSTRUCTION,
             cluster_confidence=84,
+            evidence_record_ids=["ev-graph"],
         )
     )
     store.upsert_relationship(
@@ -68,6 +72,7 @@ def _seed_neighborhood_graph(store: IntelligenceStore) -> None:
             relationship_status=RelationshipStatus.PROBABLE,
             confidence_score=86,
             evidence_summary="Synthetic contractor field supports GC relationship.",
+            supporting_evidence_ids=["ev-graph"],
         )
     )
     store.upsert_relationship(
@@ -79,6 +84,7 @@ def _seed_neighborhood_graph(store: IntelligenceStore) -> None:
             relationship_status=RelationshipStatus.PROBABLE,
             confidence_score=82,
             evidence_summary="Synthetic planning record supports developer relationship.",
+            supporting_evidence_ids=["ev-graph"],
         )
     )
     store.upsert_relationship(
@@ -90,6 +96,7 @@ def _seed_neighborhood_graph(store: IntelligenceStore) -> None:
             relationship_status=RelationshipStatus.POSSIBLE,
             confidence_score=61,
             evidence_summary="Synthetic shared project supports candidate working relationship.",
+            supporting_evidence_ids=["ev-graph"],
         )
     )
     store.upsert_opportunity(
@@ -102,6 +109,7 @@ def _seed_neighborhood_graph(store: IntelligenceStore) -> None:
             confidence_score=81,
             evidence_summary="Active construction and known GC support security opportunity.",
             lifecycle_phase_basis=LifecyclePhase.VERTICAL_CONSTRUCTION,
+            evidence_record_ids=["ev-graph"],
         )
     )
 

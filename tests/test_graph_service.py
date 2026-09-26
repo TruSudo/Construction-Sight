@@ -48,6 +48,7 @@ def test_graph_service_persists_core_graph_records_and_events(tmp_path) -> None:
         canonical_name="ABC Construction Inc.",
         confidence_score=92,
         identity_status=IdentityStatus.CONFIRMED_SAME,
+        evidence_record_ids=["ev-1"],
     )
     cluster = ProjectCluster(
         project_cluster_id="pc-1",
@@ -114,6 +115,31 @@ def test_graph_service_event_payloads_preserve_references(tmp_path) -> None:
     initialize_database(engine)
     factory = session_factory(engine)
 
+    evidence_one = EvidenceRecord(
+        evidence_id="ev-1",
+        source_name="Synthetic Permit Portal",
+        record_type="permit",
+        evidence_value="ABC Construction",
+    )
+    evidence_two = EvidenceRecord(
+        evidence_id="ev-2",
+        source_name="Synthetic Planning Portal",
+        record_type="planning_case",
+        evidence_value="ABC Construction confirmed",
+    )
+    entity = EntityIdentity(
+        entity_id="gc-1",
+        entity_type=EntityType.GENERAL_CONTRACTOR,
+        canonical_name="ABC Construction Inc.",
+        confidence_score=92,
+        identity_status=IdentityStatus.CONFIRMED_SAME,
+        evidence_record_ids=["ev-1"],
+    )
+    cluster = ProjectCluster(
+        project_cluster_id="pc-1",
+        project_name="Synthetic Warehouse TI",
+        evidence_record_ids=["ev-1"],
+    )
     relationship = RelationshipAssertion(
         relationship_id="rel-1",
         subject_entity_id="gc-1",
@@ -129,6 +155,10 @@ def test_graph_service_event_payloads_preserve_references(tmp_path) -> None:
         service = IntelligenceGraphService(
             IntelligenceStore(session), source_service="test_graph_service"
         )
+        service.record_evidence(evidence_one)
+        service.record_evidence(evidence_two)
+        service.upsert_entity(entity)
+        service.upsert_project_cluster(cluster)
         service.upsert_relationship(relationship)
 
     with managed_session(factory) as session:
@@ -190,9 +220,35 @@ def test_graph_service_emits_update_events_for_existing_records(tmp_path) -> Non
 
     with managed_session(factory) as session:
         service = IntelligenceGraphService(IntelligenceStore(session))
+        service.record_evidence(
+            EvidenceRecord(
+                evidence_id="ev-1",
+                source_name="Synthetic Permit Portal",
+                record_type="permit",
+                evidence_value="initial contractor signal",
+            )
+        )
+        service.record_evidence(
+            EvidenceRecord(
+                evidence_id="ev-2",
+                source_name="Synthetic Planning Portal",
+                record_type="planning_case",
+                evidence_value="confirming contractor signal",
+            )
+        )
+        service.upsert_entity(
+            EntityIdentity(
+                entity_id="gc-1",
+                entity_type=EntityType.GENERAL_CONTRACTOR,
+                canonical_name="ABC Construction Inc.",
+                confidence_score=92,
+                identity_status=IdentityStatus.CONFIRMED_SAME,
+                evidence_record_ids=["ev-1"],
+            )
+        )
+        service.upsert_project_cluster(first_cluster)
         service.upsert_relationship(first_relationship)
         service.upsert_relationship(updated_relationship)
-        service.upsert_project_cluster(first_cluster)
         service.upsert_project_cluster(updated_cluster)
 
     with managed_session(factory) as session:
