@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from typing import Any, TypeVar
 
@@ -17,6 +18,8 @@ from constructionsight.intelligence import (
     ProjectCluster,
     RelationshipAssertion,
     RuntimeEvent,
+    RuntimeEventSeverity,
+    RuntimeEventType,
     WatchlistItem,
 )
 from constructionsight.storage.intelligence_orm import (
@@ -124,6 +127,50 @@ class IntelligenceStore:
         )
         if project is None:
             raise ValueError(f"{label} references missing graph target: {target_id}")
+
+    def _append_revision_event(
+        self,
+        *,
+        record_kind: str,
+        logical_id: str,
+        previous_payload_json: str | None,
+        current_payload_json: str,
+        event_type: RuntimeEventType,
+    ) -> None:
+        """Append one immutable full before/after revision event when state changes."""
+
+        if previous_payload_json == current_payload_json:
+            return
+        revision_payload: dict[str, Any] = {
+            "record_kind": record_kind,
+            "logical_id": logical_id,
+            "previous_payload": (
+                json.loads(previous_payload_json)
+                if previous_payload_json is not None
+                else None
+            ),
+            "current_payload": json.loads(current_payload_json),
+        }
+        canonical = json.dumps(
+            revision_payload,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+            allow_nan=False,
+        ).encode("utf-8")
+        revision_id = f"event:revision:{hashlib.sha256(canonical).hexdigest()}"
+        if self.get_runtime_event(revision_id) is not None:
+            return
+        self.add_runtime_event(
+            RuntimeEvent(
+                event_id=revision_id,
+                event_type=event_type,
+                severity=RuntimeEventSeverity.DEBUG,
+                source_service="intelligence_store_revision",
+                payload=revision_payload,
+                message=f"Persisted {record_kind} revision for {logical_id}.",
+            )
+        )
 
     def upsert_evidence(self, evidence: EvidenceRecord) -> IntelligenceEvidenceRecord:
         """Insert or update an intelligence evidence record."""
@@ -449,26 +496,44 @@ class IntelligenceStore:
         ).all()
         return [_json_to_model(record.payload_json, OpportunitySignal) for record in records]
 
+    def get_runtime_event(self, event_id: str) -> RuntimeEvent | None:
+        """Return one exact immutable runtime event."""
+
+        record = self.session.scalar(
+            select(IntelligenceRuntimeEventRecord).where(
+                IntelligenceRuntimeEventRecord.event_id == event_id
+            )
+        )
+        return (
+            _json_to_model(record.payload_json, RuntimeEvent)
+            if record is not None
+            else None
+        )
+
     def add_runtime_event(self, event: RuntimeEvent) -> IntelligenceRuntimeEventRecord:
-        """Persist a runtime event.
+        """Append one immutable runtime event or accept an exact replay."""
 
-        Runtime events are append-oriented. If the same event ID already exists,
-        the existing record is updated to preserve idempotent test/runtime behavior.
-        """
-
+        payload_json = _model_to_json(event)
         record = self.session.scalar(
             select(IntelligenceRuntimeEventRecord).where(
                 IntelligenceRuntimeEventRecord.event_id == event.event_id
             )
         )
-        if record is None:
-            record = IntelligenceRuntimeEventRecord(event_id=event.event_id)
-            self._stage_new_record(record)
-        record.event_type = event.event_type.value
-        record.severity = event.severity.value
-        record.source_service = event.source_service
-        record.message = event.message
-        record.payload_json = _model_to_json(event)
+        if record is not None:
+            if record.payload_json != payload_json:
+                raise ValueError(
+                    f"runtime event ID collision changed retained history: {event.event_id}"
+                )
+            return record
+        record = IntelligenceRuntimeEventRecord(
+            event_id=event.event_id,
+            event_type=event.event_type.value,
+            severity=event.severity.value,
+            source_service=event.source_service,
+            message=event.message,
+            payload_json=payload_json,
+        )
+        self._stage_new_record(record)
         self._flush()
         return record
 
