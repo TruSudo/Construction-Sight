@@ -484,17 +484,18 @@ def test_direct_source_registry_store_mutation_is_a_governed_effect(
         tmp_path,
         {
             _CLI_PATH: """
-                from constructionsight.example_store import write_sources
-
-                def execute(apply_changes: bool) -> None:
-                    write_sources()
-            """,
-            "src/constructionsight/example_store.py": """
                 from constructionsight.storage.source_registry import SourceRegistryStore
 
-                def write_sources() -> None:
-                    store = SourceRegistryStore(None)
-                    store.upsert_many([])
+                def execute(apply_changes: bool) -> None:
+                    SourceRegistryStore(None).upsert_many([])
+            """,
+            "src/constructionsight/storage/source_registry.py": """
+                class SourceRegistryStore:
+                    def __init__(self, session) -> None:
+                        self.session = session
+
+                    def upsert_many(self, sources) -> None:
+                        return None
             """,
         },
     )

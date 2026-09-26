@@ -473,10 +473,17 @@ def test_consumption_store_rejects_symbolic_link_database(tmp_path: Path) -> Non
 def test_required_utc_date_is_rechecked_after_durable_start_marker(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    import constructionsight.local_operator_authorization as local_authorization
+
     database_path = tmp_path / "date-boundary.sqlite3"
     monkeypatch.setattr(effect_consumption, "_CONSUMPTION_DATABASE_PATH", database_path)
-    authorization = _authorization()
     before_midnight = datetime(2026, 8, 22, 23, 59, 59, 900000, tzinfo=UTC)
+    monkeypatch.setattr(
+        local_authorization,
+        "_trusted_authorization_time",
+        lambda: before_midnight,
+    )
+    authorization = _authorization()
     after_midnight = datetime(2026, 8, 23, 0, 0, 0, 100000, tzinfo=UTC)
     times = iter((before_midnight, before_midnight, after_midnight))
     monkeypatch.setattr(effect_consumption, "trusted_utc_now", lambda: next(times))

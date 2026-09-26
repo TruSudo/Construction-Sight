@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 from typer.testing import CliRunner
 
@@ -68,7 +69,7 @@ def test_discover_ceqanet_cli_persists_verification_result(monkeypatch, tmp_path
     database_url = f"sqlite+pysqlite:///{database_path}"
     runner = CliRunner()
     source_payload = json.loads(
-        open("data/source_registry.seed.json", encoding="utf-8").read()
+        Path("data/source_registry.seed.json").read_text(encoding="utf-8")
     )[0]
     source_model = PublicSource.model_validate(source_payload)
     engine = create_database_engine(database_url)
