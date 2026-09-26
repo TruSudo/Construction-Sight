@@ -32,6 +32,7 @@ def _factory():
     return session_factory(engine)
 
 
+# Regression: CS-SR-082
 def test_registry_persistence_requires_scope_bound_confirmation() -> None:
     factory = _factory()
 

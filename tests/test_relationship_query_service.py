@@ -216,6 +216,7 @@ def test_relationship_query_service_returns_direct_and_project_derived_entity_op
 
 
 
+# Regression: CS-SR-079
 def test_relationship_query_does_not_truncate_records_older_than_one_hundred(tmp_path) -> None:
     engine = create_database_engine(_database_url(tmp_path))
     initialize_database(engine)

@@ -128,6 +128,7 @@ def test_intelligence_store_round_trips_core_records(tmp_path) -> None:
         assert store.list_watchlist_items()[0].watchlist_item_id == "watch-1"
 
 
+# Regression: CS-SR-076
 def test_intelligence_store_upsert_replaces_payload_without_duplicate_rows(tmp_path) -> None:
     engine = create_database_engine(_database_url(tmp_path))
     initialize_database(engine)
@@ -224,6 +225,8 @@ def test_intelligence_store_filters_watchlist_items_by_workspace(tmp_path) -> No
 
 
 
+# Regression: CS-SR-077
+# Regression: CS-SR-078
 def test_intelligence_store_rejects_missing_evidence_and_dangling_targets(tmp_path) -> None:
     engine = create_database_engine(_database_url(tmp_path))
     initialize_database(engine)
@@ -275,6 +278,7 @@ def test_intelligence_store_rejects_missing_evidence_and_dangling_targets(tmp_pa
 
 
 
+# Regression: CS-SR-085
 def test_intelligence_evidence_id_cannot_be_rebound_to_changed_content(tmp_path) -> None:
     engine = create_database_engine(_database_url(tmp_path))
     initialize_database(engine)

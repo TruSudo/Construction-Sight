@@ -76,6 +76,7 @@ def test_permit_snapshot_serializes_dates() -> None:
     assert snapshot.to_dict()["issue_date"] == "2026-01-01"
 
 
+# Regression: CS-SR-080
 def test_snapshot_identity_is_content_bound() -> None:
     snapshot = PermitSnapshot(
         source_key="test:source",
