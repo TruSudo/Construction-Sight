@@ -20,6 +20,7 @@ from constructionsight.result_authority_models import (
 from constructionsight.result_ledger_models import ResultLedgerRecord, ResultLedgerStatus
 from constructionsight.result_ledger_service import (
     build_result_ledger_record,
+    money_minor_units,
     supersede_result_ledger_record,
     validate_result_ledger_history,
 )
@@ -124,9 +125,23 @@ def list_result_authority_events(
                 "result authority event current ledger disagrees with history: "
                 f"{event.event_id}"
             )
+        if event.current_content_digest != ledger.content_digest:
+            raise ResultAuthorityError(
+                "result authority event current content digest disagrees with history: "
+                f"{event.event_id}"
+            )
         if event.previous_ledger_id != ledger.supersedes_ledger_id:
             raise ResultAuthorityError(
                 "result authority event predecessor disagrees with history: "
+                f"{event.event_id}"
+            )
+        predecessor = history_by_revision.get(event.revision - 1)
+        expected_previous_digest = (
+            predecessor.content_digest if predecessor is not None else None
+        )
+        if event.previous_content_digest != expected_previous_digest:
+            raise ResultAuthorityError(
+                "result authority event predecessor content digest disagrees with history: "
                 f"{event.event_id}"
             )
         if event.revision > 1 and event.reason != ledger.correction_reason:
@@ -172,6 +187,7 @@ def apply_authoritative_result(
             reasons=outcome_reasons,
         )
         previous_ledger_id = None
+        previous_content_digest = None
         prior_revision = 0
     else:
         current = snapshot.current
@@ -202,6 +218,7 @@ def apply_authoritative_result(
             reasons=outcome_reasons,
         )
         previous_ledger_id = current.ledger_id
+        previous_content_digest = current.content_digest
         prior_revision = current.revision
 
     head = ResultAuthorityHead(
@@ -213,13 +230,17 @@ def apply_authoritative_result(
         event_id=_event_id(
             workflow_id=workflow_id,
             previous_ledger_id=previous_ledger_id,
+            previous_content_digest=previous_content_digest,
             current_ledger_id=ledger.ledger_id,
+            current_content_digest=ledger.content_digest or "",
             revision=ledger.revision,
             reason=normalized_reason,
         ),
         workflow_id=workflow_id,
         previous_ledger_id=previous_ledger_id,
+        previous_content_digest=previous_content_digest,
         current_ledger_id=ledger.ledger_id,
+        current_content_digest=ledger.content_digest or "",
         revision=ledger.revision,
         reason=normalized_reason,
     )
@@ -319,6 +340,7 @@ def _ledger_from_row(row: ResultLedgerRecordRow) -> ResultLedgerRecord:
         row.status,
         row.decided_date,
         row.gross_value,
+        row.gross_value_minor,
         row.share_status,
         row.share_record_id,
         row.observed_created_at,
@@ -330,6 +352,11 @@ def _ledger_from_row(row: ResultLedgerRecordRow) -> ResultLedgerRecord:
         ledger.status.value,
         decided_date,
         ledger.gross_value,
+        (
+            money_minor_units(ledger.gross_value, field_name="gross_value")
+            if ledger.gross_value is not None
+            else None
+        ),
         ledger.share_status.value,
         share_record_id,
         ledger.created_at.isoformat(),
@@ -412,7 +439,7 @@ def _same_outcome(
         and current.decided_date == decided_date
         and current.gross_value == gross_value
         and current_rate == share_rate
-        and current.reasons == (outcome_reasons or [])
+        and current.reasons == tuple(outcome_reasons or [])
     )
 
 
@@ -420,7 +447,9 @@ def _event_id(
     *,
     workflow_id: str,
     previous_ledger_id: str | None,
+    previous_content_digest: str | None,
     current_ledger_id: str,
+    current_content_digest: str,
     revision: int,
     reason: str,
 ) -> str:
@@ -428,7 +457,9 @@ def _event_id(
         [
             workflow_id,
             previous_ledger_id or "none",
+            previous_content_digest or "none",
             current_ledger_id,
+            current_content_digest,
             str(revision),
             reason,
         ]

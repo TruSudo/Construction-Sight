@@ -1,0 +1,24 @@
+{
+  "schema_version": "constructionsight.defect-closure-proof/v1",
+  "defect_id": "CS-SR-079",
+  "required_resolution_sha256": "ca1a01298fe077d4dedfc071101048e5ea43d59452093c3dfbc34a8435fb790b",
+  "implementation_assertions": [
+    {
+      "path": "src/constructionsight/intelligence/relationship_query_service.py",
+      "operator": "contains",
+      "value": "return self.store.list_relationships_for_target(entity_id)"
+    },
+    {
+      "path": "src/constructionsight/intelligence/relationship_query_service.py",
+      "operator": "not_contains",
+      "value": "self.store.list_relationships()"
+    }
+  ],
+  "regression_assertions": [
+    {
+      "path": "tests/test_relationship_query_service.py",
+      "operator": "contains",
+      "value": "CS-SR-079"
+    }
+  ]
+}

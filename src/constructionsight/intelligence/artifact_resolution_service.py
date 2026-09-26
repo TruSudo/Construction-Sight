@@ -18,7 +18,9 @@ from constructionsight.intelligence.artifact_identity import (
     IdentityArtifactType,
     IdentityFingerprint,
     IdentityResolutionCandidate,
+    ResolutionTargetKind,
     artifact_tier,
+    canonical_resolution_candidate_id,
 )
 
 ObservationGroup = dict[IdentityArtifactType, list[ArtifactObservation]]
@@ -55,6 +57,9 @@ class ArtifactResolutionService:
         if left.target_kind != right.target_kind:
             raise ValueError("cannot resolve fingerprints with different target kinds")
 
+        if left.target_identity_id > right.target_identity_id:
+            left, right = right, left
+
         supporting_matches = self.find_matches(left, right)
         conflicts = self.find_conflicts(left, right, supporting_matches)
 
@@ -62,8 +67,12 @@ class ArtifactResolutionService:
             raise ValueError("fingerprints have no comparable identity artifacts")
 
         return IdentityResolutionCandidate(
-            candidate_id=candidate_id
-            or self.default_candidate_id(left.target_identity_id, right.target_identity_id),
+            candidate_id=self._validated_candidate_id(
+                candidate_id,
+                left.target_identity_id,
+                right.target_identity_id,
+                target_kind=left.target_kind,
+            ),
             left_identity_id=left.target_identity_id,
             right_identity_id=right.target_identity_id,
             target_kind=left.target_kind,
@@ -170,10 +179,37 @@ class ArtifactResolutionService:
         return conflicts
 
     @staticmethod
-    def default_candidate_id(left_identity_id: str, right_identity_id: str) -> str:
-        """Return a deterministic candidate ID for a fingerprint comparison."""
+    def default_candidate_id(
+        left_identity_id: str,
+        right_identity_id: str,
+        *,
+        target_kind: ResolutionTargetKind = ResolutionTargetKind.PROJECT,
+    ) -> str:
+        """Return the canonical symmetric candidate ID for a fingerprint comparison."""
 
-        return f"artifact-resolution:{left_identity_id}:{right_identity_id}"
+        return canonical_resolution_candidate_id(
+            left_identity_id,
+            right_identity_id,
+            target_kind=target_kind,
+        )
+
+    @classmethod
+    def _validated_candidate_id(
+        cls,
+        candidate_id: str | None,
+        left_identity_id: str,
+        right_identity_id: str,
+        *,
+        target_kind: ResolutionTargetKind,
+    ) -> str:
+        expected = cls.default_candidate_id(
+            left_identity_id,
+            right_identity_id,
+            target_kind=target_kind,
+        )
+        if candidate_id is not None and candidate_id != expected:
+            raise ValueError("caller candidate_id does not match canonical identity pair")
+        return expected
 
     @staticmethod
     def group_by_artifact_type(observations: list[ArtifactObservation]) -> ObservationGroup:

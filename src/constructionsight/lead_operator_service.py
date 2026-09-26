@@ -8,12 +8,18 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from constructionsight.lead_dedupe_models import LeadDuplicateStatus
 from constructionsight.lead_operator_models import (
     LeadOperatorRecord,
     LeadOperatorRecordKind,
     LeadWorkflowTransitionReport,
 )
-from constructionsight.lead_workflow_models import LeadWorkflowRecord, LeadWorkflowStatus
+from constructionsight.lead_workflow_models import (
+    ACTIONABLE_LEAD_WORKFLOW_STATUSES,
+    LeadWorkflowRecord,
+    LeadWorkflowStatus,
+    require_duplicate_review_clear,
+)
 from constructionsight.lead_workflow_service import transition_lead_workflow
 from constructionsight.storage.lead_workflow_orm import (
     LeadDuplicateResultRecord,
@@ -25,7 +31,9 @@ from constructionsight.storage.lead_workflow_orm import (
     ResultLedgerRecordRow,
     ResultShareRecordRow,
 )
-from constructionsight.storage.lead_workflow_store import store_lead_workflow_record
+from constructionsight.storage.lead_workflow_store import (
+    compare_and_swap_lead_workflow_record,
+)
 
 
 class LeadOperatorError(ValueError):
@@ -306,6 +314,28 @@ def load_persisted_lead_workflow(
     return record
 
 
+def require_persisted_duplicate_review_clear(
+    session: Session, record: LeadWorkflowRecord, next_status: LeadWorkflowStatus,
+) -> None:
+    """Gate actionability against both workflow limits and durable dedupe results."""
+
+    require_duplicate_review_clear(limitations=record.limitations, next_status=next_status)
+    if next_status not in ACTIONABLE_LEAD_WORKFLOW_STATUSES:
+        return
+    unresolved_result = session.execute(
+        select(LeadDuplicateResultRecord.result_id).where(
+            LeadDuplicateResultRecord.base_candidate_id == record.base_candidate_id,
+            LeadDuplicateResultRecord.status.in_(
+                (LeadDuplicateStatus.DUPLICATE.value, LeadDuplicateStatus.REVIEW_NEEDED.value)
+            ),
+        ).limit(1)
+    ).scalar_one_or_none()
+    if unresolved_result is not None:
+        raise LeadOperatorError(
+            "unresolved duplicate review blocks actionable persisted lead workflow status"
+        )
+
+
 def transition_persisted_lead_workflow(
     session: Session,
     *,
@@ -326,12 +356,20 @@ def transition_persisted_lead_workflow(
             f"expected {expected_current_status.value}, "
             f"observed {record.status.value}"
         )
+    require_persisted_duplicate_review_clear(session, record, next_status)
     updated = transition_lead_workflow(
         record=record,
         next_status=next_status,
         reason=normalized_reason,
     )
-    store_lead_workflow_record(session, updated)
+    try:
+        compare_and_swap_lead_workflow_record(
+            session,
+            current=record,
+            updated=updated,
+        )
+    except ValueError as exc:
+        raise LeadOperatorError(str(exc)) from exc
     session.flush()
     event = updated.events[-1]
     return LeadWorkflowTransitionReport(

@@ -1,8 +1,16 @@
-from sqlalchemy import select
+import pytest
+from sqlalchemy import func, select
 
 from constructionsight.ceqanet_persistence_execute import execute_ceqanet_write_plan
-from constructionsight.storage.database import create_database_engine, initialize_database
-from constructionsight.storage.domain_orm import CeqaDomainRecord, EntityRecord, SiteRecord
+from constructionsight.storage.database import (
+    create_database_engine,
+    initialize_database,
+)
+from constructionsight.storage.domain_orm import (
+    CeqaDomainRecord,
+    EntityRecord,
+    SiteRecord,
+)
 
 
 def _write_plan() -> dict[str, object]:
@@ -61,12 +69,13 @@ def _write_plan() -> dict[str, object]:
     }
 
 
-def test_execute_ceqanet_write_plan_persists_domain_records() -> None:
+def test_execute_ceqanet_write_plan_persists_domain_records_atomically() -> None:
     engine = create_database_engine("sqlite+pysqlite:///:memory:")
     result = execute_ceqanet_write_plan(_write_plan(), engine=engine)
     payload = result.to_dict()
 
-    assert payload["metadata"]["schema_version"] == "ceqanet_persistence_execution.v1"
+    assert payload["metadata"]["schema_version"] == "ceqanet_persistence_execution.v2"
+    assert payload["metadata"]["transactional"] is True
     assert payload["metadata"]["applied_count"] == 3
     assert payload["metadata"]["failed_count"] == 0
     assert payload["metadata"]["skipped_count"] == 0
@@ -102,8 +111,9 @@ def test_execute_ceqanet_write_plan_updates_existing_records() -> None:
         assert connection.scalar(select(CeqaDomainRecord.title)) == "Updated Countywide Plan"
 
 
-def test_execute_ceqanet_write_plan_tracks_failed_and_skipped_operations() -> None:
+def test_invalid_operation_blocks_entire_plan_before_any_commit() -> None:
     engine = create_database_engine("sqlite+pysqlite:///:memory:")
+    initialize_database(engine)
     plan = _write_plan()
     operations = plan["operations"]
     assert isinstance(operations, list)
@@ -117,35 +127,55 @@ def test_execute_ceqanet_write_plan_tracks_failed_and_skipped_operations() -> No
             "payload": {},
         }
     )
-    operations.append(
-        {
-            "operation_id": "bad-payload",
-            "action": "upsert_preview",
-            "target_collection": "sites",
-            "target_key": "missing",
-            "source_index": 100,
-            "payload": {"county": "San Bernardino"},
-        }
-    )
+    metadata = plan["metadata"]
+    assert isinstance(metadata, dict)
+    metadata["operation_count"] = len(operations)
 
-    payload = execute_ceqanet_write_plan(plan, engine=engine).to_dict()
+    with pytest.raises(ValueError, match="unsupported target_collection"):
+        execute_ceqanet_write_plan(plan, engine=engine, initialize=False)
 
-    assert payload["metadata"]["applied_count"] == 3
-    assert payload["metadata"]["failed_count"] == 1
-    assert payload["metadata"]["skipped_count"] == 1
-    assert payload["skipped_operations"][0]["reason"] == "unsupported target_collection"
-    assert payload["failed_operations"][0]["reason"] == "ValidationError"
+    with engine.connect() as connection:
+        assert connection.scalar(select(func.count()).select_from(SiteRecord)) == 0
+        assert connection.scalar(select(func.count()).select_from(EntityRecord)) == 0
+        assert connection.scalar(select(func.count()).select_from(CeqaDomainRecord)) == 0
+
+
+def test_invalid_payload_blocks_entire_plan_before_any_commit() -> None:
+    engine = create_database_engine("sqlite+pysqlite:///:memory:")
+    initialize_database(engine)
+    plan = _write_plan()
+    operations = plan["operations"]
+    assert isinstance(operations, list)
+    operations[1]["payload"] = {"county": "San Bernardino"}
+
+    with pytest.raises(ValueError, match="payload is invalid"):
+        execute_ceqanet_write_plan(plan, engine=engine, initialize=False)
+
+    with engine.connect() as connection:
+        assert connection.scalar(select(func.count()).select_from(SiteRecord)) == 0
+        assert connection.scalar(select(func.count()).select_from(EntityRecord)) == 0
+        assert connection.scalar(select(func.count()).select_from(CeqaDomainRecord)) == 0
 
 
 def test_execute_ceqanet_write_plan_rejects_bad_schema() -> None:
     engine = create_database_engine("sqlite+pysqlite:///:memory:")
 
-    try:
-        execute_ceqanet_write_plan({"metadata": {"schema_version": "wrong.v1"}}, engine=engine)
-    except ValueError as exc:
-        assert "ceqanet_write_plan.v1" in str(exc)
-    else:
-        raise AssertionError("Expected bad write plan schema to fail.")
+    with pytest.raises(ValueError, match="ceqanet_write_plan.v1"):
+        execute_ceqanet_write_plan(
+            {"metadata": {"schema_version": "wrong.v1"}},
+            engine=engine,
+        )
+
+
+def test_execute_ceqanet_write_plan_rejects_count_drift() -> None:
+    engine = create_database_engine("sqlite+pysqlite:///:memory:")
+    plan = _write_plan()
+    metadata = plan["metadata"]
+    assert isinstance(metadata, dict)
+    metadata["operation_count"] = 2
+
+    with pytest.raises(ValueError, match="operation_count"):
+        execute_ceqanet_write_plan(plan, engine=engine)
 
 
 def test_execute_ceqanet_write_plan_can_use_preinitialized_database() -> None:
@@ -155,3 +185,35 @@ def test_execute_ceqanet_write_plan_can_use_preinitialized_database() -> None:
     result = execute_ceqanet_write_plan(_write_plan(), engine=engine, initialize=False)
 
     assert result.applied_count == 3
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("target_key", "site:tampered", "target_key does not match payload"),
+        ("operation_id", "sites:site:tampered", "canonical target identity"),
+        ("source_index", 7, "source_index must equal 0"),
+    ],
+)
+# Regression: CS-SR-086
+def test_tampered_operation_identity_blocks_plan_before_commit(
+    field: str,
+    value: object,
+    message: str,
+) -> None:
+    engine = create_database_engine("sqlite+pysqlite:///:memory:")
+    initialize_database(engine)
+    plan = _write_plan()
+    operations = plan["operations"]
+    assert isinstance(operations, list)
+    operation = operations[0]
+    assert isinstance(operation, dict)
+    operation[field] = value
+
+    with pytest.raises(ValueError, match=message):
+        execute_ceqanet_write_plan(plan, engine=engine, initialize=False)
+
+    with engine.connect() as connection:
+        assert connection.scalar(select(func.count()).select_from(SiteRecord)) == 0
+        assert connection.scalar(select(func.count()).select_from(EntityRecord)) == 0
+        assert connection.scalar(select(func.count()).select_from(CeqaDomainRecord)) == 0

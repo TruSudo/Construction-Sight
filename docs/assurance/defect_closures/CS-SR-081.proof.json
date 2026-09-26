@@ -1,0 +1,24 @@
+{
+  "schema_version": "constructionsight.defect-closure-proof/v1",
+  "defect_id": "CS-SR-081",
+  "required_resolution_sha256": "be9050078180d64d69c14928c057fbfa0971a0220b5f6fb9c1b23ab53b759a5a",
+  "implementation_assertions": [
+    {
+      "path": "src/constructionsight/storage/database.py",
+      "operator": "contains",
+      "value": "cursor.execute(\"PRAGMA foreign_keys = ON\")"
+    },
+    {
+      "path": "src/constructionsight/storage/database.py",
+      "operator": "not_contains",
+      "value": "return create_engine(url, future=True)"
+    }
+  ],
+  "regression_assertions": [
+    {
+      "path": "tests/test_database.py",
+      "operator": "contains",
+      "value": "CS-SR-081"
+    }
+  ]
+}

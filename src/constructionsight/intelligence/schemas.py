@@ -8,6 +8,8 @@ schema contract is validated.
 
 from __future__ import annotations
 
+import hashlib
+import json
 from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
@@ -195,6 +197,7 @@ class RuntimeEventType(StrEnum):
     AUTHORITY_STATUS_CHANGED = "authority_status_changed"
     PROJECT_PHASE_CHANGED = "project_phase_changed"
     OPPORTUNITY_SIGNAL_CREATED = "opportunity_signal_created"
+    OPPORTUNITY_SIGNAL_UPDATED = "opportunity_signal_updated"
     SOURCE_VERIFICATION_ADDED = "source_verification_added"
     EXPORT_CREATED = "export_created"
     ENRICHMENT_FAILED = "enrichment_failed"
@@ -242,7 +245,7 @@ class EvidenceRecord(BaseModel):
     evidence_field: str | None = None
     evidence_value: str | None = None
     evidence_text: str | None = None
-    content_hash: str | None = None
+    content_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     retrieval_method: str | None = None
     access_status: str | None = None
     adapter_name: str | None = None
@@ -250,12 +253,29 @@ class EvidenceRecord(BaseModel):
     limitations: list[str] = Field(default_factory=list)
     raw_observations: dict[str, Any] = Field(default_factory=dict)
 
+    def computed_content_hash(self) -> str:
+        """Return the canonical digest binding this evidence ID to retained content."""
+
+        payload = self.model_dump(mode="json", exclude={"content_hash"})
+        canonical = json.dumps(
+            payload,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+            allow_nan=False,
+        ).encode("utf-8")
+        return hashlib.sha256(canonical).hexdigest()
+
     @model_validator(mode="after")
-    def require_evidence_payload(self) -> EvidenceRecord:
-        """Require at least one concrete evidence payload field."""
+    def require_evidence_payload_and_hash(self) -> EvidenceRecord:
+        """Require concrete evidence and bind its ID to a canonical full digest."""
 
         if not any([self.evidence_value, self.evidence_text, self.raw_observations]):
             raise ValueError("evidence must include a value, text, or raw_observations")
+        expected = self.computed_content_hash()
+        if self.content_hash is not None and self.content_hash != expected:
+            raise ValueError("content_hash does not match canonical evidence content")
+        object.__setattr__(self, "content_hash", expected)
         return self
 
 
@@ -272,6 +292,7 @@ class EntityIdentity(BaseModel):
     addresses: list[str] = Field(default_factory=list)
     jurisdictions: list[str] = Field(default_factory=list)
     related_source_record_ids: list[str] = Field(default_factory=list)
+    evidence_record_ids: list[str] = Field(default_factory=list)
     confidence_score: int = Field(default=0, ge=0, le=100)
     identity_status: IdentityStatus = IdentityStatus.UNRESOLVED
     first_seen: datetime = Field(default_factory=utc_now)
@@ -281,7 +302,12 @@ class EntityIdentity(BaseModel):
     contradiction_summary: str | None = None
 
     @field_validator(
-        "aliases", "source_names", "addresses", "jurisdictions", "related_source_record_ids"
+        "aliases",
+        "source_names",
+        "addresses",
+        "jurisdictions",
+        "related_source_record_ids",
+        "evidence_record_ids",
     )
     @classmethod
     def require_unique_values(cls, value: list[str]) -> list[str]:

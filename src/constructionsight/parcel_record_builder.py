@@ -47,7 +47,7 @@ def build_parcel_core_record_from_preview(
         address=address,
         normalized_address=address,
         geometry=geometry,
-        limitations=list(row_preview.limitations),
+        limitations=tuple(row_preview.limitations),
     )
 
 

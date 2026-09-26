@@ -1,0 +1,24 @@
+{
+  "schema_version": "constructionsight.defect-closure-proof/v1",
+  "defect_id": "CS-SR-096",
+  "required_resolution_sha256": "a0ca2ce4d5f2e09f9659fbc4cfb82d5c9fcdb70f11c0e2674fc4ede8e5ab6c4a",
+  "implementation_assertions": [
+    {
+      "path": "src/constructionsight/semantic_authorization_certification.py",
+      "operator": "contains",
+      "value": "_HIGH_IMPACT_MUTATION_PREFIXES: Final = ("
+    },
+    {
+      "path": "src/constructionsight/semantic_authorization_certification.py",
+      "operator": "not_contains",
+      "value": "if target == _DYNAMIC_EFFECT or target in _EFFECT_TARGETS:"
+    }
+  ],
+  "regression_assertions": [
+    {
+      "path": "tests/test_semantic_authorization_certification.py",
+      "operator": "contains",
+      "value": "CS-SR-096"
+    }
+  ]
+}

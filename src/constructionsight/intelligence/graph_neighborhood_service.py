@@ -84,11 +84,7 @@ class GraphNeighborhoodService:
             for relationship in relationships
             if relationship.object_entity_id != project_cluster_id
         )
-        connected_entities = [
-            entity
-            for entity in self.store.list_entities()
-            if entity.entity_id in connected_entity_ids
-        ]
+        connected_entities = self.store.list_entities_by_ids(connected_entity_ids)
         opportunities = self.relationship_queries.get_opportunities_for_project(project_cluster_id)
         return GraphNeighborhood(
             center_node_id=project_cluster_id,

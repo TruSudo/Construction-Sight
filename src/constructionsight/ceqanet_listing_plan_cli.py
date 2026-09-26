@@ -28,6 +28,7 @@ from constructionsight.adapters.ceqanet_listing_dry_run import (
     CeqanetListingDryRunReport,
 )
 from constructionsight.legal import SourceAccessProfile, evaluate_access
+from constructionsight.storage.runtime_artifacts import write_runtime_text
 
 app = typer.Typer(help="Preview bounded CEQAnet read-only listing plans.")
 console = Console(width=240, color_system=None)
@@ -150,11 +151,9 @@ def _query_to_dict(query: CeqanetListingQuery) -> dict[str, Any]:
 
 def _write_json_file(output_path: Path, payload: dict[str, Any]) -> None:
     """Write deterministic UTF-8 JSON output."""
-
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(
+    write_runtime_text(
+        output_path,
         json.dumps(payload, indent=2, sort_keys=True, default=str) + "\n",
-        encoding="utf-8",
     )
 
 
@@ -186,13 +185,18 @@ def _render_plan(plan: CeqanetListingPlan) -> None:
     console.print(pages)
 
 
-def _render_dry_run(report: CeqanetListingDryRunReport) -> None:
+def _render_dry_run(
+    report: CeqanetListingDryRunReport,
+    plan: CeqanetListingPlan,
+) -> None:
     """Render a CEQAnet listing dry-run report as Rich tables."""
 
     summary = Table(title="CEQAnet Listing Dry Run")
     summary.add_column("Field")
     summary.add_column("Value")
     summary.add_row("Allowed", str(report.allowed))
+    summary.add_row("Access decision", plan.access_result.decision.value)
+    summary.add_row("Access reason", plan.access_result.reason)
     summary.add_row("Reason", report.reason)
     summary.add_row("Planned requests", str(report.planned_request_count))
     summary.add_row("Executed requests", str(report.executed_request_count))
@@ -516,4 +520,4 @@ def dry_run_ceqanet_listing(
         )
         return
 
-    _render_dry_run(report)
+    _render_dry_run(report, plan)

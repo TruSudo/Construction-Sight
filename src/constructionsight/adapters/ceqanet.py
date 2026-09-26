@@ -1,119 +1,31 @@
-"""CEQAnet adapter implementation.
+"""Pure CEQAnet parsing and normalization adapter.
 
-Phase 6 starts with deterministic fixture-backed parsing and normalization.
-Live HTTP querying is intentionally layered on only after the CEQAnet
-normalization contract is tested and stable.
+Live network execution is intentionally excluded from this module and provided by
+``constructionsight.ceqanet_discovery_http``.
 """
 
 from __future__ import annotations
 
 from collections.abc import Iterable
-from dataclasses import dataclass
 from datetime import date
-from typing import Any, Protocol
+from typing import Any
 
-import httpx
 from pydantic import HttpUrl, TypeAdapter
 
 from constructionsight.adapters.base import AdapterSearchDescriptor, SourceAdapter
 from constructionsight.ceqa_models import CeqaRecord
-from constructionsight.legal import AccessDecision
+from constructionsight.ceqanet_endpoints import (
+    CEQANET_ADVANCED_SEARCH_URL,
+    CEQANET_SEARCH_URL,
+)
 from constructionsight.models import PlatformFamily, SourceVerificationResult
-from constructionsight.provenance import Provenance
-
-CEQANET_ADVANCED_SEARCH_URL = "https://ceqanet.lci.ca.gov/Search/Advanced"
-CEQANET_SEARCH_URL = "https://ceqanet.lci.ca.gov/Search"
+from constructionsight.provenance import Provenance, ProvenanceConfidenceBasis
 
 
 def _validate_http_url(value: str) -> HttpUrl:
     """Validate a string as a Pydantic HttpUrl."""
 
     return TypeAdapter(HttpUrl).validate_python(value)
-
-
-class CeqanetHttpClient(Protocol):
-    """Minimal HTTP client protocol for CEQAnet live discovery."""
-
-    def get(self, url: str, *, follow_redirects: bool, timeout: float) -> httpx.Response:
-        """Fetch a public URL."""
-
-
-@dataclass(frozen=True)
-class CeqanetDiscoveryResult:
-    """Live CEQAnet public search discovery result."""
-
-    url: str
-    reachable: bool
-    status_code: int | None
-    advanced_search_available: bool
-    sch_number_field_detected: bool
-    document_type_field_detected: bool
-    date_field_detected: bool
-    lead_agency_field_detected: bool
-    notes: str | None = None
-
-    @property
-    def confidence_score(self) -> int:
-        """Compute conservative confidence from public discovery signals."""
-
-        score = 0
-        if self.reachable:
-            score += 30
-        if self.advanced_search_available:
-            score += 25
-        for flag in (
-            self.sch_number_field_detected,
-            self.document_type_field_detected,
-            self.date_field_detected,
-            self.lead_agency_field_detected,
-        ):
-            if flag:
-                score += 10
-        return min(score, 100)
-
-    def to_source_verification_result(
-        self,
-        *,
-        source_name: str,
-        source_url: str,
-    ) -> SourceVerificationResult:
-        """Convert CEQAnet search-surface discovery into persisted verification evidence."""
-
-        return SourceVerificationResult(
-            source_name=source_name,
-            public_url=_validate_http_url(source_url),
-            url_reachable=self.reachable,
-            portal_type_detected=PlatformFamily.CEQANET,
-            public_search_available=self.advanced_search_available,
-            login_required=False if self.reachable else None,
-            permit_details_visible=None,
-            agenda_packets_visible=None,
-            pdfs_downloadable=None,
-            contractor_owner_applicant_fields_visible=None,
-            evidence_snapshot_text=(
-                "CEQAnet advanced-search discovery: "
-                f"url={self.url}; "
-                f"status_code={self.status_code}; "
-                f"advanced_search_available={self.advanced_search_available}; "
-                f"sch_number_field_detected={self.sch_number_field_detected}; "
-                f"document_type_field_detected={self.document_type_field_detected}; "
-                f"date_field_detected={self.date_field_detected}; "
-                f"lead_agency_field_detected={self.lead_agency_field_detected}"
-            ),
-            confidence_score=self.confidence_score,
-            notes=self.notes or "Public CEQAnet advanced-search discovery completed.",
-            raw_observations={
-                "discovery_url": self.url,
-                "status_code": self.status_code,
-                "reachable": self.reachable,
-                "advanced_search_available": self.advanced_search_available,
-                "sch_number_field_detected": self.sch_number_field_detected,
-                "document_type_field_detected": self.document_type_field_detected,
-                "date_field_detected": self.date_field_detected,
-                "lead_agency_field_detected": self.lead_agency_field_detected,
-                "confidence_score": self.confidence_score,
-            },
-        )
 
 
 class CeqanetFixtureParser:
@@ -149,8 +61,9 @@ class CeqanetFixtureParser:
                     adapter_family=PlatformFamily.CEQANET.value,
                     raw_reference=sch_number,
                     evidence_text=title,
-                    confidence_score=85,
-                    verified=False,
+                    confidence_basis=(
+                        ProvenanceConfidenceBasis.DETERMINISTIC_NORMALIZATION
+                    ),
                     notes=(
                         "Fixture-backed CEQAnet normalization; live verification not yet "
                         "performed."
@@ -189,56 +102,11 @@ class CeqanetFixtureParser:
         return f"ceqanet:title:{slug}"
 
 
-class CeqanetLiveDiscovery:
-    """Conservative live discovery for public CEQAnet search metadata."""
-
-    def __init__(
-        self, client: CeqanetHttpClient | None = None, timeout_seconds: float = 20.0
-    ) -> None:
-        self.client = client or httpx.Client(headers={"User-Agent": "ConstructionSight/0.1"})
-        self.timeout_seconds = timeout_seconds
-
-    def discover(self) -> CeqanetDiscoveryResult:
-        """Fetch the public advanced-search page and detect stable search fields."""
-
-        try:
-            response = self.client.get(
-                CEQANET_ADVANCED_SEARCH_URL,
-                follow_redirects=True,
-                timeout=self.timeout_seconds,
-            )
-        except httpx.HTTPError as exc:
-            return CeqanetDiscoveryResult(
-                url=CEQANET_ADVANCED_SEARCH_URL,
-                reachable=False,
-                status_code=None,
-                advanced_search_available=False,
-                sch_number_field_detected=False,
-                document_type_field_detected=False,
-                date_field_detected=False,
-                lead_agency_field_detected=False,
-                notes=f"HTTP request failed: {exc.__class__.__name__}",
-            )
-
-        body = response.text[:50_000].lower()
-        reachable = 200 <= response.status_code < 400
-        return CeqanetDiscoveryResult(
-            url=str(response.url),
-            reachable=reachable,
-            status_code=response.status_code,
-            advanced_search_available=reachable and "advanced" in body and "search" in body,
-            sch_number_field_detected="sch" in body and "number" in body,
-            document_type_field_detected="document" in body and "type" in body,
-            date_field_detected="date" in body,
-            lead_agency_field_detected=("lead" in body or "public" in body) and "agency" in body,
-            notes="Public CEQAnet advanced-search discovery completed.",
-        )
-
-
 class CeqanetAdapter(SourceAdapter[dict[str, Any], CeqaRecord]):
-    """CEQAnet adapter with fixture-backed Phase 6 normalization."""
+    """CEQAnet adapter with fixture-backed normalization and no network authority."""
 
     platform_family = PlatformFamily.CEQANET
+    requires_access_preflight = False
 
     def __init__(
         self, *args: Any, fixture_rows: list[dict[str, Any]] | None = None, **kwargs: Any
@@ -248,7 +116,7 @@ class CeqanetAdapter(SourceAdapter[dict[str, Any], CeqaRecord]):
         self.parser = CeqanetFixtureParser()
 
     def verify_source(self) -> SourceVerificationResult:
-        """Return adapter-level source capability metadata without live querying."""
+        """Return adapter-level capability metadata without live querying."""
 
         return SourceVerificationResult(
             source_name=self.source_name,
@@ -260,31 +128,13 @@ class CeqanetAdapter(SourceAdapter[dict[str, Any], CeqaRecord]):
             pdfs_downloadable=None,
             confidence_score=40,
             notes=(
-                "CEQAnet Phase 6 adapter is fixture-backed; live HTTP verification "
-                "remains delegated to SourceVerifier."
+                "CEQAnet adapter normalization is deterministic and fixture-backed; "
+                "live HTTP verification requires an approved transport operation."
             ),
         )
 
-    def discover_live_public_search(self) -> CeqanetDiscoveryResult:
-        """Run live public CEQAnet advanced-search discovery without collecting records."""
-
-        access_result = self.preflight()
-        if access_result.decision is not AccessDecision.ALLOWED:
-            return CeqanetDiscoveryResult(
-                url=CEQANET_ADVANCED_SEARCH_URL,
-                reachable=False,
-                status_code=None,
-                advanced_search_available=False,
-                sch_number_field_detected=False,
-                document_type_field_detected=False,
-                date_field_detected=False,
-                lead_agency_field_detected=False,
-                notes=access_result.reason,
-            )
-        return CeqanetLiveDiscovery(timeout_seconds=self.context.request_timeout_seconds).discover()
-
     def discover_search(self) -> list[AdapterSearchDescriptor]:
-        """Describe known public CEQAnet search surface."""
+        """Describe the known public CEQAnet search surface."""
 
         return [
             AdapterSearchDescriptor(
@@ -294,8 +144,8 @@ class CeqanetAdapter(SourceAdapter[dict[str, Any], CeqaRecord]):
                 method="GET",
                 record_types=["ceqa", "document"],
                 notes=(
-                    "Public advanced search surface; live query implementation follows "
-                    "fixture-backed parser validation."
+                    "Public advanced search surface; execution is delegated to an "
+                    "approved bounded transport module."
                 ),
             )
         ]
@@ -311,10 +161,18 @@ class CeqanetAdapter(SourceAdapter[dict[str, Any], CeqaRecord]):
         return record
 
     def normalize(self, record: dict[str, Any]) -> CeqaRecord:
-        """Normalize a CEQAnet fixture row into a CEQA record."""
+        """Normalize a CEQAnet fixture row into a normalized CEQA record."""
 
         return self.parser.parse_row(
             record,
             source_name=self.source_name,
             source_url=str(self.source.public_url),
         )
+
+
+__all__ = [
+    "CEQANET_ADVANCED_SEARCH_URL",
+    "CEQANET_SEARCH_URL",
+    "CeqanetAdapter",
+    "CeqanetFixtureParser",
+]

@@ -8,6 +8,9 @@ runtime/UI layers can consume.
 
 from __future__ import annotations
 
+import hashlib
+import json
+
 from constructionsight.intelligence.schemas import (
     EntityIdentity,
     EvidenceRecord,
@@ -33,26 +36,22 @@ class IntelligenceGraphService:
     def record_evidence(self, evidence: EvidenceRecord) -> EvidenceRecord:
         """Persist an evidence record and emit a source-record event."""
 
-        was_existing = any(
-            record.evidence_id == evidence.evidence_id for record in self.store.list_evidence()
-        )
+        existing = self.store.get_evidence(evidence.evidence_id)
         self.store.upsert_evidence(evidence)
+        if existing is not None:
+            return evidence
         self._emit_event(
             event_id=f"event:evidence:{evidence.evidence_id}",
-            event_type=RuntimeEventType.SOURCE_RECORD_CHANGED
-            if was_existing
-            else RuntimeEventType.SOURCE_RECORD_DISCOVERED,
+            event_type=RuntimeEventType.SOURCE_RECORD_DISCOVERED,
             severity=RuntimeEventSeverity.LOW,
-            message=(
-                f"Evidence {'updated' if was_existing else 'recorded'} from "
-                f"{evidence.source_name}."
-            ),
+            message=f"Evidence recorded from {evidence.source_name}.",
             source_record_refs=[evidence.evidence_id],
             payload={
-                "operation": "updated" if was_existing else "created",
+                "operation": "created",
                 "evidence_id": evidence.evidence_id,
                 "source_name": evidence.source_name,
                 "record_type": evidence.record_type,
+                "content_hash": evidence.content_hash,
             },
         )
         return evidence
@@ -60,9 +59,7 @@ class IntelligenceGraphService:
     def upsert_entity(self, entity: EntityIdentity) -> EntityIdentity:
         """Persist an entity identity and emit a create/update event."""
 
-        was_existing = any(
-            record.entity_id == entity.entity_id for record in self.store.list_entities()
-        )
+        was_existing = self.store.get_entity(entity.entity_id) is not None
         self.store.upsert_entity(entity)
         self._emit_event(
             event_id=f"event:entity:{entity.entity_id}",
@@ -86,10 +83,7 @@ class IntelligenceGraphService:
     def upsert_relationship(self, relationship: RelationshipAssertion) -> RelationshipAssertion:
         """Persist an evidence-backed relationship and emit a graph event."""
 
-        was_existing = any(
-            record.relationship_id == relationship.relationship_id
-            for record in self.store.list_relationships()
-        )
+        was_existing = self.store.get_relationship(relationship.relationship_id) is not None
         self.store.upsert_relationship(relationship)
         self._emit_event(
             event_id=f"event:relationship:{relationship.relationship_id}",
@@ -118,10 +112,7 @@ class IntelligenceGraphService:
     def upsert_project_cluster(self, cluster: ProjectCluster) -> ProjectCluster:
         """Persist a project cluster and emit a project-cluster event."""
 
-        was_existing = any(
-            record.project_cluster_id == cluster.project_cluster_id
-            for record in self.store.list_project_clusters()
-        )
+        was_existing = self.store.get_project_cluster(cluster.project_cluster_id) is not None
         self.store.upsert_project_cluster(cluster)
         self._emit_event(
             event_id=f"event:project_cluster:{cluster.project_cluster_id}",
@@ -150,10 +141,7 @@ class IntelligenceGraphService:
     def upsert_opportunity(self, opportunity: OpportunitySignal) -> OpportunitySignal:
         """Persist an opportunity signal and emit an opportunity event."""
 
-        was_existing = any(
-            record.opportunity_id == opportunity.opportunity_id
-            for record in self.store.list_opportunities()
-        )
+        was_existing = self.store.get_opportunity(opportunity.opportunity_id) is not None
         self.store.upsert_opportunity(opportunity)
         self._emit_event(
             event_id=f"event:opportunity:{opportunity.opportunity_id}",
@@ -193,8 +181,30 @@ class IntelligenceGraphService:
     ) -> RuntimeEvent:
         """Persist a runtime event for a graph operation."""
 
+        event_identity_payload = {
+            "event_namespace": event_id,
+            "event_type": event_type.value,
+            "severity": severity.value,
+            "source_service": self.source_service,
+            "entity_refs": entity_refs or [],
+            "project_cluster_refs": project_cluster_refs or [],
+            "source_record_refs": source_record_refs or [],
+            "payload": payload,
+            "message": message,
+        }
+        canonical = json.dumps(
+            event_identity_payload,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+            allow_nan=False,
+        ).encode("utf-8")
+        resolved_event_id = f"{event_id}:{hashlib.sha256(canonical).hexdigest()}"
+        existing = self.store.get_runtime_event(resolved_event_id)
+        if existing is not None:
+            return existing
         event = RuntimeEvent(
-            event_id=event_id,
+            event_id=resolved_event_id,
             event_type=event_type,
             severity=severity,
             source_service=self.source_service,

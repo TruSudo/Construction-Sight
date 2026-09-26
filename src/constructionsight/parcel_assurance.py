@@ -92,13 +92,6 @@ def build_parcel_assurance_report(
         ]
     )
     return ParcelAssuranceReport(
-        report_id=_report_id(
-            normalized_apn=first_record.normalized_apn,
-            county=first_record.county,
-            claims=claims,
-            field_roles=requested_fields,
-            contexts=[contexts[record.source_key] for record in current_records],
-        ),
         normalized_apn=first_record.normalized_apn,
         county=first_record.county,
         review_status=review_status,

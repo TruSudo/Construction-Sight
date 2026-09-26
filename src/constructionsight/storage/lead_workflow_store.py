@@ -4,15 +4,29 @@ from __future__ import annotations
 
 import json
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
-from constructionsight.lead_dedupe_models import LeadDuplicateResult, LeadFingerprint
+from constructionsight.lead_dedupe_models import (
+    LeadDuplicateResult,
+    LeadDuplicateStatus,
+    LeadFingerprint,
+)
 from constructionsight.lead_review_models import LeadReviewPackage
-from constructionsight.lead_workflow_models import LeadWorkflowEvent, LeadWorkflowRecord
+from constructionsight.lead_workflow_models import (
+    ACTIONABLE_LEAD_WORKFLOW_STATUSES,
+    LeadWorkflowEvent,
+    LeadWorkflowRecord,
+    require_duplicate_review_clear,
+)
 from constructionsight.opportunity_enrichment_models import OpportunityEnrichmentReport
 from constructionsight.result_ledger_models import ResultLedgerRecord, ResultShareRecord
-from constructionsight.result_ledger_service import validate_result_ledger_history
+from constructionsight.result_ledger_service import (
+    calculate_share_minor_units,
+    money_minor_units,
+    share_rate_ppm_units,
+    validate_result_ledger_history,
+)
 from constructionsight.storage.lead_workflow_orm import (
     LeadDuplicateResultRecord,
     LeadFingerprintRecord,
@@ -139,7 +153,7 @@ def store_lead_duplicate_result(
     session: Session,
     result: LeadDuplicateResult,
 ) -> LeadDuplicateResultRecord:
-    """Insert or update a lead duplicate check result."""
+    """Insert a durable duplicate verdict or replay the same semantic decision."""
 
     session.flush()
     payload_json = _payload_json(result.to_dict())
@@ -159,11 +173,8 @@ def store_lead_duplicate_result(
         )
         session.add(existing)
         return existing
-    existing.status = result.status.value
-    existing.candidate_fingerprint_key = result.candidate.fingerprint_key
-    existing.base_candidate_id = result.candidate.base_candidate_id
-    existing.matched_count = len(result.matched_fingerprint_keys)
-    existing.payload_json = payload_json
+    if not _duplicate_result_replay_matches(existing, result, payload_json):
+        raise ValueError("persisted lead duplicate results are immutable")
     return existing
 
 
@@ -172,7 +183,7 @@ def store_lead_workflow_event(
     event: LeadWorkflowEvent,
     workflow_id: str | None = None,
 ) -> LeadWorkflowEventRecord:
-    """Insert or update a lead workflow event."""
+    """Append one immutable workflow event or accept an exact replay."""
 
     session.flush()
     payload_json = _payload_json(event.model_dump(mode="json"))
@@ -194,12 +205,15 @@ def store_lead_workflow_event(
         )
         session.add(existing)
         return existing
-    existing.workflow_id = workflow_id
-    existing.previous_status = previous_status
-    existing.current_status = event.current_status.value
-    existing.reason = event.reason
-    existing.observed_created_at = event.created_at.isoformat()
-    existing.payload_json = payload_json
+    if (
+        existing.workflow_id != workflow_id
+        or existing.previous_status != previous_status
+        or existing.current_status != event.current_status.value
+        or existing.reason != event.reason
+        or existing.observed_created_at != event.created_at.isoformat()
+        or existing.payload_json != payload_json
+    ):
+        raise ValueError("persisted lead workflow events are immutable")
     return existing
 
 
@@ -210,6 +224,22 @@ def store_lead_workflow_record(
     """Insert or update a lead workflow record and its events."""
 
     session.flush()
+    require_duplicate_review_clear(
+        limitations=workflow.limitations, next_status=workflow.status,
+    )
+    if workflow.status in ACTIONABLE_LEAD_WORKFLOW_STATUSES:
+        unresolved_result = session.execute(
+            select(LeadDuplicateResultRecord.result_id).where(
+                LeadDuplicateResultRecord.base_candidate_id == workflow.base_candidate_id,
+                LeadDuplicateResultRecord.status.in_(
+                    (LeadDuplicateStatus.DUPLICATE.value, LeadDuplicateStatus.REVIEW_NEEDED.value)
+                ),
+            ).limit(1)
+        ).scalar_one_or_none()
+        if unresolved_result is not None:
+            raise ValueError(
+                "unresolved duplicate review blocks actionable persisted lead workflow status"
+            )
     payload_json = _payload_json(workflow.to_dict())
     existing = session.execute(
         select(LeadWorkflowRecordRow).where(
@@ -230,17 +260,91 @@ def store_lead_workflow_record(
         )
         session.add(existing)
     else:
-        existing.package_id = workflow.package_id
-        existing.base_candidate_id = workflow.base_candidate_id
-        existing.fingerprint_key = workflow.fingerprint_key
-        existing.status = workflow.status.value
-        existing.lead_score = workflow.lead_score
-        existing.observed_created_at = workflow.created_at.isoformat()
-        existing.observed_updated_at = workflow.updated_at.isoformat()
-        existing.payload_json = payload_json
+        indexed = (
+            existing.package_id,
+            existing.base_candidate_id,
+            existing.fingerprint_key,
+            existing.status,
+            existing.lead_score,
+            existing.observed_created_at,
+            existing.observed_updated_at,
+            existing.payload_json,
+        )
+        supplied = (
+            workflow.package_id,
+            workflow.base_candidate_id,
+            workflow.fingerprint_key,
+            workflow.status.value,
+            workflow.lead_score,
+            workflow.created_at.isoformat(),
+            workflow.updated_at.isoformat(),
+            payload_json,
+        )
+        if indexed != supplied:
+            raise ValueError(
+                "existing lead workflow mutation requires compare-and-swap transition"
+            )
     for event in workflow.events:
         store_lead_workflow_event(session, event, workflow_id=workflow.workflow_id)
     return existing
+
+
+def compare_and_swap_lead_workflow_record(
+    session: Session,
+    *,
+    current: LeadWorkflowRecord,
+    updated: LeadWorkflowRecord,
+) -> LeadWorkflowRecordRow:
+    """Atomically replace one exact projection and append exactly one new event."""
+
+    if current.workflow_id != updated.workflow_id:
+        raise ValueError("lead workflow compare-and-swap cannot change workflow identity")
+    if len(updated.events) != len(current.events) + 1:
+        raise ValueError("lead workflow compare-and-swap requires exactly one appended event")
+    if updated.events[:-1] != current.events:
+        raise ValueError("lead workflow compare-and-swap cannot rewrite historical events")
+    require_duplicate_review_clear(
+        limitations=updated.limitations,
+        next_status=updated.status,
+    )
+    current_payload = _payload_json(current.to_dict())
+    updated_payload = _payload_json(updated.to_dict())
+    result = session.execute(
+        update(LeadWorkflowRecordRow)
+        .where(
+            LeadWorkflowRecordRow.workflow_id == current.workflow_id,
+            LeadWorkflowRecordRow.status == current.status.value,
+            LeadWorkflowRecordRow.payload_json == current_payload,
+        )
+        .values(
+            package_id=updated.package_id,
+            base_candidate_id=updated.base_candidate_id,
+            fingerprint_key=updated.fingerprint_key,
+            status=updated.status.value,
+            lead_score=updated.lead_score,
+            observed_created_at=updated.created_at.isoformat(),
+            observed_updated_at=updated.updated_at.isoformat(),
+            payload_json=updated_payload,
+        )
+    )
+    if result.rowcount != 1:
+        raise ValueError(
+            "lead workflow compare-and-swap rejected a stale or competing writer"
+        )
+    store_lead_workflow_event(
+        session,
+        updated.events[-1],
+        workflow_id=updated.workflow_id,
+    )
+    session.flush()
+    row = session.execute(
+        select(LeadWorkflowRecordRow).where(
+            LeadWorkflowRecordRow.workflow_id == updated.workflow_id
+        )
+    ).scalar_one()
+    if row.payload_json != updated_payload:
+        raise ValueError("lead workflow compare-and-swap did not persist the exact update")
+    return row
 
 
 def store_result_share_record(
@@ -260,12 +364,20 @@ def store_result_share_record(
         if existing.payload_json != payload_json:
             raise ValueError("persisted result share records are immutable")
         return existing
+    gross_minor = money_minor_units(share.gross_value, field_name="gross_value")
+    rate_ppm = share_rate_ppm_units(share.share_rate, field_name="share_rate")
+    share_minor = calculate_share_minor_units(gross_minor, rate_ppm)
+    if money_minor_units(share.share_value, field_name="share_value") != share_minor:
+        raise ValueError("result share exact-unit arithmetic disagrees with payload")
     existing = ResultShareRecordRow(
         share_record_id=share.share_record_id,
         workflow_id=share.workflow_id,
         gross_value=share.gross_value,
+        gross_value_minor=gross_minor,
         share_rate=share.share_rate,
+        share_rate_ppm=rate_ppm,
         share_value=share.share_value,
+        share_value_minor=share_minor,
         payload_json=payload_json,
     )
     session.add(existing)
@@ -298,6 +410,11 @@ def store_result_ledger_record(
 
     share_record_id = ledger.share.share_record_id if ledger.share else None
     decided_date = ledger.decided_date.isoformat() if ledger.decided_date else None
+    gross_value_minor = (
+        money_minor_units(ledger.gross_value, field_name="gross_value")
+        if ledger.gross_value is not None
+        else None
+    )
     row = ResultLedgerRecordRow(
         ledger_id=ledger.ledger_id,
         workflow_id=ledger.workflow_id,
@@ -305,6 +422,7 @@ def store_result_ledger_record(
         status=ledger.status.value,
         decided_date=decided_date,
         gross_value=ledger.gross_value,
+        gross_value_minor=gross_value_minor,
         share_status=ledger.share_status.value,
         share_record_id=share_record_id,
         observed_created_at=ledger.created_at.isoformat(),
@@ -314,6 +432,42 @@ def store_result_ledger_record(
     if ledger.share is not None:
         store_result_share_record(session, ledger.share)
     return row
+
+
+def _duplicate_result_replay_matches(
+    existing: LeadDuplicateResultRecord, result: LeadDuplicateResult, payload_json: str,
+) -> bool:
+    """Compare one verdict while ignoring non-decisional re-scan metadata."""
+
+    if (
+        existing.status != result.status.value
+        or existing.base_candidate_id != result.candidate.base_candidate_id
+        or existing.candidate_fingerprint_key != result.candidate.fingerprint_key
+        or existing.matched_count != len(result.matched_fingerprint_keys)
+    ):
+        return False
+    return _duplicate_decision_identity(existing.payload_json) == _duplicate_decision_identity(
+        payload_json
+    )
+
+
+def _duplicate_decision_identity(payload_json: str) -> dict[str, object]:
+    payload = json.loads(payload_json)
+    if not isinstance(payload, dict):
+        raise ValueError("persisted duplicate result must be a JSON object")
+    candidate = payload.get("candidate")
+    if not isinstance(candidate, dict):
+        raise ValueError("persisted duplicate result candidate must be an object")
+    # Repeated checks can observe a new fingerprint creation timestamp and score
+    # without changing the actual duplicate decision. Preserve the first receipt.
+    candidate.pop("created_at", None)
+    candidate.pop("lead_score", None)
+    for field in ("matched_fingerprint_keys", "reasons", "limitations"):
+        values = payload.get(field)
+        if not isinstance(values, list) or any(not isinstance(v, str) for v in values):
+            raise ValueError("persisted duplicate result has malformed decision lists")
+        payload[field] = sorted(values)
+    return payload
 
 
 def _payload_json(payload: dict[str, object]) -> str:

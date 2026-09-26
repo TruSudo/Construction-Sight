@@ -1,0 +1,24 @@
+{
+  "schema_version": "constructionsight.defect-closure-proof/v1",
+  "defect_id": "CS-SR-083",
+  "required_resolution_sha256": "22bb7d808bd41cdfbbcb18afe7308850ce97be5df5af27cbef2428494302fa23",
+  "implementation_assertions": [
+    {
+      "path": "src/constructionsight/cli.py",
+      "operator": "contains",
+      "value": "persist_authorized_source_verification_result("
+    },
+    {
+      "path": "src/constructionsight/storage/verification_store.py",
+      "operator": "not_contains",
+      "value": "source.verification_status = \"failed\""
+    }
+  ],
+  "regression_assertions": [
+    {
+      "path": "tests/test_verification_store.py",
+      "operator": "contains",
+      "value": "CS-SR-083"
+    }
+  ]
+}

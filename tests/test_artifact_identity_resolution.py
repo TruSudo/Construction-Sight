@@ -13,12 +13,19 @@ from constructionsight.intelligence import (
     MemoryKind,
     MemoryLifecycleStatus,
     ResolutionDecisionType,
+    ResolutionTargetKind,
     RippleEvent,
     RippleEventType,
     SourceLayoutMemory,
     artifact_tier,
     artifact_weight,
     calculate_resolution_score,
+)
+from constructionsight.intelligence.artifact_identity import (
+    canonical_artifact_observation_id,
+    canonical_identity_fingerprint_id,
+    canonical_resolution_candidate_id,
+    normalize_artifact_value,
 )
 
 
@@ -60,11 +67,24 @@ def test_artifact_registry_maps_artifacts_to_expected_tiers_and_weights() -> Non
 
 
 def test_artifact_observation_preserves_raw_and_normalized_values() -> None:
+    normalized = normalize_artifact_value(
+        IdentityArtifactType.APN,
+        "  APN 0292-123-45  ",
+    )
     observation = ArtifactObservation(
-        observation_id="obs-apn-1",
+        observation_id=canonical_artifact_observation_id(
+            artifact_type=IdentityArtifactType.APN,
+            normalized_value=normalized,
+            source_name="Synthetic CEQA Source",
+            source_family="ceqanet",
+            source_record_id="sch-2025060123",
+            jurisdiction="Hesperia, CA",
+            observed_field="project_description",
+            evidence_record_id="ev-1",
+        ),
         artifact_type=IdentityArtifactType.APN,
         raw_value="  APN 0292-123-45  ",
-        normalized_value="0292-123-45",
+        normalized_value=normalized,
         source_name="Synthetic CEQA Source",
         source_family="ceqanet",
         source_record_id="sch-2025060123",
@@ -91,26 +111,58 @@ def test_artifact_observation_preserves_raw_and_normalized_values() -> None:
 
 
 def test_identity_fingerprint_requires_observations_and_unique_observation_ids() -> None:
+    apn_normalized = normalize_artifact_value(
+        IdentityArtifactType.APN,
+        "0292-123-45",
+    )
     apn_observation = ArtifactObservation(
-        observation_id="obs-apn",
+        observation_id=canonical_artifact_observation_id(
+            artifact_type=IdentityArtifactType.APN,
+            normalized_value=apn_normalized,
+            source_name="Synthetic CEQA Source",
+            source_family=None,
+            source_record_id=None,
+            jurisdiction=None,
+            observed_field=None,
+            evidence_record_id=None,
+        ),
         artifact_type=IdentityArtifactType.APN,
         raw_value="0292-123-45",
-        normalized_value="0292-123-45",
+        normalized_value=apn_normalized,
         source_name="Synthetic CEQA Source",
     )
+    title_normalized = normalize_artifact_value(
+        IdentityArtifactType.PROJECT_TITLE,
+        "Commerce Center II",
+    )
     title_observation = ArtifactObservation(
-        observation_id="obs-title",
+        observation_id=canonical_artifact_observation_id(
+            artifact_type=IdentityArtifactType.PROJECT_TITLE,
+            normalized_value=title_normalized,
+            source_name="Synthetic Agenda Packet",
+            source_family=None,
+            source_record_id=None,
+            jurisdiction=None,
+            observed_field=None,
+            evidence_record_id=None,
+        ),
         artifact_type=IdentityArtifactType.PROJECT_TITLE,
         raw_value="Commerce Center II",
-        normalized_value="commerce center ii",
+        normalized_value=title_normalized,
         source_name="Synthetic Agenda Packet",
     )
-
+    observations = [apn_observation, title_observation]
+    evidence_ids = ["ev-1", "ev-2"]
     fingerprint = IdentityFingerprint(
-        fingerprint_id="fingerprint-1",
+        fingerprint_id=canonical_identity_fingerprint_id(
+            target_identity_id="project-1",
+            target_kind=ResolutionTargetKind.PROJECT,
+            observation_ids=[item.observation_id for item in observations],
+            evidence_record_ids=evidence_ids,
+        ),
         target_identity_id="project-1",
-        artifact_observations=[apn_observation, title_observation],
-        evidence_record_ids=["ev-1", "ev-2"],
+        artifact_observations=observations,
+        evidence_record_ids=evidence_ids,
     )
 
     assert fingerprint.artifact_types == {
@@ -171,7 +223,11 @@ def test_resolution_score_rewards_independent_source_convergence_and_caps_at_100
     assert calculate_resolution_score(matches, conflicts=[]) == 100
 
     candidate = IdentityResolutionCandidate(
-        candidate_id="candidate-auto-link",
+        candidate_id=canonical_resolution_candidate_id(
+            "project-a",
+            "project-b",
+            target_kind=ResolutionTargetKind.PROJECT,
+        ),
         left_identity_id="project-a",
         right_identity_id="project-b",
         supporting_matches=matches,
@@ -192,7 +248,11 @@ def test_weak_artifact_support_can_queue_search_but_cannot_auto_link() -> None:
     )
 
     candidate = IdentityResolutionCandidate(
-        candidate_id="candidate-weak-only",
+        candidate_id=canonical_resolution_candidate_id(
+            "project-a",
+            "project-b",
+            target_kind=ResolutionTargetKind.PROJECT,
+        ),
         left_identity_id="project-a",
         right_identity_id="project-b",
         supporting_matches=[weak_match],
@@ -215,7 +275,11 @@ def test_near_unique_conflict_blocks_identity_convergence() -> None:
     )
 
     candidate = IdentityResolutionCandidate(
-        candidate_id="candidate-conflict",
+        candidate_id=canonical_resolution_candidate_id(
+            "project-a",
+            "project-b",
+            target_kind=ResolutionTargetKind.PROJECT,
+        ),
         left_identity_id="project-a",
         right_identity_id="project-b",
         conflicts=[conflict],
@@ -245,7 +309,11 @@ def test_identity_resolution_candidate_rejects_self_match_and_empty_evidence() -
 
     with pytest.raises(ValidationError, match="requires support or conflict artifacts"):
         IdentityResolutionCandidate(
-            candidate_id="candidate-empty",
+            candidate_id=canonical_resolution_candidate_id(
+                "project-a",
+                "project-b",
+                target_kind=ResolutionTargetKind.PROJECT,
+            ),
             left_identity_id="project-a",
             right_identity_id="project-b",
             evidence_summary="No artifacts means no evaluable candidate.",

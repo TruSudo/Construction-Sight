@@ -6,6 +6,8 @@ from constructionsight.contractor_identity_models import (
     ContractorIdentityResolution,
     ContractorIdentityStatus,
     ContractorLicense,
+    canonical_contractor_key,
+    canonical_contractor_resolution_id,
 )
 from constructionsight.domain_types import confidence_band
 
@@ -27,7 +29,11 @@ def test_contractor_license_rejects_blank_number() -> None:
 def test_contractor_identity_requires_matching_confidence_band() -> None:
     with pytest.raises(ValidationError):
         ContractorIdentity(
-            contractor_key="contractor:test",
+            contractor_key=canonical_contractor_key(
+                normalized_name="EXAMPLE BUILDER",
+                license_number=None,
+                contractor_group_key=None,
+            ),
             display_name="Example Builder",
             normalized_name="EXAMPLE BUILDER",
             confidence_score=90,
@@ -37,7 +43,11 @@ def test_contractor_identity_requires_matching_confidence_band() -> None:
 
 def test_contractor_identity_serializes_to_dict() -> None:
     identity = ContractorIdentity(
-        contractor_key="contractor:test",
+        contractor_key=canonical_contractor_key(
+            normalized_name="EXAMPLE BUILDER",
+            license_number=None,
+            contractor_group_key=None,
+        ),
         display_name="Example Builder",
         normalized_name="EXAMPLE BUILDER",
         confidence_score=80,
@@ -47,14 +57,14 @@ def test_contractor_identity_serializes_to_dict() -> None:
 
     payload = identity.to_dict()
 
-    assert payload["contractor_key"] == "contractor:test"
+    assert payload["contractor_key"].startswith("contractor:v2:")
     assert payload["confidence_score"] == 80
 
 
 def test_contractor_resolution_requires_primary_candidate() -> None:
     with pytest.raises(ValidationError):
         ContractorIdentityResolution(
-            resolution_id="contractor-resolution:test",
+            resolution_id=canonical_contractor_resolution_id([]),
             status="resolved",
             primary_contractor_key="contractor:missing",
             candidates=[],
@@ -63,16 +73,20 @@ def test_contractor_resolution_requires_primary_candidate() -> None:
 
 def test_contractor_resolution_serializes() -> None:
     identity = ContractorIdentity(
-        contractor_key="contractor:test",
+        contractor_key=canonical_contractor_key(
+            normalized_name="EXAMPLE BUILDER",
+            license_number=None,
+            contractor_group_key=None,
+        ),
         display_name="Example Builder",
         normalized_name="EXAMPLE BUILDER",
         confidence_score=35,
         confidence_band=confidence_band(35),
     )
     resolution = ContractorIdentityResolution(
-        resolution_id="contractor-resolution:test",
+        resolution_id=canonical_contractor_resolution_id([identity.contractor_key]),
         status="resolved",
-        primary_contractor_key="contractor:test",
+        primary_contractor_key=identity.contractor_key,
         candidates=[identity],
     )
 
