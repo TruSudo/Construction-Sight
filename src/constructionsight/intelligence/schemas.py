@@ -195,6 +195,7 @@ class RuntimeEventType(StrEnum):
     AUTHORITY_STATUS_CHANGED = "authority_status_changed"
     PROJECT_PHASE_CHANGED = "project_phase_changed"
     OPPORTUNITY_SIGNAL_CREATED = "opportunity_signal_created"
+    OPPORTUNITY_SIGNAL_UPDATED = "opportunity_signal_updated"
     SOURCE_VERIFICATION_ADDED = "source_verification_added"
     EXPORT_CREATED = "export_created"
     ENRICHMENT_FAILED = "enrichment_failed"
