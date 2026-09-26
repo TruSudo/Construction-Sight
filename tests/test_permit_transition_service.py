@@ -8,7 +8,6 @@ from constructionsight.permit_transition_service import detect_permit_transition
 
 def _snapshot(**kwargs: object) -> PermitSnapshot:
     payload = {
-        "snapshot_id": "snapshot:test",
         "source_key": "test:source",
         "source_record_id": "permit:1",
         "permit_number": "B-1",
@@ -74,3 +73,17 @@ def test_detect_permit_transitions_rejects_mismatched_source_record() -> None:
 
     with pytest.raises(ValueError, match="same source_record_id"):
         detect_permit_transitions(previous, current)
+
+
+def test_repeated_same_value_transition_has_distinct_occurrence_identity() -> None:
+    first = _snapshot(status="applied")
+    second = _snapshot(status="issued")
+    third = _snapshot(status="applied")
+    fourth = _snapshot(status="issued")
+
+    first_transition = detect_permit_transitions(first, second)[0]
+    repeated_transition = detect_permit_transitions(third, fourth)[0]
+
+    assert first_transition.previous_value == repeated_transition.previous_value
+    assert first_transition.current_value == repeated_transition.current_value
+    assert first_transition.transition_id != repeated_transition.transition_id

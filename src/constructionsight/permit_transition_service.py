@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 from datetime import date, datetime
 
 from constructionsight.permit_transition_models import (
@@ -70,20 +69,16 @@ def _new_record_transition(snapshot: PermitSnapshot) -> PermitTransition:
     """Return transition for a newly observed permit snapshot."""
 
     return PermitTransition(
-        transition_id=_transition_id(
-            snapshot=snapshot,
-            transition_kind=PermitTransitionKind.NEW_RECORD,
-            field_name="source_record_id",
-            previous_value=None,
-            current_value=snapshot.source_record_id,
-        ),
         transition_kind=PermitTransitionKind.NEW_RECORD,
         source_key=snapshot.source_key,
         source_record_id=snapshot.source_record_id,
+        previous_snapshot_id=None,
+        current_snapshot_id=snapshot.snapshot_id,
         field_name="source_record_id",
         previous_value=None,
         current_value=snapshot.source_record_id,
         reason="permit record was first observed by ConstructionSight",
+        detected_at=snapshot.observed_at,
     )
 
 
@@ -101,20 +96,16 @@ def _field_transition(
         return []
     return [
         PermitTransition(
-            transition_id=_transition_id(
-                snapshot=current,
-                transition_kind=transition_kind,
-                field_name=field_name,
-                previous_value=previous_value,
-                current_value=current_value,
-            ),
             transition_kind=transition_kind,
             source_key=current.source_key,
             source_record_id=current.source_record_id,
+            previous_snapshot_id=previous.snapshot_id,
+            current_snapshot_id=current.snapshot_id,
             field_name=field_name,
             previous_value=previous_value,
             current_value=current_value,
             reason=_reason_for_transition(field_name, previous_value, current_value),
+            detected_at=current.observed_at,
         )
     ]
 
@@ -143,25 +134,3 @@ def _reason_for_transition(
     return f"{field_name} changed"
 
 
-def _transition_id(
-    *,
-    snapshot: PermitSnapshot,
-    transition_kind: PermitTransitionKind,
-    field_name: str | None,
-    previous_value: str | None,
-    current_value: str | None,
-) -> str:
-    """Build a deterministic transition id."""
-
-    basis = "|".join(
-        [
-            snapshot.source_key,
-            snapshot.source_record_id,
-            transition_kind.value,
-            field_name or "",
-            previous_value or "",
-            current_value or "",
-        ]
-    )
-    hashed = hashlib.sha256(basis.encode("utf-8")).hexdigest()[:16]
-    return f"permit-transition:{hashed}"

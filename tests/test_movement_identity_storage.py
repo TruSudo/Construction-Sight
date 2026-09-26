@@ -1,5 +1,6 @@
 import json
 
+import pytest
 from sqlalchemy import inspect, select
 
 from constructionsight.contractor_identity_models import ContractorIdentityStatus
@@ -51,7 +52,6 @@ def test_movement_identity_tables_are_created() -> None:
 def test_store_permit_snapshot_roundtrip() -> None:
     _engine, factory = _session_factory()
     snapshot = PermitSnapshot(
-        snapshot_id="snapshot:test",
         source_key="source:test",
         source_record_id="permit:1",
         permit_number="B-1",
@@ -64,7 +64,7 @@ def test_store_permit_snapshot_roundtrip() -> None:
         session.flush()
         row = session.execute(select(PermitSnapshotRecord)).scalar_one()
 
-        assert row.snapshot_id == "snapshot:test"
+        assert row.snapshot_id == snapshot.snapshot_id
         payload = json.loads(row.payload_json)
         assert payload["status"] == "issued"
         assert payload["site_key"] == "site:test"
@@ -72,15 +72,27 @@ def test_store_permit_snapshot_roundtrip() -> None:
 
 def test_store_permit_transition_roundtrip() -> None:
     _engine, factory = _session_factory()
+    previous = PermitSnapshot(
+        source_key="source:test",
+        source_record_id="permit:1",
+        status="applied",
+    )
+    current = PermitSnapshot(
+        source_key="source:test",
+        source_record_id="permit:1",
+        status="issued",
+    )
     transition = PermitTransition(
-        transition_id="permit-transition:test",
         transition_kind=PermitTransitionKind.STATUS_CHANGED,
         source_key="source:test",
         source_record_id="permit:1",
+        previous_snapshot_id=previous.snapshot_id,
+        current_snapshot_id=current.snapshot_id,
         field_name="status",
         previous_value="applied",
         current_value="issued",
         reason="status changed",
+        detected_at=current.observed_at,
     )
 
     with managed_session(factory) as session:
@@ -135,26 +147,22 @@ def test_store_decision_record_roundtrip() -> None:
         assert payload["apn"] == "12345678"
 
 
-def test_store_helpers_update_existing_rows() -> None:
+def test_store_helpers_reject_changed_snapshot_replay() -> None:
     _engine, factory = _session_factory()
     first = PermitSnapshot(
-        snapshot_id="snapshot:test",
         source_key="source:test",
         source_record_id="permit:1",
         status="applied",
     )
-    second = PermitSnapshot(
-        snapshot_id="snapshot:test",
-        source_key="source:test",
-        source_record_id="permit:1",
-        status="issued",
-    )
-
     with managed_session(factory) as session:
         store_permit_snapshot(session, first)
-        store_permit_snapshot(session, second)
+        store_permit_snapshot(session, first)
         session.flush()
         rows = session.execute(select(PermitSnapshotRecord)).scalars().all()
 
         assert len(rows) == 1
-        assert rows[0].status == "issued"
+        assert rows[0].status == "applied"
+
+        forged = first.model_copy(update={"status": "issued"})
+        with pytest.raises(ValueError, match="immutable"):
+            store_permit_snapshot(session, forged)
