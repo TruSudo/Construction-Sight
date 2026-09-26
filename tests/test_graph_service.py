@@ -264,13 +264,30 @@ def test_graph_service_emits_update_events_for_existing_records(tmp_path) -> Non
     assert clusters[0].cluster_confidence == 88
     assert clusters[0].lifecycle_phase == LifecyclePhase.VERTICAL_CONSTRUCTION
 
+    relationship_create = next(
+        event
+        for event in events
+        if event.event_type == RuntimeEventType.RELATIONSHIP_CREATED
+        and event.source_service == "intelligence_graph_service"
+    )
     relationship_update = next(
-        event for event in events if event.event_type == RuntimeEventType.RELATIONSHIP_UPDATED
+        event
+        for event in events
+        if event.event_type == RuntimeEventType.RELATIONSHIP_UPDATED
+        and event.source_service == "intelligence_graph_service"
+    )
+    cluster_create = next(
+        event
+        for event in events
+        if event.event_type == RuntimeEventType.PROJECT_CLUSTER_CREATED
+        and event.source_service == "intelligence_graph_service"
     )
     cluster_update = next(
         event for event in events if event.event_type == RuntimeEventType.PROJECT_CLUSTER_UPDATED
     )
+    assert relationship_create.payload["operation"] == "created"
     assert relationship_update.payload["operation"] == "updated"
     assert relationship_update.payload["confidence_score"] == 94
+    assert cluster_create.payload["operation"] == "created"
     assert cluster_update.payload["operation"] == "updated"
     assert cluster_update.payload["cluster_confidence"] == 88
