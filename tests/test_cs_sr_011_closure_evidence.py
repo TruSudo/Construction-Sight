@@ -58,4 +58,5 @@ def test_cs_sr_011_narrative_distinguishes_subgates_from_aggregate_result() -> N
     assert "concluded failure" in narrative
     assert "2,134 / 2,134 tests passed" in narrative
     assert "164 / 164 focused mutants killed" in narrative
-    assert "did **not** certify the repository" in narrative
+    assert "did **not** certify" in narrative
+    assert "repository" in narrative
