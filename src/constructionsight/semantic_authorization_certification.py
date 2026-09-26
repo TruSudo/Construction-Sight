@@ -22,6 +22,7 @@ _HIGH_IMPACT_CONFIRMATIONS: Final = frozenset(
         "check_http",
         "execute_live",
         "execute_write",
+        "persist",
     }
 )
 _COMBINED_AUTHORIZER: Final = (
@@ -38,6 +39,7 @@ _EFFECT_TARGETS: Final = frozenset(
     {
         "constructionsight.adapters.ceqanet_listing_executor.execute_ceqanet_listing_plan",
         "constructionsight.ceqanet_csv_live_service.execute_ceqanet_csv_live_request",
+        "constructionsight.ceqanet_discovery_service.discover_ceqanet_public_search",
         "constructionsight.ceqanet_detail_http.execute_ceqanet_detail_request",
         "constructionsight.ceqanet_persistence_execute.execute_ceqanet_write_plan",
         "constructionsight.ceqanet_recurring_run_service.execute_ceqanet_recurring_run",
@@ -48,6 +50,9 @@ _EFFECT_TARGETS: Final = frozenset(
         "constructionsight.result_authority_service.apply_authoritative_result",
         "constructionsight.source_readiness_http.check_source_http_reachability",
         "constructionsight.source_registry_apply_service.apply_source_registry_update_plan",
+        "constructionsight.storage.source_registry.SourceRegistryStore.upsert_source",
+        "constructionsight.storage.source_registry.SourceRegistryStore.upsert_many",
+        "constructionsight.storage.verification_store.VerificationStore.add_result",
         "constructionsight.storage.parcel_source_acquisition_bundle_store."
         "store_arcgis_bounded_proof_bundle_chain",
     }

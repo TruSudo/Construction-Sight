@@ -2,6 +2,7 @@ from typer.testing import CliRunner
 
 from constructionsight import cli
 from constructionsight.ceqanet_discovery_http import CeqanetDiscoveryResult
+import constructionsight.operator_services.ceqanet_discovery_service as discovery_operator
 
 runner = CliRunner()
 
@@ -35,9 +36,21 @@ def _unreachable_discovery() -> CeqanetDiscoveryResult:
 
 
 def test_discover_ceqanet_cli_renders_successful_discovery(monkeypatch) -> None:
-    monkeypatch.setattr(cli, "discover_ceqanet_public_search", _successful_discovery)
+    monkeypatch.setattr(
+        discovery_operator, "discover_ceqanet_public_search", _successful_discovery
+    )
 
-    result = runner.invoke(cli.app, ["discover-ceqanet"])
+    result = runner.invoke(
+        cli.app,
+        [
+            "discover-ceqanet",
+            "--execute-live",
+            "--operator-id",
+            "operator:test",
+            "--authorization-reason",
+            "Review the bounded CEQAnet discovery surface.",
+        ],
+    )
 
     assert result.exit_code == 0
     assert "CEQAnet Public Search Discovery" in result.output
@@ -53,9 +66,21 @@ def test_discover_ceqanet_cli_renders_successful_discovery(monkeypatch) -> None:
 
 
 def test_discover_ceqanet_cli_exits_nonzero_when_unreachable(monkeypatch) -> None:
-    monkeypatch.setattr(cli, "discover_ceqanet_public_search", _unreachable_discovery)
+    monkeypatch.setattr(
+        discovery_operator, "discover_ceqanet_public_search", _unreachable_discovery
+    )
 
-    result = runner.invoke(cli.app, ["discover-ceqanet"])
+    result = runner.invoke(
+        cli.app,
+        [
+            "discover-ceqanet",
+            "--execute-live",
+            "--operator-id",
+            "operator:test",
+            "--authorization-reason",
+            "Review the bounded CEQAnet discovery surface.",
+        ],
+    )
 
     assert result.exit_code == 1
     assert "CEQAnet Public Search Discovery" in result.output
@@ -65,3 +90,30 @@ def test_discover_ceqanet_cli_exits_nonzero_when_unreachable(monkeypatch) -> Non
     assert "None" in result.output
     assert "Confidence" in result.output
     assert "0" in result.output
+
+
+
+def test_discover_ceqanet_requires_explicit_live_authority(monkeypatch) -> None:
+    calls = 0
+
+    def unexpected_discovery() -> CeqanetDiscoveryResult:
+        nonlocal calls
+        calls += 1
+        return _successful_discovery()
+
+    monkeypatch.setattr(
+        discovery_operator, "discover_ceqanet_public_search", unexpected_discovery
+    )
+    result = runner.invoke(
+        cli.app,
+        [
+            "discover-ceqanet",
+            "--operator-id",
+            "operator:test",
+            "--authorization-reason",
+            "Attempt without live confirmation.",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert calls == 0

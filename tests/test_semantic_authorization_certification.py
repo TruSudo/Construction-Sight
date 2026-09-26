@@ -446,3 +446,57 @@ def test_non_cli_module_is_outside_operator_entry_rule(tmp_path: Path) -> None:
     )
 
     assert findings == []
+
+
+
+def test_persist_confirmation_is_high_impact(tmp_path: Path) -> None:
+    findings = _audit(
+        tmp_path,
+        """
+        def execute(persist: bool) -> None:
+            render_preview()
+        """,
+    )
+
+    assert "AUTH-BOOLEAN-002" in _codes(findings)
+
+
+def test_direct_ceqanet_discovery_is_a_governed_effect(tmp_path: Path) -> None:
+    findings = _audit(
+        tmp_path,
+        """
+        from constructionsight.ceqanet_discovery_service import (
+            discover_ceqanet_public_search,
+        )
+
+        def execute(execute_live: bool) -> None:
+            discover_ceqanet_public_search()
+        """,
+    )
+
+    assert "AUTH-BYPASS-001" in _codes(findings)
+
+
+def test_direct_source_registry_store_mutation_is_a_governed_effect(
+    tmp_path: Path,
+) -> None:
+    findings = _audit_sources(
+        tmp_path,
+        {
+            _CLI_PATH: """
+                from constructionsight.example_store import write_sources
+
+                def execute(apply_changes: bool) -> None:
+                    write_sources()
+            """,
+            "src/constructionsight/example_store.py": """
+                from constructionsight.storage.source_registry import SourceRegistryStore
+
+                def write_sources() -> None:
+                    store = SourceRegistryStore(None)
+                    store.upsert_many([])
+            """,
+        },
+    )
+
+    assert "AUTH-BYPASS-001" in _codes(findings)
