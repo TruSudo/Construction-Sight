@@ -41,6 +41,9 @@ def test_evidence_record_requires_payload_and_preserves_utc_timestamp() -> None:
 
     assert record.retrieved_at.tzinfo is not None
     assert record.confidence_contribution == 88
+    assert record.content_hash == record.computed_content_hash()
+    assert record.content_hash is not None
+    assert len(record.content_hash) == 64
 
     with pytest.raises(ValidationError, match="evidence must include"):
         EvidenceRecord(
@@ -225,3 +228,15 @@ def test_watchlist_item_schema_tracks_user_attention_targets() -> None:
 
     assert item.status == WatchlistStatus.ACTIVE
     assert item.priority == 90
+
+
+
+def test_evidence_record_rejects_a_mismatched_content_hash() -> None:
+    with pytest.raises(ValidationError, match="content_hash does not match"):
+        EvidenceRecord(
+            evidence_id="ev-tampered",
+            source_name="Synthetic Permit Portal",
+            record_type="permit",
+            evidence_value="ABC Construction",
+            content_hash="0" * 64,
+        )
