@@ -216,6 +216,15 @@ class SiteResolutionResult(BaseModel):
             candidate.site_key for candidate in self.candidates
         }:
             raise ValueError("primary_site_key must reference a candidate site_key")
+        if self.status == SiteResolutionStatus.RESOLVED:
+            has_retained_provenance = bool(self.evidence_id) or any(
+                candidate.supporting_identifiers or candidate.geometry_hints
+                for candidate in self.candidates
+            )
+            if not has_retained_provenance:
+                raise ValueError(
+                    "resolved site results require retained evidence provenance"
+                )
         expected_id = self.computed_resolution_id()
         if not self.resolution_id:
             self.resolution_id = expected_id

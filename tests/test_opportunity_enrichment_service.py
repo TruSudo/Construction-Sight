@@ -16,6 +16,7 @@ from constructionsight.site_resolution_models import (
 def _site_result() -> SiteResolutionResult:
     return SiteResolutionResult(
         source_name="test source",
+        evidence_id="evidence:test",
         status=SiteResolutionStatus.RESOLVED,
         primary_site_key="site:test",
         candidates=[
