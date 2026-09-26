@@ -360,7 +360,7 @@ def test_unavailable_consumption_database_fails_closed_before_effect(
         calls += 1
         return {"outcome": "should-not-run"}
 
-    with pytest.raises(sqlite3.OperationalError):
+    with pytest.raises(EffectConsumptionError):
         _run(_authorization(), effect)
 
     assert calls == 0
@@ -443,9 +443,64 @@ def test_store_rejects_same_allowance_with_changed_operation_digest(
 
 def test_owned_store_and_runner_accept_no_caller_selected_backend() -> None:
     assert tuple(inspect.signature(effect_consumption._owned_store).parameters) == ()
+    assert effect_consumption._CONSUMPTION_DATABASE_PATH.is_absolute()
     assert "store" not in inspect.signature(_execute_owned_effect).parameters
     assert "database_path" not in inspect.signature(_execute_owned_effect).parameters
     assert "ledger" not in inspect.signature(_execute_owned_effect).parameters
+
+
+def test_owned_store_identity_is_independent_of_working_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    before = effect_consumption._owned_store()._database_path
+    monkeypatch.chdir(tmp_path)
+    after = effect_consumption._owned_store()._database_path
+
+    assert before == after
+    assert before.is_absolute()
+
+
+def test_consumption_store_rejects_symbolic_link_database(tmp_path: Path) -> None:
+    target = tmp_path / "real.sqlite3"
+    target.touch(mode=0o600)
+    link = tmp_path / "redirect.sqlite3"
+    link.symlink_to(target)
+
+    with pytest.raises(EffectConsumptionError, match="symbolic link"):
+        EffectConsumptionStore(link).load("effect-reservation:" + "1" * 64)
+
+
+def test_required_utc_date_is_rechecked_after_durable_start_marker(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database_path = tmp_path / "date-boundary.sqlite3"
+    monkeypatch.setattr(effect_consumption, "_CONSUMPTION_DATABASE_PATH", database_path)
+    authorization = _authorization()
+    before_midnight = datetime(2026, 8, 22, 23, 59, 59, 900000, tzinfo=UTC)
+    after_midnight = datetime(2026, 8, 23, 0, 0, 0, 100000, tzinfo=UTC)
+    times = iter((before_midnight, before_midnight, after_midnight))
+    monkeypatch.setattr(effect_consumption, "trusted_utc_now", lambda: next(times))
+    calls = 0
+
+    def effect(_trusted_at: datetime) -> dict[str, object]:
+        nonlocal calls
+        calls += 1
+        return {"outcome": "should-not-run"}
+
+    with pytest.raises(EffectConsumptionError, match="date changed"):
+        _execute_owned_effect(
+            authorization,
+            allowance_identity="ceqanet-daily:2026-08-22",
+            content_identity="ceqanet-series:reviewed-sequence-1",
+            implementation_id="tests.test_effect_consumption.date_bound_effect",
+            replay_policy=EffectReplayPolicy.EXACT,
+            effect=effect,
+            encode_result=lambda result: result,
+            decode_result=lambda payload: dict(payload),
+            required_utc_date=before_midnight.date(),
+        )
+
+    assert calls == 0
 
 
 def test_existing_wal_store_never_reissues_journal_mode_change(
