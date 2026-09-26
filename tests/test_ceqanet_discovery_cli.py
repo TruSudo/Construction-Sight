@@ -93,6 +93,7 @@ def test_discover_ceqanet_cli_exits_nonzero_when_unreachable(monkeypatch) -> Non
 
 
 
+# Regression: CS-SR-094
 def test_discover_ceqanet_requires_explicit_live_authority(monkeypatch) -> None:
     calls = 0
 

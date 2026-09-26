@@ -449,6 +449,7 @@ def test_owned_store_and_runner_accept_no_caller_selected_backend() -> None:
     assert "ledger" not in inspect.signature(_execute_owned_effect).parameters
 
 
+# Regression: CS-SR-084
 def test_owned_store_identity_is_independent_of_working_directory(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -470,6 +471,7 @@ def test_consumption_store_rejects_symbolic_link_database(tmp_path: Path) -> Non
         EffectConsumptionStore(link).load("effect-reservation:" + "1" * 64)
 
 
+# Regression: CS-SR-095
 def test_required_utc_date_is_rechecked_after_durable_start_marker(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
