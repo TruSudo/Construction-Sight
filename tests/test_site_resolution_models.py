@@ -20,6 +20,7 @@ def test_site_resolution_input_rejects_duplicate_identifiers() -> None:
         identifier_kind=SiteIdentifierKind.APN,
         value="123-456-78",
         normalized_value="12345678",
+        evidence_id="evidence:test",
     )
 
     with pytest.raises(ValidationError):
@@ -34,6 +35,7 @@ def test_geometry_hint_requires_coordinates_for_point() -> None:
         GeometryHint(
             geometry_kind=GeometryHintKind.POINT,
             source_name="test source",
+            evidence_id="evidence:test",
         )
 
 
