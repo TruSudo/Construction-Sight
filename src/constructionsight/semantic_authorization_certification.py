@@ -20,10 +20,76 @@ _HIGH_IMPACT_CONFIRMATIONS: Final = frozenset(
         "apply_changes",
         "authorize_persistence",
         "check_http",
+        "confirm",
         "execute_live",
         "execute_write",
         "persist",
     }
+)
+_HIGH_IMPACT_CONFIRMATION_TOKENS: Final = frozenset(
+    {
+        "apply",
+        "authorize",
+        "commit",
+        "confirm",
+        "delete",
+        "execute",
+        "live",
+        "mutate",
+        "persist",
+        "publish",
+        "send",
+        "write",
+    }
+)
+_HIGH_IMPACT_MUTATION_PREFIXES: Final = (
+    "add_",
+    "append_",
+    "apply_",
+    "commit_",
+    "create_",
+    "delete_",
+    "execute_",
+    "insert_",
+    "mutate_",
+    "persist_",
+    "publish_",
+    "send_",
+    "set_",
+    "store_",
+    "transition_",
+    "update_",
+    "upsert_",
+    "write_",
+)
+_HIGH_IMPACT_MUTATION_NAMES: Final = frozenset(
+    {
+        "add",
+        "append",
+        "commit",
+        "delete",
+        "execute",
+        "patch",
+        "persist",
+        "post",
+        "publish",
+        "put",
+        "request",
+        "send",
+        "store",
+        "transition",
+        "update",
+        "upsert",
+        "write",
+        "write_bytes",
+        "write_text",
+    }
+)
+_NETWORK_EFFECT_MODULE_MARKERS: Final = (
+    "_http",
+    "http_",
+    "transport",
+    "network",
 )
 _COMBINED_AUTHORIZER: Final = (
     "constructionsight.local_operator_authorization.authorize_local_operator_operation"
@@ -86,6 +152,45 @@ _DYNAMIC_EFFECT: Final = "<dynamic-effect-boundary>"
 _INDIRECT_CALL: Final = "<unresolved-indirect-call>"
 
 _FunctionNode = ast.FunctionDef | ast.AsyncFunctionDef
+
+
+def _name_tokens(value: str) -> frozenset[str]:
+    return frozenset(part for part in value.casefold().split("_") if part)
+
+
+def _confirmation_parameter_is_high_impact(name: str) -> bool:
+    if name in _HIGH_IMPACT_CONFIRMATIONS:
+        return True
+    return bool(_name_tokens(name) & _HIGH_IMPACT_CONFIRMATION_TOKENS)
+
+
+def _effect_leaf_is_high_impact(leaf: str) -> bool:
+    lowered = leaf.casefold()
+    return lowered in _HIGH_IMPACT_MUTATION_NAMES or lowered.startswith(
+        _HIGH_IMPACT_MUTATION_PREFIXES
+    )
+
+
+def _target_looks_high_impact_effect(target: str) -> bool:
+    if target in _EFFECT_TARGETS:
+        return True
+    lowered = target.casefold()
+    leaf = lowered.rpartition(".")[2]
+    if lowered.startswith("constructionsight.storage.") and _effect_leaf_is_high_impact(
+        leaf
+    ):
+        return True
+    if any(marker in lowered for marker in _NETWORK_EFFECT_MODULE_MARKERS):
+        return _effect_leaf_is_high_impact(leaf)
+    return False
+
+
+def _unresolved_call_looks_high_impact(node: ast.expr) -> bool:
+    if isinstance(node, ast.Name):
+        return _effect_leaf_is_high_impact(node.id)
+    if isinstance(node, ast.Attribute):
+        return _effect_leaf_is_high_impact(node.attr)
+    return False
 
 
 class _AuthorizationPhase(Enum):
@@ -393,7 +498,11 @@ class _AuthorizationGraphAudit:
         ):
             if self._layer_by_module.get(function.module) != "cli":
                 continue
-            confirmations = set(function.parameters) & _HIGH_IMPACT_CONFIRMATIONS
+            confirmations = {
+                parameter
+                for parameter in function.parameters
+                if _confirmation_parameter_is_high_impact(parameter)
+            }
             if not confirmations:
                 continue
             initial = _State(
@@ -697,7 +806,18 @@ class _AuthorizationGraphAudit:
             for state in active:
                 targets = self._resolve_callable(node.func, function, state)
                 if not targets:
-                    call_output.append(state)
+                    if _unresolved_call_looks_high_impact(node.func):
+                        call_output.extend(
+                            self._invoke(
+                                _INDIRECT_CALL,
+                                node,
+                                state.clone(),
+                                function,
+                                stack,
+                            )
+                        )
+                    else:
+                        call_output.append(state)
                     continue
                 for target in sorted(targets):
                     call_output.extend(self._invoke(target, node, state.clone(), function, stack))
@@ -823,7 +943,7 @@ class _AuthorizationGraphAudit:
                 state.phase = _AuthorizationPhase.CONSUMED
                 state.authorized_once = True
             return [state]
-        if target == _DYNAMIC_EFFECT or target in _EFFECT_TARGETS:
+        if target == _DYNAMIC_EFFECT or _target_looks_high_impact_effect(target):
             detail = "dynamic injected effect boundary" if target == _DYNAMIC_EFFECT else target
             self._record(
                 "AUTH-BYPASS-001",
