@@ -8,6 +8,9 @@ runtime/UI layers can consume.
 
 from __future__ import annotations
 
+import hashlib
+import json
+
 from constructionsight.intelligence.schemas import (
     EntityIdentity,
     EvidenceRecord,
@@ -180,8 +183,30 @@ class IntelligenceGraphService:
     ) -> RuntimeEvent:
         """Persist a runtime event for a graph operation."""
 
+        event_identity_payload = {
+            "event_namespace": event_id,
+            "event_type": event_type.value,
+            "severity": severity.value,
+            "source_service": self.source_service,
+            "entity_refs": entity_refs or [],
+            "project_cluster_refs": project_cluster_refs or [],
+            "source_record_refs": source_record_refs or [],
+            "payload": payload,
+            "message": message,
+        }
+        canonical = json.dumps(
+            event_identity_payload,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+            allow_nan=False,
+        ).encode("utf-8")
+        resolved_event_id = f"{event_id}:{hashlib.sha256(canonical).hexdigest()}"
+        existing = self.store.get_runtime_event(resolved_event_id)
+        if existing is not None:
+            return existing
         event = RuntimeEvent(
-            event_id=event_id,
+            event_id=resolved_event_id,
             event_type=event_type,
             severity=severity,
             source_service=self.source_service,
