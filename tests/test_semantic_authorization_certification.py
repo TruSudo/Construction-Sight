@@ -579,3 +579,25 @@ def test_non_authoritative_storage_engine_factory_is_not_a_governed_effect(
     )
 
     assert "AUTH-BYPASS-001" not in _codes(findings)
+
+
+def test_runtime_artifact_publication_is_not_authoritative_business_mutation(
+    tmp_path: Path,
+) -> None:
+    findings = _audit_sources(
+        tmp_path,
+        {
+            _CLI_PATH: """
+                from constructionsight.storage.runtime_artifacts import publish_runtime_artifact
+
+                def execute() -> None:
+                    publish_runtime_artifact()
+            """,
+            "src/constructionsight/storage/runtime_artifacts.py": """
+                def publish_runtime_artifact():
+                    return None
+            """,
+        },
+    )
+
+    assert "AUTH-BYPASS-001" not in _codes(findings)

@@ -132,6 +132,7 @@ _NON_AUTHORITATIVE_STORAGE_TARGETS: Final = frozenset(
         "constructionsight.storage.database.create_database_engine",
         "constructionsight.storage.operator_read_store.create_operator_read_engine",
         "constructionsight.storage.orm.Base.metadata.create_all",
+        "constructionsight.storage.runtime_artifacts.publish_runtime_artifact",
         "constructionsight.storage.runtime_artifacts.write_runtime_text",
     }
 )
