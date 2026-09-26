@@ -287,6 +287,7 @@ def test_relationship_store_round_trip() -> None:
     assert persisted.provenance[0].band.value == "high"
 
 
+# Regression: CS-SR-089
 def test_normalized_projection_updates_append_reconstructable_history() -> None:
     engine = create_database_engine("sqlite+pysqlite:///:memory:")
     initialize_database(engine)

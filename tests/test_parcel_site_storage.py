@@ -214,6 +214,7 @@ def test_store_parcel_core_record_updates_existing_row() -> None:
         assert rows[0].zoning == "commercial"
 
 
+# Regression: CS-SR-091
 def test_derived_result_stores_reject_forged_identity_reuse() -> None:
     _engine, factory = _session_factory()
     site = _site_resolution()

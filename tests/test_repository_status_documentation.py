@@ -19,6 +19,7 @@ def _documented_count(path: str) -> int:
     return int(match.group(1))
 
 
+# Regression: CS-SR-087
 def test_current_status_surfaces_match_authoritative_active_defect_count() -> None:
     expected = _active_defect_count()
 

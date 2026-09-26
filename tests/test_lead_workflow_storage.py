@@ -388,6 +388,7 @@ def test_store_lead_workflow_event_accepts_exact_replay_and_rejects_rewrite() ->
 
 
 
+# Regression: CS-SR-090
 def test_store_existing_workflow_rejects_mutation_outside_compare_and_swap() -> None:
     _engine, factory = _session_factory()
     current = LeadWorkflowRecord(

@@ -195,6 +195,7 @@ def test_execute_ceqanet_write_plan_can_use_preinitialized_database() -> None:
         ("source_index", 7, "source_index must equal 0"),
     ],
 )
+# Regression: CS-SR-086
 def test_tampered_operation_identity_blocks_plan_before_commit(
     field: str,
     value: object,
