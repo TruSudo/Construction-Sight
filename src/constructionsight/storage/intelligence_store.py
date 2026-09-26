@@ -180,26 +180,28 @@ class IntelligenceStore:
                 IntelligenceEvidenceRecord.evidence_id == evidence.evidence_id
             )
         )
-        previous_payload_json = record.payload_json if record is not None else None
-        if record is None:
-            record = IntelligenceEvidenceRecord(evidence_id=evidence.evidence_id)
-            self._stage_new_record(record)
         current_payload_json = _model_to_json(evidence)
-        record.source_name = evidence.source_name
-        record.record_type = evidence.record_type
-        record.confidence_contribution = evidence.confidence_contribution
-        record.payload_json = current_payload_json
+        if record is not None:
+            if record.payload_json != current_payload_json:
+                raise ValueError(
+                    f"evidence ID collision changed retained content: {evidence.evidence_id}"
+                )
+            return record
+        record = IntelligenceEvidenceRecord(
+            evidence_id=evidence.evidence_id,
+            source_name=evidence.source_name,
+            record_type=evidence.record_type,
+            confidence_contribution=evidence.confidence_contribution,
+            payload_json=current_payload_json,
+        )
+        self._stage_new_record(record)
         self._flush()
         self._append_revision_event(
             record_kind="evidence",
             logical_id=evidence.evidence_id,
-            previous_payload_json=previous_payload_json,
+            previous_payload_json=None,
             current_payload_json=current_payload_json,
-            event_type=(
-                RuntimeEventType.SOURCE_RECORD_CHANGED
-                if previous_payload_json is not None
-                else RuntimeEventType.SOURCE_RECORD_DISCOVERED
-            ),
+            event_type=RuntimeEventType.SOURCE_RECORD_DISCOVERED,
         )
         return record
 
