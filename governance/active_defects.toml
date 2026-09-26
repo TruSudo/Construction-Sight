@@ -1,3 +1,10 @@
 schema_version = "constructionsight.active-defects/v1"
 certification_requires_zero = true
-defects = []
+
+[[defects]]
+id = "CS-SR-080"
+severity = "P1"
+area = "permit-history-integrity"
+root_cause = "Permit snapshots use caller-selected IDs that may be reused for changed content, while transition IDs omit occurrence identity. Store helpers update matching rows in place, allowing repeated lifecycle observations to collapse."
+discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
+required_resolution = "Bind snapshot identities to immutable observation content, represent repeated transition occurrences distinctly, reject semantic ID collisions instead of overwriting history, and add repeated-cycle and replay regressions."
