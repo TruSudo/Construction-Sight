@@ -10,7 +10,13 @@ from constructionsight.intelligence import (
     can_artifact_type_conflict,
     resolve_identity_fingerprints,
 )
-from constructionsight.intelligence.artifact_identity import ArtifactObservation
+from constructionsight.intelligence.artifact_identity import (
+    ArtifactObservation,
+    canonical_artifact_observation_id,
+    canonical_identity_fingerprint_id,
+    canonical_resolution_candidate_id,
+    normalize_artifact_value,
+)
 
 
 def _observation(
@@ -21,13 +27,24 @@ def _observation(
     source_family: str = "synthetic_source",
     evidence_record_id: str | None = None,
 ) -> ArtifactObservation:
+    normalized_value = normalize_artifact_value(artifact_type, value)
     return ArtifactObservation(
-        observation_id=observation_id,
+        observation_id=canonical_artifact_observation_id(
+            artifact_type=artifact_type,
+            normalized_value=normalized_value,
+            source_name="Synthetic Public Source",
+            source_family=source_family,
+            source_record_id=observation_id,
+            jurisdiction=None,
+            observed_field=None,
+            evidence_record_id=evidence_record_id,
+        ),
         artifact_type=artifact_type,
         raw_value=value,
-        normalized_value=value.lower(),
+        normalized_value=normalized_value,
         source_name="Synthetic Public Source",
         source_family=source_family,
+        source_record_id=observation_id,
         evidence_record_id=evidence_record_id,
         confidence_score=90,
     )
@@ -40,7 +57,12 @@ def _fingerprint(
     target_kind: ResolutionTargetKind = ResolutionTargetKind.PROJECT,
 ) -> IdentityFingerprint:
     return IdentityFingerprint(
-        fingerprint_id=f"fingerprint-{target_identity_id}",
+        fingerprint_id=canonical_identity_fingerprint_id(
+            target_identity_id=target_identity_id,
+            target_kind=target_kind,
+            observation_ids=[item.observation_id for item in observations],
+            evidence_record_ids=[],
+        ),
         target_identity_id=target_identity_id,
         target_kind=target_kind,
         artifact_observations=observations,
@@ -291,13 +313,18 @@ def test_convenience_wrapper_uses_service_resolution() -> None:
         [_observation("right-title", IdentityArtifactType.PROJECT_TITLE, "commerce center ii")],
     )
 
+    expected_id = canonical_resolution_candidate_id(
+        "project-left",
+        "project-right",
+        target_kind=ResolutionTargetKind.PROJECT,
+    )
     candidate = resolve_identity_fingerprints(
         left,
         right,
-        candidate_id="custom-candidate",
+        candidate_id=expected_id,
     )
 
-    assert candidate.candidate_id == "custom-candidate"
+    assert candidate.candidate_id == expected_id
     assert candidate.supporting_matches[0].artifact_type == IdentityArtifactType.PROJECT_TITLE
     assert candidate.recommended_decision == ResolutionDecisionType.CREATE_NEW_IDENTITY
 

@@ -96,7 +96,7 @@ A definition digest covers approval-significant content, including:
 
 A manifest adds the exact inclusive date window and produces a deterministic run ID and manifest digest. Rebuilding the same manifest from the same definition and window produces the same identities.
 
-An execution attempt ID is derived from the run ID, manifest digest, and positive attempt sequence. Attempt-sequence uniqueness remains operator-controlled until a dedicated persisted attempt ledger is introduced.
+An execution attempt ID is derived from the run ID, manifest digest, and positive attempt sequence. Immediately before transport, the same run, manifest, and attempt sequence form a durable cross-process consumption allowance. An exact committed duplicate returns the retained execution result without repeating transport; a concurrent, failed, conflicting, or indeterminate duplicate fails closed.
 
 Every newly constructed execution also receives an execution digest over the complete retained evidence envelope, excluding only the execution timestamp and the digest field itself. The digest binds:
 
@@ -135,9 +135,10 @@ Each live attempt requires explicit `--execute-live` authorization. The executio
 4. evaluates lawful-access assumptions;
 5. rebuilds the exact listing query from the manifest;
 6. confirms the official CEQAnet `/Search` target;
-7. invokes the existing bounded read-only listing executor;
-8. records an exact-schema execution envelope; and
-9. binds the complete retained envelope with an execution digest.
+7. atomically reserves the exact manifest-attempt allowance in the owned durable consumption store;
+8. invokes the existing bounded read-only listing executor through the owned effect boundary;
+9. records an exact-schema execution envelope and terminal result; and
+10. binds the complete retained envelope with an execution digest.
 
 The execution boundary authorizes no persistence. Existing parsing, detail retrieval, archive, write planning, and persistence-apply tools remain separate governed stages.
 

@@ -1,0 +1,123 @@
+"""Output containment and conflict preservation at real operator boundaries."""
+
+from __future__ import annotations
+
+import importlib
+import os
+from pathlib import Path
+from typing import Any
+
+import pytest
+import typer
+
+_WRITERS = (
+    "ceqanet_chain_cli", "ceqanet_detail_enrichment_cli", "ceqanet_detail_execute_cli",
+    "ceqanet_detail_parse_cli", "ceqanet_fixture_query_cli", "ceqanet_listing_plan_cli",
+    "ceqanet_operator_archive_cli", "ceqanet_operator_archive_verify_cli",
+    "ceqanet_operator_bundle_cli", "ceqanet_operator_bundle_verify_cli",
+    "ceqanet_operator_export_cli", "ceqanet_operator_package_cli", "ceqanet_operator_report_cli",
+    "ceqanet_persistence_execute_cli", "ceqanet_persistence_preview_cli",
+    "ceqanet_result_parse_cli", "ceqanet_vocabulary_export_cli", "ceqanet_write_plan_cli",
+    "cli", "external_gap_cli", "external_intelligence_cli", "intake_cli",
+    "opportunity_cli", "parcel_source_cli", "site_resolution_cli",
+    "ceqanet_recurring_run_cli", "ceqanet_csv_access_policy_cli", "ceqanet_csv_cli",
+    "ceqanet_csv_evidence_series_cli", "ceqanet_maturity_proposal_cli",
+    "source_registry_update_plan_cli",
+)
+
+
+def _write(module_name: str, output: Path, value: str, *, overwrite: bool = True) -> None:
+    module = importlib.import_module(f"constructionsight.{module_name}")
+    payload = {"message": value}
+    if module_name == "source_registry_update_plan_cli":
+        module._atomic_write_text(output, value)
+    elif module_name == "ceqanet_recurring_run_cli":
+        module._write_json(output, payload)
+    elif module_name == "ceqanet_csv_evidence_series_cli":
+        module._write_json(output, payload, inputs=(), overwrite=overwrite)
+    elif module_name in {"ceqanet_csv_access_policy_cli", "ceqanet_maturity_proposal_cli"}:
+        module._write_json(output, payload, overwrite=overwrite)
+    elif module_name == "ceqanet_csv_cli":
+        module._write_json_file(output, payload, overwrite=overwrite)
+    else:
+        module._write_json_file(output, payload)
+
+
+@pytest.mark.parametrize("module_name", _WRITERS)
+@pytest.mark.parametrize("attack", ("ancestor", "final", "oversized"))
+def test_operator_writers_reject_unsafe_or_oversized_output(
+    tmp_path: Path, module_name: str, attack: str,
+) -> None:
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    original = outside / "report.json"
+    original.write_bytes(b"retain outside or previous content")
+    if attack == "ancestor":
+        alias = tmp_path / "alias"
+        alias.symlink_to(outside, target_is_directory=True)
+        output = alias / original.name
+    elif attack == "final":
+        output = tmp_path / "alias.json"
+        output.symlink_to(original)
+    else:
+        output = original
+    content = "new evidence" if attack != "oversized" else "x" * (16 * 1024 * 1024 + 1)
+    with pytest.raises((OSError, ValueError, typer.BadParameter)):
+        _write(module_name, output, content)
+    assert original.read_bytes() == b"retain outside or previous content"
+    if attack == "final":
+        assert output.is_symlink()
+    assert sorted(p.name for p in outside.iterdir()) == [original.name]
+
+
+@pytest.mark.parametrize("module_name", (
+    "ceqanet_csv_access_policy_cli", "ceqanet_maturity_proposal_cli",
+    "ceqanet_csv_cli", "ceqanet_csv_evidence_series_cli",
+))
+def test_create_only_operator_output_preserves_racing_winner(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, module_name: str,
+) -> None:
+    output = tmp_path / "report.json"
+    original_exists = Path.exists
+    observed = False
+
+    def race_after_absence_check(path: Path) -> bool:
+        nonlocal observed
+        if path == output and not observed:
+            observed = True
+            path.write_bytes(b"racing winner")
+            return False
+        return original_exists(path)
+
+    monkeypatch.setattr(Path, "exists", race_after_absence_check)
+    with pytest.raises((OSError, ValueError, typer.BadParameter)):
+        _write(module_name, output, "losing publication", overwrite=False)
+    assert observed
+    assert output.read_bytes() == b"racing winner"
+
+
+def test_report_parent_swap_cannot_redirect_temporary_writes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    parent = tmp_path / "reports"
+    parent.mkdir()
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    output = parent / "report.json"
+    held = tmp_path / "held"
+    original_open = os.open
+    changed = False
+
+    def swap_at_stage_open(path: Any, flags: int, *args: Any, **kwargs: Any) -> int:
+        nonlocal changed
+        if not changed and flags & os.O_CREAT:
+            changed = True
+            parent.rename(held)
+            parent.symlink_to(outside, target_is_directory=True)
+        return original_open(path, flags, *args, **kwargs)
+
+    monkeypatch.setattr(os, "open", swap_at_stage_open)
+    with pytest.raises((OSError, ValueError)):
+        _write("source_registry_update_plan_cli", output, "new evidence")
+    assert changed
+    assert list(outside.iterdir()) == []

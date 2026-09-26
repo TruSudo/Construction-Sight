@@ -1,0 +1,24 @@
+{
+  "schema_version": "constructionsight.defect-closure-proof/v1",
+  "defect_id": "CS-SR-086",
+  "required_resolution_sha256": "843bccbe7820ae9607a2fff065e62c608def042ae5e026dfd61d0e681ea5cfd8",
+  "implementation_assertions": [
+    {
+      "path": "src/constructionsight/ceqanet_persistence_execute.py",
+      "operator": "contains",
+      "value": "expected_operation_id = f\"{typed_target}:{expected_target_key}\""
+    },
+    {
+      "path": "src/constructionsight/ceqanet_persistence_execute.py",
+      "operator": "not_contains",
+      "value": "def _source_index("
+    }
+  ],
+  "regression_assertions": [
+    {
+      "path": "tests/test_ceqanet_persistence_execute.py",
+      "operator": "contains",
+      "value": "CS-SR-086"
+    }
+  ]
+}

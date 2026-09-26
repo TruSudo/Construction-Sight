@@ -1,6 +1,6 @@
 from constructionsight.domain_types import PartyRole
 from constructionsight.entity_models import Entity
-from constructionsight.provenance import Provenance
+from constructionsight.provenance import Provenance, ProvenanceConfidenceBasis
 
 
 def test_entity_model_accepts_minimum_required_fields() -> None:
@@ -15,8 +15,10 @@ def test_entity_model_accepts_minimum_required_fields() -> None:
 def test_entity_model_preserves_role_and_provenance() -> None:
     provenance = Provenance(
         source_name="Synthetic Public Source",
-        confidence_score=80,
-        verified=False,
+        adapter_family="synthetic-test",
+        raw_reference="synthetic:test",
+        evidence_text="retained synthetic public evidence",
+        confidence_basis=ProvenanceConfidenceBasis.DETERMINISTIC_NORMALIZATION,
     )
     entity = Entity(
         entity_key="entity:test:contractor",

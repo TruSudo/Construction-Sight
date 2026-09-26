@@ -373,3 +373,37 @@ def test_object_id_page_parser_rejects_non_integer_values() -> None:
             {"objectIds": [1, "2"]},
             object_id_field="OBJECTID",
         )
+
+
+def test_arcgis_artifact_read_rejects_oversized_retained_file_before_full_read(
+    tmp_path: Path,
+) -> None:
+    store = JSONFileParcelArcGISBulkArtifactStore(tmp_path / "artifacts")
+    receipt = store.retain(
+        kind=ParcelArcGISBulkArtifactKind.PAGE,
+        sequence_index=0,
+        response_body=b'{"objectIds":[]}',
+    )
+    path = tmp_path / "artifacts" / receipt.artifact_reference
+    with path.open("wb") as stream:
+        stream.truncate(16 * 1024 * 1024 + 1)
+    with pytest.raises(ParcelArcGISBulkArtifactError, match="size changed"):
+        store.read(receipt)
+    with pytest.raises(ParcelArcGISBulkArtifactError, match="digest conflicts"):
+        store.retain(
+            kind=ParcelArcGISBulkArtifactKind.PAGE,
+            sequence_index=0,
+            response_body=b'{"objectIds":[]}',
+        )
+
+
+def test_arcgis_artifact_store_rejects_oversized_new_body(
+    tmp_path: Path,
+) -> None:
+    store = JSONFileParcelArcGISBulkArtifactStore(tmp_path / "artifacts")
+    with pytest.raises(ParcelArcGISBulkArtifactError, match="artifact byte limit"):
+        store.retain(
+            kind=ParcelArcGISBulkArtifactKind.PAGE,
+            sequence_index=0,
+            response_body=b"x" * (16 * 1024 * 1024 + 1),
+        )

@@ -43,7 +43,10 @@ def enrich_opportunity(
     for decision in decision_records or []:
         signals.append(_decision_signal(decision, scoring_profile))
 
-    lead_score = min(sum(signal.score_delta for signal in signals), 100)
+    lead_score = min(
+        sum(signal.operational_score_delta for signal in signals),
+        100,
+    )
     confidence_score = _average_confidence(signals)
     limitations = _limitations(signals)
     reasons = [signal.reason for signal in signals]
@@ -58,7 +61,12 @@ def enrich_opportunity(
         signals=signals,
         reasons=_unique(reasons),
         limitations=limitations,
-        next_action=_next_action(lead_score, limitations, scoring_profile),
+        next_action=_next_action(
+            lead_score,
+            confidence_score,
+            limitations,
+            scoring_profile,
+        ),
     )
 
 
@@ -170,12 +178,17 @@ def _limitations(signals: list[OpportunityEnrichmentSignal]) -> list[str]:
 
 def _next_action(
     lead_score: int,
+    confidence_score: int,
     limitations: list[str],
     scoring_profile: OpportunityScoringProfile,
 ) -> str:
     """Return deterministic next action from score and limitations."""
 
-    if lead_score >= scoring_profile.high_value_threshold and not limitations:
+    if (
+        lead_score >= scoring_profile.high_value_threshold
+        and confidence_score >= scoring_profile.minimum_actionable_confidence
+        and not limitations
+    ):
         return "prepare outreach preview"
     if lead_score >= scoring_profile.review_threshold:
         return "review limitations before outreach"

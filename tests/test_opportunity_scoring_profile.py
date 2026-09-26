@@ -13,7 +13,7 @@ def test_default_opportunity_scoring_profile_preserves_current_weights() -> None
     profile = DEFAULT_OPPORTUNITY_SCORING_PROFILE
 
     assert profile.profile_key == "opportunity-scoring:default"
-    assert profile.version == "2026-06-30.1"
+    assert profile.version == "2026-09-25.1"
     assert profile.site_score(SiteResolutionStatus.RESOLVED) == 20
     assert profile.site_score(SiteResolutionStatus.PARTIAL) == 10
     assert profile.site_score(SiteResolutionStatus.AMBIGUOUS) == 10

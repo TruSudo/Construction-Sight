@@ -1,0 +1,24 @@
+{
+  "schema_version": "constructionsight.defect-closure-proof/v1",
+  "defect_id": "CS-SR-090",
+  "required_resolution_sha256": "bfca92fd20e53d8c7e5371be8052951d8f4122d8555be6472fdab52eb9cc0f07",
+  "implementation_assertions": [
+    {
+      "path": "src/constructionsight/storage/lead_workflow_store.py",
+      "operator": "contains",
+      "value": "if indexed != supplied:"
+    },
+    {
+      "path": "src/constructionsight/storage/lead_workflow_store.py",
+      "operator": "not_contains",
+      "value": "existing.status = workflow.status.value"
+    }
+  ],
+  "regression_assertions": [
+    {
+      "path": "tests/test_lead_workflow_storage.py",
+      "operator": "contains",
+      "value": "CS-SR-090"
+    }
+  ]
+}

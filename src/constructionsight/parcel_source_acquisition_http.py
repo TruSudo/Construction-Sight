@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -10,6 +11,13 @@ from typing import Any
 
 import httpx
 
+from constructionsight.http_transport import execute_bounded_http
+from constructionsight.http_transport_models import (
+    BoundedHttpObservation,
+    BoundedHttpPolicy,
+    HttpFailureKind,
+    canonicalize_http_url,
+)
 from constructionsight.parcel_source_acquisition import (
     parse_arcgis_capability_snapshot,
     parse_arcgis_probe_observation,
@@ -22,6 +30,14 @@ from constructionsight.parcel_source_acquisition_models import (
 from constructionsight.parcel_source_verification_models import (
     ParcelSourceVerificationProfile,
 )
+
+_ARCGIS_ALLOWED_HOSTS = ("gis.countyofriverside.us", "services.arcgis.com")
+_ARCGIS_ALLOWED_PATH_PREFIXES = (
+    "/arcgis/rest/services/",
+    "/arcgis_mapping/rest/services/",
+    "/server/rest/services/",
+)
+_ARCGIS_ACCEPTED_MEDIA_TYPES = ("application/json", "text/plain")
 
 
 class ParcelArcGISProbeExecutionError(RuntimeError):
@@ -52,10 +68,29 @@ class ParcelArcGISHTTPPolicy:
         if any(delay < 0 for delay in self.retry_delays_seconds):
             raise ValueError("ArcGIS retry delays cannot be negative")
 
+    def bounded_policy(self, request_url: str) -> BoundedHttpPolicy:
+        """Bind one exact ArcGIS request identity to the central HTTP engine."""
+
+        return BoundedHttpPolicy(
+            policy_id="CS-NET-004",
+            allowed_methods=("GET",),
+            allowed_hosts=_ARCGIS_ALLOWED_HOSTS,
+            allowed_path_prefixes=_ARCGIS_ALLOWED_PATH_PREFIXES,
+            connect_timeout_seconds=self.timeout_seconds,
+            read_timeout_seconds=self.timeout_seconds,
+            write_timeout_seconds=self.timeout_seconds,
+            pool_timeout_seconds=self.timeout_seconds,
+            max_response_bytes=self.max_response_bytes,
+            accepted_media_types=_ARCGIS_ACCEPTED_MEDIA_TYPES,
+            accepted_encodings=("utf-8",),
+            user_agent="ConstructionSight-ArcGISProbe/1.0",
+            allowed_request_urls=(request_url,),
+            request_accept="application/json",
+        )
+
 
 def fetch_arcgis_capability_snapshot(
     profile: ParcelSourceVerificationProfile,
-    client: httpx.Client,
     *,
     limitations: tuple[str, ...],
     policy: ParcelArcGISHTTPPolicy | None = None,
@@ -67,7 +102,6 @@ def fetch_arcgis_capability_snapshot(
     if not profile.source_url or not profile.source_url.startswith("https://"):
         raise ValueError("ArcGIS capability fetch requires a verified HTTPS source URL")
     payload = _get_json_object(
-        client,
         profile.source_url,
         parameters={"f": "json"},
         policy=policy or ParcelArcGISHTTPPolicy(),
@@ -84,7 +118,6 @@ def fetch_arcgis_capability_snapshot(
 def execute_arcgis_probe_plan(
     snapshot: ParcelArcGISCapabilitySnapshot,
     plan: ParcelArcGISProbePlan,
-    client: httpx.Client,
     *,
     policy: ParcelArcGISHTTPPolicy | None = None,
     now: Callable[[], datetime] | None = None,
@@ -113,7 +146,6 @@ def execute_arcgis_probe_plan(
     observations: list[ParcelArcGISProbeObservation] = []
     for request in plan.requests:
         payload = _get_json_object(
-            client,
             query_url,
             parameters=request.query_parameters,
             policy=active_policy,
@@ -129,55 +161,86 @@ def execute_arcgis_probe_plan(
     return observations
 
 
+def _exact_request_url(
+    url: str,
+    parameters: dict[str, str | int | bool],
+) -> str:
+    if not url.startswith("https://"):
+        raise ValueError("ArcGIS HTTP reads require HTTPS")
+    request_url = str(httpx.URL(url, params=parameters))
+    return canonicalize_http_url(request_url)
+
+
 def _get_json_object(
-    client: httpx.Client,
     url: str,
     *,
     parameters: dict[str, str | int | bool],
     policy: ParcelArcGISHTTPPolicy,
     sleep: Callable[[float], None],
 ) -> dict[str, Any]:
-    if not url.startswith("https://"):
-        raise ValueError("ArcGIS HTTP reads require HTTPS")
+    request_url = _exact_request_url(url, parameters)
     last_error: Exception | None = None
     for attempt in range(policy.max_attempts):
-        try:
-            response = client.get(
-                url,
-                params=parameters,
-                timeout=policy.timeout_seconds,
-                headers={"Accept": "application/json"},
-            )
-            if response.status_code in policy.retry_status_codes:
-                raise _RetryableStatus(response.status_code)
-            if response.status_code != 200:
-                raise ParcelArcGISProbeExecutionError(
-                    f"ArcGIS request returned HTTP {response.status_code}"
-                )
-            if len(response.content) > policy.max_response_bytes:
-                raise ParcelArcGISProbeExecutionError(
-                    "ArcGIS response exceeded the configured byte limit"
-                )
-            payload: Any = response.json()
-            if not isinstance(payload, dict):
-                raise ParcelArcGISProbeExecutionError(
-                    "ArcGIS response must be a JSON object"
-                )
-            return {str(key): value for key, value in payload.items()}
-        except ParcelArcGISProbeExecutionError:
-            raise
-        except (httpx.TransportError, _RetryableStatus) as exc:
-            last_error = exc
+        observation = execute_bounded_http(
+            request_url,
+            "GET",
+            policy.bounded_policy(request_url),
+        )
+        retry_error = _retryable_error(observation, policy)
+        if retry_error is not None:
+            last_error = retry_error
             if attempt + 1 >= policy.max_attempts:
                 break
             sleep(policy.retry_delays_seconds[attempt])
+            continue
+        response_body = _require_success_body(observation)
+        try:
+            payload: Any = json.loads(response_body)
         except ValueError as exc:
             raise ParcelArcGISProbeExecutionError(
                 "ArcGIS response was not valid JSON"
             ) from exc
+        if not isinstance(payload, dict):
+            raise ParcelArcGISProbeExecutionError(
+                "ArcGIS response must be a JSON object"
+            )
+        return {str(key): value for key, value in payload.items()}
     raise ParcelArcGISProbeExecutionError(
         f"ArcGIS request failed after {policy.max_attempts} attempts"
     ) from last_error
+
+
+def _retryable_error(
+    observation: BoundedHttpObservation,
+    policy: ParcelArcGISHTTPPolicy,
+) -> Exception | None:
+    if observation.status_code in policy.retry_status_codes:
+        return _RetryableStatus(observation.status_code)
+    if observation.failure_kind in {HttpFailureKind.TIMEOUT, HttpFailureKind.TRANSPORT}:
+        return RuntimeError(observation.error_type or observation.failure_kind.value)
+    return None
+
+
+def _require_success_body(observation: BoundedHttpObservation) -> bytes:
+    if observation.failure_kind is HttpFailureKind.OVERSIZED_RESPONSE:
+        raise ParcelArcGISProbeExecutionError(
+            "ArcGIS response exceeded the configured byte limit"
+        )
+    if observation.failure_kind is HttpFailureKind.MALFORMED_RESPONSE:
+        raise ParcelArcGISProbeExecutionError(
+            "ArcGIS response Content-Length is malformed"
+        )
+    if observation.failure_kind is HttpFailureKind.REDIRECT:
+        raise ParcelArcGISProbeExecutionError("ArcGIS HTTP redirects are forbidden")
+    if observation.status_code != 200:
+        raise ParcelArcGISProbeExecutionError(
+            f"ArcGIS request returned HTTP {observation.status_code}"
+        )
+    if observation.failure_kind is not HttpFailureKind.NONE:
+        raise ParcelArcGISProbeExecutionError(
+            f"ArcGIS request failed: {observation.error_type or observation.failure_kind.value}"
+        )
+    return observation.response_body
 
 
 class _RetryableStatus(Exception):

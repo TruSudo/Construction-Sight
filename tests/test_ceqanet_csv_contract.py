@@ -342,3 +342,44 @@ def test_inspect_file_cli_rejects_html_response_body(tmp_path: Path) -> None:
 
     assert result.exit_code != 0
     assert "unsupported CEQAnet CSV content type" in result.output
+
+
+def test_csv_inspection_streams_nonblank_rows_with_bounded_retention() -> None:
+    request = build_ceqanet_csv_export_request(sch_number="2026030377")
+    content = (
+        b"SCH Number,Title\n"
+        + b"\n" * 10
+        + b"2026030377,Warehouse\n" * 40_000
+    )
+    inspection = inspect_ceqanet_csv_bytes(request, content, max_retained_rows=3)
+    assert inspection.row_count == 40_000
+    assert inspection.retained_row_count == 3
+    assert inspection.rows_truncated is True
+    inspection.assert_integrity()
+
+
+def test_csv_inspection_rejects_excessive_retention_request() -> None:
+    request = build_ceqanet_csv_export_request(sch_number="2026030377")
+    with pytest.raises(ValueError, match="must not exceed 5000"):
+        inspect_ceqanet_csv_bytes(
+            request, PROJECT_FIXTURE.read_bytes(), max_retained_rows=5_001
+        )
+
+
+def test_csv_file_cli_rejects_oversized_file_before_full_read(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "oversized.csv"
+    with path.open("wb") as stream:
+        stream.truncate(10_000_001)
+    result = runner.invoke(
+        app,
+        [
+            "inspect-file",
+            str(path),
+            "--source-url",
+            "https://ceqanet.lci.ca.gov/Search?OutputFormat=CSV&Sch=2026030377",
+        ],
+    )
+    assert result.exit_code != 0
+    assert "exceeds the 10000000-byte limit" in result.output

@@ -192,3 +192,70 @@ This requirement affects multiple phases:
 ## Completion Standard
 
 This requirement is not complete until ConstructionSight can visually display active and near-active jobsites on a map, show associated developers and general contractors, and preserve searchable relationship memory across San Bernardino County and Riverside County public-record data.
+
+
+## Future optional AI augmentation — non-blocking product requirement
+
+ConstructionSight must remain **fully functional without an AI model, API key, networked
+AI provider, or inference service**. AI is an optional enhancement to working,
+deterministic acquisition, normalized persistence, evidence review, identity
+resolution, geographic inspection, opportunity management, and commercial
+workflows. The AI setting defaults to OFF and must not gate application startup,
+source collection, database reads/writes, non-AI search, map rendering or ordinary
+operator actions.
+
+Once the non-AI operating baseline is demonstrated, add a replaceable model
+adapter (local or explicitly configured remote provider) with explicit user
+enablement, transparent model/provider selection, scope-limited inputs, rate/cost
+limits, timeout/cancellation and graceful fallback. No raw source evidence,
+personal/contact information, private lead notes or credentials may be sent to a
+remote model without an explicit, reviewable disclosure/consent boundary. Never
+send secrets in prompts. Retain model/version, prompt/template identity,
+source-record revisions, response, timestamp and applicable user review with
+each AI-generated artifact.
+
+Potential opt-in uses: cite-backed dossier summaries, natural-language queries
+over **already retained and permitted** source data, conflicting-record
+explanations, candidate duplicate suggestions, follow-up research questions,
+operator outreach/bid *drafts* from already approved records, and explanations
+of existing map/entity findings. These are suggestions and derived analyses, not
+source facts. Every factual assertion must resolve to inspectable retained
+evidence; contradictory or missing evidence must be surfaced. AI must not invent
+APNs, coordinates, construction stage, identities, contact details, approvals,
+readiness scores or commercial numbers.
+
+The model cannot directly mutate authoritative source records, bypass existing
+authorization/effect-consumption controls, approve or transmit outreach, send
+bids, approve payments, or change royalty balances. Human-reviewed suggestions
+must pass the existing deterministic validation and explicit workflow
+authorization before any permitted action. Model output is untrusted data:
+defend against source-document prompt injection, expose uncertainty and
+unsupported claims, and prohibit generated instructions from becoming
+execution authority.
+
+Acceptance must demonstrate that the same core tasks complete with AI disabled,
+unavailable, timing out, or producing malformed/hostile output. Disablement must
+restore the same deterministic application behavior without loss of records,
+workflows or evidence. This requirement is recorded for future implementation;
+it is **not an assertion that an AI integration exists today**.
+
+
+## Locked AI Center navigation and experience
+
+Preserve the owner's canonical charcoal-and-amber sidebar and all existing
+navigation sections. Reserve a **separate AI AUGMENTATION section** in the
+sidebar containing **AI Center**; do not bury the model controls in Project
+Intelligence or require AI for navigation. The AI Center must eventually provide
+two clearly distinct capabilities within one consistent optional integration:
+an operator-invoked AI Research Assistant and passive Ambient Intelligence.
+The AI Center should expose selected provider/model, opt-in activation,
+approved input/disclosure scope, costs/usage, privacy controls, background
+queue status, findings with source links, and a clear OFF / unavailable state.
+
+The sidebar and initial AI Center status are now implemented as **OFF / no model
+connected** placeholders. They are intentionally not switches, model selectors,
+background processing, or evidence of an integrated AI provider. Do not label
+future controls operational until real connections, permission boundaries,
+persistent findings, AI-disabled equivalence tests and failure fallback have
+been verified. Keep standard ConstructionSight features available when the
+AI Center is unconfigured or disabled.

@@ -47,16 +47,9 @@ class VerificationStore:
         )
         self.session.add(record)
 
-        if source is not None:
-            source.confidence_score = result.confidence_score
-            source.last_checked_date = result.checked_at.date()
-            if result.url_reachable and result.confidence_score >= 60:
-                source.verification_status = "verified"
-            elif result.url_reachable:
-                source.verification_status = "partial"
-            else:
-                source.verification_status = "failed"
-
+        # Verification records are evidence, not source-registry authority.
+        # Registry status/confidence transitions must flow through the governed
+        # source-registry plan/apply boundary instead of being inferred here.
         self.session.flush()
         return record
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
@@ -92,15 +93,15 @@ class ParcelObservationDisposition(BaseModel):
 
     observation_id: str = Field(pattern=r"^parcel-observation:[0-9a-f]{64}$")
     status: ParcelObservationDispositionStatus
-    superseded_by_observation_ids: list[str] = Field(default_factory=list)
-    reasons: list[str] = Field(min_length=1)
+    superseded_by_observation_ids: tuple[str, ...] = ()
+    reasons: tuple[str, ...] = Field(min_length=1)
 
     @field_validator("superseded_by_observation_ids", "reasons")
     @classmethod
-    def require_sorted_unique_values(cls, values: list[str]) -> list[str]:
+    def require_sorted_unique_values(cls, values: tuple[str, ...]) -> tuple[str, ...]:
         """Keep explicit disposition evidence deterministic."""
 
-        if values != sorted(set(values)):
+        if values != tuple(sorted(set(values))):
             raise ValueError("parcel observation disposition lists must be sorted and unique")
         return values
 
@@ -128,11 +129,11 @@ class ParcelSourceCurrentSelection(BaseModel):
     time_basis: ParcelObservationTimeBasis
     governing_timestamp: datetime | None = None
     current_observation_id: str | None = None
-    candidate_observation_ids: list[str] = Field(min_length=1)
-    dispositions: list[ParcelObservationDisposition] = Field(min_length=1)
+    candidate_observation_ids: tuple[str, ...] = Field(min_length=1)
+    dispositions: tuple[ParcelObservationDisposition, ...] = Field(min_length=1)
     requires_human_review: bool
-    reasons: list[str] = Field(min_length=1)
-    limitations: list[str] = Field(default_factory=list)
+    reasons: tuple[str, ...] = Field(min_length=1)
+    limitations: tuple[str, ...] = ()
 
     @field_validator("governing_timestamp")
     @classmethod
@@ -149,10 +150,10 @@ class ParcelSourceCurrentSelection(BaseModel):
 
     @field_validator("candidate_observation_ids", "reasons", "limitations")
     @classmethod
-    def require_sorted_unique_selection_values(cls, values: list[str]) -> list[str]:
+    def require_sorted_unique_selection_values(cls, values: tuple[str, ...]) -> tuple[str, ...]:
         """Keep selection evidence deterministic."""
 
-        if values != sorted(set(values)):
+        if values != tuple(sorted(set(values))):
             raise ValueError("parcel source selection lists must be sorted and unique")
         return values
 
@@ -180,7 +181,7 @@ class ParcelSourceCurrentSelection(BaseModel):
                 raise ValueError("selected parcel source requires a governing timestamp")
             if self.current_observation_id is None:
                 raise ValueError("selected parcel source requires a current observation")
-            if self.candidate_observation_ids != [self.current_observation_id]:
+            if self.candidate_observation_ids != (self.current_observation_id,):
                 raise ValueError("selected parcel source requires exactly one current candidate")
             if by_status[ParcelObservationDispositionStatus.CURRENT] != [
                 self.current_observation_id
@@ -192,7 +193,7 @@ class ParcelSourceCurrentSelection(BaseModel):
                 if (
                     disposition.status is ParcelObservationDispositionStatus.SUPERSEDED
                     and disposition.superseded_by_observation_ids
-                    != [self.current_observation_id]
+                    != (self.current_observation_id,)
                 ):
                     raise ValueError(
                         "superseded observations must identify the current observation"
@@ -205,7 +206,7 @@ class ParcelSourceCurrentSelection(BaseModel):
             raise ValueError("ambiguous parcel source cannot select a current observation")
         if by_status[ParcelObservationDispositionStatus.CURRENT]:
             raise ValueError("ambiguous parcel source cannot have a current disposition")
-        if sorted(by_status[ParcelObservationDispositionStatus.CURRENT_CANDIDATE]) != (
+        if tuple(sorted(by_status[ParcelObservationDispositionStatus.CURRENT_CANDIDATE])) != (
             self.candidate_observation_ids
         ):
             raise ValueError("ambiguous parcel candidates must match candidate dispositions")
@@ -236,18 +237,18 @@ class ParcelCurrentSelectionReport(BaseModel):
     county: str = Field(min_length=1)
     status: ParcelCurrentSelectionStatus
     source_count: int = Field(ge=1)
-    current_observation_ids: list[str]
-    source_selections: list[ParcelSourceCurrentSelection] = Field(min_length=1)
+    current_observation_ids: tuple[str, ...]
+    source_selections: tuple[ParcelSourceCurrentSelection, ...] = Field(min_length=1)
     requires_human_review: bool
-    limitations: list[str] = Field(default_factory=list)
+    limitations: tuple[str, ...] = ()
     generated_at: datetime
 
     @field_validator("current_observation_ids", "limitations")
     @classmethod
-    def require_sorted_unique_report_values(cls, values: list[str]) -> list[str]:
+    def require_sorted_unique_report_values(cls, values: tuple[str, ...]) -> tuple[str, ...]:
         """Keep aggregate selection output deterministic."""
 
-        if values != sorted(set(values)):
+        if values != tuple(sorted(set(values))):
             raise ValueError("parcel current-selection lists must be sorted and unique")
         return values
 
@@ -273,7 +274,7 @@ class ParcelCurrentSelectionReport(BaseModel):
             for item in self.source_selections
             if item.current_observation_id is not None
         )
-        if self.current_observation_ids != current_ids:
+        if self.current_observation_ids != tuple(current_ids):
             raise ValueError("current observation IDs must match source selections")
         review_required = any(
             item.requires_human_review for item in self.source_selections
@@ -317,14 +318,14 @@ class ParcelLongitudinalAssuranceResult(BaseModel):
     status: ParcelLongitudinalAssuranceStatus
     selection: ParcelCurrentSelectionReport
     assurance_report: ParcelAssuranceReport | None = None
-    limitations: list[str] = Field(default_factory=list)
+    limitations: tuple[str, ...] = ()
 
     @field_validator("limitations")
     @classmethod
-    def require_sorted_unique_limitations(cls, values: list[str]) -> list[str]:
+    def require_sorted_unique_limitations(cls, values: tuple[str, ...]) -> tuple[str, ...]:
         """Keep longitudinal assurance boundaries deterministic."""
 
-        if values != sorted(set(values)):
+        if values != tuple(sorted(set(values))):
             raise ValueError("longitudinal assurance limitations must be sorted and unique")
         return values
 
@@ -366,17 +367,17 @@ def parcel_current_selection_id(
     county: str,
     status: ParcelCurrentSelectionStatus,
     source_count: int,
-    current_observation_ids: list[str],
-    source_selections: list[ParcelSourceCurrentSelection],
+    current_observation_ids: Sequence[str],
+    source_selections: Sequence[ParcelSourceCurrentSelection],
     requires_human_review: bool,
-    limitations: list[str],
+    limitations: Sequence[str],
 ) -> str:
     """Return deterministic identity for complete current-selection evidence."""
 
     payload = {
         "county": county.strip().casefold(),
-        "current_observation_ids": current_observation_ids,
-        "limitations": limitations,
+        "current_observation_ids": list(current_observation_ids),
+        "limitations": list(limitations),
         "normalized_apn": normalized_apn,
         "requires_human_review": requires_human_review,
         "source_count": source_count,

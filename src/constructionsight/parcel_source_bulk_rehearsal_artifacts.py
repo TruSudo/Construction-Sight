@@ -10,6 +10,16 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from constructionsight.parcel_source_bulk_rehearsal_models import digest_json_payload
+from constructionsight.storage.runtime_artifacts import (
+    RuntimeArtifactError,
+    open_runtime_artifact,
+    publish_runtime_artifact,
+    read_bounded_artifact_stream,
+    read_runtime_artifact,
+    runtime_artifact_parts,
+)
+
+_MAX_RETAINED_RESPONSE_BYTES = 16 * 1024 * 1024
 
 
 class ParcelArcGISBulkArtifactError(RuntimeError):
@@ -99,8 +109,11 @@ class ParcelArcGISBulkArtifactReceipt:
             or self.artifact_reference != self.artifact_reference.strip()
         ):
             raise ValueError("ArcGIS artifact reference must be nonempty and trimmed")
-        reference_path = Path(self.artifact_reference)
-        if reference_path.name != self.artifact_reference or reference_path.is_absolute():
+        try:
+            parts = runtime_artifact_parts(self.artifact_reference)
+        except RuntimeArtifactError as exc:
+            raise ValueError("ArcGIS artifact reference must be one safe file name") from exc
+        if len(parts) != 1:
             raise ValueError("ArcGIS artifact reference must be one safe file name")
 
 
@@ -134,19 +147,29 @@ class JSONFileParcelArcGISBulkArtifactStore:
             raise ValueError("ArcGIS artifact sequence index cannot be negative")
         if not response_body:
             raise ValueError("ArcGIS artifact response body cannot be empty")
+        if len(response_body) > _MAX_RETAINED_RESPONSE_BYTES:
+            raise ParcelArcGISBulkArtifactError("ArcGIS response exceeds artifact byte limit")
         digest = digest_response_body(response_body)
-        self._directory.mkdir(parents=True, exist_ok=True)
         filename = f"{sequence_index:08d}-{kind.value}-{digest}.json"
         path = self._directory / filename
-        if path.exists():
-            if path.read_bytes() != response_body:
+        try:
+            publish_runtime_artifact(
+                path, (response_body,), max_bytes=_MAX_RETAINED_RESPONSE_BYTES,
+            )
+        except FileExistsError:
+            try:
+                with open_runtime_artifact(path, durable=True) as retained_file:
+                    retained_bytes = read_bounded_artifact_stream(
+                        retained_file, max_bytes=len(response_body),
+                    )
+                    if retained_bytes != response_body:
+                        raise ParcelArcGISBulkArtifactError(
+                            "ArcGIS artifact digest conflicts with retained response bytes"
+                        ) from None
+            except (OSError, RuntimeArtifactError) as exc:
                 raise ParcelArcGISBulkArtifactError(
                     "ArcGIS artifact digest conflicts with retained response bytes"
-                )
-        else:
-            temporary = path.with_suffix(".tmp")
-            temporary.write_bytes(response_body)
-            temporary.replace(path)
+                ) from exc
         return ParcelArcGISBulkArtifactReceipt(
             kind=kind,
             sequence_index=sequence_index,
@@ -159,9 +182,18 @@ class JSONFileParcelArcGISBulkArtifactStore:
         """Reload exact retained bytes and revalidate the receipt digest and size."""
 
         path = self._directory / receipt.artifact_reference
-        if not path.is_file():
-            raise ParcelArcGISBulkArtifactError("ArcGIS response artifact was not retained")
-        response_body = path.read_bytes()
+        if receipt.response_size > _MAX_RETAINED_RESPONSE_BYTES:
+            raise ParcelArcGISBulkArtifactError("ArcGIS response exceeds artifact byte limit")
+        try:
+            response_body = read_runtime_artifact(path, max_bytes=receipt.response_size)
+        except FileNotFoundError as exc:
+            raise ParcelArcGISBulkArtifactError(
+                "ArcGIS response artifact was not retained"
+            ) from exc
+        except RuntimeArtifactError as exc:
+            raise ParcelArcGISBulkArtifactError(
+                "ArcGIS response artifact size changed or its path is unsafe"
+            ) from exc
         if len(response_body) != receipt.response_size:
             raise ParcelArcGISBulkArtifactError("ArcGIS response artifact size changed")
         if digest_response_body(response_body) != receipt.response_digest:

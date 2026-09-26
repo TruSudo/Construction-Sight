@@ -10,6 +10,7 @@ from constructionsight.lead_workflow_models import (
     LeadWorkflowEvent,
     LeadWorkflowRecord,
     LeadWorkflowStatus,
+    require_duplicate_review_clear,
 )
 from constructionsight.lead_workflow_rules import validate_lead_workflow_transition
 
@@ -59,6 +60,7 @@ def transition_lead_workflow(
 ) -> LeadWorkflowRecord:
     """Return a new workflow record with an appended matrix-valid status event."""
 
+    require_duplicate_review_clear(limitations=record.limitations, next_status=next_status)
     validate_lead_workflow_transition(record.status, next_status)
     event = _event(
         workflow_id_basis=record.workflow_id,
@@ -95,6 +97,11 @@ def _initial_status(
         return LeadWorkflowStatus.HOLD
     if package.status == LeadReviewStatus.HOLD:
         return LeadWorkflowStatus.HOLD
+    if (
+        duplicate_result is not None
+        and duplicate_result.status == LeadDuplicateStatus.REVIEW_NEEDED
+    ):
+        return LeadWorkflowStatus.REVIEW
     if package.status == LeadReviewStatus.MONITOR:
         return LeadWorkflowStatus.MONITOR
     if package.status == LeadReviewStatus.REVIEW_REQUIRED:

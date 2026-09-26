@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-import json
 from collections.abc import Iterable
 from datetime import UTC, datetime
-from pathlib import Path
-from typing import Any
 
 from constructionsight.parcel_source_acquisition import (
     build_arcgis_acquisition_assessment,
@@ -171,25 +168,6 @@ def verify_arcgis_bounded_proof_bundle(
             ),
         }
     )
-
-
-def load_arcgis_bounded_proof_bundle(
-    path: Path,
-) -> ParcelArcGISBoundedProofBundle:
-    """Load and independently verify one JSON proof bundle from disk."""
-
-    try:
-        payload: Any = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        raise ValueError(f"cannot load ArcGIS bounded-proof bundle: {path}") from exc
-    if not isinstance(payload, dict):
-        raise ValueError("ArcGIS bounded-proof bundle must be a JSON object")
-    try:
-        bundle = ParcelArcGISBoundedProofBundle.model_validate(payload)
-    except ValueError as exc:
-        raise ValueError("invalid ArcGIS bounded-proof bundle") from exc
-    verify_arcgis_bounded_proof_bundle(bundle)
-    return bundle
 
 
 def build_arcgis_proof_persistence_receipt(

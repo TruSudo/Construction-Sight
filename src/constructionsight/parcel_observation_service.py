@@ -67,23 +67,26 @@ def select_current_parcel_observations(
     grouped: dict[str, list[ParcelRecordObservation]] = {}
     for observation in retained:
         grouped.setdefault(observation.record.source_key, []).append(observation)
-    source_selections = [
+    source_selections = tuple(
         _select_source(source_key, grouped[source_key])
         for source_key in sorted(grouped)
-    ]
+    )
     requires_review = any(item.requires_human_review for item in source_selections)
-    current_ids = sorted(
-        item.current_observation_id
-        for item in source_selections
-        if item.current_observation_id is not None
+    current_ids = tuple(
+        sorted(
+            item.current_observation_id
+            for item in source_selections
+            if item.current_observation_id is not None
+        )
     )
     status = (
         ParcelCurrentSelectionStatus.REVIEW_REQUIRED
         if requires_review
         else ParcelCurrentSelectionStatus.COMPLETE
     )
-    limitations = sorted(
-        {
+    limitations = tuple(
+        sorted(
+            {
             "Current selection is derived; retained source observations remain immutable.",
             (
                 "Source-effective time is used only when every observation for that "
@@ -93,12 +96,13 @@ def select_current_parcel_observations(
                 "Observation time is used only when no observation for that source "
                 "supplies source-effective time."
             ),
-            *(
-                limitation
-                for selection in source_selections
-                for limitation in selection.limitations
-            ),
-        }
+                *(
+                    limitation
+                    for selection in source_selections
+                    for limitation in selection.limitations
+                ),
+            }
+        )
     )
     selection_id = parcel_current_selection_id(
         normalized_apn=first.normalized_apn,
@@ -149,14 +153,19 @@ def build_longitudinal_parcel_assurance(
             "parcel longitudinal source contexts must exactly match observations; "
             f"missing={missing}, extra={extra}"
         )
-    limitations = sorted(
-        {
-            (
-                "Assurance is withheld whenever any source timeline lacks a unique "
-                "current observation."
-            ),
-            "Superseded observations remain evidence but do not enter current field assurance.",
-        }
+    limitations = tuple(
+        sorted(
+            {
+                (
+                    "Assurance is withheld whenever any source timeline lacks a unique "
+                    "current observation."
+                ),
+                (
+                    "Superseded observations remain evidence but do not enter current "
+                    "field assurance."
+                ),
+            }
+        )
     )
     if selection.requires_human_review:
         return ParcelLongitudinalAssuranceResult(
@@ -192,17 +201,17 @@ def _select_source(
         item.record.source_updated_at is not None for item in observations
     ]
     if any(effective_presence) and not all(effective_presence):
-        candidate_ids = sorted(item.observation_id for item in observations)
-        dispositions = [
+        candidate_ids = tuple(sorted(item.observation_id for item in observations))
+        dispositions = tuple(
             ParcelObservationDisposition(
                 observation_id=observation_id,
                 status=ParcelObservationDispositionStatus.CURRENT_CANDIDATE,
-                reasons=[
-                    "The observation cannot be ordered against a different time basis."
-                ],
+                reasons=(
+                    "The observation cannot be ordered against a different time basis.",
+                ),
             )
             for observation_id in candidate_ids
-        ]
+        )
         return ParcelSourceCurrentSelection(
             source_key=source_key,
             status=ParcelSourceSelectionStatus.AMBIGUOUS,
@@ -210,15 +219,15 @@ def _select_source(
             candidate_observation_ids=candidate_ids,
             dispositions=dispositions,
             requires_human_review=True,
-            reasons=[
-                "Some source observations supply source-effective time and others do not."
-            ],
-            limitations=[
+            reasons=(
+                "Some source observations supply source-effective time and others do not.",
+            ),
+            limitations=(
                 (
                     "Source-effective time and observation time are not treated as "
                     "interchangeable clocks."
-                )
-            ],
+                ),
+            ),
         )
 
     if all(effective_presence):
@@ -247,7 +256,7 @@ def _select_source(
         for item in observations
         if timestamp_by_id[item.observation_id] == governing_timestamp
     ]
-    top_ids = sorted(item.observation_id for item in top)
+    top_ids = tuple(sorted(item.observation_id for item in top))
     if len({item.content_digest for item in top}) > 1:
         dispositions = _ambiguous_dispositions(observations, top_ids)
         return ParcelSourceCurrentSelection(
@@ -258,18 +267,20 @@ def _select_source(
             candidate_observation_ids=top_ids,
             dispositions=dispositions,
             requires_human_review=True,
-            reasons=sorted(
-                {
-                    basis_reason,
-                    (
-                        "Competing observations at the governing timestamp contain "
-                        "different parcel content."
-                    ),
-                }
+            reasons=tuple(
+                sorted(
+                    {
+                        basis_reason,
+                        (
+                            "Competing observations at the governing timestamp contain "
+                            "different parcel content."
+                        ),
+                    }
+                )
             ),
-            limitations=[
-                "No current record is selected through a same-time content conflict."
-            ],
+            limitations=(
+                "No current record is selected through a same-time content conflict.",
+            ),
         )
 
     current = max(
@@ -280,7 +291,7 @@ def _select_source(
         ),
     )
     current_id = current.observation_id
-    dispositions = [
+    dispositions = tuple(
         ParcelObservationDisposition(
             observation_id=item.observation_id,
             status=(
@@ -289,35 +300,35 @@ def _select_source(
                 else ParcelObservationDispositionStatus.SUPERSEDED
             ),
             superseded_by_observation_ids=(
-                [] if item.observation_id == current_id else [current_id]
+                () if item.observation_id == current_id else (current_id,)
             ),
             reasons=(
-                ["This is the unique governed current observation."]
+                ("This is the unique governed current observation.",)
                 if item.observation_id == current_id
-                else [_supersession_reason(item, current, time_basis)]
+                else (_supersession_reason(item, current, time_basis),)
             ),
         )
         for item in sorted(observations, key=lambda value: value.observation_id)
-    ]
+    )
     return ParcelSourceCurrentSelection(
         source_key=source_key,
         status=ParcelSourceSelectionStatus.SELECTED,
         time_basis=time_basis,
         governing_timestamp=governing_timestamp,
         current_observation_id=current_id,
-        candidate_observation_ids=[current_id],
+        candidate_observation_ids=(current_id,),
         dispositions=dispositions,
         requires_human_review=False,
-        reasons=[basis_reason],
+        reasons=(basis_reason,),
     )
 
 
 def _ambiguous_dispositions(
     observations: list[ParcelRecordObservation],
-    candidate_ids: list[str],
-) -> list[ParcelObservationDisposition]:
+    candidate_ids: tuple[str, ...],
+) -> tuple[ParcelObservationDisposition, ...]:
     candidate_set = set(candidate_ids)
-    return [
+    return tuple(
         ParcelObservationDisposition(
             observation_id=item.observation_id,
             status=(
@@ -326,16 +337,16 @@ def _ambiguous_dispositions(
                 else ParcelObservationDispositionStatus.SUPERSEDED
             ),
             superseded_by_observation_ids=(
-                [] if item.observation_id in candidate_set else candidate_ids
+                () if item.observation_id in candidate_set else candidate_ids
             ),
             reasons=(
-                ["This observation is a competing current candidate."]
+                ("This observation is a competing current candidate.",)
                 if item.observation_id in candidate_set
-                else ["A newer governing timestamp supersedes this observation."]
+                else ("A newer governing timestamp supersedes this observation.",)
             ),
         )
         for item in sorted(observations, key=lambda value: value.observation_id)
-    ]
+    )
 
 
 def _supersession_reason(

@@ -1,5 +1,7 @@
 import json
+from datetime import timedelta
 
+import pytest
 from sqlalchemy import inspect, select
 
 from constructionsight.domain_types import confidence_band
@@ -7,7 +9,9 @@ from constructionsight.lead_dedupe_models import (
     LeadDuplicateResult,
     LeadDuplicateStatus,
     LeadFingerprint,
+    canonical_lead_fingerprint_key,
 )
+from constructionsight.lead_dedupe_service import build_lead_fingerprint, check_lead_duplicate
 from constructionsight.lead_review_models import (
     LeadReviewItem,
     LeadReviewPackage,
@@ -18,6 +22,7 @@ from constructionsight.lead_workflow_models import (
     LeadWorkflowRecord,
     LeadWorkflowStatus,
 )
+from constructionsight.lead_workflow_service import transition_lead_workflow
 from constructionsight.opportunity_enrichment_models import (
     EnrichmentSignalKind,
     OpportunityEnrichmentReport,
@@ -45,6 +50,7 @@ from constructionsight.storage.lead_workflow_orm import (
     ResultShareRecordRow,
 )
 from constructionsight.storage.lead_workflow_store import (
+    compare_and_swap_lead_workflow_record,
     store_lead_duplicate_result,
     store_lead_fingerprint,
     store_lead_review_package,
@@ -68,7 +74,7 @@ def _report() -> OpportunityEnrichmentReport:
         signal_kind=EnrichmentSignalKind.PERMIT_TRANSITION,
         label="permit status",
         score_delta=80,
-        confidence_score=80,
+        confidence_score=100,
         reason="permit status changed",
         limitations=["source needs review"],
     )
@@ -76,8 +82,8 @@ def _report() -> OpportunityEnrichmentReport:
         report_id="opportunity-enrichment:test",
         base_candidate_id="candidate:test",
         lead_score=80,
-        confidence_score=80,
-        confidence_band=confidence_band(80),
+        confidence_score=100,
+        confidence_band=confidence_band(100),
         signals=[signal],
         reasons=["permit status changed"],
         limitations=["source needs review"],
@@ -104,11 +110,17 @@ def _package(score: int = 80) -> LeadReviewPackage:
 
 def _fingerprint(score: int = 80) -> LeadFingerprint:
     return LeadFingerprint(
-        fingerprint_key="lead-fingerprint:test",
+        fingerprint_key=canonical_lead_fingerprint_key(
+            site_key="site:test",
+            source_key="permit:test",
+            source_record_id="permit:1",
+            normalized_title="WAREHOUSE PHASE II",
+        ),
         base_candidate_id="candidate:test",
         site_key="site:test",
         source_key="permit:test",
         source_record_id="permit:1",
+        raw_title="Warehouse Phase II",
         normalized_title="WAREHOUSE PHASE II",
         lead_score=score,
     )
@@ -239,6 +251,82 @@ def test_store_lead_duplicate_result_roundtrip() -> None:
         assert payload["limitations"] == ["review prior lead history"]
 
 
+def test_store_duplicate_result_rejects_unreviewed_status_overwrite() -> None:
+    _engine, factory = _session_factory()
+    unresolved = _duplicate_result()
+    rewritten = unresolved.model_copy(
+        update={"status": LeadDuplicateStatus.UNIQUE, "matched_fingerprint_keys": []},
+    )
+    with managed_session(factory) as session:
+        store_lead_duplicate_result(session, unresolved)
+        session.flush()
+        with pytest.raises(ValueError, match="duplicate results are immutable"):
+            store_lead_duplicate_result(session, rewritten)
+        row = session.execute(select(LeadDuplicateResultRecord)).scalar_one()
+        assert row.status == LeadDuplicateStatus.REVIEW_NEEDED.value
+        assert row.payload_json == json.dumps(unresolved.to_dict(), sort_keys=True)
+
+
+def test_store_duplicate_result_recheck_preserves_first_verdict_snapshot() -> None:
+    _engine, factory = _session_factory()
+    first = _duplicate_result()
+    rescanned = first.model_copy(
+        update={
+            "candidate": first.candidate.model_copy(
+                update={
+                    "created_at": first.candidate.created_at + timedelta(seconds=1),
+                    "lead_score": 81,
+                }
+            )
+        }
+    )
+    with managed_session(factory) as session:
+        first_row = store_lead_duplicate_result(session, first)
+        session.flush()
+        replayed_row = store_lead_duplicate_result(session, rescanned)
+        session.flush()
+        assert replayed_row is first_row
+        persisted = session.execute(select(LeadDuplicateResultRecord)).scalars().all()
+        assert len(persisted) == 1
+        assert persisted[0].payload_json == json.dumps(first.to_dict(), sort_keys=True)
+        assert persisted[0].status == LeadDuplicateStatus.REVIEW_NEEDED.value
+
+
+def test_duplicate_checks_for_distinct_candidates_can_both_be_persisted() -> None:
+    _engine, factory = _session_factory()
+    first = build_lead_fingerprint(package=_package(), site_key="site:shared")
+    second = first.model_copy(update={"base_candidate_id": "candidate:second"})
+    results = [check_lead_duplicate(candidate, []) for candidate in (first, second)]
+    with managed_session(factory) as session:
+        for result in results:
+            store_lead_duplicate_result(session, result)
+    with managed_session(factory) as session:
+        rows = session.scalars(select(LeadDuplicateResultRecord)).all()
+        assert len(rows) == 2
+        assert {row.base_candidate_id for row in rows} == {
+            first.base_candidate_id, second.base_candidate_id,
+        }
+
+
+def test_store_workflow_rejects_actionable_state_with_persisted_duplicate() -> None:
+    _engine, factory = _session_factory()
+    with managed_session(factory) as session:
+        store_lead_duplicate_result(session, _duplicate_result())
+        with pytest.raises(ValueError, match="unresolved duplicate review"):
+            store_lead_workflow_record(session, _workflow())
+        assert session.execute(select(LeadWorkflowRecordRow)).scalar_one_or_none() is None
+
+
+def test_store_workflow_rejects_duplicate_from_same_candidate_without_fingerprint() -> None:
+    _engine, factory = _session_factory()
+    with managed_session(factory) as session:
+        store_lead_duplicate_result(session, _duplicate_result())
+        workflow = _workflow().model_copy(update={"fingerprint_key": None})
+        with pytest.raises(ValueError, match="unresolved duplicate review"):
+            store_lead_workflow_record(session, workflow)
+        assert session.execute(select(LeadWorkflowRecordRow)).scalar_one_or_none() is None
+
+
 def test_store_lead_workflow_event_roundtrip() -> None:
     _engine, factory = _session_factory()
     event = LeadWorkflowEvent(
@@ -273,6 +361,142 @@ def test_store_lead_workflow_record_roundtrip_stores_events() -> None:
         assert event_row.workflow_id == "lead-workflow:test"
         payload = json.loads(workflow_row.payload_json)
         assert payload["limitations"] == ["review prior lead history"]
+
+
+def test_store_lead_workflow_event_accepts_exact_replay_and_rejects_rewrite() -> None:
+    _engine, factory = _session_factory()
+    event = LeadWorkflowEvent(
+        event_id="lead-workflow-event:immutable",
+        previous_status=LeadWorkflowStatus.MONITOR,
+        current_status=LeadWorkflowStatus.REVIEW,
+        reason="review evidence",
+    )
+    with managed_session(factory) as session:
+        first = store_lead_workflow_event(
+            session, event, workflow_id="lead-workflow:test"
+        )
+        session.flush()
+        replay = store_lead_workflow_event(
+            session, event, workflow_id="lead-workflow:test"
+        )
+        assert replay is first
+        rewritten = event.model_copy(update={"reason": "rewritten history"})
+        with pytest.raises(ValueError, match="workflow events are immutable"):
+            store_lead_workflow_event(
+                session, rewritten, workflow_id="lead-workflow:test"
+            )
+
+
+
+# Regression: CS-SR-090
+def test_store_existing_workflow_rejects_mutation_outside_compare_and_swap() -> None:
+    _engine, factory = _session_factory()
+    current = LeadWorkflowRecord(
+        workflow_id="lead-workflow:direct-mutation",
+        package_id="lead-review:direct-mutation",
+        base_candidate_id="candidate:direct-mutation",
+        status=LeadWorkflowStatus.MONITOR,
+        lead_score=50,
+        events=[
+            LeadWorkflowEvent(
+                event_id="lead-workflow-event:direct-initial",
+                current_status=LeadWorkflowStatus.MONITOR,
+                reason="initial state",
+            )
+        ],
+    )
+    updated = transition_lead_workflow(
+        record=current,
+        next_status=LeadWorkflowStatus.REVIEW,
+        reason="must use compare-and-swap",
+    )
+
+    with managed_session(factory) as session:
+        store_lead_workflow_record(session, current)
+
+    with managed_session(factory) as session, pytest.raises(
+        ValueError, match="requires compare-and-swap"
+    ):
+        store_lead_workflow_record(session, updated)
+
+    with managed_session(factory) as session:
+        row = session.execute(
+            select(LeadWorkflowRecordRow).where(
+                LeadWorkflowRecordRow.workflow_id == current.workflow_id
+            )
+        ).scalar_one()
+        events = session.execute(
+            select(LeadWorkflowEventRecord).where(
+                LeadWorkflowEventRecord.workflow_id == current.workflow_id
+            )
+        ).scalars().all()
+
+    assert row.status == LeadWorkflowStatus.MONITOR.value
+    assert len(events) == 1
+    assert events[0].event_id == current.events[0].event_id
+
+def test_lead_workflow_compare_and_swap_rejects_stale_competing_writer() -> None:
+    _engine, factory = _session_factory()
+    current = LeadWorkflowRecord(
+        workflow_id="lead-workflow:cas",
+        package_id="lead-review:cas",
+        base_candidate_id="candidate:cas",
+        status=LeadWorkflowStatus.MONITOR,
+        lead_score=50,
+        events=[
+            LeadWorkflowEvent(
+                event_id="lead-workflow-event:cas-initial",
+                current_status=LeadWorkflowStatus.MONITOR,
+                reason="initial state",
+            )
+        ],
+    )
+    with managed_session(factory) as session:
+        store_lead_workflow_record(session, current)
+
+    first = transition_lead_workflow(
+        record=current,
+        next_status=LeadWorkflowStatus.REVIEW,
+        reason="first writer",
+    )
+    competing = transition_lead_workflow(
+        record=current,
+        next_status=LeadWorkflowStatus.HOLD,
+        reason="second writer",
+    )
+    first_session = factory()
+    second_session = factory()
+    try:
+        compare_and_swap_lead_workflow_record(
+            first_session, current=current, updated=first
+        )
+        first_session.commit()
+        with pytest.raises(ValueError, match="stale or competing writer"):
+            compare_and_swap_lead_workflow_record(
+                second_session, current=current, updated=competing
+            )
+        second_session.rollback()
+    finally:
+        first_session.close()
+        second_session.close()
+
+    with managed_session(factory) as session:
+        row = session.execute(
+            select(LeadWorkflowRecordRow).where(
+                LeadWorkflowRecordRow.workflow_id == current.workflow_id
+            )
+        ).scalar_one()
+        events = session.execute(
+            select(LeadWorkflowEventRecord).where(
+                LeadWorkflowEventRecord.workflow_id == current.workflow_id
+            )
+        ).scalars().all()
+        assert row.status == LeadWorkflowStatus.REVIEW.value
+        assert len(events) == 2
+        assert {event.event_id for event in events} == {
+            current.events[0].event_id,
+            first.events[-1].event_id,
+        }
 
 
 def test_store_result_share_record_roundtrip() -> None:

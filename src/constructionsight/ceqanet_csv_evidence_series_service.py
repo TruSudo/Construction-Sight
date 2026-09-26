@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime
 
+from constructionsight.authorization_decision_models import authorization_digest
 from constructionsight.ceqanet_csv_access_policy_models import (
     CeqanetCsvAccessPolicy,
     CeqanetCsvAccessPolicyVerification,
@@ -21,7 +22,6 @@ from constructionsight.ceqanet_csv_evidence_series_models import (
 )
 from constructionsight.ceqanet_csv_live_models import CeqanetCsvLiveExecution
 from constructionsight.ceqanet_csv_live_service import (
-    CeqanetCsvLiveHttpClient,
     execute_ceqanet_csv_live_request,
     verify_ceqanet_csv_live_execution,
 )
@@ -33,6 +33,11 @@ from constructionsight.ceqanet_csv_replay_models import (
 from constructionsight.ceqanet_maturity_proposal_models import (
     CeqanetSourceMaturityProposal,
     CeqanetSourceMaturityProposalVerification,
+)
+from constructionsight.effect_consumption import _execute_owned_effect, trusted_utc_now
+from constructionsight.effect_consumption_models import EffectReplayPolicy
+from constructionsight.local_operator_authorization import (
+    authorize_local_operator_operation,
 )
 from constructionsight.models import PublicSource
 
@@ -79,9 +84,7 @@ def build_ceqanet_csv_evidence_series(
     )
     for sequence in range(1, len(observations) + 1):
         if series.status is not CeqanetCsvEvidenceSeriesStatus.COLLECTING:
-            raise ValueError(
-                "terminal evidence series cannot accept later observations"
-            )
+            raise ValueError("terminal evidence series cannot accept later observations")
         series = _build_series_snapshot(
             policy,
             observations=observations[:sequence],
@@ -134,7 +137,7 @@ def verify_ceqanet_csv_evidence_series(
     return CeqanetCsvEvidenceSeriesVerification(
         passed=not findings,
         finding_count=len(findings),
-        findings=findings,
+        findings=tuple(findings),
         policy_digest=series.policy_digest,
         series_digest=series.series_digest,
         observation_count=series.observation_count,
@@ -161,20 +164,19 @@ def execute_ceqanet_csv_evidence_request(
     request: CeqanetCsvExportRequest,
     *,
     execute_live: bool,
-    client: CeqanetCsvLiveHttpClient | None = None,
-    authorization_granted_at: datetime | None = None,
     max_retained_rows: int = 1_000,
+    operator_id: str | None = None,
+    authorization_reason: str = (
+        "Execute one policy-bound CEQAnet CSV evidence request."
+    ),
 ) -> CeqanetCsvEvidenceExecution:
-    """Execute one policy-authorized GET after independently verifying the ledger."""
+    """Authorize one policy-bound GET after independently verifying the ledger."""
 
     if not execute_live:
         raise ValueError(
-            "explicit live authorization is required for CEQAnet CSV evidence"
+            "explicit live confirmation is required for CEQAnet CSV evidence"
         )
-    authorized_at = authorization_granted_at or datetime.now(UTC)
-    if authorized_at.tzinfo is None or authorized_at.utcoffset() is None:
-        raise ValueError("authorization_granted_at must be timezone-aware")
-    authorized_at = authorized_at.astimezone(UTC)
+    authorized_at = trusted_utc_now()
 
     series_verification = verify_ceqanet_csv_evidence_series(
         sources,
@@ -200,52 +202,156 @@ def execute_ceqanet_csv_evidence_request(
         raise ValueError(
             "CEQAnet CSV evidence execution requires a collecting series"
         )
-    if any(
-        item.utc_date == authorized_at.date() for item in series.observations
-    ):
+    if any(item.utc_date == authorized_at.date() for item in series.observations):
         raise ValueError(
             "CEQAnet CSV policy permits at most one execution per UTC day"
         )
-    if (
-        series.observations
-        and authorized_at <= series.observations[-1].executed_at
-    ):
-        raise ValueError(
-            "execution authorization must follow the current series head"
-        )
+    if series.observations and authorized_at <= series.observations[-1].executed_at:
+        raise ValueError("execution authorization must follow the current series head")
     if not 0 <= max_retained_rows <= 1_000:
         raise ValueError("max_retained_rows must be between 0 and 1000")
     if request.export_kind not in policy.allowed_export_kinds:
         raise ValueError("CEQAnet CSV export kind is not allowed by policy")
 
-    live_execution = execute_ceqanet_csv_live_request(
-        request,
-        execute_live=True,
-        client=client,
-        timeout_seconds=policy.timeout_seconds,
-        max_body_bytes=policy.max_body_bytes,
-        max_retained_rows=max_retained_rows,
-        executed_at=authorized_at,
+    state_identity = authorization_digest(
+        "ceqanet-csv-evidence-state",
+        {
+            "policy_digest": policy.policy_digest,
+            "series_digest": series.series_digest,
+            "series_sequence": series.series_sequence,
+            "series_status": series.status.value,
+            "series_verification": series_verification.model_dump(mode="json"),
+            "existing_execution_digests": [
+                execution.evidence_execution_digest
+                for _artifact_ref, execution in existing_evidence_executions
+            ],
+            "request": request.model_dump(mode="json"),
+            "authorized_utc_date": authorized_at.date().isoformat(),
+            "timeout_seconds": policy.timeout_seconds,
+            "max_body_bytes": policy.max_body_bytes,
+            "max_retained_rows": max_retained_rows,
+        },
     )
-    live_verification = verify_ceqanet_csv_live_execution(live_execution)
-    draft = CeqanetCsvEvidenceExecution(
-        policy_digest=policy.policy_digest,
-        authorization_granted_at=authorized_at,
-        authorized_utc_date=authorized_at.date(),
-        timeout_seconds=policy.timeout_seconds,
-        max_body_bytes=policy.max_body_bytes,
-        max_retained_rows=max_retained_rows,
-        live_execution=live_execution,
-        live_verification=live_verification,
-        evidence_execution_digest="0" * 64,
+    resource_id = authorization_digest(
+        "ceqanet-csv-evidence-resource",
+        {
+            "policy_digest": policy.policy_digest,
+            "source_name": series.source_name,
+        },
     )
-    evidence_execution = draft.model_copy(
-        update={
-            "evidence_execution_digest": draft.computed_digest(),
-        }
+    exact_scope = tuple(
+        sorted(
+            {
+                f"authorized-utc-date:{authorized_at.date().isoformat()}",
+                f"export-kind:{request.export_kind.value}",
+                f"max-body-bytes:{policy.max_body_bytes}",
+                f"max-retained-rows:{max_retained_rows}",
+                "method:GET",
+                f"policy-digest:{policy.policy_digest}",
+                "policy:CS-NET-003",
+                "redirects:denied",
+                "retries:0",
+                f"series-digest:{series.series_digest}",
+                f"timeout-seconds:{policy.timeout_seconds:g}",
+                f"url:{request.source_url}",
+            },
+            key=str.casefold,
+        )
     )
-    evidence_execution.assert_integrity()
-    return evidence_execution
+    authorization = authorize_local_operator_operation(
+        action="execute-ceqanet-csv-evidence-request",
+        resource_type="ceqanet-csv-evidence-series",
+        resource_id=resource_id,
+        exact_scope=exact_scope,
+        current_state_identity=state_identity,
+        expected_identity=state_identity,
+        granted_authority=(
+            "execute one exact policy-bound CEQAnet CSV evidence GET",
+        ),
+        denied_authority=tuple(
+            sorted(
+                {
+                    "access-control bypass",
+                    "credential use",
+                    "document download",
+                    "multiple executions per UTC day",
+                    "persistence mutation",
+                    "policy bypass",
+                    "production recurrence",
+                    "redirect following",
+                    "request mutation",
+                    "retry",
+                    "series mutation",
+                    "source promotion",
+                },
+                key=str.casefold,
+            )
+        ),
+        reason=authorization_reason,
+        caller_confirmation=execute_live,
+        limitations=tuple(
+            sorted(
+                {
+                    "local operator identity is not authentication",
+                    "the execution artifact does not itself advance the series",
+                    "the request cannot authorize maturity promotion or recurrence",
+                    "one durable UTC-date allowance across processes",
+                },
+                key=str.casefold,
+            )
+        ),
+        operator_id=operator_id,
+        current_revocation_identity=state_identity,
+    )
+
+    def execute(trusted_at: datetime) -> CeqanetCsvEvidenceExecution:
+        live_execution = execute_ceqanet_csv_live_request(
+            request,
+            execute_live=True,
+            timeout_seconds=policy.timeout_seconds,
+            max_body_bytes=policy.max_body_bytes,
+            max_retained_rows=max_retained_rows,
+            executed_at=trusted_at,
+        )
+        live_verification = verify_ceqanet_csv_live_execution(live_execution)
+        draft = CeqanetCsvEvidenceExecution(
+            policy_digest=policy.policy_digest,
+            authorization_granted_at=authorized_at,
+            authorized_utc_date=trusted_at.date(),
+            timeout_seconds=policy.timeout_seconds,
+            max_body_bytes=policy.max_body_bytes,
+            max_retained_rows=max_retained_rows,
+            live_execution=live_execution,
+            live_verification=live_verification,
+            evidence_execution_digest="0" * 64,
+        )
+        evidence_execution = draft.model_copy(
+            update={"evidence_execution_digest": draft.computed_digest()}
+        )
+        evidence_execution.assert_integrity()
+        return evidence_execution
+
+    return _execute_owned_effect(
+        authorization,
+        allowance_identity=authorization_digest(
+            "ceqanet-csv-daily-allowance",
+            {
+                "policy_digest": policy.policy_digest,
+                "source_name": series.source_name,
+                "utc_date": authorized_at.date().isoformat(),
+            },
+        ),
+        content_identity=state_identity,
+        implementation_id=(
+            "constructionsight.ceqanet_csv_live_service."
+            "execute_ceqanet_csv_live_request"
+        ),
+        replay_policy=EffectReplayPolicy.EXACT,
+        effect=execute,
+        encode_result=lambda result: result.model_dump(mode="json"),
+        decode_result=lambda payload: CeqanetCsvEvidenceExecution.model_validate(payload),
+        required_utc_date=authorized_at.date(),
+    )
 
 
 def _build_series_snapshot(
@@ -291,16 +397,16 @@ def _build_series_snapshot(
         policy_digest=policy.policy_digest,
         policy_effective_date=policy.effective_date,
         policy_expires_on=policy.expires_on,
-        observations=observations,
+        observations=tuple(observations),
         series_sequence=len(observations),
         predecessor_series_digest=predecessor_series_digest,
         observation_count=len(observations),
         successful_observation_count=len(successful),
-        distinct_successful_utc_dates=successful_dates,
-        observed_successful_export_kinds=successful_kinds,
+        distinct_successful_utc_dates=tuple(successful_dates),
+        observed_successful_export_kinds=tuple(successful_kinds),
         minimum_successful_observations=policy.minimum_successful_observations,
         minimum_distinct_utc_dates=policy.minimum_distinct_utc_dates,
-        required_export_kinds=policy.required_evidence_export_kinds,
+        required_export_kinds=tuple(policy.required_evidence_export_kinds),
         status=status,
         halted_on=halted.utc_date if halted is not None else None,
         halt_status_code=halted.status_code if halted is not None else None,

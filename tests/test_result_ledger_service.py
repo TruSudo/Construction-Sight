@@ -1,7 +1,11 @@
 import pytest
 
 from constructionsight.lead_workflow_models import LeadWorkflowRecord, LeadWorkflowStatus
-from constructionsight.result_ledger_models import ResultLedgerStatus, ResultShareStatus
+from constructionsight.result_ledger_models import (
+    ResultLedgerRecord,
+    ResultLedgerStatus,
+    ResultShareStatus,
+)
 from constructionsight.result_ledger_service import (
     build_result_ledger_record,
     supersede_result_ledger_record,
@@ -33,7 +37,7 @@ def test_build_result_ledger_record_with_share() -> None:
     assert ledger.share_status == ResultShareStatus.CALCULATED
     assert ledger.share is not None
     assert ledger.share.share_value == 100.0
-    assert ledger.limitations == []
+    assert ledger.limitations == ()
 
 
 def test_build_result_ledger_record_missing_share_rate() -> None:
@@ -46,7 +50,7 @@ def test_build_result_ledger_record_missing_share_rate() -> None:
     assert ledger.status == ResultLedgerStatus.WON
     assert ledger.share_status == ResultShareStatus.PENDING_SHARE_RATE
     assert ledger.share is None
-    assert ledger.limitations == ["share rate is missing"]
+    assert ledger.limitations == ("share rate is missing",)
 
 
 def test_build_result_ledger_record_missing_gross_value() -> None:
@@ -59,7 +63,7 @@ def test_build_result_ledger_record_missing_gross_value() -> None:
     assert ledger.share_status == ResultShareStatus.PENDING_GROSS_VALUE
     assert ledger.gross_value is None
     assert ledger.share is None
-    assert ledger.limitations == ["gross value is missing"]
+    assert ledger.limitations == ("gross value is missing",)
 
 
 def test_build_result_ledger_record_for_lost_result() -> None:
@@ -72,7 +76,7 @@ def test_build_result_ledger_record_for_lost_result() -> None:
     assert ledger.status == ResultLedgerStatus.LOST
     assert ledger.share_status == ResultShareStatus.NOT_APPLICABLE
     assert ledger.gross_value is None
-    assert ledger.reasons == ["not selected"]
+    assert ledger.reasons == ("not selected",)
 
 
 def test_supersede_result_ledger_record_creates_linear_revision() -> None:
@@ -131,7 +135,10 @@ def test_validate_result_ledger_history_rejects_branch() -> None:
         gross_value=1000.0,
         share_rate=0.1,
     )
-    branched = third.model_copy(update={"supersedes_ledger_id": original.ledger_id})
+    payload = third.model_dump(mode="python")
+    payload["supersedes_ledger_id"] = original.ledger_id
+    payload["content_digest"] = None
+    branched = ResultLedgerRecord.model_validate(payload)
 
     with pytest.raises(ValueError, match="unbranched supersession chain"):
         validate_result_ledger_history([original, second, branched])
@@ -147,7 +154,38 @@ def test_validate_result_ledger_history_rejects_revision_gap() -> None:
         status=ResultLedgerStatus.LOST,
         correction_reason="correction",
     )
-    gapped = second.model_copy(update={"revision": 3})
+    payload = second.model_dump(mode="python")
+    payload["revision"] = 3
+    payload["content_digest"] = None
+    gapped = ResultLedgerRecord.model_validate(payload)
 
     with pytest.raises(ValueError, match="contiguous from one"):
         validate_result_ledger_history([original, gapped])
+
+
+def test_materially_different_results_have_distinct_content_digests() -> None:
+    first = build_result_ledger_record(
+        workflow=_workflow(),
+        status=ResultLedgerStatus.LOST,
+        reasons=["not selected"],
+    )
+    second = build_result_ledger_record(
+        workflow=_workflow(),
+        status=ResultLedgerStatus.LOST,
+        reasons=["budget cancelled"],
+    )
+
+    assert first.ledger_id == second.ledger_id
+    assert first.content_digest != second.content_digest
+
+
+def test_content_digest_rejects_post_validation_material_mutation() -> None:
+    ledger = build_result_ledger_record(
+        workflow=_workflow(),
+        status=ResultLedgerStatus.LOST,
+        reasons=["not selected"],
+    )
+    tampered = ledger.model_copy(update={"reasons": ["changed later"]})
+
+    with pytest.raises(ValueError, match="material content changed"):
+        tampered.to_dict()

@@ -8,15 +8,28 @@ mutation.
 from __future__ import annotations
 
 import hashlib
+import io
 import json
+import struct
 import zipfile
 from collections import Counter
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any, Literal, cast
 
+from constructionsight.storage.runtime_artifacts import read_runtime_artifact
+
 _ARCHIVE_TIMESTAMP = (2026, 1, 1, 0, 0, 0)
 _ARCHIVE_EXTERNAL_ATTR = 0o100644 << 16
+_MAX_ZIP_ARCHIVE_BYTES = 128 * 1024 * 1024
+_MAX_ZIP_ENTRIES = 128
+_MAX_ZIP_DIRECTORY_BYTES = 1024 * 1024
+_MAX_ZIP_ENTRY_BYTES = 16 * 1024 * 1024
+_MAX_ZIP_MANIFEST_BYTES = 1024 * 1024
+_MAX_ZIP_TOTAL_BYTES = 64 * 1024 * 1024
+_ZIP_READ_CHUNK_BYTES = 64 * 1024
 
 ArchiveArtifactStatus = Literal["verified", "missing", "mismatch"]
 ManifestStatus = Literal["verified", "missing", "malformed"]
@@ -132,19 +145,23 @@ def verify_ceqanet_operator_archive(
 
     if not archive_path.is_file():
         raise ValueError(f"CEQAnet operator archive not found: {archive_path}")
-
     try:
-        with zipfile.ZipFile(archive_path) as archive_file:
+        with _open_bounded_archive(archive_path) as archive_file:
             infos = archive_file.infolist()
+            _require_bounded_archive_metadata(infos)
+            remaining_bytes = [_MAX_ZIP_TOTAL_BYTES]
             filenames = [info.filename for info in infos]
             duplicate_filenames = _duplicate_filenames(filenames)
             archive_issues = _archive_entry_issues(infos)
-            manifest_status, manifest, manifest_issues = _load_manifest_from_archive(archive_file)
+            manifest_status, manifest, manifest_issues = _load_manifest_from_archive(
+                archive_file, remaining_bytes=remaining_bytes
+            )
             archive_issues.extend(manifest_issues)
 
             artifacts: list[CeqanetArchiveArtifactVerification] = []
             malformed_artifacts: list[dict[str, object]] = []
             if manifest is not None:
+                archive_issues.extend(_manifest_inventory_issues(filenames, manifest))
                 for index, entry in enumerate(_artifact_entries(manifest)):
                     if not isinstance(entry, dict):
                         malformed_artifacts.append(
@@ -154,6 +171,7 @@ def verify_ceqanet_operator_archive(
                     artifact = _verify_artifact_entry(
                         archive_file,
                         entry=cast(dict[str, Any], entry),
+                        remaining_bytes=remaining_bytes,
                     )
                     if artifact is None:
                         malformed_artifacts.append(
@@ -179,11 +197,144 @@ def verify_ceqanet_operator_archive(
     )
 
 
+@contextmanager
+def _open_bounded_archive(path: Path) -> Iterator[zipfile.ZipFile]:
+    """Bind bounded ZIP parsing and verification to one immutable byte snapshot."""
+
+    raw = read_runtime_artifact(path, max_bytes=_MAX_ZIP_ARCHIVE_BYTES)
+    _require_bounded_central_directory(raw)
+    with io.BytesIO(raw) as source, zipfile.ZipFile(source) as archive:
+        yield archive
+
+
+def _require_bounded_central_directory(raw: bytes) -> None:
+    """Bound directory allocation before ZipFile constructs any ZipInfo objects.
+
+    Operator archives fit ordinary single-disk ZIP limits. ZIP64, split archives,
+    appended data and inconsistent directory records fail closed. Entry headers
+    are counted independently of the end record, whose count is untrusted.
+    """
+
+    end = raw.rfind(b"PK\x05\x06", max(0, len(raw) - 65_557))
+    if end < 0 or len(raw) < end + 22:
+        raise ValueError("CEQAnet ZIP end record is missing or truncated")
+    _, disk, directory_disk, disk_count, count, size, offset, comment_size = struct.unpack(
+        "<4s4H2IH", raw[end : end + 22]
+    )
+    if (
+        disk != 0
+        or directory_disk != 0
+        or disk_count != count
+        or count == 65_535
+        or size == 0xFFFFFFFF
+        or offset == 0xFFFFFFFF
+        or end + 22 + comment_size != len(raw)
+        or offset + size != end
+    ):
+        raise ValueError("CEQAnet ZIP has unsupported or inconsistent directory metadata")
+    if count > _MAX_ZIP_ENTRIES:
+        raise ValueError("CEQAnet operator archive exceeds the ZIP entry limit")
+    if size > _MAX_ZIP_DIRECTORY_BYTES:
+        raise ValueError("CEQAnet operator archive exceeds the ZIP directory byte limit")
+    position = offset
+    observed = 0
+    while position < end:
+        if observed >= _MAX_ZIP_ENTRIES:
+            raise ValueError("CEQAnet operator archive exceeds the ZIP entry limit")
+        if position + 46 > end or raw[position : position + 4] != b"PK\x01\x02":
+            raise ValueError("CEQAnet ZIP directory entry is invalid or truncated")
+        name_size, extra_size, entry_comment_size = struct.unpack(
+            "<3H", raw[position + 28 : position + 34]
+        )
+        position += 46 + name_size + extra_size + entry_comment_size
+        if position > end:
+            raise ValueError("CEQAnet ZIP directory entry exceeds its declared boundary")
+        observed += 1
+    if observed != count:
+        raise ValueError("CEQAnet ZIP directory entry count is inconsistent")
+
+
+def _require_bounded_archive_metadata(infos: list[zipfile.ZipInfo]) -> None:
+    """Reject excessive archive metadata before any member decompression."""
+
+    if len(infos) > _MAX_ZIP_ENTRIES:
+        raise ValueError("CEQAnet operator archive exceeds the ZIP entry limit")
+    total_size = 0
+    for info in infos:
+        if info.file_size < 0 or info.file_size > _MAX_ZIP_ENTRY_BYTES:
+            raise ValueError("CEQAnet ZIP member exceeds the entry byte limit")
+        total_size += info.file_size
+        if total_size > _MAX_ZIP_TOTAL_BYTES:
+            raise ValueError("CEQAnet operator archive exceeds the total ZIP byte limit")
+
+
+def _bounded_member_chunks(
+    archive_file: zipfile.ZipFile,
+    *,
+    filename: str,
+    member_byte_limit: int,
+    remaining_bytes: list[int],
+) -> Iterator[bytes]:
+    """Stream a ZIP member with actual decompressed and aggregate byte ceilings."""
+
+    actual_bytes = 0
+    with archive_file.open(filename) as entry_file:
+        while True:
+            chunk = entry_file.read(
+                min(
+                    _ZIP_READ_CHUNK_BYTES,
+                    member_byte_limit - actual_bytes + 1,
+                    remaining_bytes[0] + 1,
+                )
+            )
+            if not chunk:
+                break
+            actual_bytes += len(chunk)
+            if actual_bytes > member_byte_limit:
+                raise ValueError("CEQAnet ZIP member exceeds the decompressed byte limit")
+            remaining_bytes[0] -= len(chunk)
+            if remaining_bytes[0] < 0:
+                raise ValueError("CEQAnet ZIP exceeds the total decompressed byte limit")
+            yield chunk
+
+
 def _duplicate_filenames(filenames: list[str]) -> tuple[str, ...]:
     """Return duplicate archive filenames."""
 
     counts = Counter(filenames)
     return tuple(sorted(filename for filename, count in counts.items() if count > 1))
+
+
+def _manifest_inventory_issues(
+    archive_filenames: list[str], manifest: dict[str, Any],
+) -> list[dict[str, object]]:
+    """Require each ZIP member to have one unambiguous manifest inventory claim."""
+
+    listed: list[str] = []
+    for entry in _artifact_entries(manifest):
+        if isinstance(entry, dict):
+            filename = entry.get("filename")
+            if isinstance(filename, str):
+                listed.append(filename)
+    issues: list[dict[str, object]] = [
+        {"filename": filename, "reason": "duplicate manifest artifact filename"}
+        for filename, count in sorted(Counter(listed).items())
+        if count > 1
+    ]
+    metadata = manifest["metadata"]
+    if "artifact_count" in metadata and (
+        type(metadata["artifact_count"]) is not int
+        or metadata["artifact_count"] != len(_artifact_entries(manifest))
+    ):
+        issues.append(
+            {"filename": "manifest.json", "reason": "manifest artifact_count mismatch"}
+        )
+    allowed = set(listed) | {"manifest.json"}
+    issues.extend(
+        {"filename": filename, "reason": "archive member not listed in manifest"}
+        for filename in sorted(set(archive_filenames) - allowed)
+    )
+    return issues
 
 
 def _archive_entry_issues(infos: list[zipfile.ZipInfo]) -> list[dict[str, object]]:
@@ -224,6 +375,8 @@ def _is_safe_relative_posix_path(filename: str) -> bool:
 
 def _load_manifest_from_archive(
     archive_file: zipfile.ZipFile,
+    *,
+    remaining_bytes: list[int],
 ) -> tuple[ManifestStatus, dict[str, Any] | None, list[dict[str, object]]]:
     """Load and validate manifest JSON from an archive."""
 
@@ -231,7 +384,15 @@ def _load_manifest_from_archive(
         return "missing", None, [{"filename": "manifest.json", "reason": "manifest missing"}]
 
     try:
-        payload = json.loads(archive_file.read("manifest.json").decode("utf-8"))
+        raw_manifest = b"".join(
+            _bounded_member_chunks(
+                archive_file,
+                filename="manifest.json",
+                member_byte_limit=_MAX_ZIP_MANIFEST_BYTES,
+                remaining_bytes=remaining_bytes,
+            )
+        )
+        payload = json.loads(raw_manifest.decode("utf-8"))
     except UnicodeDecodeError:
         return "malformed", None, [{"filename": "manifest.json", "reason": "not UTF-8"}]
     except json.JSONDecodeError:
@@ -264,6 +425,7 @@ def _verify_artifact_entry(
     archive_file: zipfile.ZipFile,
     *,
     entry: dict[str, Any],
+    remaining_bytes: list[int],
 ) -> CeqanetArchiveArtifactVerification | None:
     """Verify one manifest-listed artifact against ZIP contents."""
 
@@ -274,8 +436,17 @@ def _verify_artifact_entry(
     if filename is None or artifact_type is None or expected_sha256 is None:
         return None
 
+    actual_digest = hashlib.sha256()
+    actual_byte_count = 0
     try:
-        data = archive_file.read(filename)
+        for chunk in _bounded_member_chunks(
+            archive_file,
+            filename=filename,
+            member_byte_limit=_MAX_ZIP_ENTRY_BYTES,
+            remaining_bytes=remaining_bytes,
+        ):
+            actual_digest.update(chunk)
+            actual_byte_count += len(chunk)
     except KeyError:
         return CeqanetArchiveArtifactVerification(
             filename=filename,
@@ -288,8 +459,7 @@ def _verify_artifact_entry(
             reason="not present in archive",
         )
 
-    actual_sha256 = hashlib.sha256(data).hexdigest()
-    actual_byte_count = len(data)
+    actual_sha256 = actual_digest.hexdigest()
     if actual_sha256 == expected_sha256 and (
         expected_byte_count is None or actual_byte_count == expected_byte_count
     ):

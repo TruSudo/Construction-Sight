@@ -5,8 +5,17 @@ from __future__ import annotations
 from collections.abc import Iterable
 
 from constructionsight.adapters.specs import AdapterFamilySpec
+from constructionsight.authorization_decision_models import authorization_digest
+from constructionsight.effect_consumption import _execute_owned_effect
+from constructionsight.effect_consumption_models import EffectReplayPolicy
+from constructionsight.local_operator_authorization import (
+    authorize_local_operator_operation,
+)
 from constructionsight.models import PlatformFamily, PublicSource
-from constructionsight.source_readiness_service import HttpReachabilityChecker
+from constructionsight.source_readiness_models import HttpReachabilityResult
+from constructionsight.source_readiness_service import (
+    _build_source_readiness_report_with_results,
+)
 from constructionsight.source_verification_checklist_models import (
     ChecklistItemStatus,
     SourceVerificationChecklistReport,
@@ -16,7 +25,10 @@ from constructionsight.source_verification_checklist_models import (
     SourceVerificationObservationTemplate,
 )
 from constructionsight.source_verification_evidence_service import (
-    build_source_verification_evidence_package,
+    _package_from_readiness,
+)
+from constructionsight.source_verification_http import (
+    fetch_source_verification as _fetch_source_verification,
 )
 
 
@@ -25,18 +37,207 @@ def build_source_verification_checklist_report(
     adapter_specs: dict[PlatformFamily, AdapterFamilySpec],
     *,
     check_http: bool = False,
-    http_checker: HttpReachabilityChecker | None = None,
     observations: Iterable[SourceVerificationObservation] | None = None,
 ) -> SourceVerificationChecklistReport:
-    """Build a report-only source checklist."""
+    """Build an offline report-only source checklist."""
 
-    observation_index = _observation_index(observations or [])
-    evidence_package = build_source_verification_evidence_package(
+    if check_http:
+        raise ValueError(
+            "live HTTP verification requires "
+            "build_authorized_source_verification_checklist_report"
+        )
+    return _build_source_verification_checklist_report_from_results(
         sources,
         adapter_specs,
-        check_http=check_http,
-        http_checker=http_checker,
+        http_results=None,
+        observations=observations,
     )
+
+
+def build_authorized_source_verification_checklist_report(
+    sources: list[PublicSource],
+    adapter_specs: dict[PlatformFamily, AdapterFamilySpec],
+    *,
+    observations: Iterable[SourceVerificationObservation] | None,
+    caller_confirmation: bool,
+    authorization_reason: str,
+    operator_id: str | None = None,
+) -> SourceVerificationChecklistReport:
+    """Authorize exact-source verification GET evidence before checklist building."""
+
+    normalized_observations = tuple(observations or ())
+    state_identity = authorization_digest(
+        "source-verification-checklist-state",
+        {
+            "sources": [source.model_dump(mode="json") for source in sources],
+            "adapter_specs": [
+                {
+                    "platform_family": family.value,
+                    "status": spec.status.value,
+                    "uses_public_http": spec.uses_public_http,
+                }
+                for family, spec in sorted(
+                    adapter_specs.items(),
+                    key=lambda item: item[0].value,
+                )
+            ],
+            "observations": [
+                observation.model_dump(mode="json")
+                for observation in normalized_observations
+            ],
+            "policy_id": "CS-NET-008",
+        },
+    )
+    resource_id = authorization_digest(
+        "source-verification-checklist-resource",
+        {
+            "urls": [str(source.public_url) for source in sources],
+            "source_names": [source.source_name for source in sources],
+        },
+    )
+    exact_scope = tuple(
+        sorted(
+            {
+                "concurrency:1",
+                "max-attempts-per-source:1",
+                "max-response-bytes:50000",
+                "method:GET",
+                f"observation-count:{len(normalized_observations)}",
+                "policy:CS-NET-008",
+                "redirects:denied",
+                "retries:0",
+                f"source-count:{len(sources)}",
+                *(f"url:{source.public_url}" for source in sources),
+            },
+            key=str.casefold,
+        )
+    )
+    authorization = authorize_local_operator_operation(
+        action="build-source-verification-checklist-live-evidence",
+        resource_type="public-source-verification-snapshot",
+        resource_id=resource_id,
+        exact_scope=exact_scope,
+        current_state_identity=state_identity,
+        expected_identity=state_identity,
+        granted_authority=(
+            "perform one exact bounded verification GET for each declared source",
+        ),
+        denied_authority=tuple(
+            sorted(
+                {
+                    "access-control bypass",
+                    "alternate-host fallback",
+                    "credential use",
+                    "document download",
+                    "observation mutation",
+                    "persistence mutation",
+                    "production recurrence",
+                    "redirect following",
+                    "registry mutation",
+                    "retry",
+                    "source promotion",
+                },
+                key=str.casefold,
+            )
+        ),
+        reason=authorization_reason,
+        caller_confirmation=caller_confirmation,
+        limitations=tuple(
+            sorted(
+                {
+                    "HTTP evidence does not complete manual query, list, detail, "
+                    "barrier, or terms review",
+                    "local operator identity is not authentication",
+                    "one durable source-set allowance across processes",
+                },
+                key=str.casefold,
+            )
+        ),
+        operator_id=operator_id,
+        current_revocation_identity=state_identity,
+    )
+
+    def execute_owned_checklist(
+        _trusted_at: object,
+    ) -> SourceVerificationChecklistReport:
+        return _build_source_verification_checklist_report_with_owned_http(
+            sources,
+            adapter_specs,
+            observations=normalized_observations,
+        )
+
+    return _execute_owned_effect(
+        authorization,
+        allowance_identity=authorization_digest(
+            "source-verification-checklist-manual-allowance",
+            {"state_identity": state_identity},
+        ),
+        content_identity=state_identity,
+        implementation_id=(
+            "constructionsight.source_verification_http.fetch_source_verification"
+        ),
+        replay_policy=EffectReplayPolicy.EXACT,
+        effect=execute_owned_checklist,
+        encode_result=lambda result: result.model_dump(mode="json"),
+        decode_result=lambda payload: SourceVerificationChecklistReport.model_validate(payload),
+    )
+
+
+def _check_source_verification(source: PublicSource) -> HttpReachabilityResult:
+    observation, _policy = _fetch_source_verification(
+        source,
+        timeout_seconds=10.0,
+    )
+    return HttpReachabilityResult(
+        checked=True,
+        reachable=observation.succeeded,
+        status_code=observation.status_code,
+        method=observation.method,
+        final_url=observation.final_url,
+        error=(
+            None
+            if observation.succeeded
+            else ":".join(
+                value
+                for value in (
+                    observation.failure_kind.value,
+                    observation.error_type,
+                )
+                if value
+            )
+        ),
+    )
+
+
+def _build_source_verification_checklist_report_with_owned_http(
+    sources: list[PublicSource],
+    adapter_specs: dict[PlatformFamily, AdapterFamilySpec],
+    *,
+    observations: Iterable[SourceVerificationObservation] | None,
+) -> SourceVerificationChecklistReport:
+    http_results = tuple(_check_source_verification(source) for source in sources)
+    return _build_source_verification_checklist_report_from_results(
+        sources,
+        adapter_specs,
+        http_results=http_results,
+        observations=observations,
+    )
+
+
+def _build_source_verification_checklist_report_from_results(
+    sources: list[PublicSource],
+    adapter_specs: dict[PlatformFamily, AdapterFamilySpec],
+    *,
+    http_results: tuple[HttpReachabilityResult, ...] | None,
+    observations: Iterable[SourceVerificationObservation] | None,
+) -> SourceVerificationChecklistReport:
+    observation_index = _observation_index(observations or [])
+    readiness_report = _build_source_readiness_report_with_results(
+        sources,
+        adapter_specs,
+        http_results=http_results,
+    )
+    evidence_package = _package_from_readiness(readiness_report)
     rows = []
     for row in evidence_package.rows:
         observation = observation_index.get(row.source_key) or observation_index.get(
@@ -66,7 +267,7 @@ def build_source_verification_checklist_report(
 def build_source_observation_templates(
     sources: list[PublicSource],
 ) -> list[SourceVerificationObservationTemplate]:
-    """Build editable source observation templates without checking or mutating sources."""
+    """Build editable source observation templates without checking or mutating."""
 
     return [
         SourceVerificationObservationTemplate(
@@ -85,10 +286,12 @@ def build_source_observation_templates(
 
 
 def _source_key(source: PublicSource) -> str:
-    evidence_package = build_source_verification_evidence_package(
-        [source],
-        {},
-        check_http=False,
+    evidence_package = _package_from_readiness(
+        _build_source_readiness_report_with_results(
+            [source],
+            {},
+            http_results=None,
+        )
     )
     return evidence_package.rows[0].source_key
 
@@ -112,13 +315,25 @@ def _build_row(
 ) -> SourceVerificationChecklistRow:
     public_entry_page = _item_from_bool(
         observation.public_entry_observed if observation else None,
-        default=ChecklistItemStatus.OBSERVED if readiness_status == "reachable" else None,
+        default=(
+            ChecklistItemStatus.OBSERVED
+            if readiness_status == "reachable"
+            else None
+        ),
     )
-    query_behavior = _item_from_bool(observation.query_behavior_observed if observation else None)
-    result_list = _item_from_bool(observation.result_list_observed if observation else None)
-    detail_page = _item_from_bool(observation.detail_page_observed if observation else None)
+    query_behavior = _item_from_bool(
+        observation.query_behavior_observed if observation else None
+    )
+    result_list = _item_from_bool(
+        observation.result_list_observed if observation else None
+    )
+    detail_page = _item_from_bool(
+        observation.detail_page_observed if observation else None
+    )
     access_barrier = _access_barrier_status(observation)
-    terms_review = _item_from_bool(observation.terms_review_observed if observation else None)
+    terms_review = _item_from_bool(
+        observation.terms_review_observed if observation else None
+    )
     checklist_status = _checklist_status(
         public_entry_page,
         query_behavior,

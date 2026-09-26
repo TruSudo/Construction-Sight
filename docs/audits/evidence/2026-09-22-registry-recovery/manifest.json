@@ -1,0 +1,13 @@
+{
+  "scope": "Local diagnostic evidence; no final assurance or exact-lock claim. Initial adversarial log uses c00df163 recovery logic with lint corrections and added tests. Mutation result precedes final diagnostic wording and formatting changes; canonical CI must requalify the published head.",
+  "files": {
+    "archive-snapshot-before.raw.json": "d912ab0cae59db2062f84fe20f14a8d6f5d2961d1d10a228eb7208c52bc35d07",
+    "registry-adversarial-before.log": "2c0a0ebd1357e3f3bce9ff09db3b46a90a1fe8f472bfe840b101c654741b521d",
+    "registry-final-full.raw.json": "698e238d1550d0968e3a6317f213ccafbfdd955da7fc46a754c285267c9be162",
+    "registry-mutations-report.json": "946459d0768409883c0ba9a88db25a914d56fd08ab099b85fa8cea1189bc4881",
+    "registry-mutations.raw.json": "e1e0b25ef48e3833ad517dfedc3eab582f68641dc2d82fa4b188fe09684c851d",
+    "registry-mypy-passed.raw.json": "25c6642f5636a00ccde649c46e1064b6056ead76586821ef73571f8e9818483f",
+    "registry-ruff-passed.raw.json": "bf5ed9f63e884d21682ce196b62ad399b4a698f26b4c2c7c8449e494790533da",
+    "starting-ci.json": "7ae0fa9a91b06757b8f2322b18a8bf1e85fbb77a6a652894a5220d86862800ee"
+  }
+}

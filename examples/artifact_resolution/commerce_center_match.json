@@ -1,12 +1,12 @@
 {
-  "candidate_id": "fixture-commerce-center-match",
+  "candidate_id": "artifact-resolution:v2:93ac7e9693e6213739588e55803d1c60245e6868f175b55dc1418a8549b3185a",
   "left": {
-    "fingerprint_id": "fingerprint-commerce-center-ceqa",
+    "fingerprint_id": "identity-fingerprint:v2:f7b89491da19b5bf3deb24bc13b43e5437440f0cc35d881a6a8e1943302fd032",
     "target_identity_id": "project-commerce-center-ceqa",
     "target_kind": "project",
     "artifact_observations": [
       {
-        "observation_id": "ceqa-apn-0292-123-45",
+        "observation_id": "artifact-observation:v2:c4854d6de9483ac869b2dfbbedba0974954f1c9eed9ecf7387f9addff80ae63e",
         "artifact_type": "apn",
         "raw_value": "APN 0292-123-45",
         "normalized_value": "0292-123-45",
@@ -19,9 +19,9 @@
         "confidence_score": 95
       },
       {
-        "observation_id": "ceqa-address-123-main",
+        "observation_id": "artifact-observation:v2:b02bb371cedeb272ab5336d8bf27d8ae742926e438c48fd06fa9d1b03f89959f",
         "artifact_type": "exact_site_address",
-        "raw_value": "123 Main Street, Fontana, CA",
+        "raw_value": "123 Main St Fontana CA",
         "normalized_value": "123 main st fontana ca",
         "source_name": "Synthetic CEQA Notice",
         "source_family": "ceqanet",
@@ -34,12 +34,12 @@
     ]
   },
   "right": {
-    "fingerprint_id": "fingerprint-commerce-center-agenda",
+    "fingerprint_id": "identity-fingerprint:v2:35ce04f2cba8a781d9b9fd9cca12574f2da75d48f03376a774c652b729cb5e64",
     "target_identity_id": "project-commerce-center-agenda",
     "target_kind": "project",
     "artifact_observations": [
       {
-        "observation_id": "agenda-apn-0292-123-45",
+        "observation_id": "artifact-observation:v2:08a616526f928f5a11cdb4f9b442cad2ed63878d0ed820fa464878744390b7d7",
         "artifact_type": "apn",
         "raw_value": "0292-123-45",
         "normalized_value": "0292-123-45",
@@ -52,9 +52,9 @@
         "confidence_score": 95
       },
       {
-        "observation_id": "agenda-address-123-main",
+        "observation_id": "artifact-observation:v2:5991835733f04cad389899ea89ce9c7214dd25097c6e2d70cac9ddc15f0435ed",
         "artifact_type": "exact_site_address",
-        "raw_value": "123 Main St., Fontana CA",
+        "raw_value": "123 Main St Fontana CA",
         "normalized_value": "123 main st fontana ca",
         "source_name": "Synthetic Planning Agenda Packet",
         "source_family": "agenda_packet",

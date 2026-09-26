@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from constructionsight.entity_models import Entity
 from constructionsight.provenance import Provenance
@@ -29,6 +29,30 @@ class PermitRecord(BaseModel):
     site: Site | None = None
     entities: list[Entity] = Field(default_factory=list)
     provenance: list[Provenance] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def require_lifecycle_order(self) -> PermitRecord:
+        """Reject contradictory known permit lifecycle dates."""
+
+        if (
+            self.applied_date is not None
+            and self.issued_date is not None
+            and self.issued_date < self.applied_date
+        ):
+            raise ValueError("issued_date cannot precede applied_date")
+        if (
+            self.applied_date is not None
+            and self.finaled_date is not None
+            and self.finaled_date < self.applied_date
+        ):
+            raise ValueError("finaled_date cannot precede applied_date")
+        if (
+            self.issued_date is not None
+            and self.finaled_date is not None
+            and self.finaled_date < self.issued_date
+        ):
+            raise ValueError("finaled_date cannot precede issued_date")
+        return self
 
     @property
     def is_issued(self) -> bool:

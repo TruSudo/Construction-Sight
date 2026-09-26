@@ -1,4 +1,4 @@
-"""Command-line parcel source registry tools."""
+"""Command-line parcel source registry and governed ArcGIS tools."""
 
 from __future__ import annotations
 
@@ -6,11 +6,16 @@ import json
 from pathlib import Path
 from typing import Annotated, cast
 
-import httpx
 import typer
 from rich.console import Console
 from rich.table import Table
 
+from constructionsight.authorization_decision import AuthorizationDeniedError
+from constructionsight.operator_services.parcel_arcgis_service import (
+    ParcelArcGISOperatorServiceError,
+    execute_authorized_arcgis_probe,
+    persist_authorized_arcgis_bundle,
+)
 from constructionsight.parcel_row_preview import load_row_preview_input, preview_rows
 from constructionsight.parcel_schema_preview import (
     load_schema_preview_input,
@@ -18,23 +23,15 @@ from constructionsight.parcel_schema_preview import (
     preview_schema_for_source_key,
 )
 from constructionsight.parcel_source_acquisition import (
-    build_arcgis_acquisition_assessment,
-    build_arcgis_probe_plan,
     get_official_arcgis_acquisition_assessments,
     get_official_arcgis_capability_snapshots,
     get_official_arcgis_probe_plans,
 )
 from constructionsight.parcel_source_acquisition_bundle import (
-    build_arcgis_bounded_proof_bundle,
-    build_arcgis_proof_persistence_receipt,
-    load_arcgis_bounded_proof_bundle,
     verify_arcgis_bounded_proof_bundle,
 )
-from constructionsight.parcel_source_acquisition_http import (
-    ParcelArcGISHTTPPolicy,
-    ParcelArcGISProbeExecutionError,
-    execute_arcgis_probe_plan,
-    fetch_arcgis_capability_snapshot,
+from constructionsight.parcel_source_acquisition_bundle_io import (
+    load_arcgis_bounded_proof_bundle,
 )
 from constructionsight.parcel_source_models import ParcelProviderKind
 from constructionsight.parcel_source_registry import (
@@ -47,59 +44,47 @@ from constructionsight.parcel_source_verification import (
     get_parcel_source_evidence,
     get_verified_parcel_source_profiles,
 )
-from constructionsight.storage.database import (
-    create_database_engine,
-    initialize_database,
-    managed_session,
-    session_factory,
-)
-from constructionsight.storage.parcel_source_acquisition_bundle_store import (
-    store_arcgis_bounded_proof_bundle_chain,
-)
+from constructionsight.storage.runtime_artifacts import write_runtime_text
 
-app = typer.Typer(help="Inspect parcel source targets and readiness.")
+app = typer.Typer(help="Inspect parcel source targets and governed readiness.")
 console = Console(width=240, color_system=None)
 
 
 @app.callback()
 def main() -> None:
-    """Inspect parcel source targets and readiness."""
+    """Inspect parcel source targets and governed readiness."""
 
 
 def _reject_output_without_json(output_path: Path | None, json_output: bool) -> None:
-    """Reject file output without machine-readable JSON output."""
-
     if output_path is not None and not json_output:
         typer.echo("--output requires --json-output.")
         raise typer.Exit(code=1)
 
 
 def _write_json_file(output_path: Path, payload: object) -> None:
-    """Write deterministic UTF-8 JSON output."""
-
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(
+    write_runtime_text(
+        output_path,
         json.dumps(payload, indent=2, sort_keys=True, default=str) + "\n",
-        encoding="utf-8",
     )
 
 
 def _provider_filter(value: str | None) -> ParcelProviderKind | None:
-    """Parse an optional provider-kind filter."""
-
     return ParcelProviderKind(value) if value is not None else None
 
 
-def _render_matrix(rows: list[dict[str, str]]) -> None:
-    """Render compact source matrix rows."""
+def _summary_table(title: str, rows: list[tuple[str, object]]) -> None:
+    table = Table(title=title)
+    table.add_column("Field")
+    table.add_column("Value")
+    for field, value in rows:
+        table.add_row(field, str(value))
+    console.print(table)
 
+
+def _render_matrix(rows: list[dict[str, str]]) -> None:
     table = Table(title="Parcel Source Registry")
-    table.add_column("County")
-    table.add_column("Source")
-    table.add_column("Provider")
-    table.add_column("Status")
-    table.add_column("Geometry")
-    table.add_column("Priority")
+    for heading in ("County", "Source", "Provider", "Status", "Geometry", "Priority"):
+        table.add_column(heading)
     for row in rows:
         table.add_row(
             row["county"],
@@ -113,100 +98,89 @@ def _render_matrix(rows: list[dict[str, str]]) -> None:
 
 
 def _render_report(payload: dict[str, object]) -> None:
-    """Render a compact registry report."""
-
-    table = Table(title="Parcel Source Registry Report")
-    table.add_column("Field")
-    table.add_column("Value")
-    table.add_row("report_id", str(payload["report_id"]))
-    table.add_row("sources_reviewed", str(payload["sources_reviewed"]))
-    table.add_row("counties", ", ".join(cast(list[str], payload["counties"])))
-    table.add_row("ready_sources", str(len(cast(list[object], payload["ready_sources"]))))
-    table.add_row("target_sources", str(len(cast(list[object], payload["target_sources"]))))
-    table.add_row(
-        "blocked_sources",
-        str(len(cast(list[object], payload["blocked_sources"]))),
+    _summary_table(
+        "Parcel Source Registry Report",
+        [
+            ("report_id", payload["report_id"]),
+            ("sources_reviewed", payload["sources_reviewed"]),
+            ("counties", ", ".join(cast(list[str], payload["counties"]))),
+            ("ready_sources", len(cast(list[object], payload["ready_sources"]))),
+            ("target_sources", len(cast(list[object], payload["target_sources"]))),
+            ("blocked_sources", len(cast(list[object], payload["blocked_sources"]))),
+        ],
     )
-    console.print(table)
 
 
 def _render_schema_preview(payload: dict[str, object]) -> None:
-    """Render a compact schema preview report."""
-
-    table = Table(title="Parcel Source Schema Preview")
-    table.add_column("Field")
-    table.add_column("Value")
-    for field_name in (
-        "preview_id",
-        "source_key",
-        "status",
-        "observed_field_count",
-        "geometry_support",
-        "spatial_reference",
-        "next_action",
-    ):
-        table.add_row(field_name, str(payload.get(field_name)))
-    console.print(table)
-
-    mapped_fields = cast(list[dict[str, object]], payload.get("mapped_fields", []))
-    if mapped_fields:
-        mapped_table = Table(title="Mapped Parcel Fields")
-        mapped_table.add_column("Source Field")
-        mapped_table.add_column("Role")
-        mapped_table.add_column("Score")
-        for field in mapped_fields:
-            mapped_table.add_row(
-                str(field.get("source_field") or ""),
-                str(field.get("field_role") or ""),
-                str(field.get("confidence_score") or ""),
+    _summary_table(
+        "Parcel Source Schema Preview",
+        [
+            (field, payload.get(field))
+            for field in (
+                "preview_id",
+                "source_key",
+                "status",
+                "observed_field_count",
+                "geometry_support",
+                "spatial_reference",
+                "next_action",
             )
-        console.print(mapped_table)
+        ],
+    )
+    mapped_fields = cast(list[dict[str, object]], payload.get("mapped_fields", []))
+    if not mapped_fields:
+        return
+    table = Table(title="Mapped Parcel Fields")
+    table.add_column("Source Field")
+    table.add_column("Role")
+    table.add_column("Score")
+    for field in mapped_fields:
+        table.add_row(
+            str(field.get("source_field") or ""),
+            str(field.get("field_role") or ""),
+            str(field.get("confidence_score") or ""),
+        )
+    console.print(table)
 
 
 def _render_row_preview(payload: dict[str, object]) -> None:
-    """Render a compact parcel row preview report."""
-
-    table = Table(title="Parcel Row Preview")
-    table.add_column("Field")
-    table.add_column("Value")
-    for field_name in (
-        "preview_id",
-        "source_key",
-        "status",
-        "row_count",
-        "usable_row_count",
-        "skipped_row_count",
-        "next_action",
-    ):
-        table.add_row(field_name, str(payload.get(field_name)))
-    console.print(table)
-
-    rows = cast(list[dict[str, object]], payload.get("rows", []))
-    if rows:
-        row_table = Table(title="Row Preview Samples")
-        row_table.add_column("Row")
-        row_table.add_column("Usable")
-        row_table.add_column("APN")
-        row_table.add_column("County")
-        for row in rows[:10]:
-            row_table.add_row(
-                str(row.get("row_number") or ""),
-                str(row.get("usable") or ""),
-                str(row.get("normalized_apn") or ""),
-                str(row.get("county") or ""),
+    _summary_table(
+        "Parcel Row Preview",
+        [
+            (field, payload.get(field))
+            for field in (
+                "preview_id",
+                "source_key",
+                "status",
+                "row_count",
+                "usable_row_count",
+                "skipped_row_count",
+                "next_action",
             )
-        console.print(row_table)
+        ],
+    )
+    rows = cast(list[dict[str, object]], payload.get("rows", []))
+    if not rows:
+        return
+    table = Table(title="Row Preview Samples")
+    table.add_column("Row")
+    table.add_column("Usable")
+    table.add_column("APN")
+    table.add_column("County")
+    for row in rows[:10]:
+        table.add_row(
+            str(row.get("row_number") or ""),
+            str(row.get("usable") or ""),
+            str(row.get("normalized_apn") or ""),
+            str(row.get("county") or ""),
+        )
+    console.print(table)
 
 
 def _render_verification_profiles(payload: list[dict[str, object]]) -> None:
-    """Render verified parcel source profiles."""
-
     table = Table(title="Parcel Source Verification Profiles")
-    table.add_column("County")
-    table.add_column("Source")
-    table.add_column("Status")
-    table.add_column("Schema fields")
-    table.add_column("Authoritative fields")
+    for heading in ("County", "Source", "Status", "Schema fields", "Authoritative fields"):
+        table.add_column(heading)
     for profile in payload:
         table.add_row(
             str(profile["county"]),
@@ -219,43 +193,35 @@ def _render_verification_profiles(payload: list[dict[str, object]]) -> None:
 
 
 def _render_coverage_report(payload: dict[str, object]) -> None:
-    """Render countywide parcel coverage gaps."""
-
-    summary = Table(title="Parcel County Coverage Report")
-    summary.add_column("Field")
-    summary.add_column("Value")
-    summary.add_row("report_id", str(payload["report_id"]))
-    summary.add_row("status", str(payload["status"]))
-    summary.add_row("counties", ", ".join(cast(list[str], payload["counties"])))
-    summary.add_row("gaps", str(len(cast(list[object], payload["gaps"]))))
-    console.print(summary)
-
+    _summary_table(
+        "Parcel County Coverage Report",
+        [
+            ("report_id", payload["report_id"]),
+            ("status", payload["status"]),
+            ("counties", ", ".join(cast(list[str], payload["counties"]))),
+            ("gaps", len(cast(list[object], payload["gaps"]))),
+        ],
+    )
     gaps = cast(list[dict[str, object]], payload["gaps"])
-    if gaps:
-        table = Table(title="Unresolved County Coverage Gaps")
-        table.add_column("County")
-        table.add_column("Code")
-        table.add_column("Fields")
-        table.add_column("Next action")
-        for gap in gaps:
-            table.add_row(
-                str(gap["county"]),
-                str(gap["code"]),
-                ", ".join(cast(list[str], gap["field_roles"])),
-                str(gap["next_action"]),
-            )
-        console.print(table)
+    if not gaps:
+        return
+    table = Table(title="Unresolved County Coverage Gaps")
+    for heading in ("County", "Code", "Fields", "Next action"):
+        table.add_column(heading)
+    for gap in gaps:
+        table.add_row(
+            str(gap["county"]),
+            str(gap["code"]),
+            ", ".join(cast(list[str], gap["field_roles"])),
+            str(gap["next_action"]),
+        )
+    console.print(table)
 
 
 def _render_arcgis_capabilities(payload: list[dict[str, object]]) -> None:
-    """Render advertised ArcGIS metadata without implying query proof."""
-
     table = Table(title="Parcel ArcGIS Capability Snapshots")
-    table.add_column("County")
-    table.add_column("Source")
-    table.add_column("Probe advertised")
-    table.add_column("Fields")
-    table.add_column("Max page")
+    for heading in ("County", "Source", "Probe advertised", "Fields", "Max page"):
+        table.add_column(heading)
     for snapshot in payload:
         advertised = all(
             bool(snapshot[field])
@@ -278,14 +244,9 @@ def _render_arcgis_capabilities(payload: list[dict[str, object]]) -> None:
 
 
 def _render_arcgis_plans(payload: list[dict[str, object]]) -> None:
-    """Render bounded probe plans."""
-
     table = Table(title="Parcel ArcGIS Bounded Probe Plans")
-    table.add_column("County")
-    table.add_column("Source")
-    table.add_column("Requests")
-    table.add_column("Sample")
-    table.add_column("Bulk authorized")
+    for heading in ("County", "Source", "Requests", "Sample", "Bulk authorized"):
+        table.add_column(heading)
     for plan in payload:
         table.add_row(
             str(plan["county"]),
@@ -298,14 +259,9 @@ def _render_arcgis_plans(payload: list[dict[str, object]]) -> None:
 
 
 def _render_arcgis_assessments(payload: list[dict[str, object]]) -> None:
-    """Render conservative ArcGIS acquisition readiness."""
-
     table = Table(title="Parcel ArcGIS Acquisition Readiness")
-    table.add_column("County")
-    table.add_column("Source")
-    table.add_column("Status")
-    table.add_column("Gaps")
-    table.add_column("Bulk verified")
+    for heading in ("County", "Source", "Status", "Gaps", "Bulk verified"):
+        table.add_column(heading)
     for assessment in payload:
         table.add_row(
             str(assessment["county"]),
@@ -317,32 +273,27 @@ def _render_arcgis_assessments(payload: list[dict[str, object]]) -> None:
     console.print(table)
 
 
-def _render_arcgis_proof_result(
-    payload: dict[str, object],
-    *,
-    title: str,
-) -> None:
-    """Render a compact offline verification or persistence result."""
-
-    table = Table(title=title)
-    table.add_column("Field")
-    table.add_column("Value")
-    for field_name in (
-        "bundle_id",
-        "source_key",
-        "county",
-        "status",
-        "assessment_id",
-        "evidence_count",
-        "observation_count",
-        "valid",
-        "mutation_authorized",
-        "bulk_run_authorized",
-        "next_action",
-    ):
-        if field_name in payload:
-            table.add_row(field_name, str(payload[field_name]))
-    console.print(table)
+def _render_arcgis_proof_result(payload: dict[str, object], *, title: str) -> None:
+    _summary_table(
+        title,
+        [
+            (field, payload[field])
+            for field in (
+                "bundle_id",
+                "source_key",
+                "county",
+                "status",
+                "assessment_id",
+                "evidence_count",
+                "observation_count",
+                "valid",
+                "mutation_authorized",
+                "bulk_run_authorized",
+                "next_action",
+            )
+            if field in payload
+        ],
+    )
 
 
 @app.command("evidence")
@@ -354,21 +305,19 @@ def source_evidence(
 ) -> None:
     """Show digest-bound official evidence for county parcel sources."""
 
-    payload = [evidence.to_dict() for evidence in get_parcel_source_evidence()]
+    payload = [item.to_dict() for item in get_parcel_source_evidence()]
     if json_output:
         typer.echo(json.dumps(payload, indent=2, sort_keys=True, default=str))
         return
     table = Table(title="Parcel Source Evidence")
-    table.add_column("County")
-    table.add_column("Kind")
-    table.add_column("Source")
-    table.add_column("Observed")
-    for evidence in payload:
+    for heading in ("County", "Kind", "Source", "Observed"):
+        table.add_column(heading)
+    for item in payload:
         table.add_row(
-            str(evidence["county"]),
-            str(evidence["evidence_kind"]),
-            str(evidence["source_key"]),
-            str(evidence["observed_at"]),
+            str(item["county"]),
+            str(item["evidence_kind"]),
+            str(item["source_key"]),
+            str(item["observed_at"]),
         )
     console.print(table)
 
@@ -414,9 +363,7 @@ def acquisition_capabilities(
 ) -> None:
     """Show advertised ArcGIS metadata separately from executed query proof."""
 
-    payload = [
-        snapshot.to_dict() for snapshot in get_official_arcgis_capability_snapshots()
-    ]
+    payload = [item.to_dict() for item in get_official_arcgis_capability_snapshots()]
     if json_output:
         typer.echo(json.dumps(payload, indent=2, sort_keys=True, default=str))
         return
@@ -470,8 +417,32 @@ def acquisition_probe(
     ] = 2,
     timeout_seconds: Annotated[
         float,
-        typer.Option("--timeout-seconds", min=1.0, max=120.0),
+        typer.Option("--timeout-seconds", min=1.0, max=30.0),
     ] = 30.0,
+    operator_id: Annotated[
+        str | None,
+        typer.Option(
+            "--operator-id",
+            help="Optional local audit identity; this is not authentication.",
+        ),
+    ] = None,
+    authorization_reason: Annotated[
+        str,
+        typer.Option(
+            "--authorization-reason",
+            help="Reason for this exact bounded probe authorization.",
+        ),
+    ] = "Execute one reviewed bounded ArcGIS proof.",
+    execute_live: Annotated[
+        bool,
+        typer.Option(
+            "--execute-live",
+            help=(
+                "Additional caller confirmation. This Boolean is not the operative "
+                "authorization decision."
+            ),
+        ),
+    ] = False,
     json_output: Annotated[
         bool,
         typer.Option("--json-output", help="Emit machine-readable probe bundle JSON."),
@@ -484,7 +455,7 @@ def acquisition_probe(
         ),
     ] = None,
 ) -> None:
-    """Refresh schema and execute four bounded read-only ArcGIS requests."""
+    """Authorize schema refresh and five bounded read-only ArcGIS requests."""
 
     _reject_output_without_json(output_path, json_output)
     profiles = {
@@ -494,53 +465,41 @@ def acquisition_probe(
     if profile is None:
         typer.echo(f"Unknown verified ArcGIS source key: {source_key}")
         raise typer.Exit(code=1)
-    policy = ParcelArcGISHTTPPolicy(timeout_seconds=timeout_seconds)
+    evidence_by_id = {
+        item.evidence_id: item for item in get_parcel_source_evidence()
+    }
     try:
-        with httpx.Client(follow_redirects=False) as client:
-            snapshot = fetch_arcgis_capability_snapshot(
-                profile,
-                client,
-                limitations=(
-                    "Advertised capabilities require executed probe proof.",
-                    "This command executes a bounded probe, not a complete acquisition.",
-                ),
-                policy=policy,
-            )
-            plan = build_arcgis_probe_plan(snapshot, sample_size=sample_size)
-            observations = execute_arcgis_probe_plan(
-                snapshot,
-                plan,
-                client,
-                policy=policy,
-            )
-        assessment = build_arcgis_acquisition_assessment(
-            snapshot,
-            plan,
-            observations,
+        result = execute_authorized_arcgis_probe(
+            profile=profile,
+            source_evidence=(
+                evidence_by_id[evidence_id] for evidence_id in profile.evidence_ids
+            ),
+            sample_size=sample_size,
+            timeout_seconds=timeout_seconds,
+            authorization_reason=authorization_reason,
+            caller_confirmation=execute_live,
+            operator_id=operator_id,
         )
-        evidence_by_id = {
-            item.evidence_id: item for item in get_parcel_source_evidence()
-        }
-        bundle = build_arcgis_bounded_proof_bundle(
-            profile,
-            (evidence_by_id[evidence_id] for evidence_id in profile.evidence_ids),
-            snapshot,
-            plan,
-            observations,
-            assessment,
-        )
-    except (KeyError, ValueError, ParcelArcGISProbeExecutionError) as exc:
+    except (
+        AuthorizationDeniedError,
+        KeyError,
+        ParcelArcGISOperatorServiceError,
+        ValueError,
+    ) as exc:
         typer.echo(f"ArcGIS acquisition probe blocked: {exc}")
         raise typer.Exit(code=1) from exc
-    payload = bundle.to_dict()
+    payload = result.bundle.to_dict()
+    authorization = result.authorization.to_dict()
     if output_path is not None:
         _write_json_file(output_path, payload)
         typer.echo(f"Wrote ArcGIS acquisition probe JSON to {output_path}.")
+        typer.echo(f"Authorization decision: {authorization['decision_id']}")
         return
     if json_output:
         typer.echo(json.dumps(payload, indent=2, sort_keys=True, default=str))
         return
-    _render_arcgis_assessments([assessment.to_dict()])
+    _render_arcgis_assessments([result.assessment.to_dict()])
+    typer.echo(f"Authorization decision: {authorization['decision_id']}")
 
 
 @app.command("acquisition-verify-bundle")
@@ -586,11 +545,28 @@ def acquisition_persist_bundle(
         str | None,
         typer.Option("--database-url", help="Optional SQLAlchemy database URL."),
     ] = None,
+    operator_id: Annotated[
+        str | None,
+        typer.Option(
+            "--operator-id",
+            help="Optional local audit identity; this is not authentication.",
+        ),
+    ] = None,
+    authorization_reason: Annotated[
+        str,
+        typer.Option(
+            "--authorization-reason",
+            help="Reason for this exact transactional persistence authorization.",
+        ),
+    ] = "Persist one reviewed bounded ArcGIS proof bundle.",
     authorize_persistence: Annotated[
         bool,
         typer.Option(
             "--authorize-persistence",
-            help="Explicitly authorize the local transactional write.",
+            help=(
+                "Additional caller confirmation. This Boolean is not the operative "
+                "authorization decision."
+            ),
         ),
     ] = False,
     json_output: Annotated[
@@ -598,37 +574,40 @@ def acquisition_persist_bundle(
         typer.Option("--json-output", help="Emit machine-readable receipt JSON."),
     ] = False,
 ) -> None:
-    """Persist one exact verified bundle; never authorize bulk acquisition."""
+    """Authorize persistence of one exact verified bundle; never authorize bulk."""
 
     if not authorize_persistence:
-        typer.echo("ArcGIS bounded-proof persistence requires --authorize-persistence.")
-        raise typer.Exit(code=1)
-    try:
-        bundle = load_arcgis_bounded_proof_bundle(input_path)
-    except ValueError as exc:
-        typer.echo(f"ArcGIS bounded-proof persistence blocked: {exc}")
-        raise typer.Exit(code=1) from exc
-    if bundle.bundle_id != expected_bundle_id:
         typer.echo(
-            "ArcGIS bounded-proof persistence blocked: expected bundle ID does not "
-            "match the verified artifact."
+            "ArcGIS bounded-proof persistence blocked: acquisition-persist-bundle "
+            "requires --authorize-persistence in addition to scope-bound authority",
+            err=True,
         )
         raise typer.Exit(code=1)
     try:
-        engine = create_database_engine(database_url)
-        initialize_database(engine)
-        factory = session_factory(engine)
-        with managed_session(factory) as session:
-            store_arcgis_bounded_proof_bundle_chain(session, bundle)
-    except ValueError as exc:
+        bundle = load_arcgis_bounded_proof_bundle(input_path)
+        result = persist_authorized_arcgis_bundle(
+            bundle=bundle,
+            expected_bundle_id=expected_bundle_id,
+            database_url=database_url,
+            authorization_reason=authorization_reason,
+            caller_confirmation=True,
+            operator_id=operator_id,
+        )
+    except (
+        AuthorizationDeniedError,
+        ParcelArcGISOperatorServiceError,
+        ValueError,
+    ) as exc:
         typer.echo(f"ArcGIS bounded-proof persistence blocked: {exc}")
         raise typer.Exit(code=1) from exc
-    receipt = build_arcgis_proof_persistence_receipt(bundle)
-    payload = receipt.to_dict()
+    payload = result.receipt.to_dict()
     if json_output:
         typer.echo(json.dumps(payload, indent=2, sort_keys=True, default=str))
         return
     _render_arcgis_proof_result(payload, title="Parcel ArcGIS Proof Persistence")
+    typer.echo(
+        f"Authorization decision: {result.authorization.decision.decision_id}"
+    )
 
 
 @app.command("matrix")
@@ -786,3 +765,7 @@ def preview_rows_command(
         typer.echo(json.dumps(result, indent=2, sort_keys=True, default=str))
         return
     _render_row_preview(result)
+
+
+if __name__ == "__main__":
+    app()

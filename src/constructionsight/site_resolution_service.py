@@ -80,7 +80,6 @@ def resolve_site(site_input: SiteResolutionInput) -> SiteResolutionResult:
     candidate = _build_candidate(site_input, conflicts)
     status = _status_for_candidate(candidate, conflicts)
     return SiteResolutionResult(
-        resolution_id=_resolution_id(site_input, candidate.site_key),
         source_name=site_input.source_name,
         evidence_id=site_input.evidence_id,
         status=status,
@@ -356,9 +355,7 @@ def _unresolved(
 ) -> SiteResolutionResult:
     """Return an unresolved site-resolution result."""
 
-    basis = site_input.evidence_id or site_input.source_name
     return SiteResolutionResult(
-        resolution_id=f"site-resolution:{_short_hash(basis)}",
         source_name=site_input.source_name,
         evidence_id=site_input.evidence_id,
         status=SiteResolutionStatus.UNRESOLVED,
@@ -383,13 +380,6 @@ def _site_key(
         parts.extend([f"{latitude:.6f}", f"{longitude:.6f}"])
     basis = "|".join(parts)
     return f"site:{_short_hash(basis)}"
-
-
-def _resolution_id(site_input: SiteResolutionInput, site_key: str) -> str:
-    """Build a deterministic resolution id."""
-
-    basis = "|".join([site_input.evidence_id or "", site_input.source_name, site_key])
-    return f"site-resolution:{_short_hash(basis)}"
 
 
 def _short_hash(value: str) -> str:

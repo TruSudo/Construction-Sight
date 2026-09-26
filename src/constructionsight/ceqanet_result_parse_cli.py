@@ -16,8 +16,10 @@ from rich.console import Console
 from rich.table import Table
 
 from constructionsight.adapters.ceqanet_result_parser import parse_ceqanet_result_page
+from constructionsight.storage.runtime_artifacts import read_runtime_text, write_runtime_text
 
 InputFormat = Literal["auto", "execution-json", "html"]
+_INPUT_FORMATS = frozenset({"auto", "execution-json", "html"})
 
 app = typer.Typer(help="Parse stored CEQAnet search-result pages.")
 console = Console(width=240, color_system=None)
@@ -28,6 +30,15 @@ def main() -> None:
     """Parse stored CEQAnet search-result pages."""
 
 
+def _validated_input_format(value: str) -> InputFormat:
+    """Validate the Typer-facing string while retaining a precise internal type."""
+
+    normalized = value.strip().casefold()
+    if normalized not in _INPUT_FORMATS:
+        raise typer.BadParameter("input-format must be auto, execution-json, or html.")
+    return cast(InputFormat, normalized)
+
+
 def _reject_output_without_json(output_path: Path | None, json_output: bool) -> None:
     """Reject file output without machine-readable JSON output."""
 
@@ -36,11 +47,13 @@ def _reject_output_without_json(output_path: Path | None, json_output: bool) -> 
         raise typer.Exit(code=1)
 
 
-def _load_json_object(input_path: Path) -> dict[str, Any]:
+def _load_json_object(
+    input_path: Path, *, content: str | None = None,
+) -> dict[str, Any]:
     """Load a JSON object from disk."""
 
     try:
-        payload = json.loads(input_path.read_text(encoding="utf-8"))
+        payload = json.loads(read_runtime_text(input_path) if content is None else content)
     except json.JSONDecodeError as exc:
         raise typer.BadParameter(f"{input_path} is not valid JSON.") from exc
 
@@ -49,14 +62,16 @@ def _load_json_object(input_path: Path) -> dict[str, Any]:
     return cast(dict[str, Any], payload)
 
 
-def _detect_input_format(input_path: Path, input_format: InputFormat) -> InputFormat:
+def _detect_input_format(
+    input_path: Path, input_format: InputFormat, *, content: str | None = None,
+) -> InputFormat:
     """Resolve auto input format without executing network requests."""
 
     if input_format != "auto":
         return input_format
 
     try:
-        payload = json.loads(input_path.read_text(encoding="utf-8"))
+        payload = json.loads(read_runtime_text(input_path) if content is None else content)
     except json.JSONDecodeError:
         return "html"
 
@@ -69,10 +84,11 @@ def _extract_html_from_execution_json(
     input_path: Path,
     *,
     snapshot_index: int,
+    content: str | None = None,
 ) -> tuple[str, str | None, dict[str, Any]]:
     """Extract stored response HTML and source URL from execution JSON."""
 
-    payload = _load_json_object(input_path)
+    payload = _load_json_object(input_path, content=content)
     snapshots = payload.get("snapshots")
     if not isinstance(snapshots, list) or not snapshots:
         raise typer.BadParameter("Execution JSON must contain a non-empty snapshots list.")
@@ -120,11 +136,14 @@ def _extract_html(
 ) -> tuple[str, str | None, dict[str, Any]]:
     """Extract HTML from raw HTML input or CEQAnet listing-execution JSON."""
 
-    resolved_format = _detect_input_format(input_path, input_format)
+    content = read_runtime_text(input_path)
+    resolved_format = _detect_input_format(input_path, input_format, content=content)
     if resolved_format == "execution-json":
-        return _extract_html_from_execution_json(input_path, snapshot_index=snapshot_index)
+        return _extract_html_from_execution_json(
+            input_path, snapshot_index=snapshot_index, content=content,
+        )
 
-    return input_path.read_text(encoding="utf-8"), None, {
+    return content, None, {
         "input_format": "html",
         "snapshot_index": None,
         "snapshot": None,
@@ -133,11 +152,9 @@ def _extract_html(
 
 def _write_json_file(output_path: Path, payload: dict[str, object]) -> None:
     """Write deterministic UTF-8 JSON output."""
-
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(
+    write_runtime_text(
+        output_path,
         json.dumps(payload, indent=2, sort_keys=True, default=str) + "\n",
-        encoding="utf-8",
     )
 
 
@@ -208,7 +225,7 @@ def parse_ceqanet_results(
         ),
     ],
     input_format: Annotated[
-        InputFormat,
+        str,
         typer.Option("--input-format", help="Input format: auto, execution-json, or html."),
     ] = "auto",
     snapshot_index: Annotated[
@@ -229,7 +246,7 @@ def parse_ceqanet_results(
     _reject_output_without_json(output_path, json_output)
     html, source_url, input_metadata = _extract_html(
         input_path,
-        input_format=input_format,
+        input_format=_validated_input_format(input_format),
         snapshot_index=snapshot_index,
     )
     report = parse_ceqanet_result_page(html, source_url=source_url)
