@@ -160,6 +160,7 @@ def test_site_resolution_uses_topology_and_rejects_envelope_only_match() -> None
                 latitude=3,
                 longitude=3,
                 source_name="test source",
+                evidence_id="evidence:test",
             )
         ],
     )
@@ -171,6 +172,7 @@ def test_site_resolution_uses_topology_and_rejects_envelope_only_match() -> None
                 latitude=0.5,
                 longitude=0.5,
                 source_name="test source",
+                evidence_id="evidence:test",
             )
         ],
     )

@@ -42,12 +42,12 @@ from constructionsight.storage.lead_workflow_store import (
 )
 
 
-def _workflow() -> LeadWorkflowRecord:
+def _workflow(*, fingerprint_key: str | None = "lead-fingerprint:test") -> LeadWorkflowRecord:
     return LeadWorkflowRecord(
         workflow_id="lead-workflow:test",
         package_id="lead-review:test",
         base_candidate_id="candidate:test",
-        fingerprint_key="lead-fingerprint:test",
+        fingerprint_key=fingerprint_key,
         status=LeadWorkflowStatus.MONITOR,
         lead_score=72,
         events=[
@@ -60,12 +60,16 @@ def _workflow() -> LeadWorkflowRecord:
     )
 
 
-def _factory(database_url: str = "sqlite+pysqlite:///:memory:"):
+def _factory(
+    database_url: str = "sqlite+pysqlite:///:memory:",
+    *,
+    fingerprint_key: str | None = "lead-fingerprint:test",
+):
     engine = create_database_engine(database_url)
     initialize_database(engine)
     factory = session_factory(engine)
     with managed_session(factory) as session:
-        store_lead_workflow_record(session, _workflow())
+        store_lead_workflow_record(session, _workflow(fingerprint_key=fingerprint_key))
     return factory
 
 
@@ -158,7 +162,9 @@ def test_transition_rejects_stale_state_before_mutation(
 def test_unresolved_persisted_duplicate_blocks_actionable_transition(
     duplicate_site_key: str, workflow_has_fingerprint: bool,
 ) -> None:
-    factory = _factory()
+    factory = _factory(
+        fingerprint_key="lead-fingerprint:test" if workflow_has_fingerprint else None
+    )
     fingerprint = LeadFingerprint(
         fingerprint_key=canonical_lead_fingerprint_key(
             site_key=duplicate_site_key,
@@ -169,12 +175,6 @@ def test_unresolved_persisted_duplicate_blocks_actionable_transition(
         site_key=duplicate_site_key,
     )
     with managed_session(factory) as session:
-        if not workflow_has_fingerprint:
-            workflow = transition_service.load_persisted_lead_workflow(
-                session, "lead-workflow:test",
-            )
-            workflow.fingerprint_key = None
-            store_lead_workflow_record(session, workflow)
         store_lead_duplicate_result(
             session,
             LeadDuplicateResult(

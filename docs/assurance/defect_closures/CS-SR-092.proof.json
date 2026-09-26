@@ -1,0 +1,24 @@
+{
+  "schema_version": "constructionsight.defect-closure-proof/v1",
+  "defect_id": "CS-SR-092",
+  "required_resolution_sha256": "8ab30e1d786e4f58c9336283ab4a9a1eb1580f07984b850e1dd198ece58ea2e0",
+  "implementation_assertions": [
+    {
+      "path": "docs/assurance/defect_closures/CS-SR-011.md",
+      "operator": "contains",
+      "value": "concluded failure"
+    },
+    {
+      "path": "docs/assurance/defect_closures/CS-SR-011.md",
+      "operator": "not_contains",
+      "value": "repository/semantic certification passed"
+    }
+  ],
+  "regression_assertions": [
+    {
+      "path": "tests/test_cs_sr_011_closure_evidence.py",
+      "operator": "contains",
+      "value": "CS-SR-092"
+    }
+  ]
+}

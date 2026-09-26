@@ -21,7 +21,9 @@ from constructionsight.storage.effect_consumption_store import (
 
 T = TypeVar("T")
 
-_CONSUMPTION_DATABASE_PATH = Path("data/constructionsight-effect-consumption.sqlite3")
+_CONSUMPTION_DATABASE_PATH = (
+    Path.home() / ".local" / "state" / "constructionsight" / "effect-consumption.sqlite3"
+).absolute()
 _MAX_RESULT_BYTES = 25_000_000
 
 
@@ -196,11 +198,33 @@ def _execute_owned_effect(
         return decode_result(payload)
 
     effect_started = False
+    terminal_failure_recorded = False
     try:
         started_at = trusted_utc_now()
         store.mark_effect_started(operation, started_at=started_at)
+        effect_at = trusted_utc_now()
+        if required_utc_date is not None and effect_at.date() != required_utc_date:
+            failure = EffectConsumptionError(
+                "trusted UTC date changed before the protected effect boundary"
+            )
+            failure_type = f"{type(failure).__module__}.{type(failure).__qualname__}"
+            store.commit_pre_effect_failure_after_start_marker(
+                operation,
+                completed_at=effect_at,
+                failure_type=failure_type,
+                failure_digest=authorization_digest(
+                    "effect-failure",
+                    {
+                        "type": failure_type,
+                        "message": str(failure),
+                        "effect_started": False,
+                    },
+                ),
+            )
+            terminal_failure_recorded = True
+            raise failure
         effect_started = True
-        result = effect(started_at)
+        result = effect(effect_at)
         result_payload = encode_result(result)
         result_json = _canonical_result(result_payload)
         normalized_payload = json.loads(result_json)
@@ -214,18 +238,19 @@ def _execute_owned_effect(
         )
         return result
     except Exception as exc:
-        store.commit_failure(
-            operation,
-            completed_at=trusted_utc_now(),
-            effect_started=effect_started,
-            failure_type=f"{type(exc).__module__}.{type(exc).__qualname__}",
-            failure_digest=authorization_digest(
-                "effect-failure",
-                {
-                    "type": f"{type(exc).__module__}.{type(exc).__qualname__}",
-                    "message": str(exc),
-                    "effect_started": effect_started,
-                },
-            ),
-        )
+        if not terminal_failure_recorded:
+            store.commit_failure(
+                operation,
+                completed_at=trusted_utc_now(),
+                effect_started=effect_started,
+                failure_type=f"{type(exc).__module__}.{type(exc).__qualname__}",
+                failure_digest=authorization_digest(
+                    "effect-failure",
+                    {
+                        "type": f"{type(exc).__module__}.{type(exc).__qualname__}",
+                        "message": str(exc),
+                        "effect_started": effect_started,
+                    },
+                ),
+            )
         raise

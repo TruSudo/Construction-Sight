@@ -68,10 +68,10 @@ def test_direct_resolved_effect_is_rejected_without_authorization(
     findings = _audit(
         tmp_path,
         """
-        from constructionsight.http_transport import execute_bounded_http
+        from constructionsight.lead_operator_service import transition_persisted_lead_workflow
 
         def execute(execute_live: bool) -> None:
-            execute_bounded_http()
+            transition_persisted_lead_workflow()
         """,
     )
 
@@ -446,3 +446,158 @@ def test_non_cli_module_is_outside_operator_entry_rule(tmp_path: Path) -> None:
     )
 
     assert findings == []
+
+
+
+def test_persist_confirmation_is_high_impact(tmp_path: Path) -> None:
+    findings = _audit(
+        tmp_path,
+        """
+        def execute(persist: bool) -> None:
+            render_preview()
+        """,
+    )
+
+    assert "AUTH-BOOLEAN-002" in _codes(findings)
+
+
+def test_direct_ceqanet_discovery_is_a_governed_effect(tmp_path: Path) -> None:
+    findings = _audit(
+        tmp_path,
+        """
+        from constructionsight.ceqanet_discovery_service import (
+            discover_ceqanet_public_search,
+        )
+
+        def execute(execute_live: bool) -> None:
+            discover_ceqanet_public_search()
+        """,
+    )
+
+    assert "AUTH-BYPASS-001" in _codes(findings)
+
+
+def test_direct_source_registry_store_mutation_is_a_governed_effect(
+    tmp_path: Path,
+) -> None:
+    findings = _audit_sources(
+        tmp_path,
+        {
+            _CLI_PATH: """
+                from constructionsight.storage.source_registry import SourceRegistryStore
+
+                def execute(apply_changes: bool) -> None:
+                    SourceRegistryStore(None).upsert_many([])
+            """,
+            "src/constructionsight/storage/source_registry.py": """
+                class SourceRegistryStore:
+                    def __init__(self, session) -> None:
+                        self.session = session
+
+                    def upsert_many(self, sources) -> None:
+                        return None
+            """,
+        },
+    )
+
+    assert "AUTH-BYPASS-001" in _codes(findings)
+
+
+def test_unresolved_new_effect_like_call_and_alternate_confirmation_fail_closed(
+    tmp_path: Path,
+) -> None:
+    # Regression: CS-SR-096
+    findings = _audit(
+        tmp_path,
+        """
+        def execute(confirm: bool) -> None:
+            if confirm:
+                persist_new_records()
+        """,
+    )
+
+    assert "AUTH-INDIRECT-001" in _codes(findings)
+    assert "AUTH-BOOLEAN-002" in _codes(findings)
+
+
+def test_new_storage_mutator_is_derived_without_manual_effect_registration(
+    tmp_path: Path,
+) -> None:
+    # Regression: CS-SR-096
+    findings = _audit_sources(
+        tmp_path,
+        {
+            _CLI_PATH: """
+                from constructionsight.storage.future_store import FutureStore
+
+                def execute(confirm: bool) -> None:
+                    FutureStore().delete_records()
+            """,
+            "src/constructionsight/storage/future_store.py": """
+                class FutureStore:
+                    def delete_records(self) -> None:
+                        return None
+            """,
+        },
+    )
+
+    assert "AUTH-BYPASS-001" in _codes(findings)
+
+
+def test_unresolved_local_method_name_alone_is_not_an_effect_boundary(
+    tmp_path: Path,
+) -> None:
+    findings = _audit(
+        tmp_path,
+        """
+        def execute() -> None:
+            values = []
+            values.append("audit-only")
+        """,
+    )
+
+    assert "AUTH-INDIRECT-001" not in _codes(findings)
+
+
+def test_non_authoritative_storage_engine_factory_is_not_a_governed_effect(
+    tmp_path: Path,
+) -> None:
+    findings = _audit_sources(
+        tmp_path,
+        {
+            _CLI_PATH: """
+                from constructionsight.storage.database import create_database_engine
+
+                def execute() -> None:
+                    create_database_engine()
+            """,
+            "src/constructionsight/storage/database.py": """
+                def create_database_engine():
+                    return object()
+            """,
+        },
+    )
+
+    assert "AUTH-BYPASS-001" not in _codes(findings)
+
+
+def test_runtime_artifact_publication_is_not_authoritative_business_mutation(
+    tmp_path: Path,
+) -> None:
+    findings = _audit_sources(
+        tmp_path,
+        {
+            _CLI_PATH: """
+                from constructionsight.storage.runtime_artifacts import publish_runtime_artifact
+
+                def execute() -> None:
+                    publish_runtime_artifact()
+            """,
+            "src/constructionsight/storage/runtime_artifacts.py": """
+                def publish_runtime_artifact():
+                    return None
+            """,
+        },
+    )
+
+    assert "AUTH-BYPASS-001" not in _codes(findings)

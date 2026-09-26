@@ -24,6 +24,7 @@ def _identifier(kind: SiteIdentifierKind, value: str) -> SiteIdentifier:
         identifier_kind=kind,
         value=value,
         normalized_value=value,
+        evidence_id="evidence:test",
     )
 
 
@@ -64,6 +65,7 @@ def _point_hint() -> GeometryHint:
         latitude=34.1,
         longitude=-117.2,
         source_name="test source",
+        evidence_id="evidence:test",
     )
 
 

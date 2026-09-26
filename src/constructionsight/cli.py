@@ -20,7 +20,7 @@ from constructionsight.adapters import (
 )
 from constructionsight.adapters.base import AdapterRunContext
 from constructionsight.adapters.runner import AdapterRunner
-from constructionsight.ceqanet_discovery_service import discover_ceqanet_public_search
+from constructionsight.authorization_decision import AuthorizationDeniedError
 from constructionsight.intelligence.artifact_identity import (
     IdentityFingerprint,
     IdentityResolutionCandidate,
@@ -31,7 +31,14 @@ from constructionsight.intelligence.graph_neighborhood_service import (
     GraphNeighborhoodService,
 )
 from constructionsight.intelligence.relationship_query_service import RelationshipQueryService
-from constructionsight.models import PublicSource
+from constructionsight.models import PlatformFamily, PublicSource, SourceVerificationResult
+from constructionsight.operator_services.ceqanet_discovery_service import (
+    execute_authorized_ceqanet_discovery,
+)
+from constructionsight.operator_services.source_registry_persistence_service import (
+    persist_authorized_source_registry_records,
+    persist_authorized_source_verification_result,
+)
 from constructionsight.storage.database import (
     DEFAULT_DATABASE_PATH,
     create_database_engine,
@@ -43,7 +50,6 @@ from constructionsight.storage.intelligence_store import IntelligenceStore
 from constructionsight.storage.runtime_artifacts import read_runtime_text, write_runtime_text
 from constructionsight.storage.source_registry import SourceRegistryStore
 from constructionsight.storage.verification_store import VerificationStore
-from constructionsight.verification.source_verifier import SourceVerifier
 
 app = typer.Typer(help="ConstructionSight lawful public-record intelligence tools.")
 console = Console()
@@ -65,6 +71,14 @@ def _find_source_by_name(sources: list[PublicSource], source_name: str) -> Publi
         if source.source_name == source_name:
             return source
     raise typer.BadParameter(f"Source registry does not contain source_name={source_name!r}.")
+
+
+def _require_authorization_option(value: str | None, option: str) -> str:
+    """Require a nonblank explicit audit value for a high-impact operation."""
+
+    if value is None or not value.strip():
+        raise typer.BadParameter(f"{option} is required for this high-impact operation.")
+    return value.strip()
 
 
 def _safe_json_object(raw_json: str) -> Any:
@@ -593,9 +607,13 @@ def audit_adapters() -> None:
 
 @app.command("discover-ceqanet")
 def discover_ceqanet(
+    execute_live: Annotated[
+        bool,
+        typer.Option("--execute-live", help="Explicitly authorize one bounded live discovery."),
+    ] = False,
     persist: Annotated[
         bool,
-        typer.Option(help="Persist CEQAnet discovery through the verification store."),
+        typer.Option(help="Persist retained discovery evidence after the live request."),
     ] = False,
     registry_path: Annotated[
         Path,
@@ -609,10 +627,56 @@ def discover_ceqanet(
         str,
         typer.Option(help="Source registry source_name to link CEQAnet discovery evidence to."),
     ] = "CEQAnet State Clearinghouse",
+    operator_id: Annotated[
+        str | None,
+        typer.Option("--operator-id", help="Explicit local operator audit identity."),
+    ] = None,
+    authorization_reason: Annotated[
+        str | None,
+        typer.Option("--authorization-reason", help="Reason for this exact live discovery."),
+    ] = None,
 ) -> None:
-    """Discover the public CEQAnet advanced-search surface without collecting records."""
+    """Discover the public CEQAnet advanced-search surface through governed authority."""
 
-    result = discover_ceqanet_public_search()
+    resolved_operator = _require_authorization_option(operator_id, "--operator-id")
+    resolved_reason = _require_authorization_option(
+        authorization_reason, "--authorization-reason",
+    )
+
+    source: PublicSource | None = None
+    factory = None
+    if persist:
+        sources = _load_sources_from_json(registry_path)
+        source = _find_source_by_name(sources, source_name)
+        engine = create_database_engine(database_url)
+        initialize_database(engine)
+        factory = session_factory(engine)
+        with managed_session(factory) as session:
+            persisted_source = next(
+                (
+                    item
+                    for item in SourceRegistryStore(session).list_sources()
+                    if item.source_name == source.source_name
+                    and str(item.public_url) == str(source.public_url)
+                ),
+                None,
+            )
+            if persisted_source is None:
+                raise typer.BadParameter(
+                    "Persist the reviewed source registry first with load-sources --apply "
+                    "before attaching discovery evidence."
+                )
+
+    try:
+        authorized = execute_authorized_ceqanet_discovery(
+            execute_live=execute_live,
+            authorization_reason=resolved_reason,
+            operator_id=resolved_operator,
+        )
+    except (AuthorizationDeniedError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+    result = authorized.result
     table = Table(title="CEQAnet Public Search Discovery")
     table.add_column("Check")
     table.add_column("Result")
@@ -628,19 +692,22 @@ def discover_ceqanet(
     console.print(table)
 
     if persist:
-        sources = _load_sources_from_json(registry_path)
-        source = _find_source_by_name(sources, source_name)
+        assert source is not None
+        assert factory is not None
         verification_result = result.to_source_verification_result(
             source_name=source.source_name,
             source_url=str(source.public_url),
         )
-        engine = create_database_engine(database_url)
-        initialize_database(engine)
-        factory = session_factory(engine)
         with managed_session(factory) as session:
-            source_store = SourceRegistryStore(session)
-            source_store.upsert_many(sources)
-            VerificationStore(session).add_result(verification_result)
+            persist_authorized_source_verification_result(
+                session,
+                verification_result,
+                caller_confirmation=True,
+                authorization_reason=(
+                    f"{resolved_reason} Retain the exact CEQAnet discovery evidence."
+                ),
+                operator_id=resolved_operator,
+            )
         console.print(f"Persisted CEQAnet discovery verification for {source.source_name}.")
 
     if not result.reachable:
@@ -749,16 +816,41 @@ def load_sources(
             )
         ),
     ] = None,
+    apply_changes: Annotated[
+        bool,
+        typer.Option("--apply", help="Explicitly authorize the exact registry upsert set."),
+    ] = False,
+    operator_id: Annotated[
+        str | None,
+        typer.Option("--operator-id", help="Explicit local operator audit identity."),
+    ] = None,
+    authorization_reason: Annotated[
+        str | None,
+        typer.Option("--authorization-reason", help="Reason for this exact registry import."),
+    ] = None,
 ) -> None:
-    """Load source registry records into the database."""
+    """Load reviewed source-registry records through governed persistence authority."""
 
+    resolved_operator = _require_authorization_option(operator_id, "--operator-id")
+    resolved_reason = _require_authorization_option(
+        authorization_reason, "--authorization-reason",
+    )
     sources = _load_sources_from_json(registry_path)
     engine = create_database_engine(database_url)
     initialize_database(engine)
     factory = session_factory(engine)
-    with managed_session(factory) as session:
-        count = SourceRegistryStore(session).upsert_many(sources)
-    console.print(f"Loaded {count} source records.")
+    try:
+        with managed_session(factory) as session:
+            persisted = persist_authorized_source_registry_records(
+                session,
+                sources,
+                caller_confirmation=apply_changes,
+                authorization_reason=resolved_reason,
+                operator_id=resolved_operator,
+            )
+    except (AuthorizationDeniedError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    console.print(f"Loaded {persisted.report.processed_count} source records.")
 
 
 @app.command("list-sources")
@@ -1126,36 +1218,66 @@ def verify_sources(
             )
         ),
     ] = None,
-    limit: Annotated[int | None, typer.Option(help="Maximum number of sources to verify.")] = None,
+    limit: Annotated[int | None, typer.Option(help="Maximum number of sources to review.")] = None,
+    authorize_persistence: Annotated[
+        bool,
+        typer.Option(
+            "--authorize-persistence",
+            help="Authorize append-only retention of access-review evidence.",
+        ),
+    ] = False,
+    operator_id: Annotated[
+        str | None,
+        typer.Option("--operator-id", help="Explicit local operator audit identity."),
+    ] = None,
+    authorization_reason: Annotated[
+        str | None,
+        typer.Option("--authorization-reason", help="Reason for retaining review evidence."),
+    ] = None,
 ) -> None:
-    """Verify persisted public sources and store auditable verification results."""
+    """Record no-network access-review evidence for persisted sources."""
 
+    resolved_operator = _require_authorization_option(operator_id, "--operator-id")
+    resolved_reason = _require_authorization_option(
+        authorization_reason, "--authorization-reason",
+    )
     engine = create_database_engine(database_url)
     initialize_database(engine)
     factory = session_factory(engine)
-    verifier = SourceVerifier()
-    table = Table(title="Source Verification Results")
+    table = Table(title="Source Access Review Results")
     table.add_column("Source")
-    table.add_column("Reachable")
-    table.add_column("Detected Platform")
-    table.add_column("Search")
-    table.add_column("Login")
-    table.add_column("Confidence")
+    table.add_column("Access decision")
+    table.add_column("Network executed")
     with managed_session(factory) as session:
         sources = SourceRegistryStore(session).list_sources()
         if limit is not None:
             sources = sources[:limit]
-        store = VerificationStore(session)
         for source in sources:
-            result = verifier.verify(source)
-            store.add_result(result)
-            table.add_row(
-                result.source_name,
-                str(result.url_reachable),
-                result.portal_type_detected.value,
-                str(result.public_search_available),
-                str(result.login_required),
-                str(result.confidence_score),
+            result = SourceVerificationResult(
+                source_name=source.source_name,
+                public_url=source.public_url,
+                url_reachable=False,
+                portal_type_detected=PlatformFamily.UNKNOWN,
+                confidence_score=0,
+                notes=(
+                    "Source restriction facts require explicit review before any live "
+                    "verification request."
+                ),
+                raw_observations={
+                    "access_decision": "review_required",
+                    "network_executed": False,
+                },
             )
+            try:
+                persist_authorized_source_verification_result(
+                    session,
+                    result,
+                    caller_confirmation=authorize_persistence,
+                    authorization_reason=resolved_reason,
+                    operator_id=resolved_operator,
+                )
+            except (AuthorizationDeniedError, ValueError) as exc:
+                raise typer.BadParameter(str(exc)) from exc
+            table.add_row(source.source_name, "review_required", "False")
     console.print(table)
-    console.print(f"Verified {len(sources)} source records.")
+    console.print(f"Recorded review evidence for {len(sources)} source records.")

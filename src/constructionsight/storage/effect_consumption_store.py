@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import os
 import sqlite3
+import stat
 import time
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -65,6 +67,56 @@ CREATE TABLE IF NOT EXISTS effect_consumptions (
 """
 
 
+def _require_secure_database_parent(path: Path) -> None:
+    """Create and pin a non-symlink owned parent for the consumption database."""
+
+    if os.name != "posix" or not hasattr(os, "geteuid"):
+        raise EffectConsumptionError(
+            "protected-effect consumption requires POSIX ownership checks"
+        )
+    current = Path(path.anchor)
+    for component in path.parts[1:]:
+        current = current / component
+        try:
+            info = current.lstat()
+        except FileNotFoundError:
+            current.mkdir(mode=0o700)
+            info = current.lstat()
+        if stat.S_ISLNK(info.st_mode) or not stat.S_ISDIR(info.st_mode):
+            raise EffectConsumptionError(
+                "consumption database parent path must not traverse symbolic links"
+            )
+    info = path.lstat()
+    if info.st_uid != os.geteuid():
+        raise EffectConsumptionError("consumption database parent is not owned by this user")
+    if stat.S_IMODE(info.st_mode) & 0o022:
+        raise EffectConsumptionError(
+            "consumption database parent must not be group- or world-writable"
+        )
+
+
+def _database_file_identity(path: Path) -> tuple[int, int] | None:
+    """Return a secure regular-file identity or fail closed on path substitution."""
+
+    try:
+        info = path.lstat()
+    except FileNotFoundError:
+        return None
+    if stat.S_ISLNK(info.st_mode):
+        raise EffectConsumptionError("consumption database must not be a symbolic link")
+    if not stat.S_ISREG(info.st_mode):
+        raise EffectConsumptionError("consumption database must be a regular file")
+    if info.st_nlink != 1:
+        raise EffectConsumptionError("consumption database must have exactly one hard link")
+    if info.st_uid != os.geteuid():
+        raise EffectConsumptionError("consumption database is not owned by this user")
+    if stat.S_IMODE(info.st_mode) & 0o022:
+        raise EffectConsumptionError(
+            "consumption database must not be group- or world-writable"
+        )
+    return info.st_dev, info.st_ino
+
+
 def _require_wal_mode(connection: sqlite3.Connection) -> None:
     """Set WAL once and retry transient contention during initialization."""
 
@@ -94,11 +146,12 @@ class EffectConsumptionStore:
     """Own cross-process reservation, transition, and replay state."""
 
     def __init__(self, database_path: Path) -> None:
-        self._database_path = database_path
+        self._database_path = database_path.expanduser().absolute()
 
     @contextmanager
     def _connection(self) -> Iterator[sqlite3.Connection]:
-        self._database_path.parent.mkdir(parents=True, exist_ok=True)
+        _require_secure_database_parent(self._database_path.parent)
+        identity_before = _database_file_identity(self._database_path)
         connection = sqlite3.connect(
             self._database_path,
             timeout=30.0,
@@ -106,10 +159,21 @@ class EffectConsumptionStore:
         )
         connection.row_factory = sqlite3.Row
         try:
+            identity_after_open = _database_file_identity(self._database_path)
+            if identity_after_open is None:
+                raise EffectConsumptionError("consumption database was not created")
+            if identity_before is not None and identity_after_open != identity_before:
+                raise EffectConsumptionError(
+                    "consumption database identity changed while opening"
+                )
             connection.execute("PRAGMA busy_timeout = 30000")
             _require_wal_mode(connection)
             connection.execute("PRAGMA synchronous = FULL")
             connection.execute(_SCHEMA)
+            if _database_file_identity(self._database_path) != identity_after_open:
+                raise EffectConsumptionError(
+                    "consumption database identity changed during initialization"
+                )
             yield connection
         finally:
             connection.close()
@@ -234,6 +298,37 @@ class EffectConsumptionStore:
                 "failure_digest = NULL",
             ),
             values=(completed_at.isoformat(), result_json, result_digest),
+        )
+
+    def commit_pre_effect_failure_after_start_marker(
+        self,
+        operation: EffectOperation,
+        *,
+        completed_at: datetime,
+        failure_type: str,
+        failure_digest: str,
+    ) -> None:
+        """Fail a marked operation before invoking the protected effect."""
+
+        self._transition(
+            operation,
+            expected=EffectConsumptionStatus.IN_PROGRESS,
+            target=EffectConsumptionStatus.FAILED,
+            assignments=(
+                "completed_at = ?",
+                "effect_started_at = NULL",
+                "failure_phase = ?",
+                "failure_type = ?",
+                "failure_digest = ?",
+                "result_json = NULL",
+                "result_digest = NULL",
+            ),
+            values=(
+                completed_at.isoformat(),
+                "before_effect",
+                failure_type,
+                failure_digest,
+            ),
         )
 
     def commit_failure(

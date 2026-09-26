@@ -1122,10 +1122,325 @@ area = "exact-head-ci"
 root_cause = "No pull-request workflow run or commit status is associated with the current hardening heads after branch updates and a draft PR reopen, while a prior branch head remains observable through the same GitHub API. Exact-head CI evidence therefore does not exist for the current tree."
 discovered_against = "ee2ee1f5d3c09b09d4b70f1f6b3b45fdfed27ab2"
 required_resolution = "Trigger the canonical CI workflow through a non-suppressed pull-request event or explicit workflow dispatch on the final exact head; require both Python jobs and retained certification artifacts before any defect resolution or merge."
-resolution_summary = "Canonical pull-request CI run #1551 executed against exact last-active commit 381a64ecc4e35601453091ac880af0d6328d85a9. Retained Python 3.11 and 3.12 artifacts each prove 2134/2134 tests passed and 164/164 focused mutants killed; Ruff, strict mypy, compilation, isolated vulnerability audits, adapter/source audits, Native assurance preflight, GitHub Actions provenance verification, repository/semantic certification, and diff hygiene all passed. Raw repository certification reduced to only ASSURANCE-001 plus CS-SR-011 itself."
+resolution_summary = "Canonical pull-request CI run #1551 executed against exact last-active commit 381a64ecc4e35601453091ac880af0d6328d85a9. The workflow concluded failure, and both Python quality jobs failed at the final Enforce all quality gates step. Raw repository certification failed with exactly ASSURANCE-001 (Native Maximum Assurance report missing) and DEFECT-ACTIVE-001 (CS-SR-011 still active). Earlier sub-gates completed successfully, including 2134/2134 tests and 164/164 focused mutants; this closure does not claim repository/semantic certification or aggregate CI passed."
 resolution_commit = "381a64ecc4e35601453091ac880af0d6328d85a9"
 resolution_tree = "ec4523d97cb9d67f8b9c195c1b6caf59cebe80c3"
 last_active_commit = "381a64ecc4e35601453091ac880af0d6328d85a9"
-evidence_paths = [".github/workflows/ci.yml", "docs/assurance/defect_closures/CS-SR-011.md"]
-regression_tests = ["tests/test_assurance_preflight_certification.py", "tests/test_ci_exact_head_contract.py"]
+evidence_paths = [".github/workflows/ci.yml", "docs/assurance/defect_closures/CS-SR-011.md", "docs/assurance/evidence/CS-SR-011-ci-1551.json"]
+regression_tests = ["tests/test_assurance_preflight_certification.py", "tests/test_ci_exact_head_contract.py", "tests/test_cs_sr_011_closure_evidence.py"]
 closure_evidence = "docs/assurance/defect_closures/CS-SR-011.md"
+
+[[defects]]
+id = "CS-SR-076"
+severity = "P1"
+area = "intelligence-history-integrity"
+root_cause = "Intelligence evidence, entity, relationship, project-cluster, opportunity, and runtime-event persistence updates existing rows in place. Graph-service update events also reuse stable event IDs, so later assertions can replace prior state and prior event content instead of preserving auditable history."
+discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
+required_resolution = "Make history-bearing intelligence assertions and graph events immutable or explicitly versioned, reject semantic ID collisions, preserve predecessor/history linkage, and add update/replay regressions proving prior evidence and state remain reconstructable."
+resolution_summary = "Machine-verified closure proof for CS-SR-076: required_resolution_sha256=b5dd60a096a42b8627d509712d4386124205d7c6ad6b97ff2e131c954e89b537; implementation_paths=[src/constructionsight/storage/intelligence_store.py]; regression_tests=[tests/test_intelligence_store.py]."
+resolution_commit = "8459597bccc7e2b7cf2f573dd601339dc0a74ca2"
+resolution_tree = "3428bd7b6d3c600058af9e6327a42b8197a3ab56"
+last_active_commit = "8459597bccc7e2b7cf2f573dd601339dc0a74ca2"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-076.md","docs/assurance/defect_closures/CS-SR-076.proof.json","src/constructionsight/storage/intelligence_store.py"]
+regression_tests = ["tests/test_intelligence_store.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-076.md"
+
+[[defects]]
+id = "CS-SR-077"
+severity = "P1"
+area = "intelligence-evidence-binding"
+root_cause = "Core intelligence relationship, project, opportunity, and identity schemas permit authoritative or high-confidence assertions without retained evidence references, while persistence does not require referenced evidence to exist."
+discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
+required_resolution = "Require evidence-bearing provenance for intelligence assertions according to status/confidence, verify referenced evidence exists at persistence/service boundaries, preserve contradictions and limitations, and add unsupported-assertion regressions."
+resolution_summary = "Machine-verified closure proof for CS-SR-077: required_resolution_sha256=aa097b86cb811b76ce1e27a5287f8f202cb7e83c3108e9b8b8c76cc309b0e1c4; implementation_paths=[src/constructionsight/storage/intelligence_store.py]; regression_tests=[tests/test_intelligence_store.py]."
+resolution_commit = "8459597bccc7e2b7cf2f573dd601339dc0a74ca2"
+resolution_tree = "3428bd7b6d3c600058af9e6327a42b8197a3ab56"
+last_active_commit = "8459597bccc7e2b7cf2f573dd601339dc0a74ca2"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-077.md","docs/assurance/defect_closures/CS-SR-077.proof.json","src/constructionsight/storage/intelligence_store.py"]
+regression_tests = ["tests/test_intelligence_store.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-077.md"
+
+[[defects]]
+id = "CS-SR-078"
+severity = "P1"
+area = "intelligence-reference-integrity"
+root_cause = "Persisted intelligence relationships and evidence references are unconstrained strings or JSON references and can point to missing entities, project clusters, or evidence records."
+discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
+required_resolution = "Enforce relationship endpoint and supporting-evidence existence with relational constraints or equivalent fail-closed application checks, preserve valid cross-type graph targets explicitly, and add orphan-reference regressions."
+resolution_summary = "Machine-verified closure proof for CS-SR-078: required_resolution_sha256=5506af22a3aa49e6ec49322b6531ff417d8fe859da93e2f806b42ce301f2367d; implementation_paths=[src/constructionsight/storage/intelligence_store.py]; regression_tests=[tests/test_intelligence_store.py]."
+resolution_commit = "8459597bccc7e2b7cf2f573dd601339dc0a74ca2"
+resolution_tree = "3428bd7b6d3c600058af9e6327a42b8197a3ab56"
+last_active_commit = "8459597bccc7e2b7cf2f573dd601339dc0a74ca2"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-078.md","docs/assurance/defect_closures/CS-SR-078.proof.json","src/constructionsight/storage/intelligence_store.py"]
+regression_tests = ["tests/test_intelligence_store.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-078.md"
+
+[[defects]]
+id = "CS-SR-079"
+severity = "P1"
+area = "intelligence-query-completeness"
+root_cause = "Relationship and neighborhood services call intelligence list methods with their default limit of 100, silently excluding older valid records and using the truncated set for existence classification."
+discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
+required_resolution = "Replace implicit global 100-row scans with complete database-side filtered queries or explicit exhaustive pagination, remove truncated existence checks, and add datasets larger than 100 rows proving complete graph answers."
+resolution_summary = "Machine-verified closure proof for CS-SR-079: required_resolution_sha256=ca1a01298fe077d4dedfc071101048e5ea43d59452093c3dfbc34a8435fb790b; implementation_paths=[src/constructionsight/intelligence/relationship_query_service.py]; regression_tests=[tests/test_relationship_query_service.py]."
+resolution_commit = "8459597bccc7e2b7cf2f573dd601339dc0a74ca2"
+resolution_tree = "3428bd7b6d3c600058af9e6327a42b8197a3ab56"
+last_active_commit = "8459597bccc7e2b7cf2f573dd601339dc0a74ca2"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-079.md","docs/assurance/defect_closures/CS-SR-079.proof.json","src/constructionsight/intelligence/relationship_query_service.py"]
+regression_tests = ["tests/test_relationship_query_service.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-079.md"
+
+[[defects]]
+id = "CS-SR-080"
+severity = "P1"
+area = "permit-history-integrity"
+root_cause = "Permit snapshots use caller-selected IDs that may be reused for changed content, while transition IDs omit occurrence identity. Store helpers update matching rows in place, allowing repeated lifecycle observations to collapse."
+discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
+required_resolution = "Bind snapshot identities to immutable observation content, represent repeated transition occurrences distinctly, reject semantic ID collisions instead of overwriting history, and add repeated-cycle and replay regressions."
+resolution_summary = "Machine-verified closure proof for CS-SR-080: required_resolution_sha256=ba1f6b3cbabeeb4d1c91554a0e51d6f146687faf772d59c7baeddafd9713867d; implementation_paths=[src/constructionsight/permit_transition_models.py]; regression_tests=[tests/test_permit_transition_models.py]."
+resolution_commit = "8459597bccc7e2b7cf2f573dd601339dc0a74ca2"
+resolution_tree = "3428bd7b6d3c600058af9e6327a42b8197a3ab56"
+last_active_commit = "8459597bccc7e2b7cf2f573dd601339dc0a74ca2"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-080.md","docs/assurance/defect_closures/CS-SR-080.proof.json","src/constructionsight/permit_transition_models.py"]
+regression_tests = ["tests/test_permit_transition_models.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-080.md"
+
+[[defects]]
+id = "CS-SR-081"
+severity = "P2"
+area = "sqlite-referential-integrity"
+root_cause = "The main SQLAlchemy SQLite engine declares foreign keys in ORM/schema governance but does not enable PRAGMA foreign_keys=ON for every connection, so declared constraints are not runtime-enforced."
+discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
+required_resolution = "Enable and verify SQLite foreign-key enforcement on every primary database connection without weakening non-SQLite support, add orphan-write regressions, and include enforcement in schema/runtime certification."
+resolution_summary = "Machine-verified closure proof for CS-SR-081: required_resolution_sha256=be9050078180d64d69c14928c057fbfa0971a0220b5f6fb9c1b23ab53b759a5a; implementation_paths=[src/constructionsight/storage/database.py]; regression_tests=[tests/test_database.py]."
+resolution_commit = "8459597bccc7e2b7cf2f573dd601339dc0a74ca2"
+resolution_tree = "3428bd7b6d3c600058af9e6327a42b8197a3ab56"
+last_active_commit = "8459597bccc7e2b7cf2f573dd601339dc0a74ca2"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-081.md","docs/assurance/defect_closures/CS-SR-081.proof.json","src/constructionsight/storage/database.py"]
+regression_tests = ["tests/test_database.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-081.md"
+
+[[defects]]
+id = "CS-SR-082"
+severity = "P1"
+area = "source-registry-authorization-bypass"
+root_cause = "Legacy CLI paths can directly upsert source-registry rows or verification results without passing through the current exact-scope authorization and durable effect-consumption boundary."
+discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
+required_resolution = "Route every operator-visible authoritative source-registry mutation through one canonical scope-bound authorized service with durable single-effect consumption, remove or fail closed legacy direct writers, and add bypass-path certification and regressions."
+resolution_summary = "Machine-verified closure proof for CS-SR-082: required_resolution_sha256=c4d850b7521226dbb3816ecb88156a4cb2e1b12599235e7f78b8dc3c69183d1b; implementation_paths=[src/constructionsight/cli.py]; regression_tests=[tests/test_source_registry_persistence_authorization.py]."
+resolution_commit = "8459597bccc7e2b7cf2f573dd601339dc0a74ca2"
+resolution_tree = "3428bd7b6d3c600058af9e6327a42b8197a3ab56"
+last_active_commit = "8459597bccc7e2b7cf2f573dd601339dc0a74ca2"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-082.md","docs/assurance/defect_closures/CS-SR-082.proof.json","src/constructionsight/cli.py"]
+regression_tests = ["tests/test_source_registry_persistence_authorization.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-082.md"
+
+[[defects]]
+id = "CS-SR-083"
+severity = "P1"
+area = "source-verification-state-semantics"
+root_cause = "SourceVerifier returns url_reachable=false when lawful-access facts are merely unreviewed, and VerificationStore maps every unreachable result to verification_status=failed, converting an unknown/review-required condition into an observed source failure."
+discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
+required_resolution = "Preserve access-decision semantics through persistence, prevent REVIEW_REQUIRED or BLOCKED-without-reachability observations from being classified as network failure, and add regressions distinguishing unknown access, blocked access, and actual reachability failure."
+resolution_summary = "Machine-verified closure proof for CS-SR-083: required_resolution_sha256=22bb7d808bd41cdfbbcb18afe7308850ce97be5df5af27cbef2428494302fa23; implementation_paths=[src/constructionsight/cli.py,src/constructionsight/storage/verification_store.py]; regression_tests=[tests/test_verification_store.py]."
+resolution_commit = "8459597bccc7e2b7cf2f573dd601339dc0a74ca2"
+resolution_tree = "3428bd7b6d3c600058af9e6327a42b8197a3ab56"
+last_active_commit = "8459597bccc7e2b7cf2f573dd601339dc0a74ca2"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-083.md","docs/assurance/defect_closures/CS-SR-083.proof.json","src/constructionsight/cli.py","src/constructionsight/storage/verification_store.py"]
+regression_tests = ["tests/test_verification_store.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-083.md"
+
+[[defects]]
+id = "CS-SR-084"
+severity = "P1"
+area = "effect-consumption-global-uniqueness"
+root_cause = "Protected-effect consumption uses a relative SQLite path and does not pin a canonical owned database identity, so processes launched from different working directories or redirected filesystem paths can reserve the same logical allowance independently."
+discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
+required_resolution = "Anchor the consumption ledger to one canonical application-owned path, reject symlink/path substitution and insecure parent state, preserve cross-process atomic reservation, and add different-CWD, symlink, restart, and concurrent reservation regressions."
+resolution_summary = "Machine-verified closure proof for CS-SR-084: required_resolution_sha256=ff0ee872732f14f4d9704dc1cbae1ee802f1470d45088c6f55f906823ef499cb; implementation_paths=[src/constructionsight/effect_consumption.py]; regression_tests=[tests/test_effect_consumption.py]."
+resolution_commit = "8459597bccc7e2b7cf2f573dd601339dc0a74ca2"
+resolution_tree = "3428bd7b6d3c600058af9e6327a42b8197a3ab56"
+last_active_commit = "8459597bccc7e2b7cf2f573dd601339dc0a74ca2"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-084.md","docs/assurance/defect_closures/CS-SR-084.proof.json","src/constructionsight/effect_consumption.py"]
+regression_tests = ["tests/test_effect_consumption.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-084.md"
+
+[[defects]]
+id = "CS-SR-085"
+severity = "P1"
+area = "intelligence-evidence-content-identity"
+root_cause = "EvidenceRecord accepts caller-selected evidence_id and content_hash without deriving or validating them from retained content, while the store overwrites matching evidence IDs."
+discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
+required_resolution = "Define canonical evidence-content serialization and full digest identity, validate stored hashes/IDs against content, make evidence immutable or versioned, and add collision/tamper/replay regressions."
+resolution_summary = "Machine-verified closure proof for CS-SR-085: required_resolution_sha256=82afe560f97c5610356cf898aeea27e5674c92ef14d52f58e7f013f7d7f8641f; implementation_paths=[src/constructionsight/intelligence/schemas.py]; regression_tests=[tests/test_intelligence_store.py]."
+resolution_commit = "8459597bccc7e2b7cf2f573dd601339dc0a74ca2"
+resolution_tree = "3428bd7b6d3c600058af9e6327a42b8197a3ab56"
+last_active_commit = "8459597bccc7e2b7cf2f573dd601339dc0a74ca2"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-085.md","docs/assurance/defect_closures/CS-SR-085.proof.json","src/constructionsight/intelligence/schemas.py"]
+regression_tests = ["tests/test_intelligence_store.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-085.md"
+
+[[defects]]
+id = "CS-SR-086"
+severity = "P2"
+area = "ceqanet-write-plan-target-integrity"
+root_cause = "CEQAnet persistence validation accepts caller-supplied operation_id, target_key, and source_index without proving they match the validated model's actual canonical target key and source position, allowing audit metadata to disagree with what is written."
+discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
+required_resolution = "Recompute and require exact operation IDs, target keys, and source indexes from each validated payload and collection, fail closed on any mismatch, and add tampered-plan regressions."
+resolution_summary = "Machine-verified closure proof for CS-SR-086: required_resolution_sha256=843bccbe7820ae9607a2fff065e62c608def042ae5e026dfd61d0e681ea5cfd8; implementation_paths=[src/constructionsight/ceqanet_persistence_execute.py]; regression_tests=[tests/test_ceqanet_persistence_execute.py]."
+resolution_commit = "8459597bccc7e2b7cf2f573dd601339dc0a74ca2"
+resolution_tree = "3428bd7b6d3c600058af9e6327a42b8197a3ab56"
+last_active_commit = "8459597bccc7e2b7cf2f573dd601339dc0a74ca2"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-086.md","docs/assurance/defect_closures/CS-SR-086.proof.json","src/constructionsight/ceqanet_persistence_execute.py"]
+regression_tests = ["tests/test_ceqanet_persistence_execute.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-086.md"
+
+[[defects]]
+id = "CS-SR-087"
+severity = "P2"
+area = "repository-status-documentation"
+root_cause = "Operator-facing current-status documentation reports dozens of active defects even though the authoritative governance ledger at the reviewed commit reports zero, creating contradictory repository state."
+discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
+required_resolution = "Update current-status documentation and README defect counts from authoritative governance state, prevent stale hard-coded defect totals where practical, and add a consistency regression if these files claim canonical status."
+resolution_summary = "Machine-verified closure proof for CS-SR-087: required_resolution_sha256=373cb51485ce4702bea0150d6a5307b569fdc485439c19244d3e2b2e5808e48f; implementation_paths=[README.md]; regression_tests=[tests/test_repository_status_documentation.py]."
+resolution_commit = "8459597bccc7e2b7cf2f573dd601339dc0a74ca2"
+resolution_tree = "3428bd7b6d3c600058af9e6327a42b8197a3ab56"
+last_active_commit = "8459597bccc7e2b7cf2f573dd601339dc0a74ca2"
+evidence_paths = ["README.md","docs/assurance/defect_closures/CS-SR-087.md","docs/assurance/defect_closures/CS-SR-087.proof.json"]
+regression_tests = ["tests/test_repository_status_documentation.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-087.md"
+
+[[defects]]
+id = "CS-SR-088"
+severity = "P1"
+area = "site-resolution-evidence-binding"
+root_cause = "Site-resolution models allow APN/address/geometry signals without retained evidence references, and scoring can mark the resulting site resolved despite no evidence ID establishing the source of those signals."
+discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
+required_resolution = "Require evidence references for resolution-bearing site identifiers and geometry, prohibit resolved status without retained provenance, preserve explicit fallback limitations, and add evidence-free resolution regressions."
+resolution_summary = "Machine-verified closure proof for CS-SR-088: required_resolution_sha256=524b788288f0be011ab2a8c380129e6db7459a53bb3a2e71abd39e39e2b7fcde; implementation_paths=[src/constructionsight/site_resolution_models.py]; regression_tests=[tests/test_site_resolution_models.py]."
+resolution_commit = "8459597bccc7e2b7cf2f573dd601339dc0a74ca2"
+resolution_tree = "3428bd7b6d3c600058af9e6327a42b8197a3ab56"
+last_active_commit = "8459597bccc7e2b7cf2f573dd601339dc0a74ca2"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-088.md","docs/assurance/defect_closures/CS-SR-088.proof.json","src/constructionsight/site_resolution_models.py"]
+regression_tests = ["tests/test_site_resolution_models.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-088.md"
+
+[[defects]]
+id = "CS-SR-089"
+severity = "P1"
+area = "normalized-domain-history"
+root_cause = "Normalized Site, Entity, Permit, PlanningCase, CEQA, Agenda, Document, and Relationship stores update stable-key rows in place, erasing earlier source facts and provenance required for longitudinal auditability."
+discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
+required_resolution = "Introduce immutable observation/version history or equivalent append-only audit records for material normalized-domain changes, retain current projections separately if needed, and add history reconstruction regressions."
+resolution_summary = "Machine-verified closure proof for CS-SR-089: required_resolution_sha256=090b2d710eebcc50ede857b4a586628e475319a7d60d7eb5a0bc65cf8c3513e9; implementation_paths=[src/constructionsight/storage/domain_store.py]; regression_tests=[tests/test_domain_store.py]."
+resolution_commit = "8459597bccc7e2b7cf2f573dd601339dc0a74ca2"
+resolution_tree = "3428bd7b6d3c600058af9e6327a42b8197a3ab56"
+last_active_commit = "8459597bccc7e2b7cf2f573dd601339dc0a74ca2"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-089.md","docs/assurance/defect_closures/CS-SR-089.proof.json","src/constructionsight/storage/domain_store.py"]
+regression_tests = ["tests/test_domain_store.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-089.md"
+
+[[defects]]
+id = "CS-SR-090"
+severity = "P1"
+area = "lead-workflow-mutation-boundary"
+root_cause = "store_lead_workflow_record can replace an existing workflow projection and embedded event history without compare-and-swap predecessor validation, while immutable event rows remain separate, allowing projection/event divergence outside the governed transition path."
+discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
+required_resolution = "Restrict existing-workflow mutation to the compare-and-swap transition boundary or enforce exact predecessor/event-history equivalence in direct storage, reconcile embedded and durable events, and add bypass/concurrency regressions."
+resolution_summary = "Machine-verified closure proof for CS-SR-090: required_resolution_sha256=bfca92fd20e53d8c7e5371be8052951d8f4122d8555be6472fdab52eb9cc0f07; implementation_paths=[src/constructionsight/storage/lead_workflow_store.py]; regression_tests=[tests/test_lead_workflow_storage.py]."
+resolution_commit = "8459597bccc7e2b7cf2f573dd601339dc0a74ca2"
+resolution_tree = "3428bd7b6d3c600058af9e6327a42b8197a3ab56"
+last_active_commit = "8459597bccc7e2b7cf2f573dd601339dc0a74ca2"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-090.md","docs/assurance/defect_closures/CS-SR-090.proof.json","src/constructionsight/storage/lead_workflow_store.py"]
+regression_tests = ["tests/test_lead_workflow_storage.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-090.md"
+
+[[defects]]
+id = "CS-SR-091"
+severity = "P2"
+area = "derived-result-content-identity"
+root_cause = "Site-resolution and parcel-assurance persistence accepts caller-provided result IDs and updates existing rows without independently recomputing canonical identity or rejecting changed semantic content under the same ID."
+discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
+required_resolution = "Recompute canonical derived-result identity at model/store boundaries, reject mismatched or semantically changed replay under an existing ID, preserve immutable historical results, and add forged-ID/collision regressions."
+resolution_summary = "Machine-verified closure proof for CS-SR-091: required_resolution_sha256=4f22d82d9911d9dd8112967f7d5080e0593c35ff6a22026805df2340752a7aa0; implementation_paths=[src/constructionsight/storage/parcel_site_store.py]; regression_tests=[tests/test_parcel_site_storage.py]."
+resolution_commit = "8459597bccc7e2b7cf2f573dd601339dc0a74ca2"
+resolution_tree = "3428bd7b6d3c600058af9e6327a42b8197a3ab56"
+last_active_commit = "8459597bccc7e2b7cf2f573dd601339dc0a74ca2"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-091.md","docs/assurance/defect_closures/CS-SR-091.proof.json","src/constructionsight/storage/parcel_site_store.py"]
+regression_tests = ["tests/test_parcel_site_storage.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-091.md"
+
+[[defects]]
+id = "CS-SR-092"
+severity = "P1"
+area = "defect-closure-evidence-accuracy"
+root_cause = "The permanent CS-SR-011 closure summary states that repository/semantic certification passed, but the cited exact-head CI run completed with mandatory quality-gate failure and repository certification blockers."
+discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
+required_resolution = "Correct the permanent closure evidence to accurately distinguish passing individual sub-gates from the failed aggregate/repository certification result, retain the exact run provenance, and add a regression preventing unsupported closure claims."
+resolution_summary = "Machine-verified closure proof for CS-SR-092: required_resolution_sha256=8ab30e1d786e4f58c9336283ab4a9a1eb1580f07984b850e1dd198ece58ea2e0; implementation_paths=[docs/assurance/defect_closures/CS-SR-011.md]; regression_tests=[tests/test_cs_sr_011_closure_evidence.py]."
+resolution_commit = "8459597bccc7e2b7cf2f573dd601339dc0a74ca2"
+resolution_tree = "3428bd7b6d3c600058af9e6327a42b8197a3ab56"
+last_active_commit = "8459597bccc7e2b7cf2f573dd601339dc0a74ca2"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-011.md","docs/assurance/defect_closures/CS-SR-092.md","docs/assurance/defect_closures/CS-SR-092.proof.json"]
+regression_tests = ["tests/test_cs_sr_011_closure_evidence.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-092.md"
+
+[[defects]]
+id = "CS-SR-093"
+severity = "P1"
+area = "defect-closure-semantic-certification"
+root_cause = "Defect-closure certification validates ledger shape, commit ancestry, tree provenance, and path existence but does not establish that resolution summaries and referenced evidence actually satisfy each defect's required resolution."
+discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
+required_resolution = "Add deterministic semantic closure evidence binding sufficient to reject materially unsupported or contradictory closure claims, without relying on self-asserted prose alone, and add tampered/false-evidence regressions."
+resolution_summary = "Machine-verified closure proof for CS-SR-093: required_resolution_sha256=0de6331b66c168976a3bb1625c76766a37cf22834c7c2e2572f09395ca5c5e37; implementation_paths=[src/constructionsight/defect_closure_certification.py]; regression_tests=[tests/test_defect_closure_semantic_certification.py]."
+resolution_commit = "8459597bccc7e2b7cf2f573dd601339dc0a74ca2"
+resolution_tree = "3428bd7b6d3c600058af9e6327a42b8197a3ab56"
+last_active_commit = "8459597bccc7e2b7cf2f573dd601339dc0a74ca2"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-093.md","docs/assurance/defect_closures/CS-SR-093.proof.json","src/constructionsight/defect_closure_certification.py"]
+regression_tests = ["tests/test_defect_closure_semantic_certification.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-093.md"
+
+[[defects]]
+id = "CS-SR-094"
+severity = "P1"
+area = "ceqanet-network-authorization-bypass"
+root_cause = "The legacy discover-ceqanet operator command performs a live CEQAnet HTTP request directly through the bounded transport without canonical scope-bound authorization or durable effect consumption."
+discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
+required_resolution = "Require explicit operator authorization and durable single-effect consumption for CEQAnet discovery, or retire the live legacy path in favor of an already governed equivalent, and add repeated/bypass execution regressions."
+resolution_summary = "Machine-verified closure proof for CS-SR-094: required_resolution_sha256=f9fbd5308cb9456c208015879b719610c8aa4dc9451d55ba0cb28b27388ba92a; implementation_paths=[src/constructionsight/cli.py]; regression_tests=[tests/test_ceqanet_discovery_cli.py]."
+resolution_commit = "8459597bccc7e2b7cf2f573dd601339dc0a74ca2"
+resolution_tree = "3428bd7b6d3c600058af9e6327a42b8197a3ab56"
+last_active_commit = "8459597bccc7e2b7cf2f573dd601339dc0a74ca2"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-094.md","docs/assurance/defect_closures/CS-SR-094.proof.json","src/constructionsight/cli.py"]
+regression_tests = ["tests/test_ceqanet_discovery_cli.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-094.md"
+
+[[defects]]
+id = "CS-SR-095"
+severity = "P1"
+area = "ceqanet-daily-network-invariant"
+root_cause = "The daily CEQAnet evidence runner checks required_utc_date at reservation time but does not recheck immediately before the live effect. A reservation crossing UTC midnight can execute on the next day using the previous day's allowance, then fail validation after the request has already occurred."
+discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
+required_resolution = "Revalidate date-bound allowances immediately before crossing the protected effect boundary, persist terminal failure without issuing the request on rollover, and add deterministic UTC-midnight contention regressions."
+resolution_summary = "Machine-verified closure proof for CS-SR-095: required_resolution_sha256=cd92cc66772e5303d97ca7a22255103b9c00cd0322406e581c54220a5b17d8d0; implementation_paths=[src/constructionsight/effect_consumption.py]; regression_tests=[tests/test_effect_consumption.py]."
+resolution_commit = "8459597bccc7e2b7cf2f573dd601339dc0a74ca2"
+resolution_tree = "3428bd7b6d3c600058af9e6327a42b8197a3ab56"
+last_active_commit = "8459597bccc7e2b7cf2f573dd601339dc0a74ca2"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-095.md","docs/assurance/defect_closures/CS-SR-095.proof.json","src/constructionsight/effect_consumption.py"]
+regression_tests = ["tests/test_effect_consumption.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-095.md"
+
+[[defects]]
+id = "CS-SR-096"
+severity = "P2"
+area = "semantic-authorization-coverage"
+root_cause = "Semantic authorization certification depends on a manually enumerated effect-target set and a small list of recognized CLI confirmation parameter names, so high-impact network or storage mutations can remain unclassified and bypass certification."
+discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
+required_resolution = "Derive or comprehensively enumerate governed high-impact mutation/network boundaries, cover storage mutation entry points and alternate CLI parameter names, fail closed on unresolved high-impact calls, and add witnesses proving newly introduced effects cannot escape the authorization graph."
+resolution_summary = "Machine-verified closure proof for CS-SR-096: required_resolution_sha256=a0ca2ce4d5f2e09f9659fbc4cfb82d5c9fcdb70f11c0e2674fc4ede8e5ab6c4a; implementation_paths=[src/constructionsight/semantic_authorization_certification.py]; regression_tests=[tests/test_semantic_authorization_certification.py]."
+resolution_commit = "8459597bccc7e2b7cf2f573dd601339dc0a74ca2"
+resolution_tree = "3428bd7b6d3c600058af9e6327a42b8197a3ab56"
+last_active_commit = "8459597bccc7e2b7cf2f573dd601339dc0a74ca2"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-096.md","docs/assurance/defect_closures/CS-SR-096.proof.json","src/constructionsight/semantic_authorization_certification.py"]
+regression_tests = ["tests/test_semantic_authorization_certification.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-096.md"

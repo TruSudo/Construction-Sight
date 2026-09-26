@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
@@ -247,7 +249,7 @@ class ParcelFieldAssurance(BaseModel):
 class ParcelAssuranceReport(BaseModel):
     """Persistable field-by-field assurance report for one parcel identity."""
 
-    report_id: str = Field(min_length=1)
+    report_id: str = ""
     normalized_apn: str = Field(min_length=1)
     county: str = Field(min_length=1)
     review_status: ParcelAssuranceReviewStatus
@@ -308,7 +310,32 @@ class ParcelAssuranceReport(BaseModel):
             expected_review_status = ParcelAssuranceReviewStatus.INCOMPLETE
         if self.review_status != expected_review_status:
             raise ValueError("review_status must match field assurance outcomes")
+        expected_id = self.computed_report_id()
+        if not self.report_id:
+            self.report_id = expected_id
+        elif self.report_id != expected_id:
+            raise ValueError("report_id does not match canonical report content")
         return self
+
+    def semantic_identity_payload(self) -> dict[str, Any]:
+        """Return assurance semantics excluding generation time and stored identity."""
+
+        return self.model_dump(
+            mode="json",
+            exclude={"report_id", "generated_at"},
+        )
+
+    def computed_report_id(self) -> str:
+        """Return the full digest identity for this exact semantic report."""
+
+        canonical = json.dumps(
+            self.semantic_identity_payload(),
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+        )
+        digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+        return f"parcel-assurance:v2:{digest}"
 
     def to_dict(self) -> dict[str, Any]:
         """Return deterministic JSON-safe report payload."""

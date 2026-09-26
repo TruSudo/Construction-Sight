@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from datetime import UTC, date, datetime
 from enum import StrEnum
 from typing import Any
@@ -24,7 +26,7 @@ class PermitTransitionKind(StrEnum):
 class PermitSnapshot(BaseModel):
     """Point-in-time source-neutral permit record snapshot."""
 
-    snapshot_id: str = Field(min_length=1)
+    snapshot_id: str = ""
     source_key: str = Field(min_length=1)
     source_record_id: str = Field(min_length=1)
     permit_number: str | None = None
@@ -57,8 +59,8 @@ class PermitSnapshot(BaseModel):
         return values
 
     @model_validator(mode="after")
-    def require_some_signal(self) -> PermitSnapshot:
-        """Require at least one meaningful permit signal."""
+    def require_some_signal_and_identity(self) -> PermitSnapshot:
+        """Require one permit signal and bind identity to exact observation content."""
 
         if not any(
             [
@@ -72,7 +74,20 @@ class PermitSnapshot(BaseModel):
             ]
         ):
             raise ValueError("permit snapshot requires at least one permit signal")
+        expected = self.computed_snapshot_id()
+        if not self.snapshot_id:
+            self.snapshot_id = expected
+        elif self.snapshot_id != expected:
+            raise ValueError("snapshot_id does not match canonical snapshot content")
         return self
+
+    def computed_snapshot_id(self) -> str:
+        """Return a full content identity for this exact observation."""
+
+        payload = self.model_dump(mode="json", exclude={"snapshot_id"})
+        canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+        digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+        return f"permit-snapshot:v2:{digest}"
 
     def to_dict(self) -> dict[str, Any]:
         """Return deterministic JSON-safe snapshot payload."""
@@ -83,10 +98,12 @@ class PermitSnapshot(BaseModel):
 class PermitTransition(BaseModel):
     """One detected transition between permit snapshots."""
 
-    transition_id: str = Field(min_length=1)
+    transition_id: str = ""
     transition_kind: PermitTransitionKind
     source_key: str = Field(min_length=1)
     source_record_id: str = Field(min_length=1)
+    previous_snapshot_id: str | None = None
+    current_snapshot_id: str = Field(min_length=1)
     field_name: str | None = None
     previous_value: str | None = None
     current_value: str | None = None
@@ -105,13 +122,37 @@ class PermitTransition(BaseModel):
         return values
 
     @model_validator(mode="after")
-    def require_change_payload(self) -> PermitTransition:
-        """Require field payload for non-new transitions."""
+    def require_change_payload_and_identity(self) -> PermitTransition:
+        """Require complete occurrence linkage and canonical transition identity."""
 
         non_new_transition = self.transition_kind != PermitTransitionKind.NEW_RECORD
         if non_new_transition and self.field_name is None:
             raise ValueError("non-new permit transitions require field_name")
+        if non_new_transition and self.previous_snapshot_id is None:
+            raise ValueError("non-new permit transitions require previous_snapshot_id")
+        expected = self.computed_transition_id()
+        if not self.transition_id:
+            self.transition_id = expected
+        elif self.transition_id != expected:
+            raise ValueError("transition_id does not match canonical transition content")
         return self
+
+    def computed_transition_id(self) -> str:
+        """Return a full identity for one transition occurrence."""
+
+        payload = {
+            "transition_kind": self.transition_kind.value,
+            "source_key": self.source_key,
+            "source_record_id": self.source_record_id,
+            "previous_snapshot_id": self.previous_snapshot_id,
+            "current_snapshot_id": self.current_snapshot_id,
+            "field_name": self.field_name,
+            "previous_value": self.previous_value,
+            "current_value": self.current_value,
+        }
+        canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+        digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+        return f"permit-transition:v2:{digest}"
 
     def to_dict(self) -> dict[str, Any]:
         """Return deterministic JSON-safe transition payload."""

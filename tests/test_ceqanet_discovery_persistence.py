@@ -1,11 +1,15 @@
 import json
+from pathlib import Path
 
 from typer.testing import CliRunner
 
+import constructionsight.operator_services.ceqanet_discovery_service as discovery_operator
 from constructionsight import cli
 from constructionsight.ceqanet_discovery_http import CeqanetDiscoveryResult
+from constructionsight.models import PublicSource
 from constructionsight.storage.database import (
     create_database_engine,
+    initialize_database,
     managed_session,
     session_factory,
 )
@@ -57,21 +61,37 @@ def test_ceqanet_discovery_converts_to_source_verification_result() -> None:
 
 
 def test_discover_ceqanet_cli_persists_verification_result(monkeypatch, tmp_path) -> None:
-    monkeypatch.setattr(cli, "discover_ceqanet_public_search", _successful_discovery)
+    monkeypatch.setattr(
+        discovery_operator, "discover_ceqanet_public_search", _successful_discovery
+    )
 
     database_path = tmp_path / "constructionsight.sqlite3"
     database_url = f"sqlite+pysqlite:///{database_path}"
     runner = CliRunner()
+    source_payload = json.loads(
+        Path("data/source_registry.seed.json").read_text(encoding="utf-8")
+    )[0]
+    source_model = PublicSource.model_validate(source_payload)
+    engine = create_database_engine(database_url)
+    initialize_database(engine)
+    factory = session_factory(engine)
+    with managed_session(factory) as session:
+        SourceRegistryStore(session).upsert_source(source_model)
 
     result = runner.invoke(
         cli.app,
         [
             "discover-ceqanet",
+            "--execute-live",
             "--persist",
             "--database-url",
             database_url,
             "--registry-path",
             "data/source_registry.seed.json",
+            "--operator-id",
+            "operator:test",
+            "--authorization-reason",
+            "Review and retain bounded CEQAnet discovery evidence.",
         ],
     )
 
@@ -98,5 +118,5 @@ def test_discover_ceqanet_cli_persists_verification_result(monkeypatch, tmp_path
     assert raw_observations["confidence_score"] == 95
 
     assert source is not None
-    assert source.verification_status.value == "verified"
-    assert source.confidence_score == 95
+    assert source.verification_status == source_model.verification_status
+    assert source.confidence_score == source_model.confidence_score
