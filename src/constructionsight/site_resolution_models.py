@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
@@ -181,7 +183,7 @@ class SiteResolutionCandidate(BaseModel):
 class SiteResolutionResult(BaseModel):
     """Resolution result for one source-neutral site request."""
 
-    resolution_id: str = Field(min_length=1)
+    resolution_id: str = ""
     source_name: str = Field(min_length=1)
     evidence_id: str | None = None
     status: SiteResolutionStatus
@@ -214,7 +216,32 @@ class SiteResolutionResult(BaseModel):
             candidate.site_key for candidate in self.candidates
         }:
             raise ValueError("primary_site_key must reference a candidate site_key")
+        expected_id = self.computed_resolution_id()
+        if not self.resolution_id:
+            self.resolution_id = expected_id
+        elif self.resolution_id != expected_id:
+            raise ValueError("resolution_id does not match canonical result content")
         return self
+
+    def semantic_identity_payload(self) -> dict[str, Any]:
+        """Return result semantics excluding receipt time and stored identity."""
+
+        return self.model_dump(
+            mode="json",
+            exclude={"resolution_id", "created_at"},
+        )
+
+    def computed_resolution_id(self) -> str:
+        """Return the full digest identity for this exact semantic result."""
+
+        canonical = json.dumps(
+            self.semantic_identity_payload(),
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+        )
+        digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+        return f"site-resolution:v2:{digest}"
 
     def to_dict(self) -> dict[str, Any]:
         """Return deterministic JSON-safe result payload."""

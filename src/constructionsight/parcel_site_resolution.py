@@ -58,7 +58,6 @@ def resolve_site_with_parcels(
     limitations = [] if len(candidates) == 1 else ["multiple parcel records matched equally"]
     primary_site_key = candidates[0].site_key if len(candidates) == 1 else None
     return SiteResolutionResult(
-        resolution_id=_resolution_id(site_input, candidates),
         source_name=site_input.source_name,
         evidence_id=site_input.evidence_id,
         status=status,
@@ -193,22 +192,6 @@ def _site_key_from_parcel(parcel: ParcelCoreRecord) -> str:
     """Build deterministic site key from parcel identity."""
 
     return f"site:{_short_hash(parcel.parcel_record_id)}"
-
-
-def _resolution_id(
-    site_input: SiteResolutionInput,
-    candidates: list[SiteResolutionCandidate],
-) -> str:
-    """Build deterministic parcel-backed resolution id."""
-
-    basis = "|".join(
-        [
-            site_input.evidence_id or "",
-            site_input.source_name,
-            ",".join(candidate.site_key for candidate in candidates),
-        ]
-    )
-    return f"site-resolution:{_short_hash(basis)}"
 
 
 def _short_hash(value: str) -> str:

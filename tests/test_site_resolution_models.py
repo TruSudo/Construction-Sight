@@ -59,8 +59,29 @@ def test_result_model_rejects_unresolved_with_candidate() -> None:
 
     with pytest.raises(ValidationError):
         SiteResolutionResult(
-            resolution_id="site-resolution:abc",
             source_name="test source",
             status=SiteResolutionStatus.UNRESOLVED,
             candidates=[candidate],
         )
+
+
+def test_result_identity_is_derived_from_semantic_content() -> None:
+    candidate = SiteResolutionCandidate(
+        site_key="site:abc",
+        match_strength=SiteMatchStrength.STRONG,
+        confidence_score=90,
+        confidence_band=ConfidenceBand.HIGH,
+    )
+    result = SiteResolutionResult(
+        source_name="test source",
+        evidence_id="evidence:test",
+        status=SiteResolutionStatus.RESOLVED,
+        primary_site_key="site:abc",
+        candidates=[candidate],
+    )
+
+    assert result.resolution_id.startswith("site-resolution:v2:")
+    payload = result.to_dict()
+    payload["resolution_id"] = "site-resolution:v2:" + "0" * 64
+    with pytest.raises(ValidationError, match="canonical result content"):
+        SiteResolutionResult.model_validate(payload)

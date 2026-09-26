@@ -15,7 +15,6 @@ from constructionsight.site_resolution_models import (
 
 def _site_result() -> SiteResolutionResult:
     return SiteResolutionResult(
-        resolution_id="site-resolution:test",
         source_name="test source",
         status=SiteResolutionStatus.RESOLVED,
         primary_site_key="site:test",
@@ -148,7 +147,6 @@ def test_high_nominal_signal_cannot_become_actionable_with_low_confidence() -> N
         reasons=["synthetic low-confidence site anchor"],
     )
     site = SiteResolutionResult(
-        resolution_id="site-resolution:low-confidence",
         source_name="test source",
         status=SiteResolutionStatus.RESOLVED,
         primary_site_key=candidate.site_key,
@@ -192,7 +190,6 @@ def test_zero_confidence_signal_contributes_no_operational_score() -> None:
         reasons=["synthetic zero-confidence site signal"],
     )
     site = SiteResolutionResult(
-        resolution_id="site-resolution:zero-confidence",
         source_name="test source",
         status=SiteResolutionStatus.RESOLVED,
         primary_site_key=candidate.site_key,

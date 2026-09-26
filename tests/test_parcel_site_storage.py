@@ -102,7 +102,6 @@ def _site_resolution() -> SiteResolutionResult:
         limitations=["point geometry only"],
     )
     return SiteResolutionResult(
-        resolution_id="site-resolution:test",
         source_name="parcel test",
         evidence_id="evidence:test",
         status=SiteResolutionStatus.RESOLVED,
@@ -156,7 +155,7 @@ def test_store_parcel_core_record_roundtrip() -> None:
         assert payload["limitations"] == ["owner not enriched"]
 
 
-def test_store_parcel_assurance_report_roundtrip_and_update() -> None:
+def test_store_parcel_assurance_report_roundtrip_and_exact_replay() -> None:
     _engine, factory = _session_factory()
     report = _assurance_report()
     regenerated = report.model_copy(
@@ -178,7 +177,7 @@ def test_store_parcel_assurance_report_roundtrip_and_update() -> None:
         assert row.claim_count == 1
         assert row.conflict_count == 0
         assert row.missing_count == 1
-        assert row.observed_created_at == regenerated.generated_at.isoformat()
+        assert row.observed_created_at == report.generated_at.isoformat()
         payload = json.loads(row.payload_json)
         assert payload["claims"][0]["lineage_key"] == "county-assessor-roll"
         assert payload["field_assurances"][1]["status"] == "missing"
@@ -192,7 +191,7 @@ def test_store_site_resolution_result_roundtrip() -> None:
         session.flush()
         row = session.execute(select(SiteResolutionResultRow)).scalar_one()
 
-        assert row.resolution_id == "site-resolution:test"
+        assert row.resolution_id == _site_resolution().resolution_id
         assert row.status == "resolved"
         assert row.primary_site_key == "site:test"
         assert row.candidate_count == 1
@@ -212,3 +211,20 @@ def test_store_parcel_core_record_updates_existing_row() -> None:
 
         assert len(rows) == 1
         assert rows[0].zoning == "commercial"
+
+
+def test_derived_result_stores_reject_forged_identity_reuse() -> None:
+    _engine, factory = _session_factory()
+    site = _site_resolution()
+    assurance = _assurance_report()
+
+    with managed_session(factory) as session:
+        store_site_resolution_result(session, site)
+        forged_site = site.model_copy(update={"status": SiteResolutionStatus.PARTIAL})
+        with pytest.raises(ValueError, match="identity"):
+            store_site_resolution_result(session, forged_site)
+
+        store_parcel_assurance_report(session, assurance)
+        forged_assurance = assurance.model_copy(update={"county": "Riverside"})
+        with pytest.raises(ValueError, match="identity"):
+            store_parcel_assurance_report(session, forged_assurance)
