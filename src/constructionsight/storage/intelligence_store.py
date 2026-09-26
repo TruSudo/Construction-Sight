@@ -180,14 +180,27 @@ class IntelligenceStore:
                 IntelligenceEvidenceRecord.evidence_id == evidence.evidence_id
             )
         )
+        previous_payload_json = record.payload_json if record is not None else None
         if record is None:
             record = IntelligenceEvidenceRecord(evidence_id=evidence.evidence_id)
             self._stage_new_record(record)
+        current_payload_json = _model_to_json(evidence)
         record.source_name = evidence.source_name
         record.record_type = evidence.record_type
         record.confidence_contribution = evidence.confidence_contribution
-        record.payload_json = _model_to_json(evidence)
+        record.payload_json = current_payload_json
         self._flush()
+        self._append_revision_event(
+            record_kind="evidence",
+            logical_id=evidence.evidence_id,
+            previous_payload_json=previous_payload_json,
+            current_payload_json=current_payload_json,
+            event_type=(
+                RuntimeEventType.SOURCE_RECORD_CHANGED
+                if previous_payload_json is not None
+                else RuntimeEventType.SOURCE_RECORD_DISCOVERED
+            ),
+        )
         return record
 
     def get_evidence(self, evidence_id: str) -> EvidenceRecord | None:
@@ -231,15 +244,28 @@ class IntelligenceStore:
                 IntelligenceEntityRecord.entity_id == entity.entity_id
             )
         )
+        previous_payload_json = record.payload_json if record is not None else None
         if record is None:
             record = IntelligenceEntityRecord(entity_id=entity.entity_id)
             self._stage_new_record(record)
+        current_payload_json = _model_to_json(entity)
         record.entity_type = entity.entity_type.value
         record.canonical_name = entity.canonical_name
         record.identity_status = entity.identity_status.value
         record.confidence_score = entity.confidence_score
-        record.payload_json = _model_to_json(entity)
+        record.payload_json = current_payload_json
         self._flush()
+        self._append_revision_event(
+            record_kind="entity",
+            logical_id=entity.entity_id,
+            previous_payload_json=previous_payload_json,
+            current_payload_json=current_payload_json,
+            event_type=(
+                RuntimeEventType.ENTITY_MERGED
+                if previous_payload_json is not None
+                else RuntimeEventType.ENTITY_CREATED
+            ),
+        )
         return record
 
     def get_entity(self, entity_id: str) -> EntityIdentity | None:
@@ -305,16 +331,29 @@ class IntelligenceStore:
                 IntelligenceRelationshipRecord.relationship_id == relationship.relationship_id
             )
         )
+        previous_payload_json = record.payload_json if record is not None else None
         if record is None:
             record = IntelligenceRelationshipRecord(relationship_id=relationship.relationship_id)
             self._stage_new_record(record)
+        current_payload_json = _model_to_json(relationship)
         record.subject_entity_id = relationship.subject_entity_id
         record.predicate = relationship.predicate
         record.object_entity_id = relationship.object_entity_id
         record.relationship_status = relationship.relationship_status.value
         record.confidence_score = relationship.confidence_score
-        record.payload_json = _model_to_json(relationship)
+        record.payload_json = current_payload_json
         self._flush()
+        self._append_revision_event(
+            record_kind="relationship",
+            logical_id=relationship.relationship_id,
+            previous_payload_json=previous_payload_json,
+            current_payload_json=current_payload_json,
+            event_type=(
+                RuntimeEventType.RELATIONSHIP_UPDATED
+                if previous_payload_json is not None
+                else RuntimeEventType.RELATIONSHIP_CREATED
+            ),
+        )
         return record
 
     def get_relationship(self, relationship_id: str) -> RelationshipAssertion | None:
@@ -367,16 +406,29 @@ class IntelligenceStore:
                 IntelligenceProjectClusterRecord.project_cluster_id == cluster.project_cluster_id
             )
         )
+        previous_payload_json = record.payload_json if record is not None else None
         if record is None:
             record = IntelligenceProjectClusterRecord(project_cluster_id=cluster.project_cluster_id)
             self._stage_new_record(record)
+        current_payload_json = _model_to_json(cluster)
         record.project_name = cluster.project_name
         record.jurisdiction = cluster.jurisdiction
         record.cluster_status = cluster.cluster_status.value
         record.lifecycle_phase = cluster.lifecycle_phase.value
         record.cluster_confidence = cluster.cluster_confidence
-        record.payload_json = _model_to_json(cluster)
+        record.payload_json = current_payload_json
         self._flush()
+        self._append_revision_event(
+            record_kind="project_cluster",
+            logical_id=cluster.project_cluster_id,
+            previous_payload_json=previous_payload_json,
+            current_payload_json=current_payload_json,
+            event_type=(
+                RuntimeEventType.PROJECT_CLUSTER_UPDATED
+                if previous_payload_json is not None
+                else RuntimeEventType.PROJECT_CLUSTER_CREATED
+            ),
+        )
         return record
 
     def get_project_cluster(self, project_cluster_id: str) -> ProjectCluster | None:
@@ -450,15 +502,28 @@ class IntelligenceStore:
                 IntelligenceOpportunityRecord.opportunity_id == opportunity.opportunity_id
             )
         )
+        previous_payload_json = record.payload_json if record is not None else None
         if record is None:
             record = IntelligenceOpportunityRecord(opportunity_id=opportunity.opportunity_id)
             self._stage_new_record(record)
+        current_payload_json = _model_to_json(opportunity)
         record.category = opportunity.category.value
         record.opportunity_status = opportunity.opportunity_status.value
         record.project_cluster_id = opportunity.project_cluster_id
         record.confidence_score = opportunity.confidence_score
-        record.payload_json = _model_to_json(opportunity)
+        record.payload_json = current_payload_json
         self._flush()
+        self._append_revision_event(
+            record_kind="opportunity",
+            logical_id=opportunity.opportunity_id,
+            previous_payload_json=previous_payload_json,
+            current_payload_json=current_payload_json,
+            event_type=(
+                RuntimeEventType.OPPORTUNITY_SIGNAL_UPDATED
+                if previous_payload_json is not None
+                else RuntimeEventType.OPPORTUNITY_SIGNAL_CREATED
+            ),
+        )
         return record
 
     def get_opportunity(self, opportunity_id: str) -> OpportunitySignal | None:
