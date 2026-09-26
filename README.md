@@ -280,8 +280,8 @@ No external communication behavior is implied by the existing models, CLI, or GU
 
 ## Known limitations
 
-- Current active-defect count: **21**. The authoritative set is `governance/active_defects.toml`, currently `CS-SR-076` through `CS-SR-096`, discovered by the five-pass Native Maximum assurance review of frozen commit `539939a8cdef813b919b1c725fa1439d03d97ea7`. These entries remain active until defect-specific correction, regression evidence, and governed closure are established.
-- Historical CS-SR-001 through CS-SR-075 remediation remains in the permanent resolved-defect and closure-evidence trail. Current remediation work is isolated on draft PR #197, with PR #198 used only to obtain exact-head CI. Neither draft is merge authorization. A new five-pass exact-tree Native Maximum assurance cycle is required after the active remediation set reaches zero.
+- Current active-defect count: **0**. The authoritative ledger is `governance/active_defects.toml`. CS-SR-076 through CS-SR-096 are retained in the permanent resolved-defect and semantic-closure evidence trail after exact-head regression, mutation, vulnerability, and governance verification. Final release certification still requires the fresh five-pass Native Maximum assurance transaction on the corrected frozen tree.
+- Historical CS-SR-001 through CS-SR-096 remediation remains in the permanent resolved-defect and closure-evidence trail. Current remediation work is isolated on draft PR #197, with PR #198 used only to obtain exact-head CI. Neither draft is merge authorization. A new five-pass exact-tree Native Maximum assurance cycle is required after the active remediation set reaches zero.
 - CEQAnet is `partial`, not `verified`; automated HTML collection received HTTP 403.
 - The original UTF-8 inspection failure remains preserved; the derived Windows-1252 replay passes against the same retained body hash without a second request.
 - Two retained point-in-time CSV successes, including one governed sequence observation, still do not establish recurring availability, completeness, or broader source coverage.
