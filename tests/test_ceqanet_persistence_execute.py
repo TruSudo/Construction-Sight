@@ -185,3 +185,34 @@ def test_execute_ceqanet_write_plan_can_use_preinitialized_database() -> None:
     result = execute_ceqanet_write_plan(_write_plan(), engine=engine, initialize=False)
 
     assert result.applied_count == 3
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("target_key", "site:tampered", "target_key does not match payload"),
+        ("operation_id", "sites:site:tampered", "canonical target identity"),
+        ("source_index", 7, "source_index must equal 0"),
+    ],
+)
+def test_tampered_operation_identity_blocks_plan_before_commit(
+    field: str,
+    value: object,
+    message: str,
+) -> None:
+    engine = create_database_engine("sqlite+pysqlite:///:memory:")
+    initialize_database(engine)
+    plan = _write_plan()
+    operations = plan["operations"]
+    assert isinstance(operations, list)
+    operation = operations[0]
+    assert isinstance(operation, dict)
+    operation[field] = value
+
+    with pytest.raises(ValueError, match=message):
+        execute_ceqanet_write_plan(plan, engine=engine, initialize=False)
+
+    with engine.connect() as connection:
+        assert connection.scalar(select(func.count()).select_from(SiteRecord)) == 0
+        assert connection.scalar(select(func.count()).select_from(EntityRecord)) == 0
+        assert connection.scalar(select(func.count()).select_from(CeqaDomainRecord)) == 0

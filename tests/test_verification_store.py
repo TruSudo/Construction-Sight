@@ -12,7 +12,7 @@ from constructionsight.storage.source_registry import SourceRegistryStore
 from constructionsight.storage.verification_store import VerificationStore
 
 
-def test_verification_store_persists_result_and_updates_source_status() -> None:
+def test_verification_store_persists_evidence_without_mutating_source_authority() -> None:
     seed_record = json.loads(Path("data/source_registry.seed.json").read_text(encoding="utf-8"))[0]
     source = PublicSource.model_validate(seed_record)
 
@@ -42,5 +42,5 @@ def test_verification_store_persists_result_and_updates_source_status() -> None:
     assert latest[0].source_name == source.source_name
     assert latest[0].confidence_score == 88
     assert updated_source is not None
-    assert updated_source.verification_status.value == "verified"
-    assert updated_source.confidence_score == 88
+    assert updated_source.verification_status == source.verification_status
+    assert updated_source.confidence_score == source.confidence_score
