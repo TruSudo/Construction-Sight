@@ -1,0 +1,24 @@
+{
+  "schema_version": "constructionsight.defect-closure-proof/v1",
+  "defect_id": "CS-SR-082",
+  "required_resolution_sha256": "c4d850b7521226dbb3816ecb88156a4cb2e1b12599235e7f78b8dc3c69183d1b",
+  "implementation_assertions": [
+    {
+      "path": "src/constructionsight/cli.py",
+      "operator": "contains",
+      "value": "persist_authorized_source_registry_records("
+    },
+    {
+      "path": "src/constructionsight/cli.py",
+      "operator": "not_contains",
+      "value": "SourceRegistryStore(session).upsert_many(sources)"
+    }
+  ],
+  "regression_assertions": [
+    {
+      "path": "tests/test_source_registry_persistence_authorization.py",
+      "operator": "contains",
+      "value": "CS-SR-082"
+    }
+  ]
+}

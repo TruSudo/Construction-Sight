@@ -138,8 +138,8 @@ risk = "Canonically equivalent operator or scope identities could produce differ
 [[cases]]
 id = "CS-MUT-AUTH-EFFECT-TARGET-001"
 path = "src/constructionsight/semantic_authorization_certification.py"
-search = "        \"constructionsight.http_transport.execute_bounded_http\","
-replacement = "        \"constructionsight.http_transport.execute_bounded_http_disabled\","
+search = "        \"constructionsight.lead_operator_service.transition_persisted_lead_workflow\","
+replacement = "        \"constructionsight.lead_operator_service.transition_persisted_lead_workflow_disabled\","
 tests = ["tests/test_semantic_authorization_certification.py::test_direct_resolved_effect_is_rejected_without_authorization"]
 expected_output = "test_direct_resolved_effect_is_rejected_without_authorization"
 risk = "An imported or aliased canonical effect target could disappear from the resolved authorization graph."

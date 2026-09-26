@@ -1,0 +1,24 @@
+{
+  "schema_version": "constructionsight.defect-closure-proof/v1",
+  "defect_id": "CS-SR-094",
+  "required_resolution_sha256": "f9fbd5308cb9456c208015879b719610c8aa4dc9451d55ba0cb28b27388ba92a",
+  "implementation_assertions": [
+    {
+      "path": "src/constructionsight/cli.py",
+      "operator": "contains",
+      "value": "execute_authorized_ceqanet_discovery("
+    },
+    {
+      "path": "src/constructionsight/cli.py",
+      "operator": "not_contains",
+      "value": "result = discover_ceqanet_public_search()"
+    }
+  ],
+  "regression_assertions": [
+    {
+      "path": "tests/test_ceqanet_discovery_cli.py",
+      "operator": "contains",
+      "value": "CS-SR-094"
+    }
+  ]
+}

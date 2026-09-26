@@ -24,22 +24,12 @@ class RelationshipQueryService:
     def get_relationships_for_entity(self, entity_id: str) -> list[RelationshipAssertion]:
         """Return relationships where the entity is subject or object."""
 
-        return [
-            relationship
-            for relationship in self.store.list_relationships()
-            if relationship.subject_entity_id == entity_id
-            or relationship.object_entity_id == entity_id
-        ]
+        return self.store.list_relationships_for_target(entity_id)
 
     def get_relationships_for_project(self, project_cluster_id: str) -> list[RelationshipAssertion]:
         """Return relationships connected to a project cluster identifier."""
 
-        return [
-            relationship
-            for relationship in self.store.list_relationships()
-            if relationship.subject_entity_id == project_cluster_id
-            or relationship.object_entity_id == project_cluster_id
-        ]
+        return self.store.list_relationships_for_target(project_cluster_id)
 
     def get_entities_connected_to_entity(self, entity_id: str) -> list[EntityIdentity]:
         """Return entity identities directly connected to the given entity."""
@@ -54,9 +44,7 @@ class RelationshipQueryService:
             for relationship in self.get_relationships_for_entity(entity_id)
             if relationship.object_entity_id == entity_id
         )
-        return [
-            entity for entity in self.store.list_entities() if entity.entity_id in connected_ids
-        ]
+        return self.store.list_entities_by_ids(connected_ids)
 
     def get_projects_for_entity(self, entity_id: str) -> list[ProjectCluster]:
         """Return project clusters directly connected to the given entity."""
@@ -71,20 +59,12 @@ class RelationshipQueryService:
             for relationship in self.get_relationships_for_entity(entity_id)
             if relationship.object_entity_id == entity_id
         )
-        return [
-            project
-            for project in self.store.list_project_clusters()
-            if project.project_cluster_id in project_ids
-        ]
+        return self.store.list_project_clusters_by_ids(project_ids)
 
     def get_opportunities_for_project(self, project_cluster_id: str) -> list[OpportunitySignal]:
         """Return opportunities directly tied to a project cluster."""
 
-        return [
-            opportunity
-            for opportunity in self.store.list_opportunities()
-            if opportunity.project_cluster_id == project_cluster_id
-        ]
+        return self.store.list_opportunities_for_project(project_cluster_id)
 
     def get_opportunities_for_entity(self, entity_id: str) -> list[OpportunitySignal]:
         """Return opportunities tied directly or indirectly to an entity."""

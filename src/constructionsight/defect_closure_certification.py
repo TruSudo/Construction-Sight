@@ -8,7 +8,7 @@ import re
 import subprocess
 import tomllib
 from collections.abc import Mapping
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, Final
 
 from constructionsight.governance_certification_core import GovernanceFinding, _finding
@@ -39,6 +39,24 @@ _RESOLVED_FIELDS: Final = _ACTIVE_FIELDS | {
 _COMMIT_PATTERN: Final = re.compile(r"[0-9a-f]{40}")
 _TREE_PATTERN: Final = re.compile(r"[0-9a-f]{40,64}")
 _DEFECT_PATTERN: Final = re.compile(r"CS-SR-[0-9]{3}")
+
+_SEMANTIC_CONTRACT_PATH: Final = "governance/defect_closure_semantic_contract.toml"
+_SEMANTIC_CONTRACT_SCHEMA: Final = (
+    "constructionsight.defect-closure-semantic-contract/v1"
+)
+_SEMANTIC_PROOF_SCHEMA: Final = "constructionsight.defect-closure-proof/v1"
+_SEMANTIC_PROOF_FIELDS: Final = frozenset(
+    {
+        "schema_version",
+        "defect_id",
+        "required_resolution_sha256",
+        "implementation_assertions",
+        "regression_assertions",
+    }
+)
+_SEMANTIC_ASSERTION_FIELDS: Final = frozenset({"path", "operator", "value"})
+_SEMANTIC_OPERATORS: Final = frozenset({"contains", "not_contains"})
+
 
 
 class DefectClosureError(ValueError):
@@ -100,6 +118,308 @@ def _read_commit_toml(root: Path, commit: str, path: str) -> Mapping[str, Any]:
     except (UnicodeDecodeError, tomllib.TOMLDecodeError) as exc:
         raise DefectClosureError(f"{path} at {commit} is malformed: {exc}") from exc
 
+
+
+def _read_commit_text(root: Path, commit: str, path: str) -> str:
+    completed = _run_git(root, "show", f"{commit}:{path}")
+    if completed.returncode != 0:
+        raise DefectClosureError(
+            f"cannot read {path} from {commit}: {_git_error(completed)}"
+        )
+    try:
+        return completed.stdout.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise DefectClosureError(f"{path} at {commit} is not UTF-8 text") from exc
+
+
+def _read_commit_json(root: Path, commit: str, path: str) -> object:
+    try:
+        return json.loads(_read_commit_text(root, commit, path))
+    except json.JSONDecodeError as exc:
+        raise DefectClosureError(f"{path} at {commit} is malformed JSON: {exc}") from exc
+
+
+def _path_exists_at_commit(root: Path, commit: str, path: str) -> bool:
+    completed = _run_git(root, "cat-file", "-e", f"{commit}:{path}")
+    return completed.returncode == 0
+
+
+def _safe_relative_path(value: object) -> str:
+    if not isinstance(value, str) or not value or value != value.strip():
+        raise DefectClosureError("semantic proof path is malformed")
+    pure = PurePosixPath(value)
+    if (
+        pure.is_absolute()
+        or ".." in pure.parts
+        or "." in pure.parts
+        or pure.as_posix() != value
+    ):
+        raise DefectClosureError(f"semantic proof path is unsafe: {value}")
+    return value
+
+
+def _path_changed_between_commits(
+    root: Path,
+    base_commit: str,
+    head_commit: str,
+    path: str,
+) -> bool:
+    completed = _run_git(
+        root,
+        "diff",
+        "--quiet",
+        base_commit,
+        head_commit,
+        "--",
+        path,
+    )
+    if completed.returncode == 0:
+        return False
+    if completed.returncode == 1:
+        return True
+    raise DefectClosureError(
+        f"cannot verify semantic evidence diff for {path}: {_git_error(completed)}"
+    )
+
+
+def _semantic_contract_required(root: Path, commit: str) -> bool:
+    if not _path_exists_at_commit(root, commit, _SEMANTIC_CONTRACT_PATH):
+        return False
+    payload = _read_commit_toml(root, commit, _SEMANTIC_CONTRACT_PATH)
+    if set(payload) != {"schema_version", "semantic_proof_required"}:
+        raise DefectClosureError("semantic closure contract fields are not exact")
+    if payload.get("schema_version") != _SEMANTIC_CONTRACT_SCHEMA:
+        raise DefectClosureError("semantic closure contract schema is unsupported")
+    if payload.get("semantic_proof_required") is not True:
+        raise DefectClosureError("semantic closure contract must require proof")
+    return True
+
+
+def _semantic_proof_path(closure_evidence: object) -> str:
+    path = _safe_relative_path(closure_evidence)
+    pure = PurePosixPath(path)
+    if pure.suffix != ".md":
+        raise DefectClosureError("closure evidence must be Markdown")
+    return pure.with_suffix(".proof.json").as_posix()
+
+
+def _required_resolution_digest(required_resolution: str) -> str:
+    return hashlib.sha256(required_resolution.encode("utf-8")).hexdigest()
+
+
+def _semantic_assertions(
+    proof: Mapping[str, Any],
+    field: str,
+) -> list[tuple[str, str, str]]:
+    raw = proof.get(field)
+    if not isinstance(raw, list) or not raw:
+        raise DefectClosureError(f"semantic proof {field} must be nonempty")
+    assertions: list[tuple[str, str, str]] = []
+    for item in raw:
+        if not isinstance(item, dict) or set(item) != _SEMANTIC_ASSERTION_FIELDS:
+            raise DefectClosureError(f"semantic proof {field} assertion is malformed")
+        path = _safe_relative_path(item.get("path"))
+        operator = item.get("operator")
+        value = item.get("value")
+        if operator not in _SEMANTIC_OPERATORS:
+            raise DefectClosureError(
+                f"semantic proof {field} operator is unsupported"
+            )
+        if not _nonblank(value):
+            raise DefectClosureError(
+                f"semantic proof {field} assertion value is malformed"
+            )
+        assertions.append((path, str(operator), str(value)))
+    return assertions
+
+
+def _canonical_semantic_summary(
+    defect_id: str,
+    required_resolution_sha256: str,
+    implementation_paths: set[str],
+    regression_paths: set[str],
+) -> str:
+    implementation = ",".join(sorted(implementation_paths))
+    regressions = ",".join(sorted(regression_paths))
+    return (
+        f"Machine-verified closure proof for {defect_id}: "
+        f"required_resolution_sha256={required_resolution_sha256}; "
+        f"implementation_paths=[{implementation}]; "
+        f"regression_tests=[{regressions}]."
+    )
+
+
+def _verify_semantic_assertion(
+    *,
+    content: str,
+    operator: str,
+    value: str,
+    path: str,
+) -> None:
+    if operator == "contains" and value not in content:
+        raise DefectClosureError(
+            f"semantic proof assertion is false for {path}: missing required content"
+        )
+    if operator == "not_contains" and value in content:
+        raise DefectClosureError(
+            f"semantic proof assertion is false for {path}: forbidden content remains"
+        )
+
+
+def _audit_semantic_proof(
+    root: Path,
+    *,
+    defect_id: str,
+    closure: Mapping[str, Any],
+    original: Mapping[str, str],
+    resolution_commit: str,
+    last_active_commit: str,
+) -> None:
+    if not _semantic_contract_required(root, resolution_commit):
+        raise DefectClosureError(
+            "semantic closure contract is absent from resolution_commit"
+        )
+
+    proof_path = _semantic_proof_path(closure.get("closure_evidence"))
+    if not _path_exists_at_commit(root, resolution_commit, proof_path):
+        raise DefectClosureError(
+            f"semantic closure proof is missing at resolution_commit: {proof_path}"
+        )
+    if not _path_exists_at_commit(root, last_active_commit, proof_path):
+        raise DefectClosureError(
+            f"semantic closure proof is missing at last_active_commit: {proof_path}"
+        )
+
+    raw_proof = _read_commit_json(root, resolution_commit, proof_path)
+    if not isinstance(raw_proof, dict) or set(raw_proof) != _SEMANTIC_PROOF_FIELDS:
+        raise DefectClosureError("semantic closure proof fields are not exact")
+    proof: Mapping[str, Any] = raw_proof
+    if proof.get("schema_version") != _SEMANTIC_PROOF_SCHEMA:
+        raise DefectClosureError("semantic closure proof schema is unsupported")
+    if proof.get("defect_id") != defect_id:
+        raise DefectClosureError("semantic closure proof defect ID does not match")
+
+    required_resolution = original["required_resolution"]
+    expected_digest = _required_resolution_digest(required_resolution)
+    if proof.get("required_resolution_sha256") != expected_digest:
+        raise DefectClosureError(
+            "semantic closure proof does not bind the exact required resolution"
+        )
+
+    discovered_against = original["discovered_against"]
+    if not _commit_exists(root, discovered_against):
+        raise DefectClosureError(
+            "semantic closure proof discovery commit does not exist"
+        )
+    if not _is_ancestor(root, discovered_against, resolution_commit):
+        raise DefectClosureError(
+            "semantic closure proof resolution is outside discovery history"
+        )
+    if not _path_changed_between_commits(
+        root,
+        discovered_against,
+        resolution_commit,
+        proof_path,
+    ):
+        raise DefectClosureError("semantic closure proof sidecar is not new or changed")
+
+    implementation = _semantic_assertions(proof, "implementation_assertions")
+    regressions = _semantic_assertions(proof, "regression_assertions")
+    if not any(
+        operator == "not_contains"
+        for _path, operator, _value in implementation + regressions
+    ):
+        raise DefectClosureError(
+            "semantic closure proof must include a negative contradiction witness"
+        )
+
+    evidence_paths = closure.get("evidence_paths")
+    regression_tests = closure.get("regression_tests")
+    if not isinstance(evidence_paths, list) or not all(
+        isinstance(item, str) for item in evidence_paths
+    ):
+        raise DefectClosureError("semantic closure evidence paths are malformed")
+    if not isinstance(regression_tests, list) or not all(
+        isinstance(item, str) for item in regression_tests
+    ):
+        raise DefectClosureError("semantic closure regression tests are malformed")
+
+    closure_evidence = _safe_relative_path(closure.get("closure_evidence"))
+    if closure_evidence not in evidence_paths or proof_path not in evidence_paths:
+        raise DefectClosureError(
+            "semantic closure evidence must retain its narrative and proof sidecar"
+        )
+
+    implementation_paths: set[str] = set()
+    for path, operator, value in implementation:
+        if path.startswith("tests/"):
+            raise DefectClosureError(
+                f"implementation assertion cannot use a regression test: {path}"
+            )
+        if path not in evidence_paths:
+            raise DefectClosureError(
+                f"implementation assertion is not retained as evidence: {path}"
+            )
+        if not _path_changed_between_commits(
+            root,
+            discovered_against,
+            resolution_commit,
+            path,
+        ):
+            raise DefectClosureError(
+                f"implementation evidence did not change after discovery: {path}"
+            )
+        content = _read_commit_text(root, resolution_commit, path)
+        _verify_semantic_assertion(
+            content=content,
+            operator=operator,
+            value=value,
+            path=path,
+        )
+        implementation_paths.add(path)
+
+    regression_paths: set[str] = set()
+    for path, operator, value in regressions:
+        if not path.startswith("tests/"):
+            raise DefectClosureError(
+                f"regression assertion must target tests/: {path}"
+            )
+        if path not in regression_tests:
+            raise DefectClosureError(
+                f"semantic regression is not listed in closure evidence: {path}"
+            )
+        if not _path_changed_between_commits(
+            root,
+            discovered_against,
+            resolution_commit,
+            path,
+        ):
+            raise DefectClosureError(
+                f"regression evidence did not change after discovery: {path}"
+            )
+        content = _read_commit_text(root, resolution_commit, path)
+        if defect_id not in content:
+            raise DefectClosureError(
+                f"semantic regression lacks explicit defect marker {defect_id}: {path}"
+            )
+        _verify_semantic_assertion(
+            content=content,
+            operator=operator,
+            value=value,
+            path=path,
+        )
+        regression_paths.add(path)
+
+    expected_summary = _canonical_semantic_summary(
+        defect_id,
+        expected_digest,
+        implementation_paths,
+        regression_paths,
+    )
+    if closure.get("resolution_summary") != expected_summary:
+        raise DefectClosureError(
+            "resolution_summary is not the canonical machine-verified summary"
+        )
 
 def _nonblank(value: object) -> bool:
     return isinstance(value, str) and bool(value.strip()) and value == value.strip()
@@ -318,4 +638,22 @@ def audit_defect_closure(
                 "DEFECT-CLOSURE-011",
                 f"resolved defect {defect_id} resolution tree does not match "
                 "resolution_commit",
+            )
+            continue
+
+        try:
+            if _semantic_contract_required(root, last_active_commit):
+                _audit_semantic_proof(
+                    root,
+                    defect_id=defect_id,
+                    closure=closure,
+                    original=original,
+                    resolution_commit=resolution_commit,
+                    last_active_commit=last_active_commit,
+                )
+        except DefectClosureError as exc:
+            _record(
+                findings,
+                "DEFECT-CLOSURE-012",
+                f"resolved defect {defect_id} semantic proof is invalid: {exc}",
             )

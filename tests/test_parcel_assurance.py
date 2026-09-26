@@ -301,3 +301,18 @@ def test_assurance_does_not_mutate_existing_parcel_record_payload() -> None:
     assert parcel.to_dict() == original_payload
     assert "claims" not in original_payload
     assert "field_assurances" not in original_payload
+
+
+def test_report_identity_is_content_bound_and_rejects_forgery() -> None:
+    report = build_parcel_assurance_report(
+        records=[_record(source_key="assessor", parcel_record_id="parcel:assessor")],
+        source_contexts=[_context("assessor", "county-assessor-roll")],
+        field_roles=[ParcelFieldRole.APN],
+        generated_at=OBSERVED_AT,
+    )
+
+    assert report.report_id.startswith("parcel-assurance:v2:")
+    payload = report.to_dict()
+    payload["report_id"] = "parcel-assurance:v2:" + "0" * 64
+    with pytest.raises(ValidationError, match="canonical report content"):
+        type(report).model_validate(payload)

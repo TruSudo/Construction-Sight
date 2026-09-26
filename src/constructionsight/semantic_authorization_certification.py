@@ -20,9 +20,76 @@ _HIGH_IMPACT_CONFIRMATIONS: Final = frozenset(
         "apply_changes",
         "authorize_persistence",
         "check_http",
+        "confirm",
         "execute_live",
         "execute_write",
+        "persist",
     }
+)
+_HIGH_IMPACT_CONFIRMATION_TOKENS: Final = frozenset(
+    {
+        "apply",
+        "authorize",
+        "commit",
+        "confirm",
+        "delete",
+        "execute",
+        "live",
+        "mutate",
+        "persist",
+        "publish",
+        "send",
+        "write",
+    }
+)
+_HIGH_IMPACT_MUTATION_PREFIXES: Final = (
+    "add_",
+    "append_",
+    "apply_",
+    "commit_",
+    "create_",
+    "delete_",
+    "execute_",
+    "insert_",
+    "mutate_",
+    "persist_",
+    "publish_",
+    "send_",
+    "set_",
+    "store_",
+    "transition_",
+    "update_",
+    "upsert_",
+    "write_",
+)
+_HIGH_IMPACT_MUTATION_NAMES: Final = frozenset(
+    {
+        "add",
+        "append",
+        "commit",
+        "delete",
+        "execute",
+        "patch",
+        "persist",
+        "post",
+        "publish",
+        "put",
+        "request",
+        "send",
+        "store",
+        "transition",
+        "update",
+        "upsert",
+        "write",
+        "write_bytes",
+        "write_text",
+    }
+)
+_NETWORK_EFFECT_MODULE_MARKERS: Final = (
+    "_http",
+    "http_",
+    "transport",
+    "network",
 )
 _COMBINED_AUTHORIZER: Final = (
     "constructionsight.local_operator_authorization.authorize_local_operator_operation"
@@ -38,6 +105,7 @@ _EFFECT_TARGETS: Final = frozenset(
     {
         "constructionsight.adapters.ceqanet_listing_executor.execute_ceqanet_listing_plan",
         "constructionsight.ceqanet_csv_live_service.execute_ceqanet_csv_live_request",
+        "constructionsight.ceqanet_discovery_service.discover_ceqanet_public_search",
         "constructionsight.ceqanet_detail_http.execute_ceqanet_detail_request",
         "constructionsight.ceqanet_persistence_execute.execute_ceqanet_write_plan",
         "constructionsight.ceqanet_recurring_run_service.execute_ceqanet_recurring_run",
@@ -48,8 +116,24 @@ _EFFECT_TARGETS: Final = frozenset(
         "constructionsight.result_authority_service.apply_authoritative_result",
         "constructionsight.source_readiness_http.check_source_http_reachability",
         "constructionsight.source_registry_apply_service.apply_source_registry_update_plan",
+        "constructionsight.storage.source_registry.SourceRegistryStore.upsert_source",
+        "constructionsight.storage.source_registry.SourceRegistryStore.upsert_many",
+        "constructionsight.storage.verification_store.VerificationStore.add_result",
         "constructionsight.storage.parcel_source_acquisition_bundle_store."
         "store_arcgis_bounded_proof_bundle_chain",
+    }
+)
+# These infrastructure/publication helpers have separate integrity controls and do
+# not mutate authoritative application state. Treating their generic create/write
+# names as operator-authorized effects makes the semantic scanner recursively
+# classify ordinary setup and evidence publication as protected business mutations.
+_NON_AUTHORITATIVE_STORAGE_TARGETS: Final = frozenset(
+    {
+        "constructionsight.storage.database.create_database_engine",
+        "constructionsight.storage.operator_read_store.create_operator_read_engine",
+        "constructionsight.storage.orm.Base.metadata.create_all",
+        "constructionsight.storage.runtime_artifacts.publish_runtime_artifact",
+        "constructionsight.storage.runtime_artifacts.write_runtime_text",
     }
 )
 _DYNAMIC_EFFECT_PARAMETERS: Final = frozenset(
@@ -81,6 +165,50 @@ _DYNAMIC_EFFECT: Final = "<dynamic-effect-boundary>"
 _INDIRECT_CALL: Final = "<unresolved-indirect-call>"
 
 _FunctionNode = ast.FunctionDef | ast.AsyncFunctionDef
+
+
+def _name_tokens(value: str) -> frozenset[str]:
+    return frozenset(part for part in value.casefold().split("_") if part)
+
+
+def _confirmation_parameter_is_high_impact(name: str) -> bool:
+    if name in _HIGH_IMPACT_CONFIRMATIONS:
+        return True
+    return bool(_name_tokens(name) & _HIGH_IMPACT_CONFIRMATION_TOKENS)
+
+
+def _effect_leaf_is_high_impact(leaf: str) -> bool:
+    lowered = leaf.casefold()
+    return lowered in _HIGH_IMPACT_MUTATION_NAMES or lowered.startswith(
+        _HIGH_IMPACT_MUTATION_PREFIXES
+    )
+
+
+def _target_looks_high_impact_effect(target: str) -> bool:
+    if target in _EFFECT_TARGETS:
+        return True
+    if target in _NON_AUTHORITATIVE_STORAGE_TARGETS:
+        return False
+    lowered = target.casefold()
+    leaf = lowered.rpartition(".")[2]
+    if lowered.startswith("constructionsight.storage.") and _effect_leaf_is_high_impact(
+        leaf
+    ):
+        return True
+    if any(marker in lowered for marker in _NETWORK_EFFECT_MODULE_MARKERS):
+        return _effect_leaf_is_high_impact(leaf)
+    return False
+
+
+def _unresolved_call_looks_high_impact(node: ast.expr) -> bool:
+    # A free function with a mutation/effect name is genuinely unresolved and must
+    # fail closed. Bare attribute names are not sufficient evidence: list.append,
+    # dict.update, parser.add_argument, and similar local methods otherwise become
+    # hundreds of false protected-effect boundaries. Resolved ConstructionSight
+    # class methods and dynamic effect parameters are handled before this fallback.
+    if isinstance(node, ast.Name):
+        return _effect_leaf_is_high_impact(node.id)
+    return False
 
 
 class _AuthorizationPhase(Enum):
@@ -388,7 +516,11 @@ class _AuthorizationGraphAudit:
         ):
             if self._layer_by_module.get(function.module) != "cli":
                 continue
-            confirmations = set(function.parameters) & _HIGH_IMPACT_CONFIRMATIONS
+            confirmations = {
+                parameter
+                for parameter in function.parameters
+                if _confirmation_parameter_is_high_impact(parameter)
+            }
             if not confirmations:
                 continue
             initial = _State(
@@ -692,7 +824,18 @@ class _AuthorizationGraphAudit:
             for state in active:
                 targets = self._resolve_callable(node.func, function, state)
                 if not targets:
-                    call_output.append(state)
+                    if _unresolved_call_looks_high_impact(node.func):
+                        call_output.extend(
+                            self._invoke(
+                                _INDIRECT_CALL,
+                                node,
+                                state.clone(),
+                                function,
+                                stack,
+                            )
+                        )
+                    else:
+                        call_output.append(state)
                     continue
                 for target in sorted(targets):
                     call_output.extend(self._invoke(target, node, state.clone(), function, stack))
@@ -818,7 +961,7 @@ class _AuthorizationGraphAudit:
                 state.phase = _AuthorizationPhase.CONSUMED
                 state.authorized_once = True
             return [state]
-        if target == _DYNAMIC_EFFECT or target in _EFFECT_TARGETS:
+        if target == _DYNAMIC_EFFECT or _target_looks_high_impact_effect(target):
             detail = "dynamic injected effect boundary" if target == _DYNAMIC_EFFECT else target
             self._record(
                 "AUTH-BYPASS-001",

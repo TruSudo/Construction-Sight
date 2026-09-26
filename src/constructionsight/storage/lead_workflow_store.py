@@ -260,14 +260,30 @@ def store_lead_workflow_record(
         )
         session.add(existing)
     else:
-        existing.package_id = workflow.package_id
-        existing.base_candidate_id = workflow.base_candidate_id
-        existing.fingerprint_key = workflow.fingerprint_key
-        existing.status = workflow.status.value
-        existing.lead_score = workflow.lead_score
-        existing.observed_created_at = workflow.created_at.isoformat()
-        existing.observed_updated_at = workflow.updated_at.isoformat()
-        existing.payload_json = payload_json
+        indexed = (
+            existing.package_id,
+            existing.base_candidate_id,
+            existing.fingerprint_key,
+            existing.status,
+            existing.lead_score,
+            existing.observed_created_at,
+            existing.observed_updated_at,
+            existing.payload_json,
+        )
+        supplied = (
+            workflow.package_id,
+            workflow.base_candidate_id,
+            workflow.fingerprint_key,
+            workflow.status.value,
+            workflow.lead_score,
+            workflow.created_at.isoformat(),
+            workflow.updated_at.isoformat(),
+            payload_json,
+        )
+        if indexed != supplied:
+            raise ValueError(
+                "existing lead workflow mutation requires compare-and-swap transition"
+            )
     for event in workflow.events:
         store_lead_workflow_event(session, event, workflow_id=workflow.workflow_id)
     return existing
