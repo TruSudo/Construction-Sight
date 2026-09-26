@@ -11,7 +11,7 @@
     {
       "path": "src/constructionsight/permit_transition_models.py",
       "operator": "not_contains",
-      "value": "    snapshot_id: str = Field(min_length=1)"
+      "value": "snapshot_id: str = Field(min_length=1)"
     }
   ],
   "regression_assertions": [
