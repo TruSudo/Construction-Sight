@@ -144,7 +144,7 @@ class CeqanetCsvEvidenceObservation(BaseModel):
     )
     verification_passed: bool
     verification_finding_count: int = Field(ge=0)
-    verification_findings: list[str]
+    verification_findings: tuple[str, ...]
     successful: bool
     access_control_halt: bool
     observation_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
@@ -180,7 +180,7 @@ class CeqanetCsvEvidenceObservation(BaseModel):
 
     @field_validator("verification_findings")
     @classmethod
-    def require_unique_nonblank_findings(cls, values: list[str]) -> list[str]:
+    def require_unique_nonblank_findings(cls, values: tuple[str, ...]) -> tuple[str, ...]:
         """Preserve exact independent findings without blanks or duplicates."""
 
         if any(not value.strip() for value in values):
@@ -260,7 +260,7 @@ class CeqanetCsvEvidenceSeries(BaseModel):
     policy_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
     policy_effective_date: date
     policy_expires_on: date
-    observations: list[CeqanetCsvEvidenceObservation]
+    observations: tuple[CeqanetCsvEvidenceObservation, ...]
     series_sequence: int = Field(ge=0)
     predecessor_series_digest: str | None = Field(
         default=None,
@@ -268,11 +268,11 @@ class CeqanetCsvEvidenceSeries(BaseModel):
     )
     observation_count: int = Field(ge=0)
     successful_observation_count: int = Field(ge=0)
-    distinct_successful_utc_dates: list[date]
-    observed_successful_export_kinds: list[CeqanetCsvExportKind]
+    distinct_successful_utc_dates: tuple[date, ...]
+    observed_successful_export_kinds: tuple[CeqanetCsvExportKind, ...]
     minimum_successful_observations: int = Field(ge=2)
     minimum_distinct_utc_dates: int = Field(ge=2)
-    required_export_kinds: list[CeqanetCsvExportKind] = Field(min_length=1)
+    required_export_kinds: tuple[CeqanetCsvExportKind, ...] = Field(min_length=1)
     status: CeqanetCsvEvidenceSeriesStatus
     halted_on: date | None = None
     halt_status_code: int | None = Field(default=None, ge=100, le=599)
@@ -286,8 +286,8 @@ class CeqanetCsvEvidenceSeries(BaseModel):
     @classmethod
     def require_unique_export_kinds(
         cls,
-        values: list[CeqanetCsvExportKind],
-    ) -> list[CeqanetCsvExportKind]:
+        values: tuple[CeqanetCsvExportKind, ...],
+    ) -> tuple[CeqanetCsvExportKind, ...]:
         """Reject duplicate export scopes."""
 
         if len(values) != len(set(values)):
@@ -296,10 +296,10 @@ class CeqanetCsvEvidenceSeries(BaseModel):
 
     @field_validator("distinct_successful_utc_dates")
     @classmethod
-    def require_sorted_unique_dates(cls, values: list[date]) -> list[date]:
+    def require_sorted_unique_dates(cls, values: tuple[date, ...]) -> tuple[date, ...]:
         """Require deterministic, unique successful UTC dates."""
 
-        if values != sorted(set(values)):
+        if values != tuple(sorted(set(values))):
             raise ValueError(
                 "distinct successful UTC dates must be sorted and unique"
             )
@@ -333,7 +333,7 @@ class CeqanetCsvEvidenceSeries(BaseModel):
                 item.evidence_execution_digest,
             ),
         )
-        if self.observations != ordered:
+        if self.observations != tuple(ordered):
             raise ValueError("evidence observations must use deterministic order")
         refs = [
             item.evidence_execution_artifact_ref for item in self.observations
@@ -367,7 +367,7 @@ class CeqanetCsvEvidenceSeries(BaseModel):
                 "successful_observation_count must equal successful observations"
             )
         successful_dates = sorted({item.utc_date for item in successful})
-        if self.distinct_successful_utc_dates != successful_dates:
+        if self.distinct_successful_utc_dates != tuple(successful_dates):
             raise ValueError(
                 "distinct successful UTC dates do not match observations"
             )
@@ -375,7 +375,7 @@ class CeqanetCsvEvidenceSeries(BaseModel):
             {item.export_kind for item in successful},
             key=lambda item: item.value,
         )
-        if self.observed_successful_export_kinds != successful_kinds:
+        if self.observed_successful_export_kinds != tuple(successful_kinds):
             raise ValueError(
                 "observed successful export kinds do not match observations"
             )
@@ -446,7 +446,7 @@ class CeqanetCsvEvidenceSeriesVerification(BaseModel):
     ] = CSV_EVIDENCE_SERIES_VERIFICATION_SCHEMA_VERSION
     passed: bool
     finding_count: int = Field(ge=0)
-    findings: list[str]
+    findings: tuple[str, ...]
     policy_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
     series_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
     observation_count: int = Field(ge=0)

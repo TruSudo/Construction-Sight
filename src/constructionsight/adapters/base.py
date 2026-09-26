@@ -109,6 +109,7 @@ class SourceAdapter(ABC, Generic[RawRecord, NormalizedRecord]):
         AdapterCapability.EXTRACT_DETAILS,
         AdapterCapability.NORMALIZE_RECORDS,
     )
+    requires_access_preflight: bool = True
 
     def __init__(self, source: PublicSource, context: AdapterRunContext | None = None) -> None:
         self.source = source

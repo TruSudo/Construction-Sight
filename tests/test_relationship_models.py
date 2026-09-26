@@ -2,7 +2,7 @@ import pytest
 from pydantic import ValidationError
 
 from constructionsight.domain_types import RelationshipType
-from constructionsight.provenance import Provenance
+from constructionsight.provenance import Provenance, ProvenanceConfidenceBasis
 from constructionsight.relationship_models import RelationshipRecord
 
 
@@ -32,8 +32,10 @@ def test_relationship_model_requires_provenance_for_high_confidence() -> None:
 def test_relationship_model_accepts_high_confidence_with_provenance() -> None:
     provenance = Provenance(
         source_name="Synthetic Public Source",
-        confidence_score=90,
-        verified=True,
+        adapter_family="synthetic-test",
+        raw_reference="synthetic:test",
+        evidence_text="retained synthetic public evidence",
+        confidence_basis=ProvenanceConfidenceBasis.DETERMINISTIC_NORMALIZATION,
     )
     relationship = RelationshipRecord(
         relationship_key="relationship:test:high-with-evidence",
@@ -45,4 +47,4 @@ def test_relationship_model_accepts_high_confidence_with_provenance() -> None:
     )
 
     assert relationship.is_high_confidence is True
-    assert relationship.provenance[0].band.value == "verified"
+    assert relationship.provenance[0].band.value == "high"

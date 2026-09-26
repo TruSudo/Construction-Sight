@@ -4,7 +4,7 @@ from pydantic import ValidationError
 from constructionsight.agenda_models import AgendaItemRecord
 from constructionsight.domain_types import PartyRole
 from constructionsight.entity_models import Entity
-from constructionsight.provenance import Provenance
+from constructionsight.provenance import Provenance, ProvenanceConfidenceBasis
 from constructionsight.site_models import Site
 
 
@@ -63,7 +63,13 @@ def test_agenda_item_links_site_entity_and_provenance() -> None:
         name="Synthetic Developer LLC",
         role=PartyRole.DEVELOPER,
     )
-    provenance = Provenance(source_name="Synthetic Public Source", confidence_score=80)
+    provenance = Provenance(
+        source_name="Synthetic Public Source",
+        adapter_family="synthetic-test",
+        raw_reference="synthetic:test",
+        evidence_text="retained synthetic public evidence",
+        confidence_basis=ProvenanceConfidenceBasis.DETERMINISTIC_NORMALIZATION,
+    )
 
     item = AgendaItemRecord(
         agenda_key="agenda:test:linked",

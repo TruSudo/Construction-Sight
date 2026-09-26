@@ -6,6 +6,7 @@ from constructionsight.lead_dedupe_models import (
     LeadDuplicateResult,
     LeadDuplicateStatus,
     LeadFingerprint,
+    canonical_lead_fingerprint_key,
 )
 from constructionsight.lead_review_models import (
     LeadReviewItem,
@@ -41,7 +42,12 @@ def _package(status: LeadReviewStatus, score: int = 50) -> LeadReviewPackage:
 
 def _duplicate_result(status: LeadDuplicateStatus) -> LeadDuplicateResult:
     fingerprint = LeadFingerprint(
-        fingerprint_key="lead-fingerprint:test",
+        fingerprint_key=canonical_lead_fingerprint_key(
+            site_key="site:test",
+            source_key=None,
+            source_record_id=None,
+            normalized_title=None,
+        ),
         base_candidate_id="candidate:test",
         site_key="site:test",
     )
@@ -74,7 +80,12 @@ def test_create_lead_workflow_holds_duplicate() -> None:
 
 def test_create_lead_workflow_reviews_near_match() -> None:
     fingerprint = LeadFingerprint(
-        fingerprint_key="lead-fingerprint:test",
+        fingerprint_key=canonical_lead_fingerprint_key(
+            site_key="site:test",
+            source_key=None,
+            source_record_id=None,
+            normalized_title=None,
+        ),
         base_candidate_id="candidate:test",
         site_key="site:test",
     )

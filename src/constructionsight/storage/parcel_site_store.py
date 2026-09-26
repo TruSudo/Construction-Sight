@@ -209,9 +209,11 @@ def store_parcel_assurance_report(
     session: Session,
     report: ParcelAssuranceReport,
 ) -> ParcelAssuranceReportRow:
-    """Insert or update one complete parcel assurance report."""
+    """Insert one immutable semantic assurance report or accept exact replay."""
 
     session.flush()
+    if report.report_id != report.computed_report_id():
+        raise ValueError("parcel assurance report identity does not match semantic content")
     payload_json = _payload_json(report.to_dict())
     existing = session.execute(
         select(ParcelAssuranceReportRow).where(
@@ -246,17 +248,10 @@ def store_parcel_assurance_report(
         )
         session.add(existing)
         return existing
-    existing.normalized_apn = report.normalized_apn
-    existing.county = report.county
-    existing.review_status = report.review_status.value
-    existing.requires_human_review = requires_human_review
-    existing.source_count = report.source_count
-    existing.independent_lineage_count = report.independent_lineage_count
-    existing.claim_count = len(report.claims)
-    existing.conflict_count = conflict_count
-    existing.missing_count = missing_count
-    existing.observed_created_at = report.generated_at.isoformat()
-    existing.payload_json = payload_json
+    if _semantic_replay_payload(existing.payload_json, "generated_at") != (
+        _semantic_replay_payload(payload_json, "generated_at")
+    ):
+        raise ValueError("persisted parcel assurance reports are immutable")
     return existing
 
 
@@ -339,9 +334,11 @@ def store_site_resolution_result(
     session: Session,
     result: SiteResolutionResult,
 ) -> SiteResolutionResultRow:
-    """Insert or update a source-neutral site-resolution result."""
+    """Insert one immutable semantic site-resolution result or accept exact replay."""
 
     session.flush()
+    if result.resolution_id != result.computed_resolution_id():
+        raise ValueError("site-resolution identity does not match semantic content")
     payload_json = _payload_json(result.to_dict())
     existing = session.execute(
         select(SiteResolutionResultRow).where(
@@ -363,15 +360,10 @@ def store_site_resolution_result(
         )
         session.add(existing)
         return existing
-    existing.source_name = result.source_name
-    existing.evidence_id = result.evidence_id
-    existing.status = result.status.value
-    existing.primary_site_key = result.primary_site_key
-    existing.candidate_count = len(result.candidates)
-    existing.conflict_count = len(result.conflicts)
-    existing.limitation_count = len(result.limitations)
-    existing.observed_created_at = result.created_at.isoformat()
-    existing.payload_json = payload_json
+    if _semantic_replay_payload(existing.payload_json, "created_at") != (
+        _semantic_replay_payload(payload_json, "created_at")
+    ):
+        raise ValueError("persisted site-resolution results are immutable")
     return existing
 
 
@@ -379,6 +371,16 @@ def _payload_json(payload: dict[str, object]) -> str:
     """Return deterministic JSON payload."""
 
     return json.dumps(payload, sort_keys=True)
+
+
+def _semantic_replay_payload(payload_json: str, timestamp_field: str) -> str:
+    """Return immutable derived-result semantics without receipt timestamp."""
+
+    payload = json.loads(payload_json)
+    if not isinstance(payload, dict):
+        raise ValueError("derived result payload must be a JSON object")
+    payload.pop(timestamp_field, None)
+    return _payload_json({str(key): value for key, value in payload.items()})
 
 
 def _parcel_observation_from_row(

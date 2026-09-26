@@ -27,7 +27,10 @@ from constructionsight.ceqanet_csv_models import canonical_digest
 from constructionsight.ceqanet_csv_operator_bridge import (
     build_reviewed_ceqanet_csv_bridge,
 )
-from constructionsight.ceqanet_csv_operator_bridge_cli import app, apply as apply_reviewed
+from constructionsight.ceqanet_csv_operator_bridge_cli import (
+    app,
+    apply as apply_reviewed,
+)
 from constructionsight.ceqanet_persistence_execute import execute_ceqanet_write_plan
 from constructionsight.operator_dashboard import (
     build_dashboard_snapshot,
@@ -75,7 +78,7 @@ def test_actual_retained_riverside_csv_bridges_to_existing_source_models() -> No
         assert record.entities[0].role.value == "agency"
         assert record.provenance[0].source_url is not None
         assert record.provenance[0].verified is False
-        assert record.provenance[0].confidence_score == 0
+        assert record.provenance[0].confidence_score == 60
         assert bridge.source_sha256 in (record.provenance[0].notes or "")
         assert record.provenance[0].raw_reference is not None
         assert "contact_email_address" in (record.provenance[0].evidence_text or "")

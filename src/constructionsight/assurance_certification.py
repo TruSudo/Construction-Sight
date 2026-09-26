@@ -12,6 +12,10 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any, Final, cast
 
+from constructionsight.defect_closure_certification import (
+    DefectClosureError,
+    reviewed_active_defects_digest,
+)
 from constructionsight.governance_certification_core import (
     _ASSURANCE_CONTRACT_SCHEMA,
     _ASSURANCE_REVIEW_SCHEMA,
@@ -1520,6 +1524,27 @@ def audit_assurance_review(
             report_relative,
             "reviewed_active_defects_digest must be a lowercase SHA-256 digest",
         )
+
+    if valid_active_digest and valid_reviewed_commit and reviewed_commit_value is not None:
+        try:
+            expected_active_digest = reviewed_active_defects_digest(
+                root, reviewed_commit_value
+            )
+        except DefectClosureError as exc:
+            _record(
+                findings,
+                "DEFECT-REVIEW-003",
+                report_relative,
+                f"cannot verify reviewed active-defect facts: {exc}",
+            )
+        else:
+            if reviewed_active_digest != expected_active_digest:
+                _record(
+                    findings,
+                    "DEFECT-REVIEW-004",
+                    report_relative,
+                    "assurance artifact does not bind the complete reviewed active-defect facts",
+                )
 
     source_owners: dict[str, str] = {}
     passes, referenced_paths = _audit_passes(

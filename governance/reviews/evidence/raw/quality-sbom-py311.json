@@ -1,0 +1,20 @@
+{
+  "schema_version": "constructionsight.assurance-source-artifact/v1",
+  "reviewed_commit": "57de564733faa8d651549470520d0c7476b40544",
+  "kind": "quality_gate",
+  "context_id": "sbom-py311",
+  "producer": "github-actions",
+  "payload": {
+    "gate_id": "sbom-py311",
+    "status": "passed",
+    "result": "GitHub Actions CI run 1594 canonical step completed successfully.",
+    "run_id": 36275561184,
+    "job_id": 108497727037,
+    "job_name": "Python 3.11 quality gate",
+    "step_name": "Generate deterministic SBOM",
+    "head_sha": "57de564733faa8d651549470520d0c7476b40544",
+    "workflow_name": "CI",
+    "event": "pull_request",
+    "pull_request_number": 193
+  }
+}

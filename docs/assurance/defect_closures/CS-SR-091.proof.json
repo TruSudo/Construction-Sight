@@ -1,0 +1,24 @@
+{
+  "schema_version": "constructionsight.defect-closure-proof/v1",
+  "defect_id": "CS-SR-091",
+  "required_resolution_sha256": "4f22d82d9911d9dd8112967f7d5080e0593c35ff6a22026805df2340752a7aa0",
+  "implementation_assertions": [
+    {
+      "path": "src/constructionsight/storage/parcel_site_store.py",
+      "operator": "contains",
+      "value": "persisted parcel assurance reports are immutable"
+    },
+    {
+      "path": "src/constructionsight/storage/parcel_site_store.py",
+      "operator": "not_contains",
+      "value": "Insert or update one complete parcel assurance report"
+    }
+  ],
+  "regression_assertions": [
+    {
+      "path": "tests/test_parcel_site_storage.py",
+      "operator": "contains",
+      "value": "CS-SR-091"
+    }
+  ]
+}

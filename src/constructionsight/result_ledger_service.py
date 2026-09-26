@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 from collections.abc import Iterable
 from datetime import date
-from decimal import Decimal
+from decimal import ROUND_HALF_EVEN, Decimal
 
 from constructionsight.lead_workflow_models import LeadWorkflowRecord
 from constructionsight.result_ledger_models import (
@@ -122,25 +122,36 @@ def _build_revision(
             raise ValueError("share_rate may be provided only for won results")
     if status == ResultLedgerStatus.WON and gross_value is None and share_rate is not None:
         raise ValueError("share_rate requires gross_value")
+    normalized_gross_value = gross_value
+    normalized_share_rate = share_rate
     if gross_value is not None:
-        _require_decimal_places(gross_value, maximum=2, field_name="gross_value")
+        normalized_gross_value = money_minor_units_to_float(
+            money_minor_units(gross_value, field_name="gross_value")
+        )
     if share_rate is not None:
-        _require_decimal_places(share_rate, maximum=6, field_name="share_rate")
+        normalized_share_rate = share_rate_ppm_to_float(
+            share_rate_ppm_units(share_rate, field_name="share_rate")
+        )
 
     share = None
     share_status = ResultShareStatus.NOT_APPLICABLE
     limitations: list[str] = []
     ledger_id = _ledger_id(workflow_id, status, revision)
     if status == ResultLedgerStatus.WON:
-        if gross_value is None:
+        if normalized_gross_value is None:
             share_status = ResultShareStatus.PENDING_GROSS_VALUE
             limitations.append("gross value is missing")
-        elif share_rate is None:
+        elif normalized_share_rate is None:
             share_status = ResultShareStatus.PENDING_SHARE_RATE
             limitations.append("share rate is missing")
         else:
             share_status = ResultShareStatus.CALCULATED
-            share = _share_record(ledger_id, workflow_id, gross_value, share_rate)
+            share = _share_record(
+                ledger_id,
+                workflow_id,
+                normalized_gross_value,
+                normalized_share_rate,
+            )
     return ResultLedgerRecord(
         ledger_id=ledger_id,
         workflow_id=workflow_id,
@@ -150,11 +161,11 @@ def _build_revision(
         correction_reason=correction_reason,
         status=status,
         decided_date=decided_date,
-        gross_value=gross_value,
+        gross_value=normalized_gross_value,
         share_status=share_status,
         share=share,
-        reasons=reasons or [],
-        limitations=limitations,
+        reasons=tuple(reasons or ()),
+        limitations=tuple(limitations),
     )
 
 
@@ -166,13 +177,15 @@ def _share_record(
 ) -> ResultShareRecord:
     """Build a calculated share record bound to one ledger revision."""
 
-    share_value = round(gross_value * share_rate, 2)
+    gross_minor = money_minor_units(gross_value, field_name="gross_value")
+    rate_ppm = share_rate_ppm_units(share_rate, field_name="share_rate")
+    share_minor = calculate_share_minor_units(gross_minor, rate_ppm)
     return ResultShareRecord(
         share_record_id=_share_id(ledger_id, gross_value, share_rate),
         workflow_id=workflow_id,
-        gross_value=gross_value,
-        share_rate=share_rate,
-        share_value=share_value,
+        gross_value=money_minor_units_to_float(gross_minor),
+        share_rate=share_rate_ppm_to_float(rate_ppm),
+        share_value=money_minor_units_to_float(share_minor),
     )
 
 
@@ -186,33 +199,105 @@ def _ledger_id(workflow_id: str, status: ResultLedgerStatus, revision: int) -> s
 
 
 def _share_id(ledger_id: str, gross_value: float, share_rate: float) -> str:
-    """Build deterministic share identity scoped to one ledger revision."""
+    """Build deterministic share identity from exact monetary/rate units."""
 
-    rate_decimal = Decimal(str(share_rate))
-    exponent = rate_decimal.as_tuple().exponent
-    if not isinstance(exponent, int):
-        raise ValueError("share_rate must be finite")
-    rate_places = max(4, max(0, -exponent))
-    rate_text = f"{share_rate:.{rate_places}f}"
-    basis = "|".join([ledger_id, f"{gross_value:.2f}", rate_text])
+    gross_minor = money_minor_units(gross_value, field_name="gross_value")
+    rate_ppm = share_rate_ppm_units(share_rate, field_name="share_rate")
+    basis = "|".join([ledger_id, str(gross_minor), str(rate_ppm)])
     return f"result-share:{_short_hash(basis)}"
 
 
-def _require_decimal_places(
-    value: float,
+def _bounded_decimal_units(
+    value: float | int | Decimal | str,
     *,
-    maximum: int,
+    scale: int,
+    maximum_places: int,
     field_name: str,
-) -> None:
-    """Require finite input precision for newly constructed result revisions."""
+    maximum_value: Decimal | None = None,
+) -> int:
+    """Return an exact scaled integer without binary-float arithmetic."""
 
-    decimal_value = Decimal(str(value))
+    if isinstance(value, bool):
+        raise ValueError(f"{field_name} must be a finite decimal value")
+    decimal_value = value if isinstance(value, Decimal) else Decimal(str(value))
+    if not decimal_value.is_finite():
+        raise ValueError(f"{field_name} must be finite")
+    if decimal_value < 0:
+        raise ValueError(f"{field_name} must be nonnegative")
+    if maximum_value is not None and decimal_value > maximum_value:
+        raise ValueError(f"{field_name} must not exceed {maximum_value}")
     exponent = decimal_value.as_tuple().exponent
     if not isinstance(exponent, int):
         raise ValueError(f"{field_name} must be finite")
     decimal_places = max(0, -exponent)
-    if decimal_places > maximum:
-        raise ValueError(f"{field_name} must use at most {maximum} decimal places")
+    if decimal_places > maximum_places:
+        raise ValueError(
+            f"{field_name} must use at most {maximum_places} decimal places"
+        )
+    scaled = decimal_value * scale
+    integral = scaled.to_integral_value(rounding=ROUND_HALF_EVEN)
+    if scaled != integral:
+        raise ValueError(
+            f"{field_name} cannot be represented exactly at the governed scale"
+        )
+    return int(integral)
+
+
+def money_minor_units(
+    value: float | int | Decimal | str,
+    *,
+    field_name: str = "money",
+) -> int:
+    """Return exact currency minor units at scale two."""
+
+    return _bounded_decimal_units(
+        value,
+        scale=100,
+        maximum_places=2,
+        field_name=field_name,
+    )
+
+
+def share_rate_ppm_units(
+    value: float | int | Decimal | str,
+    *,
+    field_name: str = "share_rate",
+) -> int:
+    """Return an exact share rate in millionths at scale six."""
+
+    return _bounded_decimal_units(
+        value,
+        scale=1_000_000,
+        maximum_places=6,
+        field_name=field_name,
+        maximum_value=Decimal("1"),
+    )
+
+
+def calculate_share_minor_units(gross_minor: int, rate_ppm: int) -> int:
+    """Calculate exact share cents using explicit round-half-even doctrine."""
+
+    if gross_minor < 0 or rate_ppm < 0 or rate_ppm > 1_000_000:
+        raise ValueError("monetary units and share-rate units are outside governed bounds")
+    numerator = gross_minor * rate_ppm
+    denominator = 1_000_000
+    quotient, remainder = divmod(numerator, denominator)
+    doubled = remainder * 2
+    if doubled > denominator or (doubled == denominator and quotient % 2 == 1):
+        quotient += 1
+    return quotient
+
+
+def money_minor_units_to_float(value: int) -> float:
+    """Return the legacy display projection for exact minor units."""
+
+    return float(Decimal(value) / Decimal(100))
+
+
+def share_rate_ppm_to_float(value: int) -> float:
+    """Return the legacy display projection for an exact millionth-rate value."""
+
+    return float(Decimal(value) / Decimal(1_000_000))
 
 
 def _short_hash(value: str) -> str:

@@ -142,6 +142,11 @@ def _prepare_operations(write_plan_payload: dict[str, Any]) -> tuple[_PreparedOp
     assert isinstance(raw_operations, list)
     prepared: list[_PreparedOperation] = []
     identifiers: set[str] = set()
+    source_positions: dict[SupportedTarget, int] = {
+        "ceqa_records": 0,
+        "sites": 0,
+        "entities": 0,
+    }
     for index, raw_operation in enumerate(raw_operations):
         if not isinstance(raw_operation, dict):
             raise ValueError(f"write-plan operation {index} must be an object")
@@ -176,12 +181,39 @@ def _prepare_operations(write_plan_payload: dict[str, Any]) -> tuple[_PreparedOp
                 f"write-plan operation {operation_id} payload is invalid: "
                 f"{exc.__class__.__name__}"
             ) from exc
+        typed_target = cast(SupportedTarget, target)
+        target_key = _string_or_none(operation.get("target_key"))
+        if target_key is None:
+            raise ValueError(f"write-plan operation {operation_id} requires target_key")
+        expected_target_key = _model_target_key(typed_target, model)
+        if target_key != expected_target_key:
+            raise ValueError(
+                f"write-plan operation {operation_id} target_key does not match payload"
+            )
+        expected_operation_id = f"{typed_target}:{expected_target_key}"
+        if operation_id != expected_operation_id:
+            raise ValueError(
+                f"write-plan operation_id must equal canonical target identity: "
+                f"{expected_operation_id}"
+            )
+        source_index = operation.get("source_index")
+        expected_source_index = source_positions[typed_target]
+        if (
+            isinstance(source_index, bool)
+            or not isinstance(source_index, int)
+            or source_index != expected_source_index
+        ):
+            raise ValueError(
+                f"write-plan operation {operation_id} source_index must equal "
+                f"{expected_source_index}"
+            )
+        source_positions[typed_target] += 1
         prepared.append(
             _PreparedOperation(
                 operation_id=operation_id,
-                source_index=_source_index(operation.get("source_index"), index),
-                target=cast(SupportedTarget, target),
-                target_key=operation.get("target_key"),
+                source_index=source_index,
+                target=typed_target,
+                target_key=target_key,
                 model=model,
             )
         )
@@ -247,8 +279,18 @@ def _apply_prepared_operation(
     entity_store.upsert(operation.model)
 
 
-def _source_index(value: object, fallback: int) -> int:
-    return value if isinstance(value, int) and value >= 0 else fallback
+def _model_target_key(target: SupportedTarget, model: PreparedModel) -> str:
+    if target == "ceqa_records":
+        if not isinstance(model, CeqaRecord):
+            raise TypeError("prepared CEQA operation has the wrong model type")
+        return model.ceqa_key
+    if target == "sites":
+        if not isinstance(model, Site):
+            raise TypeError("prepared site operation has the wrong model type")
+        return model.site_key
+    if not isinstance(model, Entity):
+        raise TypeError("prepared entity operation has the wrong model type")
+    return model.entity_key
 
 
 def _string_or_none(value: object) -> str | None:

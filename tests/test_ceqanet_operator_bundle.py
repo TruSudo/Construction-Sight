@@ -11,6 +11,9 @@ from constructionsight.ceqanet_operator_bundle import (
     _write_text_artifact,
     build_ceqanet_operator_bundle,
 )
+from constructionsight.ceqanet_operator_bundle_verify import (
+    verify_ceqanet_operator_bundle,
+)
 
 
 @pytest.mark.parametrize("attack", ("ancestor", "final", "swap"))
@@ -253,3 +256,80 @@ def test_bundle_oversized_json_preserves_previous_artifact(
         )
     assert destination.read_bytes() == b"old output must remain"
     assert list(tmp_path.glob(".ceqanet-bundle-*.tmp")) == []
+
+
+
+@pytest.mark.parametrize("failure_point", ("operator-report.json", "manifest.json"))
+def test_bundle_transaction_withholds_success_manifest_until_complete_commit(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    failure_point: str,
+) -> None:
+    output = tmp_path / "bundle"
+    output.mkdir()
+    build_ceqanet_operator_bundle(_operator_package(), output_dir=output)
+    assert verify_ceqanet_operator_bundle(bundle_dir=output).passed
+
+    package = _operator_package()
+    package["warnings"] = ["replacement generation"]
+    original_publish = bundle_writer._publish_staged_artifact
+
+    def fail_late_publish(staged_path, output_path, *, artifact, parent):
+        if artifact.filename == failure_point:
+            raise OSError("injected coupled publication failure")
+        return original_publish(
+            staged_path,
+            output_path,
+            artifact=artifact,
+            parent=parent,
+        )
+
+    with monkeypatch.context() as patch:
+        patch.setattr(bundle_writer, "_publish_staged_artifact", fail_late_publish)
+        with pytest.raises(OSError, match="coupled publication failure"):
+            build_ceqanet_operator_bundle(package, output_dir=output)
+
+    assert not (output / "manifest.json").exists()
+    assert (output / bundle_writer._BUNDLE_PENDING_MANIFEST).is_file()
+
+    recovered = build_ceqanet_operator_bundle(package, output_dir=output)
+    assert recovered.artifact_count == 6
+    assert verify_ceqanet_operator_bundle(bundle_dir=output).passed
+    assert not (output / bundle_writer._BUNDLE_PENDING_MANIFEST).exists()
+
+
+def test_bundle_transaction_recovers_cleanup_failure_after_success_manifest(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "bundle"
+    output.mkdir()
+    build_ceqanet_operator_bundle(_operator_package(), output_dir=output)
+
+    package = _operator_package()
+    package["warnings"] = ["new complete generation"]
+    original_cleanup = bundle_writer._clear_pending_bundle_manifest
+
+    def fail_cleanup(_parent: int) -> None:
+        raise OSError("injected pending-marker cleanup failure")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(bundle_writer, "_clear_pending_bundle_manifest", fail_cleanup)
+        with pytest.raises(OSError, match="cleanup failure"):
+            build_ceqanet_operator_bundle(package, output_dir=output)
+
+    # The success manifest is published only after all payloads are durable, so
+    # a cleanup interruption may leave a redundant recovery marker but never a
+    # false success claim.
+    assert (output / "manifest.json").is_file()
+    assert (output / bundle_writer._BUNDLE_PENDING_MANIFEST).is_file()
+    assert verify_ceqanet_operator_bundle(bundle_dir=output).passed
+
+    monkeypatch.setattr(
+        bundle_writer,
+        "_clear_pending_bundle_manifest",
+        original_cleanup,
+    )
+    build_ceqanet_operator_bundle(package, output_dir=output)
+    assert verify_ceqanet_operator_bundle(bundle_dir=output).passed
+    assert not (output / bundle_writer._BUNDLE_PENDING_MANIFEST).exists()

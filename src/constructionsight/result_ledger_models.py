@@ -8,7 +8,7 @@ from datetime import UTC, date, datetime
 from enum import StrEnum
 from typing import Any
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class ResultLedgerStatus(StrEnum):
@@ -33,16 +33,18 @@ class ResultShareStatus(StrEnum):
 class ResultShareRecord(BaseModel):
     """Calculated share record for a successful outcome."""
 
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
     share_record_id: str = Field(min_length=1)
     workflow_id: str = Field(min_length=1)
     gross_value: float = Field(ge=0)
     share_rate: float = Field(ge=0, le=1)
     share_value: float = Field(ge=0)
-    notes: list[str] = Field(default_factory=list)
+    notes: tuple[str, ...] = ()
 
     @field_validator("notes")
     @classmethod
-    def require_unique_notes(cls, values: list[str]) -> list[str]:
+    def require_unique_notes(cls, values: tuple[str, ...]) -> tuple[str, ...]:
         """Reject duplicate notes."""
 
         if len(values) != len(set(values)):
@@ -62,6 +64,8 @@ class ResultShareRecord(BaseModel):
 class ResultLedgerRecord(BaseModel):
     """One immutable outcome revision for a lead workflow."""
 
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
     ledger_id: str = Field(min_length=1)
     workflow_id: str = Field(min_length=1)
     package_id: str = Field(min_length=1)
@@ -73,14 +77,14 @@ class ResultLedgerRecord(BaseModel):
     gross_value: float | None = Field(default=None, ge=0)
     share_status: ResultShareStatus = ResultShareStatus.NOT_APPLICABLE
     share: ResultShareRecord | None = None
-    reasons: list[str] = Field(default_factory=list)
-    limitations: list[str] = Field(default_factory=list)
+    reasons: tuple[str, ...] = ()
+    limitations: tuple[str, ...] = ()
     content_digest: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     @field_validator("reasons", "limitations")
     @classmethod
-    def require_unique_text_values(cls, values: list[str]) -> list[str]:
+    def require_unique_text_values(cls, values: tuple[str, ...]) -> tuple[str, ...]:
         """Reject duplicate reasons or limitations."""
 
         if len(values) != len(set(values)):
@@ -125,18 +129,18 @@ class ResultLedgerRecord(BaseModel):
             if self.gross_value != self.share.gross_value:
                 raise ValueError("share gross_value must match ledger gross_value")
             if self.share_status == ResultShareStatus.NOT_APPLICABLE:
-                self.share_status = ResultShareStatus.CALCULATED
+                object.__setattr__(self, "share_status", ResultShareStatus.CALCULATED)
             if self.share_status != ResultShareStatus.CALCULATED:
                 raise ValueError("share records require calculated share status")
             return self
         if self.gross_value is None:
             if self.share_status == ResultShareStatus.NOT_APPLICABLE:
-                self.share_status = ResultShareStatus.PENDING_GROSS_VALUE
+                object.__setattr__(self, "share_status", ResultShareStatus.PENDING_GROSS_VALUE)
             if self.share_status != ResultShareStatus.PENDING_GROSS_VALUE:
                 raise ValueError("won ledger without gross value requires pending_gross_value")
             return self
         if self.share_status == ResultShareStatus.NOT_APPLICABLE:
-            self.share_status = ResultShareStatus.PENDING_SHARE_RATE
+            object.__setattr__(self, "share_status", ResultShareStatus.PENDING_SHARE_RATE)
         if self.share_status != ResultShareStatus.PENDING_SHARE_RATE:
             raise ValueError("won ledger without share requires pending_share_rate")
         return self
@@ -147,7 +151,7 @@ class ResultLedgerRecord(BaseModel):
 
         expected = self.compute_content_digest()
         if self.content_digest is None:
-            self.content_digest = expected
+            object.__setattr__(self, "content_digest", expected)
         elif self.content_digest != expected:
             raise ValueError("result ledger content_digest does not match material content")
         return self

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from constructionsight.entity_models import Entity
 from constructionsight.provenance import Provenance
@@ -27,6 +27,30 @@ class PlanningCaseRecord(BaseModel):
     site: Site | None = None
     entities: list[Entity] = Field(default_factory=list)
     provenance: list[Provenance] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def require_lifecycle_order(self) -> PlanningCaseRecord:
+        """Reject contradictory known planning lifecycle dates."""
+
+        if (
+            self.filed_date is not None
+            and self.hearing_date is not None
+            and self.hearing_date < self.filed_date
+        ):
+            raise ValueError("hearing_date cannot precede filed_date")
+        if (
+            self.filed_date is not None
+            and self.approval_date is not None
+            and self.approval_date < self.filed_date
+        ):
+            raise ValueError("approval_date cannot precede filed_date")
+        if (
+            self.hearing_date is not None
+            and self.approval_date is not None
+            and self.approval_date < self.hearing_date
+        ):
+            raise ValueError("approval_date cannot precede hearing_date")
+        return self
 
     @property
     def has_hearing(self) -> bool:

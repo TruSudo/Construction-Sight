@@ -27,7 +27,7 @@ from constructionsight.ceqanet_persistence_preview import CeqanetPersistencePrev
 from constructionsight.ceqanet_write_plan import CeqanetWritePlan, build_ceqanet_write_plan
 from constructionsight.domain_types import PartyRole
 from constructionsight.entity_models import Entity
-from constructionsight.provenance import Provenance
+from constructionsight.provenance import Provenance, ProvenanceConfidenceBasis
 from constructionsight.site_models import Site
 
 _MAX_ROWS = 100
@@ -170,8 +170,7 @@ def build_reviewed_ceqanet_csv_bridge(
             adapter_family="ceqanet_csv_reviewed",
             raw_reference=raw_reference,
             evidence_text=row_payload,
-            confidence_score=0,
-            verified=False,
+            confidence_basis=ProvenanceConfidenceBasis.DIRECT_OBSERVATION,
             notes=(
                 "Source-claimed public CSV row only; no independent fact verification. "
                 f"Parent retained body sha256:{inspection.body_sha256}; "

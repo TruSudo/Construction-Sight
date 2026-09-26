@@ -1,7 +1,7 @@
 from constructionsight.contractor_identity_service import build_contractor_identity
-from constructionsight.domain_types import confidence_band
 from constructionsight.decision_record_models import DecisionKind, DecisionSourceKind
 from constructionsight.decision_record_service import build_decision_record
+from constructionsight.domain_types import confidence_band
 from constructionsight.opportunity_enrichment_models import EnrichmentSignalKind
 from constructionsight.opportunity_enrichment_service import enrich_opportunity
 from constructionsight.opportunity_scoring_profile import OpportunityScoringProfile
@@ -15,8 +15,8 @@ from constructionsight.site_resolution_models import (
 
 def _site_result() -> SiteResolutionResult:
     return SiteResolutionResult(
-        resolution_id="site-resolution:test",
         source_name="test source",
+        evidence_id="evidence:test",
         status=SiteResolutionStatus.RESOLVED,
         primary_site_key="site:test",
         candidates=[
@@ -24,7 +24,7 @@ def _site_result() -> SiteResolutionResult:
                 site_key="site:test",
                 match_strength="exact",
                 confidence_score=90,
-                confidence_band="verified",
+                confidence_band=confidence_band(90),
                 reasons=["site matched"],
             )
         ],
@@ -33,10 +33,11 @@ def _site_result() -> SiteResolutionResult:
 
 def _permit_transition() -> PermitTransition:
     return PermitTransition(
-        transition_id="permit-transition:test",
         transition_kind=PermitTransitionKind.STATUS_CHANGED,
         source_key="permit:test",
         source_record_id="permit:1",
+        previous_snapshot_id="permit-snapshot:test:previous",
+        current_snapshot_id="permit-snapshot:test:current",
         field_name="status",
         previous_value="applied",
         current_value="issued",
@@ -134,7 +135,7 @@ def test_enrich_opportunity_keeps_limitations_for_lower_confidence_signals() -> 
         contractor_identity=contractor,
     )
 
-    assert report.lead_score == 8
+    assert report.lead_score == 3
     assert "no contractor license signal was available" in report.limitations
     assert report.next_action == "monitor and enrich with more source evidence"
 
@@ -148,8 +149,8 @@ def test_high_nominal_signal_cannot_become_actionable_with_low_confidence() -> N
         reasons=["synthetic low-confidence site anchor"],
     )
     site = SiteResolutionResult(
-        resolution_id="site-resolution:low-confidence",
         source_name="test source",
+        evidence_id="evidence:low-confidence",
         status=SiteResolutionStatus.RESOLVED,
         primary_site_key=candidate.site_key,
         candidates=[candidate],
@@ -192,8 +193,8 @@ def test_zero_confidence_signal_contributes_no_operational_score() -> None:
         reasons=["synthetic zero-confidence site signal"],
     )
     site = SiteResolutionResult(
-        resolution_id="site-resolution:zero-confidence",
         source_name="test source",
+        evidence_id="evidence:zero-confidence",
         status=SiteResolutionStatus.RESOLVED,
         primary_site_key=candidate.site_key,
         candidates=[candidate],

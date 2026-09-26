@@ -237,6 +237,7 @@ def execute_ceqanet_recurring_run(
     if attempt_sequence < 1:
         raise ValueError("attempt_sequence must be at least 1")
 
+    reviewed_row = _checklist_row(checklist_report, definition.source_key)
     access_result = evaluate_access(
         SourceAccessProfile(
             public_url=manifest.execution_base_url,
@@ -249,6 +250,12 @@ def execute_ceqanet_recurring_run(
                 manifest.access_assumptions.terms_disallow_collection
             ),
             paywalled=manifest.access_assumptions.paywalled,
+            access_facts_reviewed=True,
+            review_basis=(
+                "verified checklist "
+                f"{definition.checklist_evidence_digest}; evidence refs: "
+                + ", ".join(reviewed_row.evidence_refs)
+            ),
         )
     )
     query = _listing_query_from_payload(manifest.query)

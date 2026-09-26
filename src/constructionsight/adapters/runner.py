@@ -42,12 +42,7 @@ class AdapterRunner:
     ) -> AdapterOperationResult[BaseModel]:
         """Run an adapter instance through the standard lifecycle."""
 
-        preflight = adapter.preflight()
-        if preflight.decision is not AccessDecision.ALLOWED:
-            return adapter.blocked_result("run_adapter", preflight)
-
         try:
-            adapter.discover_search()
             limit = adapter.context.max_records
             if limit is None:
                 limit = _MAX_ADAPTER_RECORDS
@@ -57,7 +52,21 @@ class AdapterRunner:
                 raise ValueError(
                     f"adapter max_records must be between 0 and {_MAX_ADAPTER_RECORDS}"
                 )
+            if adapter.context.dry_run and limit == 0:
+                return AdapterOperationResult(
+                    source_name=adapter.source_name,
+                    operation="run_adapter",
+                    outcome=AdapterOutcome.SUCCESS,
+                    records=(),
+                    notes="Dry run requested zero records; no source access was performed.",
+                )
 
+            if adapter.requires_access_preflight:
+                preflight = adapter.preflight()
+                if preflight.decision is not AccessDecision.ALLOWED:
+                    return adapter.blocked_result("run_adapter", preflight)
+
+            adapter.discover_search()
             normalized: list[BaseModel] = []
             for raw_record in islice(adapter.list_records(), limit):
                 detailed = adapter.extract_record_detail(raw_record)
