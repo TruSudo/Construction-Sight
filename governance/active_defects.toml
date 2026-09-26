@@ -1,3 +1,170 @@
 schema_version = "constructionsight.active-defects/v1"
 certification_requires_zero = true
-defects = []
+
+[[defects]]
+id = "CS-SR-076"
+severity = "P1"
+area = "intelligence-history"
+root_cause = "Intelligence entity, relationship, project-cluster, opportunity, evidence, and runtime-event upserts replace prior state under stable IDs, while fixed runtime-event IDs cause later updates to overwrite earlier audit events."
+discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
+required_resolution = "Make history-bearing intelligence assertions and runtime events append-only or explicitly versioned; reject semantic overwrite under an existing immutable identity and retain reconstructable prior state."
+
+[[defects]]
+id = "CS-SR-077"
+severity = "P1"
+area = "intelligence-evidence"
+root_cause = "Relationship, project, opportunity, and identity assertions can be persisted without retained evidence records strong enough to support the asserted conclusion."
+discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
+required_resolution = "Require evidence-bound identifiers for intelligence assertions and validate that referenced evidence exists before persistence; confidence-bearing conclusions must remain traceable to retained evidence."
+
+[[defects]]
+id = "CS-SR-078"
+severity = "P1"
+area = "intelligence-referential-integrity"
+root_cause = "Intelligence relationships and JSON-held evidence references are not constrained to existing entity, project-cluster, or evidence records, allowing orphan graph edges and dangling provenance references."
+discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
+required_resolution = "Enforce referential integrity for relationship endpoints and evidence references through database constraints or equivalent fail-closed application validation with adversarial regression coverage."
+
+[[defects]]
+id = "CS-SR-079"
+severity = "P1"
+area = "intelligence-query-correctness"
+root_cause = "Relationship and graph-neighborhood services rely on IntelligenceStore list methods whose default limit is 100, silently excluding older valid graph records and misclassifying existing records outside that window."
+discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
+required_resolution = "Replace global truncated scans with complete database-side filtered queries or explicit pagination that cannot silently omit valid relationships, entities, projects, or opportunities."
+
+[[defects]]
+id = "CS-SR-080"
+severity = "P1"
+area = "permit-history"
+root_cause = "Permit snapshots may be updated in place under caller-selected snapshot IDs, and transition IDs omit occurrence identity, allowing repeated lifecycle transitions to collapse into prior records."
+discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
+required_resolution = "Use immutable content- or occurrence-bound snapshot and transition identities and reject non-exact replay so every distinct permit lifecycle observation remains reconstructable."
+
+[[defects]]
+id = "CS-SR-081"
+severity = "P2"
+area = "sqlite-integrity"
+root_cause = "The primary SQLite engine declares foreign keys in ORM/schema governance but does not enable PRAGMA foreign_keys=ON per connection, so declared referential constraints are not enforced at runtime."
+discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
+required_resolution = "Enable and verify SQLite foreign-key enforcement for every primary-database connection and add regression coverage proving orphan writes fail."
+
+[[defects]]
+id = "CS-SR-082"
+severity = "P1"
+area = "source-registry-authorization"
+root_cause = "Legacy load-sources, verify-sources, and CEQAnet discovery persistence paths can mutate authoritative source-registry state directly through stores instead of the governed scope-bound plan/apply and durable-effect boundary."
+discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
+required_resolution = "Remove, disable, or route every authoritative source-registry mutation through one canonical scope-bound authorization, stale-state validation, durable effect-consumption, and auditable apply boundary."
+
+[[defects]]
+id = "CS-SR-083"
+severity = "P1"
+area = "source-verification-semantics"
+root_cause = "verify-sources can persist verification_status=failed when lawful-access facts were merely unreviewed and no reachability request occurred, conflating review-required state with observed failure."
+discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
+required_resolution = "Preserve review-required/unknown status distinctly from observed network failure and forbid verification-state demotion when no reachability observation was actually performed."
+
+[[defects]]
+id = "CS-SR-084"
+severity = "P1"
+area = "effect-consumption"
+root_cause = "The protected-effect ledger uses a process-working-directory-relative SQLite path and does not bind storage to one canonical application-owned location, permitting split ledgers across working directories or redirected paths."
+discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
+required_resolution = "Anchor the consumption ledger to one canonical application-owned path, fail closed on unsafe path substitution, and prove cross-working-directory and symlink/path-redirection attempts cannot obtain a second allowance."
+
+[[defects]]
+id = "CS-SR-085"
+severity = "P1"
+area = "intelligence-evidence-identity"
+root_cause = "EvidenceRecord accepts caller-selected evidence IDs and optional unverified content hashes while the store overwrites existing evidence under the same ID, so referenced evidence identity is mutable."
+discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
+required_resolution = "Derive or strictly verify immutable evidence identity from retained canonical content and reject changed-content replay under an existing evidence identity."
+
+[[defects]]
+id = "CS-SR-086"
+severity = "P2"
+area = "ceqanet-write-plan"
+root_cause = "CEQAnet write-plan execution validates payload models but does not require operation target_key and operation_id to agree with the actual model key written; malformed source_index is silently substituted."
+discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
+required_resolution = "Recompute and validate target identity, operation identity, and source index from the exact payload before execution; reject any reviewed-plan identity disagreement rather than normalizing it."
+
+[[defects]]
+id = "CS-SR-087"
+severity = "P2"
+area = "status-documentation"
+root_cause = "Current-status documentation claims dozens of active defects while the authoritative governance ledger at the reviewed commit records zero, creating contradictory repository-state representations."
+discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
+required_resolution = "Update current-status surfaces to derive from or accurately reflect the authoritative governance ledger and add a certification check preventing stale active-defect counts from being represented as current."
+
+[[defects]]
+id = "CS-SR-088"
+severity = "P1"
+area = "site-resolution-evidence"
+root_cause = "Site-resolution input identifiers and geometry hints may omit evidence IDs, yet their combined score can reach resolved status and produce a primary site anchor without retained evidentiary provenance."
+discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
+required_resolution = "Require evidence-bound inputs for resolved site conclusions or cap unevidenced inputs below resolved status; retain explicit provenance for every signal contributing to a resolved site."
+
+[[defects]]
+id = "CS-SR-089"
+severity = "P1"
+area = "domain-history"
+root_cause = "Normalized domain stores update sites, entities, permits, planning cases, CEQA records, agendas, documents, and relationships in place, erasing prior source facts and provenance without version history."
+discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
+required_resolution = "Introduce immutable observation/version history for changing source facts and preserve previous provenance while retaining a separately derivable current projection."
+
+[[defects]]
+id = "CS-SR-090"
+severity = "P1"
+area = "lead-workflow-integrity"
+root_cause = "store_lead_workflow_record remains a generic insert-or-update path that can replace the workflow projection without compare-and-swap or proof that embedded event history exactly extends durable immutable events."
+discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
+required_resolution = "Restrict existing-workflow mutation to the canonical compare-and-swap transition path and reconcile the projection against durable immutable events so historical events cannot be rewritten or omitted."
+
+[[defects]]
+id = "CS-SR-091"
+severity = "P2"
+area = "derived-result-identity"
+root_cause = "Site-resolution and parcel-assurance persistence accept caller-constructed result IDs and update existing rows under those IDs without independently proving that the ID is canonical for the exact payload."
+discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
+required_resolution = "Validate canonical result identity at the persistence boundary and reject material-content collisions or changed-content replay under an existing result ID."
+
+[[defects]]
+id = "CS-SR-092"
+severity = "P1"
+area = "defect-closure-evidence"
+root_cause = "The CS-SR-011 resolved entry states repository/semantic certification passed even though the cited exact-head CI run ended with mandatory repository certification failure."
+discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
+required_resolution = "Correct the historical closure representation without rewriting immutable facts, explicitly recording the exact CI result and why closure was or was not justified by the retained evidence."
+
+[[defects]]
+id = "CS-SR-093"
+severity = "P1"
+area = "defect-closure-certification"
+root_cause = "Defect-closure certification verifies record shape, history, commit existence, ancestry, and tree identity but does not verify that closure evidence actually establishes required_resolution or that cited CI evidence succeeded."
+discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
+required_resolution = "Bind defect closure to machine-verifiable retained evidence proving the required resolution, including exact CI outcome where claimed, and reject structurally valid but factually unsupported closure records."
+
+[[defects]]
+id = "CS-SR-094"
+severity = "P1"
+area = "legacy-network-authorization"
+root_cause = "discover-ceqanet performs a live bounded HTTP request directly through the discovery service without canonical local authorization or durable single-use effect consumption."
+discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
+required_resolution = "Route CEQAnet discovery live HTTP through the canonical scope-bound authorization and owned durable effect-consumption boundary or make the legacy live path unavailable."
+
+[[defects]]
+id = "CS-SR-095"
+severity = "P1"
+area = "daily-network-invariant"
+root_cause = "CEQAnet daily evidence execution checks the required UTC date before reservation but not immediately before effect start, permitting a midnight rollover while blocked on reservation and a second request under the new day's allowance."
+discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
+required_resolution = "Revalidate the required UTC date at the last boundary before the network effect and prove with deterministic rollover/contention tests that at most one request can execute on a UTC date."
+
+[[defects]]
+id = "CS-SR-096"
+severity = "P2"
+area = "semantic-authorization-certification"
+root_cause = "Semantic authorization certification depends on a manually maintained effect-target set and a narrow list of high-impact CLI parameter names, allowing unlisted storage/network effects to escape graph analysis."
+discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
+required_resolution = "Expand certification to discover protected effects and authoritative storage mutations from governed effect definitions rather than fragile naming heuristics, with adversarial witnesses for newly covered legacy paths."
