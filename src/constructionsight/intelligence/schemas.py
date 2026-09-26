@@ -8,6 +8,8 @@ schema contract is validated.
 
 from __future__ import annotations
 
+import hashlib
+import json
 from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
@@ -243,7 +245,7 @@ class EvidenceRecord(BaseModel):
     evidence_field: str | None = None
     evidence_value: str | None = None
     evidence_text: str | None = None
-    content_hash: str | None = None
+    content_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     retrieval_method: str | None = None
     access_status: str | None = None
     adapter_name: str | None = None
@@ -251,12 +253,29 @@ class EvidenceRecord(BaseModel):
     limitations: list[str] = Field(default_factory=list)
     raw_observations: dict[str, Any] = Field(default_factory=dict)
 
+    def computed_content_hash(self) -> str:
+        """Return the canonical digest binding this evidence ID to retained content."""
+
+        payload = self.model_dump(mode="json", exclude={"content_hash"})
+        canonical = json.dumps(
+            payload,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+            allow_nan=False,
+        ).encode("utf-8")
+        return hashlib.sha256(canonical).hexdigest()
+
     @model_validator(mode="after")
-    def require_evidence_payload(self) -> EvidenceRecord:
-        """Require at least one concrete evidence payload field."""
+    def require_evidence_payload_and_hash(self) -> EvidenceRecord:
+        """Require concrete evidence and bind its ID to a canonical full digest."""
 
         if not any([self.evidence_value, self.evidence_text, self.raw_observations]):
             raise ValueError("evidence must include a value, text, or raw_observations")
+        expected = self.computed_content_hash()
+        if self.content_hash is not None and self.content_hash != expected:
+            raise ValueError("content_hash does not match canonical evidence content")
+        object.__setattr__(self, "content_hash", expected)
         return self
 
 
