@@ -216,7 +216,7 @@ def _report_id(
         separators=(",", ":"),
         ensure_ascii=True,
     )
-    return f"opportunity-enrichment:v2:{_short_hash(basis)}"
+    return f"opportunity-enrichment:v2:{hashlib.sha256(basis.encode('utf-8')).hexdigest()}"
 
 
 def _short_hash(value: str) -> str:

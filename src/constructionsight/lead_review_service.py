@@ -115,7 +115,7 @@ def _package_id(report: OpportunityEnrichmentReport) -> str:
         separators=(",", ":"),
         ensure_ascii=True,
     )
-    return f"lead-review:v2:{_short_hash(basis)}"
+    return f"lead-review:v2:{hashlib.sha256(basis.encode('utf-8')).hexdigest()}"
 
 
 def _short_hash(value: str) -> str:
