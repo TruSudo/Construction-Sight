@@ -78,11 +78,29 @@ class SourceRegistryStore:
         return [self._to_public_source(record) for record in records]
 
     def get_by_name(self, source_name: str) -> PublicSource | None:
-        """Return one source by name, if present."""
+        """Return an unambiguous source by name, if present."""
+
+        self.session.flush()
+        records = self.session.scalars(
+            select(SourceRecord).where(SourceRecord.source_name == source_name)
+        ).all()
+        if not records:
+            return None
+        if len(records) != 1:
+            raise ValueError(
+                "source name is ambiguous; use source name and public URL identity"
+            )
+        return self._to_public_source(records[0])
+
+    def get_by_identity(self, source_name: str, public_url: str) -> PublicSource | None:
+        """Return one source by the persisted name/URL identity pair."""
 
         self.session.flush()
         record = self.session.scalar(
-            select(SourceRecord).where(SourceRecord.source_name == source_name)
+            select(SourceRecord).where(
+                SourceRecord.source_name == source_name,
+                SourceRecord.public_url == public_url,
+            )
         )
         if record is None:
             return None

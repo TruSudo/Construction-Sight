@@ -19,6 +19,7 @@ from constructionsight.lead_workflow_models import (
     LeadWorkflowRecord,
     require_duplicate_review_clear,
 )
+from constructionsight.lead_workflow_rules import validate_lead_workflow_transition
 from constructionsight.opportunity_enrichment_models import OpportunityEnrichmentReport
 from constructionsight.result_ledger_models import ResultLedgerRecord, ResultShareRecord
 from constructionsight.result_ledger_service import (
@@ -67,15 +68,10 @@ def store_opportunity_enrichment_report(
         )
         session.add(existing)
         return existing
-    existing.base_candidate_id = report.base_candidate_id
-    existing.lead_score = report.lead_score
-    existing.confidence_score = report.confidence_score
-    existing.confidence_band = report.confidence_band.value
-    existing.scoring_profile_key = report.scoring_profile_key
-    existing.scoring_profile_version = report.scoring_profile_version
-    existing.next_action = report.next_action
-    existing.observed_created_at = report.created_at.isoformat()
-    existing.payload_json = payload_json
+    if _semantic_replay_payload(existing.payload_json, "created_at") != (
+        _semantic_replay_payload(payload_json, "created_at")
+    ):
+        raise ValueError("persisted opportunity enrichment reports are immutable")
     return existing
 
 
@@ -103,11 +99,10 @@ def store_lead_review_package(
         )
         session.add(existing)
         return existing
-    existing.base_candidate_id = package.base_candidate_id
-    existing.lead_score = package.lead_score
-    existing.status = package.status.value
-    existing.observed_created_at = package.created_at.isoformat()
-    existing.payload_json = payload_json
+    if _semantic_replay_payload(existing.payload_json, "created_at") != (
+        _semantic_replay_payload(payload_json, "created_at")
+    ):
+        raise ValueError("persisted lead review packages are immutable")
     return existing
 
 
@@ -138,7 +133,8 @@ def store_lead_fingerprint(
         )
         session.add(existing)
         return existing
-    existing.base_candidate_id = fingerprint.base_candidate_id
+    if existing.base_candidate_id != fingerprint.base_candidate_id:
+        raise ValueError("persisted lead fingerprint attribution is immutable")
     existing.site_key = fingerprint.site_key
     existing.source_key = fingerprint.source_key
     existing.source_record_id = fingerprint.source_record_id
@@ -303,6 +299,32 @@ def compare_and_swap_lead_workflow_record(
         raise ValueError("lead workflow compare-and-swap requires exactly one appended event")
     if updated.events[:-1] != current.events:
         raise ValueError("lead workflow compare-and-swap cannot rewrite historical events")
+    lineage_fields = (
+        "package_id",
+        "base_candidate_id",
+        "fingerprint_key",
+        "lead_score",
+        "notes",
+        "limitations",
+        "created_at",
+    )
+    changed_lineage = [
+        field_name
+        for field_name in lineage_fields
+        if getattr(updated, field_name) != getattr(current, field_name)
+    ]
+    if changed_lineage:
+        fields = ", ".join(changed_lineage)
+        raise ValueError(
+            "lead workflow compare-and-swap cannot mutate workflow lineage: "
+            f"{fields}"
+        )
+    appended_event = updated.events[-1]
+    if appended_event.previous_status is not current.status:
+        raise ValueError(
+            "lead workflow compare-and-swap event must start from current status"
+        )
+    validate_lead_workflow_transition(current.status, updated.status)
     require_duplicate_review_clear(
         limitations=updated.limitations,
         next_status=updated.status,
@@ -468,6 +490,16 @@ def _duplicate_decision_identity(payload_json: str) -> dict[str, object]:
             raise ValueError("persisted duplicate result has malformed decision lists")
         payload[field] = sorted(values)
     return payload
+
+
+def _semantic_replay_payload(payload_json: str, timestamp_field: str) -> str:
+    """Return derived-record semantics without its receipt timestamp."""
+
+    payload = json.loads(payload_json)
+    if not isinstance(payload, dict):
+        raise ValueError("persisted lead workflow payload must be a JSON object")
+    payload.pop(timestamp_field, None)
+    return _payload_json({str(key): value for key, value in payload.items()})
 
 
 def _payload_json(payload: dict[str, object]) -> str:

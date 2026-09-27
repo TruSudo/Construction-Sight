@@ -269,6 +269,23 @@ def store_parcel_core_record(
         )
     ).scalar_one_or_none()
     geometry = parcel.geometry
+    if existing is not None:
+        persisted_identity = (
+            existing.source_key,
+            existing.source_record_id,
+            existing.normalized_apn,
+            existing.county,
+            existing.state,
+        )
+        supplied_identity = (
+            parcel.source_key,
+            parcel.source_record_id,
+            parcel.normalized_apn,
+            parcel.county,
+            parcel.state,
+        )
+        if persisted_identity != supplied_identity:
+            raise ValueError("persisted parcel identity cannot be rewritten")
     if existing is None:
         existing = ParcelCoreRecordRow(
             parcel_record_id=parcel.parcel_record_id,

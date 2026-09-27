@@ -211,3 +211,23 @@ def test_zero_confidence_signal_contributes_no_operational_score() -> None:
     assert report.next_action == (
         "hold until parcel, permit, contractor, or decision signal appears"
     )
+
+
+def test_report_identity_binds_score_bearing_profile_semantics() -> None:
+    first_profile = _custom_profile()
+    changed_profile = first_profile.model_copy(update={"site_resolved_score": 31})
+
+    first = enrich_opportunity(
+        base_candidate_id="candidate:identity",
+        site_resolution=_site_result(),
+        scoring_profile=first_profile,
+    )
+    changed = enrich_opportunity(
+        base_candidate_id="candidate:identity",
+        site_resolution=_site_result(),
+        scoring_profile=changed_profile,
+    )
+
+    assert first.report_id != changed.report_id
+    assert first.lead_score == 30
+    assert changed.lead_score == 31

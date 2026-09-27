@@ -166,3 +166,26 @@ def test_store_helpers_reject_changed_snapshot_replay() -> None:
         forged = first.model_copy(update={"status": "issued"})
         with pytest.raises(ValueError, match="immutable"):
             store_permit_snapshot(session, forged)
+
+
+def test_store_decision_record_rejects_semantic_rewrite_under_existing_key() -> None:
+    _engine, factory = _session_factory()
+    decision = build_decision_record(
+        source_key="decision:test",
+        title="Project approval",
+        source_kind=DecisionSourceKind.AGENDA,
+        decision_kind=DecisionKind.APPROVAL,
+        site_key="site:test",
+        source_url="https://example.invalid/item",
+    )
+    forged = decision.model_copy(update={"site_key": "site:other"})
+
+    with managed_session(factory) as session:
+        store_decision_record(session, decision)
+        session.flush()
+        with pytest.raises(ValueError, match="decision records are immutable"):
+            store_decision_record(session, forged)
+
+        row = session.execute(select(DecisionRecordRow)).scalar_one()
+        assert row.site_key == "site:test"
+        assert json.loads(row.payload_json)["site_key"] == "site:test"

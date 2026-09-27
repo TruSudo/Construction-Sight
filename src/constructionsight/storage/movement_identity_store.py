@@ -112,7 +112,7 @@ def store_contractor_identity(
 
 
 def store_decision_record(session: Session, decision: DecisionRecord) -> DecisionRecordRow:
-    """Insert or update a public decision record."""
+    """Append one immutable public decision record or accept a semantic replay."""
 
     session.flush()
     payload_json = _payload_json(decision.to_dict())
@@ -135,15 +135,21 @@ def store_decision_record(session: Session, decision: DecisionRecord) -> Decisio
         )
         session.add(existing)
         return existing
-    existing.source_key = decision.source_key
-    existing.source_record_id = decision.source_record_id
-    existing.source_kind = decision.source_kind.value
-    existing.decision_kind = decision.decision_kind.value
-    existing.site_key = decision.site_key
-    existing.apn = decision.apn
-    existing.confidence_score = decision.confidence_score
-    existing.payload_json = payload_json
+    if _semantic_replay_payload(existing.payload_json, "observed_at") != (
+        _semantic_replay_payload(payload_json, "observed_at")
+    ):
+        raise ValueError("persisted decision records are immutable")
     return existing
+
+
+def _semantic_replay_payload(payload_json: str, timestamp_field: str) -> str:
+    """Return semantic content without a non-identifying receipt timestamp."""
+
+    payload = json.loads(payload_json)
+    if not isinstance(payload, dict):
+        raise ValueError("persisted movement payload must be a JSON object")
+    payload.pop(timestamp_field, None)
+    return _payload_json({str(key): value for key, value in payload.items()})
 
 
 def _payload_json(payload: dict[str, object]) -> str:

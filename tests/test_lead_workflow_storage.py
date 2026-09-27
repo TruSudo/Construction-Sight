@@ -539,3 +539,89 @@ def test_store_helpers_update_existing_rows() -> None:
 
         assert len(rows) == 1
         assert rows[0].lead_score == 80
+
+
+def test_derived_lead_records_reject_semantic_identity_collision() -> None:
+    _engine, factory = _session_factory()
+    report = _report()
+    changed_report = report.model_copy(
+        update={"next_action": "different action under reused report id"}
+    )
+    package = _package()
+    changed_package = package.model_copy(
+        update={"summary": "different package meaning under reused package id"}
+    )
+
+    with managed_session(factory) as session:
+        store_opportunity_enrichment_report(session, report)
+        session.flush()
+        with pytest.raises(ValueError, match="enrichment reports are immutable"):
+            store_opportunity_enrichment_report(session, changed_report)
+
+        store_lead_review_package(session, package)
+        session.flush()
+        with pytest.raises(ValueError, match="review packages are immutable"):
+            store_lead_review_package(session, changed_package)
+
+
+def test_lead_fingerprint_rejects_candidate_attribution_takeover() -> None:
+    _engine, factory = _session_factory()
+    fingerprint = _fingerprint()
+    takeover = fingerprint.model_copy(update={"base_candidate_id": "candidate:other"})
+
+    with managed_session(factory) as session:
+        store_lead_fingerprint(session, fingerprint)
+        session.flush()
+        with pytest.raises(ValueError, match="fingerprint attribution is immutable"):
+            store_lead_fingerprint(session, takeover)
+
+        row = session.execute(select(LeadFingerprintRecord)).scalar_one()
+        assert row.base_candidate_id == fingerprint.base_candidate_id
+
+
+def test_compare_and_swap_rejects_workflow_lineage_mutation() -> None:
+    _engine, factory = _session_factory()
+    current = LeadWorkflowRecord(
+        workflow_id="lead-workflow:lineage",
+        package_id="lead-review:lineage",
+        base_candidate_id="candidate:lineage",
+        fingerprint_key="lead-fingerprint:lineage",
+        status=LeadWorkflowStatus.MONITOR,
+        lead_score=50,
+        events=[
+            LeadWorkflowEvent(
+                event_id="lead-workflow-event:lineage-initial",
+                current_status=LeadWorkflowStatus.MONITOR,
+                reason="initial state",
+            )
+        ],
+    )
+    legitimate = transition_lead_workflow(
+        record=current,
+        next_status=LeadWorkflowStatus.REVIEW,
+        reason="review evidence",
+    )
+    substituted = legitimate.model_copy(
+        update={"base_candidate_id": "candidate:other"}
+    )
+
+    with managed_session(factory) as session:
+        store_lead_workflow_record(session, current)
+
+    with managed_session(factory) as session, pytest.raises(
+        ValueError, match="cannot mutate workflow lineage"
+    ):
+        compare_and_swap_lead_workflow_record(
+            session,
+            current=current,
+            updated=substituted,
+        )
+
+    with managed_session(factory) as session:
+        row = session.execute(
+            select(LeadWorkflowRecordRow).where(
+                LeadWorkflowRecordRow.workflow_id == current.workflow_id
+            )
+        ).scalar_one()
+        assert row.base_candidate_id == current.base_candidate_id
+        assert row.status == LeadWorkflowStatus.MONITOR.value

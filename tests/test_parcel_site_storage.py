@@ -230,3 +230,18 @@ def test_derived_result_stores_reject_forged_identity_reuse() -> None:
         forged_assurance = assurance.model_copy(update={"county": "Riverside"})
         with pytest.raises(ValueError, match="identity"):
             store_parcel_assurance_report(session, forged_assurance)
+
+
+def test_store_parcel_core_record_rejects_land_identity_substitution() -> None:
+    _engine, factory = _session_factory()
+    parcel = _parcel()
+    substituted = parcel.model_copy(update={"source_record_id": "row:other"})
+
+    with managed_session(factory) as session:
+        store_parcel_core_record(session, parcel)
+        session.flush()
+        with pytest.raises(ValueError, match="parcel identity cannot be rewritten"):
+            store_parcel_core_record(session, substituted)
+
+        row = session.execute(select(ParcelCoreRecordRow)).scalar_one()
+        assert row.source_record_id == "row:1"

@@ -96,3 +96,20 @@ def test_verification_persistence_is_append_only_for_registry_authority() -> Non
 
     assert current == source
     assert len(evidence) == 1
+
+
+def test_name_only_source_lookup_rejects_ambiguous_identity() -> None:
+    factory = _factory()
+    source = _source()
+    second_payload = source.model_dump(mode="json")
+    second_payload["public_url"] = "https://example.invalid/alternate"
+    second = PublicSource.model_validate(second_payload)
+
+    with managed_session(factory) as session:
+        store = SourceRegistryStore(session)
+        store.upsert_source(source)
+        store.upsert_source(second)
+        with pytest.raises(ValueError, match="source name is ambiguous"):
+            store.get_by_name(source.source_name)
+        assert store.get_by_identity(source.source_name, str(source.public_url)) == source
+        assert store.get_by_identity(second.source_name, str(second.public_url)) == second
