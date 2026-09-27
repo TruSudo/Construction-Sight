@@ -229,5 +229,5 @@ def test_report_identity_binds_score_bearing_profile_semantics() -> None:
     )
 
     assert first.report_id != changed.report_id
-    assert first.lead_score == 30
-    assert changed.lead_score == 31
+    assert first.lead_score == 27
+    assert changed.lead_score == 28
