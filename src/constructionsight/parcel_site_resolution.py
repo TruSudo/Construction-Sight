@@ -189,15 +189,17 @@ def _match_strength(score: int) -> SiteMatchStrength:
 
 
 def _site_key_from_parcel(parcel: ParcelCoreRecord) -> str:
-    """Build deterministic site key from parcel identity."""
+    """Bind site identity to the source-independent county/APN land anchor."""
 
-    return f"site:{_short_hash(parcel.parcel_record_id)}"
-
-
-def _short_hash(value: str) -> str:
-    """Return a short deterministic hash."""
-
-    return hashlib.sha256(value.encode("utf-8")).hexdigest()[:16]
+    basis = "|".join(
+        [
+            parcel.state.upper(),
+            parcel.county.strip().casefold(),
+            parcel.normalized_apn,
+        ]
+    )
+    digest = hashlib.sha256(basis.encode("utf-8")).hexdigest()
+    return f"site:parcel:v2:{digest}"
 
 
 def _unique(values: list[str]) -> list[str]:
