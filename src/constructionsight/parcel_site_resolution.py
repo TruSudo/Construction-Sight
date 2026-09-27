@@ -189,10 +189,13 @@ def _match_strength(score: int) -> SiteMatchStrength:
 
 
 def _site_key_from_parcel(parcel: ParcelCoreRecord) -> str:
-    """Bind site identity to the source-independent county/APN land anchor."""
+    """Bind site identity to the complete parcel/source land anchor."""
 
     basis = "|".join(
         [
+            parcel.parcel_record_id,
+            parcel.source_key,
+            parcel.source_record_id or "",
             parcel.state.upper(),
             _normalize_county_identity(parcel.county),
             parcel.normalized_apn,
