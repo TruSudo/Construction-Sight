@@ -1191,6 +1191,21 @@ regression_tests = ["tests/test_relationship_query_service.py"]
 closure_evidence = "docs/assurance/defect_closures/CS-SR-079.md"
 
 [[defects]]
+id = "CS-SR-080"
+severity = "P1"
+area = "permit-history-integrity"
+root_cause = "Permit snapshots use caller-selected IDs that may be reused for changed content, while transition IDs omit occurrence identity. Store helpers update matching rows in place, allowing repeated lifecycle observations to collapse."
+discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
+required_resolution = "Bind snapshot identities to immutable observation content, represent repeated transition occurrences distinctly, reject semantic ID collisions instead of overwriting history, and add repeated-cycle and replay regressions."
+resolution_summary = "Machine-verified closure proof for CS-SR-080: required_resolution_sha256=ba1f6b3cbabeeb4d1c91554a0e51d6f146687faf772d59c7baeddafd9713867d; implementation_paths=[src/constructionsight/permit_transition_models.py]; regression_tests=[tests/test_permit_transition_models.py]."
+resolution_commit = "fd89c1a35a4d729ba64a47befc7542095926c113"
+resolution_tree = "795b68e45d09a95a40b8199d2a2c35102ba88932"
+last_active_commit = "fd89c1a35a4d729ba64a47befc7542095926c113"
+evidence_paths = ["docs/assurance/defect_closures/CS-SR-080.md","docs/assurance/defect_closures/CS-SR-080.proof.json","src/constructionsight/permit_transition_models.py"]
+regression_tests = ["tests/test_permit_transition_models.py"]
+closure_evidence = "docs/assurance/defect_closures/CS-SR-080.md"
+
+[[defects]]
 id = "CS-SR-081"
 severity = "P2"
 area = "sqlite-referential-integrity"
