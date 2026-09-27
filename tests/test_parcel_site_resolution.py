@@ -172,10 +172,12 @@ def test_parcel_site_identity_ignores_caller_record_id_and_binds_land_anchor() -
     )
     first = _parcel("parcel:caller-one", "12345678")
     replay = _parcel("parcel:caller-two", "12345678")
+    county_variant = replay.model_copy(update={"county": "Riverside County"})
     different_land = _parcel("parcel:caller-one", "87654321")
 
     first_result = resolve_site_with_parcels(site_input, [first])
     replay_result = resolve_site_with_parcels(site_input, [replay])
+    county_variant_result = resolve_site_with_parcels(site_input, [county_variant])
 
     other_input = SiteResolutionInput(
         source_name="test source",
@@ -184,6 +186,7 @@ def test_parcel_site_identity_ignores_caller_record_id_and_binds_land_anchor() -
     different_result = resolve_site_with_parcels(other_input, [different_land])
 
     assert first_result.primary_site_key == replay_result.primary_site_key
+    assert first_result.primary_site_key == county_variant_result.primary_site_key
     assert first_result.primary_site_key != different_result.primary_site_key
     assert first_result.primary_site_key is not None
     assert first_result.primary_site_key.startswith("site:parcel:v2:")

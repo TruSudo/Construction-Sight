@@ -194,12 +194,18 @@ def _site_key_from_parcel(parcel: ParcelCoreRecord) -> str:
     basis = "|".join(
         [
             parcel.state.upper(),
-            parcel.county.strip().casefold(),
+            _normalize_county_identity(parcel.county),
             parcel.normalized_apn,
         ]
     )
     digest = hashlib.sha256(basis.encode("utf-8")).hexdigest()
     return f"site:parcel:v2:{digest}"
+
+
+def _normalize_county_identity(value: str) -> str:
+    """Normalize equivalent county labels for stable land identity."""
+
+    return " ".join(value.strip().casefold().split()).removesuffix(" county")
 
 
 def _unique(values: list[str]) -> list[str]:
