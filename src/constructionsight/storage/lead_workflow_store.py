@@ -113,6 +113,9 @@ def store_lead_fingerprint(
     """Insert or update a lead fingerprint."""
 
     session.flush()
+    fingerprint = LeadFingerprint.model_validate(
+        fingerprint.model_dump(mode="python")
+    )
     payload_json = _payload_json(fingerprint.model_dump(mode="json"))
     existing = session.execute(
         select(LeadFingerprintRecord).where(

@@ -625,3 +625,22 @@ def test_compare_and_swap_rejects_workflow_lineage_mutation() -> None:
         ).scalar_one()
         assert row.base_candidate_id == current.base_candidate_id
         assert row.status == LeadWorkflowStatus.MONITOR.value
+
+
+def test_lead_fingerprint_revalidates_canonical_basis_before_persistence() -> None:
+    _engine, factory = _session_factory()
+    fingerprint = _fingerprint()
+    forged = fingerprint.model_copy(update={"site_key": "site:forged"})
+
+    with managed_session(factory) as session:
+        store_lead_fingerprint(session, fingerprint)
+        session.flush()
+        with pytest.raises(ValueError, match="fingerprint_key does not match"):
+            store_lead_fingerprint(session, forged)
+
+        row = session.execute(select(LeadFingerprintRecord)).scalar_one()
+        assert row.site_key == fingerprint.site_key
+        assert row.payload_json == json.dumps(
+            fingerprint.model_dump(mode="json"),
+            sort_keys=True,
+        )
