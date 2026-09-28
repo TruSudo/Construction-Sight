@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from collections.abc import Iterable
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from constructionsight.models import Jurisdiction, PublicSource
@@ -17,6 +17,28 @@ class SourceRegistryStore:
 
     def __init__(self, session: Session) -> None:
         self.session = session
+
+    def acquire_authorized_mutation_lock(self) -> None:
+        """Serialize an authorized registry state read through its mutation commit.
+
+        Source-registry authorization is bound to the exact current registry digest.
+        SQLite BEGIN IMMEDIATE reserves the sole writer slot before that digest is
+        read, so another process cannot change the authoritative registry between the
+        authorization decision and the protected upsert. Entering with an existing
+        transaction is rejected because its earlier reads could already be stale.
+        """
+
+        if self.session.in_transaction():
+            raise RuntimeError(
+                "authorized source-registry mutation requires a fresh transaction"
+            )
+        bind = self.session.get_bind()
+        if bind.dialect.name != "sqlite":
+            raise RuntimeError(
+                "authorized source-registry mutation currently requires SQLite "
+                "BEGIN IMMEDIATE serialization"
+            )
+        self.session.execute(text("BEGIN IMMEDIATE"))
 
     def upsert_source(self, source: PublicSource) -> SourceRecord:
         """Insert or update a public-source registry record.
