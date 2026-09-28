@@ -13,9 +13,9 @@ from sqlalchemy.orm import Session
 from constructionsight.adapters.specs import default_adapter_family_specs
 from constructionsight.ceqa_models import CeqaRecord
 from constructionsight.models import PublicSource, SourceVerificationResult
-from constructionsight.storage.operator_read_store import read_project_page
 from constructionsight.operator_source_aliases import LoadedSourceAttributionAliases
 from constructionsight.permit_models import PermitRecord
+from constructionsight.storage.operator_read_store import read_project_page
 from constructionsight.storage.orm import SourceRecord, VerificationRecord
 
 SOURCE_REGISTRY_RESULT_LIMIT = 500
