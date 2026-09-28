@@ -26,11 +26,11 @@ This manifest is the durable starting inventory for the full ConstructionSight r
 
 | Branch | Tip SHA | Status |
 |---|---|---|
-| `agent/add-arcgis-live-rehearsal-authorization` | `679f15fa6d39f222c16b8c5c3e99db7662465909` | pending |
-| `agent/add-arcgis-proof-bundle-persistence` | `3a75e52b4e9dc72f263800c0aea4e862713fc70c` | pending |
-| `agent/add-arcgis-rehearsal-http-adapter` | `9b39f7822f22a319ae2c87324a33dd0345f663c1` | pending |
-| `agent/add-arcgis-rehearsal-proof-bundle` | `a0214f907e9afe2a0ec0db636727a74f6efd6c4c` | pending |
-| `agent/add-parcel-arcgis-acquisition-gates` | `00ffa2cbbd2fdafca6719ea1f1af298cf2f3f716` | pending |
+| `agent/add-arcgis-live-rehearsal-authorization` | `679f15fa6d39f222c16b8c5c3e99db7662465909` | contained |
+| `agent/add-arcgis-proof-bundle-persistence` | `3a75e52b4e9dc72f263800c0aea4e862713fc70c` | superseded |
+| `agent/add-arcgis-rehearsal-http-adapter` | `9b39f7822f22a319ae2c87324a33dd0345f663c1` | superseded |
+| `agent/add-arcgis-rehearsal-proof-bundle` | `a0214f907e9afe2a0ec0db636727a74f6efd6c4c` | superseded |
+| `agent/add-parcel-arcgis-acquisition-gates` | `00ffa2cbbd2fdafca6719ea1f1af298cf2f3f716` | superseded |
 | `agent/assurance-context-provenance-hardening` | `511d51cd18c3bed599b29c7ce4fc07a10c1e311d` | pending |
 | `agent/ceqanet-csv-access-policy` | `919aaf94750d1346b994f0f2797844461fbd3d48` | pending |
 | `agent/ceqanet-csv-evidence-observation-1` | `ec2fd30069f25ddb526150069e67e2477ed958c2` | pending |
@@ -57,14 +57,14 @@ This manifest is the durable starting inventory for the full ConstructionSight r
 | `agent/explicit-source-attribution-aliases` | `1e78fda40bceed4a97b13e385433768e6c40f013` | reconciled |
 | `agent/fix-ceqanet-windows1252-ruff` | `af2b48b61dc554f6150f5e10baa4b4fac22de291` | pending |
 | `agent/governed-ceqanet-capture-preview` | `8477d0e9e7dfffbaaeb62a29e562e2b496a8f11b` | pending |
-| `agent/harden-arcgis-bulk-rehearsal-proof` | `12770cb2b311e8c3bff40ca51ca81efc1da00bc4` | pending |
-| `agent/implement-arcgis-complete-rehearsal-executor` | `b40ff141511eb805a99cf6e81a15afc626c308ca` | pending |
+| `agent/harden-arcgis-bulk-rehearsal-proof` | `12770cb2b311e8c3bff40ca51ca81efc1da00bc4` | superseded |
+| `agent/implement-arcgis-complete-rehearsal-executor` | `b40ff141511eb805a99cf6e81a15afc626c308ca` | superseded |
 | `agent/lead-operator-cli` | `a5b25a00a43411992e645e405715fb500a1de8c9` | pending |
 | `agent/mutation-witness-validation` | `8435b1de35f6ffab70ec2ba74e2c6a4b95102370` | pending |
 | `agent/native-assurance-remediation` | `3e11e277cc1c5e0bc9d684498759d40f974b0753` | pending |
 | `agent/native-assurance-remediation-076-096` | `10037faa8fb37d61e86b1b9a690fc09d33443e0a` | pending |
 | `agent/operational-integration-gui` | `380e19c42acf3d82e7d2034de8940f2a7275b38a` | pending |
-| `agent/record-county-arcgis-bounded-proofs` | `0a9559c86430ad4160f3ecdf6d0a118b8c808baf` | pending |
+| `agent/record-county-arcgis-bounded-proofs` | `0a9559c86430ad4160f3ecdf6d0a118b8c808baf` | superseded |
 | `agent/repair-ceqanet-evidence-partial` | `ec805fdf41fc474d1021f46bf00570e58b365123` | pending |
 | `agent/result-authority-operator` | `a876d33d030033c18c538389f11c393b4f99846b` | contained |
 | `agent/result-ledger-authority` | `3eda596c7da928f0502d0bfd9dc858f91a7356dd` | pending |
