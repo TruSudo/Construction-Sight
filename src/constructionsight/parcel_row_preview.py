@@ -17,6 +17,7 @@ from constructionsight.parcel_source_models import (
     ParcelGeometrySupport,
 )
 from constructionsight.site_resolution_service import normalize_address, normalize_apn
+from constructionsight.storage.runtime_artifacts import read_runtime_text
 
 _REQUIRED_ROLES = {ParcelFieldRole.APN, ParcelFieldRole.COUNTY}
 
@@ -24,7 +25,7 @@ _REQUIRED_ROLES = {ParcelFieldRole.APN, ParcelFieldRole.COUNTY}
 def load_row_preview_input(input_path: Path) -> ParcelRowPreviewInput:
     """Load a parcel row preview input from JSON."""
 
-    payload = json.loads(input_path.read_text(encoding="utf-8"))
+    payload = json.loads(read_runtime_text(input_path))
     return ParcelRowPreviewInput.model_validate(payload)
 
 

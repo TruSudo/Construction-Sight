@@ -1,0 +1,18 @@
+{
+  "started_at": "2026-09-21T17:33:07.246387+00:00",
+  "finished_at": "2026-09-21T17:33:15.714382+00:00",
+  "cwd": "/workspace/scratch/3cb8a9b64f02/Construction-Sight-gui",
+  "base_commit": "3fd888d714ca9a14d3a3c79eb71759a8a89988dd",
+  "diff_sha256": "732570ad0efaa346a7b783478e93e2a6f87e3632f04a8d084dd97237a233846a",
+  "untracked_sha256": {},
+  "command": [
+    "/workspace/scratch/3cb8a9b64f02/Construction-Sight/.venv/bin/python",
+    "-m",
+    "mypy",
+    "src",
+    "--strict"
+  ],
+  "returncode": 0,
+  "stdout": "Success: no issues found in 273 source files\n",
+  "stderr": ""
+}

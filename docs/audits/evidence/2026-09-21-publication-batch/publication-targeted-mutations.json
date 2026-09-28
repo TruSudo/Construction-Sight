@@ -1,0 +1,75 @@
+{
+  "case_count": 7,
+  "contract_schema_version": "constructionsight.mutation-contract/v1",
+  "invalid_failure_count": 0,
+  "killed_count": 7,
+  "passed": true,
+  "results": [
+    {
+      "id": "CS-MUT-RUNTIME-READ-GROWTH-001",
+      "output_excerpt": "F                                                                        [100%]\n=================================== FAILURES ===================================\n______ test_runtime_reader_bounds_growth_even_when_initial_size_was_small ______\n\ntmp_path = PosixPath('/tmp/pytest-of-root/pytest-143/test_runtime_reader_bounds_gro0')\nmonkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7efd591c2450>\n\n    def test_runtime_reader_bounds_growth_even_when_initial_size_was_small(\n        tmp_path: Path, monkeypatch: pytest.MonkeyPatch,\n    ) -> None:\n        path = tmp_path / \"growing.json\"\n        path.write_bytes(b\"x\" * 65)\n        original_fstat = os.fstat\n    \n        def stale_size(descriptor):\n            result = original_fstat(descriptor)\n            fields = list(result)\n            fields[6] = 1\n            return os.stat_result(fields)\n    \n        monkeypatch.setattr(os, \"fstat\", stale_size)\n>       with pytest.raises(RuntimeArtifactError, match=\"file byte limit\"):\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE       Failed: DID NOT RAISE <class 'constructionsight.storage.runtime_artifacts.RuntimeArtifactError'>\n\ntests/test_runtime_artifacts.py:132: Failed\n=========================== short test summary info ============================\nFAILED tests/test_runtime_artifacts.py::test_runtime_reader_bounds_growth_even_when_initial_size_was_small\n1 failed in 0.05s\n",
+      "output_sha256": "39f7e98311710f4e8f8016a0c46b213d2a8dfd1fc7807564f76438508e519b9d",
+      "path": "src/constructionsight/storage/runtime_artifacts.py",
+      "return_code": 1,
+      "risk": "File growth after the initial size check could cross the actual read ceiling.",
+      "status": "killed"
+    },
+    {
+      "id": "CS-MUT-RUNTIME-PUBLISH-NOREPLACE-001",
+      "output_excerpt": "F                                                                        [100%]\n=================================== FAILURES ===================================\n__________ test_artifact_publication_never_replaces_a_racing_conflict __________\n\ntmp_path = PosixPath('/tmp/pytest-of-root/pytest-144/test_artifact_publication_neve0')\nmonkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7fe45949f950>\n\n    def test_artifact_publication_never_replaces_a_racing_conflict(\n        tmp_path: Path, monkeypatch: pytest.MonkeyPatch,\n    ) -> None:\n        directory = tmp_path / \"artifacts\"\n        directory.mkdir()\n        target = directory / _filename()\n        winner = b\"conflicting concurrent writer\"\n        injected = False\n        original_link, original_replace = os.link, os.replace\n    \n        def inject(destination):\n            nonlocal injected\n            if Path(destination).name == target.name and not injected:\n                injected = True\n                target.write_bytes(winner)\n    \n        def racing_link(source, destination, *args, **kwargs):\n            inject(destination)\n            return original_link(source, destination, *args, **kwargs)\n    \n        def racing_replace(source, destination, *args, **kwargs):\n            inject(destination)\n            return original_replace(source, destination, *args, **kwargs)\n    \n        monkeypatch.setattr(os, \"link\", racing_link)\n        monkeypatch.setattr(os, \"replace\", racing_replace)\n>       with pytest.raises((ValueError, ParcelArcGISBulkArtifactError)):\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE       Failed: DID NOT RAISE any of (<class 'ValueError'>, <class 'constructionsight.parcel_source_bulk_rehearsal_artifacts.ParcelArcGISBulkArtifactError'>)\n\ntests/test_runtime_artifact_publication.py:94: Failed\n=========================== short test summary info ============================\nFAILED tests/test_runtime_artifact_publication.py::test_artifact_publication_never_replaces_a_racing_conflict\n1 failed in 0.14s\n",
+      "output_sha256": "e7aa1e495591a19a279ad0976252e54671c5d3cd0c03d6b5611023f5be14ba48",
+      "path": "src/constructionsight/storage/runtime_artifacts.py",
+      "return_code": 1,
+      "risk": "A create-only evidence publication could overwrite the artifact that won a concurrent race.",
+      "status": "killed"
+    },
+    {
+      "id": "CS-MUT-RUNTIME-PUBLISH-DATA-SYNC-001",
+      "output_excerpt": "F                                                                        [100%]\n=================================== FAILURES ===================================\n___ test_artifact_data_is_synced_before_publish_and_directory_after_publish ____\n\ntmp_path = PosixPath('/tmp/pytest-of-root/pytest-146/test_artifact_data_is_synced_b0')\nmonkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7fb3b7319a90>\n\n    def test_artifact_data_is_synced_before_publish_and_directory_after_publish(\n        tmp_path: Path, monkeypatch: pytest.MonkeyPatch,\n    ) -> None:\n        directory = tmp_path / \"artifacts\"\n        directory.mkdir()\n        events = []\n        original_fsync, original_link = os.fsync, os.link\n    \n        def observe_fsync(descriptor):\n            events.append(\"data-sync\" if stat.S_ISREG(os.fstat(descriptor).st_mode) else \"dir-sync\")\n            return original_fsync(descriptor)\n    \n        def observe_link(*args, **kwargs):\n            events.append(\"publish\")\n            return original_link(*args, **kwargs)\n    \n        monkeypatch.setattr(os, \"fsync\", observe_fsync)\n        monkeypatch.setattr(os, \"link\", observe_link)\n        _retain(directory)\n>       assert events.index(\"data-sync\") < events.index(\"publish\")\n               ^^^^^^^^^^^^^^^^^^^^^^^^^\nE       ValueError: 'data-sync' is not in list\n\ntests/test_runtime_artifact_publication.py:217: ValueError\n=========================== short test summary info ============================\nFAILED tests/test_runtime_artifact_publication.py::test_artifact_data_is_synced_before_publish_and_directory_after_publish\n1 failed in 0.16s\n",
+      "output_sha256": "31bf6afa8fe2185ee34c44481b8d6931bec23b7ef0319d4d8194c77ad5c8cd60",
+      "path": "src/constructionsight/storage/runtime_artifacts.py",
+      "return_code": 1,
+      "risk": "An authoritative artifact name could be published before the complete data is durably prepared.",
+      "status": "killed"
+    },
+    {
+      "id": "CS-MUT-RUNTIME-PUBLISH-BOUND-001",
+      "output_excerpt": "F                                                                        [100%]\n=================================== FAILURES ===================================\n___ test_artifact_writer_stops_before_publishing_oversize_and_cleans_staging ___\n\ntmp_path = PosixPath('/tmp/pytest-of-root/pytest-147/test_artifact_writer_stops_bef0')\n\n    def test_artifact_writer_stops_before_publishing_oversize_and_cleans_staging(\n        tmp_path: Path,\n    ) -> None:\n        observed = []\n    \n        def chunks():\n            for index in range(100):\n                observed.append(index)\n                yield b\"x\" * 16\n    \n>       with pytest.raises(ValueError, match=\"file byte limit\"):\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE       Failed: DID NOT RAISE <class 'ValueError'>\n\ntests/test_runtime_artifact_publication.py:363: Failed\n=========================== short test summary info ============================\nFAILED tests/test_runtime_artifact_publication.py::test_artifact_writer_stops_before_publishing_oversize_and_cleans_staging\n1 failed in 0.18s\n",
+      "output_sha256": "06a517f456702756927a0f3a675536e5953bf9582cc21526248e45a55296d5f7",
+      "path": "src/constructionsight/storage/runtime_artifacts.py",
+      "return_code": 1,
+      "risk": "A stream could continue past its reviewed output ceiling and publish an oversized artifact.",
+      "status": "killed"
+    },
+    {
+      "id": "CS-MUT-RUNTIME-EXCEPTION-PARENT-BINDING-001",
+      "output_excerpt": "F                                                                        [100%]\n=================================== FAILURES ===================================\n_ test_artifact_exact_replay_rejects_parent_replacement_during_failed_publish __\n\ntmp_path = PosixPath('/tmp/pytest-of-root/pytest-148/test_artifact_exact_replay_rej0')\nmonkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7fb15a0b5c10>\n\n    def test_artifact_exact_replay_rejects_parent_replacement_during_failed_publish(\n        tmp_path: Path, monkeypatch: pytest.MonkeyPatch,\n    ) -> None:\n        directory = tmp_path / \"artifacts\"\n        replacement = tmp_path / \"replacement\"\n        _retain(directory)\n        _retain(replacement)\n        parked = tmp_path / \"parked\"\n        original_link = os.link\n        swapped = False\n    \n        def replace_parent_then_link(*args, **kwargs):\n            nonlocal swapped\n            directory.rename(parked)\n            replacement.rename(directory)\n            swapped = True\n            return original_link(*args, **kwargs)\n    \n        monkeypatch.setattr(os, \"link\", replace_parent_then_link)\n>       with pytest.raises(ValueError, match=\"path changed\"):\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE       Failed: DID NOT RAISE <class 'ValueError'>\n\ntests/test_runtime_artifact_publication.py:191: Failed\n=========================== short test summary info ============================\nFAILED tests/test_runtime_artifact_publication.py::test_artifact_exact_replay_rejects_parent_replacement_during_failed_publish\n1 failed in 0.17s\n",
+      "output_sha256": "1a61ab2eee17ad40bc60f2700bb1ee9a006d65c348442a98c9a93b3aa663b0b6",
+      "path": "src/constructionsight/storage/runtime_artifacts.py",
+      "return_code": 1,
+      "risk": "A handled publication conflict could bypass parent-identity validation and return an exact replay from a substituted directory.",
+      "status": "killed"
+    },
+    {
+      "id": "CS-MUT-RUNTIME-REPLAY-DURABILITY-001",
+      "output_excerpt": "F                                                                        [100%]\n=================================== FAILURES ===================================\n__________ test_artifact_exact_replay_syncs_verified_file_and_parent ___________\n\ntmp_path = PosixPath('/tmp/pytest-of-root/pytest-149/test_artifact_exact_replay_syn0')\nmonkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7fa04142f710>\n\n    def test_artifact_exact_replay_syncs_verified_file_and_parent(\n        tmp_path: Path, monkeypatch: pytest.MonkeyPatch,\n    ) -> None:\n        directory = tmp_path / \"artifacts\"\n        receipt = _retain(directory)\n        identity = (directory / receipt.artifact_reference).stat().st_ino\n        parent_identity = directory.stat().st_ino\n        synced = []\n        original_fsync = os.fsync\n    \n        def observed_fsync(descriptor):\n            synced.append(os.fstat(descriptor).st_ino)\n            return original_fsync(descriptor)\n    \n        monkeypatch.setattr(os, \"fsync\", observed_fsync)\n        assert _retain(directory) == receipt\n>       assert identity in synced\nE       assert 811834 in [811836, 811835, 811832]\n\ntests/test_runtime_artifact_publication.py:237: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_runtime_artifact_publication.py::test_artifact_exact_replay_syncs_verified_file_and_parent\n1 failed in 0.14s\n",
+      "output_sha256": "0e2839981958b05dadb2f499cd43f9302b00c69ab8bfb5e5499a9c9f82566f51",
+      "path": "src/constructionsight/parcel_source_bulk_rehearsal_artifacts.py",
+      "return_code": 1,
+      "risk": "Recovery from an interrupted publication could acknowledge existing matching bytes without completing data and directory durability.",
+      "status": "killed"
+    },
+    {
+      "id": "CS-MUT-CHECKPOINT-INPUT-BOUND-001",
+      "output_excerpt": "F                                                                        [100%]\n=================================== FAILURES ===================================\n_______ test_checkpoint_loader_bounds_input_before_json_materialization ________\n\ntmp_path = PosixPath('/tmp/pytest-of-root/pytest-150/test_checkpoint_loader_bounds_0')\nmonkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f5236b69af0>\n\n    def test_checkpoint_loader_bounds_input_before_json_materialization(\n        tmp_path: Path, monkeypatch: pytest.MonkeyPatch,\n    ) -> None:\n        store = JSONFileParcelArcGISCheckpointStore(tmp_path)\n        checkpoint = _checkpoint()\n        path = store.path_for(checkpoint.checkpoint_id)\n        with path.open(\"wb\") as stream:\n            stream.truncate(16 * 1024 * 1024 + 1)\n    \n        def forbidden_parse(*args, **kwargs):\n            raise AssertionError(\"oversized checkpoint reached JSON materialization\")\n    \n        monkeypatch.setattr(ParcelArcGISBulkCheckpointEvidence, \"model_validate_json\", forbidden_parse)\n        with pytest.raises(ValueError, match=\"file byte limit\"):\n>           store.load(checkpoint.checkpoint_id)\n\ntests/test_runtime_artifact_publication.py:424: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \nsrc/constructionsight/parcel_source_bulk_rehearsal.py:204: in load\n    raw = read_bounded_artifact_stream(stream, max_bytes=_MAX_CHECKPOINT_FILE_BYTES * 1024)\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nstream = <_io.BufferedReader name=16>\n\n    def read_bounded_artifact_stream(stream: BinaryIO, *, max_bytes: int) -> bytes:\n        \"\"\"Read bounded bytes while a caller holds and verifies the same artifact handle.\"\"\"\n    \n        _require_byte_limit(max_bytes)\n        if os.fstat(stream.fileno()).st_size > max_bytes:\n            raise RuntimeArtifactError(\"artifact evidence exceeds the file byte limit\")\n>       content = stream.read(max_bytes + 1)\n                  ^^^^^^^^^^^^^^^^^^^^^^^^^^\nE       MemoryError\n\nsrc/constructionsight/storage/runtime_artifacts.py:170: MemoryError\n=========================== short test summary info ============================\nFAILED tests/test_runtime_artifact_publication.py::test_checkpoint_loader_bounds_input_before_json_materialization\n1 failed in 0.16s\n",
+      "output_sha256": "8f1450dca8965fa4253bd7036b3ff03f4252975f52b77808abd6396e7a20653a",
+      "path": "src/constructionsight/parcel_source_bulk_rehearsal.py",
+      "return_code": 1,
+      "risk": "An oversized retained checkpoint could reach JSON materialization before its governed byte ceiling rejects it.",
+      "status": "killed"
+    }
+  ],
+  "schema_version": "constructionsight.mutation-report/v1",
+  "survived_count": 0,
+  "timeout_count": 0
+}

@@ -56,3 +56,41 @@ def test_authority_event_must_resolve_to_immutable_ledger_revision() -> None:
         pytest.raises(ResultAuthorityError, match="current ledger disagrees"),
     ):
         list_result_authority_events(session, workflow.workflow_id)
+
+
+def test_authority_event_must_bind_exact_ledger_content_digest() -> None:
+    engine = create_database_engine("sqlite:///:memory:")
+    initialize_database(engine)
+    factory = session_factory(engine)
+    workflow = LeadWorkflowRecord(
+        workflow_id="lead-workflow:event-digest",
+        package_id="lead-review:event-digest",
+        base_candidate_id="candidate:event-digest",
+        status=LeadWorkflowStatus.READY,
+        lead_score=80,
+    )
+
+    with managed_session(factory) as session:
+        store_lead_workflow_record(session, workflow)
+
+    with managed_session(factory) as session:
+        apply_authoritative_result(
+            session,
+            workflow_id=workflow.workflow_id,
+            expected_current_ledger_id=None,
+            status=ResultLedgerStatus.LOST,
+            authority_reason="initial loss",
+            outcome_reasons=["not selected"],
+        )
+
+    with managed_session(factory) as session:
+        row = session.execute(select(ResultAuthorityEventRow)).scalar_one()
+        payload = json.loads(row.payload_json)
+        payload["current_content_digest"] = "0" * 64
+        row.payload_json = json.dumps(payload, sort_keys=True)
+
+    with (
+        managed_session(factory) as session,
+        pytest.raises(ResultAuthorityError, match="current content digest disagrees"),
+    ):
+        list_result_authority_events(session, workflow.workflow_id)

@@ -24,6 +24,7 @@ def _identifier(kind: SiteIdentifierKind, value: str) -> SiteIdentifier:
         identifier_kind=kind,
         value=value,
         normalized_value=value,
+        evidence_id="evidence:test",
     )
 
 
@@ -64,6 +65,7 @@ def _point_hint() -> GeometryHint:
         latitude=34.1,
         longitude=-117.2,
         source_name="test source",
+        evidence_id="evidence:test",
     )
 
 
@@ -161,3 +163,30 @@ def test_resolve_site_with_parcels_falls_back_when_no_parcel_matches() -> None:
 
     assert result.status == SiteResolutionStatus.PARTIAL
     assert "no parcel core record matched site signals" in result.limitations
+
+
+def test_parcel_site_identity_binds_record_source_and_land_anchor() -> None:
+    site_input = SiteResolutionInput(
+        source_name="test source",
+        identifiers=[_identifier(SiteIdentifierKind.APN, "12345678")],
+    )
+    first = _parcel("parcel:caller-one", "12345678")
+    replay = _parcel("parcel:caller-one", "12345678")
+    county_variant = replay.model_copy(update={"county": "Riverside County"})
+    substituted_land = _parcel("parcel:caller-one", "87654321")
+
+    first_result = resolve_site_with_parcels(site_input, [first])
+    replay_result = resolve_site_with_parcels(site_input, [replay])
+    county_variant_result = resolve_site_with_parcels(site_input, [county_variant])
+
+    other_input = SiteResolutionInput(
+        source_name="test source",
+        identifiers=[_identifier(SiteIdentifierKind.APN, "87654321")],
+    )
+    substituted_result = resolve_site_with_parcels(other_input, [substituted_land])
+
+    assert first_result.primary_site_key == replay_result.primary_site_key
+    assert first_result.primary_site_key == county_variant_result.primary_site_key
+    assert first_result.primary_site_key != substituted_result.primary_site_key
+    assert first_result.primary_site_key is not None
+    assert first_result.primary_site_key.startswith("site:parcel:v2:")

@@ -1,4 +1,7 @@
 from datetime import date
+from typing import Any
+
+import pytest
 
 from constructionsight.adapters.ceqanet import CEQANET_SEARCH_URL
 from constructionsight.adapters.ceqanet_listing import (
@@ -88,14 +91,7 @@ def test_ceqanet_listing_dry_run_preserves_date_request_intent() -> None:
     assert "EndRange=2026-01-31" in report.requests[0].url
 
 
-def test_ceqanet_listing_dry_run_handles_existing_query_separator() -> None:
-    query = CeqanetListingQuery(counties=("Riverside",))
-    plan = CeqanetReadOnlyListingPlanner(
-        search_url="https://example.test/search?mode=advanced"
-    ).build_plan(query, _allowed())
-
-    report = CeqanetListingDryRunExecutor().run(plan)
-
-    assert report.requests[0].url == (
-        "https://example.test/search?mode=advanced&County=Riverside"
-    )
+def test_ceqanet_listing_planner_rejects_arbitrary_base_url_injection() -> None:
+    planner_factory: Any = CeqanetReadOnlyListingPlanner
+    with pytest.raises(TypeError):
+        planner_factory(search_url="https://example.test/search?mode=advanced")

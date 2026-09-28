@@ -88,3 +88,34 @@ def test_match_decision_to_site_returns_unmatched_without_site_hints() -> None:
 
     assert match.status == DecisionMatchStatus.UNMATCHED
     assert match.limitations == ["decision has no site key or APN hint"]
+
+
+def test_decision_identity_changes_when_observation_semantics_change() -> None:
+    first = build_decision_record(
+        source_key="agenda:test",
+        source_record_id="item-1",
+        source_kind=DecisionSourceKind.AGENDA,
+        decision_kind=DecisionKind.APPROVAL,
+        title="Project approval",
+        site_key="site:first",
+    )
+    replay = build_decision_record(
+        source_key="agenda:test",
+        source_record_id="item-1",
+        source_kind=DecisionSourceKind.AGENDA,
+        decision_kind=DecisionKind.APPROVAL,
+        title="Project approval",
+        site_key="site:first",
+    )
+    changed = build_decision_record(
+        source_key="agenda:test",
+        source_record_id="item-1",
+        source_kind=DecisionSourceKind.AGENDA,
+        decision_kind=DecisionKind.APPROVAL,
+        title="Project approval",
+        site_key="site:changed",
+    )
+
+    assert first.decision_key == replay.decision_key
+    assert first.decision_key != changed.decision_key
+    assert first.decision_key.startswith("decision:v2:")

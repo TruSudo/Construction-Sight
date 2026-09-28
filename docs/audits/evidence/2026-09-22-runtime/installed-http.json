@@ -1,0 +1,88 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "route": "/",
+      "status": 200,
+      "bytes": 5099
+    },
+    {
+      "route": "/operator_ui.js",
+      "status": 200,
+      "bytes": 32602
+    },
+    {
+      "route": "/operator_ui.css",
+      "status": 200,
+      "bytes": 9358
+    },
+    {
+      "route": "/api/health",
+      "status": 200,
+      "bytes": 84
+    },
+    {
+      "route": "/api/snapshot",
+      "status": 200,
+      "bytes": 11750
+    },
+    {
+      "route": "/api/snapshot?q=Cabazon&county=Riverside",
+      "status": 200,
+      "bytes": 11750
+    },
+    {
+      "route": "/api/snapshot?county=San+Bernardino",
+      "status": 200,
+      "bytes": 542
+    },
+    {
+      "route": "/api/footprint",
+      "status": 200,
+      "bytes": 2785
+    },
+    {
+      "route": "/api/timeline",
+      "status": 200,
+      "bytes": 1490
+    },
+    {
+      "route": "/api/candidate-preview?kind=ceqa&record_id=trial%3Aceqanet%3A2026030377%3A2",
+      "status": 200,
+      "bytes": 13224
+    },
+    {
+      "route": "/api/parcel-candidates?kind=ceqa&record_id=trial%3Aceqanet%3A2026030377%3A2",
+      "status": 200,
+      "bytes": 709
+    },
+    {
+      "route": "/api/entity-neighborhood?kind=all&entity_key=trial%3Aceqanet%3A2026030377%3Alead-agency",
+      "status": 200,
+      "bytes": 12011
+    },
+    {
+      "route": "/api/workflows",
+      "status": 200,
+      "bytes": 105
+    },
+    {
+      "route": "/api/snapshot",
+      "status": 200,
+      "bytes": 11750
+    },
+    {
+      "route": "/api/workflows",
+      "status": 200,
+      "bytes": 105
+    }
+  ],
+  "source_records": 2,
+  "retained_source_date": "2026-07-12",
+  "fresh_collection": false,
+  "database_sha256_before_reads": "3600635da08179cec92f5423807d985719c92cd83b27b4e587c8854465d7e923",
+  "database_sha256_after_reads": "3600635da08179cec92f5423807d985719c92cd83b27b4e587c8854465d7e923",
+  "candidate_docket_stage_and_separate_process_readback": "passed: one unapproved entry",
+  "restart": "passed: two source records, zero commercial workflows",
+  "browser_visual_check": "not performed: cloud browser blocks loopback access"
+}

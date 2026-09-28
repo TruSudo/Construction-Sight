@@ -22,6 +22,7 @@ from constructionsight.parcel_source_models import (
     ParcelSourceFormat,
 )
 from constructionsight.parcel_source_registry import get_parcel_sources
+from constructionsight.storage.runtime_artifacts import read_runtime_text
 
 _FIELD_SPLIT_RE = re.compile(r"[^a-z0-9]+")
 
@@ -96,7 +97,7 @@ _REQUIRED_ROLES = {ParcelFieldRole.APN, ParcelFieldRole.COUNTY}
 def load_schema_preview_input(input_path: Path) -> ParcelSchemaPreviewInput:
     """Load a schema preview input from JSON."""
 
-    payload = json.loads(input_path.read_text(encoding="utf-8"))
+    payload = json.loads(read_runtime_text(input_path))
     return ParcelSchemaPreviewInput.model_validate(payload)
 
 

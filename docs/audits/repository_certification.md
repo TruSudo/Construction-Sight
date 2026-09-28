@@ -20,13 +20,14 @@ The certification command is:
 python -m constructionsight.repository_certification --root . --require-clean-worktree
 ```
 
-The command enumerates the repository with `git ls-files`; it does not rely on GitHub code-search indexing, file-name assumptions, or a hand-maintained inventory.
+The command enumerates the repository index with `git ls-files --stage`; it does not rely on GitHub code-search indexing, file-name assumptions, or a hand-maintained inventory.
 
 ## Tracked-tree checks
 
 Certification rejects:
 
 - case-insensitive or Unicode-normalization path collisions;
+- Git mode `120000`, worktree symbolic links, and symlinked path components;
 - tracked cache directories, bytecode, editor backups, temporary files, and diagnostic output;
 - unexpectedly oversized tracked files;
 - invalid UTF-8 text, carriage-return line endings, missing final newlines, and trailing whitespace;
@@ -41,6 +42,8 @@ Certification rejects:
 - weakened Ruff or mypy configuration;
 - missing mandatory CI gates; and
 - a dirty worktree after validation.
+
+Governance evidence, test, doctrine, ADR, dependency-lock, review, and mutation references share one strict resolver. Each reference must use canonical repository-relative spelling, match its required artifact kind, resolve to a regular file without traversing a symbolic link, and remain inside the resolved repository root.
 
 ## Mandatory CI matrix
 
@@ -58,7 +61,7 @@ python -m constructionsight.repository_certification --root . --require-clean-wo
 git diff --check
 ```
 
-Warnings are errors. Test configuration and markers are strict. The certification command runs after tests and domain audits so test execution may not leave tracked or untracked residue.
+Warnings are errors. Test configuration and markers are strict. The vulnerability scanner runs in a separate matrix job. Each executable quality job verifies exact installed-distribution identity immediately before its first executable gate and immediately after its last gate. Both job classes reject tracked symbolic links before consuming lock or evidence paths. The certification command runs after tests and domain audits so test execution may not leave tracked or untracked residue.
 
 ## Defect and capability classification
 

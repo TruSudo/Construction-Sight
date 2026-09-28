@@ -1,10 +1,12 @@
+from datetime import date
+
 import pytest
 from pydantic import ValidationError
 
 from constructionsight.domain_types import PartyRole
 from constructionsight.entity_models import Entity
 from constructionsight.planning_models import PlanningCaseRecord
-from constructionsight.provenance import Provenance
+from constructionsight.provenance import Provenance, ProvenanceConfidenceBasis
 from constructionsight.site_models import Site
 
 
@@ -43,6 +45,53 @@ def test_planning_case_requires_case_number() -> None:
         )
 
 
+@pytest.mark.parametrize(
+    ("filed", "hearing", "approval"),
+    (
+        (date(2026, 3, 2), date(2026, 3, 1), None),
+        (date(2026, 3, 2), None, date(2026, 3, 1)),
+        (None, date(2026, 3, 2), date(2026, 3, 1)),
+    ),
+)
+def test_planning_case_rejects_contradictory_lifecycle_dates(
+    filed: date | None,
+    hearing: date | None,
+    approval: date | None,
+) -> None:
+    with pytest.raises(ValidationError):
+        PlanningCaseRecord(
+            case_key="planning:test:chronology",
+            case_number="PC-CHRONO",
+            jurisdiction="Test Jurisdiction",
+            county="Test County",
+            filed_date=filed,
+            hearing_date=hearing,
+            approval_date=approval,
+        )
+
+
+def test_planning_case_allows_partial_and_ordered_lifecycle_dates() -> None:
+    partial = PlanningCaseRecord(
+        case_key="planning:test:partial",
+        case_number="PC-PARTIAL",
+        jurisdiction="Test Jurisdiction",
+        county="Test County",
+        hearing_date=date(2026, 3, 2),
+    )
+    ordered = PlanningCaseRecord(
+        case_key="planning:test:ordered",
+        case_number="PC-ORDERED",
+        jurisdiction="Test Jurisdiction",
+        county="Test County",
+        filed_date=date(2026, 3, 1),
+        hearing_date=date(2026, 3, 2),
+        approval_date=date(2026, 3, 3),
+    )
+
+    assert partial.filed_date is None
+    assert ordered.approval_date == date(2026, 3, 3)
+
+
 def test_planning_case_links_site_entity_and_provenance() -> None:
     site = Site(site_key="site:test:planning", county="Test County")
     entity = Entity(
@@ -50,7 +99,13 @@ def test_planning_case_links_site_entity_and_provenance() -> None:
         name="Synthetic Applicant LLC",
         role=PartyRole.APPLICANT,
     )
-    provenance = Provenance(source_name="Synthetic Public Source", confidence_score=75)
+    provenance = Provenance(
+        source_name="Synthetic Public Source",
+        adapter_family="synthetic-test",
+        raw_reference="synthetic:test",
+        evidence_text="retained synthetic public evidence",
+        confidence_basis=ProvenanceConfidenceBasis.DETERMINISTIC_NORMALIZATION,
+    )
 
     case = PlanningCaseRecord(
         case_key="planning:test:linked",

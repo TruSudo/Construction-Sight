@@ -10,7 +10,14 @@ runner = CliRunner()
 
 def _plan(path: Path) -> None:
     payload = {
-        "metadata": {"schema_version": "ceqanet_write_plan.v1"},
+        "metadata": {
+            "schema_version": "ceqanet_write_plan.v1",
+            "operation_count": 3,
+            "skipped_item_count": 0,
+            "network_executed": False,
+            "database_opened": False,
+            "persistence_mutated": False,
+        },
         "operations": [
             {
                 "operation_id": "sites:site:ceqanet:2017101033",
@@ -21,18 +28,24 @@ def _plan(path: Path) -> None:
                 "payload": {
                     "site_key": "site:ceqanet:2017101033",
                     "county": "San Bernardino",
+                    "city": "San Bernardino",
                 },
             },
             {
-                "operation_id": "entities:entity:ceqanet:lead-agency:san-bernardino-county",
+                "operation_id": (
+                    "entities:entity:ceqanet:lead-agency:san-bernardino-county"
+                ),
                 "action": "upsert_preview",
                 "target_collection": "entities",
                 "target_key": "entity:ceqanet:lead-agency:san-bernardino-county",
                 "source_index": 0,
                 "payload": {
-                    "entity_key": "entity:ceqanet:lead-agency:san-bernardino-county",
+                    "entity_key": (
+                        "entity:ceqanet:lead-agency:san-bernardino-county"
+                    ),
                     "name": "San Bernardino County",
                     "role": "agency",
+                    "county": "San Bernardino",
                 },
             },
             {
@@ -44,10 +57,14 @@ def _plan(path: Path) -> None:
                 "payload": {
                     "ceqa_key": "ceqa:ceqanet:2017101033",
                     "title": "San Bernardino Countywide Plan",
+                    "county": "San Bernardino",
+                    "lead_agency": "San Bernardino County",
                     "state_clearinghouse_number": "2017101033",
+                    "description": "Countywide policy plan.",
                 },
             },
         ],
+        "skipped_items": [],
     }
     path.write_text(json.dumps(payload), encoding="utf-8")
 
@@ -71,8 +88,8 @@ def test_ceqanet_persistence_cli_json_output(tmp_path: Path) -> None:
     )
 
     assert result.exit_code == 0
-    payload = json.loads(result.output)
-    assert payload["metadata"]["schema_version"] == "ceqanet_persistence_execution.v1"
+    payload = json.loads(result.stdout)
+    assert payload["metadata"]["schema_version"] == "ceqanet_persistence_execution.v2"
     assert payload["metadata"]["applied_count"] == 3
     assert payload["metadata"]["database_opened"] is True
     assert payload["metadata"]["persistence_mutated"] is True
@@ -101,7 +118,9 @@ def test_ceqanet_persistence_cli_refuses_without_consent(tmp_path: Path) -> None
     assert not db_path.exists()
 
 
-def test_ceqanet_persistence_cli_requires_json_for_file_output(tmp_path: Path) -> None:
+def test_ceqanet_persistence_cli_requires_json_for_file_output(
+    tmp_path: Path,
+) -> None:
     plan_path = tmp_path / "plan.json"
     db_path = tmp_path / "construction.sqlite3"
     _plan(plan_path)

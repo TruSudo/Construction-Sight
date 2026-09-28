@@ -10,16 +10,19 @@ from rich.console import Console
 from rich.table import Table
 from sqlalchemy.orm import Session, sessionmaker
 
+from constructionsight.authorization_decision import AuthorizationDeniedError
 from constructionsight.lead_operator_models import LeadOperatorRecordKind
 from constructionsight.lead_operator_service import (
     LeadOperatorError,
     get_lead_operator_record,
     list_lead_operator_records,
     load_persisted_lead_workflow,
-    transition_persisted_lead_workflow,
 )
 from constructionsight.lead_workflow_models import LeadWorkflowStatus
 from constructionsight.lead_workflow_rules import LEAD_WORKFLOW_TRANSITION_RULES
+from constructionsight.operator_services.lead_workflow_transition_service import (
+    apply_authorized_lead_workflow_transition,
+)
 from constructionsight.storage.database import (
     create_database_engine,
     initialize_database,
@@ -247,11 +250,18 @@ def transition_workflow(
         str | None,
         typer.Option(help="SQLAlchemy database URL."),
     ] = None,
+    operator_id: Annotated[
+        str | None,
+        typer.Option(
+            "--operator-id",
+            help="Optional local audit identity; this is not authentication.",
+        ),
+    ] = None,
     apply_changes: Annotated[
         bool,
         typer.Option(
             "--apply",
-            help="Explicitly authorize the persisted status transition.",
+            help="Explicitly confirm the exact persisted status transition.",
         ),
     ] = False,
     json_output: Annotated[
@@ -266,15 +276,18 @@ def transition_workflow(
     factory = _database_factory(database_url)
     try:
         with managed_session(factory) as session:
-            report = transition_persisted_lead_workflow(
+            result = apply_authorized_lead_workflow_transition(
                 session,
                 workflow_id=workflow_id,
                 expected_current_status=expected_current_status,
                 next_status=next_status,
                 reason=reason,
+                caller_confirmation=True,
+                operator_id=operator_id,
             )
-    except ValueError as exc:
+    except (AuthorizationDeniedError, ValueError) as exc:
         _fail(str(exc))
+    report = result.report
     if json_output:
         console.print_json(json.dumps(report.to_dict()))
         return

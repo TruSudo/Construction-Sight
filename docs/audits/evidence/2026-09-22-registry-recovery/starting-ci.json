@@ -1,0 +1,38 @@
+{
+  "311": {
+    "commit": "c00df16369b23aa801c3ee031a0c7bc35ed24f73",
+    "run_id": 35669287404,
+    "job_id": 106561907963,
+    "raw_log_sha256": "60b4db0bcbd3e901b3120fa218e5a92d564914b910326c35d9b6d568cc0a6c92",
+    "summary_lines": [
+      "2026-09-21T23:49:46.4144238Z src/constructionsight/source_registry_update_plan_cli.py:3:1: I001 [*] Import block is un-sorted or un-formatted",
+      "2026-09-21T23:49:46.4172565Z    | |_^ I001",
+      "2026-09-21T23:49:46.4174545Z tests/test_source_registry_update_plan.py:522:5: F841 Local variable `committed_mtime` is assigned to but never used",
+      "2026-09-21T23:49:46.4176516Z     |     ^^^^^^^^^^^^^^^ F841",
+      "2026-09-21T23:49:46.4178117Z Found 2 errors.",
+      "2026-09-21T23:50:06.7164607Z Success: no issues found in 263 source files",
+      "2026-09-21T23:51:04.9247611Z ============================ 1860 passed in 56.18s =============================",
+      "2026-09-21T23:53:36.0644377Z Mutation certification passed: 142/142 mutants killed.",
+      "2026-09-21T23:53:41.5725466Z Native assurance preflight passed; only finalization transaction blockers remain.",
+      "2026-09-21T23:53:45.8106190Z Repository certification failed with 76 finding(s)."
+    ]
+  },
+  "312": {
+    "commit": "c00df16369b23aa801c3ee031a0c7bc35ed24f73",
+    "run_id": 35669287404,
+    "job_id": 106561907912,
+    "raw_log_sha256": "882eb1e3323be21d5c7c4b4191c1f39f49f94a1a015feea1921d8902a7413590",
+    "summary_lines": [
+      "2026-09-21T23:49:51.5335392Z src/constructionsight/source_registry_update_plan_cli.py:3:1: I001 [*] Import block is un-sorted or un-formatted",
+      "2026-09-21T23:49:51.5376777Z    | |_^ I001",
+      "2026-09-21T23:49:51.5378421Z tests/test_source_registry_update_plan.py:522:5: F841 Local variable `committed_mtime` is assigned to but never used",
+      "2026-09-21T23:49:51.5380321Z     |     ^^^^^^^^^^^^^^^ F841",
+      "2026-09-21T23:49:51.5381776Z Found 2 errors.",
+      "2026-09-21T23:50:19.6615072Z Success: no issues found in 263 source files",
+      "2026-09-21T23:51:27.8379901Z ======================= 1860 passed in 65.25s (0:01:05) ========================",
+      "2026-09-21T23:54:38.7453144Z Mutation certification passed: 142/142 mutants killed.",
+      "2026-09-21T23:54:45.0949547Z Native assurance preflight passed; only finalization transaction blockers remain.",
+      "2026-09-21T23:54:49.8220433Z Repository certification failed with 76 finding(s)."
+    ]
+  }
+}

@@ -31,6 +31,12 @@ class OpportunityEnrichmentSignal(BaseModel):
     reason: str = Field(min_length=1)
     limitations: list[str] = Field(default_factory=list)
 
+    @property
+    def operational_score_delta(self) -> int:
+        """Return confidence-weighted operational contribution."""
+
+        return round(self.score_delta * (self.confidence_score / 100))
+
     @field_validator("limitations")
     @classmethod
     def require_unique_limitations(cls, values: list[str]) -> list[str]:
@@ -75,6 +81,19 @@ class OpportunityEnrichmentReport(BaseModel):
             raise ValueError("confidence_band must match confidence_score")
         if self.lead_score > 0 and not self.signals:
             raise ValueError("positive enrichment score requires signals")
+        expected_confidence = (
+            round(sum(signal.confidence_score for signal in self.signals) / len(self.signals))
+            if self.signals
+            else 0
+        )
+        if self.confidence_score != expected_confidence:
+            raise ValueError("confidence_score must be derived from enrichment signals")
+        expected_score = min(
+            sum(signal.operational_score_delta for signal in self.signals),
+            100,
+        )
+        if self.lead_score != expected_score:
+            raise ValueError("lead_score must use confidence-weighted signal contributions")
         return self
 
     def to_dict(self) -> dict[str, Any]:

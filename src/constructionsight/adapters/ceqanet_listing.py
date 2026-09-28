@@ -115,9 +115,6 @@ class CeqanetListingPlan:
 class CeqanetReadOnlyListingPlanner:
     """Build conservative read-only CEQAnet listing plans."""
 
-    def __init__(self, search_url: str = CEQANET_ADVANCED_SEARCH_ACTION_URL) -> None:
-        self.search_url = search_url
-
     def build_plan(
         self,
         query: CeqanetListingQuery,
@@ -135,7 +132,7 @@ class CeqanetReadOnlyListingPlanner:
         pages = tuple(
             CeqanetListingPagePlan(
                 method="GET",
-                search_url=self.search_url,
+                search_url=CEQANET_ADVANCED_SEARCH_ACTION_URL,
                 page_number=page_number,
                 page_size=query.page_size,
                 params=self._params_for_page(query, page_number),

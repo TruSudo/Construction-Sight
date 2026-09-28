@@ -1,0 +1,23 @@
+{
+  "started_at": "2026-09-21T17:26:33.021070+00:00",
+  "finished_at": "2026-09-21T17:26:47.042804+00:00",
+  "cwd": "/workspace/scratch/3cb8a9b64f02/Construction-Sight",
+  "base_commit": "49c79447491bd531299331ad6a5846e64eb1c08e",
+  "diff_sha256": "56df33fe7dc46dce1499dcee0bb2ba14ee4dc1ad368f00707af1dcfc81719ffa",
+  "untracked_sha256": {
+    "tests/test_runtime_output_writers.py": "445d92cd552d2d0e412c586ebabb2bc342717ec0a3ca590f95b66df43bcd4fdb"
+  },
+  "command": [
+    "/workspace/scratch/3cb8a9b64f02/Construction-Sight/.venv/bin/python",
+    "-m",
+    "pytest",
+    "tests/test_runtime_output_writers.py",
+    "-q",
+    "-W",
+    "error",
+    "--tb=short"
+  ],
+  "returncode": 1,
+  "stdout": "........................................................................ [ 61%]\n..........................F..................                            [100%]\n=================================== FAILURES ===================================\n_______________ test_registry_plan_preserves_a_concurrent_output _______________\ntests/test_runtime_output_writers.py:156: in test_registry_plan_preserves_a_concurrent_output\n    assert result.exit_code != 0\nE   assert 0 != 0\nE    +  where 0 = <Result okay>.exit_code\n=========================== short test summary info ============================\nFAILED tests/test_runtime_output_writers.py::test_registry_plan_preserves_a_concurrent_output\n1 failed, 116 passed in 11.66s\n",
+  "stderr": ""
+}

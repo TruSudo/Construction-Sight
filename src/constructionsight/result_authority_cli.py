@@ -11,9 +11,12 @@ from rich.console import Console
 from rich.table import Table
 from sqlalchemy.orm import Session, sessionmaker
 
+from constructionsight.authorization_decision import AuthorizationDeniedError
+from constructionsight.operator_services.result_authority_apply_service import (
+    apply_authorized_authoritative_result,
+)
 from constructionsight.result_authority_service import (
     ResultAuthorityError,
-    apply_authoritative_result,
     list_result_authority_events,
     load_result_authority_snapshot,
 )
@@ -230,11 +233,18 @@ def record_result(
         str | None,
         typer.Option(help="SQLAlchemy database URL."),
     ] = None,
+    operator_id: Annotated[
+        str | None,
+        typer.Option(
+            "--operator-id",
+            help="Optional local audit identity; this is not authentication.",
+        ),
+    ] = None,
     apply_changes: Annotated[
         bool,
         typer.Option(
             "--apply",
-            help="Explicitly authorize the persisted result selection or correction.",
+            help="Explicitly confirm the exact result selection or correction.",
         ),
     ] = False,
     json_output: Annotated[
@@ -242,7 +252,7 @@ def record_result(
         typer.Option("--json-output", help="Print machine-readable JSON."),
     ] = False,
 ) -> None:
-    """Create or correct one result through the serialized authority service."""
+    """Create or correct one result through serialized scope-bound authority."""
 
     if not apply_changes:
         _fail("Explicit --apply authorization is required.")
@@ -251,19 +261,22 @@ def record_result(
         parsed_date = _decided_date(decided_date)
         factory = _database_factory(database_url)
         with managed_session(factory) as session:
-            report = apply_authoritative_result(
+            result = apply_authorized_authoritative_result(
                 session,
                 workflow_id=workflow_id,
                 expected_current_ledger_id=expected,
                 status=status,
-                authority_reason=authority_reason,
+                authorization_reason=authority_reason,
+                caller_confirmation=True,
                 decided_date=parsed_date,
                 gross_value=gross_value,
                 share_rate=share_rate,
                 outcome_reasons=outcome_reason,
+                operator_id=operator_id,
             )
-    except ValueError as exc:
+    except (AuthorizationDeniedError, ValueError) as exc:
         _fail(str(exc))
+    report = result.report
     if json_output:
         console.print_json(json.dumps(report.to_dict()))
         return

@@ -15,7 +15,7 @@ def _signal(score_delta: int = 80, limitation: str | None = None) -> Opportunity
         signal_kind=EnrichmentSignalKind.PERMIT_TRANSITION,
         label="permit",
         score_delta=score_delta,
-        confidence_score=80,
+        confidence_score=100,
         reason="permit status changed",
         limitations=limitations,
     )
@@ -27,7 +27,7 @@ def _report(
     signals: list[OpportunityEnrichmentSignal],
     limitations: list[str] | None = None,
 ) -> OpportunityEnrichmentReport:
-    confidence_score = 80 if signals else 0
+    confidence_score = 100 if signals else 0
     return OpportunityEnrichmentReport(
         report_id="opportunity-enrichment:test",
         base_candidate_id="candidate:test",
@@ -88,3 +88,28 @@ def test_build_lead_review_package_preserves_evidence_notes() -> None:
     )
 
     assert package.evidence_notes == ["permit_transition: permit status changed"]
+
+
+def test_package_identity_binds_report_semantics_not_only_report_id() -> None:
+    first = _report(lead_score=80, signals=[_signal(score_delta=80)])
+    changed_signal = OpportunityEnrichmentSignal(
+        signal_key="signal:test",
+        signal_kind=EnrichmentSignalKind.PERMIT_TRANSITION,
+        label="permit",
+        score_delta=70,
+        confidence_score=100,
+        reason="permit status changed",
+    )
+    changed = OpportunityEnrichmentReport(
+        report_id=first.report_id,
+        base_candidate_id=first.base_candidate_id,
+        lead_score=70,
+        confidence_score=100,
+        confidence_band=confidence_band(100),
+        signals=[changed_signal],
+        next_action="test next step",
+    )
+
+    assert build_lead_review_package(first).package_id != (
+        build_lead_review_package(changed).package_id
+    )

@@ -58,7 +58,6 @@ def resolve_site_with_parcels(
     limitations = [] if len(candidates) == 1 else ["multiple parcel records matched equally"]
     primary_site_key = candidates[0].site_key if len(candidates) == 1 else None
     return SiteResolutionResult(
-        resolution_id=_resolution_id(site_input, candidates),
         source_name=site_input.source_name,
         evidence_id=site_input.evidence_id,
         status=status,
@@ -190,31 +189,26 @@ def _match_strength(score: int) -> SiteMatchStrength:
 
 
 def _site_key_from_parcel(parcel: ParcelCoreRecord) -> str:
-    """Build deterministic site key from parcel identity."""
-
-    return f"site:{_short_hash(parcel.parcel_record_id)}"
-
-
-def _resolution_id(
-    site_input: SiteResolutionInput,
-    candidates: list[SiteResolutionCandidate],
-) -> str:
-    """Build deterministic parcel-backed resolution id."""
+    """Bind site identity to the complete parcel/source land anchor."""
 
     basis = "|".join(
         [
-            site_input.evidence_id or "",
-            site_input.source_name,
-            ",".join(candidate.site_key for candidate in candidates),
+            parcel.parcel_record_id,
+            parcel.source_key,
+            parcel.source_record_id or "",
+            parcel.state.upper(),
+            _normalize_county_identity(parcel.county),
+            parcel.normalized_apn,
         ]
     )
-    return f"site-resolution:{_short_hash(basis)}"
+    digest = hashlib.sha256(basis.encode("utf-8")).hexdigest()
+    return f"site:parcel:v2:{digest}"
 
 
-def _short_hash(value: str) -> str:
-    """Return a short deterministic hash."""
+def _normalize_county_identity(value: str) -> str:
+    """Normalize equivalent county labels for stable land identity."""
 
-    return hashlib.sha256(value.encode("utf-8")).hexdigest()[:16]
+    return " ".join(value.strip().casefold().split()).removesuffix(" county")
 
 
 def _unique(values: list[str]) -> list[str]:

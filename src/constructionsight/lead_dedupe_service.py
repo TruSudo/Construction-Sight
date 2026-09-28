@@ -3,24 +3,22 @@
 from __future__ import annotations
 
 import hashlib
-import re
+import json
 
 from constructionsight.lead_dedupe_models import (
     LeadDuplicateResult,
     LeadDuplicateStatus,
     LeadFingerprint,
+    canonical_lead_fingerprint_key,
+    normalize_lead_title_value,
 )
 from constructionsight.lead_review_models import LeadReviewPackage
-
-_SPACE_RE = re.compile(r"\s+")
-_NON_WORD_RE = re.compile(r"[^A-Z0-9]+")
 
 
 def normalize_lead_title(value: str) -> str:
     """Normalize lead title text for duplicate checks."""
 
-    cleaned = _NON_WORD_RE.sub(" ", value.upper())
-    return _SPACE_RE.sub(" ", cleaned).strip()
+    return normalize_lead_title_value(value)
 
 
 def build_lead_fingerprint(
@@ -34,7 +32,7 @@ def build_lead_fingerprint(
     """Build deterministic lead fingerprint from review package and source hints."""
 
     normalized_title = normalize_lead_title(title) if title else None
-    fingerprint_key = _fingerprint_key(
+    fingerprint_key = canonical_lead_fingerprint_key(
         site_key=site_key,
         source_key=source_key,
         source_record_id=source_record_id,
@@ -46,6 +44,7 @@ def build_lead_fingerprint(
         site_key=site_key,
         source_key=source_key,
         source_record_id=source_record_id,
+        raw_title=title,
         normalized_title=normalized_title,
         lead_score=package.lead_score,
     )
@@ -82,7 +81,7 @@ def check_lead_duplicate(
         matched_keys = []
         reasons.append("no duplicate lead fingerprint found")
     return LeadDuplicateResult(
-        result_id=_result_id(candidate, matched_keys),
+        result_id=_result_id(candidate, status, matched_keys, reasons),
         status=status,
         candidate=candidate,
         matched_fingerprint_keys=_unique(matched_keys),
@@ -107,26 +106,32 @@ def _same_source_record(candidate: LeadFingerprint, existing: LeadFingerprint) -
     )
 
 
-def _fingerprint_key(
-    *,
-    site_key: str | None,
-    source_key: str | None,
-    source_record_id: str | None,
-    normalized_title: str | None,
+def _result_id(
+    candidate: LeadFingerprint,
+    status: LeadDuplicateStatus,
+    matched_keys: list[str],
+    reasons: list[str],
 ) -> str:
-    """Build deterministic lead fingerprint key."""
+    """Bind each candidate's immutable verdict to a versioned semantic identity.
 
-    basis = "|".join(
-        [site_key or "", source_key or "", source_record_id or "", normalized_title or ""]
+    Observation time and score may change on a rescan; candidate attribution,
+    match basis and decision content may not share an old verdict identity.
+    Existing persisted v1 IDs remain readable without rewriting their receipts.
+    """
+
+    basis = json.dumps(
+        {
+            "schema_version": "constructionsight.lead-duplicate/v2",
+            "candidate": candidate.model_dump(mode="json", exclude={"created_at", "lead_score"}),
+            "status": status.value,
+            "matched_fingerprint_keys": sorted(set(matched_keys)),
+            "reasons": sorted(set(reasons)),
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=True,
     )
-    return f"lead-fingerprint:{_short_hash(basis)}"
-
-
-def _result_id(candidate: LeadFingerprint, matched_keys: list[str]) -> str:
-    """Build deterministic duplicate result id."""
-
-    basis = "|".join([candidate.fingerprint_key, ",".join(sorted(matched_keys))])
-    return f"lead-duplicate:{_short_hash(basis)}"
+    return f"lead-duplicate:v2:{hashlib.sha256(basis.encode('utf-8')).hexdigest()}"
 
 
 def _short_hash(value: str) -> str:

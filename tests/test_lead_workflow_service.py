@@ -1,7 +1,12 @@
+from concurrent.futures import ThreadPoolExecutor
+
+import pytest
+
 from constructionsight.lead_dedupe_models import (
     LeadDuplicateResult,
     LeadDuplicateStatus,
     LeadFingerprint,
+    canonical_lead_fingerprint_key,
 )
 from constructionsight.lead_review_models import (
     LeadReviewItem,
@@ -37,7 +42,12 @@ def _package(status: LeadReviewStatus, score: int = 50) -> LeadReviewPackage:
 
 def _duplicate_result(status: LeadDuplicateStatus) -> LeadDuplicateResult:
     fingerprint = LeadFingerprint(
-        fingerprint_key="lead-fingerprint:test",
+        fingerprint_key=canonical_lead_fingerprint_key(
+            site_key="site:test",
+            source_key=None,
+            source_record_id=None,
+            normalized_title=None,
+        ),
         base_candidate_id="candidate:test",
         site_key="site:test",
     )
@@ -70,7 +80,12 @@ def test_create_lead_workflow_holds_duplicate() -> None:
 
 def test_create_lead_workflow_reviews_near_match() -> None:
     fingerprint = LeadFingerprint(
-        fingerprint_key="lead-fingerprint:test",
+        fingerprint_key=canonical_lead_fingerprint_key(
+            site_key="site:test",
+            source_key=None,
+            source_record_id=None,
+            normalized_title=None,
+        ),
         base_candidate_id="candidate:test",
         site_key="site:test",
     )
@@ -85,8 +100,47 @@ def test_create_lead_workflow_reviews_near_match() -> None:
         duplicate_result=duplicate_result,
     )
 
-    assert record.status == LeadWorkflowStatus.READY
+    assert record.status == LeadWorkflowStatus.REVIEW
     assert "lead fingerprint needs review" in record.limitations
+
+
+@pytest.mark.parametrize(
+    "duplicate_status", [LeadDuplicateStatus.DUPLICATE, LeadDuplicateStatus.REVIEW_NEEDED],
+)
+def test_unresolved_duplicate_cannot_transition_to_ready(
+    duplicate_status: LeadDuplicateStatus,
+) -> None:
+    record = create_lead_workflow(
+        package=_package(LeadReviewStatus.READY, score=80),
+        duplicate_result=_duplicate_result(duplicate_status),
+    )
+    with pytest.raises(ValueError, match="unresolved duplicate review"):
+        transition_lead_workflow(
+            record=record,
+            next_status=LeadWorkflowStatus.READY,
+            reason="attempt to skip unresolved duplicate review",
+        )
+    assert record.status in (LeadWorkflowStatus.HOLD, LeadWorkflowStatus.REVIEW)
+    assert len(record.events) == 1
+
+
+def test_competing_unresolved_duplicate_transitions_remain_non_actionable() -> None:
+    record = create_lead_workflow(
+        package=_package(LeadReviewStatus.READY, score=80),
+        duplicate_result=_duplicate_result(LeadDuplicateStatus.REVIEW_NEEDED),
+    )
+
+    def attempt(_index: int) -> bool:
+        with pytest.raises(ValueError, match="unresolved duplicate review"):
+            transition_lead_workflow(
+                record=record, next_status=LeadWorkflowStatus.READY,
+                reason="racing transition",
+            )
+        return record.status == LeadWorkflowStatus.REVIEW
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        assert all(pool.map(attempt, range(4)))
+    assert len(record.events) == 1
 
 
 def test_transition_lead_workflow_appends_event() -> None:

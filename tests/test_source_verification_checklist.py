@@ -18,8 +18,8 @@ from constructionsight.source_verification_checklist_models import (
     SourceVerificationObservation,
 )
 from constructionsight.source_verification_checklist_service import (
+    _build_source_verification_checklist_report_from_results,
     build_source_observation_templates,
-    build_source_verification_checklist_report,
 )
 
 
@@ -69,11 +69,12 @@ def _reachable(source: PublicSource) -> HttpReachabilityResult:
 
 
 def test_checklist_without_observations_stays_entry_reachable_only() -> None:
-    report = build_source_verification_checklist_report(
-        [_source()],
+    source = _source()
+    report = _build_source_verification_checklist_report_from_results(
+        [source],
         default_adapter_family_specs(),
-        check_http=True,
-        http_checker=_reachable,
+        http_results=(_reachable(source),),
+        observations=None,
     )
     row = report.rows[0]
 
@@ -84,11 +85,11 @@ def test_checklist_without_observations_stays_entry_reachable_only() -> None:
 
 
 def test_checklist_observation_can_record_query_and_detail_behavior() -> None:
-    report = build_source_verification_checklist_report(
-        [_source()],
+    source = _source()
+    report = _build_source_verification_checklist_report_from_results(
+        [source],
         default_adapter_family_specs(),
-        check_http=True,
-        http_checker=_reachable,
+        http_results=(_reachable(source),),
         observations=[
             SourceVerificationObservation(
                 source_name="Test Source",

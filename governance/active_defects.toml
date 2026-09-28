@@ -1,0 +1,3 @@
+schema_version = "constructionsight.active-defects/v1"
+certification_requires_zero = true
+defects = []

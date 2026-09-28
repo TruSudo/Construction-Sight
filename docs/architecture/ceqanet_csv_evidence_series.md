@@ -50,12 +50,16 @@ The governed executor makes no request until it has:
 6. confirmed that authorization follows the current append-only series head;
 7. confirmed that normalized row retention is between 0 and 1,000;
 8. confirmed that the requested export scope is allowed;
-9. received explicit `--execute-live` authorization; and
-10. confirmed that the output path is distinct, available, and writable enough
+9. received explicit `--execute-live` authorization;
+10. atomically reserved the policy, series, request, and trusted UTC-date allowance in the ConstructionSight-owned durable consumption store; and
+11. confirmed that the output path is distinct, available, and writable enough
    to create its parent directory.
 
 The request then uses the policy's 20-second timeout and 10,000,000-byte maximum
-body. The existing bounded executor performs exactly one GET and zero retries.
+body. The existing bounded executor performs exactly one GET and zero retries. An
+exact committed replay returns the retained evidence execution without a second
+GET. A concurrent, conflicting, failed, unavailable-store, or crash-indeterminate
+allowance cannot execute automatically.
 
 ## Series rules
 

@@ -14,6 +14,9 @@ from constructionsight.adapters.ceqanet_listing import (
     CeqanetListingPagePlan,
     CeqanetListingPlan,
 )
+from constructionsight.adapters.ceqanet_search_contract import (
+    CEQANET_ADVANCED_SEARCH_ACTION_URL,
+)
 
 
 @dataclass(frozen=True)
@@ -98,7 +101,8 @@ class CeqanetListingDryRunExecutor:
 def _url_with_params(base_url: str, params: tuple[tuple[str, str], ...]) -> str:
     """Return a deterministic URL preview with encoded query parameters."""
 
+    if base_url != CEQANET_ADVANCED_SEARCH_ACTION_URL:
+        raise ValueError("CEQAnet listing base URL is outside the canonical search contract")
     if not params:
         return base_url
-    separator = "&" if "?" in base_url else "?"
-    return f"{base_url}{separator}{urlencode(params)}"
+    return f"{base_url}?{urlencode(params)}"

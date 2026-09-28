@@ -23,6 +23,7 @@ class OpportunityScoringProfile(BaseModel):
     high_value_threshold: int = Field(ge=0, le=100)
     review_threshold: int = Field(ge=0, le=100)
     monitor_threshold: int = Field(ge=0, le=100)
+    minimum_actionable_confidence: int = Field(default=70, ge=0, le=100)
 
     @field_validator("permit_transition_scores")
     @classmethod
@@ -68,7 +69,7 @@ class OpportunityScoringProfile(BaseModel):
 
 DEFAULT_OPPORTUNITY_SCORING_PROFILE = OpportunityScoringProfile(
     profile_key="opportunity-scoring:default",
-    version="2026-06-30.1",
+    version="2026-09-25.1",
     site_resolved_score=20,
     site_partial_score=10,
     permit_transition_scores={

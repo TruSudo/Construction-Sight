@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from datetime import UTC, date, datetime
 from enum import StrEnum
 from typing import Any
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class ResultLedgerStatus(StrEnum):
@@ -31,16 +33,18 @@ class ResultShareStatus(StrEnum):
 class ResultShareRecord(BaseModel):
     """Calculated share record for a successful outcome."""
 
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
     share_record_id: str = Field(min_length=1)
     workflow_id: str = Field(min_length=1)
     gross_value: float = Field(ge=0)
     share_rate: float = Field(ge=0, le=1)
     share_value: float = Field(ge=0)
-    notes: list[str] = Field(default_factory=list)
+    notes: tuple[str, ...] = ()
 
     @field_validator("notes")
     @classmethod
-    def require_unique_notes(cls, values: list[str]) -> list[str]:
+    def require_unique_notes(cls, values: tuple[str, ...]) -> tuple[str, ...]:
         """Reject duplicate notes."""
 
         if len(values) != len(set(values)):
@@ -60,6 +64,8 @@ class ResultShareRecord(BaseModel):
 class ResultLedgerRecord(BaseModel):
     """One immutable outcome revision for a lead workflow."""
 
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
     ledger_id: str = Field(min_length=1)
     workflow_id: str = Field(min_length=1)
     package_id: str = Field(min_length=1)
@@ -71,13 +77,14 @@ class ResultLedgerRecord(BaseModel):
     gross_value: float | None = Field(default=None, ge=0)
     share_status: ResultShareStatus = ResultShareStatus.NOT_APPLICABLE
     share: ResultShareRecord | None = None
-    reasons: list[str] = Field(default_factory=list)
-    limitations: list[str] = Field(default_factory=list)
+    reasons: tuple[str, ...] = ()
+    limitations: tuple[str, ...] = ()
+    content_digest: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     @field_validator("reasons", "limitations")
     @classmethod
-    def require_unique_text_values(cls, values: list[str]) -> list[str]:
+    def require_unique_text_values(cls, values: tuple[str, ...]) -> tuple[str, ...]:
         """Reject duplicate reasons or limitations."""
 
         if len(values) != len(set(values)):
@@ -122,23 +129,79 @@ class ResultLedgerRecord(BaseModel):
             if self.gross_value != self.share.gross_value:
                 raise ValueError("share gross_value must match ledger gross_value")
             if self.share_status == ResultShareStatus.NOT_APPLICABLE:
-                self.share_status = ResultShareStatus.CALCULATED
+                object.__setattr__(self, "share_status", ResultShareStatus.CALCULATED)
             if self.share_status != ResultShareStatus.CALCULATED:
                 raise ValueError("share records require calculated share status")
             return self
         if self.gross_value is None:
             if self.share_status == ResultShareStatus.NOT_APPLICABLE:
-                self.share_status = ResultShareStatus.PENDING_GROSS_VALUE
+                object.__setattr__(self, "share_status", ResultShareStatus.PENDING_GROSS_VALUE)
             if self.share_status != ResultShareStatus.PENDING_GROSS_VALUE:
                 raise ValueError("won ledger without gross value requires pending_gross_value")
             return self
         if self.share_status == ResultShareStatus.NOT_APPLICABLE:
-            self.share_status = ResultShareStatus.PENDING_SHARE_RATE
+            object.__setattr__(self, "share_status", ResultShareStatus.PENDING_SHARE_RATE)
         if self.share_status != ResultShareStatus.PENDING_SHARE_RATE:
             raise ValueError("won ledger without share requires pending_share_rate")
         return self
 
+    @model_validator(mode="after")
+    def require_content_identity(self) -> ResultLedgerRecord:
+        """Bind material outcome content to a full SHA-256 digest."""
+
+        expected = self.compute_content_digest()
+        if self.content_digest is None:
+            object.__setattr__(self, "content_digest", expected)
+        elif self.content_digest != expected:
+            raise ValueError("result ledger content_digest does not match material content")
+        return self
+
+    def material_content(self) -> dict[str, Any]:
+        """Return canonical material outcome content, excluding revision pointer identity."""
+
+        share_payload: dict[str, Any] | None = None
+        if self.share is not None:
+            share_payload = {
+                "workflow_id": self.share.workflow_id,
+                "gross_value": self.share.gross_value,
+                "share_rate": self.share.share_rate,
+                "share_value": self.share.share_value,
+                "notes": list(self.share.notes),
+            }
+        return {
+            "workflow_id": self.workflow_id,
+            "package_id": self.package_id,
+            "revision": self.revision,
+            "supersedes_ledger_id": self.supersedes_ledger_id,
+            "correction_reason": self.correction_reason,
+            "status": self.status.value,
+            "decided_date": self.decided_date.isoformat() if self.decided_date else None,
+            "gross_value": self.gross_value,
+            "share_status": self.share_status.value,
+            "share": share_payload,
+            "reasons": list(self.reasons),
+            "limitations": list(self.limitations),
+        }
+
+    def compute_content_digest(self) -> str:
+        """Return the canonical full content digest for this ledger revision."""
+
+        encoded = json.dumps(
+            self.material_content(),
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+        ).encode("utf-8")
+        return hashlib.sha256(encoded).hexdigest()
+
+    def assert_content_digest(self) -> None:
+        """Fail closed if material content changed after validation."""
+
+        if self.content_digest != self.compute_content_digest():
+            raise ValueError("result ledger material content changed after digest binding")
+
     def to_dict(self) -> dict[str, Any]:
         """Return deterministic JSON-safe ledger payload."""
 
+        self.assert_content_digest()
         return self.model_dump(mode="json")

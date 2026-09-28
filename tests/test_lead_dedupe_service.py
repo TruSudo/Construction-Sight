@@ -81,3 +81,30 @@ def test_check_lead_duplicate_returns_unique() -> None:
     assert result.status == LeadDuplicateStatus.UNIQUE
     assert result.matched_fingerprint_keys == []
     assert result.reasons == ["no duplicate lead fingerprint found"]
+
+
+def test_duplicate_result_identity_ignores_repeated_matching_observations() -> None:
+    candidate = build_lead_fingerprint(package=_package(), site_key="site:shared")
+    other = build_lead_fingerprint(
+        package=_package("candidate:other"), site_key="site:shared", title="Other title",
+    )
+    first = check_lead_duplicate(candidate, [other])
+    repeated = check_lead_duplicate(candidate, [other, other])
+    assert first.result_id == repeated.result_id
+    assert first.to_dict() == repeated.to_dict()
+
+
+def test_duplicate_result_identity_binds_changed_decision_rationale() -> None:
+    candidate = build_lead_fingerprint(
+        package=_package(), site_key="site:shared", source_key="source:test", source_record_id="1",
+    )
+    exact = candidate.model_copy(update={"base_candidate_id": "candidate:other"})
+    near = build_lead_fingerprint(
+        package=_package("candidate:near"), source_key="source:test", source_record_id="1",
+    )
+    first = check_lead_duplicate(candidate, [exact])
+    changed = check_lead_duplicate(candidate, [exact, near])
+    assert first.status == changed.status == LeadDuplicateStatus.DUPLICATE
+    assert first.matched_fingerprint_keys == changed.matched_fingerprint_keys
+    assert first.reasons != changed.reasons
+    assert first.result_id != changed.result_id

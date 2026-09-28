@@ -268,7 +268,7 @@ def test_acquisition_bundle_cli_rejects_unapproved_identity_before_database(
     )
 
     assert result.exit_code != 0
-    assert "expected bundle ID does not match" in result.output
+    assert "expected bundle identity does not match" in result.output
     assert not (tmp_path / "must-not-exist.sqlite3").exists()
 
 
@@ -295,7 +295,7 @@ def test_acquisition_bundle_cli_persists_exact_authorized_artifact(
     )
 
     assert result.exit_code == 0
-    payload = json.loads(result.output)
+    payload = json.loads(result.stdout)
     assert payload["bundle_id"] == bundle.bundle_id
     assert payload["mutation_authorized"] is True
     assert payload["replay_policy"] == "insert_or_exact_replay"

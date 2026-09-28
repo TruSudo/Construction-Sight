@@ -1,0 +1,25 @@
+{
+  "started_at": "2026-09-21T17:28:50.126215+00:00",
+  "finished_at": "2026-09-21T17:29:06.299404+00:00",
+  "cwd": "/workspace/scratch/3cb8a9b64f02/Construction-Sight",
+  "base_commit": "49c79447491bd531299331ad6a5846e64eb1c08e",
+  "diff_sha256": "b0061f142fc4ddfe6ba09da1c34f5751d82e88106df1132ba9b9119759992eb4",
+  "untracked_sha256": {
+    "tests/test_runtime_output_writers.py": "445d92cd552d2d0e412c586ebabb2bc342717ec0a3ca590f95b66df43bcd4fdb"
+  },
+  "command": [
+    "/workspace/scratch/3cb8a9b64f02/Construction-Sight/.venv/bin/python",
+    "-m",
+    "pytest",
+    "tests/test_runtime_output_writers.py",
+    "tests/test_runtime_artifact_publication.py",
+    "tests/test_source_registry_update_plan.py",
+    "-q",
+    "-W",
+    "error",
+    "--tb=short"
+  ],
+  "returncode": 0,
+  "stdout": "........................................................................ [ 47%]\n........................................................................ [ 94%]\n........                                                                 [100%]\n152 passed in 13.62s\n",
+  "stderr": ""
+}

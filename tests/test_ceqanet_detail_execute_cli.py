@@ -6,39 +6,69 @@ from typer.testing import CliRunner
 import constructionsight.ceqanet_detail_execute_cli as cli
 
 runner = CliRunner()
+_URL = "https://ceqanet.lci.ca.gov/Project/2017101033"
 
 
-class _FakeResponse:
-    status_code = 200
-    text = "<html><body><h1>Project Details</h1><p>SCH Number 2017101033</p></body></html>"
-    url = "https://ceqanet.lci.ca.gov/Project/2017101033"
-    headers = {"content-type": "text/html; charset=utf-8"}
+def _payload(
+    *,
+    body_text: str = "detail",
+    body_length: int = 6,
+    truncated: bool = False,
+) -> dict[str, object]:
+    return {
+        "metadata": {
+            "schema_version": "ceqanet_detail_execution.v2",
+            "allowed": True,
+            "reason": "synthetic authorized detail execution",
+            "requested_url": _URL,
+            "executed_request_count": 1,
+            "successful_response_count": 1,
+            "failed_response_count": 0,
+            "authorization": {
+                "actor_id": "operator:test",
+                "decision_id": "authorization-decision:" + ("d" * 64),
+                "preflight_id": "authorization-preflight:" + ("p" * 64),
+                "valid_until": "2026-07-15T12:05:00+00:00",
+            },
+        },
+        "snapshots": [
+            {
+                "request_url": _URL,
+                "final_url": _URL,
+                "status_code": 200,
+                "reachable": True,
+                "failure_kind": "none",
+                "body_text": body_text,
+                "body_length": body_length,
+                "body_truncated": truncated,
+                "attempt_count": 1,
+            }
+        ],
+    }
 
 
-def test_ceqanet_detail_execute_cli_writes_json_output(tmp_path: Path, monkeypatch) -> None:
+def test_ceqanet_detail_execute_cli_writes_json_output(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
     output_path = tmp_path / "detail-execution.json"
+    calls: list[dict[str, object]] = []
 
-    def fake_get(
-        url: str,
-        *,
-        follow_redirects: bool,
-        timeout: float,
-        headers: dict[str, str],
-    ) -> _FakeResponse:
-        assert url == "https://ceqanet.lci.ca.gov/Project/2017101033"
-        assert follow_redirects is True
-        assert timeout == 20.0
-        assert headers["User-Agent"] == "ConstructionSight/0.1"
-        return _FakeResponse()
+    def fake_execute(**kwargs):
+        calls.append(kwargs)
+        return _payload()
 
-    monkeypatch.setattr(cli.httpx, "get", fake_get)
-
+    monkeypatch.setattr(cli, "execute_authorized_ceqanet_detail", fake_execute)
     result = runner.invoke(
         cli.app,
         [
             "execute",
             "--url",
-            "https://ceqanet.lci.ca.gov/Project/2017101033",
+            _URL,
+            "--operator-id",
+            "operator:test",
+            "--authorization-reason",
+            "Review one exact detail page.",
             "--execute-live",
             "--json-output",
             "--output",
@@ -48,40 +78,33 @@ def test_ceqanet_detail_execute_cli_writes_json_output(tmp_path: Path, monkeypat
 
     assert result.exit_code == 0
     assert "Wrote CEQAnet detail execution JSON" in result.output
-
+    assert calls[0]["detail_url"] == _URL
+    assert calls[0]["operator_id"] == "operator:test"
     payload = json.loads(output_path.read_text(encoding="utf-8"))
-    assert payload["metadata"]["schema_version"] == "ceqanet_detail_execution.v1"
+    assert payload["metadata"]["schema_version"] == "ceqanet_detail_execution.v2"
     assert payload["metadata"]["allowed"] is True
     assert payload["metadata"]["executed_request_count"] == 1
     assert payload["metadata"]["successful_response_count"] == 1
-    assert len(payload["snapshots"]) == 1
-    assert payload["snapshots"][0]["request_url"] == "https://ceqanet.lci.ca.gov/Project/2017101033"
+    assert payload["snapshots"][0]["request_url"] == _URL
     assert payload["snapshots"][0]["reachable"] is True
-    assert payload["snapshots"][0]["body_truncated"] is False
 
 
 def test_ceqanet_detail_execute_cli_rejects_without_live_consent() -> None:
-    result = runner.invoke(
-        cli.app,
-        [
-            "execute",
-            "--url",
-            "https://ceqanet.lci.ca.gov/Project/2017101033",
-            "--json-output",
-        ],
-    )
+    result = runner.invoke(cli.app, ["execute", "--url", _URL, "--json-output"])
 
     assert result.exit_code != 0
     assert "Refusing live execution without --execute-live" in result.output
 
 
-def test_ceqanet_detail_execute_cli_rejects_output_without_json(tmp_path: Path) -> None:
+def test_ceqanet_detail_execute_cli_rejects_output_without_json(
+    tmp_path: Path,
+) -> None:
     result = runner.invoke(
         cli.app,
         [
             "execute",
             "--url",
-            "https://ceqanet.lci.ca.gov/Project/2017101033",
+            _URL,
             "--execute-live",
             "--output",
             str(tmp_path / "detail-execution.json"),
@@ -105,37 +128,29 @@ def test_ceqanet_detail_execute_cli_rejects_non_ceqanet_url() -> None:
     )
 
     assert result.exit_code != 0
-    assert "--url must target ceqanet.lci.ca.gov" in result.output
+    assert "must target the exact public CEQAnet host" in result.output
 
 
-def test_ceqanet_detail_execute_cli_truncates_large_body(tmp_path: Path, monkeypatch) -> None:
+def test_ceqanet_detail_execute_cli_forwards_bounded_body_ceiling(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
     output_path = tmp_path / "detail-execution.json"
+    calls: list[dict[str, object]] = []
 
-    class LargeResponse:
-        status_code = 200
-        text = "abcdef"
-        url = "https://ceqanet.lci.ca.gov/Project/2017101033"
-        headers = {"content-type": "text/html; charset=utf-8"}
+    def fake_execute(**kwargs):
+        calls.append(kwargs)
+        return _payload(body_text="abc", body_length=6, truncated=True)
 
-    def fake_get(
-        url: str,
-        *,
-        follow_redirects: bool,
-        timeout: float,
-        headers: dict[str, str],
-    ) -> LargeResponse:
-        return LargeResponse()
-
-    monkeypatch.setattr(cli.httpx, "get", fake_get)
-
+    monkeypatch.setattr(cli, "execute_authorized_ceqanet_detail", fake_execute)
     result = runner.invoke(
         cli.app,
         [
             "execute",
             "--url",
-            "https://ceqanet.lci.ca.gov/Project/2017101033",
+            _URL,
             "--execute-live",
-            "--max-body-chars",
+            "--max-body-bytes",
             "3",
             "--json-output",
             "--output",
@@ -144,8 +159,8 @@ def test_ceqanet_detail_execute_cli_truncates_large_body(tmp_path: Path, monkeyp
     )
 
     assert result.exit_code == 0
-    payload = json.loads(output_path.read_text(encoding="utf-8"))
-    snapshot = payload["snapshots"][0]
+    assert calls[0]["max_body_bytes"] == 3
+    snapshot = json.loads(output_path.read_text(encoding="utf-8"))["snapshots"][0]
     assert snapshot["body_text"] == "abc"
     assert snapshot["body_length"] == 6
     assert snapshot["body_truncated"] is True

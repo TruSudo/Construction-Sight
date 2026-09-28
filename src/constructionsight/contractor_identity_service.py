@@ -2,34 +2,30 @@
 
 from __future__ import annotations
 
-import hashlib
-import re
-
 from constructionsight.contractor_identity_models import (
     ContractorIdentity,
     ContractorIdentityResolution,
     ContractorIdentityStatus,
     ContractorLicense,
     ContractorSourceKind,
+    canonical_contractor_key,
+    canonical_contractor_resolution_id,
+    normalize_contractor_license_value,
+    normalize_contractor_name_value,
 )
 from constructionsight.domain_types import confidence_band
-
-_SPACE_RE = re.compile(r"\s+")
-_NON_WORD_RE = re.compile(r"[^A-Z0-9]+")
-_LICENSE_RE = re.compile(r"\d+")
 
 
 def normalize_contractor_name(value: str) -> str:
     """Normalize contractor names for deterministic matching."""
 
-    cleaned = _NON_WORD_RE.sub(" ", value.upper())
-    return _SPACE_RE.sub(" ", cleaned).strip()
+    return normalize_contractor_name_value(value)
 
 
 def normalize_contractor_license(value: str) -> str:
     """Normalize a contractor license into digits only."""
 
-    return "".join(_LICENSE_RE.findall(value))
+    return normalize_contractor_license_value(value)
 
 
 def build_contractor_identity(
@@ -56,9 +52,9 @@ def build_contractor_identity(
         license_signal=license_signal,
         contractor_group_key=contractor_group_key,
     )
-    contractor_key = _contractor_key(
+    contractor_key = canonical_contractor_key(
         normalized_name=normalized_name,
-        license_signal=license_signal,
+        license_number=license_signal.license_number if license_signal else None,
         contractor_group_key=contractor_group_key,
     )
     status = (
@@ -90,7 +86,7 @@ def resolve_contractor_identity(
 
     if not identities:
         return ContractorIdentityResolution(
-            resolution_id="contractor-resolution:empty",
+            resolution_id=canonical_contractor_resolution_id([]),
             status="unresolved",
             candidates=[],
             limitations=["no contractor identity candidates provided"],
@@ -109,7 +105,9 @@ def resolve_contractor_identity(
     primary_key = top_candidates[0].contractor_key if status == "resolved" else None
     limitations = [] if status == "resolved" else ["multiple contractor candidates tied"]
     return ContractorIdentityResolution(
-        resolution_id=_resolution_id(sorted_candidates),
+        resolution_id=canonical_contractor_resolution_id(
+            [candidate.contractor_key for candidate in sorted_candidates]
+        ),
         status=status,
         candidates=sorted_candidates,
         primary_contractor_key=primary_key,
@@ -169,34 +167,3 @@ def _score_identity(
         score += 10
         reasons.append("contractor group signal is present")
     return min(score, 100), reasons, limitations
-
-
-def _contractor_key(
-    *,
-    normalized_name: str,
-    license_signal: ContractorLicense | None,
-    contractor_group_key: str | None,
-) -> str:
-    """Build deterministic contractor key."""
-
-    basis = "|".join(
-        [
-            normalized_name,
-            license_signal.license_number if license_signal else "",
-            contractor_group_key or "",
-        ]
-    )
-    return f"contractor:{_short_hash(basis)}"
-
-
-def _resolution_id(candidates: list[ContractorIdentity]) -> str:
-    """Build deterministic contractor resolution id."""
-
-    basis = ",".join(candidate.contractor_key for candidate in candidates)
-    return f"contractor-resolution:{_short_hash(basis)}"
-
-
-def _short_hash(value: str) -> str:
-    """Return a short deterministic hash."""
-
-    return hashlib.sha256(value.encode("utf-8")).hexdigest()[:16]

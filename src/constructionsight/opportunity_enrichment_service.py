@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 
 from constructionsight.contractor_identity_models import ContractorIdentity
 from constructionsight.decision_record_models import DecisionRecord
@@ -43,7 +44,10 @@ def enrich_opportunity(
     for decision in decision_records or []:
         signals.append(_decision_signal(decision, scoring_profile))
 
-    lead_score = min(sum(signal.score_delta for signal in signals), 100)
+    lead_score = min(
+        sum(signal.operational_score_delta for signal in signals),
+        100,
+    )
     confidence_score = _average_confidence(signals)
     limitations = _limitations(signals)
     reasons = [signal.reason for signal in signals]
@@ -58,7 +62,12 @@ def enrich_opportunity(
         signals=signals,
         reasons=_unique(reasons),
         limitations=limitations,
-        next_action=_next_action(lead_score, limitations, scoring_profile),
+        next_action=_next_action(
+            lead_score,
+            confidence_score,
+            limitations,
+            scoring_profile,
+        ),
     )
 
 
@@ -170,12 +179,17 @@ def _limitations(signals: list[OpportunityEnrichmentSignal]) -> list[str]:
 
 def _next_action(
     lead_score: int,
+    confidence_score: int,
     limitations: list[str],
     scoring_profile: OpportunityScoringProfile,
 ) -> str:
     """Return deterministic next action from score and limitations."""
 
-    if lead_score >= scoring_profile.high_value_threshold and not limitations:
+    if (
+        lead_score >= scoring_profile.high_value_threshold
+        and confidence_score >= scoring_profile.minimum_actionable_confidence
+        and not limitations
+    ):
         return "prepare outreach preview"
     if lead_score >= scoring_profile.review_threshold:
         return "review limitations before outreach"
@@ -191,16 +205,18 @@ def _report_id(
 ) -> str:
     """Build deterministic enrichment report id."""
 
-    signal_basis = ",".join(signal.signal_key for signal in signals)
-    basis = "|".join(
-        [
-            base_candidate_id,
-            scoring_profile.profile_key,
-            scoring_profile.version,
-            signal_basis,
-        ]
+    basis = json.dumps(
+        {
+            "schema_version": "constructionsight.opportunity-enrichment/v2",
+            "base_candidate_id": base_candidate_id,
+            "scoring_profile": scoring_profile.model_dump(mode="json"),
+            "signals": [signal.model_dump(mode="json") for signal in signals],
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=True,
     )
-    return f"opportunity-enrichment:{_short_hash(basis)}"
+    return f"opportunity-enrichment:v2:{hashlib.sha256(basis.encode('utf-8')).hexdigest()}"
 
 
 def _short_hash(value: str) -> str:

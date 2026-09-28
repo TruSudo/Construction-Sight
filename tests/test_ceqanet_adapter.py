@@ -1,30 +1,20 @@
-import httpx
+import pytest
 
+import constructionsight.adapters.ceqanet as ceqanet_adapter_module
+import constructionsight.ceqanet_discovery_http as ceqanet_discovery_http_module
 from constructionsight.adapters.ceqanet import (
     CEQANET_ADVANCED_SEARCH_URL,
     CeqanetAdapter,
     CeqanetFixtureParser,
-    CeqanetLiveDiscovery,
 )
 from constructionsight.adapters.runner import AdapterRunner
+from constructionsight.ceqanet_discovery_http import CeqanetLiveDiscovery
+from constructionsight.http_transport_models import (
+    BoundedHttpObservation,
+    BoundedHttpPolicy,
+    HttpFailureKind,
+)
 from constructionsight.models import PublicSource
-
-
-class MockCeqanetHttpClient:
-    def __init__(
-        self, response: httpx.Response | None = None, error: httpx.HTTPError | None = None
-    ) -> None:
-        self.response = response
-        self.error = error
-
-    def get(self, url: str, *, follow_redirects: bool, timeout: float) -> httpx.Response:
-        assert url == CEQANET_ADVANCED_SEARCH_URL
-        assert follow_redirects is True
-        assert timeout > 0
-        if self.error is not None:
-            raise self.error
-        assert self.response is not None
-        return self.response
 
 
 def _source() -> PublicSource:
@@ -60,6 +50,30 @@ def _fixture_row() -> dict[str, str]:
     }
 
 
+def _observation(
+    *,
+    body: bytes = b"",
+    status_code: int | None = 200,
+    failure_kind: HttpFailureKind = HttpFailureKind.NONE,
+    error_type: str | None = None,
+) -> BoundedHttpObservation:
+    return BoundedHttpObservation(
+        policy_id="CS-NET-001",
+        method="GET",
+        request_url=CEQANET_ADVANCED_SEARCH_URL,
+        final_url=CEQANET_ADVANCED_SEARCH_URL,
+        status_code=status_code,
+        content_type="text/html" if status_code is not None else None,
+        content_encoding="utf-8" if status_code is not None else None,
+        response_body=body,
+        response_size=len(body),
+        body_truncated=False,
+        failure_kind=failure_kind,
+        error_type=error_type,
+        error_detail=None,
+    )
+
+
 def test_ceqanet_fixture_parser_normalizes_record() -> None:
     record = CeqanetFixtureParser().parse_row(
         _fixture_row(),
@@ -86,7 +100,7 @@ def test_ceqanet_fixture_parser_preserves_provenance() -> None:
     assert record.provenance[0].source_name == "CEQAnet State Clearinghouse"
     assert str(record.provenance[0].source_url) == "https://ceqanet.lci.ca.gov/2026000001"
     assert record.provenance[0].adapter_family == "ceqanet"
-    assert record.provenance[0].confidence_score == 85
+    assert record.provenance[0].confidence_score == 75
 
 
 def test_ceqanet_adapter_discovers_public_search_descriptor() -> None:
@@ -96,7 +110,7 @@ def test_ceqanet_adapter_discovers_public_search_descriptor() -> None:
 
     assert len(descriptors) == 1
     assert descriptors[0].search_name == "CEQAnet Advanced Search"
-    assert descriptors[0].public_url == "https://ceqanet.lci.ca.gov/Search/Advanced"
+    assert descriptors[0].public_url == CEQANET_ADVANCED_SEARCH_URL
     assert descriptors[0].record_types == ["ceqa", "document"]
 
 
@@ -112,13 +126,35 @@ def test_ceqanet_adapter_runs_fixture_rows_through_runner() -> None:
     assert record.is_high_signal_document is True
 
 
-def test_ceqanet_live_discovery_detects_public_search_fields() -> None:
-    response = httpx.Response(
-        status_code=200,
-        request=httpx.Request("GET", CEQANET_ADVANCED_SEARCH_URL),
-        text="Advanced Search SCH Number Document Type Received Date Lead Agency Public Agency",
+def test_ceqanet_adapter_namespace_does_not_reexport_live_transport() -> None:
+    assert not hasattr(ceqanet_adapter_module, "CeqanetLiveDiscovery")
+    assert not hasattr(ceqanet_adapter_module, "CeqanetDiscoveryResult")
+    assert "CeqanetLiveDiscovery" not in ceqanet_adapter_module.__all__
+    assert "CeqanetDiscoveryResult" not in ceqanet_adapter_module.__all__
+
+
+def test_ceqanet_live_discovery_detects_public_search_fields(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    body = b"Advanced Search SCH Number Document Type Received Date Lead Agency Public Agency"
+
+    def owned_test_effect(
+        url: str,
+        method: str,
+        policy: BoundedHttpPolicy,
+    ) -> BoundedHttpObservation:
+        assert url == CEQANET_ADVANCED_SEARCH_URL
+        assert method == "GET"
+        assert policy.policy_id == "CS-NET-001"
+        assert policy.max_response_bytes == 50_000
+        return _observation(body=body)
+
+    monkeypatch.setattr(
+        ceqanet_discovery_http_module,
+        "_execute_bounded_http",
+        owned_test_effect,
     )
-    discovery = CeqanetLiveDiscovery(client=MockCeqanetHttpClient(response=response))
+    discovery = CeqanetLiveDiscovery()
 
     result = discovery.discover()
 
@@ -129,12 +165,29 @@ def test_ceqanet_live_discovery_detects_public_search_fields() -> None:
     assert result.date_field_detected is True
     assert result.lead_agency_field_detected is True
     assert result.confidence_score == 95
+    assert result.failure_kind is HttpFailureKind.NONE
 
 
-def test_ceqanet_live_discovery_handles_http_error() -> None:
-    discovery = CeqanetLiveDiscovery(
-        client=MockCeqanetHttpClient(error=httpx.ConnectError("synthetic failure"))
+def test_ceqanet_live_discovery_preserves_transport_failure_class(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def owned_test_effect(
+        url: str,
+        method: str,
+        policy: BoundedHttpPolicy,
+    ) -> BoundedHttpObservation:
+        return _observation(
+            status_code=None,
+            failure_kind=HttpFailureKind.TRANSPORT,
+            error_type="ConnectError",
+        )
+
+    monkeypatch.setattr(
+        ceqanet_discovery_http_module,
+        "_execute_bounded_http",
+        owned_test_effect,
     )
+    discovery = CeqanetLiveDiscovery()
 
     result = discovery.discover()
 
@@ -142,4 +195,5 @@ def test_ceqanet_live_discovery_handles_http_error() -> None:
     assert result.advanced_search_available is False
     assert result.status_code is None
     assert result.confidence_score == 0
-    assert result.notes == "HTTP request failed: ConnectError"
+    assert result.failure_kind is HttpFailureKind.TRANSPORT
+    assert result.notes == "CEQAnet discovery failed closed: transport_failure"

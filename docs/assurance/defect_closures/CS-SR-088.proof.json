@@ -1,0 +1,24 @@
+{
+  "schema_version": "constructionsight.defect-closure-proof/v1",
+  "defect_id": "CS-SR-088",
+  "required_resolution_sha256": "524b788288f0be011ab2a8c380129e6db7459a53bb3a2e71abd39e39e2b7fcde",
+  "implementation_assertions": [
+    {
+      "path": "src/constructionsight/site_resolution_models.py",
+      "operator": "contains",
+      "value": "resolved site results require retained evidence provenance"
+    },
+    {
+      "path": "src/constructionsight/site_resolution_models.py",
+      "operator": "not_contains",
+      "value": "resolution_id: str = Field(min_length=1)"
+    }
+  ],
+  "regression_assertions": [
+    {
+      "path": "tests/test_site_resolution_models.py",
+      "operator": "contains",
+      "value": "CS-SR-088"
+    }
+  ]
+}
