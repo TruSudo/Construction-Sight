@@ -61,7 +61,7 @@ Historical source lineage used:
 - `agent/explicit-source-attribution-aliases`
 - `integration/reconcile-source-inventory-2026-09-24`
 
-Validation: the first integrated run exposed five compatibility regressions and two import-order findings. Those were repaired without weakening the current evidence-versus-registry authority boundary. The replacement CI run is in progress; vulnerability audits are already passing.
+Validation: the first integrated run exposed five compatibility regressions and two import-order findings. Those were repaired without weakening the current evidence-versus-registry authority boundary. On repaired head `11019fffca784ee6f63a00e71d32966da2bfb512`, Python 3.11 and 3.12 each passed 2,221 tests, 164/164 focused mutation targets, Ruff, strict mypy, compilation, adapter audits, source-adapter coverage, assurance preflight, semantic certification audit, diff hygiene, exact environment identity, and isolated vulnerability audits. The only aggregate CI failure was `ASSURANCE-001` because `governance/reviews/assurance_review.json` is intentionally absent during this active reconciliation campaign.
 
 ### Already confirmed contained in current main
 
@@ -102,3 +102,31 @@ Current-tree findings:
 - proof bundle and rehearsal APIs remain present with current hardened implementations.
 
 Disposition so far: these tips are absorbed/superseded candidates, not direct merge candidates. Continue semantic comparison before final classification.
+
+
+### CEQAnet policy, operator, persistence, and CSV evidence lineages — assessed
+
+The historical CEQAnet branches examined here are either ancestors of the current tree or represented by current hardened implementations.
+
+Key retention findings:
+- maturity proposal and CSV access-policy services remain present; several service blobs are identical;
+- operator export, report, and package implementations remain byte-identical to their historical forms;
+- archive and bundle implementations retain the historical public API while adding bounded/staged artifact verification;
+- detail execution moved request execution into the governed shared `ceqanet_detail_http` / bounded transport boundary rather than retaining duplicate CLI transport logic;
+- persistence execution now validates/prepares the whole plan before mutation and adds atomicity, tamper, and count-drift protection;
+- historical CSV evidence-series artifacts and audit evidence remain byte-identical;
+- bespoke CSV HTTP adapters were superseded by the shared policy-bound `execute_bounded_http` transport;
+- the older CSV export contract was decomposed into current request/inspection models, CSV service, and live execution/verification models without losing the operator capability.
+
+Disposition: classified as `contained` where exact ancestry exists and `superseded` where current implementations retain the capability with stronger architecture.
+
+### Cleanup and source-readiness lineages — assessed
+
+Core historical behavior was retained:
+- lead workflow rules are byte-identical;
+- result-ledger and workflow persistence are strict supersets with revision, fixed-unit, CAS, and replay protections;
+- parcel/site persistence is a strict superset with longitudinal observations, ArcGIS evidence, current-selection and assurance rows;
+- early geometry hardening was superseded by the contained topology/WKT hardening line;
+- source verification checklist, promotion, readiness, and registry apply workflows remain present under later authorized/shared-transport boundaries.
+
+Disposition: 49 additional historical branches were classified in the manifest as contained or superseded after semantic/file-level comparison.
