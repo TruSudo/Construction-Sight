@@ -171,10 +171,12 @@ def test_source_registry_projection_uses_latest_retained_verification(tmp_path):
     assert entry.latest_public_search_available is True
     assert entry.latest_login_required is False
     assert entry.latest_verification_confidence_score == 88
-    assert entry.verification_status == "verified"
-    assert entry.confidence_score == 88
-    assert entry.last_checked_date == newer.date()
-    assert entry.verification_metadata_consistent is True
+    # Verification evidence does not mutate source-registry authority. The retained
+    # registry row remains partial/72/2026-09-20 until a governed registry apply.
+    assert entry.verification_status == "partial"
+    assert entry.confidence_score == 72
+    assert entry.last_checked_date == date(2026, 9, 20)
+    assert entry.verification_metadata_consistent is False
     engine.dispose()
 
 
