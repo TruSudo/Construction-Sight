@@ -40,6 +40,8 @@ cd -- "$cs_repo"
     evidence/source_verification/ceqanet_csv_windows1252_replay_2026-07-12.json \
     --output "$cs_session/source-verification.json"
 "$cs_runtime/constructionsight" init-db --database-url "sqlite:///$cs_database"
+"$cs_runtime/constructionsight" load-sources data/source_registry.seed.json \
+    --database-url "sqlite:///$cs_database"
 "$cs_runtime/constructionsight-ceqanet-persistence-apply" execute \
     --write-plan examples/private_test_drive/ceqanet_retained_write_plan.json \
     --database-path "$cs_database" --execute-write --json-output \
