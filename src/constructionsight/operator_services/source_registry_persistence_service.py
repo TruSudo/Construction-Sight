@@ -68,6 +68,7 @@ def persist_authorized_source_registry_records(
 
     desired = _canonical_sources(sources)
     store = SourceRegistryStore(session)
+    store.acquire_authorized_mutation_lock()
     current = _canonical_sources(store.list_sources())
     current_digest = source_registry_digest(current)
     desired_digest = source_registry_digest(desired)
