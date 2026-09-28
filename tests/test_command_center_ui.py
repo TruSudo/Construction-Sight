@@ -320,3 +320,46 @@ def test_sources_collection_prepares_bounded_sch_capture_without_browser_network
     assert 'No collection, import, lead qualification, outreach or bids' in script
     assert 'This read-only dashboard cannot issue remote requests' in script
     assert 'fetch("/api/capture' not in script
+
+
+def test_sources_collection_displays_persisted_public_source_registry() -> None:
+    """Stored portal configuration is visible without becoming live collection authority."""
+    script = (ASSETS / "operator_command_center.js").read_text(encoding="utf-8")
+    css = (ASSETS / "operator_command_center.css").read_text(encoding="utf-8")
+    assert 'fetchJson("/api/source-registry")' in script
+    assert "function renderSourceRegistry(registry)" in script
+    assert "registry.read_only!==true || registry.network_collection_enabled!==false" in script
+    assert "registry.verification_metadata_is_authority!==false" in script
+    assert "adapter_live" in script
+    assert "verification_status" in script
+    assert "current reachability, complete jurisdiction coverage" in script
+    assert "latest retained check:" in script
+    assert "registry metadata DIFFERS; inspect retained verification history" in script
+    assert "entry.latest_verification_present" in script
+    assert "entry.verification_metadata_consistent" in script
+    assert "registry.source_attribution_available" in script
+    assert "retained explicit attribution in scan:" in script
+    assert "configured source identity scan is incomplete" in script
+    assert "Duplicate configured source names withheld from explicit attribution" in script
+    assert "not complete local coverage counts" in script
+    assert "source-registry-table" in script
+    assert ".source-registry-table" in css
+    assert ".source-verification-warning" in css
+    assert ".source-attribution-warning" in css
+
+
+def test_sources_collection_displays_retained_exact_sch_review_queue() -> None:
+    """Reviewed listing candidates feed the GUI without becoming network or write authority."""
+    script = (ASSETS / "operator_command_center.js").read_text(encoding="utf-8")
+    css = (ASSETS / "operator_command_center.css").read_text(encoding="utf-8")
+    assert 'fetchJson("/api/capture-queue")' in script
+    assert '"constructionsight.operator_capture_queue.v1"' in script
+    assert 'queue.read_only!==true || queue.network_executed!==false' in script
+    assert 'queue.persistence_mutated!==false || queue.commercial_leads_created!==false' in script
+    assert 'data-capture-queue="' in script
+    assert 'function bindCaptureQueue(queue)' in script
+    assert 'byId("capture-sch-number").value=item.sch_number;' in script
+    assert 'prepareCeqanetCapture();' in script
+    assert "Candidates are source claims, not verified active " in script
+    assert "--capture-queue &lt;review-queue.json&gt;" in script
+    assert ".capture-queue-entry" in css
