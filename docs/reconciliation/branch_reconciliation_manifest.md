@@ -79,7 +79,7 @@ This manifest is the durable starting inventory for the full ConstructionSight r
 | `agent/topology-grade-parcel-containment` | `b199455897feaf1cfcbf48992f525d941afe0b8a` | contained |
 | `agent/ui-lock-command-center` | `4f74d875f8b7c14eb659c0c89941bc1eb261ff9d` | pending |
 | `agent/upstream-operator-cli` | `a64ace077b00dcd3cff085858bc9a20db402aafa` | pending |
-| `agent/verify-county-parcel-sources` | `6b259d743b38584d922ab9748b22dd4154016c1b` | pending |
+| `agent/verify-county-parcel-sources` | `6b259d743b38584d922ab9748b22dd4154016c1b` | superseded |
 | `agent/wkt-area-weighted-geometry` | `dac9459e7012fb3289fdca443d0807dcad549a65` | contained |
 | `archive/silent-risk-e47e335` | `e47e33514ef906244d1f5959af49cc193b271305` | pending |
 | `archive/silent-risk-e49cca5` | `e49cca5b557bf5d2b4e34513eae8fee83ab4734a` | pending |
