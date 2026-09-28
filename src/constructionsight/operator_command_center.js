@@ -765,9 +765,7 @@ async function showSources() {
     const queries=families.flatMap(kind=>counties.map(county=>({kind,county})));
     const [data,captureQueue,sourceRegistry,inbox]=await Promise.all([
       Promise.all(queries.map(async item=>
-        fetchJson("/api/snapshot?"+new URLSearchParams({
-          kind:item.kind,county:item.county,limit:"1",offset:"0"
-        }))
+        fetchJson("/api/snapshot?"+new URLSearchParams({kind:item.kind,county:item.county,limit:"1",offset:"0"}))
       )),
       fetchJson("/api/capture-queue"),
       fetchJson("/api/source-registry"),
