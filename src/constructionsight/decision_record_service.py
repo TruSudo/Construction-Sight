@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 
 from constructionsight.decision_record_models import (
@@ -61,8 +62,19 @@ def build_decision_record(
     decision_key = _decision_key(
         source_key=source_key,
         source_record_id=source_record_id,
+        source_kind=source_kind,
+        decision_kind=decision_kind,
         normalized_title=normalized_title,
+        jurisdiction=jurisdiction,
+        county=county,
         case_number=case_number,
+        project_name=project_name,
+        site_key=site_key,
+        apn=normalized_apn,
+        applicant_name=applicant_name,
+        developer_name=developer_name,
+        source_url=source_url,
+        summary=summary,
     )
     return DecisionRecord(
         decision_key=decision_key,
@@ -178,18 +190,43 @@ def _decision_key(
     *,
     source_key: str,
     source_record_id: str | None,
+    source_kind: DecisionSourceKind,
+    decision_kind: DecisionKind,
     normalized_title: str,
+    jurisdiction: str | None,
+    county: str | None,
     case_number: str | None,
+    project_name: str | None,
+    site_key: str | None,
+    apn: str | None,
+    applicant_name: str | None,
+    developer_name: str | None,
+    source_url: str | None,
+    summary: str | None,
 ) -> str:
-    """Build deterministic decision key."""
+    """Bind immutable decision identity to the complete normalized observation."""
 
-    basis = "|".join(
-        [source_key, source_record_id or "", normalized_title, case_number or ""]
+    basis = json.dumps(
+        {
+            "schema_version": "constructionsight.decision-record/v2",
+            "source_key": source_key,
+            "source_record_id": source_record_id,
+            "source_kind": source_kind.value,
+            "decision_kind": decision_kind.value,
+            "normalized_title": normalized_title,
+            "jurisdiction": jurisdiction,
+            "county": county,
+            "case_number": case_number,
+            "project_name": project_name,
+            "site_key": site_key,
+            "apn": apn,
+            "applicant_name": applicant_name,
+            "developer_name": developer_name,
+            "source_url": source_url,
+            "summary": summary,
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=True,
     )
-    return f"decision:{_short_hash(basis)}"
-
-
-def _short_hash(value: str) -> str:
-    """Return a short deterministic hash."""
-
-    return hashlib.sha256(value.encode("utf-8")).hexdigest()[:16]
+    return f"decision:v2:{hashlib.sha256(basis.encode('utf-8')).hexdigest()}"

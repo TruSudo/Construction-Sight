@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 
 from constructionsight.contractor_identity_models import ContractorIdentity
 from constructionsight.decision_record_models import DecisionRecord
@@ -204,16 +205,18 @@ def _report_id(
 ) -> str:
     """Build deterministic enrichment report id."""
 
-    signal_basis = ",".join(signal.signal_key for signal in signals)
-    basis = "|".join(
-        [
-            base_candidate_id,
-            scoring_profile.profile_key,
-            scoring_profile.version,
-            signal_basis,
-        ]
+    basis = json.dumps(
+        {
+            "schema_version": "constructionsight.opportunity-enrichment/v2",
+            "base_candidate_id": base_candidate_id,
+            "scoring_profile": scoring_profile.model_dump(mode="json"),
+            "signals": [signal.model_dump(mode="json") for signal in signals],
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=True,
     )
-    return f"opportunity-enrichment:{_short_hash(basis)}"
+    return f"opportunity-enrichment:v2:{hashlib.sha256(basis.encode('utf-8')).hexdigest()}"
 
 
 def _short_hash(value: str) -> str:

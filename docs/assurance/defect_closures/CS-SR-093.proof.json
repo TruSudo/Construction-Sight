@@ -1,0 +1,24 @@
+{
+  "schema_version": "constructionsight.defect-closure-proof/v1",
+  "defect_id": "CS-SR-093",
+  "required_resolution_sha256": "0de6331b66c168976a3bb1625c76766a37cf22834c7c2e2572f09395ca5c5e37",
+  "implementation_assertions": [
+    {
+      "path": "src/constructionsight/defect_closure_certification.py",
+      "operator": "contains",
+      "value": "_SEMANTIC_PROOF_SCHEMA: Final = \"constructionsight.defect-closure-proof/v1\""
+    }
+  ],
+  "regression_assertions": [
+    {
+      "path": "tests/test_defect_closure_semantic_certification.py",
+      "operator": "contains",
+      "value": "CS-SR-093"
+    },
+    {
+      "path": "tests/test_defect_closure_semantic_certification.py",
+      "operator": "not_contains",
+      "value": "pytest.mark.xfail"
+    }
+  ]
+}

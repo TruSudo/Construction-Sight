@@ -2,6 +2,7 @@ from constructionsight.intelligence import (
     CoverageStatus,
     EntityIdentity,
     EntityType,
+    EvidenceRecord,
     IdentityStatus,
     LifecyclePhase,
     MonitoringStatus,
@@ -28,6 +29,14 @@ def _database_url(tmp_path) -> str:
 
 
 def _seed_relationship_graph(store: IntelligenceStore) -> None:
+    store.upsert_evidence(
+        EvidenceRecord(
+            evidence_id="ev-graph",
+            source_name="Synthetic Graph Evidence",
+            record_type="synthetic",
+            evidence_value="retained graph support",
+        )
+    )
     store.upsert_entity(
         EntityIdentity(
             entity_id="gc-1",
@@ -35,6 +44,7 @@ def _seed_relationship_graph(store: IntelligenceStore) -> None:
             canonical_name="ABC Construction Inc.",
             confidence_score=92,
             identity_status=IdentityStatus.CONFIRMED_SAME,
+            evidence_record_ids=["ev-graph"],
         )
     )
     store.upsert_entity(
@@ -44,6 +54,7 @@ def _seed_relationship_graph(store: IntelligenceStore) -> None:
             canonical_name="XYZ Development LLC",
             confidence_score=88,
             identity_status=IdentityStatus.PROBABLE_SAME,
+            evidence_record_ids=["ev-graph"],
         )
     )
     store.upsert_project_cluster(
@@ -57,6 +68,7 @@ def _seed_relationship_graph(store: IntelligenceStore) -> None:
             cluster_status=ProjectClusterStatus.PROBABLE,
             lifecycle_phase=LifecyclePhase.VERTICAL_CONSTRUCTION,
             cluster_confidence=84,
+            evidence_record_ids=["ev-graph"],
         )
     )
     store.upsert_project_cluster(
@@ -70,6 +82,7 @@ def _seed_relationship_graph(store: IntelligenceStore) -> None:
             cluster_status=ProjectClusterStatus.POSSIBLE,
             lifecycle_phase=LifecyclePhase.PRECONSTRUCTION,
             cluster_confidence=64,
+            evidence_record_ids=["ev-graph"],
         )
     )
     store.upsert_relationship(
@@ -81,6 +94,7 @@ def _seed_relationship_graph(store: IntelligenceStore) -> None:
             relationship_status=RelationshipStatus.PROBABLE,
             confidence_score=86,
             evidence_summary="Synthetic contractor field supports GC relationship.",
+            supporting_evidence_ids=["ev-graph"],
         )
     )
     store.upsert_relationship(
@@ -92,6 +106,7 @@ def _seed_relationship_graph(store: IntelligenceStore) -> None:
             relationship_status=RelationshipStatus.PROBABLE,
             confidence_score=82,
             evidence_summary="Synthetic planning record supports developer relationship.",
+            supporting_evidence_ids=["ev-graph"],
         )
     )
     store.upsert_relationship(
@@ -103,6 +118,7 @@ def _seed_relationship_graph(store: IntelligenceStore) -> None:
             relationship_status=RelationshipStatus.POSSIBLE,
             confidence_score=61,
             evidence_summary="Synthetic shared project supports candidate working relationship.",
+            supporting_evidence_ids=["ev-graph"],
         )
     )
     store.upsert_opportunity(
@@ -115,6 +131,7 @@ def _seed_relationship_graph(store: IntelligenceStore) -> None:
             confidence_score=81,
             evidence_summary="Active construction and known GC support security opportunity.",
             lifecycle_phase_basis=LifecyclePhase.VERTICAL_CONSTRUCTION,
+            evidence_record_ids=["ev-graph"],
         )
     )
     store.upsert_opportunity(
@@ -127,6 +144,7 @@ def _seed_relationship_graph(store: IntelligenceStore) -> None:
             confidence_score=58,
             evidence_summary="Preconstruction project may need temporary fencing.",
             lifecycle_phase_basis=LifecyclePhase.PRECONSTRUCTION,
+            evidence_record_ids=["ev-graph"],
         )
     )
 
@@ -195,3 +213,77 @@ def test_relationship_query_service_returns_direct_and_project_derived_entity_op
 
     assert {opportunity.opportunity_id for opportunity in gc_opportunities} == {"opp-1"}
     assert {opportunity.opportunity_id for opportunity in developer_opportunities} == {"opp-1"}
+
+
+
+# Regression: CS-SR-079
+def test_relationship_query_does_not_truncate_records_older_than_one_hundred(tmp_path) -> None:
+    engine = create_database_engine(_database_url(tmp_path))
+    initialize_database(engine)
+    factory = session_factory(engine)
+
+    with managed_session(factory) as session:
+        store = IntelligenceStore(session)
+        store.upsert_evidence(
+            EvidenceRecord(
+                evidence_id="ev-scale",
+                source_name="Synthetic Scale Evidence",
+                record_type="synthetic",
+                evidence_value="retained scale support",
+            )
+        )
+        store.upsert_entity(
+            EntityIdentity(
+                entity_id="target-entity",
+                entity_type=EntityType.ORGANIZATION,
+                canonical_name="Target Entity",
+                identity_status=IdentityStatus.CONFIRMED_SAME,
+                evidence_record_ids=["ev-scale"],
+            )
+        )
+        store.upsert_project_cluster(
+            ProjectCluster(
+                project_cluster_id="scale-project",
+                project_name="Scale Project",
+                evidence_record_ids=["ev-scale"],
+            )
+        )
+        store.upsert_relationship(
+            RelationshipAssertion(
+                relationship_id="target-old-relationship",
+                subject_entity_id="target-entity",
+                predicate="associated_with",
+                object_entity_id="scale-project",
+                evidence_summary="Old target relationship remains queryable.",
+                supporting_evidence_ids=["ev-scale"],
+            )
+        )
+        for index in range(105):
+            entity_id = f"noise-{index:03d}"
+            store.upsert_entity(
+                EntityIdentity(
+                    entity_id=entity_id,
+                    entity_type=EntityType.ORGANIZATION,
+                    canonical_name=f"Noise Entity {index:03d}",
+                    identity_status=IdentityStatus.CONFIRMED_SAME,
+                    evidence_record_ids=["ev-scale"],
+                )
+            )
+            store.upsert_relationship(
+                RelationshipAssertion(
+                    relationship_id=f"noise-rel-{index:03d}",
+                    subject_entity_id=entity_id,
+                    predicate="associated_with",
+                    object_entity_id="scale-project",
+                    evidence_summary="Synthetic noise relationship.",
+                    supporting_evidence_ids=["ev-scale"],
+                )
+            )
+
+    with managed_session(factory) as session:
+        service = RelationshipQueryService(IntelligenceStore(session))
+        relationships = service.get_relationships_for_entity("target-entity")
+
+    assert [item.relationship_id for item in relationships] == [
+        "target-old-relationship"
+    ]

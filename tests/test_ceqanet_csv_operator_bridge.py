@@ -3,6 +3,7 @@
 The committed source artifact was captured in July 2026; this test makes no
 claim that its source observations reflect present construction activity.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -27,10 +28,8 @@ from constructionsight.ceqanet_csv_models import canonical_digest
 from constructionsight.ceqanet_csv_operator_bridge import (
     build_reviewed_ceqanet_csv_bridge,
 )
-from constructionsight.ceqanet_csv_operator_bridge_cli import (
-    app,
-    apply as apply_reviewed,
-)
+from constructionsight.ceqanet_csv_operator_bridge_cli import app
+from constructionsight.ceqanet_csv_operator_bridge_cli import apply as apply_reviewed
 from constructionsight.ceqanet_persistence_execute import execute_ceqanet_write_plan
 from constructionsight.operator_dashboard import (
     build_dashboard_snapshot,

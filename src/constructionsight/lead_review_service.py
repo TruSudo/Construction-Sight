@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 
 from constructionsight.lead_review_models import (
     LeadReviewItem,
@@ -103,9 +104,18 @@ def _review_note(status: LeadReviewStatus, limitations: list[str]) -> str | None
 
 
 def _package_id(report: OpportunityEnrichmentReport) -> str:
-    """Build deterministic lead review package id."""
+    """Build deterministic lead review identity from immutable report semantics."""
 
-    return f"lead-review:{_short_hash(report.report_id)}"
+    basis = json.dumps(
+        {
+            "schema_version": "constructionsight.lead-review/v2",
+            "report": report.model_dump(mode="json", exclude={"created_at"}),
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=True,
+    )
+    return f"lead-review:v2:{hashlib.sha256(basis.encode('utf-8')).hexdigest()}"
 
 
 def _short_hash(value: str) -> str:

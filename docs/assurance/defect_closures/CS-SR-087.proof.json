@@ -1,0 +1,24 @@
+{
+  "schema_version": "constructionsight.defect-closure-proof/v1",
+  "defect_id": "CS-SR-087",
+  "required_resolution_sha256": "373cb51485ce4702bea0150d6a5307b569fdc485439c19244d3e2b2e5808e48f",
+  "implementation_assertions": [
+    {
+      "path": "README.md",
+      "operator": "contains",
+      "value": "Current active-defect count: **21**"
+    },
+    {
+      "path": "README.md",
+      "operator": "not_contains",
+      "value": "CS-SR-001` through `CS-SR-074"
+    }
+  ],
+  "regression_assertions": [
+    {
+      "path": "tests/test_repository_status_documentation.py",
+      "operator": "contains",
+      "value": "CS-SR-087"
+    }
+  ]
+}

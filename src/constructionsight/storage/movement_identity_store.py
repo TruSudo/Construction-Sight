@@ -19,7 +19,7 @@ from constructionsight.storage.movement_identity_orm import (
 
 
 def store_permit_snapshot(session: Session, snapshot: PermitSnapshot) -> PermitSnapshotRecord:
-    """Insert or update a permit snapshot record."""
+    """Append one immutable permit snapshot or accept an exact replay."""
 
     session.flush()
     payload_json = _payload_json(snapshot.to_dict())
@@ -41,13 +41,8 @@ def store_permit_snapshot(session: Session, snapshot: PermitSnapshot) -> PermitS
         )
         session.add(existing)
         return existing
-    existing.source_key = snapshot.source_key
-    existing.source_record_id = snapshot.source_record_id
-    existing.permit_number = snapshot.permit_number
-    existing.status = snapshot.status
-    existing.site_key = snapshot.site_key
-    existing.observed_at = snapshot.observed_at.isoformat()
-    existing.payload_json = payload_json
+    if existing.payload_json != payload_json:
+        raise ValueError("persisted permit snapshots are immutable")
     return existing
 
 
@@ -55,7 +50,7 @@ def store_permit_transition(
     session: Session,
     transition: PermitTransition,
 ) -> PermitTransitionRecord:
-    """Insert or update a permit transition record."""
+    """Append one immutable permit transition or accept an exact replay."""
 
     session.flush()
     payload_json = _payload_json(transition.to_dict())
@@ -77,13 +72,8 @@ def store_permit_transition(
         )
         session.add(existing)
         return existing
-    existing.transition_kind = transition.transition_kind.value
-    existing.source_key = transition.source_key
-    existing.source_record_id = transition.source_record_id
-    existing.field_name = transition.field_name
-    existing.opportunity_relevant = transition.opportunity_relevant
-    existing.detected_at = transition.detected_at.isoformat()
-    existing.payload_json = payload_json
+    if existing.payload_json != payload_json:
+        raise ValueError("persisted permit transitions are immutable")
     return existing
 
 
@@ -122,7 +112,7 @@ def store_contractor_identity(
 
 
 def store_decision_record(session: Session, decision: DecisionRecord) -> DecisionRecordRow:
-    """Insert or update a public decision record."""
+    """Append one immutable public decision record or accept a semantic replay."""
 
     session.flush()
     payload_json = _payload_json(decision.to_dict())
@@ -145,15 +135,21 @@ def store_decision_record(session: Session, decision: DecisionRecord) -> Decisio
         )
         session.add(existing)
         return existing
-    existing.source_key = decision.source_key
-    existing.source_record_id = decision.source_record_id
-    existing.source_kind = decision.source_kind.value
-    existing.decision_kind = decision.decision_kind.value
-    existing.site_key = decision.site_key
-    existing.apn = decision.apn
-    existing.confidence_score = decision.confidence_score
-    existing.payload_json = payload_json
+    if _semantic_replay_payload(existing.payload_json, "observed_at") != (
+        _semantic_replay_payload(payload_json, "observed_at")
+    ):
+        raise ValueError("persisted decision records are immutable")
     return existing
+
+
+def _semantic_replay_payload(payload_json: str, timestamp_field: str) -> str:
+    """Return semantic content without a non-identifying receipt timestamp."""
+
+    payload = json.loads(payload_json)
+    if not isinstance(payload, dict):
+        raise ValueError("persisted movement payload must be a JSON object")
+    payload.pop(timestamp_field, None)
+    return _payload_json({str(key): value for key, value in payload.items()})
 
 
 def _payload_json(payload: dict[str, object]) -> str:

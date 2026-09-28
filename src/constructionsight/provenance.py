@@ -100,4 +100,4 @@ class Provenance(BaseModel):
     def band(self) -> ConfidenceBand:
         """Return the confidence band without promoting score to verification."""
 
-        return confidence_band(self.confidence_score)
+        return confidence_band(_DERIVED_CONFIDENCE[self.confidence_basis])

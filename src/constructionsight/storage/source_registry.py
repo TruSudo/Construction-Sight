@@ -18,6 +18,28 @@ class SourceRegistryStore:
     def __init__(self, session: Session) -> None:
         self.session = session
 
+    def acquire_authorized_mutation_lock(self) -> None:
+        """Serialize an authorized registry state read through its mutation commit.
+
+        Source-registry authorization is bound to the exact current registry digest.
+        SQLite BEGIN IMMEDIATE reserves the sole writer slot before that digest is
+        read, so another process cannot change the authoritative registry between the
+        authorization decision and the protected upsert. Entering with an existing
+        transaction is rejected because its earlier reads could already be stale.
+        """
+
+        if self.session.in_transaction():
+            raise RuntimeError(
+                "authorized source-registry mutation requires a fresh transaction"
+            )
+        bind = self.session.get_bind()
+        if bind.dialect.name != "sqlite":
+            raise RuntimeError(
+                "authorized source-registry mutation currently requires SQLite "
+                "BEGIN IMMEDIATE serialization"
+            )
+        self.session.connection().exec_driver_sql("BEGIN IMMEDIATE")
+
     def upsert_source(self, source: PublicSource) -> SourceRecord:
         """Insert or update a public-source registry record.
 
@@ -78,11 +100,29 @@ class SourceRegistryStore:
         return [self._to_public_source(record) for record in records]
 
     def get_by_name(self, source_name: str) -> PublicSource | None:
-        """Return one source by name, if present."""
+        """Return an unambiguous source by name, if present."""
+
+        self.session.flush()
+        records = self.session.scalars(
+            select(SourceRecord).where(SourceRecord.source_name == source_name)
+        ).all()
+        if not records:
+            return None
+        if len(records) != 1:
+            raise ValueError(
+                "source name is ambiguous; use source name and public URL identity"
+            )
+        return self._to_public_source(records[0])
+
+    def get_by_identity(self, source_name: str, public_url: str) -> PublicSource | None:
+        """Return one source by the persisted name/URL identity pair."""
 
         self.session.flush()
         record = self.session.scalar(
-            select(SourceRecord).where(SourceRecord.source_name == source_name)
+            select(SourceRecord).where(
+                SourceRecord.source_name == source_name,
+                SourceRecord.public_url == public_url,
+            )
         )
         if record is None:
             return None

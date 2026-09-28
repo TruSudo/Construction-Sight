@@ -172,10 +172,15 @@ def test_existing_schema_is_required_and_absent_schema_is_not_created(
 
     CeqaDomainRecord.__table__.create(engine)
     with Session(engine) as session, session.begin():
-        CeqaStore(session).upsert(CeqaRecord(
-            ceqa_key="old", title="Old fixture", county="Riverside",
-            provenance=[Provenance(source_name="Synthetic source")],
-        ))
+        session.add(
+            CeqaDomainRecord(
+                ceqa_key="old",
+                title="Old fixture",
+                county="Riverside",
+                entities_json="[]",
+                provenance_json="[]",
+            )
+        )
     engine.dispose()
     p = preview_source_for_docket(path, kind="ceqa", record_id="old")
     with pytest.raises(CandidateDocketError, match="docket table is absent"):

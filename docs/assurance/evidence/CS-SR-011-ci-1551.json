@@ -1,0 +1,64 @@
+{
+  "schema_version": "constructionsight.exact-head-ci-evidence/v1",
+  "repository": "TruSudo/Construction-Sight",
+  "workflow_name": "CI",
+  "run_id": 36193106181,
+  "run_number": 1551,
+  "head_sha": "381a64ecc4e35601453091ac880af0d6328d85a9",
+  "status": "completed",
+  "conclusion": "failure",
+  "quality_jobs": [
+    {
+      "name": "Python 3.11 quality gate",
+      "conclusion": "failure",
+      "failed_step": "Enforce all quality gates",
+      "pytest": "2134 passed",
+      "focused_mutation": "164/164 mutants killed",
+      "certification_artifact_id": 10888544201,
+      "certification_artifact_sha256": "c3d196b424e86dde8ad51178c7f6fc45043fbbcdd145830ebafcaa83eaaae0a3"
+    },
+    {
+      "name": "Python 3.12 quality gate",
+      "conclusion": "failure",
+      "failed_step": "Enforce all quality gates",
+      "pytest": "2134 passed",
+      "focused_mutation": "164/164 mutants killed",
+      "certification_artifact_id": 10888714985,
+      "certification_artifact_sha256": "290cb134f27e49ac787d2b742c02e74b9919a4bb96313932639e16bc8c9e5255"
+    }
+  ],
+  "vulnerability_jobs": [
+    {
+      "name": "Python 3.11 isolated vulnerability audit",
+      "conclusion": "success"
+    },
+    {
+      "name": "Python 3.12 isolated vulnerability audit",
+      "conclusion": "success"
+    }
+  ],
+  "repository_certification": {
+    "conclusion": "failure",
+    "finding_count": 2,
+    "findings": [
+      {
+        "code": "ASSURANCE-001",
+        "path": "governance/reviews/assurance_review.json",
+        "message": "Native Maximum Assurance report is missing"
+      },
+      {
+        "code": "DEFECT-ACTIVE-001",
+        "path": "governance/active_defects.toml",
+        "message": "active defect blocks certification: CS-SR-011"
+      }
+    ],
+    "py311_output_sha256": "f6f7b7a6746d382ee35632afe33e32e85ac2d8370da97fbf13ae2e9260459875",
+    "py312_output_sha256": "f6f7b7a6746d382ee35632afe33e32e85ac2d8370da97fbf13ae2e9260459875"
+  },
+  "retained_output_sha256": {
+    "pytest_py311": "163fd287dc846a66d601ff3ff9bdfcc8d7230563bfad3cda6ecadb5b6aea503c",
+    "pytest_py312": "87a324e59497f6aca9ea0ab6dc9c027d11ee6a59c4e59826fa39561321284193",
+    "mutation_py311": "d4b93cf0206a2a4f0bb48258f6d086fb26396b9bc09ced0ec49d10ff3b8d14a5",
+    "mutation_py312": "d4b93cf0206a2a4f0bb48258f6d086fb26396b9bc09ced0ec49d10ff3b8d14a5"
+  }
+}
