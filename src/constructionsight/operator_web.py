@@ -35,6 +35,7 @@ from constructionsight.operator_dashboard_models import RecordSelection
 from constructionsight.operator_entity_index import build_entity_index
 from constructionsight.operator_parcel_candidates import inspect_parcel_candidates
 from constructionsight.operator_results import build_result_ledger_snapshot
+from constructionsight.operator_source_aliases import load_source_attribution_aliases
 from constructionsight.operator_source_candidate import (
     SourceRecordNotFound,
     build_source_candidate_preview,
@@ -207,6 +208,7 @@ def create_handler(
     database_path: Path,
     *,
     capture_queue_path: Path | None = None,
+    source_attribution_aliases_path: Path | None = None,
     ceqanet_listing_evidence: Path | None = None,
     ceqanet_queue_evidence: Path | None = None,
 ) -> type[BaseHTTPRequestHandler]:
@@ -218,6 +220,11 @@ def create_handler(
         empty_operator_capture_queue()
         if capture_queue_path is None
         else load_operator_capture_queue(capture_queue_path)
+    )
+    source_aliases = (
+        None
+        if source_attribution_aliases_path is None
+        else load_source_attribution_aliases(source_attribution_aliases_path)
     )
     engine = create_operator_read_engine(database_path)
 
@@ -309,7 +316,9 @@ def create_handler(
                     elif path == "/api/capture-queue":
                         payload = capture_queue
                     elif path == "/api/source-registry":
-                        payload = build_operator_source_registry(session).model_dump(mode="json")
+                        payload = build_operator_source_registry(
+                            session, source_aliases=source_aliases
+                        ).model_dump(mode="json")
                     elif path == "/api/source-revision":
                         payload = build_source_revision_snapshot(session)
                     elif path == "/api/ingestion-inbox":
@@ -442,6 +451,15 @@ def main(*, open_browser_by_default: bool = False) -> None:
         help="Optional retained exact-SCH review queue for read-only dashboard inspection.",
     )
     parser.add_argument(
+        "--source-attribution-aliases",
+        type=Path,
+        default=None,
+        help=(
+            "Optional retained constructionsight.source_attribution_aliases.v1 JSON "
+            "for explicit local provenance attribution."
+        ),
+    )
+    parser.add_argument(
         "--ceqanet-listing-evidence",
         type=Path,
         help="Optional exact governed CEQAnet listing evidence for read-only ingestion status.",
@@ -463,6 +481,7 @@ def main(*, open_browser_by_default: bool = False) -> None:
         handler = create_handler(
             args.database,
             capture_queue_path=args.capture_queue,
+            source_attribution_aliases_path=args.source_attribution_aliases,
             ceqanet_listing_evidence=args.ceqanet_listing_evidence,
             ceqanet_queue_evidence=args.ceqanet_queue_evidence,
         )
