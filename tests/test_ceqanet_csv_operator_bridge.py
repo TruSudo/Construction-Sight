@@ -40,10 +40,7 @@ from constructionsight.operator_dashboard import (
 )
 from constructionsight.operator_source_candidate import build_source_candidate_preview
 from constructionsight.operator_web import create_handler
-from constructionsight.storage.database import (
-    create_database_engine,
-    initialize_database,
-)
+from constructionsight.storage.database import create_database_engine, initialize_database
 from constructionsight.storage.domain_store import CeqaStore
 from constructionsight.storage.operator_read_store import create_operator_read_engine
 
