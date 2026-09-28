@@ -18,6 +18,7 @@ from constructionsight.storage.lead_workflow_orm import (
     LeadReviewPackageRecord,
     LeadWorkflowRecordRow,
 )
+from constructionsight.storage.orm import SourceRecord, VerificationRecord
 from constructionsight.storage.parcel_site_orm import ParcelCoreRecordRow
 
 
@@ -49,8 +50,13 @@ def verify_operator_schema(session: Session) -> None:
     """
 
     for row_type in (
-        CeqaDomainRecord, PermitDomainRecord, LeadWorkflowRecordRow,
-        LeadReviewPackageRecord, ParcelCoreRecordRow,
+        CeqaDomainRecord,
+        PermitDomainRecord,
+        LeadWorkflowRecordRow,
+        LeadReviewPackageRecord,
+        ParcelCoreRecordRow,
+        SourceRecord,
+        VerificationRecord,
     ):
         session.execute(select(row_type).limit(0)).close()
 
