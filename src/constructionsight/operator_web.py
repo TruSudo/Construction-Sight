@@ -19,6 +19,10 @@ from sqlalchemy.orm import Session
 
 from constructionsight.ceqanet_ingestion_inbox import build_ceqanet_ingestion_inbox
 from constructionsight.domain_types import PartyRole
+from constructionsight.operator_capture_queue import (
+    empty_operator_capture_queue,
+    load_operator_capture_queue,
+)
 from constructionsight.operator_dashboard import (
     build_dashboard_snapshot,
     build_entity_neighborhood,
@@ -26,10 +30,6 @@ from constructionsight.operator_dashboard import (
     build_historical_timeline,
     build_workflow_snapshot,
     build_workflow_status_summary,
-)
-from constructionsight.operator_capture_queue import (
-    empty_operator_capture_queue,
-    load_operator_capture_queue,
 )
 from constructionsight.operator_dashboard_models import RecordSelection
 from constructionsight.operator_entity_index import build_entity_index
@@ -478,13 +478,16 @@ def main(*, open_browser_by_default: bool = False) -> None:
     if not 1 <= args.port <= 65535:
         parser.error("--port must be between 1 and 65535")
     try:
-        handler = create_handler(
-            args.database,
-            capture_queue_path=args.capture_queue,
-            source_attribution_aliases_path=args.source_attribution_aliases,
-            ceqanet_listing_evidence=args.ceqanet_listing_evidence,
-            ceqanet_queue_evidence=args.ceqanet_queue_evidence,
-        )
+        handler_kwargs: dict[str, Path] = {}
+        if args.capture_queue is not None:
+            handler_kwargs["capture_queue_path"] = args.capture_queue
+        if args.source_attribution_aliases is not None:
+            handler_kwargs["source_attribution_aliases_path"] = args.source_attribution_aliases
+        if args.ceqanet_listing_evidence is not None:
+            handler_kwargs["ceqanet_listing_evidence"] = args.ceqanet_listing_evidence
+        if args.ceqanet_queue_evidence is not None:
+            handler_kwargs["ceqanet_queue_evidence"] = args.ceqanet_queue_evidence
+        handler = create_handler(args.database, **handler_kwargs)
     except (OSError, ValueError) as exc:
         parser.error(f"--database must name an existing SQLite file: {exc}")
     except SQLAlchemyError:
