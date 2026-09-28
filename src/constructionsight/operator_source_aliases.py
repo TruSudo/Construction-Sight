@@ -102,12 +102,6 @@ def load_source_attribution_aliases(path: Path) -> LoadedSourceAttributionAliase
     if artifact.network_executed is not False or artifact.persistence_mutated is not False:
         raise ValueError("source attribution alias artifact carries unsupported authority state")
 
-    ordered = sorted(
-        artifact.mappings,
-        key=lambda item: (item.alias_source_name, item.canonical_source_name),
-    )
-    if artifact.mappings != ordered:
-        raise ValueError("source attribution aliases are not canonically ordered")
     aliases: set[str] = set()
     pairs: set[tuple[str, str]] = set()
     for mapping in artifact.mappings:
@@ -120,6 +114,12 @@ def load_source_attribution_aliases(path: Path) -> LoadedSourceAttributionAliase
             raise ValueError("source attribution alias mapping is duplicated")
         aliases.add(mapping.alias_source_name)
         pairs.add(pair)
+    ordered = sorted(
+        artifact.mappings,
+        key=lambda item: (item.alias_source_name, item.canonical_source_name),
+    )
+    if artifact.mappings != ordered:
+        raise ValueError("source attribution aliases are not canonically ordered")
 
     return LoadedSourceAttributionAliases(
         artifact_sha256=hashlib.sha256(raw).hexdigest(),
