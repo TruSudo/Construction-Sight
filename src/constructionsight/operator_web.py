@@ -27,6 +27,10 @@ from constructionsight.operator_dashboard import (
     build_workflow_snapshot,
     build_workflow_status_summary,
 )
+from constructionsight.operator_capture_queue import (
+    empty_operator_capture_queue,
+    load_operator_capture_queue,
+)
 from constructionsight.operator_dashboard_models import RecordSelection
 from constructionsight.operator_entity_index import build_entity_index
 from constructionsight.operator_parcel_candidates import inspect_parcel_candidates
@@ -35,6 +39,7 @@ from constructionsight.operator_source_candidate import (
     SourceRecordNotFound,
     build_source_candidate_preview,
 )
+from constructionsight.operator_source_registry import build_operator_source_registry
 from constructionsight.operator_source_revision import build_source_revision_snapshot
 from constructionsight.storage.operator_read_store import (
     create_operator_read_engine,
@@ -201,6 +206,7 @@ def _build_ceqanet_ingestion_payload(
 def create_handler(
     database_path: Path,
     *,
+    capture_queue_path: Path | None = None,
     ceqanet_listing_evidence: Path | None = None,
     ceqanet_queue_evidence: Path | None = None,
 ) -> type[BaseHTTPRequestHandler]:
@@ -208,6 +214,11 @@ def create_handler(
 
     if (ceqanet_listing_evidence is None) != (ceqanet_queue_evidence is None):
         raise ValueError("CEQAnet listing and queue evidence must be configured together")
+    capture_queue = (
+        empty_operator_capture_queue()
+        if capture_queue_path is None
+        else load_operator_capture_queue(capture_queue_path)
+    )
     engine = create_operator_read_engine(database_path)
 
     class OperatorHandler(BaseHTTPRequestHandler):
@@ -244,6 +255,7 @@ def create_handler(
                     return
                 if path not in {
                     "/api/health",
+                    "/api/source-registry",
                     "/api/source-revision",
                     "/api/snapshot",
                     "/api/footprint",
@@ -251,6 +263,7 @@ def create_handler(
                     "/api/entity-neighborhood",
                     "/api/entity-index",
                     "/api/candidate-preview",
+                    "/api/capture-queue",
                     "/api/parcel-candidates",
                     "/api/workflows",
                     "/api/results",
@@ -261,7 +274,13 @@ def create_handler(
                     return
                 if (
                     path
-                    in {"/api/workflow-summary", "/api/source-revision", "/api/ingestion-inbox"}
+                    in {
+                        "/api/workflow-summary",
+                        "/api/source-registry",
+                        "/api/source-revision",
+                        "/api/capture-queue",
+                        "/api/ingestion-inbox",
+                    }
                     and parsed.query
                 ):
                     raise ValueError("unfiltered status inspection rejects query parameters")
@@ -287,6 +306,10 @@ def create_handler(
                             "read_only": True,
                             "live_collection_enabled": False,
                         }
+                    elif path == "/api/capture-queue":
+                        payload = capture_queue
+                    elif path == "/api/source-registry":
+                        payload = build_operator_source_registry(session).model_dump(mode="json")
                     elif path == "/api/source-revision":
                         payload = build_source_revision_snapshot(session)
                     elif path == "/api/ingestion-inbox":
@@ -414,6 +437,11 @@ def main(*, open_browser_by_default: bool = False) -> None:
     parser = argparse.ArgumentParser(description="ConstructionSight operator GUI (read only)")
     parser.add_argument("--database", type=Path, default=Path("data/constructionsight.sqlite3"))
     parser.add_argument(
+        "--capture-queue",
+        type=Path,
+        help="Optional retained exact-SCH review queue for read-only dashboard inspection.",
+    )
+    parser.add_argument(
         "--ceqanet-listing-evidence",
         type=Path,
         help="Optional exact governed CEQAnet listing evidence for read-only ingestion status.",
@@ -432,14 +460,12 @@ def main(*, open_browser_by_default: bool = False) -> None:
     if not 1 <= args.port <= 65535:
         parser.error("--port must be between 1 and 65535")
     try:
-        if args.ceqanet_listing_evidence is None and args.ceqanet_queue_evidence is None:
-            handler = create_handler(args.database)
-        else:
-            handler = create_handler(
-                args.database,
-                ceqanet_listing_evidence=args.ceqanet_listing_evidence,
-                ceqanet_queue_evidence=args.ceqanet_queue_evidence,
-            )
+        handler = create_handler(
+            args.database,
+            capture_queue_path=args.capture_queue,
+            ceqanet_listing_evidence=args.ceqanet_listing_evidence,
+            ceqanet_queue_evidence=args.ceqanet_queue_evidence,
+        )
     except (OSError, ValueError) as exc:
         parser.error(f"--database must name an existing SQLite file: {exc}")
     except SQLAlchemyError:
