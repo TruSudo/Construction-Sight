@@ -46,6 +46,9 @@ Ported onto the current hardened architecture:
 - `--capture-queue` operator configuration
 - Command Center source-registry/verification/attribution rendering
 - Command Center exact-SCH retained review queue rendering
+- explicit source-attribution alias artifact validation and exact SHA-256 identity
+- alias-aware retained provenance attribution without granting verification authority
+- `--source-attribution-aliases` operator wiring
 - private test-drive source registry seeding
 - focused module, endpoint, UI, and test-drive regression coverage
 
@@ -55,9 +58,10 @@ Historical source lineage used:
 - `agent/command-center-source-verification`
 - `agent/source-attribution-coverage`
 - `agent/test-drive-source-inventory`
+- `agent/explicit-source-attribution-aliases`
 - `integration/reconcile-source-inventory-2026-09-24`
 
-Validation: CI run associated with the current PR head is pending.
+Validation: the first integrated run exposed five compatibility regressions and two import-order findings. Those were repaired without weakening the current evidence-versus-registry authority boundary. The replacement CI run is in progress; vulnerability audits are already passing.
 
 ### Already confirmed contained in current main
 
@@ -80,3 +84,21 @@ Representative major lineages already ancestral to main and therefore not candid
 - WKT area-weighted geometry
 
 These branches remain in the inventory until final cleanup so their exact historical tips remain recoverable.
+
+
+### Parcel / ArcGIS lineage — assessment started
+
+Initial divergent historical tips examined:
+- `agent/add-arcgis-proof-bundle-persistence`
+- `agent/add-arcgis-rehearsal-http-adapter`
+- `agent/add-arcgis-rehearsal-proof-bundle`
+- `agent/add-parcel-arcgis-acquisition-gates`
+
+Current-tree findings:
+- acquisition bundle models are byte-identical where expected;
+- the historical `load_arcgis_bounded_proof_bundle` capability was not lost; it moved to `parcel_source_acquisition_bundle_io.py`;
+- current acquisition HTTP retains the historical API surface and adds stricter exact-request/response handling;
+- current rehearsal HTTP replaces the historical media-type helper with stricter exact-body validation;
+- proof bundle and rehearsal APIs remain present with current hardened implementations.
+
+Disposition so far: these tips are absorbed/superseded candidates, not direct merge candidates. Continue semantic comparison before final classification.
