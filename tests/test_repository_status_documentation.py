@@ -25,3 +25,20 @@ def test_current_status_surfaces_match_authoritative_active_defect_count() -> No
 
     assert _documented_count("README.md") == expected
     assert _documented_count("docs/architecture/current_implementation_status.md") == expected
+
+
+
+def test_current_status_does_not_describe_resolved_defects_as_open() -> None:
+    text = Path("docs/architecture/current_implementation_status.md").read_text(
+        encoding="utf-8"
+    )
+
+    prohibited = (
+        r"remain(?:s)? open work under CS-SR-\d+",
+        r"remain(?:s)? under CS-SR-\d+ review",
+        r"CS-SR-\d+(?:/\d+)* remain(?:s)? open",
+    )
+    for pattern in prohibited:
+        assert re.search(pattern, text, flags=re.IGNORECASE) is None, (
+            f"current implementation status contains stale resolved-defect language: {pattern}"
+        )
