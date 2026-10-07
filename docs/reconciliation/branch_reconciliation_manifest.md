@@ -125,7 +125,7 @@ This manifest is the durable starting inventory for the full ConstructionSight r
 | `cleanup/storage-coverage-matrix` | `8a95f66f0ebafee899c6e0c67df53afca1669e0b` | pending |
 | `cleanup/storage-summary-cli` | `90a200531b79250ef597a0c56dbfc089c2141042` | pending |
 | `cleanup/verification-report` | `6236a9e8b8e06bac94239f52042a195b0adc86ba` | pending |
-| `cleanup/versioned-scoring-profile` | `181eaeb840fec189d5a646270f6f07bcdc6b12f5` | pending |
+| `cleanup/versioned-scoring-profile` | `181eaeb840fec189d5a646270f6f07bcdc6b12f5` | superseded |
 | `codex/parcel-longitudinal-evidence` | `2421fe52cf6b9e30db14b499b61084daec81c149` | superseded |
 | `feature/artifact-resolution-examples` | `297ded6b64d753ed82365151a2c50dfef9558617` | pending |
 | `feature/artifact-resolution-examples-clean` | `60a152dc2b43a01699ab298ba5ae2b0a7258d0e7` | pending |
@@ -160,7 +160,7 @@ This manifest is the durable starting inventory for the full ConstructionSight r
 | `feature/lead-workflow-status-spine` | `ebcee77172338ebe53f755b237fed4c5d06c0445` | contained |
 | `feature/opportunity-action-package` | `b01a00537777dc962d1e8831aa27451e0e05c6eb` | contained |
 | `feature/opportunity-enrichment-spine` | `f673925e6a46cdde8a49fe1985fe35570a25ea0c` | contained |
-| `feature/opportunity-transition-intake` | `67723569fb0b560995d04e80279c48790fe705a1` | pending |
+| `feature/opportunity-transition-intake` | `67723569fb0b560995d04e80279c48790fe705a1` | superseded |
 | `feature/parcel-fact-assurance` | `7643bfbf8216ca2b00d84937130b5f782250d79d` | superseded |
 | `feature/parcel-import-preview` | `0317f84a9276eb5d668a9b72949fdd019904ba02` | contained |
 | `feature/parcel-record-geometry-normalization` | `1e1ae6d194b3f88250a59164e30fe462c593c90b` | contained |
@@ -187,7 +187,7 @@ This manifest is the durable starting inventory for the full ConstructionSight r
 | `remediation/cs-sr-048-current-line` | `13e4ebf9befbac90154110b315e855ba6b2d31dd` | pending |
 | `remediation/cs-sr-053-fixed-decimal` | `7456e0f9820f2af219f1ac7bc0b5deba5746ca5f` | pending |
 | `remediation/cs-sr-053-fixed-decimal-v2` | `7b4782b212da4fa3490ce9688b404b41015fd6a4` | pending |
-| `remediation/operational-confidence-gating` | `b555632e1d91faf1a7a64be3ecebd765f83bd0c6` | pending |
+| `remediation/operational-confidence-gating` | `b555632e1d91faf1a7a64be3ecebd765f83bd0c6` | superseded |
 | `remediation/result-ledger-content-and-money` | `de1007dd04300b521b1b6ad5713b98ab82b11ddc` | pending |
 | `remediation/schema-version-governance` | `1866453b6cfcf63b6c0cd2af4cbb234daa59581f` | pending |
 | `remediation/test-governance-sync-batch` | `eb07760e8de6aa45d3001ae1a7e374f09cba0434` | pending |
