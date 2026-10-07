@@ -117,6 +117,21 @@ def test_watchlist_write_engine_rejects_non_watchlist_mutation(tmp_path) -> None
                 )
             session.rollback()
 
+        with Session(engine, autoflush=False) as session:
+            with pytest.raises(
+                RuntimeError,
+                match="watchlist-table mutations only",
+            ):
+                session.execute(
+                    text(
+                        "WITH marker AS (SELECT 1) "
+                        "UPDATE domain_ceqa_records "
+                        "SET title = 'cte mutation' "
+                        "WHERE ceqa_key = 'fixture:watch'"
+                    )
+                )
+            session.rollback()
+
         read_engine = create_database_engine(f"sqlite:///{path}")
         try:
             with Session(read_engine) as session:
