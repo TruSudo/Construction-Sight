@@ -124,6 +124,24 @@ The approved desktop design contract remains present in `docs/architecture/offic
 Important product-status distinction: the historical UI/operator work is retained, but full product acceptance still requires the backend-authorized commercial paths, persistent watchlist/change notification behavior, complete map/entity/evidence functionality, and final end-to-end runtime validation described by the locked UI contract.
 
 
+### Lead workflow and opportunity scoring — historical reconciliation assessed
+
+The canonical reconciliation line already contains the principal lead/opportunity spines by ancestry:
+- lead duplicate suppression;
+- persisted lead workflow status;
+- opportunity enrichment;
+- opportunity action packages; and
+- the operator CLI used to inspect lead state.
+
+Divergent historical branches were checked separately:
+- `cleanup/versioned-scoring-profile` is superseded by the current scoring implementation; the same scoring-profile and enrichment capability surface remains present in a later hardened form;
+- `remediation/operational-confidence-gating` is superseded by the current tree: its enrichment models and scoring profile are byte-identical, while the current enrichment service is a later retained implementation;
+- `feature/opportunity-transition-intake` carries no unique tree delta beyond the already-retained external-intelligence lineage and is classified superseded;
+- the older `cleanup/lead-status-rules` lineage remains superseded by the persisted workflow implementation already in canonical history.
+
+The deterministic readiness semantics remain governed: confidence/readiness logic may qualify outreach timing, but it does not authorize bidding, fabricate contacts, or bypass the evidence/review gates defined by the locked UI and operational contracts.
+
+
 ### CEQAnet policy, operator, persistence, and CSV evidence lineages — assessed
 
 The historical CEQAnet branches examined here are either ancestors of the current tree or represented by current hardened implementations.
