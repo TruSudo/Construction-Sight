@@ -228,6 +228,18 @@ Audit-only historical lineage:
 The canonical CEQAnet authority boundary remains unchanged: no bypass of the retained HTTP 403, no autonomous scheduler authority, no domain persistence authority from the CSV evidence policy alone, and no source promotion beyond the currently supported `partial` maturity state.
 
 
+
+### Governance and historical assurance lineages — assessed
+
+The remaining governance, remediation, audit, and archive branches have been classified.
+
+Most runtime and governance work is already contained in canonical ancestry or superseded by later hardened implementations. Historical defect-closure documents, frozen resolution maps, the pre-remediation audit baseline, and older certification evidence are retained as audit-only history rather than copied onto the current reconciliation head.
+
+This distinction is intentional: prior assurance artifacts describe the exact historical trees they reviewed. The fully reconciled tree requires a fresh final assurance pass and new evidence bound to its own exact commit.
+
+The explicit silent-risk archive tips remain classified as archive recovery points.
+
+
 ### Cleanup and source-readiness lineages — assessed
 
 Core historical behavior was retained:
