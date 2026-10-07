@@ -27,7 +27,6 @@ OperatorSourceKind = Literal["ceqa", "permit"]
 
 OPERATOR_WORKSPACE_ID = "operator-local"
 MAX_OPERATOR_WATCHLIST_ITEMS = 500
-_WATCHLIST_TABLE = "intelligence_watchlist_items"
 _MUTATION_PREFIX = re.compile(
     r'^\s*(?:INSERT\s+INTO|UPDATE)\s+["\x60\[]?intelligence_watchlist_items(?:["\x60\]]|\s)',
     re.IGNORECASE,
@@ -52,7 +51,7 @@ def _guard_watchlist_only_mutation(
 
     normalized = statement.lstrip()
     keyword = normalized.split(None, 1)[0].upper() if normalized else ""
-    if keyword in {"SELECT", "PRAGMA", "WITH"}:
+    if keyword in {"SELECT", "PRAGMA"}:
         return
     if keyword in {"INSERT", "UPDATE"} and _MUTATION_PREFIX.match(normalized):
         return
@@ -272,7 +271,11 @@ def _validated_row_item(row: IntelligenceWatchlistRecord) -> WatchlistItem:
 
 
 def _require_index_identity(row: IntelligenceWatchlistRecord, item: WatchlistItem) -> None:
-    target_type = item.target_type.value if hasattr(item.target_type, "value") else str(item.target_type)
+    target_type = (
+        item.target_type.value
+        if hasattr(item.target_type, "value")
+        else str(item.target_type)
+    )
     expected = (
         item.watchlist_item_id,
         item.workspace_id,
