@@ -70,12 +70,13 @@ def test_command_center_discloses_unassessed_records_and_missing_actions() -> No
     script = (ASSETS / "operator_command_center.js").read_text(encoding="utf-8")
     for required in (
         "UNASSESSED", "Stored status, not outreach approval",
-        "No monitoring or notifications", "Not deduplicated projects",
+        "No source monitoring", "Not deduplicated projects",
     ):
         assert required in html + script
     for endpoint in (
         "/api/snapshot?", "/api/footprint?", "/api/workflows?",
         "/api/health", "/api/workflow-summary", "/api/ingestion-inbox",
+        "/api/watchlist",
     ):
         assert endpoint in script
     assert "source claims" in script.lower()
@@ -87,7 +88,11 @@ def test_command_center_discloses_unassessed_records_and_missing_actions() -> No
     assert "persisted_record_keys" in script
     assert '"CEQAnet ingestion inbox"' in script
     assert "safeSourceLink(item.official_detail_url)" in script
-    assert "localStorage" in script
+    assert "localStorage" not in script
+    assert "operator_watchlist.v1" in script
+    assert "persisted_locally" in script
+    assert 'mutateJson("/api/watchlist?"' in script
+    assert 'archive ? "DELETE" : "POST"' in script
     assert not re.search(r'\b(247|104|86|57)\b', html)
 
 
@@ -239,8 +244,9 @@ def test_command_center_source_and_county_filters_share_exact_list_map_scope() -
     assert 'pageOffset=0;showHome();loadData(0);' in script
 
 
-def test_watchlist_bookmark_opens_fresh_exact_source_not_cached_display_text() -> None:
-    """A local bookmark resolves a current, exact database record without writing or alerting."""
+def test_watchlist_persists_locally_but_reopens_fresh_exact_source() -> None:
+    """Persisted watch membership must not substitute cached labels for current source facts."""
+    html = (ASSETS / "operator_command_center.html").read_text(encoding="utf-8")
     script = (ASSETS / "operator_command_center.js").read_text(encoding="utf-8")
     assert 'data-open="' in script
     assert 'openWatchBookmark(currentKey)' in script
@@ -249,7 +255,13 @@ def test_watchlist_bookmark_opens_fresh_exact_source_not_cached_display_text() -
     assert 'identity(row) !== key || result.read_only !== true' in script
     assert 'token !== featureRequest || byId("command-view").hidden' in script
     assert 'No cached source facts were substituted.' in script
-    assert 'Bookmark is not monitoring or outreach approval.' in script
+    assert 'Watchlist membership is not monitoring or outreach approval.' in script
+    assert 'fetchJson("/api/watchlist")' in script
+    assert 'mutateJson("/api/watchlist?" + params, "DELETE")' in script
+    assert 'source_monitoring_enabled !== false' in script
+    assert 'notification_delivery_enabled !== false' in script
+    assert "Persisted locally" in html
+    assert "localStorage" not in script
     assert 'fetch(url,{cache:"no-store"})' in script
 
 
