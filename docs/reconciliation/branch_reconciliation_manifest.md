@@ -122,13 +122,13 @@ This manifest is the durable starting inventory for the full ConstructionSight r
 | `cleanup/source-status` | `4077c874a299d06530e4f67af63ad099aeaf03cc` | pending |
 | `cleanup/source-status-command-shape` | `f782877898dcc81604372f348c9476603d5aac20` | pending |
 | `cleanup/source-verification-checklist` | `12063ce8d902758c32c0eb7493325b5f0d307685` | pending |
-| `cleanup/storage-coverage-matrix` | `8a95f66f0ebafee899c6e0c67df53afca1669e0b` | pending |
-| `cleanup/storage-summary-cli` | `90a200531b79250ef597a0c56dbfc089c2141042` | pending |
+| `cleanup/storage-coverage-matrix` | `8a95f66f0ebafee899c6e0c67df53afca1669e0b` | contained |
+| `cleanup/storage-summary-cli` | `90a200531b79250ef597a0c56dbfc089c2141042` | superseded |
 | `cleanup/verification-report` | `6236a9e8b8e06bac94239f52042a195b0adc86ba` | pending |
 | `cleanup/versioned-scoring-profile` | `181eaeb840fec189d5a646270f6f07bcdc6b12f5` | superseded |
 | `codex/parcel-longitudinal-evidence` | `2421fe52cf6b9e30db14b499b61084daec81c149` | superseded |
-| `feature/artifact-resolution-examples` | `297ded6b64d753ed82365151a2c50dfef9558617` | pending |
-| `feature/artifact-resolution-examples-clean` | `60a152dc2b43a01699ab298ba5ae2b0a7258d0e7` | pending |
+| `feature/artifact-resolution-examples` | `297ded6b64d753ed82365151a2c50dfef9558617` | superseded |
+| `feature/artifact-resolution-examples-clean` | `60a152dc2b43a01699ab298ba5ae2b0a7258d0e7` | contained |
 | `feature/ceqanet-chain-report-cli` | `494a088e10900e90da4017c11f894ffee79c746d` | superseded |
 | `feature/ceqanet-detail-enrichment` | `5e63ad787a03acb17686828dc7d55d866385ab69` | pending |
 | `feature/ceqanet-detail-enrichment-cli` | `d2734152fd40c7b7a04b4059de59d39f8914940e` | superseded |
@@ -172,7 +172,7 @@ This manifest is the durable starting inventory for the full ConstructionSight r
 | `feature/result-ledger` | `d090f0740ffb052ccf61c0d296cc01357e0a2ad8` | contained |
 | `feature/shovels-regrid-gap-alignment` | `19344349f54d994f5e8481efa8c866ac65f04889` | contained |
 | `feature/site-resolution-parcel-enrichment` | `018d268b23fa79964fc10886369e52ac822d48e9` | contained |
-| `feature/universal-intake-spine` | `0cfb641b8f444075e3a1a4231a89c0da8b31173a` | pending |
+| `feature/universal-intake-spine` | `0cfb641b8f444075e3a1a4231a89c0da8b31173a` | superseded |
 | `fix/cs-sr-045-lawful-access-facts` | `42642d460ec7b9ad44183e0e3a4f8662afa089b7` | pending |
 | `fix/cs-sr-046-epistemic-provenance` | `3b8c333636c56b0113f4bee36b74367bc8f7ee75` | pending |
 | `integration/constructionsight-baseline-2026-09-24` | `6e568d2c266550be14f50f1270f4a5d13889d787` | contained |
