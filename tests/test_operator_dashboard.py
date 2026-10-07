@@ -68,6 +68,7 @@ from constructionsight.storage.lead_workflow_store import (
     store_lead_workflow_record,
     store_result_ledger_record,
 )
+from constructionsight.storage.intelligence_orm import IntelligenceWatchlistRecord
 from constructionsight.storage.operator_read_store import create_operator_read_engine
 from constructionsight.storage.parcel_site_orm import ParcelCoreRecordRow
 from constructionsight.storage.parcel_site_store import store_parcel_core_record
@@ -1872,6 +1873,68 @@ def test_source_registry_endpoint_is_read_only_and_rejects_query_parameters(data
         assert payload["entries"] == []
         assert _get(port, "/api/source-registry?kind=permit")[0] == 400
     assert hashlib.sha256(path.read_bytes()).hexdigest() == before
+
+
+def test_persisted_watchlist_http_is_same_origin_and_source_read_only(database):
+    path, engine = database
+    with Session(engine) as session, session.begin():
+        CeqaStore(session).upsert(_record("watch:http"))
+
+    with _server(path) as port:
+        status, _, raw = _get(port, "/api/watchlist")
+        assert status == 200
+        initial = json.loads(raw)
+        assert initial["schema_version"] == "operator_watchlist.v1"
+        assert initial["total"] == 0
+        assert initial["persisted_locally"] is True
+        assert initial["source_records_read_only"] is True
+        assert initial["source_monitoring_enabled"] is False
+        assert initial["notification_delivery_enabled"] is False
+        assert initial["commercial_actions_authorized"] is False
+        assert _get(port, "/api/watchlist?kind=ceqa")[0] == 400
+
+        mutation_path = "/api/watchlist?kind=ceqa&record_id=watch%3Ahttp"
+        assert _get(port, mutation_path, method="POST")[0] == 403
+        origin = {"Origin": f"http://127.0.0.1:{port}"}
+        status, _, raw = _get(port, mutation_path, headers=origin, method="POST")
+        assert status == 200
+        added = json.loads(raw)
+        assert added["mutation"] == "added"
+        assert added["total"] == 1
+        assert added["items"][0]["record_kind"] == "ceqa"
+        assert added["items"][0]["record_id"] == "watch:http"
+        assert added["items"][0]["alert_enabled"] is False
+        assert added["items"][0]["title"] == "Synthetic warehouse record"
+
+        status, _, raw = _get(port, "/api/watchlist")
+        assert status == 200
+        persisted = json.loads(raw)
+        assert persisted["items"] == added["items"]
+
+        status, _, raw = _get(port, mutation_path, headers=origin, method="DELETE")
+        assert status == 200
+        archived = json.loads(raw)
+        assert archived["mutation"] == "archived"
+        assert archived["total"] == 0
+
+        status, _, raw = _get(port, "/api/health")
+        assert status == 200
+        health = json.loads(raw)
+        assert health["read_only"] is True
+        assert health["watchlist_persistence_enabled"] is True
+        assert health["watchlist_source_monitoring_enabled"] is False
+
+    with Session(engine) as session:
+        record = CeqaStore(session).get("watch:http")
+        assert record is not None
+        assert record.title == "Synthetic warehouse record"
+        row = session.scalar(
+            select(IntelligenceWatchlistRecord).where(
+                IntelligenceWatchlistRecord.target_id == "watch:http"
+            )
+        )
+        assert row is not None
+        assert row.status == "archived"
 
 
 def test_operator_startup_requires_source_registry_schema(database):
