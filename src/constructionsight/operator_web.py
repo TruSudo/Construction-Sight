@@ -42,6 +42,12 @@ from constructionsight.operator_source_candidate import (
 )
 from constructionsight.operator_source_registry import build_operator_source_registry
 from constructionsight.operator_source_revision import build_source_revision_snapshot
+from constructionsight.operator_watchlist import (
+    add_source_watch,
+    archive_source_watch,
+    build_operator_watchlist_snapshot,
+    create_operator_watchlist_engine,
+)
 from constructionsight.storage.operator_read_store import (
     create_operator_read_engine,
     verify_operator_schema,
@@ -227,6 +233,7 @@ def create_handler(
         else load_source_attribution_aliases(source_attribution_aliases_path)
     )
     engine = create_operator_read_engine(database_path)
+    watchlist_engine = create_operator_watchlist_engine(database_path)
 
     class OperatorHandler(BaseHTTPRequestHandler):
         """Serve only same-origin, loopback reads and bundled presentation assets."""
@@ -274,6 +281,7 @@ def create_handler(
                     "/api/parcel-candidates",
                     "/api/workflows",
                     "/api/results",
+                    "/api/watchlist",
                     "/api/workflow-summary",
                     "/api/ingestion-inbox",
                 }:
@@ -287,6 +295,7 @@ def create_handler(
                         "/api/source-revision",
                         "/api/capture-queue",
                         "/api/ingestion-inbox",
+                        "/api/watchlist",
                     }
                     and parsed.query
                 ):
@@ -312,6 +321,8 @@ def create_handler(
                             "status": "database_readable",
                             "read_only": True,
                             "live_collection_enabled": False,
+                            "watchlist_persistence_enabled": True,
+                            "watchlist_source_monitoring_enabled": False,
                         }
                     elif path == "/api/capture-queue":
                         payload = capture_queue
@@ -333,6 +344,8 @@ def create_handler(
                         payload = build_result_ledger_snapshot(
                             session, limit=parameters.limit, offset=parameters.offset
                         )
+                    elif path == "/api/watchlist":
+                        payload = build_operator_watchlist_snapshot(session)
                     elif path == "/api/workflows":
                         payload = build_workflow_snapshot(
                             session, limit=parameters.limit, offset=parameters.offset
@@ -403,6 +416,84 @@ def create_handler(
                     },
                     status=HTTPStatus.SERVICE_UNAVAILABLE,
                 )
+
+
+        def do_POST(self) -> None:
+            self._mutate_watchlist(archive=False)
+
+        def do_DELETE(self) -> None:
+            self._mutate_watchlist(archive=True)
+
+        def _mutate_watchlist(self, *, archive: bool) -> None:
+            """Apply one same-origin local watchlist mutation and nothing else."""
+
+            if not self._local_request_allowed(require_origin=True):
+                self._send_json(
+                    {"error": "Local same-origin write required."},
+                    status=HTTPStatus.FORBIDDEN,
+                )
+                return
+            try:
+                parsed = urlparse(self.path)
+                if (
+                    parsed.scheme
+                    or parsed.netloc
+                    or parsed.fragment
+                    or parsed.path != "/api/watchlist"
+                ):
+                    raise ValueError("watchlist mutation path required")
+                values = parse_qs(parsed.query, keep_blank_values=True, max_num_fields=2)
+                if set(values) != {"kind", "record_id"} or any(
+                    len(value) != 1 for value in values.values()
+                ):
+                    raise ValueError("exact watchlist kind and record_id are required")
+                kind = values["kind"][0]
+                record_id = values["record_id"][0]
+                with Session(watchlist_engine, autoflush=False) as session:
+                    with session.begin():
+                        if archive:
+                            archive_source_watch(
+                                session, kind=kind, record_id=record_id
+                            )
+                        else:
+                            add_source_watch(session, kind=kind, record_id=record_id)
+                        payload = build_operator_watchlist_snapshot(session)
+                payload["mutation"] = "archived" if archive else "added"
+                self._send_json(payload)
+            except LookupError:
+                self._send_json(
+                    {"error": "Exact source/watchlist record not found."},
+                    status=HTTPStatus.NOT_FOUND,
+                )
+            except ValueError as exc:
+                self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
+            except (SQLAlchemyError, RuntimeError):
+                self._send_json(
+                    {
+                        "error": "Watchlist persistence is unavailable; "
+                        "no source or commercial record was changed."
+                    },
+                    status=HTTPStatus.SERVICE_UNAVAILABLE,
+                )
+
+        def _local_request_allowed(self, *, require_origin: bool = False) -> bool:
+            """Require one loopback Host and, for writes, an exact same-origin Origin."""
+
+            address = self.server.server_address
+            if not isinstance(address, tuple):
+                return False
+            port = address[1]
+            allowed_hosts = {f"127.0.0.1:{port}", f"localhost:{port}"}
+            hosts = self.headers.get_all("Host", [])
+            origins = self.headers.get_all("Origin", [])
+            if len(hosts) != 1 or hosts[0] not in allowed_hosts:
+                return False
+            if self.headers.get("Sec-Fetch-Site") == "cross-site":
+                return False
+            expected_origin = f"http://{hosts[0]}"
+            if require_origin:
+                return origins == [expected_origin]
+            return not origins or origins == [expected_origin]
 
         def _send_json(self, payload: object, *, status: HTTPStatus = HTTPStatus.OK) -> None:
             body = json.dumps(payload, sort_keys=True, allow_nan=False).encode("utf-8")
