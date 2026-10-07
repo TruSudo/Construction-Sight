@@ -67,9 +67,9 @@ This manifest is the durable starting inventory for the full ConstructionSight r
 | `agent/record-county-arcgis-bounded-proofs` | `0a9559c86430ad4160f3ecdf6d0a118b8c808baf` | superseded |
 | `agent/repair-ceqanet-evidence-partial` | `ec805fdf41fc474d1021f46bf00570e58b365123` | pending |
 | `agent/result-authority-operator` | `a876d33d030033c18c538389f11c393b4f99846b` | contained |
-| `agent/result-ledger-authority` | `3eda596c7da928f0502d0bfd9dc858f91a7356dd` | pending |
+| `agent/result-ledger-authority` | `3eda596c7da928f0502d0bfd9dc858f91a7356dd` | superseded |
 | `agent/result-ledger-correction-action` | `f96737884cc150396fcfc6cc210d41dc62ef4521` | contained |
-| `agent/result-ledger-supersession` | `053b0099808bac770718a9f04328dcce1f898064` | pending |
+| `agent/result-ledger-supersession` | `053b0099808bac770718a9f04328dcce1f898064` | superseded |
 | `agent/result-ledger-supersession-v2` | `d7e612c240f1bc44ac83af0805f430e1b6f65041` | contained |
 | `agent/silent-risk-certification` | `fa756e75cced218411cbf2d5d4c973add9d9c196` | pending |
 | `agent/source-attribution-coverage` | `2d98826dd224545be2112c185612a41c25718bc4` | reconciled |
@@ -169,7 +169,7 @@ This manifest is the durable starting inventory for the full ConstructionSight r
 | `feature/parcel-source-schema-preview` | `8c7413a43fce89a2515c25b1d2d5b0b7fa6bd687` | contained |
 | `feature/permit-snapshot-transition-spine` | `4607b5b74100d8499d123dc1a3cdda3a82d297aa` | contained |
 | `feature/repo-wide-ruff-baseline-cleanup` | `5366428ea2964c3305a4477ce3ef8f476430de3a` | pending |
-| `feature/result-ledger` | `d090f0740ffb052ccf61c0d296cc01357e0a2ad8` | pending |
+| `feature/result-ledger` | `d090f0740ffb052ccf61c0d296cc01357e0a2ad8` | contained |
 | `feature/shovels-regrid-gap-alignment` | `19344349f54d994f5e8481efa8c866ac65f04889` | contained |
 | `feature/site-resolution-parcel-enrichment` | `018d268b23fa79964fc10886369e52ac822d48e9` | contained |
 | `feature/universal-intake-spine` | `0cfb641b8f444075e3a1a4231a89c0da8b31173a` | pending |
@@ -188,7 +188,7 @@ This manifest is the durable starting inventory for the full ConstructionSight r
 | `remediation/cs-sr-053-fixed-decimal` | `7456e0f9820f2af219f1ac7bc0b5deba5746ca5f` | pending |
 | `remediation/cs-sr-053-fixed-decimal-v2` | `7b4782b212da4fa3490ce9688b404b41015fd6a4` | pending |
 | `remediation/operational-confidence-gating` | `b555632e1d91faf1a7a64be3ecebd765f83bd0c6` | superseded |
-| `remediation/result-ledger-content-and-money` | `de1007dd04300b521b1b6ad5713b98ab82b11ddc` | pending |
+| `remediation/result-ledger-content-and-money` | `de1007dd04300b521b1b6ad5713b98ab82b11ddc` | contained |
 | `remediation/schema-version-governance` | `1866453b6cfcf63b6c0cd2af4cbb234daa59581f` | pending |
 | `remediation/test-governance-sync-batch` | `eb07760e8de6aa45d3001ae1a7e374f09cba0434` | pending |
 
