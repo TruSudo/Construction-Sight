@@ -1,4 +1,4 @@
-"""Local, read-only HTTP application for the ConstructionSight operator GUI."""
+"""Local operator GUI with read-only source data and guarded watchlist persistence."""
 
 from __future__ import annotations
 
@@ -218,7 +218,7 @@ def create_handler(
     ceqanet_listing_evidence: Path | None = None,
     ceqanet_queue_evidence: Path | None = None,
 ) -> type[BaseHTTPRequestHandler]:
-    """Bind to an existing database in SQLite read-only mode without schema changes."""
+    """Bind to an existing database without schema creation or migration.\n\n    Source/commercial reads use SQLite mode=ro. A separate guarded engine may\n    mutate only the persisted local watchlist table.\n    """
 
     if (ceqanet_listing_evidence is None) != (ceqanet_queue_evidence is None):
         raise ValueError("CEQAnet listing and queue evidence must be configured together")
@@ -233,10 +233,14 @@ def create_handler(
         else load_source_attribution_aliases(source_attribution_aliases_path)
     )
     engine = create_operator_read_engine(database_path)
-    watchlist_engine = create_operator_watchlist_engine(database_path)
+    try:
+        watchlist_engine = create_operator_watchlist_engine(database_path)
+    except Exception:
+        engine.dispose()
+        raise
 
     class OperatorHandler(BaseHTTPRequestHandler):
-        """Serve only same-origin, loopback reads and bundled presentation assets."""
+        """Serve loopback reads plus same-origin, watchlist-only local mutations."""
 
         def do_GET(self) -> None:
             address = self.server.server_address
