@@ -3,52 +3,111 @@
 const byId = id => document.getElementById(id);
 const escapeText = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const identity = row => row.record_kind + ":" + row.record_id;
-const WATCH_KEY = "constructionsight:operator:local-watchlist-v1";
 let page = null, footprint = null, workflows = null, ingestionInbox = null, selected = null, selectedRecord = null, activeQuery = "", pageRequest = 0, featureRequest = 0, pageOffset = 0;
 let localWatchlist = {};
 let sourceRevision = null, sourceProbeActive = false;
 let activeKind = "all", activeCounty = "";
-try { const stored = JSON.parse(localStorage.getItem(WATCH_KEY) || "{}"); if (stored && typeof stored === "object" && !Array.isArray(stored)) localWatchlist = stored; } catch (_) { /* Browser-local preferences are optional. */ }
-const records = () => page && Array.isArray(page.projects) ? page.projects : [];
-function updateWatchCounters() { const count = Object.keys(localWatchlist).length; byId("watched-count").textContent = String(count); byId("notification-count").textContent = String(count); }
-function saveWatchlist() {
-  try { localStorage.setItem(WATCH_KEY, JSON.stringify(localWatchlist)); }
-  catch (_) { byId("global-notice").textContent = "Browser storage is unavailable. Watchlist changes will not be retained. No source monitoring or alerts are active."; }
-  updateWatchCounters(); renderWatchlist();
+
+function applyWatchlistSnapshot(data) {
+  if (!data || data.schema_version !== "operator_watchlist.v1" ||
+      data.persisted_locally !== true || data.source_records_read_only !== true ||
+      data.source_monitoring_enabled !== false || data.notification_delivery_enabled !== false ||
+      data.commercial_actions_authorized !== false || !Array.isArray(data.items) ||
+      !Number.isSafeInteger(data.total) || data.total !== data.items.length)
+    throw Error("Persisted watchlist authority state is inconsistent.");
+  const next = {};
+  for (const item of data.items) {
+    if (!item || !["ceqa","permit"].includes(item.record_kind) ||
+        typeof item.record_id !== "string" || !item.record_id || item.record_id.length > 255 ||
+        item.status === "archived" || item.alert_enabled !== false) {
+      throw Error("Persisted watchlist item is inconsistent.");
+    }
+    const key = identity(item);
+    if (next[key]) throw Error("Persisted watchlist contains duplicate source identity.");
+    next[key] = item;
+  }
+  localWatchlist = next;
+  updateWatchCounters();
+  renderWatchlist();
 }
-function toggleWatch(row) {
+
+function updateWatchCounters() {
+  const count = Object.keys(localWatchlist).length;
+  byId("watched-count").textContent = String(count);
+  byId("notification-count").textContent = String(count);
+}
+
+async function toggleWatch(row) {
   if (!row || !["ceqa","permit"].includes(row.record_kind) || !row.record_id) return;
-  const key = identity(row);
-  if (localWatchlist[key]) delete localWatchlist[key];
-  else localWatchlist[key] = {record_kind:row.record_kind,record_id:row.record_id,title:row.title || "Untitled source record",county:row.county || "County unrecorded"};
-  saveWatchlist(); renderDossier(row);
+  const key = identity(row), archive = Boolean(localWatchlist[key]);
+  const params = new URLSearchParams({kind:row.record_kind,record_id:row.record_id});
+  byId("global-notice").textContent = archive ?
+    "Archiving persisted local watchlist entry…" : "Saving exact source record to the local watchlist…";
+  try {
+    const data = await mutateJson("/api/watchlist?" + params, archive ? "DELETE" : "POST");
+    if (data.mutation !== (archive ? "archived" : "added"))
+      throw Error("Watchlist mutation acknowledgement is inconsistent.");
+    applyWatchlistSnapshot(data);
+    renderDossier(row);
+    byId("global-notice").textContent = archive ?
+      "Watchlist entry archived locally. No source monitoring or notification was performed." :
+      "Watchlist entry persisted locally. Monitoring, reminders, outreach and bids remain disabled.";
+  } catch (error) {
+    byId("global-notice").textContent = "Watchlist change failed: " + String(error.message || error) +
+      ". No source or commercial record was changed.";
+  }
 }
+
+async function removeWatchBookmark(key, full = false) {
+  const entry = localWatchlist[key];
+  if (!entry) return;
+  const params = new URLSearchParams({kind:entry.record_kind,record_id:entry.record_id});
+  try {
+    const data = await mutateJson("/api/watchlist?" + params, "DELETE");
+    if (data.mutation !== "archived") throw Error("Watchlist archive acknowledgement is inconsistent.");
+    applyWatchlistSnapshot(data);
+    if (full) renderWatchlist(true);
+    if (selectedRecord && identity(selectedRecord) === key) renderDossier(selectedRecord);
+  } catch (error) {
+    byId("global-notice").textContent = "Watchlist removal failed: " + String(error.message || error) +
+      ". No cached state was substituted.";
+  }
+}
+
 function renderWatchlist(full = false) {
   const entries = Object.entries(localWatchlist);
-  const markup = (full ? entries : entries.slice(0,4)).map(([key,entry],index) =>
-    '<div class="watch-entry"><i class="dot unknown" aria-hidden="true"></i><span><b>' + escapeText(entry.title) +
-    '</b><br><small>' + escapeText(entry.county) + ' · browser-local bookmark · unassessed</small></span>' +
-    '<button type="button" data-open="' + index + '">Open record</button><button type="button" data-remove="' + index + '">Remove</button></div>'
-  ).join("") || '<p class="empty" style="padding:12px">No watched source records in this browser.</p>';
+  const shown = full ? entries : entries.slice(0,4);
+  const markup = shown.map(([key,entry],index) =>
+    '<div class="watch-entry"><i class="dot unknown" aria-hidden="true"></i><span><b>' +
+    escapeText(entry.title || "Source record unavailable") + '</b><br><small>' +
+    escapeText(entry.county || "County unrecorded") +
+    ' · persisted local watch · unassessed · alerts off</small></span>' +
+    '<button type="button" data-open="' + index + '">Open record</button>' +
+    '<button type="button" data-remove="' + index + '">Remove</button></div>'
+  ).join("") || '<p class="empty" style="padding:12px">No persisted source records on this local watchlist.</p>';
   const target = full ? byId("feature-body") : byId("watchlist-summary");
   if (full) {
-    target.innerHTML = '<section class="feature-card"><h2>Saved source-record bookmarks</h2><p>These bookmarks are stored only in this browser. They do not subscribe to permit changes, schedule reminders, perform source polling, or send notifications.</p><div id="full-watchlist">' + markup + '</div><a href="/workspace#records">Browse retained source records →</a></section>';
+    target.innerHTML = '<section class="feature-card"><h2>Persisted local watchlist</h2>' +
+      '<p>Watchlist membership survives browser restarts in the local ConstructionSight database. ' +
+      'It does not perform source polling, schedule reminders, send notifications, qualify a lead, or authorize outreach.</p>' +
+      '<div id="full-watchlist">' + markup + '</div><a href="/workspace#records">Browse retained source records →</a></section>';
   } else target.innerHTML = markup;
   target.querySelectorAll("[data-open]").forEach(button => button.onclick = () => {
-    const currentKey = (full ? entries : entries.slice(0,4))[Number(button.dataset.open)]?.[0];
+    const currentKey = shown[Number(button.dataset.open)]?.[0];
     if (currentKey) openWatchBookmark(currentKey);
   });
   target.querySelectorAll("[data-remove]").forEach(button => button.onclick = () => {
-    const currentKey = (full ? entries : entries.slice(0,4))[Number(button.dataset.remove)]?.[0];
-    if (currentKey) { delete localWatchlist[currentKey]; saveWatchlist(); if (full) renderWatchlist(true); }
+    const currentKey = shown[Number(button.dataset.remove)]?.[0];
+    if (currentKey) removeWatchBookmark(currentKey, full);
   });
 }
+
 async function openExactStoredRecord(entry,key,origin) {
   if (!entry || !["ceqa","permit"].includes(entry.record_kind) ||
       typeof entry.record_id !== "string" || !entry.record_id || entry.record_id.length > 255 ||
       identity(entry) !== key) return;
-  // Re-resolve exact source identity against the current read-only database.
-  // Never treat cached bookmark labels or a historical event as current source facts.
+  // Re-resolve exact source identity against the current read-only source database.
+  // Never treat watchlist labels or a historical event as current source facts.
   showHome();
   const token = ++featureRequest;
   byId("global-notice").textContent = "Looking up selected exact source record in the current local database…";
@@ -62,7 +121,7 @@ async function openExactStoredRecord(entry,key,origin) {
     selectRow(row);
     byId("global-notice").textContent = "Opened an exact "+origin+" source record from the current local database. " +
       "It may be outside the active search/filter or displayed page. " +
-      (origin==="bookmark" ? "Bookmark is not monitoring or outreach approval." :
+      (origin==="watchlist" ? "Watchlist membership is not monitoring or outreach approval." :
         "Historical source event is not proof of current site activity or commercial qualification.");
   } catch (error) {
     if (token === featureRequest && !byId("command-view").hidden)
@@ -70,10 +129,12 @@ async function openExactStoredRecord(entry,key,origin) {
         String(error.message || error) + ". No cached source facts were substituted.";
   }
 }
+
 async function openWatchBookmark(key) {
   const entry = localWatchlist[key];
-  return openExactStoredRecord(entry,key,"bookmark");
+  return openExactStoredRecord(entry,key,"watchlist");
 }
+
 function valueOrUnknown(value) { return value === null || value === undefined || value === "" ? "Not established" : String(value); }
 function renderDossier(row) {
   const target = byId("command-dossier");
@@ -997,7 +1058,7 @@ function showSection(name) {
   document.querySelectorAll("[data-section]").forEach(n=>{n.classList.toggle("current",n.dataset.section===name);n.setAttribute("aria-pressed",String(n.dataset.section===name));});
   document.querySelector('a[href="/"]').classList.remove("current");
   if(name==="watchlist"){
-    byId("feature-heading").textContent="Watchlist";byId("feature-description").textContent="Browser-local source bookmarks · monitoring and reminders not yet connected";
+    byId("feature-heading").textContent="Watchlist";byId("feature-description").textContent="Persisted local source watches · monitoring, reminders and notifications not yet connected";
     renderWatchlist(true);return;
   }
   const [title,subtitle,warning,link,label]=sections[name]||sections.sources;
@@ -1012,23 +1073,33 @@ async function fetchJson(url){
   if(!response.ok) throw Error(data.error || "Local data unavailable.");
   return data;
 }
+async function mutateJson(url,method){
+  const response=await fetch(url,{method,cache:"no-store",headers:{"Accept":"application/json"}});
+  const data=await response.json();
+  if(!response.ok) throw Error(data.error || "Local watchlist mutation unavailable.");
+  return data;
+}
 async function loadData(offset=pageOffset, focusIdentity=null){
   const token=++pageRequest;++featureRequest;
-  byId("global-notice").textContent="Loading retained local records. Readiness, outreach, bidding, and live watchlist monitoring are not enabled.";
+  byId("global-notice").textContent="Loading retained local records and persisted local watchlist. Readiness, outreach, bidding, and live watchlist monitoring are not enabled.";
   const filter=new URLSearchParams({kind:activeKind,county:activeCounty,limit:"50",offset:String(offset),q:activeQuery});
   const geo=new URLSearchParams({kind:activeKind,county:activeCounty,q:activeQuery});
   try{
-    const [newPage,newFootprint,newWorkflow,health,workflowStatus,sourceState,newInbox]=await Promise.all([
+    const [newPage,newFootprint,newWorkflow,health,workflowStatus,sourceState,newInbox,newWatchlist]=await Promise.all([
       fetchJson("/api/snapshot?"+filter),fetchJson("/api/footprint?"+geo),
       fetchJson("/api/workflows?limit=50&offset=0"),fetchJson("/api/health"),
       fetchJson("/api/workflow-summary").catch(error=>({error:String(error.message || error)})),
       fetchJson("/api/source-revision").catch(()=>null),
-      fetchJson("/api/ingestion-inbox").catch(()=>null)
+      fetchJson("/api/ingestion-inbox").catch(()=>null),
+      fetchJson("/api/watchlist")
     ]);
     if(token!==pageRequest)return;
     if(newPage.selection!==activeKind || newFootprint.selection!==activeKind ||
       newPage.total!==newFootprint.matching_total)throw Error("Source-list and geographic scope disagree. Refresh the database view.");
     page=newPage;footprint=newFootprint;workflows=newWorkflow;ingestionInbox=newInbox;pageOffset=offset;
+    applyWatchlistSnapshot(newWatchlist);
+    if(health.watchlist_persistence_enabled!==true || health.watchlist_source_monitoring_enabled!==false)
+      throw Error("Watchlist persistence authority state is inconsistent.");
     if(sourceState && sourceState.read_only===true && sourceState.live_collection_enabled===false &&
       /^[0-9a-f]{64}$/.test(sourceState.revision_identity))sourceRevision=sourceState.revision_identity;
     byId("source-total").textContent=newPage.total.toLocaleString();
