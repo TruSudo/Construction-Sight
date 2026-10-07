@@ -86,23 +86,24 @@ Representative major lineages already ancestral to main and therefore not candid
 These branches remain in the inventory until final cleanup so their exact historical tips remain recoverable.
 
 
-### Parcel / ArcGIS lineage — assessment started
+### Parcel / ArcGIS lineage — assessed
 
-Initial divergent historical tips examined:
-- `agent/add-arcgis-proof-bundle-persistence`
-- `agent/add-arcgis-rehearsal-http-adapter`
-- `agent/add-arcgis-rehearsal-proof-bundle`
-- `agent/add-parcel-arcgis-acquisition-gates`
+Historical acquisition/rehearsal branches were compared semantically against the hardened reconciliation line rather than merged mechanically.
 
-Current-tree findings:
-- acquisition bundle models are byte-identical where expected;
-- the historical `load_arcgis_bounded_proof_bundle` capability was not lost; it moved to `parcel_source_acquisition_bundle_io.py`;
-- current acquisition HTTP retains the historical API surface and adds stricter exact-request/response handling;
-- current rehearsal HTTP replaces the historical media-type helper with stricter exact-body validation;
-- proof bundle and rehearsal APIs remain present with current hardened implementations.
+Disposition:
+- `agent/add-arcgis-proof-bundle-persistence`, `agent/add-arcgis-rehearsal-http-adapter`, `agent/add-arcgis-rehearsal-proof-bundle`, `agent/add-parcel-arcgis-acquisition-gates`, `agent/harden-arcgis-bulk-rehearsal-proof`, `agent/implement-arcgis-complete-rehearsal-executor`, `agent/record-county-arcgis-bounded-proofs`, and `agent/verify-county-parcel-sources` are superseded by current hardened implementations;
+- `feature/parcel-import-preview`, `feature/parcel-record-geometry-normalization`, `feature/parcel-source-registry`, `feature/parcel-source-schema-preview`, and `feature/site-resolution-parcel-enrichment` are already ancestors of the reconciliation line and are classified contained;
+- `feature/parcel-fact-assurance` is represented by the current parcel-assurance modules with the same public capability surface plus canonical content-bound report identity validation;
+- `codex/parcel-longitudinal-evidence` is represented by the current longitudinal observation/selection implementation with the same service/model surface and stricter immutable collection semantics.
 
-Disposition so far: these tips are absorbed/superseded candidates, not direct merge candidates. Continue semantic comparison before final classification.
+Retention findings:
+- acquisition bundle loading and proof-bundle persistence remain present;
+- current bounded HTTP execution preserves the historical ArcGIS request/rehearsal capabilities while enforcing stricter exact-request, media-type, response-body, and authorization boundaries;
+- parcel fact assurance remains field-specific, provenance-preserving, conflict-retaining, and non-mutating;
+- longitudinal parcel observations remain immutable, digest-bound, replay-safe, ambiguity-blocking, and feed only governed current records into parcel assurance;
+- parcel import/schema/source-registry and parcel-backed site-resolution functionality are already in canonical ancestry.
 
+No missing Parcel/ArcGIS runtime capability was identified in this pass.
 
 ### CEQAnet policy, operator, persistence, and CSV evidence lineages — assessed
 
