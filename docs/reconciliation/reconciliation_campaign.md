@@ -154,6 +154,38 @@ Divergent predecessor branches were not merged:
 This closes historical result-ledger reconciliation, not the Royalty Ledger product surface. The locked desktop contract still treats commercial UI destinations as incomplete until the royalty-facing read/action path is wired to governed backend authority and validated end to end.
 
 
+
+### Contractor/entity identity, universal intake, permit/site/parcel resolution, and longitudinal evidence — assessed
+
+The Phase 6 historical lineages were compared against the current reconciliation tree with ancestry, file-identity, and semantic checks.
+
+Contained by canonical ancestry:
+- `cleanup/persist-movement-identity`;
+- `feature/contractor-identity-spine`;
+- `feature/permit-snapshot-transition-spine`;
+- `feature/parcel-site-resolution-spine`;
+- `feature/site-resolution-parcel-enrichment`;
+- `cleanup/storage-coverage-matrix`; and
+- `feature/artifact-resolution-examples-clean`.
+
+Superseded by later retained implementations:
+- `feature/universal-intake-spine`: the current tree retains the historical intake model byte-for-byte and keeps the same inspection/CLI capability while hardening file reads and writes through bounded runtime-artifact helpers. The current opportunity service consumes `UniversalIntakeRecord` directly and regression tests exercise intake-to-candidate transition scoring and limitation propagation.
+- `cleanup/storage-summary-cli`: the current storage summary contains every historical table entry plus later parcel source, ArcGIS, longitudinal-selection, and assurance tables.
+- `cleanup/persist-parcel-site-records`: later storage retains parcel/site persistence while adding immutable observations, current-selection reports, assurance reports, content-bound identity checks, and replay/integrity protection.
+- `codex/parcel-longitudinal-evidence`: already classified superseded by the current immutable longitudinal observation/selection implementation.
+- `feature/artifact-resolution-examples`: superseded by the contained clean lineage and later hardened example payloads/tests.
+
+Runtime retention findings:
+- lawful source-neutral intake remains format-bounded, provenance-preserving, limitation-preserving, and non-mutating at the inspection boundary;
+- universal intake feeds the current deterministic opportunity-candidate layer without treating incomplete or human-review inputs as authoritative;
+- contractor identity, permit transitions, parcel/site resolution, longitudinal parcel evidence, assurance, and their persistence/operator read surfaces remain present;
+- site/parcel identities and immutable derived records retain collision/replay guards rather than permitting silent identity rewrites.
+
+No missing historical Phase 6 capability was identified in this pass.
+
+Product-status distinction: this closes historical lineage reconciliation for Phase 6. It does not by itself declare a production recurring ingestion pipeline or a fully persisted source-to-domain-to-commercial workflow complete. Final acceptance still requires end-to-end runtime validation of acquisition -> universal intake/source adapter -> canonical site/entity/permit/parcel state -> opportunity/readiness -> governed operator/commercial actions.
+
+
 ### CEQAnet policy, operator, persistence, and CSV evidence lineages — assessed
 
 The historical CEQAnet branches examined here are either ancestors of the current tree or represented by current hardened implementations.
