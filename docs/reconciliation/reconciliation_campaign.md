@@ -142,6 +142,18 @@ Divergent historical branches were checked separately:
 The deterministic readiness semantics remain governed: confidence/readiness logic may qualify outreach timing, but it does not authorize bidding, fabricate contacts, or bypass the evidence/review gates defined by the locked UI and operational contracts.
 
 
+### Result ledger, authority, correction, and supersession — historical reconciliation assessed
+
+The core result ledger and its later money/content hardening are already contained in canonical ancestry. The current tree also contains the later result-authority operator, correction action, and v2 supersession lineages.
+
+Divergent predecessor branches were not merged:
+- `agent/result-ledger-authority` is superseded by the later `result_authority_*` model/service/store/operator design. The predecessor used `result_ledger_authority_*` tables/services; the retained successor provides the governed authority head/event history model and operator surface.
+- `agent/result-ledger-supersession` is superseded by the contained v2 supersession/correction line. Its ledger service symbols are retained in the current service, which additionally carries fixed-unit money/share calculations and later integrity hardening.
+- `feature/result-ledger` and `remediation/result-ledger-content-and-money` are already ancestors of the reconciliation branch and are classified contained.
+
+This closes historical result-ledger reconciliation, not the Royalty Ledger product surface. The locked desktop contract still treats commercial UI destinations as incomplete until the royalty-facing read/action path is wired to governed backend authority and validated end to end.
+
+
 ### CEQAnet policy, operator, persistence, and CSV evidence lineages — assessed
 
 The historical CEQAnet branches examined here are either ancestors of the current tree or represented by current hardened implementations.
