@@ -202,6 +202,32 @@ Key retention findings:
 
 Disposition: classified as `contained` where exact ancestry exists and `superseded` where current implementations retain the capability with stronger architecture.
 
+
+### Remaining CEQAnet operational lineages — assessed
+
+The unresolved CEQAnet operational branches were compared against the current tree.
+
+Contained by ancestry:
+- `agent/ceqanet-ingestion-dashboard-v2`;
+- `agent/ceqanet-listing-to-exact-capture-queue`;
+- `agent/ceqanet-official-csv-contract`;
+- `agent/ceqanet-queue-to-capture-provenance`;
+- `agent/ceqanet-source-verification`;
+- `agent/governed-ceqanet-capture-preview`; and
+- `agent/repair-ceqanet-evidence-partial`.
+
+Superseded by later retained implementations:
+- `agent/ceqanet-ingestion-dashboard`: the current inbox/operator implementation is larger and incorporates the later dashboard/capture-queue path with stricter read-only semantics and additional source-registry/capture-queue integration;
+- `agent/ceqanet-recurring-run-governance`: its unique tip only removed temporary PR92 publishing tooling, which is likewise absent from the current tree; the current recurring-run service is a later hardened implementation while the verifier blob is retained exactly;
+- `agent/fix-ceqanet-windows1252-ruff`: the Windows-1252 replay service and regression test are retained byte-for-byte, while the current CSV parser adds bounded retained-row handling and streaming iteration;
+- `feature/ceqanet-detail-enrichment`: the detail-enrichment implementation and regression test are byte-identical in the current tree despite divergent branch ancestry.
+
+Audit-only historical lineage:
+- `agent/ceqanet-evidence-repair-partial-v2` preserves a point-in-time branch that promoted CEQAnet to `verified` for guarded manual reads. That authority is stale relative to the later canonical evidence: subsequent bounded HTML automation received HTTP 403 and the current source registry deliberately remains `partial`. The historical verification artifacts are therefore retained as branch history/audit evidence and are not reintroduced into the canonical tree.
+
+The canonical CEQAnet authority boundary remains unchanged: no bypass of the retained HTTP 403, no autonomous scheduler authority, no domain persistence authority from the CSV evidence policy alone, and no source promotion beyond the currently supported `partial` maturity state.
+
+
 ### Cleanup and source-readiness lineages — assessed
 
 Core historical behavior was retained:
