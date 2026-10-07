@@ -105,6 +105,25 @@ Retention findings:
 
 No missing Parcel/ArcGIS runtime capability was identified in this pass.
 
+### Command Center and operator surfaces — historical reconciliation assessed
+
+The historical Command Center/operator branches were checked against the current reconciliation ancestry and the locked desktop UI contract.
+
+Contained by ancestry:
+- `agent/command-center-evidence-navigation`
+- `agent/command-center-filter-watchlist-navigation`
+- `agent/operational-integration-gui`
+- `agent/ui-lock-command-center`
+- `agent/lead-operator-cli`
+- `agent/upstream-operator-cli`
+
+The approved desktop design contract remains present in `docs/architecture/official_desktop_ui_lock_v1.md`; historical reconciliation does not authorize a redesign and does not convert placeholder/read-only surfaces into claims of operational capability.
+
+`agent/top-head-quality-and-ops` diverges historically, but its exact capture-queue implementation is byte-identical to the current tree and the remaining operator/bridge surfaces are retained by larger current implementations with expanded ingestion/operator functions and regression coverage. It is therefore classified superseded rather than merged.
+
+Important product-status distinction: the historical UI/operator work is retained, but full product acceptance still requires the backend-authorized commercial paths, persistent watchlist/change notification behavior, complete map/entity/evidence functionality, and final end-to-end runtime validation described by the locked UI contract.
+
+
 ### CEQAnet policy, operator, persistence, and CSV evidence lineages — assessed
 
 The historical CEQAnet branches examined here are either ancestors of the current tree or represented by current hardened implementations.
