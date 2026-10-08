@@ -1976,6 +1976,86 @@ def test_outreach_preview_http_is_same_origin_read_only_and_no_send(database):
         assert len(stored) == 1
         assert stored[0]["workflow_id"] == workflow.workflow_id
 
+def test_bid_request_evidence_http_is_same_origin_read_only_and_no_pricing(database):
+    path, engine = database
+    package = LeadReviewPackage(
+        package_id="review:bid-request-http",
+        base_candidate_id="candidate:bid-request-http",
+        lead_score=90,
+        status=LeadReviewStatus.READY,
+        summary="Reviewed synthetic bid-request fixture",
+        items=[
+            LeadReviewItem(
+                item_key="lead-item:bid-request-http",
+                label="prepare reviewed lead package",
+                rationale="Synthetic retained evidence supports request review.",
+            )
+        ],
+        evidence_notes=["permit_transition: synthetic permit issued"],
+    )
+    workflow = LeadWorkflowRecord(
+        workflow_id="workflow:bid-request-http",
+        package_id=package.package_id,
+        base_candidate_id=package.base_candidate_id,
+        status=LeadWorkflowStatus.READY,
+        lead_score=package.lead_score,
+    )
+    with Session(engine) as session, session.begin():
+        store_lead_review_package(session, package)
+        store_lead_workflow_record(session, workflow)
+
+    request = {
+        "workflow_id": workflow.workflow_id,
+        "expected_current_status": "ready",
+        "request_channel": "email",
+        "requester_business_name": "Example Contractor LLC",
+        "requester_business_role": "estimating department",
+        "request_source_name": "retained business email",
+        "request_source_reference": "message:fixture:bid-request-http",
+        "request_review_basis": (
+            "Reviewed explicit pricing language in the retained request."
+        ),
+        "request_observed_at": "2026-10-08T08:30:00+00:00",
+        "request_text": "Please send pricing for construction site security coverage.",
+        "scope_summary": "Night security coverage for the reviewed construction site.",
+    }
+    before = hashlib.sha256(path.read_bytes()).hexdigest()
+    with _server(path) as port:
+        status, _, raw = _post_json(
+            port, "/api/bid-request-evidence", request, origin=False
+        )
+        assert status == 403
+        assert json.loads(raw)["error"] == (
+            "Local same-origin bid evidence request required."
+        )
+
+        status, _, raw = _post_json(port, "/api/bid-request-evidence", request)
+        assert status == 200
+        evidence = json.loads(raw)
+        assert evidence["request_evidence_id"].startswith("bid-request-evidence:v1:")
+        assert evidence["workflow_id"] == workflow.workflow_id
+        assert evidence["package_id"] == package.package_id
+        assert evidence["workflow_status"] == "ready"
+        assert evidence["requires_commercial_approval"] is True
+        assert evidence["pricing_authorized"] is False
+        assert evidence["bid_preparation_authorized"] is False
+        assert evidence["bid_submission_authorized"] is False
+
+        naive = dict(request)
+        naive["request_observed_at"] = "2026-10-08T08:30:00"
+        assert _post_json(port, "/api/bid-request-evidence", naive)[0] == 400
+
+        status, _, raw = _get(port, "/api/health")
+        assert status == 200
+        health = json.loads(raw)
+        assert health["bid_request_evidence_enabled"] is True
+        assert health["bid_pricing_enabled"] is False
+        assert health["bid_preparation_enabled"] is False
+        assert health["bid_submission_enabled"] is False
+        assert health["bid_authorization_enabled"] is False
+
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == before
+
 def test_persisted_watchlist_http_is_same_origin_and_source_read_only(database):
     path, engine = database
     with Session(engine) as session, session.begin():
