@@ -272,7 +272,7 @@ def outreach_preview(
         typer.Option("--body", help="Preview body."),
     ],
     contact_review_basis: Annotated[
-        str,
+        str | None,
         typer.Option(
             "--contact-review-basis",
             help=(
@@ -280,7 +280,7 @@ def outreach_preview(
                 "as a business contact path."
             ),
         ),
-    ],
+    ] = None,
     database_url: Annotated[
         str | None,
         typer.Option(help="SQLAlchemy database URL."),
@@ -292,6 +292,8 @@ def outreach_preview(
 ) -> None:
     """Build a governed outreach preview without sending or authorizing outreach."""
 
+    if contact_review_basis is None or not contact_review_basis.strip():
+        _fail("Required --contact-review-basis was not provided.")
     factory = _database_factory(database_url)
     contact = OutreachContactReference(
         channel=channel,
