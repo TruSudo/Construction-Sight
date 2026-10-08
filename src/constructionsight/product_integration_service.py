@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from sqlalchemy.orm import Session
+
 from constructionsight.contractor_identity_models import ContractorIdentity
 from constructionsight.decision_record_models import DecisionRecord
 from constructionsight.intake_models import MaterialFactKind, UniversalIntakeRecord
@@ -20,6 +22,14 @@ from constructionsight.permit_transition_models import PermitTransition
 from constructionsight.product_integration_models import ProductIntegrationReport
 from constructionsight.site_resolution_models import SiteResolutionResult
 from constructionsight.site_resolution_service import resolve_site_from_intake
+from constructionsight.storage.lead_workflow_store import (
+    store_lead_duplicate_result,
+    store_lead_fingerprint,
+    store_lead_review_package,
+    store_lead_workflow_record,
+    store_opportunity_enrichment_report,
+)
+from constructionsight.storage.parcel_site_store import store_site_resolution_result
 
 
 def build_product_integration(
@@ -73,6 +83,31 @@ def build_product_integration(
         duplicate_result=duplicate_result,
         workflow=workflow,
     )
+
+
+def persist_product_integration(
+    session: Session,
+    report: ProductIntegrationReport,
+) -> ProductIntegrationReport:
+    """Persist the durable integration stages atomically.
+
+    Universal intake and the initial opportunity candidate remain preserved
+    evidence/derived runtime objects under the current storage contract. The
+    durable site, enrichment, review, dedupe, and workflow layers are committed
+    together or rolled back together.
+    """
+
+    with session.begin_nested():
+        store_site_resolution_result(session, report.site_resolution)
+        store_opportunity_enrichment_report(session, report.enrichment)
+        store_lead_review_package(session, report.review_package)
+        if report.fingerprint is not None:
+            store_lead_fingerprint(session, report.fingerprint)
+        if report.duplicate_result is not None:
+            store_lead_duplicate_result(session, report.duplicate_result)
+        store_lead_workflow_record(session, report.workflow)
+        session.flush()
+    return report
 
 
 def _build_fingerprint(
