@@ -20,7 +20,11 @@ from constructionsight.ceqa_models import CeqaRecord
 from constructionsight.ceqanet_persistence_preview import build_ceqanet_persistence_preview
 from constructionsight.ceqanet_write_plan import build_ceqanet_write_plan
 from constructionsight.entity_models import Entity
-from constructionsight.lead_review_models import LeadReviewPackage, LeadReviewStatus
+from constructionsight.lead_review_models import (
+    LeadReviewItem,
+    LeadReviewPackage,
+    LeadReviewStatus,
+)
 from constructionsight.lead_workflow_models import LeadWorkflowRecord, LeadWorkflowStatus
 from constructionsight.operator_dashboard import (
     ENTITY_RESULT_LIMIT,
@@ -178,6 +182,22 @@ def _get(port, path="/api/snapshot", *, headers=None, method="GET"):
     finally:
         connection.close()
 
+
+def _post_json(port, path, payload, *, origin=True):
+    connection = HTTPConnection("127.0.0.1", port, timeout=3)
+    body = json.dumps(payload).encode("utf-8")
+    headers = {
+        "Content-Type": "application/json",
+        "Content-Length": str(len(body)),
+    }
+    if origin:
+        headers["Origin"] = f"http://127.0.0.1:{port}"
+    try:
+        connection.request("POST", path, body=body, headers=headers)
+        response = connection.getresponse()
+        return response.status, dict(response.getheaders()), response.read()
+    finally:
+        connection.close()
 
 def test_authorized_ceqanet_preview_to_database_to_http(tmp_path):
     path = tmp_path / "from-chain.sqlite3"
@@ -1874,6 +1894,87 @@ def test_source_registry_endpoint_is_read_only_and_rejects_query_parameters(data
         assert _get(port, "/api/source-registry?kind=permit")[0] == 400
     assert hashlib.sha256(path.read_bytes()).hexdigest() == before
 
+
+def test_outreach_preview_http_is_same_origin_read_only_and_no_send(database):
+    path, engine = database
+    package = LeadReviewPackage(
+        package_id="review:outreach-http",
+        base_candidate_id="candidate:outreach-http",
+        lead_score=85,
+        status=LeadReviewStatus.READY,
+        summary="Reviewed synthetic outreach fixture",
+        items=[
+            LeadReviewItem(
+                item_key="lead-item:outreach-http",
+                label="prepare reviewed lead package",
+                rationale="Synthetic retained evidence supports preview-only testing.",
+            )
+        ],
+        evidence_notes=["permit_transition: synthetic issued permit"],
+    )
+    workflow = LeadWorkflowRecord(
+        workflow_id="workflow:outreach-http",
+        package_id=package.package_id,
+        base_candidate_id=package.base_candidate_id,
+        status=LeadWorkflowStatus.READY,
+        lead_score=package.lead_score,
+    )
+    with Session(engine) as session, session.begin():
+        store_lead_review_package(session, package)
+        store_lead_workflow_record(session, workflow)
+
+    request = {
+        "workflow_id": workflow.workflow_id,
+        "expected_current_status": "ready",
+        "channel": "email",
+        "destination": "estimating@example-contractor.test",
+        "business_role": "estimating department",
+        "source_name": "official contractor website",
+        "source_reference": "https://example-contractor.test/contact",
+        "contact_review_basis": "Reviewed the official business contact page.",
+        "subject": "Construction site security support",
+        "body": "Preview-only introduction for reviewed construction security services.",
+    }
+    before = hashlib.sha256(path.read_bytes()).hexdigest()
+    with _server(path) as port:
+        status, _, raw = _post_json(
+            port, "/api/outreach-preview", request, origin=False
+        )
+        assert status == 403
+        assert json.loads(raw)["error"] == (
+            "Local same-origin preview request required."
+        )
+
+        status, _, raw = _post_json(port, "/api/outreach-preview", request)
+        assert status == 200
+        preview = json.loads(raw)
+        assert preview["workflow_id"] == workflow.workflow_id
+        assert preview["package_id"] == package.package_id
+        assert preview["workflow_status"] == "ready"
+        assert preview["requires_human_approval"] is True
+        assert preview["external_send_authorized"] is False
+        assert preview["send_executed"] is False
+        assert preview["bid_authorized"] is False
+        assert preview["contact"]["contact_review_basis"] == (
+            "Reviewed the official business contact page."
+        )
+
+        incomplete = dict(request)
+        del incomplete["contact_review_basis"]
+        assert _post_json(port, "/api/outreach-preview", incomplete)[0] == 400
+
+        status, _, raw = _get(port, "/api/health")
+        assert status == 200
+        health = json.loads(raw)
+        assert health["outreach_preview_enabled"] is True
+        assert health["outreach_send_enabled"] is False
+        assert health["bid_authorization_enabled"] is False
+
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == before
+    with Session(engine) as session:
+        stored = build_workflow_snapshot(session, limit=10)["leads"]
+        assert len(stored) == 1
+        assert stored[0]["workflow_id"] == workflow.workflow_id
 
 def test_persisted_watchlist_http_is_same_origin_and_source_read_only(database):
     path, engine = database
