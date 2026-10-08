@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from constructionsight.intelligence import RuntimeEventType
+from constructionsight.intelligence import RuntimeEvent, RuntimeEventType
 from constructionsight.storage.intelligence_orm import IntelligenceRuntimeEventRecord
 from constructionsight.storage.intelligence_store import IntelligenceStore
 from constructionsight.storage.watch_change_store import trigger_watches_for_source_change
