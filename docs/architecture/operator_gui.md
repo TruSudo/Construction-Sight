@@ -178,14 +178,13 @@ existing scoring/review controls, governed operator actions, actual county/parce
 layers, relationship/history views, and the established commercial workflow.
 This slice does not complete those requirements or the private operational release.
 
-PR #119 remains stacked on draft PR #117. The inherited active ledger now
-contains 74 records (`CS-SR-001` through `CS-SR-074`) plus the separate missing
-Native Maximum Assurance report, which prevents certification. The historical
-September 18 hardening-branch CI reported 74 findings at its earlier exact head
-(73 active defects plus the missing assurance report), not this current tree.
-The September 20 integration CI originally identified active AnyIO advisories
-in both locks. A reviewed fixed-wheel candidate was propagated from PR #117;
-fresh exact-head isolated vulnerability audits passed in both supported runtimes,
+Draft reconciliation PR #201 is the current integration vehicle and remains
+unmerged to `main`. The canonical active-defect ledger is currently empty;
+the missing final Native Maximum Assurance artifact intentionally prevents
+release certification while reconciliation continues. Historical PR #117/#119
+defect counts and September integration results are retained only as predecessor
+evidence and must not be used to characterize the current tree. Fresh exact-head
+isolated vulnerability audits continue to run on the active reconciliation head,
 but that is not defect closure or full assurance certification. Local integration results are
 not assurance artifacts, owner acceptance, authenticated CI evidence, or permission
 to merge. The inherited canonical CI workflow only runs automatically for pull
@@ -249,7 +248,7 @@ these unkeyed digests detect inconsistent stored data but are **not**
 cryptographic evidence of who wrote a record or a substitute for independent
 source verification. Readback
 the list is bounded at 100. This increment does not promote records into the
-separately governed commercial lead workflow or change the GUI's GET-only scope.
+separately governed commercial lead workflow or expand the GUI's guarded effect scope beyond the documented watchlist and preview/evidence boundaries.
 
 ## Retained-source pulse and map viewport (draft)
 
@@ -317,8 +316,11 @@ in its own query footprint, while the unfiltered exact-key entity history
 may include records outside the current free-text search. Both scopes are
 disclosed rather than represented as exhaustive county coverage.
 
-The browser remains GET-only; no new acquisition, geocoding, conversion,
-outreach, bid, entity merge, or workflow transition is authorized.
+Source, map, entity and workflow inspection remain read-only. The browser also
+exposes the separately documented guarded watchlist mutation plus Outreach and
+Bid Request Evidence POSTs. No acquisition, geocoding, lead conversion, outreach
+sending, bid pricing/preparation/submission, entity merge, or workflow transition
+is authorized by those routes.
 
 ## On-demand parcel claims in the geographic operator (draft)
 
@@ -342,8 +344,9 @@ Unknown/projected CRS or missing centroids remain listed but unmapped. The
 operator explicitly labels these source-claimed centroids, not surveyed
 locations, verified geographic containment or legal parcel boundaries.
 Changing the selected record, filter, or mode clears the optional overlay;
-late results from previous selections cannot reinstate it. The server remains
-loopback GET-only and SQLite mode=ro.
+late results from previous selections cannot reinstate it. Parcel/source
+inspection remains loopback read-only through SQLite mode=ro; the server's
+separate guarded POST routes do not mutate parcel or source records.
 
 
 ## Command Center exact-source integration increment (September 23, 2026)
