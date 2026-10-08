@@ -1169,6 +1169,97 @@ function renderBidRequestEvidence(evidence) {
       '<p>No evidence-note text was retained in the exact review package.</p>')+
     '<p><strong>Commercial approval is still required.</strong> No pricing was calculated, no bid was prepared, and nothing was submitted.</p></section>';
 }
+function minorMoneyText(value,currency) {
+  if(!Number.isSafeInteger(value) || value<0)throw Error("Pricing preview returned invalid minor units.");
+  const whole=Math.floor(value/100);
+  const cents=String(value%100).padStart(2,"0");
+  return escapeText(currency)+" "+whole.toLocaleString()+"."+cents;
+}
+function bidPricingLineMarkup(index) {
+  return '<div class="bid-pricing-line" data-pricing-line="'+index+'">'+
+    '<label>Line key<input class="bid-line-key" maxlength="255" required placeholder="night-guarding"></label>'+
+    '<label>Description<input class="bid-line-description" maxlength="1000" required></label>'+
+    '<label class="wide">Pricing basis<textarea class="bid-line-basis" maxlength="2000" required></textarea></label>'+
+    '<label>Manual amount<input class="bid-line-amount" inputmode="decimal" maxlength="100" required placeholder="0.00"></label>'+
+    '<div><button type="button" class="action bid-remove-line">Remove line</button></div></div>';
+}
+function renderBidPricingPreview(preview) {
+  if(!preview || typeof preview.pricing_preview_id!=="string" ||
+    preview.requires_commercial_approval!==true ||
+    preview.commercial_terms_authorized!==false ||
+    preview.customer_facing_bid_authorized!==false ||
+    preview.bid_submission_authorized!==false ||
+    !Array.isArray(preview.line_items) || !Number.isSafeInteger(preview.subtotal_minor))
+    throw Error("Bid pricing preview authority or money state is inconsistent.");
+  const lines=preview.line_items.map(line=>
+    '<tr><td>'+escapeText(line.description)+'</td><td>'+escapeText(line.pricing_basis)+'</td><td>'+
+    minorMoneyText(line.amount_minor,preview.currency_code)+'</td></tr>').join("");
+  return '<section class="feature-card"><span class="badge">MANUAL PRICING PREVIEW · COMMERCIAL APPROVAL REQUIRED</span>'+
+    '<h2>Pricing preview</h2><p>Request evidence: <code>'+escapeText(preview.request_evidence_id)+'</code></p>'+
+    '<div class="source-inventory-scroll"><table class="source-inventory"><thead><tr><th>Line</th><th>Basis</th><th>Amount</th></tr></thead><tbody>'+lines+
+    '</tbody></table></div><p><strong>Subtotal: '+minorMoneyText(preview.subtotal_minor,preview.currency_code)+'</strong></p>'+
+    '<p>Pricing method: '+escapeText(preview.pricing_method)+' · Validity note: '+escapeText(preview.validity_note)+'</p>'+
+    '<p><strong>Commercial terms are not authorized.</strong> This is not a customer-facing bid and cannot be submitted.</p></section>';
+}
+function renderBidPricingForm(requestEvidence) {
+  return '<section class="feature-card"><span class="badge">NEXT GATE · MANUAL EXACT-MONEY PREVIEW</span>'+
+    '<h2>Build internal pricing preview</h2>'+
+    '<p>The validated request evidence is bound below. Amounts are normalized server-side to exact currency minor units. No rates are inferred and no commercial terms are approved.</p>'+
+    '<form id="bid-pricing-form" class="outreach-preview-form">'+
+    '<label>Currency code<input id="bid-currency" value="USD" maxlength="3" pattern="[A-Za-z]{3}" required></label>'+
+    '<label>Validity note<input id="bid-validity-note" maxlength="2000" required value="Manual preview; commercial approval required."></label>'+
+    '<label class="wide">Assumptions (one per line)<textarea id="bid-assumptions" maxlength="10000"></textarea></label>'+
+    '<label class="wide">Exclusions (one per line)<textarea id="bid-exclusions" maxlength="10000"></textarea></label>'+
+    '<div class="wide"><h3>Manual pricing lines</h3><div id="bid-pricing-lines">'+bidPricingLineMarkup(0)+'</div>'+
+    '<button type="button" class="action" id="bid-add-line">Add line</button></div>'+
+    '<div class="wide"><button class="action primary" type="submit">Build internal pricing preview</button></div></form>'+
+    '<div id="bid-pricing-result"></div>'+
+    '<p><small>Bound request evidence: '+escapeText(requestEvidence.request_evidence_id)+'</small></p></section>';
+}
+function wireBidPricingForm(requestEvidence) {
+  const form=byId("bid-pricing-form");
+  if(!form)return;
+  let nextLine=1;
+  const wireRemovers=()=>document.querySelectorAll(".bid-remove-line").forEach(button=>{
+    button.onclick=()=>{
+      const rows=document.querySelectorAll(".bid-pricing-line");
+      if(rows.length<=1)return;
+      button.closest(".bid-pricing-line").remove();
+    };
+  });
+  wireRemovers();
+  byId("bid-add-line").onclick=()=>{
+    const container=byId("bid-pricing-lines");
+    if(container.querySelectorAll(".bid-pricing-line").length>=20)return;
+    container.insertAdjacentHTML("beforeend",bidPricingLineMarkup(nextLine++));
+    wireRemovers();
+  };
+  form.onsubmit=async event=>{
+    event.preventDefault();
+    const result=byId("bid-pricing-result");
+    const lineItems=[...document.querySelectorAll(".bid-pricing-line")].map(row=>({
+      line_key:row.querySelector(".bid-line-key").value,
+      description:row.querySelector(".bid-line-description").value,
+      pricing_basis:row.querySelector(".bid-line-basis").value,
+      amount:row.querySelector(".bid-line-amount").value
+    }));
+    const textLines=id=>byId(id).value.split("\n").map(value=>value.trim()).filter(Boolean);
+    result.innerHTML='<p role="status">Revalidating request evidence and normalizing exact-money lines…</p>';
+    try{
+      const preview=await postJson("/api/bid-pricing-preview",{
+        request_evidence:requestEvidence,
+        currency_code:byId("bid-currency").value,
+        line_items:lineItems,
+        assumptions:textLines("bid-assumptions"),
+        exclusions:textLines("bid-exclusions"),
+        validity_note:byId("bid-validity-note").value
+      });
+      result.innerHTML=renderBidPricingPreview(preview);
+    }catch(error){
+      result.innerHTML='<h3>Pricing preview blocked</h3><p role="alert">'+escapeText(error.message||error)+'</p><p>No commercial terms or submission were authorized.</p>';
+    }
+  };
+}
 function showBidStudio() {
   featureIntro("Bid Studio", "Prospect-request evidence gate · pricing, preparation and submission disabled");
   const eligible=commercialWorkflowOptions();
@@ -1217,7 +1308,8 @@ function showBidStudio() {
         request_text:byId("bid-request-text").value,
         scope_summary:byId("bid-scope-summary").value
       });
-      result.innerHTML=renderBidRequestEvidence(evidence);
+      result.innerHTML=renderBidRequestEvidence(evidence)+renderBidPricingForm(evidence);
+      wireBidPricingForm(evidence);
     }catch(error){
       result.innerHTML='<section class="feature-card"><h2>Bid request gate blocked</h2><p role="alert">'+escapeText(error.message||error)+'</p><p>No pricing, bid preparation or submission occurred.</p></section>';
     }
@@ -1297,6 +1389,7 @@ async function loadData(offset=pageOffset, focusIdentity=null){
     if(health.outreach_preview_enabled!==true ||
       health.outreach_send_enabled!==false ||
       health.bid_request_evidence_enabled!==true ||
+      health.bid_pricing_preview_enabled!==true ||
       health.bid_pricing_enabled!==false ||
       health.bid_preparation_enabled!==false ||
       health.bid_submission_enabled!==false ||
