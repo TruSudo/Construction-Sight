@@ -10,6 +10,7 @@ from constructionsight.lead_dedupe_service import (
     build_lead_fingerprint,
     check_lead_duplicate,
 )
+from constructionsight.lead_review_models import LeadReviewPackage
 from constructionsight.lead_review_service import build_lead_review_package
 from constructionsight.lead_workflow_service import create_lead_workflow
 from constructionsight.opportunity_enrichment_service import enrich_opportunity
@@ -79,7 +80,7 @@ def _build_fingerprint(
     intake: UniversalIntakeRecord,
     candidate: OpportunityCandidate,
     site_resolution: SiteResolutionResult,
-    review_package,
+    review_package: LeadReviewPackage,
 ) -> LeadFingerprint | None:
     """Build dedupe identity only when a stable basis is available."""
 
