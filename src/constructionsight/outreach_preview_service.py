@@ -80,10 +80,6 @@ def build_persisted_outreach_preview(
         raise OutreachPreviewError(
             "outreach preview requires a ready review package without limitations"
         )
-    if not contact.operator_confirmed_business_contact:
-        raise OutreachPreviewError(
-            "operator confirmation of the business contact source is required"
-        )
     if not subject.strip():
         raise OutreachPreviewError("outreach preview subject must not be blank")
     if not body.strip():
