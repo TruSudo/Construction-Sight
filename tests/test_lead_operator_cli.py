@@ -379,13 +379,14 @@ def test_outreach_preview_cli_emits_preview_only_json(tmp_path) -> None:
             "official contractor website",
             "--source-reference",
             "https://example-contractor.test/contact",
+            "--contact-review-basis",
+            "Reviewed official business contact page.",
             "--subject",
             "Construction site security support",
             "--body",
             "Preview-only introduction for reviewed construction security services.",
             "--database-url",
             database_url,
-            "--confirm-business-contact",
             "--json-output",
         ],
     )
@@ -400,7 +401,7 @@ def test_outreach_preview_cli_emits_preview_only_json(tmp_path) -> None:
     assert payload["bid_authorized"] is False
 
 
-def test_outreach_preview_cli_requires_contact_confirmation(tmp_path) -> None:
+def test_outreach_preview_cli_requires_contact_review_basis(tmp_path) -> None:
     database_url = _database_url(tmp_path)
     workflow = _seed_ready_preview(database_url)
     runner = CliRunner()
@@ -431,5 +432,5 @@ def test_outreach_preview_cli_requires_contact_confirmation(tmp_path) -> None:
         ],
     )
 
-    assert result.exit_code == 2
-    assert "operator confirmation" in result.stderr
+    assert result.exit_code != 0
+    assert "--contact-review-basis" in result.output
