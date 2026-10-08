@@ -18,7 +18,7 @@ from urllib.parse import parse_qs, urlparse
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from constructionsight.bid_pricing_models import BidPriceLineInput
+from constructionsight.bid_pricing_models import BidPriceLineInput, BidPricingPreview
 from constructionsight.bid_pricing_service import (
     BidPricingPreviewError,
     build_persisted_bid_pricing_preview,
