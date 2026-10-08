@@ -42,11 +42,20 @@ from constructionsight.operator_source_candidate import (
 )
 from constructionsight.operator_source_registry import build_operator_source_registry
 from constructionsight.operator_source_revision import build_source_revision_snapshot
+from constructionsight.lead_workflow_models import LeadWorkflowStatus
 from constructionsight.operator_watchlist import (
     add_source_watch,
     archive_source_watch,
     build_operator_watchlist_snapshot,
     create_operator_watchlist_engine,
+)
+from constructionsight.outreach_preview_models import (
+    OutreachChannel,
+    OutreachContactReference,
+)
+from constructionsight.outreach_preview_service import (
+    OutreachPreviewError,
+    build_persisted_outreach_preview,
 )
 from constructionsight.storage.operator_read_store import (
     create_operator_read_engine,
@@ -329,6 +338,9 @@ def create_handler(
                             "watchlist_source_monitoring_enabled": False,
                             "watchlist_retained_change_detection_enabled": True,
                             "watchlist_remote_source_polling_enabled": False,
+                            "outreach_preview_enabled": True,
+                            "outreach_send_enabled": False,
+                            "bid_authorization_enabled": False,
                         }
                     elif path == "/api/capture-queue":
                         payload = capture_queue
@@ -425,13 +437,17 @@ def create_handler(
 
 
         def do_POST(self) -> None:
-            if urlparse(self.path).path != "/api/watchlist":
-                self._send_json(
-                    {"error": "Method not implemented."},
-                    status=HTTPStatus.NOT_IMPLEMENTED,
-                )
+            path = urlparse(self.path).path
+            if path == "/api/watchlist":
+                self._mutate_watchlist(archive=False)
                 return
-            self._mutate_watchlist(archive=False)
+            if path == "/api/outreach-preview":
+                self._build_outreach_preview()
+                return
+            self._send_json(
+                {"error": "Method not implemented."},
+                status=HTTPStatus.NOT_IMPLEMENTED,
+            )
 
         def do_DELETE(self) -> None:
             if urlparse(self.path).path != "/api/watchlist":
@@ -441,6 +457,100 @@ def create_handler(
                 )
                 return
             self._mutate_watchlist(archive=True)
+
+        def _build_outreach_preview(self) -> None:
+            """Build one same-origin, read-only outreach preview and nothing else."""
+
+            if not self._local_request_allowed(require_origin=True):
+                self._send_json(
+                    {"error": "Local same-origin preview request required."},
+                    status=HTTPStatus.FORBIDDEN,
+                )
+                return
+            try:
+                parsed = urlparse(self.path)
+                if (
+                    parsed.scheme
+                    or parsed.netloc
+                    or parsed.fragment
+                    or parsed.query
+                    or parsed.path != "/api/outreach-preview"
+                ):
+                    raise ValueError("exact outreach preview path required")
+                if self.headers.get("Transfer-Encoding") is not None:
+                    raise ValueError("chunked outreach preview bodies are not supported")
+                lengths = self.headers.get_all("Content-Length", [])
+                if len(lengths) != 1:
+                    raise ValueError("exactly one Content-Length header is required")
+                try:
+                    content_length = int(lengths[0], 10)
+                except ValueError as exc:
+                    raise ValueError("invalid outreach preview Content-Length") from exc
+                if content_length < 1 or content_length > 32_768:
+                    raise ValueError("outreach preview body exceeds bounded request size")
+                content_type = self.headers.get("Content-Type", "")
+                if content_type.split(";", 1)[0].strip().lower() != "application/json":
+                    raise ValueError("outreach preview requires application/json")
+                raw = self.rfile.read(content_length)
+                if len(raw) != content_length:
+                    raise ValueError("incomplete outreach preview request body")
+                try:
+                    decoded = json.loads(raw.decode("utf-8"))
+                except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+                    raise ValueError("invalid outreach preview JSON body") from exc
+                if not isinstance(decoded, dict):
+                    raise ValueError("outreach preview body must be a JSON object")
+                expected_fields = {
+                    "workflow_id",
+                    "expected_current_status",
+                    "channel",
+                    "destination",
+                    "business_role",
+                    "source_name",
+                    "source_reference",
+                    "contact_review_basis",
+                    "subject",
+                    "body",
+                }
+                if set(decoded) != expected_fields:
+                    raise ValueError(
+                        "outreach preview requires the exact documented request fields"
+                    )
+                if any(not isinstance(decoded[field], str) for field in expected_fields):
+                    raise ValueError("outreach preview request fields must be strings")
+
+                contact = OutreachContactReference(
+                    channel=OutreachChannel(decoded["channel"]),
+                    destination=decoded["destination"],
+                    business_role=decoded["business_role"],
+                    source_name=decoded["source_name"],
+                    source_reference=decoded["source_reference"],
+                    contact_review_basis=decoded["contact_review_basis"],
+                )
+                with Session(engine, autoflush=False) as session:
+                    preview = build_persisted_outreach_preview(
+                        session,
+                        workflow_id=decoded["workflow_id"],
+                        expected_current_status=LeadWorkflowStatus(
+                            decoded["expected_current_status"]
+                        ),
+                        contact=contact,
+                        subject=decoded["subject"],
+                        body=decoded["body"],
+                    )
+                self._send_json(preview.to_dict())
+            except OutreachPreviewError as exc:
+                self._send_json({"error": str(exc)}, status=HTTPStatus.CONFLICT)
+            except ValueError as exc:
+                self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
+            except SQLAlchemyError:
+                self._send_json(
+                    {
+                        "error": "Outreach preview is unavailable; "
+                        "no external communication was sent."
+                    },
+                    status=HTTPStatus.SERVICE_UNAVAILABLE,
+                )
 
         def _mutate_watchlist(self, *, archive: bool) -> None:
             """Apply one same-origin local watchlist mutation and nothing else."""
