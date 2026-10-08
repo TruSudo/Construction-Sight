@@ -20,6 +20,9 @@ from constructionsight.lead_operator_service import (
 )
 from constructionsight.lead_workflow_models import LeadWorkflowStatus
 from constructionsight.lead_workflow_rules import LEAD_WORKFLOW_TRANSITION_RULES
+from constructionsight.operator_services.lead_workflow_transition_service import (
+    apply_authorized_lead_workflow_transition,
+)
 from constructionsight.outreach_preview_models import (
     OutreachChannel,
     OutreachContactReference,
@@ -27,9 +30,6 @@ from constructionsight.outreach_preview_models import (
 from constructionsight.outreach_preview_service import (
     OutreachPreviewError,
     build_persisted_outreach_preview,
-)
-from constructionsight.operator_services.lead_workflow_transition_service import (
-    apply_authorized_lead_workflow_transition,
 )
 from constructionsight.storage.database import (
     create_database_engine,
@@ -271,17 +271,17 @@ def outreach_preview(
         str,
         typer.Option("--body", help="Preview body."),
     ],
+    contact_review_basis: Annotated[
+        str,
+        typer.Option(
+            "--contact-review-basis",
+            help="Required operator review basis for treating the destination as a business contact path.",
+        ),
+    ],
     database_url: Annotated[
         str | None,
         typer.Option(help="SQLAlchemy database URL."),
     ] = None,
-    confirm_business_contact: Annotated[
-        bool,
-        typer.Option(
-            "--confirm-business-contact",
-            help="Confirm that the supplied destination is a reviewed business contact path.",
-        ),
-    ] = False,
     json_output: Annotated[
         bool,
         typer.Option("--json-output", help="Print machine-readable preview JSON."),
@@ -296,7 +296,7 @@ def outreach_preview(
         business_role=business_role,
         source_name=source_name,
         source_reference=source_reference,
-        operator_confirmed_business_contact=confirm_business_contact,
+        contact_review_basis=contact_review_basis,
     )
     try:
         with managed_session(factory) as session:
