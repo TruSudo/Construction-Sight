@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class OutreachChannel(StrEnum):
@@ -29,7 +29,23 @@ class OutreachContactReference(BaseModel):
     business_role: str = Field(min_length=1, max_length=255)
     source_name: str = Field(min_length=1, max_length=500)
     source_reference: str = Field(min_length=1, max_length=2000)
-    operator_confirmed_business_contact: bool = False
+    contact_review_basis: str = Field(min_length=1, max_length=2000)
+
+    @field_validator(
+        "destination",
+        "business_role",
+        "source_name",
+        "source_reference",
+        "contact_review_basis",
+    )
+    @classmethod
+    def strip_required_text(cls, value: str) -> str:
+        """Reject blank contact provenance disguised as whitespace."""
+
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("outreach contact provenance values must not be blank")
+        return stripped
 
 
 class OutreachPreview(BaseModel):
