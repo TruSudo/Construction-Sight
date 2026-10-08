@@ -11,7 +11,10 @@ let activeKind = "all", activeCounty = "";
 function applyWatchlistSnapshot(data) {
   if (!data || data.schema_version !== "operator_watchlist.v1" ||
       data.persisted_locally !== true || data.source_records_read_only !== true ||
-      data.source_monitoring_enabled !== false || data.notification_delivery_enabled !== false ||
+      data.source_monitoring_enabled !== false ||
+      data.retained_source_change_detection_enabled !== true ||
+      data.remote_source_polling_enabled !== false ||
+      data.notification_delivery_enabled !== false ||
       data.commercial_actions_authorized !== false || !Array.isArray(data.items) ||
       !Number.isSafeInteger(data.total) || data.total !== data.items.length)
     throw Error("Persisted watchlist authority state is inconsistent.");
@@ -19,7 +22,9 @@ function applyWatchlistSnapshot(data) {
   for (const item of data.items) {
     if (!item || !["ceqa","permit"].includes(item.record_kind) ||
         typeof item.record_id !== "string" || !item.record_id || item.record_id.length > 255 ||
-        item.status === "archived" || item.alert_enabled !== false) {
+        item.status === "archived" || item.alert_enabled !== false ||
+        typeof item.change_pending !== "boolean" ||
+        item.change_pending !== (item.status === "triggered")) {
       throw Error("Persisted watchlist item is inconsistent.");
     }
     const key = identity(item);
@@ -32,9 +37,11 @@ function applyWatchlistSnapshot(data) {
 }
 
 function updateWatchCounters() {
-  const count = Object.keys(localWatchlist).length;
+  const entries = Object.values(localWatchlist);
+  const count = entries.length;
+  const pending = entries.filter(entry => entry.change_pending).length;
   byId("watched-count").textContent = String(count);
-  byId("notification-count").textContent = String(count);
+  byId("notification-count").textContent = String(pending);
 }
 
 async function toggleWatch(row) {
@@ -50,8 +57,8 @@ async function toggleWatch(row) {
     applyWatchlistSnapshot(data);
     renderDossier(row);
     byId("global-notice").textContent = archive ?
-      "Watchlist entry archived locally. No source monitoring or notification was performed." :
-      "Watchlist entry persisted locally. Monitoring, reminders, outreach and bids remain disabled.";
+      "Watchlist entry archived locally. No notification was delivered." :
+      "Watchlist entry persisted locally. Retained-record change detection is enabled; external polling, notifications, outreach and bids remain disabled.";
   } catch (error) {
     byId("global-notice").textContent = "Watchlist change failed: " + String(error.message || error) +
       ". No source or commercial record was changed.";
@@ -81,15 +88,18 @@ function renderWatchlist(full = false) {
     '<div class="watch-entry"><i class="dot unknown" aria-hidden="true"></i><span><b>' +
     escapeText(entry.title || "Source record unavailable") + '</b><br><small>' +
     escapeText(entry.county || "County unrecorded") +
-    ' · persisted local watch · unassessed · alerts off</small></span>' +
+    (entry.change_pending ?
+      ' · retained change detected · review pending · delivery off' :
+      ' · persisted local watch · no pending retained change · delivery off') +
+    '</small></span>' +
     '<button type="button" data-open="' + index + '">Open record</button>' +
     '<button type="button" data-remove="' + index + '">Remove</button></div>'
   ).join("") || '<p class="empty" style="padding:12px">No persisted source records on this local watchlist.</p>';
   const target = full ? byId("feature-body") : byId("watchlist-summary");
   if (full) {
     target.innerHTML = '<section class="feature-card"><h2>Persisted local watchlist</h2>' +
-      '<p>Watchlist membership survives browser restarts in the local ConstructionSight database. ' +
-      'It does not perform source polling, schedule reminders, send notifications, qualify a lead, or authorize outreach.</p>' +
+      '<p>Watchlist membership survives browser restarts and automatically reacts when its retained normalized source record changes. ' +
+      'It does not start remote source polling, send notifications, qualify a lead, or authorize outreach.</p>' +
       '<div id="full-watchlist">' + markup + '</div><a href="/workspace#records">Browse retained source records →</a></section>';
   } else target.innerHTML = markup;
   target.querySelectorAll("[data-open]").forEach(button => button.onclick = () => {
@@ -1058,7 +1068,7 @@ function showSection(name) {
   document.querySelectorAll("[data-section]").forEach(n=>{n.classList.toggle("current",n.dataset.section===name);n.setAttribute("aria-pressed",String(n.dataset.section===name));});
   document.querySelector('a[href="/"]').classList.remove("current");
   if(name==="watchlist"){
-    byId("feature-heading").textContent="Watchlist";byId("feature-description").textContent="Persisted local source watches · monitoring, reminders and notifications not yet connected";
+    byId("feature-heading").textContent="Watchlist";byId("feature-description").textContent="Persisted source watches · retained-record change detection active · remote polling and notification delivery disabled";
     renderWatchlist(true);return;
   }
   const [title,subtitle,warning,link,label]=sections[name]||sections.sources;
@@ -1081,7 +1091,7 @@ async function mutateJson(url,method){
 }
 async function loadData(offset=pageOffset, focusIdentity=null){
   const token=++pageRequest;++featureRequest;
-  byId("global-notice").textContent="Loading retained local records and persisted local watchlist. Readiness, outreach, bidding, and live watchlist monitoring are not enabled.";
+  byId("global-notice").textContent="Loading retained records and persisted watch state. Retained-record change detection is active; remote polling, notification delivery, outreach, and bidding are not enabled.";
   const filter=new URLSearchParams({kind:activeKind,county:activeCounty,limit:"50",offset:String(offset),q:activeQuery});
   const geo=new URLSearchParams({kind:activeKind,county:activeCounty,q:activeQuery});
   try{
@@ -1098,7 +1108,10 @@ async function loadData(offset=pageOffset, focusIdentity=null){
       newPage.total!==newFootprint.matching_total)throw Error("Source-list and geographic scope disagree. Refresh the database view.");
     page=newPage;footprint=newFootprint;workflows=newWorkflow;ingestionInbox=newInbox;pageOffset=offset;
     applyWatchlistSnapshot(newWatchlist);
-    if(health.watchlist_persistence_enabled!==true || health.watchlist_source_monitoring_enabled!==false)
+    if(health.watchlist_persistence_enabled!==true ||
+      health.watchlist_source_monitoring_enabled!==false ||
+      health.watchlist_retained_change_detection_enabled!==true ||
+      health.watchlist_remote_source_polling_enabled!==false)
       throw Error("Watchlist persistence authority state is inconsistent.");
     if(sourceState && sourceState.read_only===true && sourceState.live_collection_enabled===false &&
       /^[0-9a-f]{64}$/.test(sourceState.revision_identity))sourceRevision=sourceState.revision_identity;
