@@ -22,7 +22,12 @@ from constructionsight.intelligence import WatchlistItem, WatchlistStatus
 from constructionsight.storage.domain_store import CeqaStore, PermitStore
 from constructionsight.storage.intelligence_orm import IntelligenceWatchlistRecord
 from constructionsight.storage.intelligence_store import IntelligenceStore
-from constructionsight.watchlist_constants import (\n    MAX_OPERATOR_WATCHLIST_ITEMS,\n    OPERATOR_WORKSPACE_ID,\n)\n\nOperatorSourceKind = Literal["ceqa", "permit"]
+from constructionsight.watchlist_constants import (
+    MAX_OPERATOR_WATCHLIST_ITEMS,
+    OPERATOR_WORKSPACE_ID,
+)
+
+OperatorSourceKind = Literal["ceqa", "permit"]
 
 _MUTATION_PREFIX = re.compile(
     r'^\s*(?:INSERT\s+INTO|UPDATE)\s+["\x60\[]?intelligence_watchlist_items(?:["\x60\]]|\s)',
