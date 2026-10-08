@@ -41,7 +41,7 @@ from constructionsight.storage.domain_serialization import (
     strings_to_json,
 )
 from constructionsight.storage.intelligence_store import IntelligenceStore
-from constructionsight.watch_change_monitor import trigger_watches_for_source_change
+from constructionsight.storage.watch_change_store import trigger_watches_for_source_change
 
 
 def _append_domain_history(
