@@ -755,8 +755,8 @@ def create_handler(
                         request_evidence=request_evidence,
                         currency_code=currency_code,
                         line_items=lines,
-                        assumptions=raw_assumptions,
-                        exclusions=raw_exclusions,
+                        assumptions=[str(value) for value in raw_assumptions],
+                        exclusions=[str(value) for value in raw_exclusions],
                         validity_note=validity_note,
                     )
                 self._send_json(preview.to_dict())
