@@ -36,6 +36,7 @@ class BidRequestEvidence(BaseModel):
     request_source_name: str = Field(min_length=1, max_length=500)
     request_source_reference: str = Field(min_length=1, max_length=2000)
     request_review_basis: str = Field(min_length=1, max_length=2000)
+    request_observed_at: datetime
     request_text: str = Field(min_length=1, max_length=20_000)
     scope_summary: str = Field(min_length=1, max_length=10_000)
     evidence_notes: list[str] = Field(default_factory=list)
@@ -62,6 +63,15 @@ class BidRequestEvidence(BaseModel):
         if not stripped:
             raise ValueError("bid request evidence fields must not be blank")
         return stripped
+
+    @field_validator("request_observed_at")
+    @classmethod
+    def require_aware_request_time(cls, value: datetime) -> datetime:
+        """Require an offset-aware observed request timestamp."""
+
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("bid request observed time must be timezone-aware")
+        return value
 
     @field_validator("evidence_notes")
     @classmethod
