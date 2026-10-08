@@ -17,8 +17,7 @@ from constructionsight.intelligence import (
     WatchlistItem,
     WatchlistStatus,
 )
-from constructionsight.operator_watchlist import OPERATOR_WORKSPACE_ID
-from constructionsight.storage.intelligence_orm import IntelligenceRuntimeEventRecord
+from constructionsight.watchlist_constants import (\n    MAX_OPERATOR_WATCHLIST_ITEMS,\n    OPERATOR_WORKSPACE_ID,\n)\nfrom constructionsight.storage.intelligence_orm import IntelligenceRuntimeEventRecord
 from constructionsight.storage.intelligence_store import IntelligenceStore
 
 MAX_WATCH_CHANGE_EVENTS = 10_000
@@ -51,8 +50,8 @@ def scan_watched_source_changes(
         raise ValueError("watch change scan limit must be a positive integer")
 
     store = IntelligenceStore(session)
-    watches = store.list_watchlist_items(workspace_id=workspace_id, limit=501)
-    if len(watches) > 500:
+    watches = store.list_watchlist_items(workspace_id=workspace_id, limit=MAX_OPERATOR_WATCHLIST_ITEMS + 1)
+    if len(watches) > MAX_OPERATOR_WATCHLIST_ITEMS:
         raise ValueError("watch change scan exceeds bounded watchlist limit")
 
     changed_rows = session.scalars(
