@@ -23,6 +23,11 @@ from constructionsight.bid_pricing_service import (
     BidPricingPreviewError,
     build_persisted_bid_pricing_preview,
 )
+from constructionsight.bid_proposal_models import BidProposalDraft
+from constructionsight.bid_proposal_service import (
+    BidProposalDraftError,
+    build_persisted_bid_proposal_draft,
+)
 from constructionsight.bid_request_models import BidRequestChannel, BidRequestEvidence
 from constructionsight.bid_request_service import (
     BidRequestEvidenceError,
@@ -353,6 +358,7 @@ def create_handler(
                             "outreach_send_enabled": False,
                             "bid_request_evidence_enabled": True,
                             "bid_pricing_preview_enabled": True,
+                            "bid_proposal_draft_preview_enabled": True,
                             "bid_pricing_enabled": False,
                             "bid_preparation_enabled": False,
                             "bid_submission_enabled": False,
@@ -465,6 +471,9 @@ def create_handler(
                 return
             if path == "/api/bid-pricing-preview":
                 self._build_bid_pricing_preview()
+                return
+            if path == "/api/bid-proposal-draft":
+                self._build_bid_proposal_draft()
                 return
             self._send_json(
                 {"error": "Method not implemented."},
@@ -768,6 +777,81 @@ def create_handler(
                 self._send_json(
                     {
                         "error": "Bid pricing preview is unavailable; "
+                        "no commercial terms or submission were authorized."
+                    },
+                    status=HTTPStatus.SERVICE_UNAVAILABLE,
+                )
+
+        def _build_bid_proposal_draft(self) -> None:
+            """Build one same-origin, read-only internal proposal draft."""
+
+            if not self._local_request_allowed(require_origin=True):
+                self._send_json(
+                    {"error": "Local same-origin proposal draft request required."},
+                    status=HTTPStatus.FORBIDDEN,
+                )
+                return
+            try:
+                parsed = urlparse(self.path)
+                if (
+                    parsed.scheme
+                    or parsed.netloc
+                    or parsed.fragment
+                    or parsed.query
+                    or parsed.path != "/api/bid-proposal-draft"
+                ):
+                    raise ValueError("exact bid proposal draft path required")
+                decoded = self._read_bounded_json_mapping(
+                    expected_fields=frozenset(
+                        {
+                            "request_evidence",
+                            "pricing_preview",
+                            "proposal_title",
+                            "cover_note",
+                            "additional_terms",
+                        }
+                    ),
+                    label="bid proposal draft",
+                )
+                request_evidence = BidRequestEvidence.model_validate(
+                    decoded["request_evidence"]
+                )
+                pricing_preview = BidPricingPreview.model_validate(
+                    decoded["pricing_preview"]
+                )
+                proposal_title = decoded["proposal_title"]
+                cover_note = decoded["cover_note"]
+                raw_terms = decoded["additional_terms"]
+                if not isinstance(proposal_title, str) or not isinstance(
+                    cover_note, str
+                ):
+                    raise ValueError(
+                        "bid proposal title and cover note must be strings"
+                    )
+                if not isinstance(raw_terms, list) or not all(
+                    isinstance(value, str) for value in raw_terms
+                ):
+                    raise ValueError(
+                        "bid proposal additional_terms must be strings"
+                    )
+                with Session(engine, autoflush=False) as session:
+                    proposal = build_persisted_bid_proposal_draft(
+                        session,
+                        request_evidence=request_evidence,
+                        pricing_preview=pricing_preview,
+                        proposal_title=proposal_title,
+                        cover_note=cover_note,
+                        additional_terms=[str(value) for value in raw_terms],
+                    )
+                self._send_json(proposal.to_dict())
+            except BidProposalDraftError as exc:
+                self._send_json({"error": str(exc)}, status=HTTPStatus.CONFLICT)
+            except ValueError as exc:
+                self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
+            except SQLAlchemyError:
+                self._send_json(
+                    {
+                        "error": "Bid proposal draft is unavailable; "
                         "no commercial terms or submission were authorized."
                     },
                     status=HTTPStatus.SERVICE_UNAVAILABLE,
