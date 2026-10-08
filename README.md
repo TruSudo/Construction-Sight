@@ -2,7 +2,7 @@
 
 ConstructionSight is a lawful public-record construction intelligence platform focused initially on San Bernardino County and Riverside County, California.
 
-The system is designed to discover, preserve, normalize, resolve, score, review, and track public construction signals across CEQA, permits, contractors, parcels, planning decisions, and related government records. The current implementation is strongest in governed backend architecture, evidence preservation, domain models, persistence, operator CLI surfaces, parcel/site reasoning, workflow controls, and repository certification. A local read-only graphical operator application and a separate, explicitly confirmed local source-review staging CLI are implemented on draft integration PR #119; neither is merged to main or production-certified. The GUI is not browser-verified, the staging CLI retains unapproved normalized-source snapshots only, and no commercial opportunity, outreach or bid is authorized. Production recurring source collection and commercial outreach remain planned integration work. See docs/architecture/operator_gui.md for exact limitations.
+The system is designed to discover, preserve, normalize, resolve, score, review, and track public construction signals across CEQA, permits, contractors, parcels, planning decisions, and related government records. The current implementation is strongest in governed backend architecture, evidence preservation, domain models, persistence, operator CLI surfaces, parcel/site reasoning, workflow controls, and repository certification. A local read-only graphical operator application and a separate, explicitly confirmed local source-review staging CLI are implemented on draft integration PR #119; neither is merged to main or production-certified. The GUI is not browser-verified, the staging CLI retains unapproved normalized-source snapshots only, and no commercial opportunity, outreach or bid is authorized. Production recurring source collection and external outreach delivery remain planned integration work. A governed no-send outreach preview exists on the draft integration branch, but it grants no send or bid authority. See docs/architecture/operator_gui.md for exact limitations.
 
 ## Operating boundary
 
@@ -296,7 +296,7 @@ No external communication behavior is implied by the existing models, CLI, or GU
 - Optional preview archives and nested child tables remain unimplemented.
 - Generic upstream corrections remain blocked pending record-family-specific doctrine.
 - Lead workflow reopen or override behavior is not implemented.
-- Outreach and the full operator application remain incomplete; the local GUI is a read-only development view of retained records.
+- Outreach delivery and the full operator application remain incomplete; a governed no-send outreach preview exists, while the local GUI remains a development operator surface over retained records.
 - Geometry results are not survey-grade legal proof.
 
 ## Development doctrine
