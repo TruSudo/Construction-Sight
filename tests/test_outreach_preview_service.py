@@ -57,14 +57,14 @@ def _package(
     )
 
 
-def _contact(*, confirmed: bool = True) -> OutreachContactReference:
+def _contact(*, review_basis: str = "Reviewed official business contact page.") -> OutreachContactReference:
     return OutreachContactReference(
         channel=OutreachChannel.EMAIL,
         destination="estimating@example-contractor.test",
         business_role="estimating department",
         source_name="official contractor website",
         source_reference="https://example-contractor.test/contact",
-        operator_confirmed_business_contact=confirmed,
+        contact_review_basis=review_basis,
     )
 
 
@@ -130,29 +130,9 @@ def test_non_ready_workflow_cannot_build_outreach_preview() -> None:
             )
 
 
-def test_unconfirmed_business_contact_cannot_build_preview() -> None:
-    engine = create_database_engine("sqlite+pysqlite:///:memory:")
-    initialize_database(engine)
-    factory = session_factory(engine)
-    package = _package()
-    workflow = create_lead_workflow(package=package)
-
-    with managed_session(factory) as session:
-        store_lead_review_package(session, package)
-        store_lead_workflow_record(session, workflow)
-
-        with pytest.raises(
-            OutreachPreviewError,
-            match="operator confirmation",
-        ):
-            build_persisted_outreach_preview(
-                session,
-                workflow_id=workflow.workflow_id,
-                expected_current_status=LeadWorkflowStatus.READY,
-                contact=_contact(confirmed=False),
-                subject="Preview",
-                body="Preview body",
-            )
+def test_blank_contact_review_basis_is_rejected() -> None:
+    with pytest.raises(ValueError, match="must not be blank"):
+        _contact(review_basis="   ")
 
 
 def test_late_duplicate_finding_blocks_outreach_preview() -> None:
