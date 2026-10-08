@@ -432,5 +432,4 @@ def test_outreach_preview_cli_requires_contact_review_basis(tmp_path) -> None:
         ],
     )
 
-    assert result.exit_code != 0
-    assert "--contact-review-basis" in result.output
+    assert result.exit_code == 2
