@@ -69,7 +69,9 @@ def _build(session, workflow_id: str, status: LeadWorkflowStatus) -> BidRequestE
         requester_business_role="estimating department",
         request_source_name="retained business email",
         request_source_reference="message:fixture:bid-request",
-        request_review_basis="Reviewed the retained request and identified explicit pricing language.",
+        request_review_basis=(
+            "Reviewed the retained request and identified explicit pricing language."
+        ),
         request_observed_at=datetime(2026, 10, 8, 8, 30, tzinfo=UTC),
         request_text="Please send pricing for construction site security coverage.",
         scope_summary="Night security coverage for the reviewed construction site.",
