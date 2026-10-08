@@ -224,7 +224,7 @@ function renderMap() {
 const sections = {
   entities:["Entity Network","Explore recorded names and their source-key relationships.","Entity neighborhood inspection is available for a selected source record in Project Intelligence. Exact stored-key co-occurrence is not proof of independently verified corporate identity.","/workspace#records","Inspect source relationships →"],
   evidence:["Evidence Chains","Inspect attributable claims, named parties, and historical source milestones.","Full provenance, source URLs, source-claimed locations, parcel candidate inspection and historical milestone views are available in Project Intelligence. Records do not establish current construction activity.","/workspace#records","Open evidence-backed records →"],
-  outreach:["Outreach","Commercial messaging and contact management.","No message delivery or outreach preview is available in this read-only operator. Source claims and unassessed records are not approved contacts or actionable leads. Outbound messages require a separately authorized workflow.","/workspace#workflow","Inspect persisted lead workflows →"],
+  outreach:["Outreach","Governed preview of reviewed commercial messaging.","Outreach preview is available only for exact persisted READY/ACTIVE workflows with reviewed business-contact provenance. Preview does not send, authorize delivery, or authorize a bid.","/workspace#workflow","Inspect persisted lead workflows →"],
   bid:["Bid Studio","Security proposals and request-driven pricing.","Bid preparation and submission controls are not wired to this operator. A green outreach status alone would not authorize a bid; a documented customer request, scope and commercial approval are required.","/workspace#workflow","Inspect retained workflow records →"],
   royalty:["Royalty Ledger","Contract attribution, payments, and reconciliation.","No royalty transaction ledger or payment posting is exposed through this read-only operator. Existing result/share services must be connected and validated before balances or payment status can be shown.","/workspace#workflow","Inspect retained workflow records →"],
   sources:["Sources & Collection","Review available data and collection boundaries.","This application reads a selected local SQLite database only. Live collection is disabled; matching source-record counts do not establish coverage of all permitting jurisdictions.","/workspace#records","Review retained source records →"]
@@ -1056,6 +1056,91 @@ function showAiCenter() {
     '<p>There is no live model selector or enable switch yet. The AI Center is reserved for this optional feature.</p></section>';
 }
 
+function outreachWorkflowOptions() {
+  const leads=workflows && Array.isArray(workflows.leads) ? workflows.leads : [];
+  return leads.filter(row=>
+    ["ready","active"].includes(row.status) &&
+    Array.isArray(row.limitations) && row.limitations.length===0 &&
+    typeof row.workflow_id==="string" && row.workflow_id
+  );
+}
+function renderOutreachPreview(preview) {
+  if(!preview || typeof preview.preview_id!=="string" ||
+    preview.requires_human_approval!==true ||
+    preview.external_send_authorized!==false ||
+    preview.send_executed!==false || preview.bid_authorized!==false ||
+    !preview.contact) throw Error("Outreach preview authority state is inconsistent.");
+  const evidence=Array.isArray(preview.evidence_notes) ? preview.evidence_notes : [];
+  return '<section class="feature-card"><span class="badge">PREVIEW ONLY · SEND DISABLED · BID DISABLED</span>'+
+    '<h2>'+escapeText(preview.subject)+'</h2>'+
+    '<p>'+escapeText(preview.body)+'</p>'+
+    '<dl class="outreach-preview-meta">'+
+    '<dt>Preview ID</dt><dd>'+escapeText(preview.preview_id)+'</dd>'+
+    '<dt>Workflow</dt><dd>'+escapeText(preview.workflow_id)+'</dd>'+
+    '<dt>Workflow status</dt><dd>'+escapeText(preview.workflow_status)+'</dd>'+
+    '<dt>Channel</dt><dd>'+escapeText(preview.contact.channel)+'</dd>'+
+    '<dt>Business role</dt><dd>'+escapeText(preview.contact.business_role)+'</dd>'+
+    '<dt>Destination</dt><dd>'+escapeText(preview.contact.destination)+'</dd>'+
+    '<dt>Contact source</dt><dd>'+escapeText(preview.contact.source_name)+'</dd>'+
+    '<dt>Source reference</dt><dd>'+escapeText(preview.contact.source_reference)+'</dd>'+
+    '<dt>Review basis</dt><dd>'+escapeText(preview.contact.contact_review_basis)+'</dd></dl>'+
+    '<h3>Bound evidence notes</h3>'+
+    (evidence.length?'<ul>'+evidence.map(note=>'<li>'+escapeText(note)+'</li>').join("")+'</ul>':
+      '<p>No evidence-note text was retained in the exact review package.</p>')+
+    '<p><strong>Human approval remains required.</strong> This preview cannot send a message, submit a form, contact a prospect, or authorize a bid.</p></section>';
+}
+function showOutreach() {
+  featureIntro("Outreach", "Governed preview from exact persisted workflow state · no delivery capability");
+  const eligible=outreachWorkflowOptions();
+  const options=eligible.map(row=>
+    '<option value="'+escapeText(row.workflow_id)+'">'+escapeText(row.status.toUpperCase()+" · "+
+      (row.summary||row.base_candidate_id)+" · "+row.workflow_id)+'</option>'
+  ).join("");
+  byId("feature-body").innerHTML='<section class="feature-card"><span class="badge">PREVIEW ONLY · EXTERNAL DELIVERY DISABLED</span>'+
+    '<h2>Prepare reviewed outreach preview</h2>'+
+    '<p>This form reads the exact persisted workflow and review package again on submit. It does not retain this message, send it, authorize delivery, or authorize a bid.</p>'+
+    (eligible.length?
+      '<form id="outreach-preview-form" class="outreach-preview-form">'+
+      '<label>Persisted workflow<select id="outreach-workflow" required>'+options+'</select></label>'+
+      '<label>Channel<select id="outreach-channel" required><option value="email">Email</option><option value="procurement_portal">Procurement portal</option><option value="web_form">Web form</option><option value="phone">Phone</option><option value="other">Other</option></select></label>'+
+      '<label>Business contact destination<input id="outreach-destination" maxlength="1000" required></label>'+
+      '<label>Business role<input id="outreach-role" maxlength="255" required></label>'+
+      '<label>Contact source name<input id="outreach-source-name" maxlength="500" required></label>'+
+      '<label>Contact source reference<input id="outreach-source-reference" maxlength="2000" required></label>'+
+      '<label class="wide">Contact review basis<textarea id="outreach-review-basis" maxlength="2000" required></textarea></label>'+
+      '<label class="wide">Subject<input id="outreach-subject" maxlength="500" required></label>'+
+      '<label class="wide">Message body<textarea id="outreach-body" maxlength="20000" required></textarea></label>'+
+      '<div class="wide"><button class="action primary" type="submit">Build preview</button></div></form>':
+      '<p>No persisted READY/ACTIVE workflow without limitations is present in the current bounded workflow page.</p>')+
+    '</section><div id="outreach-preview-result"></div>';
+  const form=byId("outreach-preview-form");
+  if(!form)return;
+  form.onsubmit=async event=>{
+    event.preventDefault();
+    const workflowId=byId("outreach-workflow").value;
+    const workflow=eligible.find(row=>row.workflow_id===workflowId);
+    const result=byId("outreach-preview-result");
+    if(!workflow){result.innerHTML='<section class="feature-card"><p role="alert">Selected persisted workflow is unavailable. Refresh before previewing.</p></section>';return;}
+    result.innerHTML='<section class="feature-card"><p role="status">Revalidating persisted workflow, review package and duplicate state…</p></section>';
+    try{
+      const preview=await postJson("/api/outreach-preview",{
+        workflow_id:workflow.workflow_id,
+        expected_current_status:workflow.status,
+        channel:byId("outreach-channel").value,
+        destination:byId("outreach-destination").value,
+        business_role:byId("outreach-role").value,
+        source_name:byId("outreach-source-name").value,
+        source_reference:byId("outreach-source-reference").value,
+        contact_review_basis:byId("outreach-review-basis").value,
+        subject:byId("outreach-subject").value,
+        body:byId("outreach-body").value
+      });
+      result.innerHTML=renderOutreachPreview(preview);
+    }catch(error){
+      result.innerHTML='<section class="feature-card"><h2>Preview blocked</h2><p role="alert">'+escapeText(error.message||error)+'</p><p>No message was sent.</p></section>';
+    }
+  };
+}
 function showSection(name) {
   ++featureRequest;
   byId("command-view").hidden=true;byId("feature-view").hidden=false;
@@ -1064,6 +1149,7 @@ function showSection(name) {
   if(name==="sources"){document.querySelectorAll("[data-section]").forEach(n=>{n.classList.toggle("current",n.dataset.section===name);n.setAttribute("aria-pressed",String(n.dataset.section===name));});document.querySelector('a[href="/"]').classList.remove("current");showSources();return;}
   if(name==="ai"){document.querySelectorAll("[data-section]").forEach(n=>{n.classList.toggle("current",n.dataset.section===name);n.setAttribute("aria-pressed",String(n.dataset.section===name));});document.querySelector('a[href="/"]').classList.remove("current");showAiCenter();return;}
   if(name==="leads"){document.querySelectorAll("[data-section]").forEach(n=>{n.classList.toggle("current",n.dataset.section===name);n.setAttribute("aria-pressed",String(n.dataset.section===name));});document.querySelector('a[href="/"]').classList.remove("current");showLeads();return;}
+  if(name==="outreach"){document.querySelectorAll("[data-section]").forEach(n=>{n.classList.toggle("current",n.dataset.section===name);n.setAttribute("aria-pressed",String(n.dataset.section===name));});document.querySelector('a[href="/"]').classList.remove("current");showOutreach();return;}
   if(name==="royalty"){document.querySelectorAll("[data-section]").forEach(n=>{n.classList.toggle("current",n.dataset.section===name);n.setAttribute("aria-pressed",String(n.dataset.section===name));});document.querySelector('a[href="/"]').classList.remove("current");showRoyaltyLedger();return;}
   document.querySelectorAll("[data-section]").forEach(n=>{n.classList.toggle("current",n.dataset.section===name);n.setAttribute("aria-pressed",String(n.dataset.section===name));});
   document.querySelector('a[href="/"]').classList.remove("current");
@@ -1087,6 +1173,17 @@ async function mutateJson(url,method){
   const response=await fetch(url,{method,cache:"no-store",headers:{"Accept":"application/json"}});
   const data=await response.json();
   if(!response.ok) throw Error(data.error || "Local watchlist mutation unavailable.");
+  return data;
+}
+async function postJson(url,payload){
+  const response=await fetch(url,{
+    method:"POST",
+    cache:"no-store",
+    headers:{"Accept":"application/json","Content-Type":"application/json"},
+    body:JSON.stringify(payload)
+  });
+  const data=await response.json();
+  if(!response.ok) throw Error(data.error || "Local preview unavailable.");
   return data;
 }
 async function loadData(offset=pageOffset, focusIdentity=null){
@@ -1113,6 +1210,10 @@ async function loadData(offset=pageOffset, focusIdentity=null){
       health.watchlist_retained_change_detection_enabled!==true ||
       health.watchlist_remote_source_polling_enabled!==false)
       throw Error("Watchlist persistence authority state is inconsistent.");
+    if(health.outreach_preview_enabled!==true ||
+      health.outreach_send_enabled!==false ||
+      health.bid_authorization_enabled!==false)
+      throw Error("Commercial preview authority state is inconsistent.");
     if(sourceState && sourceState.read_only===true && sourceState.live_collection_enabled===false &&
       /^[0-9a-f]{64}$/.test(sourceState.revision_identity))sourceRevision=sourceState.revision_identity;
     byId("source-total").textContent=newPage.total.toLocaleString();
