@@ -23,7 +23,6 @@ from constructionsight.bid_pricing_service import (
     BidPricingPreviewError,
     build_persisted_bid_pricing_preview,
 )
-from constructionsight.bid_proposal_models import BidProposalDraft
 from constructionsight.bid_proposal_service import (
     BidProposalDraftError,
     build_persisted_bid_proposal_draft,
