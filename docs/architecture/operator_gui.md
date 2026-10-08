@@ -5,8 +5,9 @@ For a new isolated trial with retained public-source records, use
 Startup and `/api/health` now check the tables and columns required by the GUI.
 An incompatible database is rejected without migration or repair.
 
-Run the read-only application against an **existing, initialized** ConstructionSight
-SQLite database:
+Run the local operator application against an **existing, initialized** ConstructionSight
+SQLite database. Source and commercial records are read through a read-only engine;
+the only database mutation exposed by the GUI is guarded local watchlist state:
 
 ```bash
 constructionsight-operator --database /absolute/path/to/constructionsight.sqlite3
@@ -116,14 +117,31 @@ Populate the database through existing governed intake/persistence commands.
   workflow references. It does not substitute the newest review for the same
   candidate. Missing exact reviews remain visible as limitations; contradictory
   identities fail the request. Workflows have separate pagination.
-- Both views are read-only. Source records are not deduplicated projects or
-  qualified leads. No source record is silently promoted to an outreach-ready
-  opportunity, and an old document/permit status is not a current phase assertion.
+- Source-record and persisted commercial-workflow views remain read-only. Source
+  records are not deduplicated projects or qualified leads. No source record is
+  silently promoted to an outreach-ready opportunity, and an old document/permit
+  status is not a current phase assertion.
+- The local watchlist is separately persisted through a narrowly scoped same-origin
+  write path. Membership changes do not mutate CEQA, permit, lead, result, or source
+  records. Retained normalized source changes can mark an active watch as triggered;
+  remote polling and notification delivery remain disabled.
+- Outreach preview is a same-origin computation over exact persisted `ready`/`active`
+  workflow state. It revalidates the exact review package and durable duplicate state,
+  requires reviewed business-contact provenance, and returns a content-bound preview.
+  It does not retain or send the message and fixes external-send and bid authority false.
+- Bid Studio currently exposes only the request-evidence gate. It binds an exact
+  persisted `ready`/`active` workflow to requester-business provenance, an offset-aware
+  observed request time, retained request text, and requested security scope. It does
+  not calculate pricing, prepare a proposal, grant commercial approval, or submit a bid.
 
 ## Local boundary
 
-The SQLite connection uses `mode=ro`. HTTP binds only to `127.0.0.1`, accepts exact
-loopback Host values and same-origin browser requests, and exposes GET-only views.
+Source and commercial database reads use SQLite `mode=ro`. A separate guarded
+engine may mutate only persisted local watchlist rows. HTTP binds only to
+`127.0.0.1`, accepts exact loopback Host values, and requires exact same-origin
+requests for POST/DELETE operations. The only effectful HTTP database mutation is
+watchlist membership; Outreach preview and Bid Request Evidence POSTs are bounded
+read-only computations and have no network-delivery transport.
 The GUI loads its JavaScript/CSS locally, escapes displayed source strings, limits
 source links to HTTP(S), and uses a CSP without inline scripts. Database read or
 schema errors return a generic 503 instead of leaking paths or returning a false
@@ -177,8 +195,10 @@ hashed workflow is deliberately unchanged by this integration slice.
 
 ## Explicit unapproved source-review docket (local CLI)
 
-The operator HTTP application intentionally remains **GET-only**. To retain a
-source-review snapshot, first preview the exact persisted record:
+The operator HTTP application does **not** stage source-review docket records.
+Its guarded write scope is limited to local watchlist membership, while commercial
+POST endpoints are preview/evidence computations only. To retain a source-review
+snapshot, first preview the exact persisted record:
 
 ```bash
 constructionsight-candidate-docket preview --database /absolute/path/to/constructionsight.sqlite3 --kind ceqa --record-id '<exact ceqa_key>'
