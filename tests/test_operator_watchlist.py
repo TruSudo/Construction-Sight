@@ -53,6 +53,8 @@ def test_persisted_watchlist_round_trip_and_archive(tmp_path) -> None:
             assert snapshot["persisted_locally"] is True
             assert snapshot["source_records_read_only"] is True
             assert snapshot["source_monitoring_enabled"] is False
+            assert snapshot["retained_source_change_detection_enabled"] is True
+            assert snapshot["remote_source_polling_enabled"] is False
             assert snapshot["notification_delivery_enabled"] is False
             assert snapshot["commercial_actions_authorized"] is False
             assert snapshot["total"] == 1
@@ -66,6 +68,7 @@ def test_persisted_watchlist_round_trip_and_archive(tmp_path) -> None:
                     "status": "active",
                     "priority": 50,
                     "alert_enabled": False,
+                    "change_pending": False,
                     "target_available": True,
                     "created_at": second.created_at.isoformat(),
                     "updated_at": second.updated_at.isoformat(),
