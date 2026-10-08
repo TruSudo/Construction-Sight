@@ -20,7 +20,11 @@ from constructionsight.lead_workflow_models import LeadWorkflowStatus
 from constructionsight.opportunity_models import OpportunityReadiness
 from constructionsight.permit_transition_models import PermitSnapshot
 from constructionsight.permit_transition_service import detect_permit_transitions
-from constructionsight.product_integration_service import (\n    build_product_integration,\n    persist_product_integration,\n)\nfrom constructionsight.site_resolution_models import SiteResolutionStatus
+from constructionsight.product_integration_service import (
+    build_product_integration,
+    persist_product_integration,
+)
+from constructionsight.site_resolution_models import SiteResolutionStatus
 from constructionsight.storage.database import (
     create_database_engine,
     initialize_database,
