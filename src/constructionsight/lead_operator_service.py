@@ -319,6 +319,7 @@ def require_persisted_duplicate_review_clear(
 ) -> None:
     """Gate actionability against both workflow limits and durable dedupe results."""
 
+    session.flush()
     require_duplicate_review_clear(limitations=record.limitations, next_status=next_status)
     if next_status not in ACTIONABLE_LEAD_WORKFLOW_STATUSES:
         return
