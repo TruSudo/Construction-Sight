@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 
 from constructionsight.ceqanet_ingestion_inbox import build_ceqanet_ingestion_inbox
 from constructionsight.domain_types import PartyRole
+from constructionsight.lead_workflow_models import LeadWorkflowStatus
 from constructionsight.operator_capture_queue import (
     empty_operator_capture_queue,
     load_operator_capture_queue,
@@ -42,7 +43,6 @@ from constructionsight.operator_source_candidate import (
 )
 from constructionsight.operator_source_registry import build_operator_source_registry
 from constructionsight.operator_source_revision import build_source_revision_snapshot
-from constructionsight.lead_workflow_models import LeadWorkflowStatus
 from constructionsight.operator_watchlist import (
     add_source_watch,
     archive_source_watch,
