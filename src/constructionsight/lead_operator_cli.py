@@ -275,7 +275,10 @@ def outreach_preview(
         str,
         typer.Option(
             "--contact-review-basis",
-            help="Required operator review basis for treating the destination as a business contact path.",
+            help=(
+                "Required operator review basis for treating the destination "
+                "as a business contact path."
+            ),
         ),
     ],
     database_url: Annotated[
