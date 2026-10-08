@@ -327,6 +327,8 @@ def create_handler(
                             "live_collection_enabled": False,
                             "watchlist_persistence_enabled": True,
                             "watchlist_source_monitoring_enabled": False,
+                            "watchlist_retained_change_detection_enabled": True,
+                            "watchlist_remote_source_polling_enabled": False,
                         }
                     elif path == "/api/capture-queue":
                         payload = capture_queue
