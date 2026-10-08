@@ -57,7 +57,10 @@ def _package(
     )
 
 
-def _contact(*, review_basis: str = "Reviewed official business contact page.") -> OutreachContactReference:
+def _contact(
+    *,
+    review_basis: str = "Reviewed official business contact page.",
+) -> OutreachContactReference:
     return OutreachContactReference(
         channel=OutreachChannel.EMAIL,
         destination="estimating@example-contractor.test",
