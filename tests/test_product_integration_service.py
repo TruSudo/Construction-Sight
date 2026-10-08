@@ -1,5 +1,7 @@
 from datetime import date
 
+from sqlalchemy import func, select
+
 from constructionsight.contractor_identity_models import (
     ContractorIdentityStatus,
     ContractorSourceKind,
@@ -18,8 +20,22 @@ from constructionsight.lead_workflow_models import LeadWorkflowStatus
 from constructionsight.opportunity_models import OpportunityReadiness
 from constructionsight.permit_transition_models import PermitSnapshot
 from constructionsight.permit_transition_service import detect_permit_transitions
-from constructionsight.product_integration_service import build_product_integration
-from constructionsight.site_resolution_models import SiteResolutionStatus
+from constructionsight.product_integration_service import (\n    build_product_integration,\n    persist_product_integration,\n)\nfrom constructionsight.site_resolution_models import SiteResolutionStatus
+from constructionsight.storage.database import (
+    create_database_engine,
+    initialize_database,
+    managed_session,
+    session_factory,
+)
+from constructionsight.storage.lead_workflow_orm import (
+    LeadDuplicateResultRecord,
+    LeadFingerprintRecord,
+    LeadReviewPackageRecord,
+    LeadWorkflowEventRecord,
+    LeadWorkflowRecordRow,
+    OpportunityEnrichmentReportRecord,
+)
+from constructionsight.storage.parcel_site_orm import SiteResolutionResultRow
 
 
 def _rich_intake(*, include_coordinate: bool) -> UniversalIntakeRecord:
@@ -125,3 +141,25 @@ def test_product_integration_blocks_exact_duplicate_from_ready_workflow() -> Non
     assert repeated.duplicate_result.status == LeadDuplicateStatus.DUPLICATE
     assert repeated.workflow.status == LeadWorkflowStatus.HOLD
     assert "lead fingerprint is a duplicate" in repeated.workflow.limitations
+
+
+def test_persist_product_integration_commits_durable_stages_together() -> None:
+    report = build_product_integration(_rich_intake(include_coordinate=False))
+    engine = create_database_engine("sqlite:///:memory:")
+    initialize_database(engine)
+    factory = session_factory(engine)
+
+    with managed_session(factory) as session:
+        persist_product_integration(session, report)
+
+        for model in (
+            SiteResolutionResultRow,
+            OpportunityEnrichmentReportRecord,
+            LeadReviewPackageRecord,
+            LeadFingerprintRecord,
+            LeadDuplicateResultRecord,
+            LeadWorkflowRecordRow,
+            LeadWorkflowEventRecord,
+        ):
+            count = session.scalar(select(func.count()).select_from(model))
+            assert count == 1
