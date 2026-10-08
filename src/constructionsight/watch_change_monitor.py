@@ -17,8 +17,12 @@ from constructionsight.intelligence import (
     WatchlistItem,
     WatchlistStatus,
 )
-from constructionsight.watchlist_constants import (\n    MAX_OPERATOR_WATCHLIST_ITEMS,\n    OPERATOR_WORKSPACE_ID,\n)\nfrom constructionsight.storage.intelligence_orm import IntelligenceRuntimeEventRecord
+from constructionsight.storage.intelligence_orm import IntelligenceRuntimeEventRecord
 from constructionsight.storage.intelligence_store import IntelligenceStore
+from constructionsight.watchlist_constants import (
+    MAX_OPERATOR_WATCHLIST_ITEMS,
+    OPERATOR_WORKSPACE_ID,
+)
 
 MAX_WATCH_CHANGE_EVENTS = 10_000
 
@@ -33,43 +37,24 @@ class WatchChangeScanReport:
     trigger_event_ids: tuple[str, ...]
 
 
-def scan_watched_source_changes(
+def trigger_watches_for_source_change(
     session: Session,
+    source_event: RuntimeEvent,
     *,
     workspace_id: str = OPERATOR_WORKSPACE_ID,
-    max_events: int = MAX_WATCH_CHANGE_EVENTS,
-) -> WatchChangeScanReport:
-    """Trigger active exact-source watches when retained source history changed.
+) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """Trigger active exact-source watches for one retained change event."""
 
-    This service performs no remote collection and sends no notification. It
-    consumes already-retained normalized-domain change events, updates only
-    watchlist state, and appends immutable attention events.
-    """
-
-    if isinstance(max_events, bool) or not isinstance(max_events, int) or max_events < 1:
-        raise ValueError("watch change scan limit must be a positive integer")
+    if source_event.event_type is not RuntimeEventType.SOURCE_RECORD_CHANGED:
+        return (), ()
 
     store = IntelligenceStore(session)
-    watches = store.list_watchlist_items(workspace_id=workspace_id, limit=MAX_OPERATOR_WATCHLIST_ITEMS + 1)
+    watches = store.list_watchlist_items(
+        workspace_id=workspace_id,
+        limit=MAX_OPERATOR_WATCHLIST_ITEMS + 1,
+    )
     if len(watches) > MAX_OPERATOR_WATCHLIST_ITEMS:
         raise ValueError("watch change scan exceeds bounded watchlist limit")
-
-    changed_rows = session.scalars(
-        select(IntelligenceRuntimeEventRecord)
-        .where(
-            IntelligenceRuntimeEventRecord.event_type
-            == RuntimeEventType.SOURCE_RECORD_CHANGED.value
-        )
-        .order_by(IntelligenceRuntimeEventRecord.id.desc())
-        .limit(max_events + 1)
-    ).all()
-    if len(changed_rows) > max_events:
-        raise ValueError("watch change event history exceeds bounded scan limit")
-
-    changed_events = [
-        RuntimeEvent.model_validate_json(row.payload_json)
-        for row in changed_rows
-    ]
 
     triggered_watch_ids: list[str] = []
     trigger_event_ids: list[str] = []
@@ -77,17 +62,11 @@ def scan_watched_source_changes(
         if watch.status is not WatchlistStatus.ACTIVE:
             continue
         source_ref = _source_ref(watch)
-        if source_ref is None:
+        if source_ref is None or source_ref not in source_event.source_record_refs:
             continue
-        matching = [
-            event
-            for event in changed_events
-            if source_ref in event.source_record_refs
-            and event.created_at > watch.updated_at
-        ]
-        if not matching:
+        if source_event.created_at <= watch.updated_at:
             continue
-        source_event = max(matching, key=lambda event: (event.created_at, event.event_id))
+
         now = datetime.now(UTC)
         triggered = watch.model_copy(
             update={
@@ -101,9 +80,55 @@ def scan_watched_source_changes(
         triggered_watch_ids.append(triggered.watchlist_item_id)
         trigger_event_ids.append(attention.event_id)
 
+    return tuple(triggered_watch_ids), tuple(trigger_event_ids)
+
+
+def scan_watched_source_changes(
+    session: Session,
+    *,
+    workspace_id: str = OPERATOR_WORKSPACE_ID,
+    max_events: int = MAX_WATCH_CHANGE_EVENTS,
+) -> WatchChangeScanReport:
+    """Recover watch triggers from bounded retained source-change history."""
+
+    if isinstance(max_events, bool) or not isinstance(max_events, int) or max_events < 1:
+        raise ValueError("watch change scan limit must be a positive integer")
+
+    changed_rows = session.scalars(
+        select(IntelligenceRuntimeEventRecord)
+        .where(
+            IntelligenceRuntimeEventRecord.event_type
+            == RuntimeEventType.SOURCE_RECORD_CHANGED.value
+        )
+        .order_by(IntelligenceRuntimeEventRecord.id.desc())
+        .limit(max_events + 1)
+    ).all()
+    if len(changed_rows) > max_events:
+        raise ValueError("watch change event history exceeds bounded scan limit")
+
+    triggered_watch_ids: list[str] = []
+    trigger_event_ids: list[str] = []
+    for row in reversed(changed_rows):
+        source_event = RuntimeEvent.model_validate_json(row.payload_json)
+        watch_ids, event_ids = trigger_watches_for_source_change(
+            session,
+            source_event,
+            workspace_id=workspace_id,
+        )
+        triggered_watch_ids.extend(watch_ids)
+        trigger_event_ids.extend(event_ids)
+
+    store = IntelligenceStore(session)
+    watches = store.list_watchlist_items(
+        workspace_id=workspace_id,
+        limit=MAX_OPERATOR_WATCHLIST_ITEMS + 1,
+    )
+    if len(watches) > MAX_OPERATOR_WATCHLIST_ITEMS:
+        raise ValueError("watch change scan exceeds bounded watchlist limit")
+
     return WatchChangeScanReport(
         scanned_watches=len(watches),
-        scanned_change_events=len(changed_events),
+        scanned_change_events=len(changed_rows),
         triggered_watch_ids=tuple(triggered_watch_ids),
         trigger_event_ids=tuple(trigger_event_ids),
     )
