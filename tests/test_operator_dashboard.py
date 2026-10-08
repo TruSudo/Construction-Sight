@@ -2162,6 +2162,111 @@ def test_bid_pricing_preview_http_is_exact_money_read_only_and_no_authority(data
 
     assert hashlib.sha256(path.read_bytes()).hexdigest() == before
 
+def test_bid_proposal_draft_http_revalidates_chain_and_has_no_customer_authority(database):
+    path, engine = database
+    package = LeadReviewPackage(
+        package_id="review:proposal-http",
+        base_candidate_id="candidate:proposal-http",
+        lead_score=95,
+        status=LeadReviewStatus.READY,
+        summary="Reviewed synthetic proposal fixture",
+        items=[
+            LeadReviewItem(
+                item_key="lead-item:proposal-http",
+                label="prepare reviewed lead package",
+                rationale="Synthetic retained evidence supports request review.",
+            )
+        ],
+        evidence_notes=["permit_transition: synthetic permit issued"],
+    )
+    workflow = LeadWorkflowRecord(
+        workflow_id="workflow:proposal-http",
+        package_id=package.package_id,
+        base_candidate_id=package.base_candidate_id,
+        status=LeadWorkflowStatus.READY,
+        lead_score=package.lead_score,
+    )
+    with Session(engine) as session, session.begin():
+        store_lead_review_package(session, package)
+        store_lead_workflow_record(session, workflow)
+
+    request_payload = {
+        "workflow_id": workflow.workflow_id,
+        "expected_current_status": "ready",
+        "request_channel": "email",
+        "requester_business_name": "Example Contractor LLC",
+        "requester_business_role": "estimating department",
+        "request_source_name": "retained business email",
+        "request_source_reference": "message:fixture:proposal-http",
+        "request_review_basis": "Reviewed explicit pricing request.",
+        "request_observed_at": "2026-10-08T10:00:00+00:00",
+        "request_text": "Please send pricing for construction site security.",
+        "scope_summary": "Night guard coverage for the reviewed construction site.",
+    }
+    before = hashlib.sha256(path.read_bytes()).hexdigest()
+    with _server(path) as port:
+        status, _, raw = _post_json(port, "/api/bid-request-evidence", request_payload)
+        assert status == 200
+        request_evidence = json.loads(raw)
+
+        pricing_payload = {
+            "request_evidence": request_evidence,
+            "currency_code": "USD",
+            "line_items": [
+                {
+                    "line_key": "guarding",
+                    "description": "Night guard coverage",
+                    "pricing_basis": "Manual reviewed amount for preview only.",
+                    "amount": "125.50",
+                }
+            ],
+            "assumptions": ["Synthetic preview only."],
+            "exclusions": ["No tax treatment is implied."],
+            "validity_note": "Manual preview; commercial approval required.",
+        }
+        status, _, raw = _post_json(port, "/api/bid-pricing-preview", pricing_payload)
+        assert status == 200
+        pricing_preview = json.loads(raw)
+
+        proposal_payload = {
+            "request_evidence": request_evidence,
+            "pricing_preview": pricing_preview,
+            "proposal_title": "Construction Site Security Proposal",
+            "cover_note": "Internal draft prepared for commercial review only.",
+            "additional_terms": ["Final schedule subject to approved scope."],
+        }
+        assert _post_json(
+            port, "/api/bid-proposal-draft", proposal_payload, origin=False
+        )[0] == 403
+
+        status, _, raw = _post_json(port, "/api/bid-proposal-draft", proposal_payload)
+        assert status == 200
+        proposal = json.loads(raw)
+        assert proposal["request_evidence_id"] == request_evidence["request_evidence_id"]
+        assert proposal["pricing_preview_id"] == pricing_preview["pricing_preview_id"]
+        assert proposal["prepared_for_business_name"] == "Example Contractor LLC"
+        assert proposal["scope_summary"] == request_payload["scope_summary"]
+        assert proposal["subtotal_minor"] == 12_550
+        assert proposal["requires_commercial_approval"] is True
+        assert proposal["commercial_terms_authorized"] is False
+        assert proposal["customer_facing_bid_authorized"] is False
+        assert proposal["bid_submission_authorized"] is False
+
+        forged_pricing = dict(pricing_preview)
+        forged_pricing["validity_note"] = "Changed without a new pricing identity."
+        forged_payload = dict(proposal_payload)
+        forged_payload["pricing_preview"] = forged_pricing
+        assert _post_json(port, "/api/bid-proposal-draft", forged_payload)[0] == 400
+
+        status, _, raw = _get(port, "/api/health")
+        assert status == 200
+        health = json.loads(raw)
+        assert health["bid_proposal_draft_preview_enabled"] is True
+        assert health["bid_preparation_enabled"] is False
+        assert health["bid_submission_enabled"] is False
+
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == before
+
 def test_persisted_watchlist_http_is_same_origin_and_source_read_only(database):
     path, engine = database
     with Session(engine) as session, session.begin():
