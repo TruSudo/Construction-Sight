@@ -7,6 +7,7 @@ import json
 import webbrowser
 from contextlib import suppress
 from dataclasses import dataclass
+from datetime import datetime
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -17,6 +18,11 @@ from urllib.parse import parse_qs, urlparse
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from constructionsight.bid_request_models import BidRequestChannel
+from constructionsight.bid_request_service import (
+    BidRequestEvidenceError,
+    build_persisted_bid_request_evidence,
+)
 from constructionsight.ceqanet_ingestion_inbox import build_ceqanet_ingestion_inbox
 from constructionsight.domain_types import PartyRole
 from constructionsight.lead_workflow_models import LeadWorkflowStatus
@@ -340,6 +346,10 @@ def create_handler(
                             "watchlist_remote_source_polling_enabled": False,
                             "outreach_preview_enabled": True,
                             "outreach_send_enabled": False,
+                            "bid_request_evidence_enabled": True,
+                            "bid_pricing_enabled": False,
+                            "bid_preparation_enabled": False,
+                            "bid_submission_enabled": False,
                             "bid_authorization_enabled": False,
                         }
                     elif path == "/api/capture-queue":
@@ -444,6 +454,9 @@ def create_handler(
             if path == "/api/outreach-preview":
                 self._build_outreach_preview()
                 return
+            if path == "/api/bid-request-evidence":
+                self._build_bid_request_evidence()
+                return
             self._send_json(
                 {"error": "Method not implemented."},
                 status=HTTPStatus.NOT_IMPLEMENTED,
@@ -457,6 +470,44 @@ def create_handler(
                 )
                 return
             self._mutate_watchlist(archive=True)
+
+        def _read_bounded_json_object(
+            self,
+            *,
+            expected_fields: frozenset[str],
+            label: str,
+            max_bytes: int = 32_768,
+        ) -> dict[str, str]:
+            """Read one exact, bounded JSON object containing only string fields."""
+
+            if self.headers.get("Transfer-Encoding") is not None:
+                raise ValueError(f"chunked {label} bodies are not supported")
+            lengths = self.headers.get_all("Content-Length", [])
+            if len(lengths) != 1:
+                raise ValueError("exactly one Content-Length header is required")
+            try:
+                content_length = int(lengths[0], 10)
+            except ValueError as exc:
+                raise ValueError(f"invalid {label} Content-Length") from exc
+            if content_length < 1 or content_length > max_bytes:
+                raise ValueError(f"{label} body exceeds bounded request size")
+            content_type = self.headers.get("Content-Type", "")
+            if content_type.split(";", 1)[0].strip().lower() != "application/json":
+                raise ValueError(f"{label} requires application/json")
+            raw = self.rfile.read(content_length)
+            if len(raw) != content_length:
+                raise ValueError(f"incomplete {label} request body")
+            try:
+                decoded = json.loads(raw.decode("utf-8"))
+            except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+                raise ValueError(f"invalid {label} JSON body") from exc
+            if not isinstance(decoded, dict):
+                raise ValueError(f"{label} body must be a JSON object")
+            if set(decoded) != expected_fields:
+                raise ValueError(f"{label} requires the exact documented request fields")
+            if any(not isinstance(decoded[field], str) for field in expected_fields):
+                raise ValueError(f"{label} request fields must be strings")
+            return {field: decoded[field] for field in expected_fields}
 
         def _build_outreach_preview(self) -> None:
             """Build one same-origin, read-only outreach preview and nothing else."""
@@ -477,48 +528,23 @@ def create_handler(
                     or parsed.path != "/api/outreach-preview"
                 ):
                     raise ValueError("exact outreach preview path required")
-                if self.headers.get("Transfer-Encoding") is not None:
-                    raise ValueError("chunked outreach preview bodies are not supported")
-                lengths = self.headers.get_all("Content-Length", [])
-                if len(lengths) != 1:
-                    raise ValueError("exactly one Content-Length header is required")
-                try:
-                    content_length = int(lengths[0], 10)
-                except ValueError as exc:
-                    raise ValueError("invalid outreach preview Content-Length") from exc
-                if content_length < 1 or content_length > 32_768:
-                    raise ValueError("outreach preview body exceeds bounded request size")
-                content_type = self.headers.get("Content-Type", "")
-                if content_type.split(";", 1)[0].strip().lower() != "application/json":
-                    raise ValueError("outreach preview requires application/json")
-                raw = self.rfile.read(content_length)
-                if len(raw) != content_length:
-                    raise ValueError("incomplete outreach preview request body")
-                try:
-                    decoded = json.loads(raw.decode("utf-8"))
-                except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-                    raise ValueError("invalid outreach preview JSON body") from exc
-                if not isinstance(decoded, dict):
-                    raise ValueError("outreach preview body must be a JSON object")
-                expected_fields = {
-                    "workflow_id",
-                    "expected_current_status",
-                    "channel",
-                    "destination",
-                    "business_role",
-                    "source_name",
-                    "source_reference",
-                    "contact_review_basis",
-                    "subject",
-                    "body",
-                }
-                if set(decoded) != expected_fields:
-                    raise ValueError(
-                        "outreach preview requires the exact documented request fields"
-                    )
-                if any(not isinstance(decoded[field], str) for field in expected_fields):
-                    raise ValueError("outreach preview request fields must be strings")
-
+                decoded = self._read_bounded_json_object(
+                    expected_fields=frozenset(
+                        {
+                            "workflow_id",
+                            "expected_current_status",
+                            "channel",
+                            "destination",
+                            "business_role",
+                            "source_name",
+                            "source_reference",
+                            "contact_review_basis",
+                            "subject",
+                            "body",
+                        }
+                    ),
+                    label="outreach preview",
+                )
                 contact = OutreachContactReference(
                     channel=OutreachChannel(decoded["channel"]),
                     destination=decoded["destination"],
@@ -548,6 +574,92 @@ def create_handler(
                     {
                         "error": "Outreach preview is unavailable; "
                         "no external communication was sent."
+                    },
+                    status=HTTPStatus.SERVICE_UNAVAILABLE,
+                )
+
+        def _build_bid_request_evidence(self) -> None:
+            """Build one same-origin, read-only proof of a prospect-requested bid."""
+
+            if not self._local_request_allowed(require_origin=True):
+                self._send_json(
+                    {"error": "Local same-origin bid evidence request required."},
+                    status=HTTPStatus.FORBIDDEN,
+                )
+                return
+            try:
+                parsed = urlparse(self.path)
+                if (
+                    parsed.scheme
+                    or parsed.netloc
+                    or parsed.fragment
+                    or parsed.query
+                    or parsed.path != "/api/bid-request-evidence"
+                ):
+                    raise ValueError("exact bid request evidence path required")
+                decoded = self._read_bounded_json_object(
+                    expected_fields=frozenset(
+                        {
+                            "workflow_id",
+                            "expected_current_status",
+                            "request_channel",
+                            "requester_business_name",
+                            "requester_business_role",
+                            "request_source_name",
+                            "request_source_reference",
+                            "request_review_basis",
+                            "request_observed_at",
+                            "request_text",
+                            "scope_summary",
+                        }
+                    ),
+                    label="bid request evidence",
+                )
+                try:
+                    observed_at = datetime.fromisoformat(
+                        decoded["request_observed_at"]
+                    )
+                except ValueError as exc:
+                    raise ValueError(
+                        "bid request observed time must be ISO 8601"
+                    ) from exc
+                with Session(engine, autoflush=False) as session:
+                    evidence = build_persisted_bid_request_evidence(
+                        session,
+                        workflow_id=decoded["workflow_id"],
+                        expected_current_status=LeadWorkflowStatus(
+                            decoded["expected_current_status"]
+                        ),
+                        request_channel=BidRequestChannel(
+                            decoded["request_channel"]
+                        ),
+                        requester_business_name=decoded[
+                            "requester_business_name"
+                        ],
+                        requester_business_role=decoded[
+                            "requester_business_role"
+                        ],
+                        request_source_name=decoded["request_source_name"],
+                        request_source_reference=decoded[
+                            "request_source_reference"
+                        ],
+                        request_review_basis=decoded[
+                            "request_review_basis"
+                        ],
+                        request_observed_at=observed_at,
+                        request_text=decoded["request_text"],
+                        scope_summary=decoded["scope_summary"],
+                    )
+                self._send_json(evidence.to_dict())
+            except BidRequestEvidenceError as exc:
+                self._send_json({"error": str(exc)}, status=HTTPStatus.CONFLICT)
+            except ValueError as exc:
+                self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
+            except SQLAlchemyError:
+                self._send_json(
+                    {
+                        "error": "Bid request evidence is unavailable; "
+                        "no pricing, bid preparation, or submission occurred."
                     },
                     status=HTTPStatus.SERVICE_UNAVAILABLE,
                 )
