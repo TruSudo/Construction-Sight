@@ -1889,6 +1889,8 @@ def test_persisted_watchlist_http_is_same_origin_and_source_read_only(database):
         assert initial["persisted_locally"] is True
         assert initial["source_records_read_only"] is True
         assert initial["source_monitoring_enabled"] is False
+        assert initial["retained_source_change_detection_enabled"] is True
+        assert initial["remote_source_polling_enabled"] is False
         assert initial["notification_delivery_enabled"] is False
         assert initial["commercial_actions_authorized"] is False
         assert _get(port, "/api/watchlist?kind=ceqa")[0] == 400
@@ -1904,12 +1906,21 @@ def test_persisted_watchlist_http_is_same_origin_and_source_read_only(database):
         assert added["items"][0]["record_kind"] == "ceqa"
         assert added["items"][0]["record_id"] == "watch:http"
         assert added["items"][0]["alert_enabled"] is False
+        assert added["items"][0]["change_pending"] is False
         assert added["items"][0]["title"] == "Synthetic warehouse record"
+
+        with Session(engine) as session, session.begin():
+            updated = _record("watch:http").model_copy(
+                update={"title": "Updated watched warehouse"}
+            )
+            CeqaStore(session).upsert(updated)
 
         status, _, raw = _get(port, "/api/watchlist")
         assert status == 200
         persisted = json.loads(raw)
-        assert persisted["items"] == added["items"]
+        assert persisted["items"][0]["status"] == "triggered"
+        assert persisted["items"][0]["change_pending"] is True
+        assert persisted["items"][0]["title"] == "Updated watched warehouse"
 
         status, _, raw = _get(port, mutation_path, headers=origin, method="DELETE")
         assert status == 200
@@ -1923,11 +1934,13 @@ def test_persisted_watchlist_http_is_same_origin_and_source_read_only(database):
         assert health["read_only"] is True
         assert health["watchlist_persistence_enabled"] is True
         assert health["watchlist_source_monitoring_enabled"] is False
+        assert health["watchlist_retained_change_detection_enabled"] is True
+        assert health["watchlist_remote_source_polling_enabled"] is False
 
     with Session(engine) as session:
         record = CeqaStore(session).get("watch:http")
         assert record is not None
-        assert record.title == "Synthetic warehouse record"
+        assert record.title == "Updated watched warehouse"
         row = session.scalar(
             select(IntelligenceWatchlistRecord).where(
                 IntelligenceWatchlistRecord.target_id == "watch:http"
