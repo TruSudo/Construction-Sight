@@ -18,7 +18,12 @@ from urllib.parse import parse_qs, urlparse
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from constructionsight.bid_request_models import BidRequestChannel
+from constructionsight.bid_pricing_models import BidPriceLineInput
+from constructionsight.bid_pricing_service import (
+    BidPricingPreviewError,
+    build_persisted_bid_pricing_preview,
+)
+from constructionsight.bid_request_models import BidRequestChannel, BidRequestEvidence
 from constructionsight.bid_request_service import (
     BidRequestEvidenceError,
     build_persisted_bid_request_evidence,
@@ -347,6 +352,7 @@ def create_handler(
                             "outreach_preview_enabled": True,
                             "outreach_send_enabled": False,
                             "bid_request_evidence_enabled": True,
+                            "bid_pricing_preview_enabled": True,
                             "bid_pricing_enabled": False,
                             "bid_preparation_enabled": False,
                             "bid_submission_enabled": False,
@@ -457,6 +463,9 @@ def create_handler(
             if path == "/api/bid-request-evidence":
                 self._build_bid_request_evidence()
                 return
+            if path == "/api/bid-pricing-preview":
+                self._build_bid_pricing_preview()
+                return
             self._send_json(
                 {"error": "Method not implemented."},
                 status=HTTPStatus.NOT_IMPLEMENTED,
@@ -471,14 +480,14 @@ def create_handler(
                 return
             self._mutate_watchlist(archive=True)
 
-        def _read_bounded_json_object(
+        def _read_bounded_json_mapping(
             self,
             *,
             expected_fields: frozenset[str],
             label: str,
-            max_bytes: int = 32_768,
-        ) -> dict[str, str]:
-            """Read one exact, bounded JSON object containing only string fields."""
+            max_bytes: int = 65_536,
+        ) -> dict[str, object]:
+            """Read one exact, bounded JSON object with no undeclared top-level fields."""
 
             if self.headers.get("Transfer-Encoding") is not None:
                 raise ValueError(f"chunked {label} bodies are not supported")
@@ -505,9 +514,25 @@ def create_handler(
                 raise ValueError(f"{label} body must be a JSON object")
             if set(decoded) != expected_fields:
                 raise ValueError(f"{label} requires the exact documented request fields")
+            return {str(field): decoded[field] for field in expected_fields}
+
+        def _read_bounded_json_object(
+            self,
+            *,
+            expected_fields: frozenset[str],
+            label: str,
+            max_bytes: int = 32_768,
+        ) -> dict[str, str]:
+            """Read one exact bounded JSON object containing only string fields."""
+
+            decoded = self._read_bounded_json_mapping(
+                expected_fields=expected_fields,
+                label=label,
+                max_bytes=max_bytes,
+            )
             if any(not isinstance(decoded[field], str) for field in expected_fields):
                 raise ValueError(f"{label} request fields must be strings")
-            return {field: decoded[field] for field in expected_fields}
+            return {field: str(decoded[field]) for field in expected_fields}
 
         def _build_outreach_preview(self) -> None:
             """Build one same-origin, read-only outreach preview and nothing else."""
@@ -660,6 +685,90 @@ def create_handler(
                     {
                         "error": "Bid request evidence is unavailable; "
                         "no pricing, bid preparation, or submission occurred."
+                    },
+                    status=HTTPStatus.SERVICE_UNAVAILABLE,
+                )
+
+        def _build_bid_pricing_preview(self) -> None:
+            """Build one same-origin, read-only exact-money pricing preview."""
+
+            if not self._local_request_allowed(require_origin=True):
+                self._send_json(
+                    {"error": "Local same-origin pricing preview request required."},
+                    status=HTTPStatus.FORBIDDEN,
+                )
+                return
+            try:
+                parsed = urlparse(self.path)
+                if (
+                    parsed.scheme
+                    or parsed.netloc
+                    or parsed.fragment
+                    or parsed.query
+                    or parsed.path != "/api/bid-pricing-preview"
+                ):
+                    raise ValueError("exact bid pricing preview path required")
+                decoded = self._read_bounded_json_mapping(
+                    expected_fields=frozenset(
+                        {
+                            "request_evidence",
+                            "currency_code",
+                            "line_items",
+                            "assumptions",
+                            "exclusions",
+                            "validity_note",
+                        }
+                    ),
+                    label="bid pricing preview",
+                )
+                request_evidence = BidRequestEvidence.model_validate(
+                    decoded["request_evidence"]
+                )
+                raw_lines = decoded["line_items"]
+                raw_assumptions = decoded["assumptions"]
+                raw_exclusions = decoded["exclusions"]
+                if not isinstance(raw_lines, list):
+                    raise ValueError("bid pricing preview line_items must be an array")
+                if not isinstance(raw_assumptions, list) or not all(
+                    isinstance(value, str) for value in raw_assumptions
+                ):
+                    raise ValueError("bid pricing preview assumptions must be strings")
+                if not isinstance(raw_exclusions, list) or not all(
+                    isinstance(value, str) for value in raw_exclusions
+                ):
+                    raise ValueError("bid pricing preview exclusions must be strings")
+                currency_code = decoded["currency_code"]
+                validity_note = decoded["validity_note"]
+                if not isinstance(currency_code, str) or not isinstance(
+                    validity_note, str
+                ):
+                    raise ValueError(
+                        "bid pricing currency and validity note must be strings"
+                    )
+                lines = [
+                    BidPriceLineInput.model_validate(item)
+                    for item in raw_lines
+                ]
+                with Session(engine, autoflush=False) as session:
+                    preview = build_persisted_bid_pricing_preview(
+                        session,
+                        request_evidence=request_evidence,
+                        currency_code=currency_code,
+                        line_items=lines,
+                        assumptions=raw_assumptions,
+                        exclusions=raw_exclusions,
+                        validity_note=validity_note,
+                    )
+                self._send_json(preview.to_dict())
+            except BidPricingPreviewError as exc:
+                self._send_json({"error": str(exc)}, status=HTTPStatus.CONFLICT)
+            except ValueError as exc:
+                self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
+            except SQLAlchemyError:
+                self._send_json(
+                    {
+                        "error": "Bid pricing preview is unavailable; "
+                        "no commercial terms or submission were authorized."
                     },
                     status=HTTPStatus.SERVICE_UNAVAILABLE,
                 )
