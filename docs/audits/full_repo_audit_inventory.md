@@ -29,7 +29,7 @@ ConstructionSight has a substantial tested model/service architecture for lawful
 - read-only upstream inspection and governed lead/result actions; and
 - an executable complete tracked-tree certification gate.
 
-ConstructionSight is not yet a production recurring live-source platform. Most adapter families are contracts or planned integrations. CEQAnet is canonically `partial`: HTML automation returned HTTP 403 without bypass, while the source-provided CSV endpoint has returned two retained HTTP 200 responses. The original UTF-8 failure remains preserved, and an offline Windows-1252 replay of that exact body passes with 2 rows. Sequence 1 adds one separately authorized, zero-retry project observation whose complete Windows-1252 body also verifies with 2 rows. The other three canonical sources remain unverified. A bounded official-CSV policy and digest-chained series ledger govern the evidence, but neither promotes the source nor authorizes production. Both official county parcel sources now have retained 2026-07-14 bounded proofs: San Bernardino reported 839,794 records and Riverside reported 846,251 records; both four-observation bundles independently verify, passed exact-ID transactional persistence, and remain explicitly non-bulk. No source is currently `verified`, no production scheduler exists, and no external outreach-sending behavior or GUI/operator application is implemented.
+ConstructionSight is not yet a production recurring live-source platform. Most adapter families are contracts or planned integrations. CEQAnet is canonically `partial`: HTML automation returned HTTP 403 without bypass, while the source-provided CSV endpoint has returned two retained HTTP 200 responses. The original UTF-8 failure remains preserved, and an offline Windows-1252 replay of that exact body passes with 2 rows. Sequence 1 adds one separately authorized, zero-retry project observation whose complete Windows-1252 body also verifies with 2 rows. The other three canonical sources remain unverified. A bounded official-CSV policy and digest-chained series ledger govern the evidence, but neither promotes the source nor authorizes production. Both official county parcel sources now have retained 2026-07-14 bounded proofs: San Bernardino reported 839,794 records and Riverside reported 846,251 records; both four-observation bundles independently verify, passed exact-ID transactional persistence, and remain explicitly non-bulk. No source is currently `verified`, no production scheduler exists, and no external outreach-sending behavior is implemented. A governed no-send Outreach preview, a request-only Bid Studio evidence gate, persistent local watch state, and a draft local GUI/operator application exist on the integration branch; none is production-certified or authorized for external commercial effects.
 
 ## Certification status model
 
@@ -72,8 +72,10 @@ The active-defect count for a certified tree must be zero. Planned capabilities 
 | Lead workflow status | Yes | Yes | Yes | Yes | Yes | No | Exact-state matrix-valid transitions append unique events. |
 | Result ledger/share authority | Yes | Yes | Yes | Yes | Yes | No | Immutable revisions and serialized exact-state authority govern corrections. |
 | Repository certification | Yes | Yes | Yes | N/A | Yes | N/A | Complete tracked-tree and CI policy validation is permanent. |
-| Outreach preview/sending | No | No | Planned | No | No | No | No external action is implied. |
-| GUI/operator application | No | No | Planned | No | No | No | CLI remains the supported interface. |
+| Outreach preview/sending | Preview: Yes; sending: No | Yes | Preview implemented; delivery planned | Preview only | Yes | No | Preview is content-bound to exact persisted reviewed workflow state and explicit contact provenance through CLI and same-origin GUI. Send and bid authority remain false. |
+| Bid request evidence | Yes | Yes | Yes | No | GUI | No | Content-bound request evidence binds exact ready/active workflow state, requester/source provenance, observed request time, request text and requested scope. Customer-facing bid and submission authority remain false. |
+| Bid pricing preview | Yes | Yes | Yes | No | GUI | No | Manual amounts are normalized server-side to exact currency minor units and deterministic subtotal only after current request/workflow/review/dedupe revalidation. Commercial terms, customer-facing bid and submission authority remain false. |
+| GUI/operator application | Partial integration | Synthetic HTTP/UI contract coverage | Yes | Guarded watchlist only | Loopback GUI | No | Source/commercial reads remain read-only; watchlist membership is narrowly persisted; Outreach and Bid Request Evidence are preview-only same-origin computations. No live collection or external commercial effect is authorized. |
 
 ## Active defect ledger
 
@@ -130,8 +132,9 @@ These are intentionally absent capabilities, not defects in the currently suppor
 | CS-PLAN-003 | CRS transformation, projection-aware/geodesic calculations, and topology repair | Incompatible CRS is preserved and refused; no survey-grade conclusion is emitted. | Pin a GIS stack and define transformation provenance, axis order, grid behavior, accuracy, failure, and repair doctrine. |
 | CS-PLAN-004 | Domain-specific upstream correction actions | Generic mutation is unavailable. | Define record-family-specific stale-state, correction, supersession, provenance, and audit behavior. |
 | CS-PLAN-005 | Workflow reopen/override | Final states have no outgoing transitions. | Define explicit authority, reason, stale-state, and append-only event rules. |
-| CS-PLAN-006 | Outreach preview and sending | No sending path exists. | Implement human preview, explicit approval, duplicate suppression, compliance, evidence, and delivery audit first. |
-| CS-PLAN-007 | GUI/operator application | CLI and service boundaries remain authoritative. | Build after source maturity and operator workflows justify exposure. |
+| CS-PLAN-006 | Outreach delivery | Governed no-send preview exists with workflow/review/dedupe revalidation and explicit contact provenance. | Add delivery only as a separately authorized protected effect with exact preview binding, approval, suppression/compliance checks, delivery receipts, and duplicate-send prevention. |
+| CS-PLAN-007 | Complete GUI/operator application | Loopback GUI now exposes retained source/commercial reads, persistent watch state, governed Outreach preview, Bid Request Evidence, and result/share inspection, but remains integration-stage and not production browser-accepted. | Complete browser acceptance, remaining governed operator actions, relationship/history views, release packaging, exact-head CI and Native Maximum Assurance before operational release. |
+| CS-PLAN-009 | Bid proposal preparation, commercial approval and submission | Bid Request Evidence and manual exact-money Bid Pricing Preview exist; neither is an approved customer-facing proposal. | Add content-bound proposal draft, integrity-protected retention where justified, exact commercial approval, stale-state revalidation and a separately authorized submission effect. |
 | CS-PLAN-008 | Countywide parcel evidence ingestion | Exact metadata, bounded proofs, executor, HTTP adapter, portable verifier, and expiring exact-plan single-use authorization/preflight exist. Both sources remain `bounded_query_verified`; no authorization has been issued or consumed. | Implement append-only consumption evidence, then separately issue, consume, execute, save, and independently verify one live rehearsal per county before any promotion or recurring orchestration review. |
 
 ## Current source maturity
@@ -206,7 +209,7 @@ Persistence is valid only when mapping is deliberate and preserves reasons, conf
 | Repository certification | Complete tracked-tree audit command. |
 | Generic upstream mutation | Absent by design. |
 | Outreach sending | Absent. |
-| GUI | Absent. |
+| GUI | Partial integration: loopback Command Center with read-only source/commercial views, guarded watchlist persistence, governed Outreach preview and Bid Request Evidence. No external commercial effects. |
 
 ## Limitation and uncertainty preservation
 

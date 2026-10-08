@@ -5,8 +5,9 @@ For a new isolated trial with retained public-source records, use
 Startup and `/api/health` now check the tables and columns required by the GUI.
 An incompatible database is rejected without migration or repair.
 
-Run the read-only application against an **existing, initialized** ConstructionSight
-SQLite database:
+Run the local operator application against an **existing, initialized** ConstructionSight
+SQLite database. Source and commercial records are read through a read-only engine;
+the only database mutation exposed by the GUI is guarded local watchlist state:
 
 ```bash
 constructionsight-operator --database /absolute/path/to/constructionsight.sqlite3
@@ -116,14 +117,31 @@ Populate the database through existing governed intake/persistence commands.
   workflow references. It does not substitute the newest review for the same
   candidate. Missing exact reviews remain visible as limitations; contradictory
   identities fail the request. Workflows have separate pagination.
-- Both views are read-only. Source records are not deduplicated projects or
-  qualified leads. No source record is silently promoted to an outreach-ready
-  opportunity, and an old document/permit status is not a current phase assertion.
+- Source-record and persisted commercial-workflow views remain read-only. Source
+  records are not deduplicated projects or qualified leads. No source record is
+  silently promoted to an outreach-ready opportunity, and an old document/permit
+  status is not a current phase assertion.
+- The local watchlist is separately persisted through a narrowly scoped same-origin
+  write path. Membership changes do not mutate CEQA, permit, lead, result, or source
+  records. Retained normalized source changes can mark an active watch as triggered;
+  remote polling and notification delivery remain disabled.
+- Outreach preview is a same-origin computation over exact persisted `ready`/`active`
+  workflow state. It revalidates the exact review package and durable duplicate state,
+  requires reviewed business-contact provenance, and returns a content-bound preview.
+  It does not retain or send the message and fixes external-send and bid authority false.
+- Bid Studio currently exposes only the request-evidence gate. It binds an exact
+  persisted `ready`/`active` workflow to requester-business provenance, an offset-aware
+  observed request time, retained request text, and requested security scope. It does
+  can chain validated request evidence into a manual exact-money internal pricing preview. It does not infer prices, grant commercial approval, create an authorized customer-facing bid, or submit a bid.
 
 ## Local boundary
 
-The SQLite connection uses `mode=ro`. HTTP binds only to `127.0.0.1`, accepts exact
-loopback Host values and same-origin browser requests, and exposes GET-only views.
+Source and commercial database reads use SQLite `mode=ro`. A separate guarded
+engine may mutate only persisted local watchlist rows. HTTP binds only to
+`127.0.0.1`, accepts exact loopback Host values, and requires exact same-origin
+requests for POST/DELETE operations. The only effectful HTTP database mutation is
+watchlist membership; Outreach preview, Bid Request Evidence and Bid Pricing Preview POSTs are bounded
+read-only computations and have no network-delivery transport.
 The GUI loads its JavaScript/CSS locally, escapes displayed source strings, limits
 source links to HTTP(S), and uses a CSP without inline scripts. Database read or
 schema errors return a generic 503 instead of leaking paths or returning a false
@@ -160,14 +178,13 @@ existing scoring/review controls, governed operator actions, actual county/parce
 layers, relationship/history views, and the established commercial workflow.
 This slice does not complete those requirements or the private operational release.
 
-PR #119 remains stacked on draft PR #117. The inherited active ledger now
-contains 74 records (`CS-SR-001` through `CS-SR-074`) plus the separate missing
-Native Maximum Assurance report, which prevents certification. The historical
-September 18 hardening-branch CI reported 74 findings at its earlier exact head
-(73 active defects plus the missing assurance report), not this current tree.
-The September 20 integration CI originally identified active AnyIO advisories
-in both locks. A reviewed fixed-wheel candidate was propagated from PR #117;
-fresh exact-head isolated vulnerability audits passed in both supported runtimes,
+Draft reconciliation PR #201 is the current integration vehicle and remains
+unmerged to `main`. The canonical active-defect ledger is currently empty;
+the missing final Native Maximum Assurance artifact intentionally prevents
+release certification while reconciliation continues. Historical PR #117/#119
+defect counts and September integration results are retained only as predecessor
+evidence and must not be used to characterize the current tree. Fresh exact-head
+isolated vulnerability audits continue to run on the active reconciliation head,
 but that is not defect closure or full assurance certification. Local integration results are
 not assurance artifacts, owner acceptance, authenticated CI evidence, or permission
 to merge. The inherited canonical CI workflow only runs automatically for pull
@@ -177,8 +194,10 @@ hashed workflow is deliberately unchanged by this integration slice.
 
 ## Explicit unapproved source-review docket (local CLI)
 
-The operator HTTP application intentionally remains **GET-only**. To retain a
-source-review snapshot, first preview the exact persisted record:
+The operator HTTP application does **not** stage source-review docket records.
+Its guarded write scope is limited to local watchlist membership, while commercial
+POST endpoints are preview/evidence computations only. To retain a source-review
+snapshot, first preview the exact persisted record:
 
 ```bash
 constructionsight-candidate-docket preview --database /absolute/path/to/constructionsight.sqlite3 --kind ceqa --record-id '<exact ceqa_key>'
@@ -229,7 +248,7 @@ these unkeyed digests detect inconsistent stored data but are **not**
 cryptographic evidence of who wrote a record or a substitute for independent
 source verification. Readback
 the list is bounded at 100. This increment does not promote records into the
-separately governed commercial lead workflow or change the GUI's GET-only scope.
+separately governed commercial lead workflow or expand the GUI's guarded effect scope beyond the documented watchlist and preview/evidence boundaries.
 
 ## Retained-source pulse and map viewport (draft)
 
@@ -297,8 +316,11 @@ in its own query footprint, while the unfiltered exact-key entity history
 may include records outside the current free-text search. Both scopes are
 disclosed rather than represented as exhaustive county coverage.
 
-The browser remains GET-only; no new acquisition, geocoding, conversion,
-outreach, bid, entity merge, or workflow transition is authorized.
+Source, map, entity and workflow inspection remain read-only. The browser also
+exposes the separately documented guarded watchlist mutation plus Outreach and
+Bid Request Evidence POSTs. No acquisition, geocoding, lead conversion, outreach
+sending, bid pricing/preparation/submission, entity merge, or workflow transition
+is authorized by those routes.
 
 ## On-demand parcel claims in the geographic operator (draft)
 
@@ -322,8 +344,9 @@ Unknown/projected CRS or missing centroids remain listed but unmapped. The
 operator explicitly labels these source-claimed centroids, not surveyed
 locations, verified geographic containment or legal parcel boundaries.
 Changing the selected record, filter, or mode clears the optional overlay;
-late results from previous selections cannot reinstate it. The server remains
-loopback GET-only and SQLite mode=ro.
+late results from previous selections cannot reinstate it. Parcel/source
+inspection remains loopback read-only through SQLite mode=ro; the server's
+separate guarded POST routes do not mutate parcel or source records.
 
 
 ## Command Center exact-source integration increment (September 23, 2026)

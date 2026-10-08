@@ -23,6 +23,14 @@ from constructionsight.lead_workflow_rules import LEAD_WORKFLOW_TRANSITION_RULES
 from constructionsight.operator_services.lead_workflow_transition_service import (
     apply_authorized_lead_workflow_transition,
 )
+from constructionsight.outreach_preview_models import (
+    OutreachChannel,
+    OutreachContactReference,
+)
+from constructionsight.outreach_preview_service import (
+    OutreachPreviewError,
+    build_persisted_outreach_preview,
+)
 from constructionsight.storage.database import (
     create_database_engine,
     initialize_database,
@@ -217,6 +225,117 @@ def allowed_transitions(
         ", ".join(allowed) or "none",
     )
     console.print(table)
+
+
+@app.command("outreach-preview")
+def outreach_preview(
+    workflow_id: Annotated[
+        str,
+        typer.Argument(help="Persisted workflow identifier."),
+    ],
+    expected_current_status: Annotated[
+        LeadWorkflowStatus,
+        typer.Option(
+            "--expected-current-status",
+            help="Required stale-state guard for the reviewed workflow.",
+        ),
+    ],
+    channel: Annotated[
+        OutreachChannel,
+        typer.Option("--channel", help="Operator-confirmed business contact channel."),
+    ],
+    destination: Annotated[
+        str,
+        typer.Option("--destination", help="Business contact destination to preview."),
+    ],
+    business_role: Annotated[
+        str,
+        typer.Option("--business-role", help="Business role associated with the contact."),
+    ],
+    source_name: Annotated[
+        str,
+        typer.Option("--source-name", help="Source that established the contact path."),
+    ],
+    source_reference: Annotated[
+        str,
+        typer.Option(
+            "--source-reference",
+            help="URL, record reference, or other provenance for the contact path.",
+        ),
+    ],
+    subject: Annotated[
+        str,
+        typer.Option("--subject", help="Preview subject."),
+    ],
+    body: Annotated[
+        str,
+        typer.Option("--body", help="Preview body."),
+    ],
+    contact_review_basis: Annotated[
+        str | None,
+        typer.Option(
+            "--contact-review-basis",
+            help=(
+                "Required operator review basis for treating the destination "
+                "as a business contact path."
+            ),
+        ),
+    ] = None,
+    database_url: Annotated[
+        str | None,
+        typer.Option(help="SQLAlchemy database URL."),
+    ] = None,
+    json_output: Annotated[
+        bool,
+        typer.Option("--json-output", help="Print machine-readable preview JSON."),
+    ] = False,
+) -> None:
+    """Build a governed outreach preview without sending or authorizing outreach."""
+
+    if contact_review_basis is None or not contact_review_basis.strip():
+        _fail("Required --contact-review-basis was not provided.")
+    factory = _database_factory(database_url)
+    contact = OutreachContactReference(
+        channel=channel,
+        destination=destination,
+        business_role=business_role,
+        source_name=source_name,
+        source_reference=source_reference,
+        contact_review_basis=contact_review_basis,
+    )
+    try:
+        with managed_session(factory) as session:
+            preview = build_persisted_outreach_preview(
+                session,
+                workflow_id=workflow_id,
+                expected_current_status=expected_current_status,
+                contact=contact,
+                subject=subject,
+                body=body,
+            )
+    except OutreachPreviewError as exc:
+        _fail(str(exc))
+
+    if json_output:
+        console.print_json(json.dumps(preview.to_dict()))
+        return
+
+    table = Table(title="ConstructionSight Outreach Preview")
+    table.add_column("Field")
+    table.add_column("Value")
+    table.add_row("Preview ID", preview.preview_id)
+    table.add_row("Workflow", preview.workflow_id)
+    table.add_row("Workflow status", preview.workflow_status)
+    table.add_row("Channel", preview.contact.channel.value)
+    table.add_row("Business role", preview.contact.business_role)
+    table.add_row("Destination", preview.contact.destination)
+    table.add_row("Human approval required", str(preview.requires_human_approval))
+    table.add_row("External send authorized", str(preview.external_send_authorized))
+    table.add_row("Send executed", str(preview.send_executed))
+    table.add_row("Bid authorized", str(preview.bid_authorized))
+    console.print(table)
+    console.print(f"Subject: {preview.subject}")
+    console.print(preview.body)
 
 
 @app.command("transition")

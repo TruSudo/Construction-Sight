@@ -32,3 +32,29 @@
 
 /* CEQAnet ingestion reconciliation links stay compact inside the source inventory. */
 .ingestion-record-links{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}.ingestion-record-links .action{padding:4px 7px;font-size:10px}
+
+/* Reviewed exact-SCH queue remains a source-evidence view, never a readiness indicator. */
+.capture-queue{display:grid;gap:8px;margin-top:12px}
+.capture-queue-entry{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:center;border:1px solid #48443d;background:#1b1c1a;border-radius:6px;padding:12px}
+.capture-queue-entry strong{display:block;font-size:13px}
+.capture-queue-entry small{display:block;margin-top:5px;color:#aaa;font-size:11px;line-height:1.45}
+.capture-queue-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.capture-queue-actions a{font-size:11px;white-space:nowrap}
+@media(max-width:720px){.capture-queue-entry{grid-template-columns:1fr}.capture-queue-actions{justify-content:flex-start}}
+
+/* Persisted source-registry metadata is factual configuration, not a readiness score. */
+.source-registry-table th small,.source-registry-table td small{display:block;margin-top:4px;color:#9f9d97;font-weight:400;line-height:1.4}
+.source-registry-table td:last-child{white-space:nowrap}
+.source-registry-table .source-verification-warning{color:#f0b85a}
+.source-registry-table .source-verification-ok{color:#a8b7a5}
+.source-attribution-warning{color:#f0b85a}
+
+.outreach-preview-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:16px}
+.outreach-preview-form label{display:grid;gap:5px;color:#d8d5cf;font-size:12px}
+.outreach-preview-form .wide{grid-column:1/-1}
+.outreach-preview-form input,.outreach-preview-form textarea,.outreach-preview-form select{width:100%;max-width:100%;background:#272925;color:#f0ede7;border:1px solid #65512e;border-radius:5px;padding:8px 10px;font-size:12px}
+.outreach-preview-form textarea{min-height:88px;resize:vertical}
+.outreach-preview-form input:focus-visible,.outreach-preview-form textarea:focus-visible,.outreach-preview-form select:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.outreach-preview-meta{display:grid;grid-template-columns:minmax(130px,220px) 1fr;gap:8px 14px;font-size:12px}
+.outreach-preview-meta dt{color:#aaa}.outreach-preview-meta dd{margin:0;overflow-wrap:anywhere}
+@media(max-width:720px){.outreach-preview-form{grid-template-columns:1fr}.outreach-preview-form .wide{grid-column:auto}.outreach-preview-meta{grid-template-columns:1fr}.outreach-preview-meta dd{margin-bottom:6px}}

@@ -70,12 +70,13 @@ def test_command_center_discloses_unassessed_records_and_missing_actions() -> No
     script = (ASSETS / "operator_command_center.js").read_text(encoding="utf-8")
     for required in (
         "UNASSESSED", "Stored status, not outreach approval",
-        "No monitoring or notifications", "Not deduplicated projects",
+        "No source monitoring", "Not deduplicated projects",
     ):
         assert required in html + script
     for endpoint in (
         "/api/snapshot?", "/api/footprint?", "/api/workflows?",
         "/api/health", "/api/workflow-summary", "/api/ingestion-inbox",
+        "/api/watchlist",
     ):
         assert endpoint in script
     assert "source claims" in script.lower()
@@ -87,7 +88,11 @@ def test_command_center_discloses_unassessed_records_and_missing_actions() -> No
     assert "persisted_record_keys" in script
     assert '"CEQAnet ingestion inbox"' in script
     assert "safeSourceLink(item.official_detail_url)" in script
-    assert "localStorage" in script
+    assert "localStorage" not in script
+    assert "operator_watchlist.v1" in script
+    assert "persisted_locally" in script
+    assert 'mutateJson("/api/watchlist?"' in script
+    assert 'archive ? "DELETE" : "POST"' in script
     assert not re.search(r'\b(247|104|86|57)\b', html)
 
 
@@ -239,8 +244,9 @@ def test_command_center_source_and_county_filters_share_exact_list_map_scope() -
     assert 'pageOffset=0;showHome();loadData(0);' in script
 
 
-def test_watchlist_bookmark_opens_fresh_exact_source_not_cached_display_text() -> None:
-    """A local bookmark resolves a current, exact database record without writing or alerting."""
+def test_watchlist_persists_locally_but_reopens_fresh_exact_source() -> None:
+    """Persisted watch membership must not substitute cached labels for current source facts."""
+    html = (ASSETS / "operator_command_center.html").read_text(encoding="utf-8")
     script = (ASSETS / "operator_command_center.js").read_text(encoding="utf-8")
     assert 'data-open="' in script
     assert 'openWatchBookmark(currentKey)' in script
@@ -249,7 +255,13 @@ def test_watchlist_bookmark_opens_fresh_exact_source_not_cached_display_text() -
     assert 'identity(row) !== key || result.read_only !== true' in script
     assert 'token !== featureRequest || byId("command-view").hidden' in script
     assert 'No cached source facts were substituted.' in script
-    assert 'Bookmark is not monitoring or outreach approval.' in script
+    assert 'Watchlist membership is not monitoring or outreach approval.' in script
+    assert 'fetchJson("/api/watchlist")' in script
+    assert 'mutateJson("/api/watchlist?" + params, "DELETE")' in script
+    assert 'source_monitoring_enabled !== false' in script
+    assert 'notification_delivery_enabled !== false' in script
+    assert "Persisted locally" in html
+    assert "localStorage" not in script
     assert 'fetch(url,{cache:"no-store"})' in script
 
 
@@ -320,3 +332,46 @@ def test_sources_collection_prepares_bounded_sch_capture_without_browser_network
     assert 'No collection, import, lead qualification, outreach or bids' in script
     assert 'This read-only dashboard cannot issue remote requests' in script
     assert 'fetch("/api/capture' not in script
+
+
+def test_sources_collection_displays_persisted_public_source_registry() -> None:
+    """Stored portal configuration is visible without becoming live collection authority."""
+    script = (ASSETS / "operator_command_center.js").read_text(encoding="utf-8")
+    css = (ASSETS / "operator_command_center.css").read_text(encoding="utf-8")
+    assert 'fetchJson("/api/source-registry")' in script
+    assert "function renderSourceRegistry(registry)" in script
+    assert "registry.read_only!==true || registry.network_collection_enabled!==false" in script
+    assert "registry.verification_metadata_is_authority!==false" in script
+    assert "adapter_live" in script
+    assert "verification_status" in script
+    assert "current reachability, complete jurisdiction coverage" in script
+    assert "latest retained check:" in script
+    assert "registry metadata DIFFERS; inspect retained verification history" in script
+    assert "entry.latest_verification_present" in script
+    assert "entry.verification_metadata_consistent" in script
+    assert "registry.source_attribution_available" in script
+    assert "retained explicit attribution in scan:" in script
+    assert "configured source identity scan is incomplete" in script
+    assert "Duplicate configured source names withheld from explicit attribution" in script
+    assert "not complete local coverage counts" in script
+    assert "source-registry-table" in script
+    assert ".source-registry-table" in css
+    assert ".source-verification-warning" in css
+    assert ".source-attribution-warning" in css
+
+
+def test_sources_collection_displays_retained_exact_sch_review_queue() -> None:
+    """Reviewed listing candidates feed the GUI without becoming network or write authority."""
+    script = (ASSETS / "operator_command_center.js").read_text(encoding="utf-8")
+    css = (ASSETS / "operator_command_center.css").read_text(encoding="utf-8")
+    assert 'fetchJson("/api/capture-queue")' in script
+    assert '"constructionsight.operator_capture_queue.v1"' in script
+    assert 'queue.read_only!==true || queue.network_executed!==false' in script
+    assert 'queue.persistence_mutated!==false || queue.commercial_leads_created!==false' in script
+    assert 'data-capture-queue="' in script
+    assert 'function bindCaptureQueue(queue)' in script
+    assert 'byId("capture-sch-number").value=item.sch_number;' in script
+    assert 'prepareCeqanetCapture();' in script
+    assert "Candidates are source claims, not verified active " in script
+    assert "--capture-queue &lt;review-queue.json&gt;" in script
+    assert ".capture-queue-entry" in css

@@ -1,0 +1,26 @@
+{
+  "schema_version": "constructionsight.source_attribution_aliases.v1",
+  "mapping_count": 2,
+  "network_executed": false,
+  "persistence_mutated": false,
+  "mappings": [
+    {
+      "alias_source_name": "CEQAnet document link retained in official CSV",
+      "canonical_source_name": "CEQAnet State Clearinghouse",
+      "reason": "The retained document-link provenance label identifies an official CEQAnet document URL carried by the retained July 12, 2026 CSV evidence.",
+      "evidence_refs": [
+        "evidence/source_verification/ceqanet_csv_live_execution_2026-07-12.json",
+        "examples/private_test_drive/ceqanet_retained_write_plan.json"
+      ]
+    },
+    {
+      "alias_source_name": "CEQAnet official CSV — retained July 12, 2026",
+      "canonical_source_name": "CEQAnet State Clearinghouse",
+      "reason": "The retained CSV provenance label identifies the official CEQAnet CSV export used to build the private test-drive records.",
+      "evidence_refs": [
+        "evidence/source_verification/ceqanet_csv_live_execution_2026-07-12.json",
+        "examples/private_test_drive/ceqanet_retained_write_plan.json"
+      ]
+    }
+  ]
+}

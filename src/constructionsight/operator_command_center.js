@@ -3,52 +3,121 @@
 const byId = id => document.getElementById(id);
 const escapeText = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const identity = row => row.record_kind + ":" + row.record_id;
-const WATCH_KEY = "constructionsight:operator:local-watchlist-v1";
 let page = null, footprint = null, workflows = null, ingestionInbox = null, selected = null, selectedRecord = null, activeQuery = "", pageRequest = 0, featureRequest = 0, pageOffset = 0;
 let localWatchlist = {};
 let sourceRevision = null, sourceProbeActive = false;
 let activeKind = "all", activeCounty = "";
-try { const stored = JSON.parse(localStorage.getItem(WATCH_KEY) || "{}"); if (stored && typeof stored === "object" && !Array.isArray(stored)) localWatchlist = stored; } catch (_) { /* Browser-local preferences are optional. */ }
-const records = () => page && Array.isArray(page.projects) ? page.projects : [];
-function updateWatchCounters() { const count = Object.keys(localWatchlist).length; byId("watched-count").textContent = String(count); byId("notification-count").textContent = String(count); }
-function saveWatchlist() {
-  try { localStorage.setItem(WATCH_KEY, JSON.stringify(localWatchlist)); }
-  catch (_) { byId("global-notice").textContent = "Browser storage is unavailable. Watchlist changes will not be retained. No source monitoring or alerts are active."; }
-  updateWatchCounters(); renderWatchlist();
+
+function applyWatchlistSnapshot(data) {
+  if (!data || data.schema_version !== "operator_watchlist.v1" ||
+      data.persisted_locally !== true || data.source_records_read_only !== true ||
+      data.source_monitoring_enabled !== false ||
+      data.retained_source_change_detection_enabled !== true ||
+      data.remote_source_polling_enabled !== false ||
+      data.notification_delivery_enabled !== false ||
+      data.commercial_actions_authorized !== false || !Array.isArray(data.items) ||
+      !Number.isSafeInteger(data.total) || data.total !== data.items.length)
+    throw Error("Persisted watchlist authority state is inconsistent.");
+  const next = {};
+  for (const item of data.items) {
+    if (!item || !["ceqa","permit"].includes(item.record_kind) ||
+        typeof item.record_id !== "string" || !item.record_id || item.record_id.length > 255 ||
+        item.status === "archived" || item.alert_enabled !== false ||
+        typeof item.change_pending !== "boolean" ||
+        item.change_pending !== (item.status === "triggered")) {
+      throw Error("Persisted watchlist item is inconsistent.");
+    }
+    const key = identity(item);
+    if (next[key]) throw Error("Persisted watchlist contains duplicate source identity.");
+    next[key] = item;
+  }
+  localWatchlist = next;
+  updateWatchCounters();
+  renderWatchlist();
 }
-function toggleWatch(row) {
+
+function updateWatchCounters() {
+  const entries = Object.values(localWatchlist);
+  const count = entries.length;
+  const pending = entries.filter(entry => entry.change_pending).length;
+  byId("watched-count").textContent = String(count);
+  byId("notification-count").textContent = String(pending);
+}
+
+async function toggleWatch(row) {
   if (!row || !["ceqa","permit"].includes(row.record_kind) || !row.record_id) return;
-  const key = identity(row);
-  if (localWatchlist[key]) delete localWatchlist[key];
-  else localWatchlist[key] = {record_kind:row.record_kind,record_id:row.record_id,title:row.title || "Untitled source record",county:row.county || "County unrecorded"};
-  saveWatchlist(); renderDossier(row);
+  const key = identity(row), archive = Boolean(localWatchlist[key]);
+  const params = new URLSearchParams({kind:row.record_kind,record_id:row.record_id});
+  byId("global-notice").textContent = archive ?
+    "Archiving persisted local watchlist entry…" : "Saving exact source record to the local watchlist…";
+  try {
+    const data = await mutateJson("/api/watchlist?" + params, archive ? "DELETE" : "POST");
+    if (data.mutation !== (archive ? "archived" : "added"))
+      throw Error("Watchlist mutation acknowledgement is inconsistent.");
+    applyWatchlistSnapshot(data);
+    renderDossier(row);
+    byId("global-notice").textContent = archive ?
+      "Watchlist entry archived locally. No notification was delivered." :
+      "Watchlist entry persisted locally. Retained-record change detection is enabled; external polling, notifications, outreach and bids remain disabled.";
+  } catch (error) {
+    byId("global-notice").textContent = "Watchlist change failed: " + String(error.message || error) +
+      ". No source or commercial record was changed.";
+  }
 }
+
+async function removeWatchBookmark(key, full = false) {
+  const entry = localWatchlist[key];
+  if (!entry) return;
+  const params = new URLSearchParams({kind:entry.record_kind,record_id:entry.record_id});
+  try {
+    const data = await mutateJson("/api/watchlist?" + params, "DELETE");
+    if (data.mutation !== "archived") throw Error("Watchlist archive acknowledgement is inconsistent.");
+    applyWatchlistSnapshot(data);
+    if (full) renderWatchlist(true);
+    if (selectedRecord && identity(selectedRecord) === key) renderDossier(selectedRecord);
+  } catch (error) {
+    byId("global-notice").textContent = "Watchlist removal failed: " + String(error.message || error) +
+      ". No cached state was substituted.";
+  }
+}
+
 function renderWatchlist(full = false) {
   const entries = Object.entries(localWatchlist);
-  const markup = (full ? entries : entries.slice(0,4)).map(([key,entry],index) =>
-    '<div class="watch-entry"><i class="dot unknown" aria-hidden="true"></i><span><b>' + escapeText(entry.title) +
-    '</b><br><small>' + escapeText(entry.county) + ' · browser-local bookmark · unassessed</small></span>' +
-    '<button type="button" data-open="' + index + '">Open record</button><button type="button" data-remove="' + index + '">Remove</button></div>'
-  ).join("") || '<p class="empty" style="padding:12px">No watched source records in this browser.</p>';
+  const shown = full ? entries : entries.slice(0,4);
+  const markup = shown.map(([key,entry],index) =>
+    '<div class="watch-entry"><i class="dot unknown" aria-hidden="true"></i><span><b>' +
+    escapeText(entry.title || "Source record unavailable") + '</b><br><small>' +
+    escapeText(entry.county || "County unrecorded") +
+    (entry.change_pending ?
+      ' · retained change detected · review pending · delivery off' :
+      ' · persisted local watch · no pending retained change · delivery off') +
+    '</small></span>' +
+    '<button type="button" data-open="' + index + '">Open record</button>' +
+    '<button type="button" data-remove="' + index + '">Remove</button></div>'
+  ).join("") || '<p class="empty" style="padding:12px">No persisted source records on this local watchlist.</p>';
   const target = full ? byId("feature-body") : byId("watchlist-summary");
   if (full) {
-    target.innerHTML = '<section class="feature-card"><h2>Saved source-record bookmarks</h2><p>These bookmarks are stored only in this browser. They do not subscribe to permit changes, schedule reminders, perform source polling, or send notifications.</p><div id="full-watchlist">' + markup + '</div><a href="/workspace#records">Browse retained source records →</a></section>';
+    target.innerHTML = '<section class="feature-card"><h2>Persisted local watchlist</h2>' +
+      '<p>Watchlist membership survives browser restarts and automatically reacts when its retained normalized source record changes. ' +
+      'It does not start remote source polling, send notifications, qualify a lead, or authorize outreach.</p>' +
+      '<div id="full-watchlist">' + markup + '</div><a href="/workspace#records">Browse retained source records →</a></section>';
   } else target.innerHTML = markup;
   target.querySelectorAll("[data-open]").forEach(button => button.onclick = () => {
-    const currentKey = (full ? entries : entries.slice(0,4))[Number(button.dataset.open)]?.[0];
+    const currentKey = shown[Number(button.dataset.open)]?.[0];
     if (currentKey) openWatchBookmark(currentKey);
   });
   target.querySelectorAll("[data-remove]").forEach(button => button.onclick = () => {
-    const currentKey = (full ? entries : entries.slice(0,4))[Number(button.dataset.remove)]?.[0];
-    if (currentKey) { delete localWatchlist[currentKey]; saveWatchlist(); if (full) renderWatchlist(true); }
+    const currentKey = shown[Number(button.dataset.remove)]?.[0];
+    if (currentKey) removeWatchBookmark(currentKey, full);
   });
 }
+
 async function openExactStoredRecord(entry,key,origin) {
   if (!entry || !["ceqa","permit"].includes(entry.record_kind) ||
       typeof entry.record_id !== "string" || !entry.record_id || entry.record_id.length > 255 ||
       identity(entry) !== key) return;
-  // Re-resolve exact source identity against the current read-only database.
-  // Never treat cached bookmark labels or a historical event as current source facts.
+  // Re-resolve exact source identity against the current read-only source database.
+  // Never treat watchlist labels or a historical event as current source facts.
   showHome();
   const token = ++featureRequest;
   byId("global-notice").textContent = "Looking up selected exact source record in the current local database…";
@@ -62,7 +131,7 @@ async function openExactStoredRecord(entry,key,origin) {
     selectRow(row);
     byId("global-notice").textContent = "Opened an exact "+origin+" source record from the current local database. " +
       "It may be outside the active search/filter or displayed page. " +
-      (origin==="bookmark" ? "Bookmark is not monitoring or outreach approval." :
+      (origin==="watchlist" ? "Watchlist membership is not monitoring or outreach approval." :
         "Historical source event is not proof of current site activity or commercial qualification.");
   } catch (error) {
     if (token === featureRequest && !byId("command-view").hidden)
@@ -70,10 +139,12 @@ async function openExactStoredRecord(entry,key,origin) {
         String(error.message || error) + ". No cached source facts were substituted.";
   }
 }
+
 async function openWatchBookmark(key) {
   const entry = localWatchlist[key];
-  return openExactStoredRecord(entry,key,"bookmark");
+  return openExactStoredRecord(entry,key,"watchlist");
 }
+
 function valueOrUnknown(value) { return value === null || value === undefined || value === "" ? "Not established" : String(value); }
 function renderDossier(row) {
   const target = byId("command-dossier");
@@ -153,8 +224,8 @@ function renderMap() {
 const sections = {
   entities:["Entity Network","Explore recorded names and their source-key relationships.","Entity neighborhood inspection is available for a selected source record in Project Intelligence. Exact stored-key co-occurrence is not proof of independently verified corporate identity.","/workspace#records","Inspect source relationships →"],
   evidence:["Evidence Chains","Inspect attributable claims, named parties, and historical source milestones.","Full provenance, source URLs, source-claimed locations, parcel candidate inspection and historical milestone views are available in Project Intelligence. Records do not establish current construction activity.","/workspace#records","Open evidence-backed records →"],
-  outreach:["Outreach","Commercial messaging and contact management.","No message delivery or outreach preview is available in this read-only operator. Source claims and unassessed records are not approved contacts or actionable leads. Outbound messages require a separately authorized workflow.","/workspace#workflow","Inspect persisted lead workflows →"],
-  bid:["Bid Studio","Security proposals and request-driven pricing.","Bid preparation and submission controls are not wired to this operator. A green outreach status alone would not authorize a bid; a documented customer request, scope and commercial approval are required.","/workspace#workflow","Inspect retained workflow records →"],
+  outreach:["Outreach","Governed preview of reviewed commercial messaging.","Outreach preview is available only for exact persisted READY/ACTIVE workflows with reviewed business-contact provenance. Preview does not send, authorize delivery, or authorize a bid.","/workspace#workflow","Inspect persisted lead workflows →"],
+  bid:["Bid Studio","Request-driven bid evidence and commercial gating.","Bid Studio can validate a documented prospect request and scope against exact persisted workflow state. Pricing, bid preparation, commercial approval and submission remain disabled.","/workspace#workflow","Inspect retained workflow records →"],
   royalty:["Royalty Ledger","Contract attribution, payments, and reconciliation.","No royalty transaction ledger or payment posting is exposed through this read-only operator. Existing result/share services must be connected and validated before balances or payment status can be shown.","/workspace#workflow","Inspect retained workflow records →"],
   sources:["Sources & Collection","Review available data and collection boundaries.","This application reads a selected local SQLite database only. Live collection is disabled; matching source-record counts do not establish coverage of all permitting jurisdictions.","/workspace#records","Review retained source records →"]
 };
@@ -519,6 +590,243 @@ async function prepareCeqanetCapture() {
     '<p>For discovery-queue candidates, prefer the lineage-bound <code>inbox</code> and <code>capture-next-preview</code> workflow so the exact listing and queue remain attached through apply. Review the retained source rows, county scope and the source/plan SHA-256 digests printed by the command. To import, independently approve both exact digests using the separate <code>constructionsight-ceqanet-reviewed-import apply --help</code> workflow and its explicit write authorization. Once applied to this operator database, the Command Center refreshes on the next local revision check. No collection, import, lead qualification, outreach or bids have been initiated by this preview.</p>';
   byId("capture-command").textContent=command;
 }
+function renderSourceRegistry(registry) {
+  if(!registry || registry.read_only!==true || registry.network_collection_enabled!==false ||
+    registry.verification_metadata_is_authority!==false || !Number.isSafeInteger(registry.total) ||
+    registry.total<0 || !Number.isSafeInteger(registry.returned) || registry.returned<0 ||
+    !Number.isSafeInteger(registry.result_limit) || registry.result_limit<1 ||
+    !Array.isArray(registry.entries) || registry.returned!==registry.entries.length ||
+    registry.returned>registry.result_limit || registry.truncated!==(registry.total>registry.returned) ||
+    !Number.isSafeInteger(registry.source_identity_scan_limit) ||
+    registry.source_identity_scan_limit<1 ||
+    !Number.isSafeInteger(registry.source_identity_rows_scanned) ||
+    registry.source_identity_rows_scanned<0 ||
+    registry.source_identity_rows_scanned>registry.source_identity_scan_limit ||
+    registry.source_identity_scan_truncated!==(registry.total>registry.source_identity_rows_scanned) ||
+    registry.source_attribution_available!==!registry.source_identity_scan_truncated ||
+    typeof registry.source_aliases_configured!=="boolean" ||
+    !Number.isSafeInteger(registry.source_alias_mapping_count) ||
+    registry.source_alias_mapping_count<0 ||
+    typeof registry.source_aliases_applied!=="boolean" ||
+    !Number.isSafeInteger(registry.source_attribution_scan_limit) ||
+    registry.source_attribution_scan_limit<1 ||
+    !Number.isSafeInteger(registry.ceqa_records_total) || registry.ceqa_records_total<0 ||
+    !Number.isSafeInteger(registry.ceqa_records_scanned) || registry.ceqa_records_scanned<0 ||
+    registry.ceqa_records_scanned>registry.source_attribution_scan_limit ||
+    !Number.isSafeInteger(registry.permit_records_total) || registry.permit_records_total<0 ||
+    !Number.isSafeInteger(registry.permit_records_scanned) || registry.permit_records_scanned<0 ||
+    registry.permit_records_scanned>registry.source_attribution_scan_limit ||
+    registry.attribution_scan_truncated!==(
+      registry.ceqa_records_total>registry.ceqa_records_scanned ||
+      registry.permit_records_total>registry.permit_records_scanned
+    ) ||
+    !Number.isSafeInteger(registry.records_with_registered_source_in_scan) ||
+    registry.records_with_registered_source_in_scan<0 ||
+    !Number.isSafeInteger(registry.records_without_registered_source_in_scan) ||
+    registry.records_without_registered_source_in_scan<0 ||
+    !Array.isArray(registry.ambiguous_registry_source_names) ||
+    !Array.isArray(registry.unregistered_source_names_in_scan) ||
+    typeof registry.unregistered_source_names_truncated!=="boolean")
+    throw Error("Persisted source registry returned inconsistent bounds or authority state.");
+  if(registry.source_aliases_configured){
+    if(typeof registry.source_alias_artifact_sha256!=="string" ||
+      !/^[0-9a-f]{64}$/.test(registry.source_alias_artifact_sha256))
+      throw Error("Configured source alias artifact lacks its exact SHA-256 identity.");
+  }else if(registry.source_alias_artifact_sha256!==null ||
+    registry.source_alias_mapping_count!==0 || registry.source_aliases_applied)
+    throw Error("Unconfigured source aliases returned unsupported identity claims.");
+  if(registry.source_aliases_applied &&
+    (!registry.source_attribution_available || registry.source_alias_mapping_count===0))
+    throw Error("Source aliases claim application outside an available attribution scope.");
+  const scannedRecords=registry.ceqa_records_scanned+registry.permit_records_scanned;
+  if(registry.source_attribution_available){
+    if(registry.records_with_registered_source_in_scan+
+      registry.records_without_registered_source_in_scan!==scannedRecords)
+      throw Error("Source attribution accounting disagrees with the bounded record scan.");
+  }else if(registry.records_with_registered_source_in_scan!==0 ||
+    registry.records_without_registered_source_in_scan!==0 ||
+    registry.unregistered_source_names_in_scan.length!==0)
+    throw Error("Unavailable source attribution returned unsupported coverage claims.");
+  const validateNames=items=>items.every((item,index)=>
+    typeof item==="string" && item && (index===0 || items[index-1]<item));
+  if(!validateNames(registry.ambiguous_registry_source_names) ||
+    !validateNames(registry.unregistered_source_names_in_scan))
+    throw Error("Source attribution names are not canonical unique strings.");
+  const statuses=new Set(["unverified","verified","partial","failed","blocked"]);
+  const rows=registry.entries.map(entry=>{
+    if(!entry || typeof entry.source_name!=="string" || !entry.source_name ||
+      typeof entry.jurisdiction_name!=="string" || !entry.jurisdiction_name ||
+      typeof entry.county!=="string" || !entry.county ||
+      typeof entry.platform_family!=="string" || !entry.platform_family ||
+      !Array.isArray(entry.record_categories) || !statuses.has(entry.verification_status) ||
+      typeof entry.adapter_status!=="string" || !entry.adapter_status ||
+      typeof entry.adapter_live!=="boolean" ||
+      typeof entry.latest_verification_present!=="boolean" ||
+      typeof entry.attribution_name_unambiguous!=="boolean" ||
+      !Number.isSafeInteger(entry.attributed_ceqa_records_in_scan) ||
+      entry.attributed_ceqa_records_in_scan<0 ||
+      !Number.isSafeInteger(entry.attributed_permit_records_in_scan) ||
+      entry.attributed_permit_records_in_scan<0 ||
+      !Number.isSafeInteger(entry.attributed_records_in_scan) ||
+      entry.attributed_records_in_scan!==entry.attributed_ceqa_records_in_scan+
+        entry.attributed_permit_records_in_scan ||
+      !Number.isSafeInteger(entry.attributed_via_alias_records_in_scan) ||
+      entry.attributed_via_alias_records_in_scan<0 ||
+      entry.attributed_via_alias_records_in_scan>entry.attributed_records_in_scan ||
+      (!entry.attribution_name_unambiguous && entry.attributed_records_in_scan!==0))
+      throw Error("Persisted source registry entry is inconsistent.");
+    const latest=entry.latest_verification_present;
+    if(latest && (
+      typeof entry.latest_verification_checked_at!=="string" ||
+      !entry.latest_verification_checked_at ||
+      typeof entry.latest_verification_url_reachable!=="boolean" ||
+      typeof entry.latest_detected_platform_family!=="string" ||
+      !entry.latest_detected_platform_family ||
+      !Number.isSafeInteger(entry.latest_verification_confidence_score) ||
+      entry.latest_verification_confidence_score<0 ||
+      entry.latest_verification_confidence_score>100 ||
+      typeof entry.verification_metadata_consistent!=="boolean" ||
+      ![null,true,false].includes(entry.latest_public_search_available) ||
+      ![null,true,false].includes(entry.latest_login_required) ||
+      ![null,"string"].includes(
+        entry.latest_verification_notes===null ? null : typeof entry.latest_verification_notes
+      )
+    )) throw Error("Latest retained source verification is inconsistent.");
+    if(!latest && (
+      entry.latest_verification_checked_at!==null ||
+      entry.latest_verification_url_reachable!==null ||
+      entry.latest_detected_platform_family!==null ||
+      entry.latest_public_search_available!==null ||
+      entry.latest_login_required!==null ||
+      entry.latest_verification_confidence_score!==null ||
+      entry.latest_verification_notes!==null ||
+      entry.verification_metadata_consistent!==null
+    )) throw Error("Absent source verification carries unexpected retained claims.");
+    const searchState=entry.latest_public_search_available===null ? "search availability unrecorded" :
+      (entry.latest_public_search_available ? "public search observed" : "public search not observed");
+    const loginState=entry.latest_login_required===null ? "login requirement unrecorded" :
+      (entry.latest_login_required ? "login reported required" : "login reported not required");
+    const latestDetail=latest ?
+      '<small class="'+(entry.verification_metadata_consistent?'source-verification-ok':'source-verification-warning')+
+      '">latest retained check: '+(entry.latest_verification_url_reachable?'reachable':'not reachable')+
+      ' · '+escapeText(entry.latest_verification_checked_at)+
+      ' · detected '+escapeText(entry.latest_detected_platform_family)+
+      ' · confidence '+entry.latest_verification_confidence_score+'/100 · '+
+      searchState+' · '+loginState+
+      (entry.verification_metadata_consistent?' · registry metadata agrees':
+        ' · registry metadata DIFFERS; inspect retained verification history')+'</small>'+
+      (entry.latest_verification_notes?
+        '<small>latest check note: '+escapeText(entry.latest_verification_notes)+'</small>':'') :
+      '<small>no linked retained verification observation</small>';
+    const attributionDetail=!registry.source_attribution_available ?
+      '<small class="source-attribution-warning">record attribution withheld: configured source identity scan is incomplete</small>' :
+      (entry.attribution_name_unambiguous ?
+        '<small>retained explicit attribution in scan: '+entry.attributed_records_in_scan+
+        ' record(s) · CEQA '+entry.attributed_ceqa_records_in_scan+
+        ' · permits '+entry.attributed_permit_records_in_scan+
+        (entry.attributed_via_alias_records_in_scan?
+          ' · explicit alias used by '+entry.attributed_via_alias_records_in_scan+' record(s)':'')+
+        '</small>' :
+        '<small class="source-attribution-warning">record attribution withheld: duplicate configured source name</small>');
+    return '<tr><th scope="row">'+escapeText(entry.source_name)+
+      '<small>'+escapeText(entry.jurisdiction_name)+' · '+escapeText(entry.county)+'</small></th>'+
+      '<td>'+escapeText(entry.platform_family)+'<small>adapter '+escapeText(entry.adapter_status)+
+      (entry.adapter_live?' · live-capable software':' · not live-capable')+'</small></td>'+
+      '<td>'+escapeText(entry.verification_status)+'<small>stored confidence '+
+      escapeText(entry.confidence_score)+'/100 · checked '+
+      escapeText(valueOrUnknown(entry.last_checked_date))+'</small>'+latestDetail+'</td>'+
+      '<td>'+escapeText(entry.record_categories.join(", ") || "No categories")+
+      '<small>'+escapeText(valueOrUnknown(entry.update_frequency))+'</small>'+
+      attributionDetail+'</td>'+
+      '<td>'+safeSourceLink(entry.public_url)+'</td></tr>';
+  }).join("") || '<tr><td colspan="5">No public-source registry rows are retained in this database.</td></tr>';
+  const attributionSummary=registry.source_attribution_available ?
+    '<p>Bounded exact-name attribution scanned '+registry.ceqa_records_scanned+' of '+
+    registry.ceqa_records_total+' retained CEQA records and '+registry.permit_records_scanned+
+    ' of '+registry.permit_records_total+' retained permit records. '+
+    registry.records_with_registered_source_in_scan+' scanned record(s) matched at least one '+
+    'unambiguous configured source name; '+registry.records_without_registered_source_in_scan+
+    ' did not.'+(registry.attribution_scan_truncated?
+      ' The record scan is truncated, so these are not complete local coverage counts.':'')+'</p>' :
+    '<p class="source-attribution-warning">Record attribution is withheld because only '+
+    registry.source_identity_rows_scanned+' of '+registry.total+
+    ' configured source identities fit the bounded identity scan.</p>';
+  const aliasSummary=registry.source_aliases_configured ?
+    '<p>Explicit source-attribution alias artifact: '+registry.source_alias_mapping_count+
+    ' mapping(s) · SHA-256 <code>'+escapeText(registry.source_alias_artifact_sha256)+'</code> · '+
+    (registry.source_aliases_applied?'applied to this bounded local attribution':
+      'loaded but not applied to attribution')+
+    '. Alias mappings are retained operator identity assertions, not independent source verification.</p>' : '';
+  const ambiguity=registry.ambiguous_registry_source_names.length ?
+    '<p class="source-attribution-warning">Duplicate configured source names withheld from explicit attribution: '+
+    registry.ambiguous_registry_source_names.map(escapeText).join(", ")+'</p>' : '';
+  const unregistered=registry.unregistered_source_names_in_scan.length ?
+    '<p>Retained provenance source names not present in the complete configured-source identity set: '+
+    registry.unregistered_source_names_in_scan.map(escapeText).join(", ")+
+    (registry.unregistered_source_names_truncated?' … list truncated':'')+'</p>' : '';
+  return '<section class="feature-card"><span class="badge">PERSISTED SOURCE REGISTRY · READ ONLY</span>'+
+    '<h2>Configured public sources ('+registry.returned+(registry.truncated?' of '+registry.total:'')+')</h2>'+
+    '<p>Verification state, confidence, update cadence and adapter maturity are retained metadata. The newest linked verification observation is shown separately when available, including any disagreement with the registry row. Historical checks do not prove current reachability, complete jurisdiction coverage, or authority for recurring collection.</p>'+
+    attributionSummary+aliasSummary+ambiguity+unregistered+
+    '<div class="source-inventory-scroll"><table class="source-inventory source-registry-table"><thead>'+
+    '<tr><th>Source</th><th>Platform / adapter</th><th>Registry verification</th>'+
+    '<th>Declared records / cadence</th><th>Official source</th></tr></thead><tbody>'+
+    rows+'</tbody></table></div>'+
+    (registry.truncated?'<p>Registry display is truncated at '+registry.result_limit+' rows.</p>':'')+
+    '</section>';
+}
+
+function renderCaptureQueue(queue) {
+  if(!queue || queue.schema_version!=="constructionsight.operator_capture_queue.v1" ||
+    queue.read_only!==true || queue.network_executed!==false ||
+    queue.persistence_mutated!==false || queue.commercial_leads_created!==false ||
+    !Number.isSafeInteger(queue.candidate_count) || queue.candidate_count<0 ||
+    !Array.isArray(queue.candidates) || queue.candidate_count!==queue.candidates.length)
+    throw Error("Retained exact-SCH review queue returned an inconsistent authority state.");
+  if(!queue.configured){
+    if(queue.candidate_count!==0)
+      throw Error("Unconfigured review queue reported retained candidates.");
+    return '<section class="feature-card"><h2>Exact-SCH review queue</h2>'+
+      '<p>No retained review queue is configured for this operator session. To display one, restart the local '+
+      'operator with <code>--capture-queue &lt;review-queue.json&gt;</code>. This does not enable remote collection.</p></section>';
+  }
+  const seen=new Set();
+  for(const item of queue.candidates){
+    if(!item || typeof item.sch_number!=="string" || !/^[0-9]{10}$/.test(item.sch_number) ||
+      seen.has(item.sch_number) || !["San Bernardino","Riverside"].includes(item.source_claimed_county) ||
+      typeof item.source_claimed_title!=="string" || !item.source_claimed_title ||
+      item.candidate_only!==true || item.review_state!=="unverified_source_claim" ||
+      item.network_executed_for_candidate!==false || item.persistence_mutated!==false)
+      throw Error("Retained exact-SCH review queue candidate is inconsistent.");
+    seen.add(item.sch_number);
+  }
+  const rows=queue.candidates.map((item,index)=>
+    '<div class="capture-queue-entry"><div><strong>'+escapeText(item.source_claimed_title)+
+    '</strong><small>SCH '+escapeText(item.sch_number)+' · '+escapeText(item.source_claimed_county)+
+    ' · observed '+item.source_observation_count+' time(s) in retained listing evidence'+
+    (item.title_requires_detail_enrichment?' · title/detail enrichment still required':'')+
+    '</small></div><div class="capture-queue-actions">'+safeSourceLink(item.official_detail_url)+
+    '<button type="button" class="action" data-capture-queue="'+index+'">Prepare reviewed capture →</button></div></div>'
+  ).join("") || '<p>No target-county exact-SCH candidates were retained in this reviewed listing queue.</p>';
+  return '<section class="feature-card"><span class="badge">RETAINED REVIEW QUEUE · CANDIDATES ONLY</span>'+
+    '<h2>Exact-SCH review queue ('+queue.candidate_count+')</h2>'+
+    '<p>Derived from '+queue.listing_pages_reviewed+' retained listing page(s) and '+
+    queue.listing_records_parsed+' parsed source observations. Listing artifact SHA-256: <code>'+
+    escapeText(queue.listing_artifact_sha256)+'</code>. Candidates are source claims, not verified active '+
+    'construction sites. Selecting one only prepares the existing local one-request capture instructions.</p>'+
+    '<div class="capture-queue">'+rows+'</div></section>';
+}
+function bindCaptureQueue(queue) {
+  if(!queue || !queue.configured)return;
+  byId("feature-body").querySelectorAll("[data-capture-queue]").forEach(button=>button.onclick=()=>{
+    const item=queue.candidates[Number(button.dataset.captureQueue)];
+    if(!item || !/^[0-9]{10}$/.test(item.sch_number))return;
+    byId("capture-sch-number").value=item.sch_number;
+    prepareCeqanetCapture();
+    byId("capture-source-form").scrollIntoView({block:"nearest",behavior:"auto"});
+  });
+}
+
 async function showSources() {
   const token=++featureRequest;
   featureIntro("Sources & Collection", "Actual retained CEQA and permit counts from the selected local database");
@@ -526,10 +834,12 @@ async function showSources() {
   const families=["ceqa","permit"], counties=["","San Bernardino","Riverside"];
   try {
     const queries=families.flatMap(kind=>counties.map(county=>({kind,county})));
-    const [data,inbox]=await Promise.all([
+    const [data,captureQueue,sourceRegistry,inbox]=await Promise.all([
       Promise.all(queries.map(async item=>
         fetchJson("/api/snapshot?"+new URLSearchParams({kind:item.kind,county:item.county,limit:"1",offset:"0"}))
       )),
+      fetchJson("/api/capture-queue"),
+      fetchJson("/api/source-registry"),
       fetchJson("/api/ingestion-inbox")
     ]);
     if(token!==featureRequest || byId("feature-view").hidden)return;
@@ -544,9 +854,11 @@ async function showSources() {
     byId("feature-body").innerHTML='<section class="feature-card"><span class="badge">RETAINED SQLITE RECORDS · READ ONLY</span><h2>Source inventory</h2>'+
       '<p>Counts are source records, not deduplicated projects, live construction sites, or approved commercial leads. Other/unknown includes records with missing or out-of-scope county claims.</p>'+
       '<div class="source-inventory-scroll"><table class="source-inventory"><thead><tr><th>Source family</th><th>All counties</th><th>San Bernardino</th><th>Riverside</th><th>Other / unknown</th></tr></thead><tbody>'+rows+'</tbody></table></div></section>'+
+      renderSourceRegistry(sourceRegistry)+
       ingestionInboxMarkup(inbox)+
       '<section class="feature-card"><h2>Collection status</h2><p>This local operator does not run live source acquisition, subscription monitoring, scheduled updates or remote data import. Import and retained-source validation remain separate governed workflows.</p>'+
       '<a href="/workspace#records">Inspect stored source evidence →</a></section>'+
+      renderCaptureQueue(captureQueue)+
       '<section class="feature-card"><h2>Review a newly available CEQAnet project</h2><p>Prepare a single-project, manually authorized capture using the existing offline-review and SQLite import services. This read-only dashboard cannot issue remote requests or authorize imports.</p>'+
       '<form id="capture-source-form"><label for="capture-sch-number">Official 10-digit SCH number</label> <input id="capture-sch-number" type="text" inputmode="numeric" maxlength="10" pattern="[0-9]{10}" placeholder="0000000000" required> <button type="submit" class="action">Prepare local capture instructions</button></form>'+
       '<div id="capture-instructions" aria-live="polite"><p>No collection has been attempted. Verify the public source and its access conditions before executing any command.</p></div></section>'+
@@ -564,6 +876,7 @@ async function showSources() {
           "CEQAnet ingestion inbox"
         );
     });
+    bindCaptureQueue(captureQueue);
     byId("show-historical-pulse").onclick=showHistoricalPulse;
     byId("feature-body").querySelectorAll("[data-source-kind]").forEach(button=>button.onclick=()=>{
       const kind=button.dataset.sourceKind, county=button.dataset.sourceCounty;
@@ -575,7 +888,6 @@ async function showSources() {
       byId("feature-body").innerHTML='<section class="feature-card"><h2>Source inventory unavailable</h2><p role="alert">'+escapeText(error.message || error)+'</p></section>';
   }
 }
-
 function workflowDetails(row) {
   const notes=(items,label)=>'<section class="lead-details-group"><h3>'+label+'</h3>'+
     (Array.isArray(items)&&items.length?items.map(item=>'<p>'+escapeText(item)+'</p>').join(""):'<p>None retained.</p>')+'</section>';
@@ -744,6 +1056,266 @@ function showAiCenter() {
     '<p>There is no live model selector or enable switch yet. The AI Center is reserved for this optional feature.</p></section>';
 }
 
+function commercialWorkflowOptions() {
+  const leads=workflows && Array.isArray(workflows.leads) ? workflows.leads : [];
+  return leads.filter(row=>
+    ["ready","active"].includes(row.status) &&
+    Array.isArray(row.limitations) && row.limitations.length===0 &&
+    typeof row.workflow_id==="string" && row.workflow_id
+  );
+}
+function renderOutreachPreview(preview) {
+  if(!preview || typeof preview.preview_id!=="string" ||
+    preview.requires_human_approval!==true ||
+    preview.external_send_authorized!==false ||
+    preview.send_executed!==false || preview.bid_authorized!==false ||
+    !preview.contact) throw Error("Outreach preview authority state is inconsistent.");
+  const evidence=Array.isArray(preview.evidence_notes) ? preview.evidence_notes : [];
+  return '<section class="feature-card"><span class="badge">PREVIEW ONLY · SEND DISABLED · BID DISABLED</span>'+
+    '<h2>'+escapeText(preview.subject)+'</h2>'+
+    '<p>'+escapeText(preview.body)+'</p>'+
+    '<dl class="outreach-preview-meta">'+
+    '<dt>Preview ID</dt><dd>'+escapeText(preview.preview_id)+'</dd>'+
+    '<dt>Workflow</dt><dd>'+escapeText(preview.workflow_id)+'</dd>'+
+    '<dt>Workflow status</dt><dd>'+escapeText(preview.workflow_status)+'</dd>'+
+    '<dt>Channel</dt><dd>'+escapeText(preview.contact.channel)+'</dd>'+
+    '<dt>Business role</dt><dd>'+escapeText(preview.contact.business_role)+'</dd>'+
+    '<dt>Destination</dt><dd>'+escapeText(preview.contact.destination)+'</dd>'+
+    '<dt>Contact source</dt><dd>'+escapeText(preview.contact.source_name)+'</dd>'+
+    '<dt>Source reference</dt><dd>'+escapeText(preview.contact.source_reference)+'</dd>'+
+    '<dt>Review basis</dt><dd>'+escapeText(preview.contact.contact_review_basis)+'</dd></dl>'+
+    '<h3>Bound evidence notes</h3>'+
+    (evidence.length?'<ul>'+evidence.map(note=>'<li>'+escapeText(note)+'</li>').join("")+'</ul>':
+      '<p>No evidence-note text was retained in the exact review package.</p>')+
+    '<p><strong>Human approval remains required.</strong> This preview cannot send a message, submit a form, contact a prospect, or authorize a bid.</p></section>';
+}
+function showOutreach() {
+  featureIntro("Outreach", "Governed preview from exact persisted workflow state · no delivery capability");
+  const eligible=commercialWorkflowOptions();
+  const options=eligible.map(row=>
+    '<option value="'+escapeText(row.workflow_id)+'">'+escapeText(row.status.toUpperCase()+" · "+
+      (row.summary||row.base_candidate_id)+" · "+row.workflow_id)+'</option>'
+  ).join("");
+  byId("feature-body").innerHTML='<section class="feature-card"><span class="badge">PREVIEW ONLY · EXTERNAL DELIVERY DISABLED</span>'+
+    '<h2>Prepare reviewed outreach preview</h2>'+
+    '<p>This form reads the exact persisted workflow and review package again on submit. It does not retain this message, send it, authorize delivery, or authorize a bid.</p>'+
+    (eligible.length?
+      '<form id="outreach-preview-form" class="outreach-preview-form">'+
+      '<label>Persisted workflow<select id="outreach-workflow" required>'+options+'</select></label>'+
+      '<label>Channel<select id="outreach-channel" required><option value="email">Email</option><option value="procurement_portal">Procurement portal</option><option value="web_form">Web form</option><option value="phone">Phone</option><option value="other">Other</option></select></label>'+
+      '<label>Business contact destination<input id="outreach-destination" maxlength="1000" required></label>'+
+      '<label>Business role<input id="outreach-role" maxlength="255" required></label>'+
+      '<label>Contact source name<input id="outreach-source-name" maxlength="500" required></label>'+
+      '<label>Contact source reference<input id="outreach-source-reference" maxlength="2000" required></label>'+
+      '<label class="wide">Contact review basis<textarea id="outreach-review-basis" maxlength="2000" required></textarea></label>'+
+      '<label class="wide">Subject<input id="outreach-subject" maxlength="500" required></label>'+
+      '<label class="wide">Message body<textarea id="outreach-body" maxlength="20000" required></textarea></label>'+
+      '<div class="wide"><button class="action primary" type="submit">Build preview</button></div></form>':
+      '<p>No persisted READY/ACTIVE workflow without limitations is present in the current bounded workflow page.</p>')+
+    '</section><div id="outreach-preview-result"></div>';
+  const form=byId("outreach-preview-form");
+  if(!form)return;
+  form.onsubmit=async event=>{
+    event.preventDefault();
+    const workflowId=byId("outreach-workflow").value;
+    const workflow=eligible.find(row=>row.workflow_id===workflowId);
+    const result=byId("outreach-preview-result");
+    if(!workflow){result.innerHTML='<section class="feature-card"><p role="alert">Selected persisted workflow is unavailable. Refresh before previewing.</p></section>';return;}
+    result.innerHTML='<section class="feature-card"><p role="status">Revalidating persisted workflow, review package and duplicate state…</p></section>';
+    try{
+      const preview=await postJson("/api/outreach-preview",{
+        workflow_id:workflow.workflow_id,
+        expected_current_status:workflow.status,
+        channel:byId("outreach-channel").value,
+        destination:byId("outreach-destination").value,
+        business_role:byId("outreach-role").value,
+        source_name:byId("outreach-source-name").value,
+        source_reference:byId("outreach-source-reference").value,
+        contact_review_basis:byId("outreach-review-basis").value,
+        subject:byId("outreach-subject").value,
+        body:byId("outreach-body").value
+      });
+      result.innerHTML=renderOutreachPreview(preview);
+    }catch(error){
+      result.innerHTML='<section class="feature-card"><h2>Preview blocked</h2><p role="alert">'+escapeText(error.message||error)+'</p><p>No message was sent.</p></section>';
+    }
+  };
+}
+function renderBidRequestEvidence(evidence) {
+  if(!evidence || typeof evidence.request_evidence_id!=="string" ||
+    evidence.requires_commercial_approval!==true ||
+    evidence.pricing_authorized!==false ||
+    evidence.bid_preparation_authorized!==false ||
+    evidence.bid_submission_authorized!==false)
+    throw Error("Bid request evidence authority state is inconsistent.");
+  const notes=Array.isArray(evidence.evidence_notes)?evidence.evidence_notes:[];
+  return '<section class="feature-card"><span class="badge">REQUEST EVIDENCE ONLY · PRICING DISABLED</span>'+
+    '<h2>Prospect-requested bid evidence validated</h2>'+
+    '<dl class="outreach-preview-meta">'+
+    '<dt>Evidence ID</dt><dd>'+escapeText(evidence.request_evidence_id)+'</dd>'+
+    '<dt>Workflow</dt><dd>'+escapeText(evidence.workflow_id)+'</dd>'+
+    '<dt>Workflow status</dt><dd>'+escapeText(evidence.workflow_status)+'</dd>'+
+    '<dt>Request channel</dt><dd>'+escapeText(evidence.request_channel)+'</dd>'+
+    '<dt>Observed request time</dt><dd>'+escapeText(evidence.request_observed_at)+'</dd>'+
+    '<dt>Requester business</dt><dd>'+escapeText(evidence.requester_business_name)+'</dd>'+
+    '<dt>Requester role</dt><dd>'+escapeText(evidence.requester_business_role)+'</dd>'+
+    '<dt>Request source</dt><dd>'+escapeText(evidence.request_source_name)+'</dd>'+
+    '<dt>Source reference</dt><dd>'+escapeText(evidence.request_source_reference)+'</dd>'+
+    '<dt>Review basis</dt><dd>'+escapeText(evidence.request_review_basis)+'</dd></dl>'+
+    '<h3>Retained request text</h3><p>'+escapeText(evidence.request_text)+'</p>'+
+    '<h3>Requested scope</h3><p>'+escapeText(evidence.scope_summary)+'</p>'+
+    '<h3>Bound workflow evidence</h3>'+
+    (notes.length?'<ul>'+notes.map(note=>'<li>'+escapeText(note)+'</li>').join("")+'</ul>':
+      '<p>No evidence-note text was retained in the exact review package.</p>')+
+    '<p><strong>Commercial approval is still required.</strong> No pricing was calculated, no bid was prepared, and nothing was submitted.</p></section>';
+}
+function minorMoneyText(value,currency) {
+  if(!Number.isSafeInteger(value) || value<0)throw Error("Pricing preview returned invalid minor units.");
+  const whole=Math.floor(value/100);
+  const cents=String(value%100).padStart(2,"0");
+  return escapeText(currency)+" "+whole.toLocaleString()+"."+cents;
+}
+function bidPricingLineMarkup(index) {
+  return '<div class="bid-pricing-line" data-pricing-line="'+index+'">'+
+    '<label>Line key<input class="bid-line-key" maxlength="255" required placeholder="night-guarding"></label>'+
+    '<label>Description<input class="bid-line-description" maxlength="1000" required></label>'+
+    '<label class="wide">Pricing basis<textarea class="bid-line-basis" maxlength="2000" required></textarea></label>'+
+    '<label>Manual amount<input class="bid-line-amount" inputmode="decimal" maxlength="100" required placeholder="0.00"></label>'+
+    '<div><button type="button" class="action bid-remove-line">Remove line</button></div></div>';
+}
+function renderBidPricingPreview(preview) {
+  if(!preview || typeof preview.pricing_preview_id!=="string" ||
+    preview.requires_commercial_approval!==true ||
+    preview.commercial_terms_authorized!==false ||
+    preview.customer_facing_bid_authorized!==false ||
+    preview.bid_submission_authorized!==false ||
+    !Array.isArray(preview.line_items) || !Number.isSafeInteger(preview.subtotal_minor))
+    throw Error("Bid pricing preview authority or money state is inconsistent.");
+  const lines=preview.line_items.map(line=>
+    '<tr><td>'+escapeText(line.description)+'</td><td>'+escapeText(line.pricing_basis)+'</td><td>'+
+    minorMoneyText(line.amount_minor,preview.currency_code)+'</td></tr>').join("");
+  return '<section class="feature-card"><span class="badge">MANUAL PRICING PREVIEW · COMMERCIAL APPROVAL REQUIRED</span>'+
+    '<h2>Pricing preview</h2><p>Request evidence: <code>'+escapeText(preview.request_evidence_id)+'</code></p>'+
+    '<div class="source-inventory-scroll"><table class="source-inventory"><thead><tr><th>Line</th><th>Basis</th><th>Amount</th></tr></thead><tbody>'+lines+
+    '</tbody></table></div><p><strong>Subtotal: '+minorMoneyText(preview.subtotal_minor,preview.currency_code)+'</strong></p>'+
+    '<p>Pricing method: '+escapeText(preview.pricing_method)+' · Validity note: '+escapeText(preview.validity_note)+'</p>'+
+    '<p><strong>Commercial terms are not authorized.</strong> This is not a customer-facing bid and cannot be submitted.</p></section>';
+}
+function renderBidPricingForm(requestEvidence) {
+  return '<section class="feature-card"><span class="badge">NEXT GATE · MANUAL EXACT-MONEY PREVIEW</span>'+
+    '<h2>Build internal pricing preview</h2>'+
+    '<p>The validated request evidence is bound below. Amounts are normalized server-side to exact currency minor units. No rates are inferred and no commercial terms are approved.</p>'+
+    '<form id="bid-pricing-form" class="outreach-preview-form">'+
+    '<label>Currency code<input id="bid-currency" value="USD" maxlength="3" pattern="[A-Za-z]{3}" required></label>'+
+    '<label>Validity note<input id="bid-validity-note" maxlength="2000" required value="Manual preview; commercial approval required."></label>'+
+    '<label class="wide">Assumptions (one per line)<textarea id="bid-assumptions" maxlength="10000"></textarea></label>'+
+    '<label class="wide">Exclusions (one per line)<textarea id="bid-exclusions" maxlength="10000"></textarea></label>'+
+    '<div class="wide"><h3>Manual pricing lines</h3><div id="bid-pricing-lines">'+bidPricingLineMarkup(0)+'</div>'+
+    '<button type="button" class="action" id="bid-add-line">Add line</button></div>'+
+    '<div class="wide"><button class="action primary" type="submit">Build internal pricing preview</button></div></form>'+
+    '<div id="bid-pricing-result"></div>'+
+    '<p><small>Bound request evidence: '+escapeText(requestEvidence.request_evidence_id)+'</small></p></section>';
+}
+function wireBidPricingForm(requestEvidence) {
+  const form=byId("bid-pricing-form");
+  if(!form)return;
+  let nextLine=1;
+  const wireRemovers=()=>document.querySelectorAll(".bid-remove-line").forEach(button=>{
+    button.onclick=()=>{
+      const rows=document.querySelectorAll(".bid-pricing-line");
+      if(rows.length<=1)return;
+      button.closest(".bid-pricing-line").remove();
+    };
+  });
+  wireRemovers();
+  byId("bid-add-line").onclick=()=>{
+    const container=byId("bid-pricing-lines");
+    if(container.querySelectorAll(".bid-pricing-line").length>=20)return;
+    container.insertAdjacentHTML("beforeend",bidPricingLineMarkup(nextLine++));
+    wireRemovers();
+  };
+  form.onsubmit=async event=>{
+    event.preventDefault();
+    const result=byId("bid-pricing-result");
+    const lineItems=[...document.querySelectorAll(".bid-pricing-line")].map(row=>({
+      line_key:row.querySelector(".bid-line-key").value,
+      description:row.querySelector(".bid-line-description").value,
+      pricing_basis:row.querySelector(".bid-line-basis").value,
+      amount:row.querySelector(".bid-line-amount").value
+    }));
+    const textLines=id=>byId(id).value.split("\n").map(value=>value.trim()).filter(Boolean);
+    result.innerHTML='<p role="status">Revalidating request evidence and normalizing exact-money lines…</p>';
+    try{
+      const preview=await postJson("/api/bid-pricing-preview",{
+        request_evidence:requestEvidence,
+        currency_code:byId("bid-currency").value,
+        line_items:lineItems,
+        assumptions:textLines("bid-assumptions"),
+        exclusions:textLines("bid-exclusions"),
+        validity_note:byId("bid-validity-note").value
+      });
+      result.innerHTML=renderBidPricingPreview(preview);
+    }catch(error){
+      result.innerHTML='<h3>Pricing preview blocked</h3><p role="alert">'+escapeText(error.message||error)+'</p><p>No commercial terms or submission were authorized.</p>';
+    }
+  };
+}
+function showBidStudio() {
+  featureIntro("Bid Studio", "Prospect-request evidence gate · pricing, preparation and submission disabled");
+  const eligible=commercialWorkflowOptions();
+  const options=eligible.map(row=>
+    '<option value="'+escapeText(row.workflow_id)+'">'+escapeText(row.status.toUpperCase()+" · "+
+      (row.summary||row.base_candidate_id)+" · "+row.workflow_id)+'</option>'
+  ).join("");
+  byId("feature-body").innerHTML='<section class="feature-card"><span class="badge">REQUEST EVIDENCE GATE · NO PRICING</span>'+
+    '<h2>Validate a prospect-requested bid</h2>'+
+    '<p>A green/ready lead is not enough. Record the prospect request, its source and the requested scope. The exact workflow, review package and duplicate state are revalidated on submit.</p>'+
+    (eligible.length?
+      '<form id="bid-request-form" class="outreach-preview-form">'+
+      '<label>Persisted workflow<select id="bid-workflow" required>'+options+'</select></label>'+
+      '<label>Request channel<select id="bid-request-channel" required><option value="email">Email</option><option value="phone">Phone</option><option value="procurement_portal">Procurement portal</option><option value="web_form">Web form</option><option value="meeting">Meeting</option><option value="other">Other</option></select></label>'+
+      '<label>Requester business<input id="bid-requester-business" maxlength="500" required></label>'+
+      '<label>Requester business role<input id="bid-requester-role" maxlength="255" required></label>'+
+      '<label>Request source name<input id="bid-source-name" maxlength="500" required></label>'+
+      '<label>Request source reference<input id="bid-source-reference" maxlength="2000" required></label>'+
+      '<label class="wide">Request review basis<textarea id="bid-review-basis" maxlength="2000" required></textarea></label>'+
+      '<label class="wide">Observed request time (ISO 8601 with offset)<input id="bid-observed-at" placeholder="2026-10-08T08:30:00-07:00" required></label>'+
+      '<label class="wide">Prospect request text<textarea id="bid-request-text" maxlength="20000" required></textarea></label>'+
+      '<label class="wide">Requested security scope<textarea id="bid-scope-summary" maxlength="10000" required></textarea></label>'+
+      '<div class="wide"><button class="action primary" type="submit">Validate request evidence</button></div></form>':
+      '<p>No persisted READY/ACTIVE workflow without limitations is present in the current bounded workflow page.</p>')+
+    '</section><div id="bid-request-result"></div>';
+  const form=byId("bid-request-form");
+  if(!form)return;
+  form.onsubmit=async event=>{
+    event.preventDefault();
+    const workflowId=byId("bid-workflow").value;
+    const workflow=eligible.find(row=>row.workflow_id===workflowId);
+    const result=byId("bid-request-result");
+    if(!workflow){result.innerHTML='<section class="feature-card"><p role="alert">Selected persisted workflow is unavailable. Refresh before validating the request.</p></section>';return;}
+    result.innerHTML='<section class="feature-card"><p role="status">Revalidating request eligibility, review package and duplicate state…</p></section>';
+    try{
+      const evidence=await postJson("/api/bid-request-evidence",{
+        workflow_id:workflow.workflow_id,
+        expected_current_status:workflow.status,
+        request_channel:byId("bid-request-channel").value,
+        requester_business_name:byId("bid-requester-business").value,
+        requester_business_role:byId("bid-requester-role").value,
+        request_source_name:byId("bid-source-name").value,
+        request_source_reference:byId("bid-source-reference").value,
+        request_review_basis:byId("bid-review-basis").value,
+        request_observed_at:byId("bid-observed-at").value,
+        request_text:byId("bid-request-text").value,
+        scope_summary:byId("bid-scope-summary").value
+      });
+      result.innerHTML=renderBidRequestEvidence(evidence)+renderBidPricingForm(evidence);
+      wireBidPricingForm(evidence);
+    }catch(error){
+      result.innerHTML='<section class="feature-card"><h2>Bid request gate blocked</h2><p role="alert">'+escapeText(error.message||error)+'</p><p>No pricing, bid preparation or submission occurred.</p></section>';
+    }
+  };
+}
+
 function showSection(name) {
   ++featureRequest;
   byId("command-view").hidden=true;byId("feature-view").hidden=false;
@@ -752,11 +1324,13 @@ function showSection(name) {
   if(name==="sources"){document.querySelectorAll("[data-section]").forEach(n=>{n.classList.toggle("current",n.dataset.section===name);n.setAttribute("aria-pressed",String(n.dataset.section===name));});document.querySelector('a[href="/"]').classList.remove("current");showSources();return;}
   if(name==="ai"){document.querySelectorAll("[data-section]").forEach(n=>{n.classList.toggle("current",n.dataset.section===name);n.setAttribute("aria-pressed",String(n.dataset.section===name));});document.querySelector('a[href="/"]').classList.remove("current");showAiCenter();return;}
   if(name==="leads"){document.querySelectorAll("[data-section]").forEach(n=>{n.classList.toggle("current",n.dataset.section===name);n.setAttribute("aria-pressed",String(n.dataset.section===name));});document.querySelector('a[href="/"]').classList.remove("current");showLeads();return;}
+  if(name==="outreach"){document.querySelectorAll("[data-section]").forEach(n=>{n.classList.toggle("current",n.dataset.section===name);n.setAttribute("aria-pressed",String(n.dataset.section===name));});document.querySelector('a[href="/"]').classList.remove("current");showOutreach();return;}
+  if(name==="bid"){document.querySelectorAll("[data-section]").forEach(n=>{n.classList.toggle("current",n.dataset.section===name);n.setAttribute("aria-pressed",String(n.dataset.section===name));});document.querySelector('a[href="/"]').classList.remove("current");showBidStudio();return;}
   if(name==="royalty"){document.querySelectorAll("[data-section]").forEach(n=>{n.classList.toggle("current",n.dataset.section===name);n.setAttribute("aria-pressed",String(n.dataset.section===name));});document.querySelector('a[href="/"]').classList.remove("current");showRoyaltyLedger();return;}
   document.querySelectorAll("[data-section]").forEach(n=>{n.classList.toggle("current",n.dataset.section===name);n.setAttribute("aria-pressed",String(n.dataset.section===name));});
   document.querySelector('a[href="/"]').classList.remove("current");
   if(name==="watchlist"){
-    byId("feature-heading").textContent="Watchlist";byId("feature-description").textContent="Browser-local source bookmarks · monitoring and reminders not yet connected";
+    byId("feature-heading").textContent="Watchlist";byId("feature-description").textContent="Persisted source watches · retained-record change detection active · remote polling and notification delivery disabled";
     renderWatchlist(true);return;
   }
   const [title,subtitle,warning,link,label]=sections[name]||sections.sources;
@@ -771,23 +1345,56 @@ async function fetchJson(url){
   if(!response.ok) throw Error(data.error || "Local data unavailable.");
   return data;
 }
+async function mutateJson(url,method){
+  const response=await fetch(url,{method,cache:"no-store",headers:{"Accept":"application/json"}});
+  const data=await response.json();
+  if(!response.ok) throw Error(data.error || "Local watchlist mutation unavailable.");
+  return data;
+}
+async function postJson(url,payload){
+  const response=await fetch(url,{
+    method:"POST",
+    cache:"no-store",
+    headers:{"Accept":"application/json","Content-Type":"application/json"},
+    body:JSON.stringify(payload)
+  });
+  const data=await response.json();
+  if(!response.ok) throw Error(data.error || "Local preview unavailable.");
+  return data;
+}
 async function loadData(offset=pageOffset, focusIdentity=null){
   const token=++pageRequest;++featureRequest;
-  byId("global-notice").textContent="Loading retained local records. Readiness, outreach, bidding, and live watchlist monitoring are not enabled.";
+  byId("global-notice").textContent="Loading retained records and persisted watch state. Retained-record change detection is active; remote polling, notification delivery, outreach, and bidding are not enabled.";
   const filter=new URLSearchParams({kind:activeKind,county:activeCounty,limit:"50",offset:String(offset),q:activeQuery});
   const geo=new URLSearchParams({kind:activeKind,county:activeCounty,q:activeQuery});
   try{
-    const [newPage,newFootprint,newWorkflow,health,workflowStatus,sourceState,newInbox]=await Promise.all([
+    const [newPage,newFootprint,newWorkflow,health,workflowStatus,sourceState,newInbox,newWatchlist]=await Promise.all([
       fetchJson("/api/snapshot?"+filter),fetchJson("/api/footprint?"+geo),
       fetchJson("/api/workflows?limit=50&offset=0"),fetchJson("/api/health"),
       fetchJson("/api/workflow-summary").catch(error=>({error:String(error.message || error)})),
       fetchJson("/api/source-revision").catch(()=>null),
-      fetchJson("/api/ingestion-inbox").catch(()=>null)
+      fetchJson("/api/ingestion-inbox").catch(()=>null),
+      fetchJson("/api/watchlist")
     ]);
     if(token!==pageRequest)return;
     if(newPage.selection!==activeKind || newFootprint.selection!==activeKind ||
       newPage.total!==newFootprint.matching_total)throw Error("Source-list and geographic scope disagree. Refresh the database view.");
     page=newPage;footprint=newFootprint;workflows=newWorkflow;ingestionInbox=newInbox;pageOffset=offset;
+    applyWatchlistSnapshot(newWatchlist);
+    if(health.watchlist_persistence_enabled!==true ||
+      health.watchlist_source_monitoring_enabled!==false ||
+      health.watchlist_retained_change_detection_enabled!==true ||
+      health.watchlist_remote_source_polling_enabled!==false)
+      throw Error("Watchlist persistence authority state is inconsistent.");
+    if(health.outreach_preview_enabled!==true ||
+      health.outreach_send_enabled!==false ||
+      health.bid_request_evidence_enabled!==true ||
+      health.bid_pricing_preview_enabled!==true ||
+      health.bid_pricing_enabled!==false ||
+      health.bid_preparation_enabled!==false ||
+      health.bid_submission_enabled!==false ||
+      health.bid_authorization_enabled!==false)
+      throw Error("Commercial preview authority state is inconsistent.");
     if(sourceState && sourceState.read_only===true && sourceState.live_collection_enabled===false &&
       /^[0-9a-f]{64}$/.test(sourceState.revision_identity))sourceRevision=sourceState.revision_identity;
     byId("source-total").textContent=newPage.total.toLocaleString();

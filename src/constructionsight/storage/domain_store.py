@@ -41,6 +41,7 @@ from constructionsight.storage.domain_serialization import (
     strings_to_json,
 )
 from constructionsight.storage.intelligence_store import IntelligenceStore
+from constructionsight.storage.watch_change_store import trigger_watches_for_source_change
 
 
 def _append_domain_history(
@@ -67,25 +68,26 @@ def _append_domain_history(
     event_id = "event:domain-history:" + hashlib.sha256(
         canonical.encode("utf-8")
     ).hexdigest()
-    IntelligenceStore(session).add_runtime_event(
-        RuntimeEvent(
-            event_id=event_id,
-            event_type=(
-                RuntimeEventType.SOURCE_RECORD_DISCOVERED
-                if previous is None
-                else RuntimeEventType.SOURCE_RECORD_CHANGED
-            ),
-            severity=RuntimeEventSeverity.LOW,
-            created_at=occurred_at,
-            source_service="normalized_domain_store",
-            source_record_refs=[f"{record_type}:{record_key}"],
-            payload=payload,
-            message=(
-                f"Normalized {record_type} projection "
-                f"{'created' if previous is None else 'changed'}."
-            ),
-        )
+    event = RuntimeEvent(
+        event_id=event_id,
+        event_type=(
+            RuntimeEventType.SOURCE_RECORD_DISCOVERED
+            if previous is None
+            else RuntimeEventType.SOURCE_RECORD_CHANGED
+        ),
+        severity=RuntimeEventSeverity.LOW,
+        created_at=occurred_at,
+        source_service="normalized_domain_store",
+        source_record_refs=[f"{record_type}:{record_key}"],
+        payload=payload,
+        message=(
+            f"Normalized {record_type} projection "
+            f"{'created' if previous is None else 'changed'}."
+        ),
     )
+    IntelligenceStore(session).add_runtime_event(event)
+    if event.event_type is RuntimeEventType.SOURCE_RECORD_CHANGED:
+        trigger_watches_for_source_change(session, event)
 
 
 class SiteStore:

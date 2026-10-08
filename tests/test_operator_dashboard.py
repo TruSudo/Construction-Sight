@@ -20,7 +20,11 @@ from constructionsight.ceqa_models import CeqaRecord
 from constructionsight.ceqanet_persistence_preview import build_ceqanet_persistence_preview
 from constructionsight.ceqanet_write_plan import build_ceqanet_write_plan
 from constructionsight.entity_models import Entity
-from constructionsight.lead_review_models import LeadReviewPackage, LeadReviewStatus
+from constructionsight.lead_review_models import (
+    LeadReviewItem,
+    LeadReviewPackage,
+    LeadReviewStatus,
+)
 from constructionsight.lead_workflow_models import LeadWorkflowRecord, LeadWorkflowStatus
 from constructionsight.operator_dashboard import (
     ENTITY_RESULT_LIMIT,
@@ -68,6 +72,7 @@ from constructionsight.storage.lead_workflow_store import (
     store_lead_workflow_record,
     store_result_ledger_record,
 )
+from constructionsight.storage.intelligence_orm import IntelligenceWatchlistRecord
 from constructionsight.storage.operator_read_store import create_operator_read_engine
 from constructionsight.storage.parcel_site_orm import ParcelCoreRecordRow
 from constructionsight.storage.parcel_site_store import store_parcel_core_record
@@ -75,6 +80,43 @@ from constructionsight.storage.parcel_site_store import store_parcel_core_record
 
 def _provenance():
     return [Provenance(source_name="Synthetic integration fixture", evidence_text="Fixture only")]
+
+
+def _capture_queue_payload():
+    return {
+        "schema_version": "ceqanet_exact_sch_capture_queue.v1",
+        "listing_artifact_sha256": "a" * 64,
+        "listing_plan_id": "fixture-listing-plan",
+        "listing_pages_reviewed": 2,
+        "listing_records_parsed": 5,
+        "candidate_count": 1,
+        "excluded_observations": {
+            "missing_or_ambiguous_sch": 1,
+            "outside_target_counties": 2,
+        },
+        "candidates": [
+            {
+                "sch_number": "2026012345",
+                "source_claimed_county": "San Bernardino",
+                "source_claimed_title": "Synthetic retained listing candidate",
+                "title_requires_detail_enrichment": False,
+                "official_detail_url": (
+                    "https://ceqanet.lci.ca.gov/Project/2026012345"
+                ),
+                "observation_pages": [1, 2],
+                "source_observation_count": 2,
+                "review_state": "unverified_source_claim",
+                "candidate_only": True,
+                "network_executed_for_candidate": False,
+                "persistence_mutated": False,
+            }
+        ],
+        "network_executed": False,
+        "persistence_mutated": False,
+        "commercial_leads_created": False,
+        "limitations": ["Fixture input only."],
+    }
+
 
 
 def _record(key="fixture:one", **updates):
@@ -116,8 +158,11 @@ def database(tmp_path):
 
 
 @contextmanager
-def _server(path):
-    server = ThreadingHTTPServer(("127.0.0.1", 0), create_handler(path))
+def _server(path, *, capture_queue_path=None):
+    server = ThreadingHTTPServer(
+        ("127.0.0.1", 0),
+        create_handler(path, capture_queue_path=capture_queue_path),
+    )
     thread = Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
     thread.start()
     try:
@@ -137,6 +182,22 @@ def _get(port, path="/api/snapshot", *, headers=None, method="GET"):
     finally:
         connection.close()
 
+
+def _post_json(port, path, payload, *, origin=True):
+    connection = HTTPConnection("127.0.0.1", port, timeout=3)
+    body = json.dumps(payload).encode("utf-8")
+    headers = {
+        "Content-Type": "application/json",
+        "Content-Length": str(len(body)),
+    }
+    if origin:
+        headers["Origin"] = f"http://127.0.0.1:{port}"
+    try:
+        connection.request("POST", path, body=body, headers=headers)
+        response = connection.getresponse()
+        return response.status, dict(response.getheaders()), response.read()
+    finally:
+        connection.close()
 
 def test_authorized_ceqanet_preview_to_database_to_http(tmp_path):
     path = tmp_path / "from-chain.sqlite3"
@@ -1763,3 +1824,528 @@ def test_local_source_revision_detects_external_import_without_restarting_gui(da
         later = json.loads(raw)
         assert later["revision_identity"] != updated["revision_identity"]
         assert later["source_families"]["ceqa"]["record_count"] == 2
+
+
+def test_capture_queue_endpoint_is_optional_bounded_and_read_only(database, tmp_path):
+    path, _ = database
+    before = hashlib.sha256(path.read_bytes()).hexdigest()
+
+    with _server(path) as port:
+        status, _, body = _get(port, "/api/capture-queue")
+        assert status == 200
+        empty = json.loads(body)
+        assert empty["configured"] is False
+        assert empty["candidate_count"] == 0
+        assert empty["read_only"] is True
+        assert _get(port, "/api/capture-queue?unexpected=1")[0] == 400
+
+    queue_path = tmp_path / "capture-queue.json"
+    queue_path.write_text(json.dumps(_capture_queue_payload()), encoding="utf-8")
+    with _server(path, capture_queue_path=queue_path) as port:
+        status, _, body = _get(port, "/api/capture-queue")
+        assert status == 200
+        queue = json.loads(body)
+        assert queue["schema_version"] == "constructionsight.operator_capture_queue.v1"
+        assert queue["configured"] is True
+        assert queue["candidate_count"] == 1
+        assert queue["candidates"][0]["sch_number"] == "2026012345"
+        assert queue["candidates"][0]["candidate_only"] is True
+        assert queue["network_executed"] is False
+        assert queue["persistence_mutated"] is False
+        assert queue["commercial_leads_created"] is False
+
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == before
+
+
+def test_invalid_capture_queue_blocks_operator_startup_without_database_mutation(
+    database, tmp_path
+):
+    path, _ = database
+    before = hashlib.sha256(path.read_bytes()).hexdigest()
+    queue_path = tmp_path / "bad-capture-queue.json"
+    payload = _capture_queue_payload()
+    payload["candidates"][0]["official_detail_url"] = "https://example.com/Project/2026012345"
+    queue_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="official SCH page"):
+        create_handler(path, capture_queue_path=queue_path)
+
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == before
+
+
+def test_source_registry_endpoint_is_read_only_and_rejects_query_parameters(database):
+    path, _ = database
+    before = hashlib.sha256(path.read_bytes()).hexdigest()
+    with _server(path) as port:
+        status, _, body = _get(port, "/api/source-registry")
+        assert status == 200
+        payload = json.loads(body)
+        assert payload["read_only"] is True
+        assert payload["network_collection_enabled"] is False
+        assert payload["verification_metadata_is_authority"] is False
+        assert payload["total"] == payload["returned"] == 0
+        assert payload["source_identity_scan_truncated"] is False
+        assert payload["source_attribution_available"] is True
+        assert payload["ceqa_records_total"] == payload["ceqa_records_scanned"] == 0
+        assert payload["permit_records_total"] == payload["permit_records_scanned"] == 0
+        assert payload["records_with_registered_source_in_scan"] == 0
+        assert payload["records_without_registered_source_in_scan"] == 0
+        assert payload["entries"] == []
+        assert _get(port, "/api/source-registry?kind=permit")[0] == 400
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == before
+
+
+def test_outreach_preview_http_is_same_origin_read_only_and_no_send(database):
+    path, engine = database
+    package = LeadReviewPackage(
+        package_id="review:outreach-http",
+        base_candidate_id="candidate:outreach-http",
+        lead_score=85,
+        status=LeadReviewStatus.READY,
+        summary="Reviewed synthetic outreach fixture",
+        items=[
+            LeadReviewItem(
+                item_key="lead-item:outreach-http",
+                label="prepare reviewed lead package",
+                rationale="Synthetic retained evidence supports preview-only testing.",
+            )
+        ],
+        evidence_notes=["permit_transition: synthetic issued permit"],
+    )
+    workflow = LeadWorkflowRecord(
+        workflow_id="workflow:outreach-http",
+        package_id=package.package_id,
+        base_candidate_id=package.base_candidate_id,
+        status=LeadWorkflowStatus.READY,
+        lead_score=package.lead_score,
+    )
+    with Session(engine) as session, session.begin():
+        store_lead_review_package(session, package)
+        store_lead_workflow_record(session, workflow)
+
+    request = {
+        "workflow_id": workflow.workflow_id,
+        "expected_current_status": "ready",
+        "channel": "email",
+        "destination": "estimating@example-contractor.test",
+        "business_role": "estimating department",
+        "source_name": "official contractor website",
+        "source_reference": "https://example-contractor.test/contact",
+        "contact_review_basis": "Reviewed the official business contact page.",
+        "subject": "Construction site security support",
+        "body": "Preview-only introduction for reviewed construction security services.",
+    }
+    before = hashlib.sha256(path.read_bytes()).hexdigest()
+    with _server(path) as port:
+        status, _, raw = _post_json(
+            port, "/api/outreach-preview", request, origin=False
+        )
+        assert status == 403
+        assert json.loads(raw)["error"] == (
+            "Local same-origin preview request required."
+        )
+
+        status, _, raw = _post_json(port, "/api/outreach-preview", request)
+        assert status == 200
+        preview = json.loads(raw)
+        assert preview["workflow_id"] == workflow.workflow_id
+        assert preview["package_id"] == package.package_id
+        assert preview["workflow_status"] == "ready"
+        assert preview["requires_human_approval"] is True
+        assert preview["external_send_authorized"] is False
+        assert preview["send_executed"] is False
+        assert preview["bid_authorized"] is False
+        assert preview["contact"]["contact_review_basis"] == (
+            "Reviewed the official business contact page."
+        )
+
+        incomplete = dict(request)
+        del incomplete["contact_review_basis"]
+        assert _post_json(port, "/api/outreach-preview", incomplete)[0] == 400
+
+        status, _, raw = _get(port, "/api/health")
+        assert status == 200
+        health = json.loads(raw)
+        assert health["outreach_preview_enabled"] is True
+        assert health["outreach_send_enabled"] is False
+        assert health["bid_authorization_enabled"] is False
+
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == before
+    with Session(engine) as session:
+        stored = build_workflow_snapshot(session, limit=10)["leads"]
+        assert len(stored) == 1
+        assert stored[0]["workflow_id"] == workflow.workflow_id
+
+def test_bid_request_evidence_http_is_same_origin_read_only_and_no_pricing(database):
+    path, engine = database
+    package = LeadReviewPackage(
+        package_id="review:bid-request-http",
+        base_candidate_id="candidate:bid-request-http",
+        lead_score=90,
+        status=LeadReviewStatus.READY,
+        summary="Reviewed synthetic bid-request fixture",
+        items=[
+            LeadReviewItem(
+                item_key="lead-item:bid-request-http",
+                label="prepare reviewed lead package",
+                rationale="Synthetic retained evidence supports request review.",
+            )
+        ],
+        evidence_notes=["permit_transition: synthetic permit issued"],
+    )
+    workflow = LeadWorkflowRecord(
+        workflow_id="workflow:bid-request-http",
+        package_id=package.package_id,
+        base_candidate_id=package.base_candidate_id,
+        status=LeadWorkflowStatus.READY,
+        lead_score=package.lead_score,
+    )
+    with Session(engine) as session, session.begin():
+        store_lead_review_package(session, package)
+        store_lead_workflow_record(session, workflow)
+
+    request = {
+        "workflow_id": workflow.workflow_id,
+        "expected_current_status": "ready",
+        "request_channel": "email",
+        "requester_business_name": "Example Contractor LLC",
+        "requester_business_role": "estimating department",
+        "request_source_name": "retained business email",
+        "request_source_reference": "message:fixture:bid-request-http",
+        "request_review_basis": (
+            "Reviewed explicit pricing language in the retained request."
+        ),
+        "request_observed_at": "2026-10-08T08:30:00+00:00",
+        "request_text": "Please send pricing for construction site security coverage.",
+        "scope_summary": "Night security coverage for the reviewed construction site.",
+    }
+    before = hashlib.sha256(path.read_bytes()).hexdigest()
+    with _server(path) as port:
+        status, _, raw = _post_json(
+            port, "/api/bid-request-evidence", request, origin=False
+        )
+        assert status == 403
+        assert json.loads(raw)["error"] == (
+            "Local same-origin bid evidence request required."
+        )
+
+        status, _, raw = _post_json(port, "/api/bid-request-evidence", request)
+        assert status == 200
+        evidence = json.loads(raw)
+        assert evidence["request_evidence_id"].startswith("bid-request-evidence:v1:")
+        assert evidence["workflow_id"] == workflow.workflow_id
+        assert evidence["package_id"] == package.package_id
+        assert evidence["workflow_status"] == "ready"
+        assert evidence["requires_commercial_approval"] is True
+        assert evidence["pricing_authorized"] is False
+        assert evidence["bid_preparation_authorized"] is False
+        assert evidence["bid_submission_authorized"] is False
+
+        naive = dict(request)
+        naive["request_observed_at"] = "2026-10-08T08:30:00"
+        assert _post_json(port, "/api/bid-request-evidence", naive)[0] == 400
+
+        status, _, raw = _get(port, "/api/health")
+        assert status == 200
+        health = json.loads(raw)
+        assert health["bid_request_evidence_enabled"] is True
+        assert health["bid_pricing_enabled"] is False
+        assert health["bid_preparation_enabled"] is False
+        assert health["bid_submission_enabled"] is False
+        assert health["bid_authorization_enabled"] is False
+
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == before
+
+def test_bid_pricing_preview_http_is_exact_money_read_only_and_no_authority(database):
+    path, engine = database
+    package = LeadReviewPackage(
+        package_id="review:bid-pricing-http",
+        base_candidate_id="candidate:bid-pricing-http",
+        lead_score=92,
+        status=LeadReviewStatus.READY,
+        summary="Reviewed synthetic pricing fixture",
+        items=[
+            LeadReviewItem(
+                item_key="lead-item:bid-pricing-http",
+                label="prepare reviewed lead package",
+                rationale="Synthetic retained evidence supports request review.",
+            )
+        ],
+        evidence_notes=["permit_transition: synthetic permit issued"],
+    )
+    workflow = LeadWorkflowRecord(
+        workflow_id="workflow:bid-pricing-http",
+        package_id=package.package_id,
+        base_candidate_id=package.base_candidate_id,
+        status=LeadWorkflowStatus.READY,
+        lead_score=package.lead_score,
+    )
+    with Session(engine) as session, session.begin():
+        store_lead_review_package(session, package)
+        store_lead_workflow_record(session, workflow)
+
+    request_payload = {
+        "workflow_id": workflow.workflow_id,
+        "expected_current_status": "ready",
+        "request_channel": "email",
+        "requester_business_name": "Example Contractor LLC",
+        "requester_business_role": "estimating department",
+        "request_source_name": "retained business email",
+        "request_source_reference": "message:fixture:bid-pricing-http",
+        "request_review_basis": "Reviewed explicit pricing request.",
+        "request_observed_at": "2026-10-08T09:00:00+00:00",
+        "request_text": "Please send pricing for construction site security.",
+        "scope_summary": "Night guard coverage for the reviewed construction site.",
+    }
+    before = hashlib.sha256(path.read_bytes()).hexdigest()
+    with _server(path) as port:
+        status, _, raw = _post_json(
+            port, "/api/bid-request-evidence", request_payload
+        )
+        assert status == 200
+        request_evidence = json.loads(raw)
+
+        pricing_payload = {
+            "request_evidence": request_evidence,
+            "currency_code": "usd",
+            "line_items": [
+                {
+                    "line_key": "guarding",
+                    "description": "Night guard coverage",
+                    "pricing_basis": "Manual reviewed amount for preview only.",
+                    "amount": "100.00",
+                },
+                {
+                    "line_key": "equipment",
+                    "description": "Temporary site equipment",
+                    "pricing_basis": "Manual reviewed amount for preview only.",
+                    "amount": "25.50",
+                },
+            ],
+            "assumptions": ["Synthetic preview only."],
+            "exclusions": ["No tax treatment is implied."],
+            "validity_note": "Manual preview; commercial approval required.",
+        }
+        assert _post_json(
+            port, "/api/bid-pricing-preview", pricing_payload, origin=False
+        )[0] == 403
+
+        status, _, raw = _post_json(
+            port, "/api/bid-pricing-preview", pricing_payload
+        )
+        assert status == 200
+        preview = json.loads(raw)
+        assert preview["request_evidence_id"] == request_evidence["request_evidence_id"]
+        assert preview["currency_code"] == "USD"
+        assert preview["subtotal_minor"] == 12_550
+        assert [line["amount_minor"] for line in preview["line_items"]] == [
+            10_000,
+            2_550,
+        ]
+        assert preview["requires_commercial_approval"] is True
+        assert preview["commercial_terms_authorized"] is False
+        assert preview["customer_facing_bid_authorized"] is False
+        assert preview["bid_submission_authorized"] is False
+
+        fractional = dict(pricing_payload)
+        fractional["line_items"] = [dict(pricing_payload["line_items"][0])]
+        fractional["line_items"][0]["amount"] = "10.001"
+        assert _post_json(port, "/api/bid-pricing-preview", fractional)[0] == 409
+
+        status, _, raw = _get(port, "/api/health")
+        assert status == 200
+        health = json.loads(raw)
+        assert health["bid_pricing_preview_enabled"] is True
+        assert health["bid_pricing_enabled"] is False
+        assert health["bid_preparation_enabled"] is False
+        assert health["bid_submission_enabled"] is False
+
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == before
+
+def test_bid_proposal_draft_http_revalidates_chain_and_has_no_customer_authority(database):
+    path, engine = database
+    package = LeadReviewPackage(
+        package_id="review:proposal-http",
+        base_candidate_id="candidate:proposal-http",
+        lead_score=95,
+        status=LeadReviewStatus.READY,
+        summary="Reviewed synthetic proposal fixture",
+        items=[
+            LeadReviewItem(
+                item_key="lead-item:proposal-http",
+                label="prepare reviewed lead package",
+                rationale="Synthetic retained evidence supports request review.",
+            )
+        ],
+        evidence_notes=["permit_transition: synthetic permit issued"],
+    )
+    workflow = LeadWorkflowRecord(
+        workflow_id="workflow:proposal-http",
+        package_id=package.package_id,
+        base_candidate_id=package.base_candidate_id,
+        status=LeadWorkflowStatus.READY,
+        lead_score=package.lead_score,
+    )
+    with Session(engine) as session, session.begin():
+        store_lead_review_package(session, package)
+        store_lead_workflow_record(session, workflow)
+
+    request_payload = {
+        "workflow_id": workflow.workflow_id,
+        "expected_current_status": "ready",
+        "request_channel": "email",
+        "requester_business_name": "Example Contractor LLC",
+        "requester_business_role": "estimating department",
+        "request_source_name": "retained business email",
+        "request_source_reference": "message:fixture:proposal-http",
+        "request_review_basis": "Reviewed explicit pricing request.",
+        "request_observed_at": "2026-10-08T10:00:00+00:00",
+        "request_text": "Please send pricing for construction site security.",
+        "scope_summary": "Night guard coverage for the reviewed construction site.",
+    }
+    before = hashlib.sha256(path.read_bytes()).hexdigest()
+    with _server(path) as port:
+        status, _, raw = _post_json(port, "/api/bid-request-evidence", request_payload)
+        assert status == 200
+        request_evidence = json.loads(raw)
+
+        pricing_payload = {
+            "request_evidence": request_evidence,
+            "currency_code": "USD",
+            "line_items": [
+                {
+                    "line_key": "guarding",
+                    "description": "Night guard coverage",
+                    "pricing_basis": "Manual reviewed amount for preview only.",
+                    "amount": "125.50",
+                }
+            ],
+            "assumptions": ["Synthetic preview only."],
+            "exclusions": ["No tax treatment is implied."],
+            "validity_note": "Manual preview; commercial approval required.",
+        }
+        status, _, raw = _post_json(port, "/api/bid-pricing-preview", pricing_payload)
+        assert status == 200
+        pricing_preview = json.loads(raw)
+
+        proposal_payload = {
+            "request_evidence": request_evidence,
+            "pricing_preview": pricing_preview,
+            "proposal_title": "Construction Site Security Proposal",
+            "cover_note": "Internal draft prepared for commercial review only.",
+            "additional_terms": ["Final schedule subject to approved scope."],
+        }
+        assert _post_json(
+            port, "/api/bid-proposal-draft", proposal_payload, origin=False
+        )[0] == 403
+
+        status, _, raw = _post_json(port, "/api/bid-proposal-draft", proposal_payload)
+        assert status == 200
+        proposal = json.loads(raw)
+        assert proposal["request_evidence_id"] == request_evidence["request_evidence_id"]
+        assert proposal["pricing_preview_id"] == pricing_preview["pricing_preview_id"]
+        assert proposal["prepared_for_business_name"] == "Example Contractor LLC"
+        assert proposal["scope_summary"] == request_payload["scope_summary"]
+        assert proposal["subtotal_minor"] == 12_550
+        assert proposal["requires_commercial_approval"] is True
+        assert proposal["commercial_terms_authorized"] is False
+        assert proposal["customer_facing_bid_authorized"] is False
+        assert proposal["bid_submission_authorized"] is False
+
+        forged_pricing = dict(pricing_preview)
+        forged_pricing["validity_note"] = "Changed without a new pricing identity."
+        forged_payload = dict(proposal_payload)
+        forged_payload["pricing_preview"] = forged_pricing
+        assert _post_json(port, "/api/bid-proposal-draft", forged_payload)[0] == 400
+
+        status, _, raw = _get(port, "/api/health")
+        assert status == 200
+        health = json.loads(raw)
+        assert health["bid_proposal_draft_preview_enabled"] is True
+        assert health["bid_preparation_enabled"] is False
+        assert health["bid_submission_enabled"] is False
+
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == before
+
+def test_persisted_watchlist_http_is_same_origin_and_source_read_only(database):
+    path, engine = database
+    with Session(engine) as session, session.begin():
+        CeqaStore(session).upsert(_record("watch:http"))
+
+    with _server(path) as port:
+        status, _, raw = _get(port, "/api/watchlist")
+        assert status == 200
+        initial = json.loads(raw)
+        assert initial["schema_version"] == "operator_watchlist.v1"
+        assert initial["total"] == 0
+        assert initial["persisted_locally"] is True
+        assert initial["source_records_read_only"] is True
+        assert initial["source_monitoring_enabled"] is False
+        assert initial["retained_source_change_detection_enabled"] is True
+        assert initial["remote_source_polling_enabled"] is False
+        assert initial["notification_delivery_enabled"] is False
+        assert initial["commercial_actions_authorized"] is False
+        assert _get(port, "/api/watchlist?kind=ceqa")[0] == 400
+
+        mutation_path = "/api/watchlist?kind=ceqa&record_id=watch%3Ahttp"
+        assert _get(port, mutation_path, method="POST")[0] == 403
+        origin = {"Origin": f"http://127.0.0.1:{port}"}
+        status, _, raw = _get(port, mutation_path, headers=origin, method="POST")
+        assert status == 200
+        added = json.loads(raw)
+        assert added["mutation"] == "added"
+        assert added["total"] == 1
+        assert added["items"][0]["record_kind"] == "ceqa"
+        assert added["items"][0]["record_id"] == "watch:http"
+        assert added["items"][0]["alert_enabled"] is False
+        assert added["items"][0]["change_pending"] is False
+        assert added["items"][0]["title"] == "Synthetic warehouse record"
+
+        with Session(engine) as session, session.begin():
+            updated = _record("watch:http").model_copy(
+                update={"title": "Updated watched warehouse"}
+            )
+            CeqaStore(session).upsert(updated)
+
+        status, _, raw = _get(port, "/api/watchlist")
+        assert status == 200
+        persisted = json.loads(raw)
+        assert persisted["items"][0]["status"] == "triggered"
+        assert persisted["items"][0]["change_pending"] is True
+        assert persisted["items"][0]["title"] == "Updated watched warehouse"
+
+        status, _, raw = _get(port, mutation_path, headers=origin, method="DELETE")
+        assert status == 200
+        archived = json.loads(raw)
+        assert archived["mutation"] == "archived"
+        assert archived["total"] == 0
+
+        status, _, raw = _get(port, "/api/health")
+        assert status == 200
+        health = json.loads(raw)
+        assert health["read_only"] is True
+        assert health["watchlist_persistence_enabled"] is True
+        assert health["watchlist_source_monitoring_enabled"] is False
+        assert health["watchlist_retained_change_detection_enabled"] is True
+        assert health["watchlist_remote_source_polling_enabled"] is False
+
+    with Session(engine) as session:
+        record = CeqaStore(session).get("watch:http")
+        assert record is not None
+        assert record.title == "Updated watched warehouse"
+        row = session.scalar(
+            select(IntelligenceWatchlistRecord).where(
+                IntelligenceWatchlistRecord.target_id == "watch:http"
+            )
+        )
+        assert row is not None
+        assert row.status == "archived"
+
+
+def test_operator_startup_requires_source_registry_schema(database):
+    path, engine = database
+    with engine.begin() as connection:
+        connection.execute(text("DROP TABLE source_verifications"))
+
+    with pytest.raises(OperationalError):
+        create_handler(path)
