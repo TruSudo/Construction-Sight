@@ -132,7 +132,7 @@ Populate the database through existing governed intake/persistence commands.
 - Bid Studio currently exposes only the request-evidence gate. It binds an exact
   persisted `ready`/`active` workflow to requester-business provenance, an offset-aware
   observed request time, retained request text, and requested security scope. It does
-  not calculate pricing, prepare a proposal, grant commercial approval, or submit a bid.
+  can chain validated request evidence into a manual exact-money internal pricing preview. It does not infer prices, grant commercial approval, create an authorized customer-facing bid, or submit a bid.
 
 ## Local boundary
 
@@ -140,7 +140,7 @@ Source and commercial database reads use SQLite `mode=ro`. A separate guarded
 engine may mutate only persisted local watchlist rows. HTTP binds only to
 `127.0.0.1`, accepts exact loopback Host values, and requires exact same-origin
 requests for POST/DELETE operations. The only effectful HTTP database mutation is
-watchlist membership; Outreach preview and Bid Request Evidence POSTs are bounded
+watchlist membership; Outreach preview, Bid Request Evidence and Bid Pricing Preview POSTs are bounded
 read-only computations and have no network-delivery transport.
 The GUI loads its JavaScript/CSS locally, escapes displayed source strings, limits
 source links to HTTP(S), and uses a CSP without inline scripts. Database read or
