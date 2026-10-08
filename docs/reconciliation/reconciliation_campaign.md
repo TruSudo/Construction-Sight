@@ -250,3 +250,34 @@ Core historical behavior was retained:
 - source verification checklist, promotion, readiness, and registry apply workflows remain present under later authorized/shared-transport boundaries.
 
 Disposition: 49 additional historical branches were classified in the manifest as contained or superseded after semantic/file-level comparison.
+
+
+### Historical branch inventory — fully classified
+
+The complete 165-tip historical inventory now has no pending lineages.
+
+Final classification at this checkpoint:
+- 85 `contained`
+- 66 `superseded`
+- 7 `reconciled`
+- 5 `audit-only`
+- 2 `archive`
+- 0 `pending`
+
+The remaining CEQAnet operational lineages were closed as follows:
+- ingestion dashboard v2, listing-to-exact-capture queue, official CSV contract, queue-to-capture provenance, source verification, governed capture preview, evidence repair, and source-registry controlled apply are contained in current ancestry;
+- the older ingestion dashboard, recurring-run governance predecessor, Windows-1252 repair/finalization branch, and detail-enrichment predecessor are superseded by later retained implementations;
+- partial evidence-repair lineage is retained as audit-only historical evidence rather than runtime code.
+
+The branch-reconciliation problem is therefore closed at the inventory level. Subsequent work is product integration and runtime validation, not discovery of unclassified historical branches.
+
+### Transition to final integration validation
+
+With the historical branch forest fully classified, the remaining work is to prove the canonical application as one system:
+1. exercise source acquisition and retained evidence through universal intake;
+2. resolve project/site/parcel/entity/permit identity and longitudinal state;
+3. produce opportunity/readiness state and operator-visible evidence;
+4. exercise lead workflow and governed commercial transitions;
+5. validate result authority, correction/supersession, and royalty-facing reads;
+6. validate persistent watch/change behavior and remaining locked-UI destinations;
+7. run final whole-tree quality gates and Native Maximum Assurance only after the runtime integration tree is frozen.
