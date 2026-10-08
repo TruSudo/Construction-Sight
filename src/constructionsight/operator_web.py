@@ -423,9 +423,21 @@ def create_handler(
 
 
         def do_POST(self) -> None:
+            if urlparse(self.path).path != "/api/watchlist":
+                self._send_json(
+                    {"error": "Method not implemented."},
+                    status=HTTPStatus.NOT_IMPLEMENTED,
+                )
+                return
             self._mutate_watchlist(archive=False)
 
         def do_DELETE(self) -> None:
+            if urlparse(self.path).path != "/api/watchlist":
+                self._send_json(
+                    {"error": "Method not implemented."},
+                    status=HTTPStatus.NOT_IMPLEMENTED,
+                )
+                return
             self._mutate_watchlist(archive=True)
 
         def _mutate_watchlist(self, *, archive: bool) -> None:
