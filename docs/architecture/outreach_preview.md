@@ -12,7 +12,7 @@ The current implementation includes:
 - persisted workflow and review-package integrity checks
 - durable duplicate-state revalidation
 - explicit business-contact provenance
-- explicit operator confirmation of the business contact path
+- a required operator contact-review basis
 - `constructionsight-leads outreach-preview`
 - service and CLI regression coverage
 
@@ -27,7 +27,7 @@ A preview may be built only when all of these are true:
 5. persisted duplicate suppression has no unresolved duplicate or review-needed result;
 6. the exact persisted review package matches the workflow;
 7. the review package is `ready` and has no unresolved limitations;
-8. the operator explicitly confirms the supplied destination as a reviewed business contact path.
+8. the operator records a nonblank review basis for treating the supplied destination as a business contact path.
 
 Early opportunity scoring, a green display state, or a contact hint alone cannot satisfy this gate.
 
@@ -40,7 +40,7 @@ The preview requires:
 - business role;
 - source name;
 - source reference;
-- explicit operator confirmation.
+- a nonblank operator contact-review basis.
 
 The preview service does not harvest contacts, infer consent, or determine that a communication is legally permissible to send. Contact acquisition and future delivery compliance remain separate governed concerns.
 
