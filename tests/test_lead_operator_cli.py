@@ -13,11 +13,17 @@ from constructionsight.lead_operator_service import (
     load_persisted_lead_workflow,
     transition_persisted_lead_workflow,
 )
+from constructionsight.lead_review_models import (
+    LeadReviewItem,
+    LeadReviewPackage,
+    LeadReviewStatus,
+)
 from constructionsight.lead_workflow_models import (
     LeadWorkflowEvent,
     LeadWorkflowRecord,
     LeadWorkflowStatus,
 )
+from constructionsight.lead_workflow_service import create_lead_workflow
 from constructionsight.result_ledger_models import ResultLedgerRecord, ResultLedgerStatus
 from constructionsight.result_ledger_service import build_result_ledger_record
 from constructionsight.storage.database import (
@@ -31,6 +37,7 @@ from constructionsight.storage.lead_workflow_orm import (
     LeadWorkflowRecordRow,
 )
 from constructionsight.storage.lead_workflow_store import (
+    store_lead_review_package,
     store_lead_workflow_record,
     store_result_ledger_record,
 )
@@ -79,6 +86,32 @@ def _seed(database_url: str) -> None:
     with managed_session(factory) as session:
         store_lead_workflow_record(session, _workflow())
         store_result_ledger_record(session, _ledger())
+
+
+
+
+def _seed_ready_preview(database_url: str) -> LeadWorkflowRecord:
+    package = LeadReviewPackage(
+        package_id="lead-review:preview-cli",
+        base_candidate_id="candidate:preview-cli",
+        lead_score=85,
+        status=LeadReviewStatus.READY,
+        summary="ready preview package",
+        items=[
+            LeadReviewItem(
+                item_key="lead-item:preview-cli",
+                label="prepare reviewed lead package",
+                rationale="retained evidence supports preview",
+            )
+        ],
+        evidence_notes=["permit_transition: permit issued"],
+    )
+    workflow = create_lead_workflow(package=package)
+    factory = _factory(database_url)
+    with managed_session(factory) as session:
+        store_lead_review_package(session, package)
+        store_lead_workflow_record(session, workflow)
+    return workflow
 
 
 def test_list_and_detail_preserve_workflow_payload(tmp_path) -> None:
@@ -322,3 +355,81 @@ def test_transition_cli_applies_governed_status_change(tmp_path) -> None:
     assert payload["previous_status"] == "monitor"
     assert payload["current_status"] == "review"
     assert payload["event_count"] == 2
+
+
+def test_outreach_preview_cli_emits_preview_only_json(tmp_path) -> None:
+    database_url = _database_url(tmp_path)
+    workflow = _seed_ready_preview(database_url)
+    runner = CliRunner()
+
+    result = runner.invoke(
+        app,
+        [
+            "outreach-preview",
+            workflow.workflow_id,
+            "--expected-current-status",
+            "ready",
+            "--channel",
+            "email",
+            "--destination",
+            "estimating@example-contractor.test",
+            "--business-role",
+            "estimating department",
+            "--source-name",
+            "official contractor website",
+            "--source-reference",
+            "https://example-contractor.test/contact",
+            "--subject",
+            "Construction site security support",
+            "--body",
+            "Preview-only introduction for reviewed construction security services.",
+            "--database-url",
+            database_url,
+            "--confirm-business-contact",
+            "--json-output",
+        ],
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert payload["workflow_id"] == workflow.workflow_id
+    assert payload["workflow_status"] == "ready"
+    assert payload["requires_human_approval"] is True
+    assert payload["external_send_authorized"] is False
+    assert payload["send_executed"] is False
+    assert payload["bid_authorized"] is False
+
+
+def test_outreach_preview_cli_requires_contact_confirmation(tmp_path) -> None:
+    database_url = _database_url(tmp_path)
+    workflow = _seed_ready_preview(database_url)
+    runner = CliRunner()
+
+    result = runner.invoke(
+        app,
+        [
+            "outreach-preview",
+            workflow.workflow_id,
+            "--expected-current-status",
+            "ready",
+            "--channel",
+            "email",
+            "--destination",
+            "estimating@example-contractor.test",
+            "--business-role",
+            "estimating department",
+            "--source-name",
+            "official contractor website",
+            "--source-reference",
+            "https://example-contractor.test/contact",
+            "--subject",
+            "Preview",
+            "--body",
+            "Preview body",
+            "--database-url",
+            database_url,
+        ],
+    )
+
+    assert result.exit_code == 2
+    assert "operator confirmation" in result.stderr
