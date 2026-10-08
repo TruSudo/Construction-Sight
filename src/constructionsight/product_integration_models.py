@@ -31,13 +31,13 @@ class ProductIntegrationReport(BaseModel):
         if self.enrichment.base_candidate_id != candidate_id:
             raise ValueError("enrichment candidate identity does not match opportunity candidate")
         if self.review_package.base_candidate_id != candidate_id:
-            raise ValueError("review package candidate identity does not match opportunity candidate")
+            raise ValueError(\n                "review package candidate identity does not match opportunity candidate"\n            )
         if self.workflow.base_candidate_id != candidate_id:
             raise ValueError("workflow candidate identity does not match opportunity candidate")
         if self.workflow.package_id != self.review_package.package_id:
             raise ValueError("workflow package identity does not match review package")
         if self.fingerprint is not None and self.fingerprint.base_candidate_id != candidate_id:
-            raise ValueError("lead fingerprint candidate identity does not match opportunity candidate")
+            raise ValueError(\n                "lead fingerprint candidate identity does not match opportunity candidate"\n            )
         if self.duplicate_result is not None:
             if self.fingerprint is None:
                 raise ValueError("duplicate result requires a lead fingerprint")
