@@ -50,8 +50,6 @@
               "adapter_family": "retained-official-csv-trial",
               "raw_reference": "evidence/source_verification/ceqanet_csv_live_execution_2026-07-12.json",
               "evidence_text": "Raw CSV SHA-256: 5b1bc503c81d12ed0f00e52539edb437b42ae4c3a539a25e1c82a02b84273163. Retained historical source observation, not a current construction lead. Source coordinates: 33°54'33\"N 116°45'59\"W. Converted from DMS to decimal degrees. Broad geographic reference, not an exact jobsite.",
-              "confidence_score": 0,
-              "verified": false,
               "notes": "Community planning area; no current activity or exact parcel established."
             }
           ]
@@ -74,8 +72,6 @@
                 "adapter_family": "retained-official-csv-trial",
                 "raw_reference": "evidence/source_verification/ceqanet_csv_live_execution_2026-07-12.json",
                 "evidence_text": "Raw CSV SHA-256: 5b1bc503c81d12ed0f00e52539edb437b42ae4c3a539a25e1c82a02b84273163. Retained historical source observation, not a current construction lead.",
-                "confidence_score": 0,
-                "verified": false,
                 "notes": "Community planning area; no current activity or exact parcel established."
               }
             ]
@@ -89,8 +85,6 @@
             "adapter_family": "retained-official-csv-trial",
             "raw_reference": "evidence/source_verification/ceqanet_csv_live_execution_2026-07-12.json",
             "evidence_text": "Raw CSV SHA-256: 5b1bc503c81d12ed0f00e52539edb437b42ae4c3a539a25e1c82a02b84273163. Retained historical source observation, not a current construction lead.",
-            "confidence_score": 0,
-            "verified": false,
             "notes": "Community planning area; no current activity or exact parcel established."
           },
           {
@@ -100,8 +94,6 @@
             "adapter_family": null,
             "raw_reference": null,
             "evidence_text": "Document link from retained CSV. No new page visit or current-status verification in this trial.",
-            "confidence_score": 0,
-            "verified": false,
             "notes": null
           }
         ]
@@ -143,8 +135,6 @@
               "adapter_family": "retained-official-csv-trial",
               "raw_reference": "evidence/source_verification/ceqanet_csv_live_execution_2026-07-12.json",
               "evidence_text": "Raw CSV SHA-256: 5b1bc503c81d12ed0f00e52539edb437b42ae4c3a539a25e1c82a02b84273163. Retained historical source observation, not a current construction lead. Source coordinates: 33°54'33\"N 116°45'59\"W. Converted from DMS to decimal degrees. Broad geographic reference, not an exact jobsite.",
-              "confidence_score": 0,
-              "verified": false,
               "notes": "Community planning area; no current activity or exact parcel established."
             }
           ]
@@ -167,8 +157,6 @@
                 "adapter_family": "retained-official-csv-trial",
                 "raw_reference": "evidence/source_verification/ceqanet_csv_live_execution_2026-07-12.json",
                 "evidence_text": "Raw CSV SHA-256: 5b1bc503c81d12ed0f00e52539edb437b42ae4c3a539a25e1c82a02b84273163. Retained historical source observation, not a current construction lead.",
-                "confidence_score": 0,
-                "verified": false,
                 "notes": "Community planning area; no current activity or exact parcel established."
               }
             ]
@@ -182,8 +170,6 @@
             "adapter_family": "retained-official-csv-trial",
             "raw_reference": "evidence/source_verification/ceqanet_csv_live_execution_2026-07-12.json",
             "evidence_text": "Raw CSV SHA-256: 5b1bc503c81d12ed0f00e52539edb437b42ae4c3a539a25e1c82a02b84273163. Retained historical source observation, not a current construction lead.",
-            "confidence_score": 0,
-            "verified": false,
             "notes": "Community planning area; no current activity or exact parcel established."
           },
           {
@@ -193,8 +179,6 @@
             "adapter_family": null,
             "raw_reference": null,
             "evidence_text": "Document link from retained CSV. No new page visit or current-status verification in this trial.",
-            "confidence_score": 0,
-            "verified": false,
             "notes": null
           }
         ]
@@ -225,8 +209,6 @@
             "adapter_family": "retained-official-csv-trial",
             "raw_reference": "evidence/source_verification/ceqanet_csv_live_execution_2026-07-12.json",
             "evidence_text": "Raw CSV SHA-256: 5b1bc503c81d12ed0f00e52539edb437b42ae4c3a539a25e1c82a02b84273163. Retained historical source observation, not a current construction lead. Source coordinates: 33°54'33\"N 116°45'59\"W. Converted from DMS to decimal degrees. Broad geographic reference, not an exact jobsite.",
-            "confidence_score": 0,
-            "verified": false,
             "notes": "Community planning area; no current activity or exact parcel established."
           }
         ]
@@ -255,8 +237,6 @@
             "adapter_family": "retained-official-csv-trial",
             "raw_reference": "evidence/source_verification/ceqanet_csv_live_execution_2026-07-12.json",
             "evidence_text": "Raw CSV SHA-256: 5b1bc503c81d12ed0f00e52539edb437b42ae4c3a539a25e1c82a02b84273163. Retained historical source observation, not a current construction lead.",
-            "confidence_score": 0,
-            "verified": false,
             "notes": "Community planning area; no current activity or exact parcel established."
           }
         ]
