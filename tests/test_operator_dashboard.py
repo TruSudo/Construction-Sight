@@ -2349,3 +2349,65 @@ def test_operator_startup_requires_source_registry_schema(database):
 
     with pytest.raises(OperationalError):
         create_handler(path)
+
+
+def test_source_review_queue_is_bounded_content_bound_and_read_only(database):
+    from constructionsight.operator_source_review_queue import build_source_review_queue
+
+    path, engine = database
+    with Session(engine) as session, session.begin():
+        CeqaStore(session).upsert(_record("review:has-evidence"))
+        CeqaStore(session).upsert(_record("review:no-evidence", provenance=[]))
+    before = hashlib.sha256(path.read_bytes()).hexdigest()
+    with Session(engine) as session:
+        page = build_source_review_queue(session, kind="ceqa", limit=1)
+        assert page.total_source_records == 2
+        assert page.returned == 1 and page.has_more
+        first = page.items[0]
+        assert first.state in {"hold", "review_required"}
+        assert first.outreach_authorized is False
+        assert first.bid_authorized is False
+        assert first.normalized_source_sha256
+        assert first.preview_id.startswith("source-candidate-preview:")
+        follow = build_source_review_queue(session, kind="ceqa", limit=1, offset=1)
+        assert follow.returned == 1 and not follow.has_more
+        assert follow.items[0].record_id != first.record_id
+        assert {first.state, follow.items[0].state} == {"hold", "review_required"}
+        with pytest.raises(ValueError, match="page bounds"):
+            build_source_review_queue(session, limit=26)
+
+    with _server(path) as port:
+        code, _, body = _get(port, "/api/source-review-queue?kind=ceqa&limit=1")
+        assert code == 200
+        payload = json.loads(body)
+        assert payload["schema_version"] == "constructionsight.source-review-queue/v1"
+        assert payload["returned"] == 1 and payload["has_more"] is True
+        assert payload["lead_created"] is False
+        assert payload["network_executed"] is False
+        assert payload["source_records_mutated"] is False
+        assert payload["outreach_authorized"] is False
+        for invalid in (
+            "?limit=26", "?kind=all&record_id=fake", "?limit=1&limit=2",
+            "?county=Other", "?offset=-1",
+        ):
+            assert _get(port, "/api/source-review-queue" + invalid)[0] == 400
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == before
+
+
+def test_source_review_queue_rejects_stale_page_content(database, monkeypatch):
+    from constructionsight import operator_source_review_queue as module
+
+    _, engine = database
+    with Session(engine) as session, session.begin():
+        CeqaStore(session).upsert(_record("review:race"))
+    original = module.build_source_candidate_preview
+
+    def competing_revision(session, *, kind, record_id):
+        preview = original(session, kind=kind, record_id=record_id)
+        preview.source_snapshot.title = "Changed after listing"
+        return preview
+
+    monkeypatch.setattr(module, "build_source_candidate_preview", competing_revision)
+    with Session(engine) as session:
+        with pytest.raises(ValueError, match="changed during triage"):
+            module.build_source_review_queue(session, kind="ceqa")

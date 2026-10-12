@@ -421,3 +421,18 @@ def test_commercial_workflows_paginate_beyond_first_dashboard_page() -> None:
     assert "showBidStudio(offset+50)" in script
     assert "Only eligible workflows on this page are selectable" in script
     assert "const eligible=commercialWorkflowOptions(data);" in script
+
+
+def test_lead_console_has_read_only_source_review_queue_without_promotion() -> None:
+    script = (ASSETS / "operator_command_center.js").read_text(encoding="utf-8")
+    assert 'fetchJson("/api/source-review-queue?"+params)' in script
+    assert "async function loadSourceReviewQueue(offset=0" in script
+    assert 'id="source-review-queue"' in script
+    assert "data.lead_created!==false" in script
+    assert "data.source_records_mutated!==false" in script
+    assert "data.outreach_authorized!==false" in script
+    assert "data.bid_authorized!==false" in script
+    assert "source-candidate-preview:" in script
+    assert "loadSourceReviewQueue(offset+10,expectedToken)" in script
+    assert 'openExactStoredRecord(item,identity(item),"source review queue")' in script
+    assert "neither stages the separate source-review docket nor" in script

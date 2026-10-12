@@ -438,3 +438,18 @@ presenting the generic share calculation as a paid royalty.
 The dedicated AI Center remains OFF / no provider connected. These new read-only
 capabilities operate independently of AI. The entire new increment remains
 development-stage until exact-head CI and actual browser acceptance are reviewed.
+
+
+## Read-only source observation review queue (integration pilot)
+
+The Lead Console now includes a separate, paginated source observation review
+queue. GET `/api/source-review-queue` accepts bounded `kind`, `county`,
+`q`, `limit` (maximum 25) and `offset`; the dashboard requests 10 at a time.
+This is not the persisted commercial workflow ledger. Each exact CEQA or permit
+record is reloaded to obtain the existing canonical normalized-source SHA-256,
+preview ID, county and seven evidence checks; stale page/preview mismatches fail
+closed. The operator may reopen the exact current record and its evidence.
+Neither query nor selection stages a source-review docket, scores an opportunity,
+qualifies a green lead, mutates source state, performs collection or grants
+outreach/bid authority. Page totals count source rows, not projects or leads.
+Live coverage and concurrent-writer acceptance remain separate gates.

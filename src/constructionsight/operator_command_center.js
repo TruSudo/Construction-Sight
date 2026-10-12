@@ -909,6 +909,73 @@ function workflowDetails(row) {
       ' · '+escapeText(valueOrUnknown(event.reason))+'</p>').join(""):'<p>No historical events retained.</p>')+'</section>'+
     '<a href="/workspace#workflow">Open full read-only workflow workspace →</a></section>';
 }
+
+async function loadSourceReviewQueue(offset=0, expectedToken=featureRequest) {
+  const panel=byId("source-review-queue");
+  if(!panel)return;
+  const kind=activeKind,county=activeCounty,query=activeQuery;
+  const params=new URLSearchParams({kind,county,q:query,limit:"10",offset:String(offset)});
+  panel.innerHTML='<p>Inspecting retained unqualified source observations…</p>';
+  try {
+    const data=await fetchJson("/api/source-review-queue?"+params);
+    if(expectedToken!==featureRequest || byId("feature-view").hidden ||
+       panel!==byId("source-review-queue"))return;
+    if(data.schema_version!=="constructionsight.source-review-queue/v1" ||
+      data.read_only!==true || data.network_executed!==false ||
+      data.source_records_mutated!==false || data.lead_created!==false ||
+      data.outreach_authorized!==false || data.bid_authorized!==false ||
+      data.selection!==kind || data.county_filter!==county || data.query!==query ||
+      data.limit!==10 || data.offset!==offset ||
+      !Number.isSafeInteger(data.total_source_records) ||
+      !Array.isArray(data.items) || data.returned!==data.items.length ||
+      data.returned>10 || data.has_more!==(offset+data.returned<data.total_source_records))
+      throw Error("Source review queue authority or pagination is inconsistent.");
+    const keys=new Set();
+    for(const item of data.items){
+      if(!item || !["ceqa","permit"].includes(item.record_kind) ||
+        typeof item.record_id!=="string" || !item.record_id ||
+        keys.has(identity(item)) ||
+        !["hold","review_required"].includes(item.state) ||
+        item.source_claim_only!==true || item.outreach_authorized!==false ||
+        item.bid_authorized!==false || typeof item.preview_id!=="string" ||
+        !/^source-candidate-preview:[0-9a-f]{64}$/.test(item.preview_id) ||
+        !/^[0-9a-f]{64}$/.test(item.normalized_source_sha256) ||
+        !Array.isArray(item.checks))
+        throw Error("Source review queue item is inconsistent.");
+      keys.add(identity(item));
+    }
+    panel.innerHTML='<h3>Source observation review queue</h3>'+
+      '<p>'+data.returned+' observations on this page; '+data.total_source_records+
+      ' matching stored source records, not deduplicated projects or approved leads. '+
+      'Every observation still requires independent construction-activity, site, party and commercial review.</p>'+
+      (data.items.map((item,i)=>'<div class="evidence-item"><strong>'+
+        escapeText(item.title)+'</strong><p>'+
+        escapeText(item.record_kind.toUpperCase()+' · '+item.record_id)+
+        ' · '+escapeText(valueOrUnknown(item.county))+
+        ' · '+escapeText(item.state.replaceAll("_"," "))+'</p>'+
+        '<p>'+item.checks.map(check=>escapeText(check.key.replaceAll("_"," ")+": "+check.state)).join(' · ')+'</p>'+
+        '<button type="button" class="action" data-source-review="'+i+'">'+
+        'Inspect exact source & evidence →</button></div>').join("")||
+        '<p>No retained source observations on this page.</p>')+
+      '<div class="record-pager"><button type="button" id="review-previous" '+
+        (offset===0?'disabled':'')+'>← Previous observations</button>'+
+        '<button type="button" id="review-next" '+
+        (!data.has_more?'disabled':'')+'>Next observations →</button></div>'+
+      '<p>Review queue reads normalized source facts only. It neither stages the separate source-review docket nor creates a commercial lead.</p>';
+    byId("review-previous").onclick=()=>loadSourceReviewQueue(Math.max(0,offset-10),expectedToken);
+    byId("review-next").onclick=()=>{if(data.has_more)loadSourceReviewQueue(offset+10,expectedToken);};
+    panel.querySelectorAll("[data-source-review]").forEach(button=>button.onclick=()=>{
+      const item=data.items[Number(button.dataset.sourceReview)];
+      if(item)openExactStoredRecord(item,identity(item),"source review queue");
+    });
+  }catch(error){
+    if(expectedToken===featureRequest && !byId("feature-view").hidden &&
+      panel===byId("source-review-queue"))
+      panel.innerHTML='<p role="alert">Source review queue unavailable: '+
+        escapeText(error.message||error)+'</p><p>No source or lead status was changed.</p>';
+  }
+}
+
 async function showLeads(offset=0) {
   const token=++featureRequest;
   featureIntro("Lead Console", "Persisted, exact-package reviewed workflows · local read-only inspection");
@@ -933,13 +1000,15 @@ async function showLeads(offset=0) {
       escapeText(valueOrUnknown(row.summary||row.base_candidate_id))+'</strong><small>'+
       escapeText(row.workflow_id)+' · exact package '+escapeText(row.package_id)+'</small></button>').join("")||
       '<p>No retained lead workflows. Unassessed source records are not automatically commercial leads.</p>';
-    byId("feature-body").innerHTML='<section class="feature-card"><h2>Persisted lead workflows</h2><p>Showing '+
+    byId("feature-body").innerHTML='<section class="feature-card"><div id="source-review-queue" class="feature-card"><p>Loading source review queue…</p></div></section>'+
+      '<section class="feature-card"><h2>Persisted lead workflows</h2><p>Showing '+
       (data.total?offset+1:0)+'–'+(offset+data.returned)+' of '+data.total+
       ' workflow rows. These are not distinct verified construction projects or automatically approved contacts.</p>'+
       '<div class="lead-records">'+markup+'</div><div class="record-pager">'+
       '<button type="button" id="leads-prev" '+(offset===0?'disabled':'')+'>← Previous</button>'+
       '<button type="button" id="leads-next" '+(!data.has_more?'disabled':'')+'>Next →</button></div></section>'+
       '<div id="lead-detail"><section class="feature-card"><p>Select a retained workflow to inspect its exact review package and recorded history.</p></section></div>';
+    loadSourceReviewQueue(0,token);
     byId("leads-prev").onclick=()=>{if(offset>0)showLeads(Math.max(0,offset-25));};
     byId("leads-next").onclick=()=>{if(data.has_more)showLeads(offset+25);};
     byId("feature-body").querySelectorAll("[data-lead]").forEach(button=>button.onclick=()=>{

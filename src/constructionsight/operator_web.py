@@ -57,6 +57,7 @@ from constructionsight.operator_source_candidate import (
     build_source_candidate_preview,
 )
 from constructionsight.operator_source_registry import build_operator_source_registry
+from constructionsight.operator_source_review_queue import build_source_review_queue
 from constructionsight.operator_source_revision import build_source_revision_snapshot
 from constructionsight.operator_watchlist import (
     add_source_watch,
@@ -113,11 +114,14 @@ def _parameters(
     candidate: bool = False,
     timeline: bool = False,
     results: bool = False,
+    source_review_queue: bool = False,
 ) -> _RequestParameters:
     values = parse_qs(query, keep_blank_values=True, max_num_fields=5)
     allowed = (
         {"limit", "offset"}
         if workflow
+        else {"kind", "q", "county", "limit", "offset"}
+        if source_review_queue
         else {"kind", "record_id"}
         if candidate
         else {"kind", "q", "county", "entity_key"}
@@ -132,9 +136,9 @@ def _parameters(
     )
     if set(values) - allowed or any(len(value) != 1 for value in values.values()):
         raise ValueError("unsupported or repeated query parameter")
-    limit = int(values.get("limit", ["25" if results else "100"])[0])
+    limit = int(values.get("limit", ["10" if source_review_queue else "25" if results else "100"])[0])
     offset = int(values.get("offset", ["0"])[0])
-    if not 1 <= limit <= (50 if results else 500) or not 0 <= offset <= 1_000_000:
+    if not 1 <= limit <= (25 if source_review_queue else 50 if results else 500) or not 0 <= offset <= 1_000_000:
         raise ValueError("invalid page bounds")
     if workflow:
         return _RequestParameters(
@@ -309,6 +313,7 @@ def create_handler(
                     "/api/entity-neighborhood",
                     "/api/entity-index",
                     "/api/candidate-preview",
+                    "/api/source-review-queue",
                     "/api/capture-queue",
                     "/api/parcel-candidates",
                     "/api/workflows",
@@ -341,6 +346,7 @@ def create_handler(
                     entity=path == "/api/entity-neighborhood",
                     entity_index=path == "/api/entity-index",
                     candidate=path in {"/api/candidate-preview", "/api/parcel-candidates"},
+                    source_review_queue=path == "/api/source-review-queue",
                 )
             except ValueError as exc:
                 self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
@@ -399,6 +405,12 @@ def create_handler(
                         payload = inspect_parcel_candidates(
                             session, kind=parameters.kind,
                             record_id=parameters.record_id,
+                        ).model_dump(mode="json")
+                    elif path == "/api/source-review-queue":
+                        payload = build_source_review_queue(
+                            session, kind=parameters.kind, county=parameters.county,
+                            query=parameters.query, limit=parameters.limit,
+                            offset=parameters.offset,
                         ).model_dump(mode="json")
                     elif path == "/api/candidate-preview":
                         if parameters.record_id is None or parameters.kind == "all":
