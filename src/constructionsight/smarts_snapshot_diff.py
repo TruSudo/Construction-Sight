@@ -223,7 +223,8 @@ def build_review_summary(
             "Absence in a later CSV is a review flag, not evidence of permit expiry,"
             " cancellation or physical completion.",
             "CSV string-value row hashes are not interchangeable with typed CKAN JSON hashes.",
-            "No construction activity, parcel/project association or bidding readiness is inferred.",
+            "No construction activity, parcel/project association or bidding"
+            " readiness is inferred.",
         ],
     }
 
