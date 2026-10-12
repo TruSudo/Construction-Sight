@@ -2408,9 +2408,10 @@ def test_source_review_queue_rejects_stale_page_content(database, monkeypatch):
         return preview
 
     monkeypatch.setattr(module, "build_source_candidate_preview", competing_revision)
-    with Session(engine) as session:
-        with pytest.raises(ValueError, match="changed during triage"):
-            module.build_source_review_queue(session, kind="ceqa")
+    with Session(engine) as session, pytest.raises(
+        ValueError, match="changed during triage"
+    ):
+        module.build_source_review_queue(session, kind="ceqa")
 
 
 def test_retained_public_ceqanet_source_to_review_pilot(tmp_path):
