@@ -148,6 +148,13 @@ def test_na_app_id_never_becomes_a_stable_identity() -> None:
     assert any("No usable" in message for message in preview.limitations)
 
 
+def test_malformed_source_identifiers_never_become_stable_keys() -> None:
+    row = _record(APP_ID="000", WDID="bad;id")
+    preview = build_smarts_intake_preview(_page(row), row)
+    assert preview.source_record_key is None
+    assert preview.identity_status == "missing_source_identity"
+
+
 def test_valid_wdid_can_anchor_source_identity_when_app_id_is_na() -> None:
     row = _record(APP_ID="NA", WDID="7 33C300548")
     preview = build_smarts_intake_preview(_page(row), row)
