@@ -1,0 +1,252 @@
+{
+  "schema_version": 1,
+  "created_on": "2026-10-12",
+  "goal": "Representation-independent evidence linking benchmark across five heterogeneous construction projects.",
+  "data_classification": "nonproduction_pilot",
+  "smarts_observations_provenance": "Transcribed from user-supplied live CKAN SQL query output dated 2026-10-12; no raw SMARTS body retained in this manifest; not independently API-fetched in this change.",
+  "official_smarts_resource_id": "8a0ed456-ca69-4b29-9c5b-5de3958dc963",
+  "match_semantics": "All project-to-SMARTS associations are candidate links pending full SMARTS geometry/WDID and parcel verification. External official records independently establish projects, not the exact source-record linkage or work start.",
+  "prohibited_inferences": [
+    "SMARTS Active status is active regulatory coverage, not verified construction in progress.",
+    "Proposed/reported construction commencement dates are not actual groundbreaking evidence.",
+    "Document approval does not imply all phases were permitted or mobilized.",
+    "A developer name in SMARTS is not necessarily the owner, general contractor or authorized security buyer.",
+    "No automatic outbound contact or bid readiness from this fixture."
+  ],
+  "cases": [
+    {
+      "id": "smarts_northern_gateway_menifee",
+      "smarts": {
+        "site_name": "Northern Gateway Logistics Center Street Improvements",
+        "county": "Riverside",
+        "city": "Menifee",
+        "app_id": "600752",
+        "regulatory_status": "Active",
+        "noi_processed_date": "2026-09-23",
+        "reported_commencement_date": "2026-10-01",
+        "developer_name": "Uprite Construction Corporation"
+      },
+      "external_project": "Northern Gateway Logistics Center (warehouse development)",
+      "candidate_relation": "possible_offsite_infrastructure_of",
+      "link_status": "unverified_scope_relationship",
+      "external_evidence": [
+        {
+          "url": "https://www.cityofmenifee.us/DocumentCenter/View/23112/Notice-of-Determination---Northern-Gateway-Logistics-Center-PLN23-0040",
+          "type": "city_ceqa_notice",
+          "observations": [
+            "SCH 2021110379",
+            "PLN23-0040",
+            "Menifee project approval reported 2025-05-14",
+            "398041 sq ft across two proposed warehouse buildings",
+            "Parcels 331-060-007, 331-060-008, 331-060-020, 331-060-023, 331-060-030"
+          ]
+        },
+        {
+          "url": "https://www.cityofmenifee.us/DocumentCenter/View/23907/Public-Hearing-Notice-PLN23-0040-Northern-Gateway-Logistics-Center-Appeals",
+          "type": "city_appeal_notice",
+          "observations": [
+            "Two appeals noticed for 2025-07-16 City Council hearing; final disposition not established by pilot"
+          ]
+        }
+      ],
+      "identity_checks": [
+        "Prove SMARTS street-improvement scope actually belongs to warehouse development; don't silently attach Uprite as warehouse GC",
+        "Verify appeal disposition and subsequent entitlements",
+        "Check actual parcel/geometry correspondence"
+      ],
+      "next_evidence": [
+        "SMARTS facility full record with coordinates and WDID",
+        "County grading/street work permit referencing warehouse project or APNs",
+        "Current project approval and inspection status"
+      ]
+    },
+    {
+      "id": "smarts_gateway_grand_terrace",
+      "smarts": {
+        "site_name": "Gateway at Grand Terrace",
+        "county": "San Bernardino",
+        "city": "Grand Terrace",
+        "app_id": "602870",
+        "regulatory_status": "Active",
+        "noi_processed_date": "2026-09-17",
+        "reported_commencement_date": "2026-10-01",
+        "developer_name": "Lewis Land Developers LLC"
+      },
+      "external_project": "The Gateway at Grand Terrace Specific Plan",
+      "candidate_relation": "likely_same_development",
+      "link_status": "candidate_corrob_by_project_name_agency",
+      "external_evidence": [
+        {
+          "url": "https://ceqanet.lci.ca.gov/2021020110/5",
+          "type": "state_ceqa_notice_of_determination",
+          "observations": [
+            "SCH 2021020110",
+            "Specific plan approved 2024-07-23",
+            "32 parcels; approximately 112 acres"
+          ]
+        },
+        {
+          "url": "https://ceqanet.lci.ca.gov/2021020110/3",
+          "type": "state_ceqa_withdrawn_document",
+          "observations": [
+            "Specific CEQA final-document entry withdrawn at lead agency request; must not mark entire project cancelled"
+          ]
+        }
+      ],
+      "identity_checks": [
+        "Reconcile source's withdrawn document against later NOD at document scope",
+        "Match SMARTS location to actual specific-plan site, not assume all 32 parcels involved in one work phase",
+        "Separate planned infrastructure work from construction of residential and commercial buildings"
+      ],
+      "next_evidence": [
+        "SMARTS full geometry and disturbed acreage",
+        "City subsequent grading or infrastructure permits",
+        "Independent commencement/inspection evidence"
+      ]
+    },
+    {
+      "id": "smarts_catavina_palm_desert",
+      "smarts": {
+        "site_name": "Catavina",
+        "county": "Riverside",
+        "city": "Palm Desert",
+        "app_id": "601410",
+        "regulatory_status": "Active",
+        "noi_processed_date": "2026-09-18",
+        "reported_commencement_date": "2027-03-01",
+        "developer_name": "Blue Fern West LLC"
+      },
+      "external_project": "Catavina Residential Development Project",
+      "candidate_relation": "likely_same_development",
+      "link_status": "candidate_corrob_by_developer_location",
+      "external_evidence": [
+        {
+          "url": "https://ceqanet.lci.ca.gov/2025091375/2",
+          "type": "state_ceqa_nod",
+          "observations": [
+            "SCH 2025091375",
+            "2025-11-18 project approval recorded",
+            "546 proposed single-family homes",
+            "APN 620-170-009"
+          ]
+        },
+        {
+          "url": "https://ceqanet.lci.ca.gov/2025091375/3",
+          "type": "state_ceqa_noe",
+          "observations": [
+            "2026-02-17 Notice of Exemption under same SCH",
+            "Document-specific procedural differences must not be collapsed into one project status"
+          ]
+        },
+        {
+          "url": "https://www.palmdesert.gov/build-develop/projects-in-development",
+          "type": "city_project_index",
+          "observations": [
+            "City lists Catavina PP25-0003"
+          ]
+        }
+      ],
+      "identity_checks": [
+        "Associate NOD and NOE as distinct dated document events, do not collapse into a single legal conclusion",
+        "Do not infer groundbreaking before reported 2027-03-01",
+        "Verify phase and source timing by future SMARTS and grading events"
+      ],
+      "next_evidence": [
+        "SMARTS full geometry and WDID",
+        "Palm Desert grading/building permits under PP25-0003",
+        "Verification of projected start and subdivision phasing"
+      ]
+    },
+    {
+      "id": "smarts_corydon_group_lake_elsinore",
+      "smarts": {
+        "site_name": "Corydon Group",
+        "county": "Riverside",
+        "city": "Lake Elsinore",
+        "app_id": "602710",
+        "regulatory_status": "Active",
+        "noi_processed_date": "2026-09-14",
+        "reported_commencement_date": "2026-10-01",
+        "developer_name": "RD Construction Inc"
+      },
+      "external_project": "Corydon Group Project PA 2023-34",
+      "candidate_relation": "likely_same_development",
+      "link_status": "candidate_corrob_by_project_name_and_jurisdiction",
+      "external_evidence": [
+        {
+          "url": "https://www.lake-elsinore.org/737/Corydon-Group-Project",
+          "type": "city_approved_project_index",
+          "observations": [
+            "City approved Corydon Group Project 2026-01-13"
+          ]
+        },
+        {
+          "url": "https://www.lake-elsinore.org/DocumentCenter/View/5159/Class-32-Categorical-Exemption-Checklist-PDF",
+          "type": "city_ceqa_exemption_checklist",
+          "observations": [
+            "Planning Application 2023-34",
+            "Two warehouses of 24296 sq ft each (48592 total before mezzanine interpretation)",
+            "32251 and 32291 Corydon Road; APNs 370-080-002 and 370-080-003"
+          ]
+        }
+      ],
+      "identity_checks": [
+        "Distinguish 2026 Corydon Group from 2021 Corydon Gateway project",
+        "Check SMARTS point/address against both Corydon parcel numbers",
+        "Do not assume RD Construction's exact GC role based on SMARTS developer field"
+      ],
+      "next_evidence": [
+        "SMARTS full location",
+        "Lake Elsinore approved grading/building permits",
+        "Current inspection events"
+      ]
+    },
+    {
+      "id": "smarts_o_resort_big_bear",
+      "smarts": {
+        "site_name": "O Resort",
+        "county": "San Bernardino",
+        "city": "Big Bear City",
+        "app_id": "NA",
+        "regulatory_status": "Active",
+        "noi_processed_date": "2026-09-03",
+        "reported_commencement_date": "2026-09-01",
+        "developer_name": "KF Holding"
+      },
+      "external_project": "O Resort (City of Big Bear Lake)",
+      "candidate_relation": "likely_same_project_subject_to_location_resolution",
+      "link_status": "location_discrepancy_requires_resolution",
+      "external_evidence": [
+        {
+          "url": "https://www.citybigbearlake.com/images/DOWNLOADS/CITY_DEPARTMENTS/Planning/DEVELOPMEENT_SUMMARY/development-summary-list_07-03-2025.pdf",
+          "type": "city_project_status_snapshot",
+          "observations": [
+            "O Resort listed at 41563 Big Bear Blvd",
+            "Planning case PL20240025",
+            "2025 list says Approved with expiration note 2025-09-03; current expiration/extension is unknown",
+            "Historical document may redirect due to city site migration"
+          ]
+        },
+        {
+          "url": "https://citybigbearlake.com/index.php/en/component/easyfolderlistingpro/?data=eNpNkFtrhDAQhf9KyLt46Xa7zT6JSiusiaiw9EmyOmrAG1G3C6X_vfHG9m3OYc6ZL-HENMnPQI4EF12dg8RnJZQSDS9h0F12pRdmu7Hu-MlX6nqhHSWBR5NYDy82pT79SB0WBH4c-4zqlCW-48W6ZViHuUmV42lcMLl2D_gsiLHZ5QTD-Lz5RnCaLt6sTmus5Q3M0iB44Vpdke89KiSh7vlY_dtS2ULUsGePFsHGSbNMzTogDYXTrRYZ-gQuRVtcItqNXCKD2Q-jGVozDOtVyaQCxFAEQ1wnF6AXguGxT31ebMjw6IWE57sUAh9HnlUNtGr7trjvKiHhLuB7-16CWz6Ku8L7_QPiOnQO&format=raw&view=download",
+          "type": "city_2024_public_hearing_notice",
+          "observations": [
+            "City of Big Bear Lake hearing for 41563 Big Bear Blvd",
+            "Applicant KF Holding",
+            "Proposed detached lodging units, café and restaurant"
+          ]
+        }
+      ],
+      "identity_checks": [
+        "SMARTS uses Big Bear City while municipal site is within City of Big Bear Lake; resolve via verified coordinates and APN",
+        "APP_ID NA is not a usable stable source key; derive source-scoped identity only from verified unique key",
+        "Recheck permit expiry, extensions, new planning approvals before treating site as mobilized"
+      ],
+      "next_evidence": [
+        "SMARTS WDID plus latitude/longitude and exact source address",
+        "Verified municipal case PL20240025 current disposition",
+        "Grading/building inspection activity"
+      ]
+    }
+  ]
+}
