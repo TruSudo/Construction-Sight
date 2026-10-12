@@ -150,10 +150,10 @@ def test_multicounty_csv_only_selects_requested_county(tmp_path: Path) -> None:
 
 def test_csv_header_malformed_or_missing_selected_county(tmp_path: Path) -> None:
     invalid = tmp_path / "bad.csv"
-    invalid.write_text("APP_ID,WDID,SITE_COUNTY,SITE_COUNTY\\n101,X,Riverside,Riverside\\n")
+    invalid.write_text("APP_ID,WDID,SITE_COUNTY,SITE_COUNTY\n101,X,Riverside,Riverside\n")
     with pytest.raises(SmartsSnapshotError, match="duplicate"):
         load_facility_snapshot(invalid, county="Riverside")
-    invalid.write_text("APP_ID,WDID,SITE_COUNTY\\n101,8 33C101,San Bernardino\\n")
+    invalid.write_text("APP_ID,WDID,SITE_COUNTY\n101,8 33C101,San Bernardino\n")
     with pytest.raises(SmartsSnapshotError, match="No records"):
         load_facility_snapshot(invalid, county="Riverside")
 
