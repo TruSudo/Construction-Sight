@@ -200,9 +200,9 @@ def fetch_page(
             raise SmartsApiError("Exact facility lookup requires an approved county")
         if (app_id is None) == (wdid is None):
             raise SmartsApiError("Choose one facility record identifier")
-        if app_id is not None and not re.fullmatch(r"[0-9]{1,15}", app_id):
+        if app_id is not None and (not re.fullmatch(r"[0-9]{1,15}", app_id) or not any(ch != "0" for ch in app_id)):
             raise SmartsApiError("APP_ID must be a numeric source identifier, not NA")
-        if wdid is not None and not re.fullmatch(r"[A-Za-z0-9 ]{2,32}", wdid):
+        if wdid is not None and (not re.fullmatch(r"[A-Za-z0-9 ]{2,32}", wdid) or not wdid.strip()):
             raise SmartsApiError("Invalid WDID source identifier")
 
     params: dict[str, str | int] = {
