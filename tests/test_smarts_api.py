@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from urllib.parse import parse_qs
 
 import httpx
@@ -44,7 +45,7 @@ def _response(
     )
 
 
-def _client(handler: object) -> httpx.Client:
+def _client(handler: Callable[[httpx.Request], httpx.Response]) -> httpx.Client:
     return httpx.Client(transport=httpx.MockTransport(handler))
 
 
