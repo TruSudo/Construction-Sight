@@ -63,6 +63,7 @@ from constructionsight.site_models import Site
 from constructionsight.storage.database import create_database_engine, initialize_database
 from constructionsight.storage.domain_orm import CeqaDomainRecord, SiteRecord
 from constructionsight.storage.domain_store import CeqaStore, PermitStore, SiteStore
+from constructionsight.storage.intelligence_orm import IntelligenceWatchlistRecord
 from constructionsight.storage.lead_workflow_orm import (
     LeadReviewPackageRecord,
     ResultLedgerRecordRow,
@@ -72,7 +73,6 @@ from constructionsight.storage.lead_workflow_store import (
     store_lead_workflow_record,
     store_result_ledger_record,
 )
-from constructionsight.storage.intelligence_orm import IntelligenceWatchlistRecord
 from constructionsight.storage.operator_read_store import create_operator_read_engine
 from constructionsight.storage.parcel_site_orm import ParcelCoreRecordRow
 from constructionsight.storage.parcel_site_store import store_parcel_core_record

@@ -242,7 +242,11 @@ def create_handler(
     ceqanet_listing_evidence: Path | None = None,
     ceqanet_queue_evidence: Path | None = None,
 ) -> type[BaseHTTPRequestHandler]:
-    """Bind to an existing database without schema creation or migration.\n\n    Source/commercial reads use SQLite mode=ro. A separate guarded engine may\n    mutate only the persisted local watchlist table.\n    """
+    """Bind to an existing database without schema creation or migration.
+
+    Source/commercial reads use SQLite mode=ro. A separate guarded engine may
+    mutate only the persisted local watchlist table.
+    """
 
     if (ceqanet_listing_evidence is None) != (ceqanet_queue_evidence is None):
         raise ValueError("CEQAnet listing and queue evidence must be configured together")
@@ -881,15 +885,14 @@ def create_handler(
                     raise ValueError("exact watchlist kind and record_id are required")
                 kind = values["kind"][0]
                 record_id = values["record_id"][0]
-                with Session(watchlist_engine, autoflush=False) as session:
-                    with session.begin():
-                        if archive:
-                            archive_source_watch(
-                                session, kind=kind, record_id=record_id
-                            )
-                        else:
-                            add_source_watch(session, kind=kind, record_id=record_id)
-                        payload = build_operator_watchlist_snapshot(session)
+                with Session(watchlist_engine, autoflush=False) as session, session.begin():
+                    if archive:
+                        archive_source_watch(
+                            session, kind=kind, record_id=record_id
+                        )
+                    else:
+                        add_source_watch(session, kind=kind, record_id=record_id)
+                    payload = build_operator_watchlist_snapshot(session)
                 payload["mutation"] = "archived" if archive else "added"
                 self._send_json(payload)
             except LookupError:

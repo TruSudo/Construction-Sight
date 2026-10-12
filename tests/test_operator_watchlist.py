@@ -95,9 +95,12 @@ def test_watchlist_rejects_missing_source_record(tmp_path) -> None:
     path = _database(tmp_path)
     engine = create_operator_watchlist_engine(path)
     try:
-        with Session(engine, autoflush=False) as session, session.begin():
-            with pytest.raises(LookupError, match="exact source record not found"):
-                add_source_watch(session, kind="ceqa", record_id="fixture:missing")
+        with (
+            Session(engine, autoflush=False) as session,
+            session.begin(),
+            pytest.raises(LookupError, match="exact source record not found"),
+        ):
+            add_source_watch(session, kind="ceqa", record_id="fixture:missing")
     finally:
         engine.dispose()
 

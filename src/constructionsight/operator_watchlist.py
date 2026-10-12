@@ -264,7 +264,8 @@ def build_operator_watchlist_snapshot(session: Session) -> dict[str, object]:
             "Retained normalized source changes automatically trigger matching active watches.",
             "Watchlist membership does not start source polling or remote collection.",
             "No reminder or notification delivery is enabled.",
-            "Watchlist membership does not establish project readiness or authorize outreach or bids.",
+            "Watchlist membership does not establish project readiness or authorize "
+            "outreach or bids.",
         ],
     }
 
