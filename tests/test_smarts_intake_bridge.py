@@ -201,26 +201,25 @@ def test_invalid_lookups_fail_before_network(
     def fail(_: httpx.Request) -> httpx.Response:
         raise AssertionError("Network must not be used for invalid input")
 
-    with httpx.Client(transport=httpx.MockTransport(fail)) as client:
-        with pytest.raises(SmartsApiError):
-            fetch_exact_facility(client, county="Riverside", app_id=app_id, wdid=wdid)
+    with httpx.Client(transport=httpx.MockTransport(fail)) as client, pytest.raises(
+        SmartsApiError
+    ):
+        fetch_exact_facility(client, county="Riverside", app_id=app_id, wdid=wdid)
 
 
 def test_missing_or_duplicate_exact_match_is_rejected() -> None:
     for response in (_api_response([], 0), _api_response([_record(), _record(_id=9)], 2)):
         with httpx.Client(
-            transport=httpx.MockTransport(lambda _: response)
-        ) as client:
-            with pytest.raises(SmartsApiError):
-                fetch_exact_facility(client, county="Riverside", app_id="600752")
+            transport=httpx.MockTransport(lambda _, response=response: response)
+        ) as client, pytest.raises(SmartsApiError):
+            fetch_exact_facility(client, county="Riverside", app_id="600752")
 
 
 def test_mismatched_returned_identity_rejected() -> None:
     with httpx.Client(
         transport=httpx.MockTransport(lambda _: _api_response([_record(APP_ID="777")]))
-    ) as client:
-        with pytest.raises(SmartsApiError, match="APP_ID filter"):
-            fetch_exact_facility(client, county="Riverside", app_id="600752")
+    ) as client, pytest.raises(SmartsApiError, match="APP_ID filter"):
+        fetch_exact_facility(client, county="Riverside", app_id="600752")
 
 
 def test_cli_requires_explicit_live_authorization(
