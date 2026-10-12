@@ -103,7 +103,11 @@ def build_smarts_intake_preview(
     if record not in page.records:
         raise SmartsApiError("Unbound SMARTS record: not in the supplied source page")
     county = _source_text(record, "SITE_COUNTY")
-    if county is None or county not in COUNTIES or (page.county is not None and county != page.county):
+    if (
+        county is None
+        or county not in COUNTIES
+        or (page.county is not None and county != page.county)
+    ):
         raise SmartsApiError("SMARTS facility county must match the approved source scope")
     if "APP_ID" not in record or "WDID" not in record:
         raise SmartsApiError("SMARTS facility identity columns are missing")
@@ -236,7 +240,9 @@ def build_smarts_intake_preview(
     elif record.get("SITE_LATITUDE") is not None or record.get("SITE_LONGITUDE") is not None:
         limitations.append("Source coordinates are incomplete or outside a valid CA envelope")
     if source_identity is None:
-        limitations.append("No usable WDID or APP_ID; prohibit automatic stable identity assignment")
+        limitations.append(
+            "No usable WDID or APP_ID; prohibit automatic stable identity assignment"
+        )
     site_input = SiteResolutionInput(
         source_name=base_site_input.source_name,
         evidence_id=evidence_id,
