@@ -102,7 +102,7 @@ def build_smarts_intake_preview(
     if record not in page.records:
         raise SmartsApiError("Unbound SMARTS record: not in the supplied source page")
     county = _source_text(record, "SITE_COUNTY")
-    if county not in COUNTIES or (page.county is not None and county != page.county):
+    if county is None or county not in COUNTIES or (page.county is not None and county != page.county):
         raise SmartsApiError("SMARTS facility county must match the approved source scope")
     if "APP_ID" not in record or "WDID" not in record:
         raise SmartsApiError("SMARTS facility identity columns are missing")
@@ -110,10 +110,13 @@ def build_smarts_intake_preview(
     # CKAN's _id is a transport-row number, not a stable project/source identity.
     # Excluding it means republication with different row order is not new work.
     semantic_record = {str(key): value for key, value in record.items() if key != "_id"}
-    row_bytes = json.dumps(
-        semantic_record, sort_keys=True, separators=(",", ":"),
-        ensure_ascii=False, allow_nan=False,
-    ).encode("utf-8")
+    try:
+        row_bytes = json.dumps(
+            semantic_record, sort_keys=True, separators=(",", ":"),
+            ensure_ascii=False, allow_nan=False,
+        ).encode("utf-8")
+    except (TypeError, ValueError) as exc:
+        raise SmartsApiError("SMARTS record cannot be canonically represented") from exc
     row_digest = hashlib.sha256(row_bytes).hexdigest()
     evidence_id = "evidence:smarts:" + row_digest
     app_id = _source_text(record, "APP_ID")
