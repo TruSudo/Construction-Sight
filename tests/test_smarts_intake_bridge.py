@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from typing import Any
 from urllib.parse import parse_qs
@@ -90,6 +91,8 @@ def test_exact_app_id_request_and_intake_bridge() -> None:
     with httpx.Client(transport=httpx.MockTransport(transport)) as client:
         page = fetch_exact_facility(client, county="Riverside", app_id="600752")
 
+    assert page.raw_response_bytes is not None
+    assert hashlib.sha256(page.raw_response_bytes).hexdigest() == page.response_sha256
     params = parse_qs(requests[0].url.query.decode())
     assert json.loads(params["filters"][0]) == {
         "SITE_COUNTY": "Riverside", "APP_ID": "600752"
