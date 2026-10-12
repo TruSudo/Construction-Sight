@@ -123,10 +123,21 @@ pagination consistency, deletion semantics, a bounded coverage protocol, and
 comparison against a prior complete snapshot. Without that evidence, retain
 the last known complete coverage state as unknown.
 
+## Offline CSV differential preview (separate from the journal)
+
+An additional development-only command, `python -m constructionsight.smarts_snapshot_diff`,
+compares two independently retained, operator-supplied CSV exports for an approved
+county. It reports redacted source-key/hash changes and missing-from-new review
+candidates. It never asserts that either CSV is complete or authoritative,
+never equates CSV text hashes with the typed CKAN JSON row hashes, never treats
+absence as deletion, and never writes to this immutable journal. See
+`smarts_snapshot_diff_2026-10-12.md` for its contract and limitations.
+
 ## Not yet provided
 
-- No scheduled polling, full county snapshot, all-record change-feed,
-  county-wide watermark, pagination coverage, or published-CSV reconciliation.
+- No scheduled polling, independently certified full county snapshot, all-record
+  change-feed, county-wide watermark, pagination coverage, or validated
+  official published-CSV completeness/coverage reconciliation.
 - No longitudinal guarantee that source identifiers are never reassigned.
 - No downstream schema migration into the ConstructionSight entity/site graph,
   automatic lead readiness promotion, dashboard feed, or outreach.
