@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import re
 from collections.abc import Mapping
 from typing import Any, Literal
 
@@ -120,7 +121,14 @@ def build_smarts_intake_preview(
     row_digest = hashlib.sha256(row_bytes).hexdigest()
     evidence_id = "evidence:smarts:" + row_digest
     app_id = _source_text(record, "APP_ID")
+    if app_id is not None and (
+        not re.fullmatch(r"[0-9]{1,15}", app_id)
+        or not any(char != "0" for char in app_id)
+    ):
+        app_id = None
     wdid = _source_text(record, "WDID")
+    if wdid is not None and not re.fullmatch(r"[A-Za-z0-9 ]{2,32}", wdid):
+        wdid = None
     source_identity = (
         "smarts:facility:" + county + ":wdid:" + wdid if wdid is not None
         else "smarts:facility:" + county + ":app_id:" + app_id
