@@ -183,6 +183,8 @@ def test_unbound_record_rejected() -> None:
         ("NA", None),
         ("602710' OR 1=1", None),
         ("0;DROP", None),
+        ("0", None),
+        (None, "  "),
         (None, "invalid';--"),
     ],
 )
