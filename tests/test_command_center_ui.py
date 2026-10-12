@@ -403,3 +403,21 @@ def test_bid_studio_chains_request_pricing_and_proposal_without_customer_authori
     assert "health.bid_proposal_draft_preview_enabled!==true" in script
     assert "INTERNAL DRAFT · NOT FOR CUSTOMER DELIVERY" in script
     assert "No approved commercial terms, customer delivery or bid submission occurred." in script
+
+
+def test_commercial_workflows_paginate_beyond_first_dashboard_page() -> None:
+    """Outreach and Bid Studio must expose workflow pages after the initial 50."""
+    script = (ASSETS / "operator_command_center.js").read_text(encoding="utf-8")
+    assert "async function fetchCommercialWorkflowPage(offset)" in script
+    assert 'new URLSearchParams({limit:"50",offset:String(offset)})' in script
+    assert "data.returned>50" in script
+    assert "keys.has(row.workflow_id)" in script
+    assert "function commercialWorkflowOptions(workflowPage)" in script
+    assert "async function showOutreach(offset=0)" in script
+    assert "async function showBidStudio(offset=0)" in script
+    assert 'commercialWorkflowPager("outreach",offset,data)' in script
+    assert 'commercialWorkflowPager("bid",offset,data)' in script
+    assert "showOutreach(offset+50)" in script
+    assert "showBidStudio(offset+50)" in script
+    assert "Only eligible workflows on this page are selectable" in script
+    assert "const eligible=commercialWorkflowOptions(data);" in script

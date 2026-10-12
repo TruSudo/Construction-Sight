@@ -126,7 +126,10 @@ Populate the database through existing governed intake/persistence commands.
   records. Retained normalized source changes can mark an active watch as triggered;
   remote polling and notification delivery remain disabled.
 - Outreach preview is a same-origin computation over exact persisted `ready`/`active`
-  workflow state. It revalidates the exact review package and durable duplicate state,
+  workflow state. Outreach and Bid Studio page through the retained workflow
+  ledger in bounded 50-record reads instead of silently selecting only the
+  first dashboard page. An empty eligible page does not describe the full ledger.
+  The backend revalidates the exact review package and durable duplicate state,
   requires reviewed business-contact provenance, and returns a content-bound preview.
   It does not retain or send the message and fixes external-send and bid authority false.
 - Bid Studio now exposes a sequential internal draft flow: requester-evidenced bid

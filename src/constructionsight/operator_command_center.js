@@ -1056,8 +1056,35 @@ function showAiCenter() {
     '<p>There is no live model selector or enable switch yet. The AI Center is reserved for this optional feature.</p></section>';
 }
 
-function commercialWorkflowOptions() {
-  const leads=workflows && Array.isArray(workflows.leads) ? workflows.leads : [];
+
+async function fetchCommercialWorkflowPage(offset) {
+  if(!Number.isSafeInteger(offset) || offset<0 || offset%50!==0)
+    throw Error("Commercial workflow page offset is invalid.");
+  const data=await fetchJson("/api/workflows?"+new URLSearchParams({limit:"50",offset:String(offset)}));
+  if(data.read_only!==true || data.offset!==offset || data.limit!==50 ||
+    !Number.isSafeInteger(data.total) || data.total<0 ||
+    !Array.isArray(data.leads) || data.returned!==data.leads.length ||
+    data.returned>50 || data.has_more!==(offset+data.returned<data.total))
+    throw Error("Commercial workflow page bounds or identity are inconsistent.");
+  const keys=new Set();
+  for(const row of data.leads) {
+    if(!row || typeof row.workflow_id!=="string" || !row.workflow_id ||
+      keys.has(row.workflow_id) || !Array.isArray(row.limitations))
+      throw Error("Commercial workflow page includes invalid or duplicate workflow identities.");
+    keys.add(row.workflow_id);
+  }
+  return data;
+}
+function commercialWorkflowPager(kind,offset,data) {
+  return '<div class="record-pager"><p>Workflows '+(data.total?offset+1:0)+'–'+
+    (offset+data.returned)+' of '+data.total+
+    '. Only eligible workflows on this page are selectable; continue to other pages.</p>'+
+    '<button type="button" id="'+kind+'-prev" '+(offset===0?'disabled':'')+'>← Previous workflows</button>'+
+    '<button type="button" id="'+kind+'-next" '+(!data.has_more?'disabled':'')+'>Next workflows →</button></div>';
+}
+
+function commercialWorkflowOptions(workflowPage) {
+  const leads=workflowPage && Array.isArray(workflowPage.leads) ? workflowPage.leads : [];
   return leads.filter(row=>
     ["ready","active"].includes(row.status) &&
     Array.isArray(row.limitations) && row.limitations.length===0 &&
@@ -1089,9 +1116,19 @@ function renderOutreachPreview(preview) {
       '<p>No evidence-note text was retained in the exact review package.</p>')+
     '<p><strong>Human approval remains required.</strong> This preview cannot send a message, submit a form, contact a prospect, or authorize a bid.</p></section>';
 }
-function showOutreach() {
+async function showOutreach(offset=0) {
+  const token=++featureRequest;
   featureIntro("Outreach", "Governed preview from exact persisted workflow state · no delivery capability");
-  const eligible=commercialWorkflowOptions();
+  byId("feature-body").innerHTML='<section class="feature-card"><p>Loading bounded outreach workflow page…</p></section>';
+  let data;
+  try { data=await fetchCommercialWorkflowPage(offset); }
+  catch(error) {
+    if(token===featureRequest && !byId("feature-view").hidden)
+      byId("feature-body").innerHTML='<section class="feature-card"><h2>Outreach workflow page unavailable</h2><p role="alert">'+escapeText(error.message||error)+'</p></section>';
+    return;
+  }
+  if(token!==featureRequest || byId("feature-view").hidden)return;
+  const eligible=commercialWorkflowOptions(data);
   const options=eligible.map(row=>
     '<option value="'+escapeText(row.workflow_id)+'">'+escapeText(row.status.toUpperCase()+" · "+
       (row.summary||row.base_candidate_id)+" · "+row.workflow_id)+'</option>'
@@ -1112,7 +1149,10 @@ function showOutreach() {
       '<label class="wide">Message body<textarea id="outreach-body" maxlength="20000" required></textarea></label>'+
       '<div class="wide"><button class="action primary" type="submit">Build preview</button></div></form>':
       '<p>No persisted READY/ACTIVE workflow without limitations is present in the current bounded workflow page.</p>')+
-    '</section><div id="outreach-preview-result"></div>';
+    '</section>'+commercialWorkflowPager("outreach",offset,data)+
+    '<div id="outreach-preview-result"></div>';
+  byId("outreach-prev").onclick=()=>showOutreach(Math.max(0,offset-50));
+  byId("outreach-next").onclick=()=>{if(data.has_more)showOutreach(offset+50);};
   const form=byId("outreach-preview-form");
   if(!form)return;
   form.onsubmit=async event=>{
@@ -1345,9 +1385,19 @@ function wireBidPricingForm(requestEvidence) {
     }
   };
 }
-function showBidStudio() {
+async function showBidStudio(offset=0) {
+  const token=++featureRequest;
   featureIntro("Bid Studio", "Reviewed prospect request → manual pricing → internal proposal draft · delivery disabled");
-  const eligible=commercialWorkflowOptions();
+  byId("feature-body").innerHTML='<section class="feature-card"><p>Loading bounded bid workflow page…</p></section>';
+  let data;
+  try { data=await fetchCommercialWorkflowPage(offset); }
+  catch(error) {
+    if(token===featureRequest && !byId("feature-view").hidden)
+      byId("feature-body").innerHTML='<section class="feature-card"><h2>Bid workflow page unavailable</h2><p role="alert">'+escapeText(error.message||error)+'</p></section>';
+    return;
+  }
+  if(token!==featureRequest || byId("feature-view").hidden)return;
+  const eligible=commercialWorkflowOptions(data);
   const options=eligible.map(row=>
     '<option value="'+escapeText(row.workflow_id)+'">'+escapeText(row.status.toUpperCase()+" · "+
       (row.summary||row.base_candidate_id)+" · "+row.workflow_id)+'</option>'
@@ -1369,7 +1419,10 @@ function showBidStudio() {
       '<label class="wide">Requested security scope<textarea id="bid-scope-summary" maxlength="10000" required></textarea></label>'+
       '<div class="wide"><button class="action primary" type="submit">Validate request evidence</button></div></form>':
       '<p>No persisted READY/ACTIVE workflow without limitations is present in the current bounded workflow page.</p>')+
-    '</section><div id="bid-request-result"></div>';
+    '</section>'+commercialWorkflowPager("bid",offset,data)+
+    '<div id="bid-request-result"></div>';
+  byId("bid-prev").onclick=()=>showBidStudio(Math.max(0,offset-50));
+  byId("bid-next").onclick=()=>{if(data.has_more)showBidStudio(offset+50);};
   const form=byId("bid-request-form");
   if(!form)return;
   form.onsubmit=async event=>{
