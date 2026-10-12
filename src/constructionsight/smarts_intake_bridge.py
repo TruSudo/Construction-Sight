@@ -122,8 +122,8 @@ def build_smarts_intake_preview(
     app_id = _source_text(record, "APP_ID")
     wdid = _source_text(record, "WDID")
     source_identity = (
-        "smarts:facility:wdid:" + wdid if wdid is not None
-        else "smarts:facility:app_id:" + county + ":" + app_id
+        "smarts:facility:" + county + ":wdid:" + wdid if wdid is not None
+        else "smarts:facility:" + county + ":app_id:" + app_id
         if app_id is not None else None
     )
 
@@ -225,7 +225,7 @@ def build_smarts_intake_preview(
             source_name=SOURCE_NAME,
             confidence_score=60,
         ))
-    elif _source_text(record, "SITE_LATITUDE") or _source_text(record, "SITE_LONGITUDE"):
+    elif record.get("SITE_LATITUDE") is not None or record.get("SITE_LONGITUDE") is not None:
         limitations.append("Source coordinates are incomplete or outside a valid CA envelope")
     if source_identity is None:
         limitations.append("No usable WDID or APP_ID; prohibit automatic stable identity assignment")
