@@ -124,9 +124,10 @@ def test_invalid_review_budgets_fail_before_network(limit: int) -> None:
     def no_network(_: httpx.Request) -> httpx.Response:
         raise AssertionError("Invalid review budget must never reach network")
 
-    with httpx.Client(transport=httpx.MockTransport(no_network)) as client:
-        with pytest.raises(SmartsApiError):
-            build_recent_review(client, county="San Bernardino", limit=limit)
+    with httpx.Client(transport=httpx.MockTransport(no_network)) as client, pytest.raises(
+        SmartsApiError
+    ):
+        build_recent_review(client, county="San Bernardino", limit=limit)
 
 
 def test_cli_never_runs_implicitly(
