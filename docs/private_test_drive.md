@@ -16,7 +16,8 @@ CONSTRUCTIONSIGHT_PYTHON=python3.12 bash scripts/test-drive.sh
 The helper installs the repository's hashed dependency lock into a separate
 environment, installs the current checkout, verifies the retained CEQAnet CSV
 replay, creates a new trial database, applies a four-operation reviewed write
-plan through the existing authorized persistence command, and opens the operator
+plan through the existing authorized persistence command, checks both persisted
+observations through the content-bound source review queue, and opens the operator
 at `http://127.0.0.1:8765`. Stop it with Ctrl+C. Each invocation creates a new trial;
 the printed database path remains available for reopening with
 `constructionsight-operator --database <printed-path>` from the trial environment.
@@ -33,7 +34,17 @@ jobsite boundary or construction location. No parcel identifier is invented from
 the source's “Multiple, Community-wide” field. Capture date, original source
 links, raw CSV hash and limitations are retained with each record.
 
-On the UI-lock integration branch, `/` opens the owner-approved **Command Center** shell. Its KPI displays the count of retained **source records**, not distinct projects or qualified opportunities; red/yellow/green readiness numbers remain unavailable until the qualification engine is actually connected. Its small map is an offline coordinate overview with no street basemap. Choose **Project Intelligence** to open `/workspace#records`, **Site Map** for `/workspace#map`, and **Lead Console** for `/workspace#workflow`. This preserves the existing detailed operator while the other sidebar destinations are integrated. The Watchlist currently saves browser-local source-record bookmarks only: it does not poll source systems, schedule reminders, or send alerts. Commercial sidebar destinations explain their unconnected status rather than performing hidden actions.
+The approved **Command Center** shell opens at `/`. Its source KPI counts retained
+records, not distinct projects or qualified opportunities. The green/yellow/red
+workflow summaries report stored workflow states rather than independently verified
+construction readiness. The site map is an offline coordinate overview with no
+street basemap. **Project Intelligence** opens `/workspace#records`, **Site Map**
+opens `/workspace#map`, and **Lead Console** opens a dedicated screen with both
+commercial workflow inspection and the new read-only source-observation queue.
+The persistent local Watchlist survives browser restarts and flags changes to
+retained normalized source records. It does not poll remote sources or deliver
+notifications. Outreach and Bid Studio contain governed non-sending preview tools,
+not customer-facing commercial authority.
 
 Try this sequence:
 
@@ -42,9 +53,15 @@ Try this sequence:
 3. Inspect the agency relationship and the two overlapping source map points.
 4. Choose **Inspect review gaps**. The source remains review-required.
 5. Check the parcel inspection's missing-exact-parcel explanation.
-6. Open the workflow view; it is empty because no commercial leads were created.
-7. Bookmark one Cabazon source record from the Command Center and verify that the browser-local Watchlist displays it. Reload the same browser profile; it is not a persisted backend watch rule.
-8. Refresh and restart using the printed database path to check source-record persistence and the read-only operator. Use the same browser profile for bookmark retention.
+6. Open **Lead Console**. Confirm the source review queue contains both retained
+   Cabazon CEQA observations and their seven evidence checks, with neither
+   observation auto-qualified as a commercial lead. The separate commercial
+   workflow list is empty because no lead was created.
+7. Bookmark one Cabazon source record. Restart the browser/server against the
+   printed database path and verify the persisted local watchlist remains present.
+   Its membership is not an external monitoring subscription.
+8. Refresh and restart using the printed database path to check exact source
+   identities, the nonmutating queue and retained source evidence.
 
 The browser interface reads local records. Fresh collection, candidate-docket
 staging, commercial workflow changes, outreach and bidding are separate commands

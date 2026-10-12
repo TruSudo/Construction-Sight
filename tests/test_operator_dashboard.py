@@ -2411,3 +2411,50 @@ def test_source_review_queue_rejects_stale_page_content(database, monkeypatch):
     with Session(engine) as session:
         with pytest.raises(ValueError, match="changed during triage"):
             module.build_source_review_queue(session, kind="ceqa")
+
+
+def test_retained_public_ceqanet_source_to_review_pilot(tmp_path):
+    """Use the repository's July 2026 retained public observations, not synthetic leads."""
+    from constructionsight.operator_source_review_queue import build_source_review_queue
+
+    root = Path(__file__).resolve().parents[1]
+    plan = json.loads(
+        (root / "examples/private_test_drive/ceqanet_retained_write_plan.json")
+        .read_text(encoding="utf-8")
+    )
+    assert plan["metadata"]["counts_by_target"]["ceqa_records"] == 2
+    path = tmp_path / "retained-public-pilot.sqlite3"
+    result = execute_authorized_ceqanet_write_plan(
+        write_plan_payload=plan,
+        database_url=f"sqlite:///{path}",
+        caller_confirmation=True,
+        authorization_reason="Load retained July 2026 public records for isolated test",
+        operator_id="operator:public-evidence-pilot-test",
+    )
+    assert result.execution.applied_count == 4
+    before = hashlib.sha256(path.read_bytes()).hexdigest()
+    engine = create_operator_read_engine(path)
+    try:
+        with Session(engine) as session:
+            queue = build_source_review_queue(
+                session, kind="ceqa", county="Riverside", query="Cabazon", limit=10
+            )
+            assert queue.returned == queue.total_source_records == 2
+            assert len({item.record_id for item in queue.items}) == 2
+            required = {
+                "provenance", "county", "site", "parties", "current_activity",
+                "deduplication", "commercial_review",
+            }
+            for item in queue.items:
+                assert {check.key for check in item.checks} == required
+                assert item.state in {"hold", "review_required"}
+                assert item.source_claim_only is True
+                assert item.outreach_authorized is False
+                assert item.bid_authorized is False
+                assert item.preview_id.startswith("source-candidate-preview:")
+            assert queue.network_executed is False
+            assert queue.source_records_mutated is False
+            assert queue.lead_created is False
+    finally:
+        engine.dispose()
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == before

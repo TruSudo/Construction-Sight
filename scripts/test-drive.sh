@@ -47,6 +47,47 @@ cd -- "$cs_repo"
     --database-path "$cs_database" --execute-write --json-output \
     --authorization-reason "Load the two retained July 12 public CEQAnet observations into an isolated private trial." \
     --output "$cs_session/intake-result.json"
+
+# Confirm the real, retained source -> canonical database -> review queue boundary.
+# No new collection, commercial lead mutation or network request is authorized here.
+"$cs_runtime/python" - "$cs_database" <<'PY'
+import sys
+from pathlib import Path
+
+from sqlalchemy.orm import Session
+
+from constructionsight.operator_source_review_queue import build_source_review_queue
+from constructionsight.storage.operator_read_store import create_operator_read_engine
+
+engine = create_operator_read_engine(Path(sys.argv[1]))
+try:
+    with Session(engine, autoflush=False) as session:
+        queue = build_source_review_queue(
+            session, kind="ceqa", county="Riverside", query="Cabazon", limit=10
+        )
+        assert queue.total_source_records == 2 and queue.returned == 2
+        assert queue.read_only and not queue.network_executed
+        assert not queue.source_records_mutated and not queue.lead_created
+        assert not queue.outreach_authorized and not queue.bid_authorized
+        assert len({item.record_id for item in queue.items}) == 2
+        required = {
+            "provenance", "county", "site", "parties",
+            "current_activity", "deduplication", "commercial_review",
+        }
+        for item in queue.items:
+            assert len(item.normalized_source_sha256) == 64
+            assert item.preview_id.startswith("source-candidate-preview:")
+            assert item.state in {"hold", "review_required"}
+            assert {check.key for check in item.checks} == required
+            assert not item.outreach_authorized and not item.bid_authorized
+        print(
+            "Retained source pilot: 2 real July 2026 CEQA observations "
+            "reached evidence-bound review; 0 commercial leads authorized."
+        )
+finally:
+    engine.dispose()
+PY
+
 echo "Private trial database: $cs_database"
 echo "Two retained CEQAnet records from July 12, 2026; no fresh collection or outreach."
 echo "Open http://127.0.0.1:8765 on this computer. Press Ctrl+C to stop."
