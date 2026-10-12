@@ -16,6 +16,7 @@ from typing import Any
 import httpx
 
 API_URL = "https://publish.data.ca.gov/api/3/action/datastore_search"
+SQL_API_URL = "https://publish.data.ca.gov/api/3/action/datastore_search_sql"
 RESOURCE_IDS = {
     "facilities": "8a0ed456-ca69-4b29-9c5b-5de3958dc963",
     "inspections": "33047e47-7d44-46aa-9e0f-1a0f1b0cad66",
@@ -23,7 +24,14 @@ RESOURCE_IDS = {
 COUNTIES = ("San Bernardino", "Riverside")
 MAX_PAGE_SIZE = 100
 MAX_RESPONSE_BYTES = 2_000_000
+MAX_STATUS_ROWS = 32
+MAX_CANDIDATES = 25
 USER_AGENT = "ConstructionSight/0.1 (public-data read-only research)"
+FACILITIES_TABLE = '"' + RESOURCE_IDS["facilities"] + '"'
+CANDIDATE_FIELDS = (
+    "_id", "APP_ID", "WDID", "SITE_COUNTY", "SITE_CITY", "STATUS",
+    "NOI_PROCESSED_DATE", "CONSTRUCTION_COMMENCEMENT_DATE", "NOT_EFFECTIVE_DATE",
+)
 
 
 class SmartsApiError(ValueError):
@@ -41,6 +49,130 @@ class SmartsPage:
     response_sha256: str
     fields: tuple[str, ...]
     records: tuple[dict[str, Any], ...]
+
+
+@dataclass(frozen=True)
+class SmartsSqlObservation:
+    """A bounded SQL result, with response-byte evidence and no contact fields."""
+
+    kind: str
+    county: str
+    request_url: str
+    response_sha256: str
+    records: tuple[dict[str, Any], ...]
+
+
+def _approved_county(county: str) -> str:
+    if type(county) is not str or county not in COUNTIES:
+        raise SmartsApiError("Unapproved facility county")
+    return COUNTIES[COUNTIES.index(county)]
+
+
+def _fetch_sql_records(
+    client: httpx.Client, *, sql: str, max_rows: int
+) -> tuple[str, str, list[dict[str, Any]]]:
+    """Execute one fixed-shape SQL request; never expose response text on error."""
+    try:
+        with client.stream(
+            "GET", SQL_API_URL, params={"sql": sql}, follow_redirects=False
+        ) as response:
+            if response.status_code != 200:
+                raise SmartsApiError("Unexpected HTTP status: " + str(response.status_code))
+            media_type = response.headers.get("content-type", "").split(";")[0].strip().lower()
+            if media_type != "application/json":
+                raise SmartsApiError("Expected a JSON response")
+            chunks: list[bytes] = []
+            body_size = 0
+            for chunk in response.iter_bytes():
+                body_size += len(chunk)
+                if body_size > MAX_RESPONSE_BYTES:
+                    raise SmartsApiError("Response exceeded the byte limit")
+                chunks.append(chunk)
+            body = b"".join(chunks)
+            request_url = str(response.request.url)
+    except httpx.HTTPError as exc:
+        raise SmartsApiError("SMARTS transport failed: " + type(exc).__name__) from exc
+
+    try:
+        payload = json.loads(body)
+    except (ValueError, UnicodeDecodeError) as exc:
+        raise SmartsApiError("Invalid response JSON") from exc
+    if not isinstance(payload, dict) or payload.get("success") is not True:
+        raise SmartsApiError("CKAN did not report success")
+    result = payload.get("result")
+    if not isinstance(result, dict):
+        raise SmartsApiError("Missing result object")
+    records = result.get("records")
+    if not isinstance(records, list) or len(records) > max_rows or not all(
+        isinstance(record, dict) for record in records
+    ):
+        raise SmartsApiError("Invalid or oversized SQL records")
+    return request_url, hashlib.sha256(body).hexdigest(), records
+
+
+def fetch_status_summary(
+    client: httpx.Client, *, county: str
+) -> SmartsSqlObservation:
+    """Count regulatory statuses for one approved county, without raw rows."""
+    county = _approved_county(county)
+    sql = (
+        'SELECT "SITE_COUNTY", "STATUS", COUNT(*) AS n '
+        f'FROM {FACILITIES_TABLE} WHERE "SITE_COUNTY" = \'{county}\' '
+        'GROUP BY "SITE_COUNTY", "STATUS" ORDER BY "STATUS" ASC '
+        f"LIMIT {MAX_STATUS_ROWS}"
+    )
+    request_url, digest, records = _fetch_sql_records(
+        client, sql=sql, max_rows=MAX_STATUS_ROWS
+    )
+    if len(records) == MAX_STATUS_ROWS:
+        raise SmartsApiError("Status summary may be truncated")
+    statuses: set[str] = set()
+    for record in records:
+        status = record.get("STATUS")
+        count = record.get("n")
+        if (set(record) != {"SITE_COUNTY", "STATUS", "n"}
+                or record.get("SITE_COUNTY") != county
+                or type(status) is not str or not status
+                or type(count) is not int or count < 1 or status in statuses):
+            raise SmartsApiError("Invalid status summary row")
+        statuses.add(status)
+    return SmartsSqlObservation(
+        "status-summary", county, request_url, digest, tuple(records)
+    )
+
+
+def fetch_recent_candidates(
+    client: httpx.Client, *, county: str, limit: int = 10
+) -> SmartsSqlObservation:
+    """Get recent NOI records as leads for review, not construction evidence."""
+    county = _approved_county(county)
+    if type(limit) is not int or not 1 <= limit <= MAX_CANDIDATES:
+        raise SmartsApiError("Invalid candidate limit")
+    columns = ", ".join(f'"{field}"' for field in CANDIDATE_FIELDS)
+    sql = (
+        f"SELECT {columns} FROM {FACILITIES_TABLE} "
+        f'WHERE "SITE_COUNTY" = \'{county}\' '
+        'AND "NOI_PROCESSED_DATE" IS NOT NULL '
+        'ORDER BY "NOI_PROCESSED_DATE" DESC, "_id" DESC '
+        f"LIMIT {limit}"
+    )
+    request_url, digest, records = _fetch_sql_records(client, sql=sql, max_rows=limit)
+    seen: set[str] = set()
+    for record in records:
+        transport_id = record.get("_id")
+        processed = record.get("NOI_PROCESSED_DATE")
+        if (not set(record).issubset(CANDIDATE_FIELDS)
+                or not all(field in record for field in CANDIDATE_FIELDS)
+                or record.get("SITE_COUNTY") != county
+                or type(transport_id) not in (int, str)
+                or not str(transport_id)
+                or str(transport_id) in seen
+                or type(processed) is not str or not processed):
+            raise SmartsApiError("Invalid candidate row")
+        seen.add(str(transport_id))
+    return SmartsSqlObservation(
+        "recent-candidates", county, request_url, digest, tuple(records)
+    )
 
 
 def fetch_page(
@@ -61,7 +193,7 @@ def fetch_page(
     if type(offset) is not int or not 0 <= offset <= 1_000_000:
         raise SmartsApiError("Invalid offset")
 
-    params = {
+    params: dict[str, str | int] = {
         "resource_id": RESOURCE_IDS[resource],
         "limit": limit,
         "offset": offset,
@@ -184,6 +316,9 @@ def fetch_bounded_snapshot(
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Explicit, bounded SMARTS public API probe")
+    parser.add_argument(
+        "--mode", choices=("page", "status-summary", "recent-candidates"), default="page"
+    )
     parser.add_argument("--resource", choices=tuple(RESOURCE_IDS), default="facilities")
     parser.add_argument("--county", choices=COUNTIES)
     parser.add_argument("--limit", type=int, default=3)
@@ -191,19 +326,45 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if not args.execute_live:
         parser.error("Live access requires --execute-live")
+    if args.mode != "page" and (args.county is None or args.resource != "facilities"):
+        parser.error("SQL modes require an approved facility county")
+    if args.mode == "status-summary" and args.limit != 3:
+        parser.error("Status summary does not accept a page limit")
     try:
         with httpx.Client(
             follow_redirects=False,
             timeout=httpx.Timeout(15.0, connect=5.0),
             headers={"User-Agent": USER_AGENT, "Accept": "application/json"},
         ) as client:
-            page = fetch_page(client, resource=args.resource, county=args.county, limit=args.limit)
+            if args.mode == "status-summary":
+                observation = fetch_status_summary(client, county=args.county)
+            elif args.mode == "recent-candidates":
+                observation = fetch_recent_candidates(
+                    client, county=args.county, limit=args.limit
+                )
+            else:
+                page = fetch_page(
+                    client, resource=args.resource, county=args.county, limit=args.limit
+                )
     except SmartsApiError as exc:
         print(json.dumps({"ok": False, "error": str(exc)}))
         return 1
+    if args.mode != "page":
+        print(json.dumps({
+            "ok": True,
+            "mode": observation.kind,
+            "county_filter": observation.county,
+            "records_received": len(observation.records),
+            "request_url": observation.request_url,
+            "response_sha256": observation.response_sha256,
+            "regulatory_status_is_construction_activity": False,
+            "reported_commencement_is_verified_activity": False,
+            "records": observation.records,
+        }, indent=2))
+        return 0
     # Only curated non-contact information is printed; no live records are persisted.
     safe_fields = (
-        "APP_ID", "WDID", "SITE_COUNTY", "SITE_CITY", "SITE_NAME",
+        "APP_ID", "WDID", "SITE_COUNTY", "SITE_CITY",
         "STATUS", "CONSTRUCTION_COMMENCEMENT_DATE", "INSPECTION_DATE",
     )
     print(json.dumps({
@@ -214,7 +375,7 @@ def main(argv: list[str] | None = None) -> int:
         "records_received": len(page.records),
         "request_url": page.request_url,
         "response_sha256": page.response_sha256,
-        "fields": list(page.fields),
+        "fields": [field for field in page.fields if field in safe_fields],
         "sample": [{key: row[key] for key in safe_fields if key in row}
                    for row in page.records],
     }, indent=2, default=str))
