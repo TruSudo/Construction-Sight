@@ -167,6 +167,16 @@ def test_ledger_mutation_rejected_by_sqlite_triggers(tmp_path: Path) -> None:
     assert verify_smarts_journal(path)["observations"] == 1
 
 
+def test_missing_immutability_trigger_blocks_journal_reopen(tmp_path: Path) -> None:
+    path = _path(tmp_path)
+    page, preview = _observation()
+    record_smarts_observation(path, page, preview)
+    with sqlite3.connect(path) as conn:
+        conn.execute("DROP TRIGGER smarts_observations_no_update")
+    with pytest.raises(SmartsEvidenceError, match="immutability triggers"):
+        verify_smarts_journal(path)
+
+
 def test_failed_capture_does_not_advance_version(tmp_path: Path) -> None:
     path = _path(tmp_path)
     page, preview = _observation()
