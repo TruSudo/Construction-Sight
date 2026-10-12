@@ -213,6 +213,17 @@ def test_bundle_output_rejects_symlinked_root(tmp_path: Path) -> None:
     assert list(real.iterdir()) == []
 
 
+def test_bundle_transaction_rejects_group_writable_output(tmp_path: Path) -> None:
+    """Do not weaken the owner-only transaction boundary to accommodate umask."""
+
+    output = tmp_path / "bundle"
+    output.mkdir(mode=0o700)
+    output.chmod(0o770)
+    with pytest.raises(ValueError, match="not group/world writable"):
+        build_ceqanet_operator_bundle(_operator_package(), output_dir=output)
+    assert not (output / "manifest.json").exists()
+
+
 def test_bundle_json_matches_canonical_indented_encoding(tmp_path: Path) -> None:
     payload = {"z": ["Ω", {"b": 2, "a": 1}], "a": {"empty": None}}
     destination = tmp_path / "operator-package.json"
@@ -266,7 +277,8 @@ def test_bundle_transaction_withholds_success_manifest_until_complete_commit(
     failure_point: str,
 ) -> None:
     output = tmp_path / "bundle"
-    output.mkdir()
+    # The bundle writer requires an owner-only output directory regardless of umask.
+    output.mkdir(mode=0o700)
     build_ceqanet_operator_bundle(_operator_package(), output_dir=output)
     assert verify_ceqanet_operator_bundle(bundle_dir=output).passed
 
@@ -303,7 +315,8 @@ def test_bundle_transaction_recovers_cleanup_failure_after_success_manifest(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     output = tmp_path / "bundle"
-    output.mkdir()
+    # The bundle writer requires an owner-only output directory regardless of umask.
+    output.mkdir(mode=0o700)
     build_ceqanet_operator_bundle(_operator_package(), output_dir=output)
 
     package = _operator_package()
