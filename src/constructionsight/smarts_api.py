@@ -50,6 +50,7 @@ class SmartsPage:
     response_sha256: str
     fields: tuple[str, ...]
     records: tuple[dict[str, Any], ...]
+    raw_response_bytes: bytes | None = None  # bounded decoded HTTP body for opt-in retention
 
 
 @dataclass(frozen=True)
@@ -293,6 +294,7 @@ def fetch_page(
         response_sha256=hashlib.sha256(body).hexdigest(),
         fields=fields,
         records=tuple(rows),
+        raw_response_bytes=body,
     )
 
 
