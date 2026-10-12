@@ -7,7 +7,19 @@ Development update: an explicit opt-in, private SQLite SMARTS source-evidence jo
 now retains bounded exact-record response bodies and append-only source versions;
 see `smarts_evidence_journal_2026-10-12.md`. This sidecar never writes the
 application graph or authorizes scheduled production collection. Full repository
-quality checks and live retained capture are pending for this new increment.
+quality checks and live retained capture were pending when that journal stage
+was first documented. The user subsequently reported a successful controlled
+live evidence-retention replay and integrity check; exact terminal totals were
+not provided here and are not asserted.
+
+A further development stage adds an explicit 1–25 facility roster collector
+with a separate restart checkpoint. It revisits only named exact source IDs,
+reports semantic source-row changes via the evidence journal, and advances its
+cursor only after evidence is committed. It does not claim complete source
+coverage or use recent NOI dates as a change feed; operational details and
+limitations are in `smarts_evidence_journal_2026-10-12.md`.
+Its new offline tests and the full strict repository suite passed (2,347 tests);
+Ruff and Mypy passed. The roster collector itself has not been run live.
 
 ## What was integrated
 

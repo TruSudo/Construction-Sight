@@ -69,10 +69,64 @@ python -m constructionsight.smarts_evidence_ledger \
   --verify ~/ConstructionSight-SMARTS-Private/source-evidence.sqlite3
 ```
 
+## Bounded, restart-safe roster collection
+
+`constructionsight.smarts_collection` adds a separate private checkpoint file.
+This is a deliberate **1–25 exact facility roster**, with a per-invocation
+request budget of 1–25. It requires both `--execute-live` and
+`--retain-evidence`, and never derives a roster from recent NOI dates. Use a
+reviewed JSON file such as:
+
+```json
+[
+  {"county": "Riverside", "app_id": "600752"},
+  {"county": "San Bernardino", "wdid": "8 36C123456"}
+]
+```
+
+The IDs above illustrate the file shape; verify every actual target before
+running. Both the journal and checkpoint must be `.sqlite3` files in an
+existing owner-only directory outside the Git checkout. A sample invocation:
+
+```bash
+python -m constructionsight.smarts_collection \
+  --roster /private/path/reviewed-roster.json --run-id reviewed-sweep-001 \
+  --journal-path /private/path/evidence.sqlite3 \
+  --checkpoint-path /private/path/collection-checkpoint.sqlite3 \
+  --max-requests 5 --execute-live --retain-evidence
+```
+
+Each exact lookup must return one row matching the requested county and
+identifier. The original bounded response and its digest are committed to the
+immutable journal first. Only then is a receipt and the next roster index
+committed in the separate checkpoint. On restart, the roster, journal path,
+prior receipts, journal digests, and journal structure are verified before any
+new request. A changed roster or missing receipt fails closed. A crash between
+the two commits repeats that exact lookup; the repeated observation is retained
+but an unchanged row does not create another semantic version. Complete runs
+do no work when called again with the same run ID. A new explicit run ID
+revisits the roster and reports first, changed, and unchanged source rows.
+An unfinished run must be resolved before a new run can start.
+
+This reconciles **only the named source IDs**. Missing records, unexpected
+aliases, and source identity drift stop the cursor for human review; they do
+not become deletion claims. CKAN's `_id` is ignored in the semantic row digest.
+The checkpoint may safely lag evidence after a crash, so observed response
+counts can exceed completed roster steps. Keep and back up both private files
+together; neither is an adversarial tamper-proof store.
+
+**Completeness limit:** recent `NOI_PROCESSED_DATE` filtering cannot capture
+all edits, removals, or newly added records. This stage makes no county-wide
+coverage claim or high-water advance. A future complete reconciliation needs
+an authorized stable snapshot or change feed with documented ordering,
+pagination consistency, deletion semantics, a bounded coverage protocol, and
+comparison against a prior complete snapshot. Without that evidence, retain
+the last known complete coverage state as unknown.
+
 ## Not yet provided
 
 - No scheduled polling, full county snapshot, all-record change-feed,
-  checkpoint/watermark, pagination coverage, or published-CSV reconciliation.
+  county-wide watermark, pagination coverage, or published-CSV reconciliation.
 - No longitudinal guarantee that source identifiers are never reassigned.
 - No downstream schema migration into the ConstructionSight entity/site graph,
   automatic lead readiness promotion, dashboard feed, or outreach.
@@ -81,9 +135,12 @@ python -m constructionsight.smarts_evidence_ledger \
 - External commercial-use terms, retention controls, backup recovery, and
   end-to-end operational certification require separate review.
 
-The unit-test suite covers unchanged repeat, semantic update, reversion,
+The offline tests cover unchanged repeat, semantic update, reversion,
 transport row renumbering, alias collision, mismatched raw evidence,
-filesystem restrictions, transaction rollback on failed capture, and
-SQL UPDATE/DELETE rejection. The complete repository test suite and live
-opt-in capture must still be run on the exact development commit before
-this stage can be considered verified.
+filesystem restrictions, transaction rollback on failed capture,
+SQL UPDATE/DELETE rejection, partial collection failure, restart replay,
+source drift, changed rosters, and missing checkpoint receipts. On this
+development increment, the strict repository suite passed 2,347 tests,
+Ruff passed across `src` and `tests`, and Mypy passed 307 source files.
+The new roster collector has not been exercised live; that remains a separate
+controlled operational review.
