@@ -386,7 +386,10 @@ def test_bid_studio_chains_request_pricing_and_proposal_without_customer_authori
     assert 'id="bid-proposal-form"' in script
     assert 'id="proposal-cover-note"' in script
     assert 'id="proposal-additional-terms"' in script
-    assert 'result.innerHTML=renderBidPricingPreview(preview)+renderBidProposalForm(requestEvidence,preview);' in script
+    assert (
+        "result.innerHTML=renderBidPricingPreview(preview)+"
+        "renderBidProposalForm(requestEvidence,preview);" in script
+    )
     assert "wireBidProposalForm(requestEvidence,preview);" in script
     assert 'postJson("/api/bid-proposal-draft",{' in script
     assert "request_evidence:requestEvidence" in script
