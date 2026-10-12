@@ -222,6 +222,18 @@ def _open(path: Path) -> sqlite3.Connection:
             )
             if observed != names:
                 raise SmartsEvidenceError("Evidence journal schema columns differ")
+        expected_triggers = {
+            f"{table}_no_{action}"
+            for table in expected_columns
+            for action in ("update", "delete")
+        }
+        actual_triggers = {
+            row[0] for row in connection.execute(
+                "SELECT name FROM sqlite_master WHERE type='trigger'"
+            )
+        }
+        if actual_triggers != expected_triggers:
+            raise SmartsEvidenceError("Evidence journal immutability triggers are missing")
         return connection
     except Exception:
         connection.close()
