@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import sys
 from dataclasses import dataclass
 from typing import Any
@@ -182,6 +183,8 @@ def fetch_page(
     county: str | None = None,
     limit: int = 3,
     offset: int = 0,
+    app_id: str | None = None,
+    wdid: str | None = None,
 ) -> SmartsPage:
     """Fetch exactly one controlled public page, without retries or redirects."""
     if resource not in RESOURCE_IDS:
@@ -192,6 +195,15 @@ def fetch_page(
         raise SmartsApiError("Invalid page size")
     if type(offset) is not int or not 0 <= offset <= 1_000_000:
         raise SmartsApiError("Invalid offset")
+    if app_id is not None or wdid is not None:
+        if resource != "facilities" or county not in COUNTIES:
+            raise SmartsApiError("Exact facility lookup requires an approved county")
+        if (app_id is None) == (wdid is None):
+            raise SmartsApiError("Choose one facility record identifier")
+        if app_id is not None and not re.fullmatch(r"[0-9]{1,15}", app_id):
+            raise SmartsApiError("APP_ID must be a numeric source identifier, not NA")
+        if wdid is not None and not re.fullmatch(r"[A-Za-z0-9 ]{2,32}", wdid):
+            raise SmartsApiError("Invalid WDID source identifier")
 
     params: dict[str, str | int] = {
         "resource_id": RESOURCE_IDS[resource],
@@ -199,7 +211,12 @@ def fetch_page(
         "offset": offset,
     }
     if county is not None:
-        params["filters"] = json.dumps({"SITE_COUNTY": county}, separators=(",", ":"))
+        filters = {"SITE_COUNTY": county}
+        if app_id is not None:
+            filters["APP_ID"] = app_id
+        if wdid is not None:
+            filters["WDID"] = wdid
+        params["filters"] = json.dumps(filters, separators=(",", ":"))
 
     try:
         with client.stream("GET", API_URL, params=params, follow_redirects=False) as response:
@@ -256,6 +273,13 @@ def fetch_page(
     if any("_id" not in row or not set(row).issubset(fields) for row in rows):
         raise SmartsApiError("Malformed row identity or schema")
 
+    if app_id is not None and any(row.get("APP_ID") != app_id for row in rows):
+        raise SmartsApiError("APP_ID filter returned a different record")
+    if wdid is not None and any(row.get("WDID") != wdid for row in rows):
+        raise SmartsApiError("WDID filter returned a different record")
+    if county is not None and any(row.get("SITE_COUNTY") != county for row in rows):
+        raise SmartsApiError("County filter returned a different record")
+
     return SmartsPage(
         resource=resource,
         county=county,
@@ -267,6 +291,22 @@ def fetch_page(
         fields=fields,
         records=tuple(rows),
     )
+
+
+def fetch_exact_facility(
+    client: httpx.Client, *, county: str,
+    app_id: str | None = None, wdid: str | None = None,
+) -> SmartsPage:
+    """Resolve exactly one record in an approved county; never guess on duplicates."""
+    if (app_id is None) == (wdid is None):
+        raise SmartsApiError("Provide exactly one APP_ID or WDID")
+    page = fetch_page(
+        client, resource="facilities", county=county,
+        app_id=app_id, wdid=wdid, limit=2,
+    )
+    if page.total != 1 or len(page.records) != 1:
+        raise SmartsApiError("Exact facility lookup was missing or ambiguous")
+    return page
 
 
 def fetch_bounded_snapshot(
