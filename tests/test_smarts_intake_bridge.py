@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 from typing import Any
 from urllib.parse import parse_qs
@@ -98,7 +97,7 @@ def test_exact_app_id_request_and_intake_bridge() -> None:
     assert params["limit"] == ["2"]
     preview = build_smarts_intake_preview(page, page.records[0])
     assert preview.identity_status == "source_scoped_candidate"
-    assert preview.source_record_key == "smarts:facility:wdid:6A33C123456"
+    assert preview.source_record_key == "smarts:facility:Riverside:wdid:6A33C123456"
     assert preview.read_only is True
     assert preview.construction_activity == "unverified"
     assert preview.commercial_readiness == "blocked_pending_verification"
@@ -152,7 +151,7 @@ def test_na_app_id_never_becomes_a_stable_identity() -> None:
 def test_valid_wdid_can_anchor_source_identity_when_app_id_is_na() -> None:
     row = _record(APP_ID="NA", WDID="7 33C300548")
     preview = build_smarts_intake_preview(_page(row), row)
-    assert preview.source_record_key == "smarts:facility:wdid:7 33C300548"
+    assert preview.source_record_key == "smarts:facility:Riverside:wdid:7 33C300548"
 
 
 def test_missing_site_information_remains_unresolved() -> None:
