@@ -2,7 +2,7 @@
 
 This is a *source evidence journal*, not another ConstructionSight project or
 opportunity database. It does not change the governed application schema
-(\`construction_sight_schema_migrations\` schema v1), claim a project, or enable
+(`construction_sight_schema_migrations` schema v1), claim a project, or enable
 bid/outreach. It is deliberately separate until a reviewed application-schema
 migration and source authorization design are approved.
 
@@ -11,11 +11,11 @@ migration and source authorization design are approved.
 - Live request is **one exact** public California SMARTS facility by county and
   APP_ID or WDID. The same bounded CKAN response used by the intake preview is
   retained; no second network fetch, redirects, broad crawl, or background poll.
-- Normal \`smarts_intake_cli\` calls are **preview-only**. Persistence requires
-  *both* \`--retain-evidence\` and \`--journal-path\`.
+- Normal `smarts_intake_cli` calls are **preview-only**. Persistence requires
+  *both* `--retain-evidence` and `--journal-path`.
 - The body is the decoded JSON HTTP body as yielded by the approved HTTP
   transport (not encrypted TCP packet bytes). Its SHA-256 is checked before
-  retention, separately from the canonical row SHA-256 excluding CKAN \`_id\`.
+  retention, separately from the canonical row SHA-256 excluding CKAN `_id`.
 - **Raw SMARTS responses may contain contact information.** The journal must
   live in an existing owner-only directory (mode 0700 or stricter), and the
   SQLite file is created as 0600 with symlink and ownership checks. Never commit
@@ -25,9 +25,9 @@ migration and source authorization design are approved.
 
 ## Storage contract
 
-SQLite \`synchronous=FULL\`, rollback journaling, \`BEGIN IMMEDIATE\`, foreign
+SQLite `synchronous=FULL`, rollback journaling, `BEGIN IMMEDIATE`, foreign
 key enforcement, versioned application ID, expected column checks and
-\`quick_check\` protect the bounded local source journal. A single transaction
+`quick_check` protect the bounded local source journal. A single transaction
 stores an observation's original response bytes and, **only when its semantic
 row digest differs from the latest version for the same source**, an append-only
 version. Unchanged repeated observations remain independently auditable but
@@ -35,7 +35,7 @@ do not advance the version number. Reverting to earlier content **does** create
 a new version. Version entries link to a particular observation and carry a
 SHA-256 chain to the preceding semantic event.
 
-Source-scoped identifiers are checked in the \`smarts_aliases\` table. Known
+Source-scoped identifiers are checked in the `smarts_aliases` table. Known
 WDID/APP_ID mappings cannot be silently reassigned; a conflicting mapping or
 new alias on an existing identity fails closed for human review. Neither
 APP_ID nor WDID is promoted into a globally verified project identity.
@@ -48,7 +48,7 @@ stronger adversarial assurance.
 
 ## Usage — development checkout only
 
-\`\`\`bash
+```bash
 mkdir -p ~/ConstructionSight-SMARTS-Private
 chmod 700 ~/ConstructionSight-SMARTS-Private
 
@@ -67,7 +67,7 @@ python -m constructionsight.smarts_intake_cli \
 # Offline integrity check (no network, no raw contact fields in output)
 python -m constructionsight.smarts_evidence_ledger \
   --verify ~/ConstructionSight-SMARTS-Private/source-evidence.sqlite3
-\`\`\`
+```
 
 ## Not yet provided
 
