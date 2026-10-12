@@ -129,10 +129,15 @@ Populate the database through existing governed intake/persistence commands.
   workflow state. It revalidates the exact review package and durable duplicate state,
   requires reviewed business-contact provenance, and returns a content-bound preview.
   It does not retain or send the message and fixes external-send and bid authority false.
-- Bid Studio currently exposes only the request-evidence gate. It binds an exact
-  persisted `ready`/`active` workflow to requester-business provenance, an offset-aware
-  observed request time, retained request text, and requested security scope. It does
-  can chain validated request evidence into a manual exact-money internal pricing preview. It does not infer prices, grant commercial approval, create an authorized customer-facing bid, or submit a bid.
+- Bid Studio now exposes a sequential internal draft flow: requester-evidenced bid
+  request, manual exact-money pricing preview, and content-bound internal proposal
+  draft. Each preview revalidates exact persisted `ready`/`active` workflow, review
+  package, and durable duplicate state. Requester provenance, offset-aware observed
+  time, requested security scope, and exact pricing identity remain bound to the draft.
+  The local UI never infers prices, approves commercial terms, authorizes a
+  customer-facing bid, stores an approved proposal, contacts the prospect, or
+  submits anything. All three HTTP POSTs are same-origin, bounded, read-only
+  computations; a stale or forged preview is rejected at the backend boundary.
 
 ## Local boundary
 
@@ -140,7 +145,8 @@ Source and commercial database reads use SQLite `mode=ro`. A separate guarded
 engine may mutate only persisted local watchlist rows. HTTP binds only to
 `127.0.0.1`, accepts exact loopback Host values, and requires exact same-origin
 requests for POST/DELETE operations. The only effectful HTTP database mutation is
-watchlist membership; Outreach preview, Bid Request Evidence and Bid Pricing Preview POSTs are bounded
+watchlist membership; Outreach preview, Bid Request Evidence, Bid Pricing Preview,
+and Bid Proposal Draft POSTs are bounded
 read-only computations and have no network-delivery transport.
 The GUI loads its JavaScript/CSS locally, escapes displayed source strings, limits
 source links to HTTP(S), and uses a CSP without inline scripts. Database read or

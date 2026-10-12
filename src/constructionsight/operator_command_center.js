@@ -1201,6 +1201,90 @@ function renderBidPricingPreview(preview) {
     '<p>Pricing method: '+escapeText(preview.pricing_method)+' · Validity note: '+escapeText(preview.validity_note)+'</p>'+
     '<p><strong>Commercial terms are not authorized.</strong> This is not a customer-facing bid and cannot be submitted.</p></section>';
 }
+
+function renderBidProposalForm(requestEvidence,pricingPreview) {
+  if(!requestEvidence || !pricingPreview ||
+    pricingPreview.request_evidence_id!==requestEvidence.request_evidence_id)
+    throw Error("Proposal form request/pricing identity is inconsistent.");
+  return '<section class="feature-card"><span class="badge">NEXT GATE · INTERNAL PROPOSAL DRAFT ONLY</span>'+
+    '<h2>Build internal proposal draft</h2>'+
+    '<p>This draft revalidates the exact request and pricing against current persisted workflow and review state. It is not approved commercial terms or a bid for delivery.</p>'+
+    '<form id="bid-proposal-form" class="outreach-preview-form">'+
+    '<label class="wide">Proposal title<input id="proposal-title" maxlength="500" required value="Construction Site Security Proposal"></label>'+
+    '<label class="wide">Internal cover note<textarea id="proposal-cover-note" maxlength="10000" required placeholder="Describe the requested security coverage and review context."></textarea></label>'+
+    '<label class="wide">Additional terms (one per line, maximum 50)<textarea id="proposal-additional-terms" maxlength="10000" placeholder="Terms pending commercial review."></textarea></label>'+
+    '<div class="wide"><button type="submit" class="action primary">Build internal draft</button></div></form>'+
+    '<div id="bid-proposal-result" role="status"></div>'+
+    '<p><small>Bound request: '+escapeText(requestEvidence.request_evidence_id)+
+    ' · Bound pricing: '+escapeText(pricingPreview.pricing_preview_id)+'</small></p></section>';
+}
+function renderBidProposalDraft(proposal,requestEvidence,pricingPreview) {
+  if(!proposal || !/^bid-proposal-draft:v1:[0-9a-f]{64}$/.test(proposal.proposal_draft_id) ||
+    proposal.request_evidence_id!==requestEvidence.request_evidence_id ||
+    proposal.pricing_preview_id!==pricingPreview.pricing_preview_id ||
+    proposal.workflow_id!==requestEvidence.workflow_id ||
+    proposal.prepared_for_business_name!==requestEvidence.requester_business_name ||
+    proposal.currency_code!==pricingPreview.currency_code ||
+    proposal.subtotal_minor!==pricingPreview.subtotal_minor ||
+    proposal.requires_commercial_approval!==true ||
+    proposal.commercial_terms_authorized!==false ||
+    proposal.customer_facing_bid_authorized!==false ||
+    proposal.bid_submission_authorized!==false ||
+    proposal.draft_format!=="internal_proposal_draft/v1" ||
+    !Array.isArray(proposal.line_items) ||
+    !Array.isArray(proposal.assumptions) ||
+    !Array.isArray(proposal.exclusions) ||
+    !Array.isArray(proposal.additional_terms))
+    throw Error("Internal proposal draft identity, money or approval boundary is inconsistent.");
+  const rows=proposal.line_items.map(line=>
+    '<tr><td>'+escapeText(line.description)+'</td><td>'+escapeText(line.pricing_basis)+
+    '</td><td>'+minorMoneyText(line.amount_minor,proposal.currency_code)+'</td></tr>').join("");
+  const notes=(label,items)=>'<h3>'+label+'</h3>'+(items.length?
+    '<ul>'+items.map(value=>'<li>'+escapeText(value)+'</li>').join("")+'</ul>':
+    '<p>None stated; review required.</p>');
+  return '<section class="feature-card"><span class="badge">INTERNAL DRAFT · NOT FOR CUSTOMER DELIVERY</span>'+
+    '<h2>'+escapeText(proposal.proposal_title)+'</h2>'+
+    '<p><strong>Prepared for: </strong>'+escapeText(proposal.prepared_for_business_name)+
+    ' · '+escapeText(proposal.requester_business_role)+'</p>'+
+    '<p><strong>Cover note: </strong>'+escapeText(proposal.cover_note)+'</p>'+
+    '<p><strong>Requested security scope: </strong>'+escapeText(proposal.scope_summary)+'</p>'+
+    '<div class="source-inventory-scroll"><table class="source-inventory"><thead><tr>'+
+    '<th>Service</th><th>Reviewed pricing basis</th><th>Amount</th></tr></thead><tbody>'+
+    rows+'</tbody></table></div>'+
+    '<p><strong>Internal subtotal: '+minorMoneyText(proposal.subtotal_minor,proposal.currency_code)+'</strong></p>'+
+    '<p>Pricing method: '+escapeText(proposal.pricing_method)+
+    ' · Validity: '+escapeText(proposal.validity_note)+'</p>'+
+    notes("Assumptions",proposal.assumptions)+notes("Exclusions",proposal.exclusions)+
+    notes("Additional terms",proposal.additional_terms)+
+    '<p><small>Content-bound internal draft ID: '+escapeText(proposal.proposal_draft_id)+'</small></p>'+
+    '<p><strong>Commercial approval is required. No customer-facing bid is authorized; no contract was created and no submission occurred.</strong></p></section>';
+}
+function wireBidProposalForm(requestEvidence,pricingPreview) {
+  const form=byId("bid-proposal-form");
+  if(!form)return;
+  form.onsubmit=async event=>{
+    event.preventDefault();
+    const result=byId("bid-proposal-result");
+    const terms=byId("proposal-additional-terms").value.split("\n").map(s=>s.trim()).filter(Boolean);
+    result.innerHTML='<p>Revalidating request, pricing, workflow and review state before drafting…</p>';
+    try{
+      if(terms.length>50)throw Error("A proposal draft supports at most 50 additional terms.");
+      const proposal=await postJson("/api/bid-proposal-draft",{
+        request_evidence:requestEvidence,
+        pricing_preview:pricingPreview,
+        proposal_title:byId("proposal-title").value,
+        cover_note:byId("proposal-cover-note").value,
+        additional_terms:terms
+      });
+      result.innerHTML=renderBidProposalDraft(proposal,requestEvidence,pricingPreview);
+    }catch(error){
+      result.innerHTML='<h3>Internal proposal draft blocked</h3><p role="alert">'+
+        escapeText(error.message||error)+'</p>'+
+        '<p>No approved commercial terms, customer delivery or bid submission occurred.</p>';
+    }
+  };
+}
+
 function renderBidPricingForm(requestEvidence) {
   return '<section class="feature-card"><span class="badge">NEXT GATE · MANUAL EXACT-MONEY PREVIEW</span>'+
     '<h2>Build internal pricing preview</h2>'+
@@ -1254,20 +1338,21 @@ function wireBidPricingForm(requestEvidence) {
         exclusions:textLines("bid-exclusions"),
         validity_note:byId("bid-validity-note").value
       });
-      result.innerHTML=renderBidPricingPreview(preview);
+      result.innerHTML=renderBidPricingPreview(preview)+renderBidProposalForm(requestEvidence,preview);
+      wireBidProposalForm(requestEvidence,preview);
     }catch(error){
       result.innerHTML='<h3>Pricing preview blocked</h3><p role="alert">'+escapeText(error.message||error)+'</p><p>No commercial terms or submission were authorized.</p>';
     }
   };
 }
 function showBidStudio() {
-  featureIntro("Bid Studio", "Prospect-request evidence gate · pricing, preparation and submission disabled");
+  featureIntro("Bid Studio", "Reviewed prospect request → manual pricing → internal proposal draft · delivery disabled");
   const eligible=commercialWorkflowOptions();
   const options=eligible.map(row=>
     '<option value="'+escapeText(row.workflow_id)+'">'+escapeText(row.status.toUpperCase()+" · "+
       (row.summary||row.base_candidate_id)+" · "+row.workflow_id)+'</option>'
   ).join("");
-  byId("feature-body").innerHTML='<section class="feature-card"><span class="badge">REQUEST EVIDENCE GATE · NO PRICING</span>'+
+  byId("feature-body").innerHTML='<section class="feature-card"><span class="badge">REQUEST EVIDENCE GATE · INTERNAL PREVIEW ONLY</span>'+
     '<h2>Validate a prospect-requested bid</h2>'+
     '<p>A green/ready lead is not enough. Record the prospect request, its source and the requested scope. The exact workflow, review package and duplicate state are revalidated on submit.</p>'+
     (eligible.length?
@@ -1390,6 +1475,7 @@ async function loadData(offset=pageOffset, focusIdentity=null){
       health.outreach_send_enabled!==false ||
       health.bid_request_evidence_enabled!==true ||
       health.bid_pricing_preview_enabled!==true ||
+      health.bid_proposal_draft_preview_enabled!==true ||
       health.bid_pricing_enabled!==false ||
       health.bid_preparation_enabled!==false ||
       health.bid_submission_enabled!==false ||

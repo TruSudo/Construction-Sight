@@ -375,3 +375,28 @@ def test_sources_collection_displays_retained_exact_sch_review_queue() -> None:
     assert "Candidates are source claims, not verified active " in script
     assert "--capture-queue &lt;review-queue.json&gt;" in script
     assert ".capture-queue-entry" in css
+
+
+def test_bid_studio_chains_request_pricing_and_proposal_without_customer_authority() -> None:
+    """The Command Center must expose only the non-authorizing internal draft chain."""
+    script = (ASSETS / "operator_command_center.js").read_text(encoding="utf-8")
+    assert "function renderBidProposalForm(requestEvidence,pricingPreview)" in script
+    assert "function renderBidProposalDraft(proposal,requestEvidence,pricingPreview)" in script
+    assert "function wireBidProposalForm(requestEvidence,pricingPreview)" in script
+    assert 'id="bid-proposal-form"' in script
+    assert 'id="proposal-cover-note"' in script
+    assert 'id="proposal-additional-terms"' in script
+    assert 'result.innerHTML=renderBidPricingPreview(preview)+renderBidProposalForm(requestEvidence,preview);' in script
+    assert "wireBidProposalForm(requestEvidence,preview);" in script
+    assert 'postJson("/api/bid-proposal-draft",{' in script
+    assert "request_evidence:requestEvidence" in script
+    assert "pricing_preview:pricingPreview" in script
+    assert "proposal.pricing_preview_id!==pricingPreview.pricing_preview_id" in script
+    assert "proposal.request_evidence_id!==requestEvidence.request_evidence_id" in script
+    assert "proposal.subtotal_minor!==pricingPreview.subtotal_minor" in script
+    assert "proposal.requires_commercial_approval!==true" in script
+    assert "proposal.customer_facing_bid_authorized!==false" in script
+    assert "proposal.bid_submission_authorized!==false" in script
+    assert "health.bid_proposal_draft_preview_enabled!==true" in script
+    assert "INTERNAL DRAFT · NOT FOR CUSTOMER DELIVERY" in script
+    assert "No approved commercial terms, customer delivery or bid submission occurred." in script
