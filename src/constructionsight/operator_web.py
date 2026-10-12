@@ -136,9 +136,11 @@ def _parameters(
     )
     if set(values) - allowed or any(len(value) != 1 for value in values.values()):
         raise ValueError("unsupported or repeated query parameter")
-    limit = int(values.get("limit", ["10" if source_review_queue else "25" if results else "100"])[0])
+    default_limit = "10" if source_review_queue else "25" if results else "100"
+    limit = int(values.get("limit", [default_limit])[0])
     offset = int(values.get("offset", ["0"])[0])
-    if not 1 <= limit <= (25 if source_review_queue else 50 if results else 500) or not 0 <= offset <= 1_000_000:
+    max_limit = 25 if source_review_queue else 50 if results else 500
+    if not 1 <= limit <= max_limit or not 0 <= offset <= 1_000_000:
         raise ValueError("invalid page bounds")
     if workflow:
         return _RequestParameters(
