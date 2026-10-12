@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 from urllib.parse import urlsplit
 
 import pytest
@@ -19,11 +20,11 @@ FIXTURE = (
 
 
 @pytest.fixture(scope="module")
-def pilot() -> dict[str, object]:
+def pilot() -> dict[str, Any]:
     return json.loads(FIXTURE.read_text(encoding="utf-8"))
 
 
-def test_five_unique_source_candidates_with_evidence(pilot: dict[str, object]) -> None:
+def test_five_unique_source_candidates_with_evidence(pilot: dict[str, Any]) -> None:
     cases = pilot["cases"]
     assert isinstance(cases, list)
     assert len(cases) == 5
@@ -34,7 +35,7 @@ def test_five_unique_source_candidates_with_evidence(pilot: dict[str, object]) -
     assert all(entry["identity_checks"] and entry["next_evidence"] for entry in cases)
 
 
-def test_each_claim_links_only_to_explicit_official_sources(pilot: dict[str, object]) -> None:
+def test_each_claim_links_only_to_explicit_official_sources(pilot: dict[str, Any]) -> None:
     approved_suffixes = (
         "ceqanet.lci.ca.gov",
         "cityofmenifee.us",
@@ -57,7 +58,7 @@ def test_each_claim_links_only_to_explicit_official_sources(pilot: dict[str, obj
             assert evidence["type"]
 
 
-def test_regulatory_active_is_not_construction_activity(pilot: dict[str, object]) -> None:
+def test_regulatory_active_is_not_construction_activity(pilot: dict[str, Any]) -> None:
     assert "not verified construction" in pilot["prohibited_inferences"][0].lower()
     assert "user-supplied" in pilot["smarts_observations_provenance"]
     for case in pilot["cases"]:
@@ -66,7 +67,7 @@ def test_regulatory_active_is_not_construction_activity(pilot: dict[str, object]
         assert case["smarts"]["noi_processed_date"]
 
 
-def test_hard_identity_edges_remain_unconfirmed(pilot: dict[str, object]) -> None:
+def test_hard_identity_edges_remain_unconfirmed(pilot: dict[str, Any]) -> None:
     cases = {item["id"]: item for item in pilot["cases"]}
     assert cases["smarts_northern_gateway_menifee"]["candidate_relation"] == (
         "possible_offsite_infrastructure_of"
