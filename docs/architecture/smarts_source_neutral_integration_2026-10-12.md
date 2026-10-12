@@ -3,6 +3,12 @@
 Status as of 2026-10-12: **development preview only; no graph writes, scheduler,
 source maturity promotion, dashboard feed, or approved production collection**.
 
+Development update: an explicit opt-in, private SQLite SMARTS source-evidence journal
+now retains bounded exact-record response bodies and append-only source versions;
+see `smarts_evidence_journal_2026-10-12.md`. This sidecar never writes the
+application graph or authorizes scheduled production collection. Full repository
+quality checks and live retained capture are pending for this new increment.
+
 ## What was integrated
 
 On development branch `agent/smarts-source-neutral-integration-2026-10-12`
@@ -112,10 +118,11 @@ emails/phones. No default background network execution occurs.
    county query behavior; report real failure if source access is denied.
 3. Reconcile exact WDID/APP_ID against the five independent official
    planning/CEQA project cases, retaining rejected links and contradictions.
-4. Implement **immutable retained raw evidence + atomic source-scoped version
-   ledger + restart-safe repeatable polling/checkpoint/reconciliation** in
-   existing persistence. No high-water advance until a complete source
-   snapshot is validated; no assumption that date filtering catches updates.
+4. Verify the new **opt-in private evidence journal and source-scoped version
+   ledger** on the exact commit. Then design reviewed integration with governed
+   application persistence, restart-safe polling/checkpoint/reconciliation, and
+   complete snapshot validation. No high-water advance until a complete source
+   snapshot is validated; date filtering alone cannot guarantee all updates.
 5. Establish source-specific access/commercial-use terms and production
    rate limits, automated source freshness, alerting, and weekly authoritative
    CSV completeness checks.
