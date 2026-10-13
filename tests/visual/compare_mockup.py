@@ -83,12 +83,14 @@ def compare(reference: Path, actual: Path, output: Path) -> dict:
         "REFERENCE" + (" — SCALED DIAGNOSTIC; NATIVE ASSET MISSING" if not native else ""),
         fill="white",
     )
-    labels.text((1687, 15), "CURRENT APP — REAL DATA", fill="white")
+    labels.text((1687, 15), "CURRENT APP — CAPTURED VIEW", fill="white")
     canvas.paste(diff, (0, 1031))
     canvas.paste(structural, (1672, 1031))
     labels.text((15, 1001), "RAW DIFF (INCLUDES INTENTIONAL REAL-DATA DIFFERENCES)", fill="white")
     labels.text(
-        (1687, 1001), f"STATIC DIFF: {score:.2%} changed / 0.50% limit — FAIL", fill="white"
+        (1687, 1001),
+        f"STATIC DIFF: {score:.2%} changed / 0.50% limit — {'PASS' if passed else 'FAIL'}",
+        fill="white",
     )
     canvas.save(output / "CommandCenter-comparison.png")
     result = {

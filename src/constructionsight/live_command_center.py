@@ -17,6 +17,7 @@ from zoneinfo import ZoneInfo
 import httpx
 
 from constructionsight.fontana_permits import fetch_candidates, retain_candidates
+from constructionsight.lead_watchlist import update_watch, watchlist
 from constructionsight.lead_workflow import (
     REASONS,
     STATUSES,
@@ -178,6 +179,13 @@ def make_server(
                     json.dumps(run_history(directory) if directory else []).encode(),
                     "application/json",
                 )
+            elif path == "/api/watchlist":
+                body, mime = (
+                    json.dumps(
+                        watchlist(directory, current()["rows"]) if directory else []
+                    ).encode(),
+                    "application/json",
+                )
             elif path == "/api/developers":
                 body, mime = (
                     json.dumps(developer_accounts(current()["rows"])).encode(),
@@ -266,7 +274,8 @@ def make_server(
 
         def do_POST(self) -> None:
             path = urlsplit(self.path).path
-            if not directory or not path.startswith("/api/feedback/"):
+            is_watch = path.startswith("/api/watchlist/")
+            if not directory or not (is_watch or path.startswith("/api/feedback/")):
                 self.send_error(501)
                 return
             host = self.headers.get("Host", "")
@@ -284,11 +293,16 @@ def make_server(
                 payload = json.loads(self.rfile.read(length))
                 if not isinstance(payload, dict):
                     raise ValueError("Feedback must be an object")
-                key = unquote(path[len("/api/feedback/") :])
+                prefix = "/api/watchlist/" if is_watch else "/api/feedback/"
+                key = unquote(path[len(prefix) :])
                 lead = next((r for r in current()["rows"] if r["source_key"] == key), None)
-                if lead is None:
+                if lead is None and not is_watch:
                     raise ValueError("Unknown lead")
-                result = save_feedback(directory, key, payload, lead)
+                if is_watch:
+                    result = update_watch(directory, key, payload, lead)
+                else:
+                    assert lead is not None
+                    result = save_feedback(directory, key, payload, lead)
                 body = json.dumps(result).encode()
             except (ValueError, KeyError) as exc:
                 self.send_error(400, str(exc))
