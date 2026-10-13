@@ -147,8 +147,24 @@ def test_actual_loopback_endpoint_reads_only_selected_journal(tmp_path: Path) ->
         journal, page, build_smarts_intake_preview(page, page.records[0])
     )
     before = hashlib.sha256(journal.read_bytes()).hexdigest()
+    private_csv = journal.parent / "source.csv"
+    private_csv.write_text(
+        "_id,APP_ID,WDID,SITE_COUNTY,STATUS,CONTACT_EMAIL\\n"
+        "1,101,8 33C101,Riverside,Active,private@example.test\\n",
+        encoding="utf-8",
+    )
+    private_csv.chmod(0o600)
+    csv_history = journal.parent / "history.sqlite3"
+    append_snapshot(
+        ledger_path=csv_history, csv_path=private_csv, county="Riverside"
+    )
+    history_digest = hashlib.sha256(csv_history.read_bytes()).hexdigest()
     server = ThreadingHTTPServer(
-        ("127.0.0.1", 0), create_handler(database, smarts_journal_path=journal)
+        ("127.0.0.1", 0),
+        create_handler(
+            database, smarts_journal_path=journal,
+            smarts_snapshot_history_path=csv_history,
+        ),
     )
     thread = Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
     thread.start()
@@ -170,6 +186,11 @@ def test_actual_loopback_endpoint_reads_only_selected_journal(tmp_path: Path) ->
         assert payload["observations"] == 1
         assert payload["semantic_versions"] == 1
         assert payload["source_identities"] == 1
+        assert payload["csv_snapshot_history_configured"] is True
+        assert payload["csv_snapshot_history_integrity_verified"] is True
+        assert payload["csv_snapshots"] == 1
+        assert payload["csv_source_row_observations"] == 1
+        assert hashlib.sha256(csv_history.read_bytes()).hexdigest() == history_digest
         assert payload["network_executed"] is False
         assert payload["lead_readiness_authorized"] is False
         assert "private@example.test" not in json.dumps(payload)
