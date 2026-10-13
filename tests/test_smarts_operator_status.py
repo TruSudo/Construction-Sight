@@ -12,13 +12,13 @@ from threading import Thread
 
 import pytest
 
+from constructionsight.operator_web import create_handler
 from constructionsight.smarts_api import RESOURCE_IDS, SmartsPage
 from constructionsight.smarts_evidence_ledger import (
     SmartsEvidenceError,
     record_smarts_observation,
     verify_smarts_journal,
 )
-from constructionsight.operator_web import create_handler
 from constructionsight.smarts_intake_bridge import build_smarts_intake_preview
 from constructionsight.smarts_operator_status import (
     SCHEMA_VERSION,
