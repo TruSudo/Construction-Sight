@@ -195,3 +195,61 @@ new background ingest or production permission is implied.
 rights, real live fixture replay, full dataset snapshot reconciliation,
 a permitted recurring collection strategy, complete versioned storage and
 reviewed cross-source parcel/project identity connections.
+
+## Append-only offline SMARTS CSV snapshot history (development integration)
+
+`constructionsight-smarts-snapshot-history` now stores source-provided
+**original facility CSV bytes** alongside all selected-county source identities,
+source-row SHA-256 digests and deterministic candidate-change events in one
+separate, owner-only SQLite ledger. This is independent of the exact-record
+SMARTS API journal, and neither database is the project/permit database.
+
+First, manually acquire the **complete original official facility CSV** through
+an approved source process and place it outside the Git checkout. Restrict the
+original file and its parent directory to the owner (mode `0600` file and
+`0700` directory), then explicitly capture one county:
+
+```bash
+constructionsight-smarts-snapshot-history --record \
+  --ledger /private/smarts/facility-history.sqlite3 \
+  --csv /private/smarts/facilities-2026-10-12.csv \
+  --county Riverside --retain-evidence
+```
+
+Repeat with `--county "San Bernardino"` for the second jurisdiction.
+A subsequent independently acquired full official CSV can be recorded with the
+same command and ledger. An optional
+`--reported-publication-at 2026-10-02T08:00:00-07:00` stores an
+**operator-provided, unverified** agency publication timestamp. The program
+separately records the time of local capture in UTC.
+
+```bash
+constructionsight-smarts-snapshot-history --verify \
+  --ledger /private/smarts/facility-history.sqlite3
+```
+
+The verifier opens an existing owner-only SQLite file **read-only**, never
+creates or repairs it, and reconstructs every persisted county snapshot and
+transition from the original source bytes. The ledger persists the full CSV
+once by content hash even when both counties refer to the same export.
+A repeated immediately identical file is an idempotent replay, not a new
+snapshot or event. A new file with only CKAN `_id` renumbering produces no
+semantic-change event. Missing-from-new remains a review candidate, never a
+deletion conclusion. The first snapshot is a **baseline** and emits no
+supposed newly constructed projects.
+
+The SQLite transactions and immutable append-only tables preserve source
+capture, row hashes and change events atomically. Failed imports leave no
+partial source snapshot. These original files may include personal contact
+data: **never publish the ledger, raw CSVs, SQLite copies, or logs with source
+contents**. The CLI prints aggregate counts and hashes only.
+
+The ledger is a development-stage persistence foundation. It is **not**
+proof of complete official exports, permitted automated harvesting,
+publisher-reported freshness, a current site, a parcel/project match or
+commercial lead readiness. The operator must still verify official resource
+identity, completeness, publication periods, terms and approval for recurring
+operational use. This stage does not add a scheduler, automatic source
+downloads, GUI lead promotion, outreach or bids; the approved layout remains
+unchanged. Backup/restore disaster-recovery exercises and cross-source
+project reconciliation remain future acceptance gates.
