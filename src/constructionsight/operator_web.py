@@ -75,6 +75,7 @@ from constructionsight.outreach_preview_service import (
     build_persisted_outreach_preview,
 )
 from constructionsight.smarts_operator_status import build_smarts_operator_status
+from constructionsight.smarts_parcel_review import inspect_smarts_parcel_candidates
 from constructionsight.smarts_snapshot_history import review_snapshot_changes
 from constructionsight.storage.operator_read_store import (
     create_operator_read_engine,
@@ -190,6 +191,23 @@ def _parameters(
         record_id=record_id,
         role_filter=role_filter,
     )
+
+
+def _parse_smarts_parcel_query(query: str) -> tuple[int, str]:
+    if len(query) > 512:
+        raise ValueError("SMARTS parcel-review selection is too long")
+    values = parse_qs(query, keep_blank_values=True, max_num_fields=2)
+    if set(values) != {"snapshot_id", "source_key"} or any(
+        len(items) != 1 for items in values.values()
+    ):
+        raise ValueError("SMARTS parcel review requires exact snapshot_id and source_key")
+    raw_id, source_key = values["snapshot_id"][0], values["source_key"][0]
+    if not raw_id.isascii() or not raw_id.isdecimal() or len(raw_id) > 10:
+        raise ValueError("Invalid SMARTS parcel review snapshot identity")
+    snapshot_id = int(raw_id)
+    if not 1 <= snapshot_id <= 2_147_483_647 or not source_key:
+        raise ValueError("Invalid SMARTS parcel review selection")
+    return snapshot_id, source_key
 
 
 def _validate_smarts_change_query(query: str) -> None:
@@ -324,6 +342,7 @@ def create_handler(
                     "/api/source-registry",
                     "/api/smarts-status",
                     "/api/smarts-changes",
+                    "/api/smarts-parcel-candidates",
                     "/api/source-revision",
                     "/api/snapshot",
                     "/api/footprint",
@@ -358,8 +377,12 @@ def create_handler(
                     raise ValueError("unfiltered status inspection rejects query parameters")
                 if path == "/api/smarts-changes":
                     _validate_smarts_change_query(parsed.query)
+                smarts_parcel_selectors = (
+                    _parse_smarts_parcel_query(parsed.query)
+                    if path == "/api/smarts-parcel-candidates" else None
+                )
                 parameters = _parameters(
-                    parsed.query,
+                    "" if smarts_parcel_selectors is not None else parsed.query,
                     workflow=path in {"/api/workflows", "/api/results"},
                     results=path == "/api/results",
                     footprint=path == "/api/footprint",
@@ -404,6 +427,14 @@ def create_handler(
                         payload = review_snapshot_changes(
                             smarts_snapshot_history_path, county=parameters.county,
                             limit=parameters.limit, offset=parameters.offset,
+                        )
+                    elif path == "/api/smarts-parcel-candidates":
+                        if smarts_parcel_selectors is None:
+                            raise ValueError("Missing exact SMARTS source selection")
+                        payload = inspect_smarts_parcel_candidates(
+                            session, history_path=smarts_snapshot_history_path,
+                            snapshot_id=smarts_parcel_selectors[0],
+                            source_key=smarts_parcel_selectors[1],
                         )
                     elif path == "/api/capture-queue":
                         payload = capture_queue
