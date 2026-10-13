@@ -94,7 +94,7 @@ def _read_source_identity(
     if found is None:
         raise SmartsHistoryError("SMARTS source row is missing from selected snapshot")
     apn, state = _candidate_apn(found)
-    if apn is not None:
+    if apn is not None or state != "source_apn_missing":
         return apn, state, None, None
     raw_address = found.get("SITE_ADDRESS", "").strip()
     raw_city = found.get("SITE_CITY", "").strip()
