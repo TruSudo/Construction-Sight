@@ -832,6 +832,8 @@ function renderSmartsStatus(data) {
       typeof data.configured !== "boolean" || data.read_only !== true ||
       data.network_executed !== false || data.journal_mutated !== false ||
       data.source_rows_exposed !== false || data.journal_integrity_verified !== data.configured ||
+      typeof data.csv_snapshot_history_configured !== "boolean" ||
+      data.csv_snapshot_history_integrity_verified !== data.csv_snapshot_history_configured ||
       data.live_collection_enabled !== false || data.scheduled_collection_enabled !== false ||
       data.county_coverage_verified !== false || data.source_freshness_verified !== false ||
       data.parcel_or_project_matches_verified !== false ||
@@ -842,22 +844,35 @@ function renderSmartsStatus(data) {
       !Number.isSafeInteger(data.source_identities) || data.source_identities < 0 ||
       data.source_identities > data.semantic_versions ||
       data.semantic_versions > data.observations ||
-      (!data.configured && (data.observations || data.semantic_versions || data.source_identities)))
+      (!data.configured && (data.observations || data.semantic_versions || data.source_identities)) ||
+      !Number.isSafeInteger(data.csv_snapshots) || data.csv_snapshots < 0 ||
+      !Number.isSafeInteger(data.csv_source_row_observations) ||
+      data.csv_source_row_observations < data.csv_snapshots ||
+      !Number.isSafeInteger(data.csv_change_candidates) || data.csv_change_candidates < 0 ||
+      !Number.isSafeInteger(data.csv_original_blobs) || data.csv_original_blobs < 0 ||
+      data.csv_original_blobs > data.csv_snapshots ||
+      (!data.csv_snapshot_history_configured && (
+        data.csv_snapshots || data.csv_source_row_observations ||
+        data.csv_change_candidates || data.csv_original_blobs)))
     throw Error("SMARTS evidence status or collection authority is inconsistent.");
-  if (!data.configured)
-    return '<section class="feature-card"><h2>SMARTS evidence</h2>' +
-      '<p>No private SMARTS journal is selected. Start this local operator with ' +
-      '<code>--smarts-journal /private/path/evidence.sqlite3</code> to review aggregate, ' +
-      'already-captured observations. This view does not acquire records.</p></section>';
-  return '<section class="feature-card"><span class="badge">PRIVATE SMARTS JOURNAL · VERIFIED · READ ONLY</span>' +
-    '<h2>SMARTS evidence</h2><p>' +
-    data.source_identities + ' source-scoped facility identities · ' +
-    data.observations + ' retained observations · ' +
-    data.semantic_versions + ' semantic versions.</p>' +
-    '<p>Integrity checks validate the selected private journal, not current ' +
-    'publisher coverage or regulatory freshness. Records have not been imported ' +
-    'as projects, linked to parcels or authorized for outreach or bidding. ' +
-    'Live and scheduled SMARTS collection are disabled in this operator.</p></section>';
+  const api = data.configured ?
+    '<p>Exact API observation journal: ' + data.source_identities +
+    ' source identities · ' + data.observations + ' observations · ' +
+    data.semantic_versions + ' versions (integrity verified).</p>' :
+    '<p>Exact API observation journal not configured. Optional: ' +
+    '<code>--smarts-journal /private/path/evidence.sqlite3</code>.</p>';
+  const csv = data.csv_snapshot_history_configured ?
+    '<p>Original CSV history: ' + data.csv_snapshots + ' retained county snapshots · ' +
+    data.csv_source_row_observations + ' source-row observations · ' +
+    data.csv_change_candidates + ' review-only change candidates · ' +
+    data.csv_original_blobs + ' distinct original CSV files (integrity verified).</p>' :
+    '<p>CSV history not configured. Optional: ' +
+    '<code>--smarts-snapshot-history /private/path/facility-history.sqlite3</code>.</p>';
+  return '<section class="feature-card"><span class="badge">SMARTS PRIVATE EVIDENCE · READ ONLY</span>' +
+    '<h2>SMARTS source evidence</h2>' + api + csv +
+    '<p>Private evidence integrity does not certify official county coverage, publication freshness, ' +
+    'active construction, parcel/project matching, lead readiness, outreach or bids. ' +
+    'This operator never acquires SMARTS data or schedules polling.</p></section>';
 }
 
 async function showSources() {
