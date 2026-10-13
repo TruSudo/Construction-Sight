@@ -114,7 +114,7 @@ an authorized customer bid request.
 - Duplicate source identities or source alias drift invalidate a facility
   snapshot. Unmatched inspection/compliance records are counted, not assumed
   to reference a project; conflicting aliases never create positive links.
-- Only rows whose `PERMIT_TYPE` explicitly contains `Construction` pass
+- Only rows whose `PERMIT_TYPE` begins with `Construction` (case-insensitive) pass
   the inspection/compliance program gate. Different/unknown vocabulary is
   *not* inferred as construction and requires manual schema review.
 - Regulatory dates are source-reported. Unparseable/missing dates are retained
