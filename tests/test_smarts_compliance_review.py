@@ -57,6 +57,8 @@ def test_compliance_link_and_no_liability_promotion(
              "Must not join"),
             ("101", "8 33C101", "1003", "2026-09-01", "Riverside", "Industrial",
              "Wrong program"),
+            ("101", "8 33C101", "1004", "2026-09-01", "Riverside", "Non-Construction",
+             "Not a construction permit"),
         ],
     )
     # Type narrowing comes from a controlled parametric test, not untrusted CLI.
@@ -65,7 +67,7 @@ def test_compliance_link_and_no_liability_promotion(
     summary = build_compliance_summary(facilities, review)
     assert summary["linked_records"] == 1
     assert summary["identity_conflicts"] == 1
-    assert summary["out_of_scope_permit_type"] == 1
+    assert summary["out_of_scope_permit_type"] == 2
     assert summary["regulatory_findings_adjudicated"] is False
     assert summary["physical_construction_verified"] is False
     assert "Confidential irrelevant notes" not in json.dumps(summary)
