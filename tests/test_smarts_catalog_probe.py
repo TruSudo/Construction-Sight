@@ -90,6 +90,8 @@ def test_invalid_transport_never_accepts_redirects_or_html(code: int, mime: str)
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(code, headers={"content-type": mime}, content=raw)
 
-    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
-        with pytest.raises(SmartsCatalogError):
-            fetch_catalog(client)
+    with (
+        httpx.Client(transport=httpx.MockTransport(handler)) as client,
+        pytest.raises(SmartsCatalogError),
+    ):
+        fetch_catalog(client)
