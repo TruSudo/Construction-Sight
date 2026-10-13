@@ -61,7 +61,7 @@ def test_matching_inspections_summarized_without_raw_contacts(tmp_path: Path) ->
     inspection_path = _csv(
         tmp_path / "inspection.csv", INSP_FIELDS,
         [
-            _inspection("101", "8 33C101", "500"),
+            _inspection("101.0", "8 33C101", "500"),
             _inspection("101", "8 33C101", "501", when="2026-10-01"),
             _inspection("102", "8 33C102", "502"),
         ],
