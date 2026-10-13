@@ -875,6 +875,69 @@ function renderSmartsStatus(data) {
     'This operator never acquires SMARTS data or schedules polling.</p></section>';
 }
 
+async function showSmartsParcelCandidates(item, index, token) {
+  const target=byId("smarts-parcel-result-"+index);
+  if(!target || !item)return;
+  target.innerHTML='<p role="status">Checking exact, retained county/APN evidence…</p>';
+  try {
+    const params=new URLSearchParams({
+      snapshot_id:String(item.snapshot_id),source_key:item.source_key
+    });
+    const data=await fetchJson("/api/smarts-parcel-candidates?"+params);
+    if(token!==featureRequest || byId("feature-view").hidden ||
+       target!==byId("smarts-parcel-result-"+index))return;
+    const allowed=new Set([
+      "historical_snapshot_requires_current_review", "missing_from_new_is_not_deletion",
+      "source_apn_missing", "unusable_source_apn", "conflicting_source_apns",
+      "parcel_not_retained", "parcel_candidate_ambiguous", "parcel_candidate_requires_review"
+    ]);
+    if(!data || data.schema_version!=="constructionsight.smarts_parcel_review.v1" ||
+       data.snapshot_id!==item.snapshot_id || data.source_key!==item.source_key ||
+       data.county!==item.county ||
+       data.original_file_sha256!==item.original_file_sha256 ||
+       !allowed.has(data.status) || data.read_only!==true ||
+       data.network_executed!==false || data.source_history_integrity_verified!==true ||
+       data.parcel_identity_verified!==false || data.project_identity_verified!==false ||
+       data.construction_activity_verified!==false || data.lead_created!==false ||
+       data.outreach_authorized!==false || data.bid_authorized!==false ||
+       !Number.isSafeInteger(data.candidate_total) || data.candidate_total<0 ||
+       !Array.isArray(data.candidates) || data.candidates.length>20 ||
+       data.returned!==data.candidates.length ||
+       data.truncated!==(data.candidate_total>data.returned) ||
+       (data.source_row_sha256!==null &&
+         !/^[0-9a-f]{64}$/.test(data.source_row_sha256)) ||
+       (data.source_claimed_normalized_apn!==null &&
+         !/^[0-9]{5,16}$/.test(data.source_claimed_normalized_apn)))
+      throw Error("SMARTS parcel candidate evidence or authority is inconsistent.");
+    const ids=new Set();
+    const matches=data.candidates.map(candidate=>{
+      if(!candidate || typeof candidate.parcel_record_id!=="string" ||
+         !candidate.parcel_record_id ||
+         typeof candidate.parcel_source_key!=="string" || !candidate.parcel_source_key ||
+         typeof candidate.parcel_source_record_id!=="string" ||
+         candidate.candidate_basis!=="same_county_exact_normalized_apn" ||
+         ids.has(candidate.parcel_record_id))
+        throw Error("Conflicting retained parcel candidate identities.");
+      ids.add(candidate.parcel_record_id);
+      return '<li>Parcel source record: <code>'+escapeText(candidate.parcel_record_id)+
+        '</code> · '+escapeText(candidate.parcel_source_key)+
+        ' · '+escapeText(candidate.parcel_source_record_id||"no source ID")+'</li>';
+    }).join("");
+    const label=data.status.replaceAll("_"," ");
+    target.innerHTML='<p><strong>'+escapeText(label)+'</strong> · '+
+      (data.source_claimed_normalized_apn ?
+        'Source-claimed normalized APN: <code>'+escapeText(data.source_claimed_normalized_apn)+'</code>. ' :
+        'No reliable exact APN evidence available. ')+
+      data.candidate_total+' retained parcel candidate'+(data.candidate_total===1?'':'s')+'.</p>'+
+      (matches?'<ul>'+matches+'</ul>':'')+
+      '<p>Potential APN co-occurrence is not verified site/project identity. Independent assessor, permit and location evidence plus explicit operator review remain required; no commercial action occurred.</p>';
+  }catch(error){
+    if(token===featureRequest && target===byId("smarts-parcel-result-"+index))
+      target.innerHTML='<p role="alert">Parcel evidence review unavailable: '+
+        escapeText(error.message||error)+'. No project link or lead was created.</p>';
+  }
+}
+
 async function showSmartsChanges(offset=0) {
   const token=featureRequest, panel=byId("smarts-change-results");
   if(!panel)return;
@@ -908,7 +971,7 @@ async function showSmartsChanges(offset=0) {
       return;
     }
     const keys=new Set();
-    const rows=data.items.map(item=>{
+    const rows=data.items.map((item,index)=>{
       if(!item || !Number.isSafeInteger(item.snapshot_id) || item.snapshot_id<1 ||
          !["San Bernardino","Riverside"].includes(item.county) ||
          (county && item.county!==county) ||
@@ -941,7 +1004,9 @@ async function showSmartsChanges(offset=0) {
         ' · Snapshot #'+item.snapshot_id+'</p>'+
         '<small>Original file SHA-256: '+escapeText(item.original_file_sha256)+
         ' · Previous row: '+escapeText(item.previous_row_sha256 || "none")+
-        ' · Current row: '+escapeText(item.current_row_sha256 || "absent")+'</small></div>';
+        ' · Current row: '+escapeText(item.current_row_sha256 || "absent")+'</small>'+ 
+        '<p><button type="button" class="action" data-smarts-parcel-index="'+index+'">Review retained parcel candidates</button></p>'+ 
+        '<div id="smarts-parcel-result-'+index+'" aria-live="polite"></div></div>';
     }).join("");
     panel.innerHTML='<p>'+data.total+' source-scoped change candidates · '+data.returned+
       ' shown. Missing-from-new does not mean deleted, completed or inactive. '+
@@ -951,6 +1016,10 @@ async function showSmartsChanges(offset=0) {
       (offset===0?'disabled':'')+'>Previous</button> '+
       '<button class="action" type="button" id="smarts-review-next" '+
       (!data.has_more?'disabled':'')+'>Next</button></div>';
+    panel.querySelectorAll("[data-smarts-parcel-index]").forEach(button=>{
+      const index=Number(button.dataset.smartsParcelIndex);
+      button.onclick=()=>showSmartsParcelCandidates(data.items[index],index,token);
+    });
     byId("smarts-review-prev").onclick=()=>showSmartsChanges(Math.max(0,offset-10));
     byId("smarts-review-next").onclick=()=>{if(data.has_more)showSmartsChanges(offset+10);};
   }catch(error) {
