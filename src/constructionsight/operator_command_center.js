@@ -875,6 +875,91 @@ function renderSmartsStatus(data) {
     'This operator never acquires SMARTS data or schedules polling.</p></section>';
 }
 
+async function showSmartsChanges(offset=0) {
+  const token=featureRequest, panel=byId("smarts-change-results");
+  if(!panel)return;
+  const county=byId("smarts-change-county")?.value || "";
+  if(!["","San Bernardino","Riverside"].includes(county))return;
+  panel.innerHTML='<p role="status">Verifying private SMARTS source-change evidence…</p>';
+  try {
+    const params=new URLSearchParams({county,limit:"10",offset:String(offset)});
+    const data=await fetchJson("/api/smarts-changes?"+params);
+    if(token!==featureRequest || byId("feature-view").hidden ||
+       panel!==byId("smarts-change-results"))return;
+    if(!data || data.schema_version!=="constructionsight.smarts_change_review.v1" ||
+       typeof data.configured!=="boolean" ||
+       data.verified_private_history!==data.configured ||
+       data.county_filter!==county || data.limit!==10 || data.offset!==offset ||
+       !Number.isSafeInteger(data.total) || data.total<0 ||
+       !Number.isSafeInteger(data.returned) || data.returned<0 ||
+       !Array.isArray(data.items) || data.items.length!==data.returned ||
+       data.returned>10 || data.has_more!==(offset+data.returned<data.total) ||
+       data.read_only!==true || data.network_executed!==false ||
+       data.history_mutated!==false || data.raw_csv_exposed!==false ||
+       data.missing_is_deletion!==false || data.source_identity_is_project_identity!==false ||
+       data.parcel_or_project_matches_verified!==false ||
+       data.live_collection_enabled!==false || data.lead_readiness_authorized!==false ||
+       data.outreach_authorized!==false || data.bid_authorized!==false ||
+       (!data.configured && (data.total!==0 || data.returned!==0)))
+      throw Error("SMARTS change-review evidence or authority is inconsistent.");
+    if(!data.configured) {
+      panel.innerHTML='<p>No SMARTS CSV history is configured. Select an owner-only retained snapshot ledger ' +
+        'with <code>--smarts-snapshot-history</code> when launching this operator.</p>';
+      return;
+    }
+    const keys=new Set();
+    const rows=data.items.map(item=>{
+      if(!item || !Number.isSafeInteger(item.snapshot_id) || item.snapshot_id<1 ||
+         !["San Bernardino","Riverside"].includes(item.county) ||
+         (county && item.county!==county) ||
+         typeof item.captured_at!=="string" || !item.captured_at ||
+         item.reported_publication_at!==null &&
+           typeof item.reported_publication_at!=="string" ||
+         !/^[0-9a-f]{64}$/.test(item.original_file_sha256) ||
+         typeof item.source_key!=="string" ||
+         !item.source_key.startsWith("smarts:facility:"+item.county+":") ||
+         !["new","changed","missing_from_new"].includes(item.outcome) ||
+         item.source_scoped_candidate_only!==true ||
+         (item.previous_row_sha256!==null &&
+           !/^[0-9a-f]{64}$/.test(item.previous_row_sha256)) ||
+         (item.current_row_sha256!==null &&
+           !/^[0-9a-f]{64}$/.test(item.current_row_sha256)) ||
+         (item.outcome==="new" &&
+           (item.previous_row_sha256!==null || item.current_row_sha256===null)) ||
+         (item.outcome==="changed" &&
+           (item.previous_row_sha256===null || item.current_row_sha256===null)) ||
+         (item.outcome==="missing_from_new" &&
+           (item.previous_row_sha256===null || item.current_row_sha256!==null)))
+        throw Error("SMARTS change review contains an invalid source event.");
+      const key=item.snapshot_id+":"+item.source_key;
+      if(keys.has(key))throw Error("SMARTS review contains duplicate events.");
+      keys.add(key);
+      return '<div class="evidence-item"><strong>'+escapeText(item.outcome.replaceAll("_"," ").toUpperCase())+
+        '</strong> · '+escapeText(item.county)+' · <code>'+escapeText(item.source_key)+'</code>'+
+        '<p>Capture: '+escapeText(item.captured_at)+
+        ' · Reported publication: '+escapeText(item.reported_publication_at || "unverified")+
+        ' · Snapshot #'+item.snapshot_id+'</p>'+
+        '<small>Original file SHA-256: '+escapeText(item.original_file_sha256)+
+        ' · Previous row: '+escapeText(item.previous_row_sha256 || "none")+
+        ' · Current row: '+escapeText(item.current_row_sha256 || "absent")+'</small></div>';
+    }).join("");
+    panel.innerHTML='<p>'+data.total+' source-scoped change candidates · '+data.returned+
+      ' shown. Missing-from-new does not mean deleted, completed or inactive. '+
+      'No parcel identity, construction phase, buyer or outreach authorization is established.</p>'+
+      (rows || '<p>No retained source changes in this selection.</p>')+
+      '<div class="source-pager"><button class="action" type="button" id="smarts-review-prev" '+
+      (offset===0?'disabled':'')+'>Previous</button> '+
+      '<button class="action" type="button" id="smarts-review-next" '+
+      (!data.has_more?'disabled':'')+'>Next</button></div>';
+    byId("smarts-review-prev").onclick=()=>showSmartsChanges(Math.max(0,offset-10));
+    byId("smarts-review-next").onclick=()=>{if(data.has_more)showSmartsChanges(offset+10);};
+  }catch(error) {
+    if(token===featureRequest && panel===byId("smarts-change-results"))
+      panel.innerHTML='<p role="alert">SMARTS review unavailable: '+
+        escapeText(error.message || error)+'. No source or commercial records were changed.</p>';
+  }
+}
+
 async function showSources() {
   const token=++featureRequest;
   featureIntro("Sources & Collection", "Actual retained CEQA and permit counts from the selected local database");
@@ -905,6 +990,14 @@ async function showSources() {
       '<div class="source-inventory-scroll"><table class="source-inventory"><thead><tr><th>Source family</th><th>All counties</th><th>San Bernardino</th><th>Riverside</th><th>Other / unknown</th></tr></thead><tbody>'+rows+'</tbody></table></div></section>'+
       renderSourceRegistry(sourceRegistry)+
       renderSmartsStatus(smartsStatus)+
+      '<section class="feature-card"><h2>SMARTS source-change review</h2>'+
+      '<p>Review verified, retained source-identity changes. This is not parcel matching or a lead queue. No network calls to SMARTS occur.</p>'+
+      '<label for="smarts-change-county">County</label> '+
+      '<select id="smarts-change-county"><option value="">Both counties</option>'+
+      '<option value="San Bernardino">San Bernardino</option>'+
+      '<option value="Riverside">Riverside</option></select> '+
+      '<button class="action" type="button" id="smarts-review-load">Review source changes</button>'+
+      '<div id="smarts-change-results" aria-live="polite"><p>Source-change evidence has not been inspected.</p></div></section>'+
       ingestionInboxMarkup(inbox)+
       '<section class="feature-card"><h2>Collection status</h2><p>This local operator does not run live source acquisition, subscription monitoring, scheduled updates or remote data import. Import and retained-source validation remain separate governed workflows.</p>'+
       '<a href="/workspace#records">Inspect stored source evidence →</a></section>'+
@@ -914,6 +1007,8 @@ async function showSources() {
       '<div id="capture-instructions" aria-live="polite"><p>No collection has been attempted. Verify the public source and its access conditions before executing any command.</p></div></section>'+
       '<section class="feature-card"><h2>Historical source activity</h2><p>Inspect dated historical observations for the current search, source-family and county filters. This is not real-time site monitoring.</p>'+
       '<button type="button" class="action" id="show-historical-pulse">Load retained timeline →</button><div id="historical-pulse"></div></section>';
+    byId("smarts-review-load").onclick=()=>showSmartsChanges(0);
+    byId("smarts-change-county").onchange=()=>{byId("smarts-change-results").innerHTML='<p>Choose Review source changes to inspect this county.</p>';};
     byId("capture-source-form").onsubmit=async event=>{event.preventDefault();await prepareCeqanetCapture();};
     byId("feature-body").querySelectorAll("[data-ingestion-candidate]").forEach(button=>button.onclick=()=>{
       const candidate=inbox.candidates[Number(button.dataset.ingestionCandidate)];
