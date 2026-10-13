@@ -71,7 +71,9 @@ def _change(
     return result.snapshot_id
 
 
-def _parcel(db: Path, record_id: str, *, county: str = "Riverside", apn: str = "123-456-789") -> None:
+def _parcel(
+    db: Path, record_id: str, *, county: str = "Riverside", apn: str = "123-456-789"
+) -> None:
     engine = create_database_engine(f"sqlite:///{db}")
     try:
         with Session(engine) as session, session.begin():
