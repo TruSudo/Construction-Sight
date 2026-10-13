@@ -66,7 +66,6 @@ from constructionsight.operator_watchlist import (
     build_operator_watchlist_snapshot,
     create_operator_watchlist_engine,
 )
-from constructionsight.smarts_operator_status import build_smarts_operator_status
 from constructionsight.outreach_preview_models import (
     OutreachChannel,
     OutreachContactReference,
@@ -75,6 +74,7 @@ from constructionsight.outreach_preview_service import (
     OutreachPreviewError,
     build_persisted_outreach_preview,
 )
+from constructionsight.smarts_operator_status import build_smarts_operator_status
 from constructionsight.storage.operator_read_store import (
     create_operator_read_engine,
     verify_operator_schema,
