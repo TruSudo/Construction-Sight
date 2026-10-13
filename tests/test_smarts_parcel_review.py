@@ -48,7 +48,7 @@ def _row(
 
 def _environment(tmp_path: Path) -> tuple[Path, Path, Path]:
     private = tmp_path / "private"
-    private.mkdir(mode=0o700)
+    private.mkdir(mode=0o700, parents=True)
     db = tmp_path / "operator.sqlite3"
     engine = create_database_engine(f"sqlite:///{db}")
     initialize_database(engine)
