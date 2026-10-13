@@ -24,6 +24,7 @@ from constructionsight.smarts_operator_status import (
     SCHEMA_VERSION,
     build_smarts_operator_status,
 )
+from constructionsight.smarts_snapshot_history import append_snapshot
 from constructionsight.storage.database import create_database_engine, initialize_database
 
 
@@ -185,3 +186,35 @@ def test_actual_loopback_endpoint_reads_only_selected_journal(tmp_path: Path) ->
         server.shutdown()
         server.server_close()
         thread.join(timeout=2)
+
+
+def test_csv_history_status_is_private_read_only_and_distinct_from_api_journal(
+    tmp_path: Path,
+) -> None:
+    private = tmp_path / "owner-only"
+    private.mkdir(mode=0o700)
+    csv_path = private / "facilities.csv"
+    csv_path.write_text(
+        "_id,APP_ID,WDID,SITE_COUNTY,STATUS,CONTACT_EMAIL\\n"
+        "1,101,8 33C101,Riverside,Active,private@example.test\\n",
+        encoding="utf-8",
+    )
+    csv_path.chmod(0o600)
+    history_path = private / "history.sqlite3"
+    append_snapshot(
+        ledger_path=history_path, csv_path=csv_path, county="Riverside"
+    )
+    before = hashlib.sha256(history_path.read_bytes()).hexdigest()
+    result = build_smarts_operator_status(None, history_path)
+    assert result["configured"] is False
+    assert result["journal_integrity_verified"] is False
+    assert result["csv_snapshot_history_configured"] is True
+    assert result["csv_snapshot_history_integrity_verified"] is True
+    assert result["csv_snapshots"] == 1
+    assert result["csv_source_row_observations"] == 1
+    assert result["csv_change_candidates"] == 0
+    assert result["csv_original_blobs"] == 1
+    assert result["county_coverage_verified"] is False
+    assert result["lead_readiness_authorized"] is False
+    assert "private@example.test" not in json.dumps(result)
+    assert hashlib.sha256(history_path.read_bytes()).hexdigest() == before
