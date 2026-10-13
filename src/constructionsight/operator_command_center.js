@@ -827,6 +827,39 @@ function bindCaptureQueue(queue) {
   });
 }
 
+function renderSmartsStatus(data) {
+  if (!data || data.schema_version !== "constructionsight.smarts_operator_status.v1" ||
+      typeof data.configured !== "boolean" || data.read_only !== true ||
+      data.network_executed !== false || data.journal_mutated !== false ||
+      data.source_rows_exposed !== false || data.journal_integrity_verified !== data.configured ||
+      data.live_collection_enabled !== false || data.scheduled_collection_enabled !== false ||
+      data.county_coverage_verified !== false || data.source_freshness_verified !== false ||
+      data.parcel_or_project_matches_verified !== false ||
+      data.lead_readiness_authorized !== false || data.outreach_authorized !== false ||
+      data.bid_authorized !== false ||
+      !Number.isSafeInteger(data.observations) || data.observations < 0 ||
+      !Number.isSafeInteger(data.semantic_versions) || data.semantic_versions < 0 ||
+      !Number.isSafeInteger(data.source_identities) || data.source_identities < 0 ||
+      data.source_identities > data.semantic_versions ||
+      data.semantic_versions > data.observations ||
+      (!data.configured && (data.observations || data.semantic_versions || data.source_identities)))
+    throw Error("SMARTS evidence status or collection authority is inconsistent.");
+  if (!data.configured)
+    return '<section class="feature-card"><h2>SMARTS evidence</h2>' +
+      '<p>No private SMARTS journal is selected. Start this local operator with ' +
+      '<code>--smarts-journal /private/path/evidence.sqlite3</code> to review aggregate, ' +
+      'already-captured observations. This view does not acquire records.</p></section>';
+  return '<section class="feature-card"><span class="badge">PRIVATE SMARTS JOURNAL · VERIFIED · READ ONLY</span>' +
+    '<h2>SMARTS evidence</h2><p>' +
+    data.source_identities + ' source-scoped facility identities · ' +
+    data.observations + ' retained observations · ' +
+    data.semantic_versions + ' semantic versions.</p>' +
+    '<p>Integrity checks validate the selected private journal, not current ' +
+    'publisher coverage or regulatory freshness. Records have not been imported ' +
+    'as projects, linked to parcels or authorized for outreach or bidding. ' +
+    'Live and scheduled SMARTS collection are disabled in this operator.</p></section>';
+}
+
 async function showSources() {
   const token=++featureRequest;
   featureIntro("Sources & Collection", "Actual retained CEQA and permit counts from the selected local database");
@@ -834,13 +867,14 @@ async function showSources() {
   const families=["ceqa","permit"], counties=["","San Bernardino","Riverside"];
   try {
     const queries=families.flatMap(kind=>counties.map(county=>({kind,county})));
-    const [data,captureQueue,sourceRegistry,inbox]=await Promise.all([
+    const [data,captureQueue,sourceRegistry,inbox,smartsStatus]=await Promise.all([
       Promise.all(queries.map(async item=>
         fetchJson("/api/snapshot?"+new URLSearchParams({kind:item.kind,county:item.county,limit:"1",offset:"0"}))
       )),
       fetchJson("/api/capture-queue"),
       fetchJson("/api/source-registry"),
-      fetchJson("/api/ingestion-inbox")
+      fetchJson("/api/ingestion-inbox"),
+      fetchJson("/api/smarts-status")
     ]);
     if(token!==featureRequest || byId("feature-view").hidden)return;
     if(data.some((result,index)=>result.selection!==queries[index].kind || !Number.isSafeInteger(result.total) || result.total<0))
@@ -855,6 +889,7 @@ async function showSources() {
       '<p>Counts are source records, not deduplicated projects, live construction sites, or approved commercial leads. Other/unknown includes records with missing or out-of-scope county claims.</p>'+
       '<div class="source-inventory-scroll"><table class="source-inventory"><thead><tr><th>Source family</th><th>All counties</th><th>San Bernardino</th><th>Riverside</th><th>Other / unknown</th></tr></thead><tbody>'+rows+'</tbody></table></div></section>'+
       renderSourceRegistry(sourceRegistry)+
+      renderSmartsStatus(smartsStatus)+
       ingestionInboxMarkup(inbox)+
       '<section class="feature-card"><h2>Collection status</h2><p>This local operator does not run live source acquisition, subscription monitoring, scheduled updates or remote data import. Import and retained-source validation remain separate governed workflows.</p>'+
       '<a href="/workspace#records">Inspect stored source evidence →</a></section>'+
