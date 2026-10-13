@@ -186,3 +186,48 @@ def test_failed_capture_does_not_advance_version(tmp_path: Path) -> None:
     with pytest.raises(SmartsEvidenceError, match="digest mismatch"):
         record_smarts_observation(path, changed, next_preview)
     assert verify_smarts_journal(path) == {"observations": 1, "versions": 1, "sources": 1}
+
+
+
+def test_unversioned_semantic_transition_is_detected(tmp_path: Path) -> None:
+    """Detect an incomplete append-only transaction even if both raw digests verify."""
+    path = _path(tmp_path)
+    initial, original = _observation()
+    record_smarts_observation(path, initial, original)
+    changed, preview = _observation(STATUS="Terminated")
+    assert changed.raw_response_bytes is not None
+    with sqlite3.connect(path) as db:
+        db.execute(
+            "INSERT INTO smarts_observations "
+            "(source_key,recorded_at,request_url,response_sha256,row_sha256,raw_response) "
+            "VALUES (?,?,?,?,?,?)",
+            (
+                original.source_record_key, "2026-10-12T00:00:00+00:00",
+                changed.request_url, changed.response_sha256, preview.record_sha256,
+                changed.raw_response_bytes,
+            ),
+        )
+    with pytest.raises(SmartsEvidenceError, match="Observation/version transition"):
+        verify_smarts_journal(path)
+
+
+def test_unversioned_unchanged_replay_remains_valid(tmp_path: Path) -> None:
+    """Retaining a repeated identical response is not itself a new version."""
+    path = _path(tmp_path)
+    page, preview = _observation()
+    record_smarts_observation(path, page, preview)
+    assert page.raw_response_bytes is not None
+    with sqlite3.connect(path) as db:
+        db.execute(
+            "INSERT INTO smarts_observations "
+            "(source_key,recorded_at,request_url,response_sha256,row_sha256,raw_response) "
+            "VALUES (?,?,?,?,?,?)",
+            (
+                preview.source_record_key, "2026-10-12T00:00:00+00:00",
+                page.request_url, page.response_sha256, preview.record_sha256,
+                page.raw_response_bytes,
+            ),
+        )
+    assert verify_smarts_journal(path) == {
+        "observations": 2, "versions": 1, "sources": 1,
+    }
