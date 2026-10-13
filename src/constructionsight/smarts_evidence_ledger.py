@@ -339,7 +339,10 @@ def verify_smarts_journal(path: Path) -> dict[str, int]:
         latest: dict[str, tuple[int, str]] = {}
         version_observations: dict[str, list[tuple[int, str]]] = {}
         versions = 0
-        for source_key, number, row_sha, prev, event_sha, observation_id, observed_row_sha, observed_source in (
+        for (
+            source_key, number, row_sha, prev, event_sha, observation_id,
+            observed_row_sha, observed_source,
+        ) in (
             connection.execute(
                 "SELECT v.source_key,v.version,v.row_sha256,v.previous_event_sha256,"
                 "v.event_sha256,v.observation_id,o.row_sha256,o.source_key FROM smarts_versions v "
