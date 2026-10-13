@@ -195,8 +195,8 @@ def test_csv_history_status_is_private_read_only_and_distinct_from_api_journal(
     private.mkdir(mode=0o700)
     csv_path = private / "facilities.csv"
     csv_path.write_text(
-        "_id,APP_ID,WDID,SITE_COUNTY,STATUS,CONTACT_EMAIL\\n"
-        "1,101,8 33C101,Riverside,Active,private@example.test\\n",
+        "_id,APP_ID,WDID,SITE_COUNTY,STATUS,CONTACT_EMAIL\n"
+        "1,101,8 33C101,Riverside,Active,private@example.test\n",
         encoding="utf-8",
     )
     csv_path.chmod(0o600)
