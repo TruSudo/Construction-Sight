@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 
 from constructionsight.smarts_api import MAX_RESPONSE_BYTES, RESOURCE_IDS, SmartsPage
 from constructionsight.smarts_intake_bridge import (
@@ -118,7 +119,7 @@ def _aliases(preview: SmartsIntakePreview) -> list[tuple[str, str]]:
     return result
 
 
-def _safe_database_path(path: Path) -> Path:
+def _safe_database_path(path: Path, *, create: bool = True) -> Path:
     """Require an existing private directory and a private, regular DB file."""
     path = Path(path).absolute()
     if path.suffix != ".sqlite3" or path.name in {".", ".."}:
@@ -134,15 +135,19 @@ def _safe_database_path(path: Path) -> Path:
         or stat.S_IMODE(parent_info.st_mode) & 0o077
     ):
         raise SmartsEvidenceError("Journal directory must be owned and mode 0700 or stricter")
+    if create:
+        try:
+            fd = os.open(path, os.O_RDWR | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        except FileExistsError:
+            pass
+        except OSError as exc:
+            raise SmartsEvidenceError("Unable to securely create SMARTS journal") from exc
+        else:
+            os.close(fd)
     try:
-        fd = os.open(path, os.O_RDWR | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
-    except FileExistsError:
-        pass
-    except OSError as exc:
-        raise SmartsEvidenceError("Unable to securely create SMARTS journal") from exc
-    else:
-        os.close(fd)
-    info = path.lstat()
+        info = path.lstat()
+    except FileNotFoundError as exc:
+        raise SmartsEvidenceError("Configured SMARTS journal is missing") from exc
     if (
         not stat.S_ISREG(info.st_mode)
         or info.st_uid != os.geteuid()
@@ -153,15 +158,24 @@ def _safe_database_path(path: Path) -> Path:
     return path
 
 
-def _open(path: Path) -> sqlite3.Connection:
-    db = _safe_database_path(path)
-    connection = sqlite3.connect(str(db), timeout=10, isolation_level=None)
+def _open(path: Path, *, read_only: bool = False) -> sqlite3.Connection:
+    db = _safe_database_path(path, create=not read_only)
+    if read_only:
+        connection = sqlite3.connect(
+            f"file:{quote(str(db))}?mode=ro", uri=True, timeout=10, isolation_level=None
+        )
+    else:
+        connection = sqlite3.connect(str(db), timeout=10, isolation_level=None)
     try:
         connection.execute("PRAGMA busy_timeout=10000")
         connection.execute("PRAGMA foreign_keys=ON")
-        connection.execute("PRAGMA synchronous=FULL")
-        connection.execute("PRAGMA journal_mode=DELETE")
-        connection.execute("BEGIN IMMEDIATE")
+        if read_only:
+            connection.execute("PRAGMA query_only=ON")
+            connection.execute("BEGIN")
+        else:
+            connection.execute("PRAGMA synchronous=FULL")
+            connection.execute("PRAGMA journal_mode=DELETE")
+            connection.execute("BEGIN IMMEDIATE")
         application_id = connection.execute("PRAGMA application_id").fetchone()[0]
         version = connection.execute("PRAGMA user_version").fetchone()[0]
         existing = {
@@ -169,7 +183,7 @@ def _open(path: Path) -> sqlite3.Connection:
                 "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
             )
         }
-        if not existing and application_id == 0 and version == 0:
+        if not read_only and not existing and application_id == 0 and version == 0:
             schemas = (
                 "CREATE TABLE smarts_observations ("
                 "id INTEGER PRIMARY KEY, source_key TEXT NOT NULL, "
@@ -315,9 +329,12 @@ def record_smarts_observation(
         connection.close()
 
 
-def verify_smarts_journal(path: Path) -> dict[str, int]:
-    """Check retained bytes, source row digests and each source's version chain."""
-    connection = _open(path)
+def verify_smarts_journal(path: Path, *, read_only: bool = False) -> dict[str, int]:
+    """Check retained bytes, row digests and version chains in one transaction.
+
+    The operator uses read_only=True, which never creates or modifies a journal.
+    """
+    connection = _open(path, read_only=read_only)
     try:
         source_rows: dict[str, set[str]] = {}
         observation_history: dict[str, list[tuple[int, str]]] = {}
