@@ -33,3 +33,23 @@ def test_smarts_change_review_preserves_approved_command_center_structure() -> N
     assert "No parcel identity, construction phase" in js
     assert "This operator never acquires SMARTS data or schedules polling" in js
     assert "fetch(\"https://publish.data.ca.gov" not in js
+
+
+def test_smarts_source_event_parcel_review_requires_exact_evidence_and_no_authority() -> None:
+    js = (ASSETS / "operator_command_center.js").read_text(encoding="utf-8")
+    assert "async function showSmartsParcelCandidates(item, index, token)" in js
+    assert 'fetchJson("/api/smarts-parcel-candidates?"' in js
+    assert "snapshot_id:String(item.snapshot_id),source_key:item.source_key" in js
+    assert "data.source_history_integrity_verified!==true" in js
+    assert "data.parcel_identity_verified!==false" in js
+    assert "data.project_identity_verified!==false" in js
+    assert "data.construction_activity_verified!==false" in js
+    assert "data.lead_created!==false" in js
+    assert "data.outreach_authorized!==false" in js
+    assert "data.bid_authorized!==false" in js
+    assert "source_apn_missing" in js
+    assert "conflicting_source_apns" in js
+    assert "parcel_candidate_ambiguous" in js
+    assert "historical_snapshot_requires_current_review" in js
+    assert "Independent assessor, permit and location evidence" in js
+    assert "data-smarts-parcel-index" in js
