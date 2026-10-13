@@ -80,7 +80,14 @@ def load_facility_snapshot(path: Path, *, county: str) -> FacilitySnapshot:
         data = path.read_bytes()
     except OSError as exc:
         raise SmartsSnapshotError("Snapshot could not be read") from exc
-    if len(data) > MAX_CSV_BYTES or len(data) == 0:
+    return parse_facility_snapshot_bytes(data, county=county)
+
+
+def parse_facility_snapshot_bytes(data: bytes, *, county: str) -> FacilitySnapshot:
+    """Validate original, bounded CSV bytes without writing a temporary file."""
+    if county not in COUNTIES:
+        raise SmartsSnapshotError("Unapproved facility county")
+    if not isinstance(data, bytes) or not 0 < len(data) <= MAX_CSV_BYTES:
         raise SmartsSnapshotError("Snapshot has an invalid byte count")
     file_digest = hashlib.sha256(data).hexdigest()
     try:
