@@ -84,7 +84,10 @@ def _inspection_join(
     row: dict[str, str], facilities: FacilitySnapshot
 ) -> tuple[str | None, bool]:
     """Resolve source aliases only when all present identifiers agree."""
-    app_id = _source_id(row["APP_ID"], kind="app_id")
+    app_value = row["APP_ID"].strip()
+    if re.fullmatch(r"[0-9]{1,15}[.]0+", app_value):
+        app_value = app_value.split(".")[0]
+    app_id = _source_id(app_value, kind="app_id")
     wdid = _source_id(row["WDID"], kind="wdid")
     aliases = [
         (kind, value) for kind, value in (("app_id", app_id), ("wdid", wdid))
