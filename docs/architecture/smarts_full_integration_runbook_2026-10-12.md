@@ -347,3 +347,35 @@ An official cross-source parcel decision still needs separately evidenced
 agreement on the correct development footprint, parcel split/merge history,
 jurisdiction, dates, and contemporaneous project activity. No such production
 link certification is claimed by this feature.
+
+
+## Published SMARTS schema correction: address-first review (2026-10-13)
+
+The California State Water Resources Control Board's official construction
+facility resource dictionary for ID
+`8a0ed456-ca69-4b29-9c5b-5de3958dc963`
+(`https://publish.data.ca.gov/dataset/stormwater-regulatory-including-enforcement-actions-information-and-water-quality-results/resource/8a0ed456-ca69-4b29-9c5b-5de3958dc963`)
+lists `SITE_ADDRESS`, `SITE_ADDRESS_2`, `SITE_CITY`, `SITE_STATE`,
+`SITE_COUNTY`, `SITE_LATITUDE`, `SITE_LONGITUDE`, `APP_ID`,
+`WDID`, and construction-related filing dates but **no APN**. The previous
+exact-APN bridge therefore cannot be treated as a typical production
+matching strategy for this published dataset.
+
+The guarded SMARTS parcel-review endpoint now supports a **lower-confidence,
+address-based candidate discovery** when the verified SMARTS row does not
+include a source-claimed APN. It requires a simple numeric street address,
+explicit `SITE_CITY` and `SITE_STATE=CA`, no ambiguous
+`SITE_ADDRESS_2`, exact normalized street-address agreement with retained
+parcel data, correct county and California state, and a matching recorded
+parcel jurisdiction. Cross-city conflicts fail closed. Multiple retained
+candidates remain ambiguous. A malformed or contradictory APN explicitly
+blocks fallback to address matching.
+
+Address agreement is *never* classified as a verified parcel identity, even
+if it returns one retained parcel record. Large master-plan developments,
+unaddressed grading sites, address aliases, and multi-parcel work require
+authoritative GIS footprints, independent assessor and permit evidence,
+and explicit operator adjudication. No parcel, project, green readiness,
+outreach or bid mutations are created. Any site-coordinate inference requires
+a separate CRS and geographic-evidence assurance gate and is not implemented
+by this address review.
