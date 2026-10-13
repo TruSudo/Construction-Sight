@@ -10,13 +10,27 @@ from __future__ import annotations
 from pathlib import Path
 
 from constructionsight.smarts_evidence_ledger import verify_smarts_journal
+from constructionsight.smarts_snapshot_history import verify_snapshot_history
 
 SCHEMA_VERSION = "constructionsight.smarts_operator_status.v1"
 
 
-def build_smarts_operator_status(journal_path: Path | None) -> dict[str, object]:
-    """Expose verified aggregate observations from an explicitly selected journal."""
+def build_smarts_operator_status(
+    journal_path: Path | None, snapshot_history_path: Path | None = None,
+) -> dict[str, object]:
+    """Expose verified aggregate observations from separately selected private journals."""
     configured = journal_path is not None
+    history_configured = snapshot_history_path is not None
+    history_counts = (
+        verify_snapshot_history(snapshot_history_path)
+        if snapshot_history_path is not None
+        else {"snapshots": 0, "source_rows": 0, "change_candidates": 0, "blobs": 0}
+    )
+    if not (
+        0 <= history_counts["blobs"] <= history_counts["snapshots"]
+        <= history_counts["source_rows"]
+    ):
+        raise ValueError("SMARTS snapshot history summary is inconsistent")
     counts = (
         verify_smarts_journal(journal_path, read_only=True)
         if journal_path is not None
@@ -38,6 +52,12 @@ def build_smarts_operator_status(journal_path: Path | None) -> dict[str, object]
         "observations": observations,
         "semantic_versions": versions,
         "source_identities": sources,
+        "csv_snapshot_history_configured": history_configured,
+        "csv_snapshot_history_integrity_verified": history_configured,
+        "csv_snapshots": history_counts["snapshots"],
+        "csv_source_row_observations": history_counts["source_rows"],
+        "csv_change_candidates": history_counts["change_candidates"],
+        "csv_original_blobs": history_counts["blobs"],
         "live_collection_enabled": False,
         "scheduled_collection_enabled": False,
         "county_coverage_verified": False,
