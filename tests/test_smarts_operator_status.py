@@ -160,8 +160,8 @@ def test_actual_loopback_endpoint_reads_only_selected_journal(tmp_path: Path) ->
     )
     later_csv = journal.parent / "source-later.csv"
     later_csv.write_text(
-        "_id,APP_ID,WDID,SITE_COUNTY,STATUS,CONTACT_EMAIL\\n"
-        "2,101,8 33C101,Riverside,Terminated,private@example.test\\n",
+        "_id,APP_ID,WDID,SITE_COUNTY,STATUS,CONTACT_EMAIL\n"
+        "2,101,8 33C101,Riverside,Terminated,private@example.test\n",
         encoding="utf-8",
     )
     later_csv.chmod(0o600)
