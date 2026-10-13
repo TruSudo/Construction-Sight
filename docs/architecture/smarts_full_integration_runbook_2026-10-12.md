@@ -156,3 +156,42 @@ Remaining promotion gates:
 6. Obtain a new production-specific assurance/certification pass and
    separately authorize rollout. The development PR does not merge itself.
 
+
+## Local operator: read-only SMARTS evidence status
+
+An explicit SMARTS evidence journal can now be inspected from the existing
+**Sources & Collection** desktop view. This adds a distinct observation
+inventory, not a third construction-permit family or a merged project row.
+It does not change the approved desktop layout.
+
+Start with an existing ConstructionSight operator database and an existing
+owner-only SMARTS evidence journal outside the source checkout:
+
+```bash
+constructionsight-operator \
+  --database /private/constructionsight.sqlite3 \
+  --smarts-journal /private/smarts/evidence.sqlite3
+```
+
+The optional same-origin loopback endpoint `GET /api/smarts-status` returns
+only aggregate counts of captured observations, source-scoped identities and
+semantic version events. The journal verifier runs inside a noncreating,
+SQLite read-only transaction; it checks retained response bytes, semantic
+hashes, event transitions, schema and immutability triggers. A missing,
+incompatible, or altered journal returns a generic unavailable response
+without making repairs, copying raw records or leaking private contact fields.
+Without `--smarts-journal`, the panel explicitly shows *unconfigured*
+and zero observations.
+
+The dashboard never opens public SMARTS APIs, schedules collection, alters
+the evidence journal or promotes its rows into the ConstructionSight project
+database. It cannot claim publication freshness, two-county completeness,
+parcel correctness, verified active construction, lead suitability, outreach
+or bidding authority. The journal must first be populated through separately
+authorized `constructionsight-smarts-collect` or exact-record capture. No
+new background ingest or production permission is implied.
+
+**Operational release remains gated** on independently checked publisher
+rights, real live fixture replay, full dataset snapshot reconciliation,
+a permitted recurring collection strategy, complete versioned storage and
+reviewed cross-source parcel/project identity connections.
