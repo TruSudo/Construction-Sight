@@ -273,3 +273,34 @@ operational use. This stage does not add a scheduler, automatic source
 downloads, GUI lead promotion, outreach or bids; the approved layout remains
 unchanged. Backup/restore disaster-recovery exercises and cross-source
 project reconciliation remain future acceptance gates.
+
+
+## Read-only change-candidate review in desktop Sources & Collection
+
+The existing Sources & Collection panel now includes a separate **SMARTS
+source-change review** control, with a county selector and bounded
+10-observation pages. Selecting a private historical CSV ledger with
+`--smarts-snapshot-history` enables local access to an integrity-verified,
+source-scoped change list. The new same-origin operator endpoint,
+`GET /api/smarts-changes?county=Riverside&limit=10&offset=0`, accepts
+only `county`, `limit` (1..25) and `offset` (0..1,000,000); repeated,
+unknown, and invalid parameters are rejected.
+
+Each page is ordered by retained capture ID (newest first) and source key,
+and shows only the publicly scoped SMARTS identity, county, change category,
+source file hash, row hashes and capture/reported-publication dates. No
+source CSV payload, names, emails, telephone numbers or other raw fields
+are returned. Every request first replays and verifies the complete private
+source history in the same read-only SQLite transaction; damaged, missing or
+unconfigured history cannot silently substitute inferred data. The dashboard
+does not claim automated collection or change notifications.
+
+A `missing_from_new` event is **not** evidence of deletion, construction
+completion or work stoppage. A `new` event means only that a regulatory
+source identity was absent from the previously captured local snapshot. The
+panel does **not** push events into the normalized site/project database,
+change phase state, mark a lead green, authorize outreach, or permit bids.
+Independent official permit/inspection/CEQA and parcel verification are
+still required before any such promotion. Full-ledger audit on every page
+is intentionally conservative and may incur latency with large archives;
+production caching requires its own tamper-evidence and invalidation review.
