@@ -151,7 +151,7 @@ def review_inspections(path: Path, *, facilities: FacilitySnapshot) -> Inspectio
                 continue
             selected += 1
             permit_type = row["PERMIT_TYPE"].upper()
-            if "CONSTRUCTION" not in permit_type:
+            if not permit_type.strip().startswith("CONSTRUCTION"):
                 scope += 1
                 continue
             construction += 1
