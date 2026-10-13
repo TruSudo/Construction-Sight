@@ -204,6 +204,24 @@ def test_schema_drift_and_missing_immutability_trigger_fail_closed(
         append_snapshot(ledger_path=db, csv_path=csv_file, county="Riverside")
 
 
+def test_orphaned_snapshots_rows_and_events_are_rejected(
+    private: tuple[Path, Path],
+) -> None:
+    root, db = private
+    src = _csv(root / "source.csv", [_row("1", "101")])
+    append_snapshot(ledger_path=db, csv_path=src, county="Riverside")
+    with sqlite3.connect(db) as con:
+        con.execute("PRAGMA foreign_keys=OFF")
+        con.execute(
+            "INSERT INTO snapshot_rows VALUES (?,?,?,?,?)",
+            (99999, "smarts:facility:Riverside:wdid:8 33C999", "0" * 64, "999", "8 33C999"),
+        )
+    with pytest.raises(SmartsHistoryError, match="foreign-key integrity"):
+        verify_snapshot_history(db)
+    with pytest.raises(SmartsHistoryError, match="foreign-key integrity"):
+        review_snapshot_changes(db)
+
+
 def test_bad_publication_date_and_duplicate_source_id_do_not_write(
     private: tuple[Path, Path],
 ) -> None:
