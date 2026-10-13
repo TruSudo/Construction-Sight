@@ -163,6 +163,18 @@ def test_missing_or_world_readable_csv_fails_without_creating_ledger(
     assert not db.exists()
 
 
+def test_linked_source_file_is_rejected_without_creating_ledger(
+    private: tuple[Path, Path],
+) -> None:
+    root, db = private
+    source = _csv(root / "original.csv", [_row("1", "101")])
+    link = root / "linked.csv"
+    link.symlink_to(source)
+    with pytest.raises(SmartsHistoryError, match="owner-only"):
+        append_snapshot(ledger_path=db, csv_path=link, county="Riverside")
+    assert not db.exists()
+
+
 def test_readonly_integrity_verification_never_creates_or_changes_file(
     private: tuple[Path, Path],
 ) -> None:
