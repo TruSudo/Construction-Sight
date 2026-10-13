@@ -250,6 +250,7 @@ def create_handler(
     ceqanet_listing_evidence: Path | None = None,
     ceqanet_queue_evidence: Path | None = None,
     smarts_journal_path: Path | None = None,
+    smarts_snapshot_history_path: Path | None = None,
 ) -> type[BaseHTTPRequestHandler]:
     """Bind to an existing database without schema creation or migration.
 
@@ -381,7 +382,9 @@ def create_handler(
                             "bid_authorization_enabled": False,
                         }
                     elif path == "/api/smarts-status":
-                        payload = build_smarts_operator_status(smarts_journal_path)
+                        payload = build_smarts_operator_status(
+                            smarts_journal_path, smarts_snapshot_history_path
+                        )
                     elif path == "/api/capture-queue":
                         payload = capture_queue
                     elif path == "/api/source-registry":
@@ -1021,6 +1024,11 @@ def main(*, open_browser_by_default: bool = False) -> None:
         type=Path,
         help="Optional existing private SMARTS evidence journal (read-only status counts).",
     )
+    parser.add_argument(
+        "--smarts-snapshot-history",
+        type=Path,
+        help="Optional existing private SMARTS CSV snapshot history (read-only status).",
+    )
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument(
         "--open-browser", action="store_true", default=open_browser_by_default,
@@ -1041,6 +1049,8 @@ def main(*, open_browser_by_default: bool = False) -> None:
             handler_kwargs["ceqanet_queue_evidence"] = args.ceqanet_queue_evidence
         if args.smarts_journal is not None:
             handler_kwargs["smarts_journal_path"] = args.smarts_journal
+        if args.smarts_snapshot_history is not None:
+            handler_kwargs["smarts_snapshot_history_path"] = args.smarts_snapshot_history
         handler = create_handler(args.database, **handler_kwargs)
     except (OSError, ValueError) as exc:
         parser.error(f"--database must name an existing SQLite file: {exc}")
