@@ -128,6 +128,9 @@ def _database(path: Path, *, read_only: bool) -> sqlite3.Connection:
                         )
                 connection.execute(f"PRAGMA application_id={_APPLICATION_ID}")
                 connection.execute(f"PRAGMA user_version={_VERSION}")
+                # Schema creation must survive a later aborted first capture.
+                connection.commit()
+                connection.execute("BEGIN IMMEDIATE")
             elif app_id != _APPLICATION_ID or version != _VERSION or found != _TABLES:
                 raise SmartsHistoryError("Incompatible or ungoverned snapshot ledger")
             for table, columns in _COLUMNS.items():
