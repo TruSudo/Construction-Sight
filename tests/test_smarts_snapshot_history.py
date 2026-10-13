@@ -15,6 +15,7 @@ from constructionsight.smarts_snapshot_history import (
     SmartsHistoryError,
     append_snapshot,
     main,
+    review_snapshot_changes,
     verify_snapshot_history,
 )
 
@@ -268,3 +269,98 @@ def test_partial_write_failure_rolls_back_all_capture_rows(
     assert verify_snapshot_history(db) == {
         "snapshots": 0, "source_rows": 0, "change_candidates": 0, "blobs": 0
     }
+
+
+def test_bounded_change_review_filters_sorts_and_redacts_private_rows(
+    private: tuple[Path, Path],
+) -> None:
+    root, db = private
+    p = _csv(
+        root / "first.csv",
+        [_row("1", "101"), _row("2", "102"), _row("3", "103")],
+    )
+    q = _csv(
+        root / "second.csv",
+        [
+            _row("99", "101", status="Terminated"),
+            _row("98", "103"),
+            _row("97", "104"),
+        ],
+    )
+    append_snapshot(ledger_path=db, csv_path=p, county="Riverside")
+    append_snapshot(ledger_path=db, csv_path=q, county="Riverside")
+    baseline = review_snapshot_changes(db, county="Riverside", limit=2)
+    assert baseline["schema_version"] == "constructionsight.smarts_change_review.v1"
+    assert baseline["configured"] is True
+    assert baseline["verified_private_history"] is True
+    assert baseline["total"] == 3
+    assert baseline["returned"] == 2
+    assert baseline["has_more"] is True
+    assert [x["outcome"] for x in baseline["items"]] == [
+        "changed", "missing_from_new"
+    ]
+    assert [x["source_key"] for x in baseline["items"]] == [
+        "smarts:facility:Riverside:wdid:8 33C101",
+        "smarts:facility:Riverside:wdid:8 33C102",
+    ]
+    assert baseline["lead_readiness_authorized"] is False
+    assert baseline["missing_is_deletion"] is False
+    assert baseline["source_identity_is_project_identity"] is False
+    import json
+
+    assert "private+contact@example.test" not in json.dumps(baseline)
+    nxt = review_snapshot_changes(db, county="Riverside", limit=2, offset=2)
+    assert nxt["returned"] == 1
+    assert nxt["items"][0]["outcome"] == "new"
+    assert nxt["has_more"] is False
+    assert review_snapshot_changes(db, county="San Bernardino")["total"] == 0
+    assert review_snapshot_changes(db)["total"] == 3
+
+
+def test_change_review_fail_closed_on_missing_invalid_or_altered_history(
+    private: tuple[Path, Path],
+) -> None:
+    root, db = private
+    assert review_snapshot_changes(None) == {
+        "schema_version": "constructionsight.smarts_change_review.v1",
+        "configured": False,
+        "verified_private_history": False,
+        "county_filter": "",
+        "limit": 10,
+        "offset": 0,
+        "total": 0,
+        "returned": 0,
+        "has_more": False,
+        "items": [],
+        "read_only": True,
+        "network_executed": False,
+        "history_mutated": False,
+        "raw_csv_exposed": False,
+        "missing_is_deletion": False,
+        "source_identity_is_project_identity": False,
+        "parcel_or_project_matches_verified": False,
+        "live_collection_enabled": False,
+        "lead_readiness_authorized": False,
+        "outreach_authorized": False,
+        "bid_authorized": False,
+    }
+    with pytest.raises(SmartsHistoryError):
+        review_snapshot_changes(db)
+    assert not db.exists()
+    for kwargs in (
+        {"county": "Orange"}, {"limit": 26}, {"limit": 0}, {"offset": -1},
+        {"limit": True}, {"offset": 1_000_001},
+    ):
+        with pytest.raises(SmartsHistoryError):
+            review_snapshot_changes(db, **kwargs)
+    p = _csv(root / "initial.csv", [_row("1", "101")])
+    q = _csv(root / "second.csv", [_row("1", "101", status="Terminated")])
+    append_snapshot(ledger_path=db, csv_path=p, county="Riverside")
+    append_snapshot(ledger_path=db, csv_path=q, county="Riverside")
+    before = hashlib.sha256(db.read_bytes()).hexdigest()
+    assert review_snapshot_changes(db)["total"] == 1
+    assert hashlib.sha256(db.read_bytes()).hexdigest() == before
+    with sqlite3.connect(db) as con:
+        con.execute("DROP TRIGGER snapshot_events_no_update")
+    with pytest.raises(SmartsHistoryError, match="immutability"):
+        review_snapshot_changes(db)
