@@ -149,8 +149,8 @@ def test_actual_loopback_endpoint_reads_only_selected_journal(tmp_path: Path) ->
     before = hashlib.sha256(journal.read_bytes()).hexdigest()
     private_csv = journal.parent / "source.csv"
     private_csv.write_text(
-        "_id,APP_ID,WDID,SITE_COUNTY,STATUS,CONTACT_EMAIL\\n"
-        "1,101,8 33C101,Riverside,Active,private@example.test\\n",
+        "_id,APP_ID,WDID,SITE_COUNTY,STATUS,CONTACT_EMAIL\n"
+        "1,101,8 33C101,Riverside,Active,private@example.test\n",
         encoding="utf-8",
     )
     private_csv.chmod(0o600)
