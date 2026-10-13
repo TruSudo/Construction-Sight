@@ -152,6 +152,8 @@ def _database(path: Path, *, read_only: bool) -> sqlite3.Connection:
                 raise SmartsHistoryError("Snapshot ledger immutability triggers differ")
             if connection.execute("PRAGMA quick_check").fetchone()[0] != "ok":
                 raise SmartsHistoryError("Snapshot ledger integrity check failed")
+            if connection.execute("PRAGMA foreign_key_check").fetchone() is not None:
+                raise SmartsHistoryError("Snapshot ledger foreign-key integrity check failed")
             return connection
         except Exception:
             connection.close()
