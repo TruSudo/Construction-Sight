@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 
 from constructionsight.parcel_core_models import ParcelCoreRecord
 from constructionsight.site_resolution_service import normalize_apn
-from constructionsight.smarts_snapshot_diff import COUNTIES
+from constructionsight.smarts_snapshot_diff import COUNTIES, _source_id
 from constructionsight.smarts_snapshot_history import SmartsHistoryError, _audit, _database
 from constructionsight.storage.parcel_site_orm import ParcelCoreRecordRow
 
@@ -65,11 +65,11 @@ def _read_source_apn(
         for record in reader:
             if record["SITE_COUNTY"] != county:
                 continue
-            wdid, app_id = record["WDID"].strip(), record["APP_ID"].strip()
+            wdid = _source_id(record["WDID"], kind="wdid")
+            app_id = _source_id(record["APP_ID"], kind="app_id")
             key = (
                 f"smarts:facility:{county}:wdid:{wdid}"
-                if wdid and wdid.upper() not in {"NA", "N/A", "NONE", "NULL", "UNKNOWN", "0"}
-                else f"smarts:facility:{county}:app_id:{app_id}"
+                if wdid is not None else f"smarts:facility:{county}:app_id:{app_id}"
             )
             if key != source_key:
                 continue
