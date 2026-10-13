@@ -11,6 +11,10 @@ import json
 from pathlib import Path
 from typing import Any
 
+from constructionsight.smarts_compliance_review import (
+    build_compliance_summary,
+    review_compliance,
+)
 from constructionsight.smarts_inspection_review import (
     build_inspection_summary,
     review_inspections,
@@ -30,9 +34,14 @@ def prepare_source_review(
     previous: Path,
     current: Path,
     inspections: Path | None = None,
+    violations: Path | None = None,
+    enforcement: Path | None = None,
 ) -> dict[str, Any]:
     """Return a read-only, provenance-linked operator review envelope."""
-    inputs = [previous, current, *([inspections] if inspections is not None else [])]
+    inputs = [
+        previous, current,
+        *(path for path in (inspections, violations, enforcement) if path is not None),
+    ]
     if len({path.resolve() for path in inputs}) != len(inputs):
         raise SmartsSnapshotError("Each source input must be a separate retained file")
     prior = load_facility_snapshot(previous, county=county)
@@ -45,12 +54,18 @@ def prepare_source_review(
             present,
             review_inspections(inspections, facilities=present),
         )
+    compliance_summaries: dict[str, Any] = {}
+    for kind, path in (("violations", violations), ("enforcement", enforcement)):
+        if path is not None:
+            assert kind in ("violations", "enforcement")
+            record = review_compliance(path, kind=kind, facilities=present)
+            compliance_summaries[kind] = build_compliance_summary(present, record)
     return {
         "ok": True,
         "mode": "smarts_offline_review",
         "county": county,
         "facility_change_review": facility_summary,
-        "inspection_review": inspection_summary,
+        "inspection_review": inspection_summary,\n        "compliance_reviews": compliance_summaries,
         "human_review_required": True,
         "source_maturity": "unverified",
         "site_identity": "source_scoped_only",
@@ -70,6 +85,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--previous", type=Path, required=True)
     parser.add_argument("--current", type=Path, required=True)
     parser.add_argument("--inspections", type=Path)
+    parser.add_argument("--violations", type=Path)
+    parser.add_argument("--enforcement", type=Path)
     args = parser.parse_args(argv)
     try:
         print(json.dumps(
@@ -78,6 +95,8 @@ def main(argv: list[str] | None = None) -> int:
                 previous=args.previous,
                 current=args.current,
                 inspections=args.inspections,
+                violations=args.violations,
+                enforcement=args.enforcement,
             ),
             indent=2,
         ))
