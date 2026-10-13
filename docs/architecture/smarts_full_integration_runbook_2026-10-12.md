@@ -304,3 +304,46 @@ Independent official permit/inspection/CEQA and parcel verification are
 still required before any such promotion. Full-ledger audit on every page
 is intentionally conservative and may incur latency with large archives;
 production caching requires its own tamper-evidence and invalidation review.
+
+
+## Source-event to retained parcel candidate inspection (read only)
+
+For a retained `new` or `changed` SMARTS CSV event in the **latest
+verified snapshot for its county**, Sources & Collection now offers
+**Review retained parcel candidates**. This calls the same-origin read-only
+endpoint `GET /api/smarts-parcel-candidates?snapshot_id=…&source_key=…`.
+The selected source ID and immutable snapshot event must both exist in the
+fully verified private snapshot history; the operator never silently
+substitutes data from a different publication or county.
+
+The present parser deliberately accepts only a *single, valid, source-claimed*
+assessor parcel number from explicit CSV columns `SITE_APN`, `APN`, or
+`ASSESSOR_PARCEL_NUMBER`. A missing field, malformed number or conflicting
+claim yields a hold. The commonly published SMARTS facility CSV may not
+contain a reliable APN; in that case the result is expected to remain
+`source_apn_missing` and **no candidate is inferred**. Addresses, project
+names, geocoordinates, stormwater status, permit-holder names, and regulatory
+activity are never used as substitute exact parcel keys.
+
+For a strictly usable APN the system only compares **normalized APN + exact
+county + California state** against ConstructionSight's already retained parcel
+records, with a deterministic 20-record cap and indexed/payload agreement
+checks. A single exact-key co-occurrence yields
+`parcel_candidate_requires_review`, multiple rows yield
+`parcel_candidate_ambiguous`, and none yields `parcel_not_retained`.
+A previously selected event from a noncurrent source snapshot yields
+`historical_snapshot_requires_current_review`; a record absent from the latest
+source export yields `missing_from_new_is_not_deletion`.
+
+Candidate rows disclose only the retained parcel source identifier and
+provenance key, never private SMARTS CSV contact fields. A match is **not a
+verified identity link**. It cannot merge projects, create a permit, assign a
+construction phase, advance readiness dots, authorize a watchlist alert,
+initiate outreach, or prepare/send a bid. This stage prepares deterministic
+review material for future independent assessor/permit/CEQA corroboration
+and explicit conflict adjudication. It does not add any remote polling.
+
+An official cross-source parcel decision still needs separately evidenced
+agreement on the correct development footprint, parcel split/merge history,
+jurisdiction, dates, and contemporaneous project activity. No such production
+link certification is claimed by this feature.
