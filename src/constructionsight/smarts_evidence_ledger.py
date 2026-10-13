@@ -57,7 +57,9 @@ def _canonical_row(record: dict[str, Any]) -> bytes:
         raise SmartsEvidenceError("Unserializable SMARTS record") from exc
 
 
-def _raw_record(page: SmartsPage, preview: SmartsIntakePreview) -> tuple[bytes, dict[str, Any]]:
+def _raw_record(
+    page: SmartsPage, preview: SmartsIntakePreview, *, paginated: bool = False
+) -> tuple[bytes, dict[str, Any]]:
     raw = page.raw_response_bytes
     if not isinstance(raw, bytes) or not 0 < len(raw) <= MAX_RESPONSE_BYTES:
         raise SmartsEvidenceError("Bounded original HTTP response bytes are required")
@@ -77,18 +79,21 @@ def _raw_record(page: SmartsPage, preview: SmartsIntakePreview) -> tuple[bytes, 
         payload.get("success") is not True
         or not isinstance(result, dict)
         or result.get("resource_id", RESOURCE_IDS["facilities"]) != RESOURCE_IDS["facilities"]
-        or result.get("total") != 1
+        or result.get("total") != page.total
+        or (not paginated and page.total != 1)
         or page.resource != "facilities"
-        or page.total != 1
         or page.county not in ("San Bernardino", "Riverside")
-        or len(page.records) != 1
         or not isinstance(records, list)
-        or len(records) != 1
-        or not isinstance(records[0], dict)
-        or records[0] != page.records[0]
+        or not records
+        or records != list(page.records)
+        or (not paginated and len(records) != 1)
     ):
         raise SmartsEvidenceError("Original response and exact facility page disagree")
-    row = records[0]
+    matches = [r for r in records if isinstance(r, dict)
+               and _sha(_canonical_row(r)) == preview.record_sha256]
+    if not matches or (not paginated and len(matches) != 1):
+        raise SmartsEvidenceError("Source row missing or ambiguous in retained page")
+    row = matches[0]
     if row.get("SITE_COUNTY") != page.county:
         raise SmartsEvidenceError("Original response county mismatch")
     if _sha(_canonical_row(row)) != preview.record_sha256:
@@ -260,15 +265,18 @@ def _event_digest(source_key: str, version: int, row_sha: str, previous: str | N
 
 
 def record_smarts_observation(
-    path: Path, page: SmartsPage, preview: SmartsIntakePreview
+    path: Path, page: SmartsPage, preview: SmartsIntakePreview, *, paginated: bool = False,
+    _connection: sqlite3.Connection | None = None,
 ) -> SmartsEvidenceReceipt:
     """Durably capture original bytes and an append-only semantic version atomically."""
-    raw, row = _raw_record(page, preview)
+    raw, row = _raw_record(page, preview, paginated=paginated)
     assert preview.source_record_key is not None
     source_key = preview.source_record_key
     county = str(row["SITE_COUNTY"])
     aliases = _aliases(preview)
-    connection = _open(path)
+    owns_connection = _connection is None
+    connection = _open(path) if owns_connection else _connection
+    assert connection is not None
     try:
         bindings = [
             connection.execute(
@@ -318,10 +326,36 @@ def record_smarts_observation(
                  _event_digest(canonical, version, preview.record_sha256, previous),
                 observation_id),
             )
-        connection.commit()
+        if owns_connection:
+            connection.commit()
         return SmartsEvidenceReceipt(
             canonical, preview.record_sha256, page.response_sha256, observation_id, version, outcome
         )
+    except Exception:
+        if owns_connection:
+            connection.rollback()
+        raise
+    finally:
+        if owns_connection:
+            connection.close()
+
+
+def record_smarts_page(path: Path, page: SmartsPage) -> dict[str, SmartsEvidenceReceipt]:
+    """Retain a whole page atomically using one validated journal transaction."""
+    connection = _open(path)
+    try:
+        receipts: dict[str, SmartsEvidenceReceipt] = {}
+        for row in page.records:
+            preview = build_smarts_intake_preview(page, row)
+            if preview.source_record_key is None or preview.record_sha256 in receipts:
+                continue
+            receipts[preview.record_sha256] = record_smarts_observation(
+                path, page, preview, paginated=True, _connection=connection
+            )
+        if page.records and not receipts:
+            raise SmartsEvidenceError("Page has no source identity for journal retention")
+        connection.commit()
+        return receipts
     except Exception:
         connection.rollback()
         raise
@@ -346,7 +380,11 @@ def verify_smarts_journal(path: Path, *, read_only: bool = False) -> dict[str, i
             observations += 1
             body = bytes(raw)
             try:
-                source_row = json.loads(body)["result"]["records"][0]
+                records = json.loads(body)["result"]["records"]
+                matches = [r for r in records if _sha(_canonical_row(r)) == row_sha]
+                if not matches:
+                    raise SmartsEvidenceError("Retained page source row missing or ambiguous")
+                source_row = matches[0]
             except (ValueError, TypeError, KeyError, IndexError) as exc:
                 raise SmartsEvidenceError("Corrupt retained original SMARTS body") from exc
             if _sha(body) != raw_sha or _sha(_canonical_row(source_row)) != row_sha:
