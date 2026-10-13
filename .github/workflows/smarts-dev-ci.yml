@@ -1,0 +1,51 @@
+name: SMARTS Development Integration Gate
+
+on:
+  push:
+    branches:
+      - agent/smarts-source-neutral-integration-2026-10-12
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: smarts-development-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smarts-integrity:
+    name: Python ${{ matrix.python-version }} evidence and integration checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - name: Check out immutable trigger commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+
+      - name: Set up interpreter
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install pinned project and developer dependencies
+        run: python -m pip install --disable-pip-version-check -e '.[dev]'
+
+      - name: Focused SMARTS regression suite
+        run: python -m pytest -q tests/test_smarts_*.py
+
+      - name: Repository lint gate
+        run: python -m ruff check src tests
+
+      - name: Strict source typing gate
+        run: python -m mypy src/constructionsight
+
+      - name: Full repository regression suite
+        run: python -m pytest -q
