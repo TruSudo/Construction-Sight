@@ -75,6 +75,7 @@ from constructionsight.outreach_preview_service import (
     build_persisted_outreach_preview,
 )
 from constructionsight.smarts_operator_status import build_smarts_operator_status
+from constructionsight.smarts_snapshot_history import review_snapshot_changes
 from constructionsight.storage.operator_read_store import (
     create_operator_read_engine,
     verify_operator_schema,
@@ -189,6 +190,15 @@ def _parameters(
         record_id=record_id,
         role_filter=role_filter,
     )
+
+
+def _validate_smarts_change_query(query: str) -> None:
+    """Do not accept unrelated project kind/query selectors on SMARTS history."""
+    parameters = parse_qs(query, keep_blank_values=True, max_num_fields=3)
+    if set(parameters) - {"county", "limit", "offset"} or any(
+        len(items) != 1 for items in parameters.values()
+    ):
+        raise ValueError("SMARTS review accepts only one county, limit and offset")
 
 
 def _build_ceqanet_ingestion_payload(
@@ -313,6 +323,7 @@ def create_handler(
                     "/api/health",
                     "/api/source-registry",
                     "/api/smarts-status",
+                    "/api/smarts-changes",
                     "/api/source-revision",
                     "/api/snapshot",
                     "/api/footprint",
@@ -345,6 +356,8 @@ def create_handler(
                     and parsed.query
                 ):
                     raise ValueError("unfiltered status inspection rejects query parameters")
+                if path == "/api/smarts-changes":
+                    _validate_smarts_change_query(parsed.query)
                 parameters = _parameters(
                     parsed.query,
                     workflow=path in {"/api/workflows", "/api/results"},
@@ -354,7 +367,9 @@ def create_handler(
                     entity=path == "/api/entity-neighborhood",
                     entity_index=path == "/api/entity-index",
                     candidate=path in {"/api/candidate-preview", "/api/parcel-candidates"},
-                    source_review_queue=path == "/api/source-review-queue",
+                    source_review_queue=path in {
+                        "/api/source-review-queue", "/api/smarts-changes"
+                    },
                 )
             except ValueError as exc:
                 self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
@@ -384,6 +399,11 @@ def create_handler(
                     elif path == "/api/smarts-status":
                         payload = build_smarts_operator_status(
                             smarts_journal_path, smarts_snapshot_history_path
+                        )
+                    elif path == "/api/smarts-changes":
+                        payload = review_snapshot_changes(
+                            smarts_snapshot_history_path, county=parameters.county,
+                            limit=parameters.limit, offset=parameters.offset,
                         )
                     elif path == "/api/capture-queue":
                         payload = capture_queue
