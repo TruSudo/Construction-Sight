@@ -104,7 +104,7 @@ def review_compliance(
             if row["PLACE_COUNTY"] != facilities.county:
                 continue
             selected += 1
-            if "CONSTRUCTION" not in row["PERMIT_TYPE"].upper():
+            if not row["PERMIT_TYPE"].strip().upper().startswith("CONSTRUCTION"):
                 outscope += 1
                 continue
             construction += 1
