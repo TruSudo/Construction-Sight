@@ -107,6 +107,7 @@ def test_scope_and_county_are_not_equivalent_to_construction(
         tmp_path / "inspections.csv", INSP_FIELDS,
         [
             _inspection("101", "8 33C101", "1", permit="Industrial"),
+            _inspection("101", "8 33C101", "4", permit="Non-Construction"),
             _inspection("101", "8 33C101", "2", county="San Bernardino"),
             _inspection("101", "8 33C101", "3", when="not a date"),
         ],
@@ -114,9 +115,9 @@ def test_scope_and_county_are_not_equivalent_to_construction(
     summary = build_inspection_summary(
         facilities, review_inspections(inspections, facilities=facilities)
     )
-    assert summary["inspection_county_rows"] == 2
+    assert summary["inspection_county_rows"] == 3
     assert summary["construction_inspection_rows"] == 1
-    assert summary["out_of_scope_permit_type"] == 1
+    assert summary["out_of_scope_permit_type"] == 2
     assert summary["invalid_or_absent_dates_on_linked_rows"] == 1
 
 
