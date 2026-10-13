@@ -878,7 +878,7 @@ function renderSmartsStatus(data) {
 async function showSmartsParcelCandidates(item, index, token) {
   const target=byId("smarts-parcel-result-"+index);
   if(!target || !item)return;
-  target.innerHTML='<p role="status">Checking exact, retained county/APN evidence…</p>';
+  target.innerHTML='<p role="status">Checking retained county, APN or published site-address evidence…</p>';
   try {
     const params=new URLSearchParams({
       snapshot_id:String(item.snapshot_id),source_key:item.source_key
@@ -889,7 +889,10 @@ async function showSmartsParcelCandidates(item, index, token) {
     const allowed=new Set([
       "historical_snapshot_requires_current_review", "missing_from_new_is_not_deletion",
       "source_apn_missing", "unusable_source_apn", "conflicting_source_apns",
-      "parcel_not_retained", "parcel_candidate_ambiguous", "parcel_candidate_requires_review"
+      "parcel_not_retained", "parcel_candidate_ambiguous", "parcel_candidate_requires_review",
+      "unusable_source_site_address", "address_city_conflict_requires_review",
+      "address_not_retained", "address_candidate_ambiguous",
+      "address_candidate_requires_review"
     ]);
     if(!data || data.schema_version!=="constructionsight.smarts_parcel_review.v1" ||
        data.snapshot_id!==item.snapshot_id || data.source_key!==item.source_key ||
@@ -907,7 +910,12 @@ async function showSmartsParcelCandidates(item, index, token) {
        (data.source_row_sha256!==null &&
          !/^[0-9a-f]{64}$/.test(data.source_row_sha256)) ||
        (data.source_claimed_normalized_apn!==null &&
-         !/^[0-9]{5,16}$/.test(data.source_claimed_normalized_apn)))
+         !/^[0-9]{5,16}$/.test(data.source_claimed_normalized_apn)) ||
+       (data.source_claimed_normalized_address!==null &&
+         (typeof data.source_claimed_normalized_address!=="string" ||
+          data.source_claimed_normalized_address.length>200 ||
+          !/^[0-9]{1,7}[ -][A-Z0-9]/.test(data.source_claimed_normalized_address))))
+
       throw Error("SMARTS parcel candidate evidence or authority is inconsistent.");
     const ids=new Set();
     const matches=data.candidates.map(candidate=>{
@@ -915,22 +923,29 @@ async function showSmartsParcelCandidates(item, index, token) {
          !candidate.parcel_record_id ||
          typeof candidate.parcel_source_key!=="string" || !candidate.parcel_source_key ||
          typeof candidate.parcel_source_record_id!=="string" ||
-         candidate.candidate_basis!=="same_county_exact_normalized_apn" ||
+         !["same_county_exact_normalized_apn",
+           "same_county_city_exact_source_claimed_site_address"].includes(
+             candidate.candidate_basis
+           ) ||
          ids.has(candidate.parcel_record_id))
         throw Error("Conflicting retained parcel candidate identities.");
       ids.add(candidate.parcel_record_id);
       return '<li>Parcel source record: <code>'+escapeText(candidate.parcel_record_id)+
         '</code> · '+escapeText(candidate.parcel_source_key)+
-        ' · '+escapeText(candidate.parcel_source_record_id||"no source ID")+'</li>';
+        ' · '+escapeText(candidate.parcel_source_record_id||"no source ID")+
+        ' · '+escapeText(candidate.candidate_basis.replaceAll("_"," "))+'</li>';
     }).join("");
     const label=data.status.replaceAll("_"," ");
     target.innerHTML='<p><strong>'+escapeText(label)+'</strong> · '+
       (data.source_claimed_normalized_apn ?
         'Source-claimed normalized APN: <code>'+escapeText(data.source_claimed_normalized_apn)+'</code>. ' :
-        'No reliable exact APN evidence available. ')+
+        data.source_claimed_normalized_address ?
+          'Unverified site-address candidate: <code>'+
+          escapeText(data.source_claimed_normalized_address)+'</code>. ' :
+          'No usable site-key evidence available. ')+
       data.candidate_total+' retained parcel candidate'+(data.candidate_total===1?'':'s')+'.</p>'+
       (matches?'<ul>'+matches+'</ul>':'')+
-      '<p>Potential APN co-occurrence is not verified site/project identity. Independent assessor, permit and location evidence plus explicit operator review remain required; no commercial action occurred.</p>';
+      '<p>APN or address co-occurrence is not verified parcel, site or project identity. Independent assessor, permit and location evidence plus explicit operator review remain required; no commercial action occurred.</p>';
   }catch(error){
     if(token===featureRequest && target===byId("smarts-parcel-result-"+index))
       target.innerHTML='<p role="alert">Parcel evidence review unavailable: '+
