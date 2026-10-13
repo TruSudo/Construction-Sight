@@ -9,9 +9,10 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from constructionsight.smarts_compliance_review import (
+    ComplianceKind,
     build_compliance_summary,
     review_compliance,
 )
@@ -57,15 +58,15 @@ def prepare_source_review(
     compliance_summaries: dict[str, Any] = {}
     for kind, path in (("violations", violations), ("enforcement", enforcement)):
         if path is not None:
-            assert kind in ("violations", "enforcement")
-            record = review_compliance(path, kind=kind, facilities=present)
+            record = review_compliance(path, kind=cast(ComplianceKind, kind), facilities=present)
             compliance_summaries[kind] = build_compliance_summary(present, record)
     return {
         "ok": True,
         "mode": "smarts_offline_review",
         "county": county,
         "facility_change_review": facility_summary,
-        "inspection_review": inspection_summary,\n        "compliance_reviews": compliance_summaries,
+        "inspection_review": inspection_summary,
+        "compliance_reviews": compliance_summaries,
         "human_review_required": True,
         "source_maturity": "unverified",
         "site_identity": "source_scoped_only",
