@@ -178,11 +178,30 @@ def _original_csv(path: Path) -> bytes:
             or not 0 < info.st_size <= MAX_CSV_BYTES
         ):
             raise SmartsHistoryError("Original CSV must be an owner-only regular file")
-        body = target.read_bytes()
+        # Read the same checked inode through a no-follow file descriptor.
+        # This also bounds memory if a file changes size after the lstat.
+        fd = os.open(target, os.O_RDONLY | os.O_NOFOLLOW)
+        with os.fdopen(fd, "rb") as handle:
+            opened = os.fstat(handle.fileno())
+            if (
+                not stat.S_ISREG(opened.st_mode)
+                or opened.st_uid != os.geteuid()
+                or opened.st_nlink != 1
+                or stat.S_IMODE(opened.st_mode) & 0o077
+                or (opened.st_dev, opened.st_ino) != (info.st_dev, info.st_ino)
+                or not 0 < opened.st_size <= MAX_CSV_BYTES
+            ):
+                raise SmartsHistoryError("Original CSV changed or is not owner-only")
+            body = handle.read(MAX_CSV_BYTES + 1)
+            after = os.fstat(handle.fileno())
+            if (
+                len(body) != opened.st_size
+                or (opened.st_dev, opened.st_ino, opened.st_size)
+                != (after.st_dev, after.st_ino, after.st_size)
+            ):
+                raise SmartsHistoryError("Original CSV changed during read")
     except OSError as exc:
         raise SmartsHistoryError("Original source CSV cannot be read") from exc
-    if len(body) != info.st_size:
-        raise SmartsHistoryError("Original source CSV changed during read")
     return body
 
 
