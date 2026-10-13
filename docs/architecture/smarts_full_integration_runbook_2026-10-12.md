@@ -191,6 +191,26 @@ or bidding authority. The journal must first be populated through separately
 authorized `constructionsight-smarts-collect` or exact-record capture. No
 new background ingest or production permission is implied.
 
+
+The same Sources & Collection panel now separately accepts the complete offline
+facility-history ledger. To show **both** independent sources of verified
+private evidence, pass both optional paths when opening the operator:
+
+```bash
+constructionsight-operator --database /private/constructionsight.sqlite3 \
+  --smarts-journal /private/smarts/evidence.sqlite3 \
+  --smarts-snapshot-history /private/smarts/facility-history.sqlite3
+```
+
+The local-only `GET /api/smarts-status` reads both stores without creating or
+mutating either. A missing, altered, insecure, or incompatible configured
+store fails closed. The screen shows source identity/observation/version counts
+for exact API records separately from CSV snapshot/source-row/change-candidate
+counts. Neither count indicates complete public coverage, confirmed
+construction activity, matching to a specific parcel, or eligibility for
+outreach or bidding. This is a read-only status link, not ingestion into the
+main product database.
+
 **Operational release remains gated** on independently checked publisher
 rights, real live fixture replay, full dataset snapshot reconciliation,
 a permitted recurring collection strategy, complete versioned storage and
