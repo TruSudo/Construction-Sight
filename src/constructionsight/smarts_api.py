@@ -186,12 +186,15 @@ def fetch_page(
     offset: int = 0,
     app_id: str | None = None,
     wdid: str | None = None,
+    active_only: bool = False,
 ) -> SmartsPage:
     """Fetch exactly one controlled public page, without retries or redirects."""
     if resource not in RESOURCE_IDS:
         raise SmartsApiError("Unapproved SMARTS resource")
     if county is not None and (resource != "facilities" or county not in COUNTIES):
         raise SmartsApiError("County filters are approved only for named facility counties")
+    if active_only and (resource != "facilities" or county not in COUNTIES):
+        raise SmartsApiError("Active filtering requires an approved facility county")
     if type(limit) is not int or not 1 <= limit <= MAX_PAGE_SIZE:
         raise SmartsApiError("Invalid page size")
     if type(offset) is not int or not 0 <= offset <= 1_000_000:
@@ -216,6 +219,9 @@ def fetch_page(
     }
     if county is not None:
         filters = {"SITE_COUNTY": county}
+        if active_only:
+            filters["STATUS"] = "Active"
+            params["sort"] = "_id asc"
         if app_id is not None:
             filters["APP_ID"] = app_id
         if wdid is not None:
@@ -277,6 +283,8 @@ def fetch_page(
     if any("_id" not in row or not set(row).issubset(fields) for row in rows):
         raise SmartsApiError("Malformed row identity or schema")
 
+    if active_only and any(row.get("STATUS") != "Active" for row in rows):
+        raise SmartsApiError("Active filter returned a different status")
     if app_id is not None and any(row.get("APP_ID") != app_id for row in rows):
         raise SmartsApiError("APP_ID filter returned a different record")
     if wdid is not None and any(row.get("WDID") != wdid for row in rows):
