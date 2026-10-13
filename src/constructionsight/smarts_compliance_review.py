@@ -17,7 +17,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
 
-from constructionsight.smarts_inspection_review import _inspection_date, _inspection_id, _inspection_join
+from constructionsight.smarts_inspection_review import (
+    _inspection_date,
+    _inspection_id,
+    _inspection_join,
+)
 from constructionsight.smarts_snapshot_diff import (
     COUNTIES,
     MAX_CSV_BYTES,
