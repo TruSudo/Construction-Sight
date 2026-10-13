@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sqlite3
 import webbrowser
 from contextlib import suppress
 from dataclasses import dataclass
@@ -65,6 +66,7 @@ from constructionsight.operator_watchlist import (
     build_operator_watchlist_snapshot,
     create_operator_watchlist_engine,
 )
+from constructionsight.smarts_operator_status import build_smarts_operator_status
 from constructionsight.outreach_preview_models import (
     OutreachChannel,
     OutreachContactReference,
@@ -247,6 +249,7 @@ def create_handler(
     source_attribution_aliases_path: Path | None = None,
     ceqanet_listing_evidence: Path | None = None,
     ceqanet_queue_evidence: Path | None = None,
+    smarts_journal_path: Path | None = None,
 ) -> type[BaseHTTPRequestHandler]:
     """Bind to an existing database without schema creation or migration.
 
@@ -308,6 +311,7 @@ def create_handler(
                 if path not in {
                     "/api/health",
                     "/api/source-registry",
+                    "/api/smarts-status",
                     "/api/source-revision",
                     "/api/snapshot",
                     "/api/footprint",
@@ -331,6 +335,7 @@ def create_handler(
                     in {
                         "/api/workflow-summary",
                         "/api/source-registry",
+                        "/api/smarts-status",
                         "/api/source-revision",
                         "/api/capture-queue",
                         "/api/ingestion-inbox",
@@ -375,6 +380,8 @@ def create_handler(
                             "bid_submission_enabled": False,
                             "bid_authorization_enabled": False,
                         }
+                    elif path == "/api/smarts-status":
+                        payload = build_smarts_operator_status(smarts_journal_path)
                     elif path == "/api/capture-queue":
                         payload = capture_queue
                     elif path == "/api/source-registry":
@@ -464,7 +471,7 @@ def create_handler(
                 self._send_json(
                     {"error": "Source record not found."}, status=HTTPStatus.NOT_FOUND
                 )
-            except (SQLAlchemyError, ValueError, TypeError, KeyError):
+            except (SQLAlchemyError, sqlite3.Error, OSError, ValueError, TypeError, KeyError):
                 self._send_json(
                     {
                         "error": "Stored data could not be read. "
@@ -1009,6 +1016,11 @@ def main(*, open_browser_by_default: bool = False) -> None:
         type=Path,
         help="Optional exact reviewed SCH queue paired with --ceqanet-listing-evidence.",
     )
+    parser.add_argument(
+        "--smarts-journal",
+        type=Path,
+        help="Optional existing private SMARTS evidence journal (read-only status counts).",
+    )
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument(
         "--open-browser", action="store_true", default=open_browser_by_default,
@@ -1027,6 +1039,8 @@ def main(*, open_browser_by_default: bool = False) -> None:
             handler_kwargs["ceqanet_listing_evidence"] = args.ceqanet_listing_evidence
         if args.ceqanet_queue_evidence is not None:
             handler_kwargs["ceqanet_queue_evidence"] = args.ceqanet_queue_evidence
+        if args.smarts_journal is not None:
+            handler_kwargs["smarts_journal_path"] = args.smarts_journal
         handler = create_handler(args.database, **handler_kwargs)
     except (OSError, ValueError) as exc:
         parser.error(f"--database must name an existing SQLite file: {exc}")
