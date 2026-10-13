@@ -320,9 +320,11 @@ def verify_smarts_journal(path: Path) -> dict[str, int]:
     connection = _open(path)
     try:
         source_rows: dict[str, set[str]] = {}
+        observation_history: dict[str, list[tuple[int, str]]] = {}
         observations = 0
-        for source_key, raw_sha, row_sha, raw in connection.execute(
-            "SELECT source_key,response_sha256,row_sha256,raw_response FROM smarts_observations"
+        for observation_id, source_key, raw_sha, row_sha, raw in connection.execute(
+            "SELECT id,source_key,response_sha256,row_sha256,raw_response "
+            "FROM smarts_observations ORDER BY id"
         ):
             observations += 1
             body = bytes(raw)
@@ -333,12 +335,14 @@ def verify_smarts_journal(path: Path) -> dict[str, int]:
             if _sha(body) != raw_sha or _sha(_canonical_row(source_row)) != row_sha:
                 raise SmartsEvidenceError("Retained SMARTS response or row digest mismatch")
             source_rows.setdefault(source_key, set()).add(row_sha)
+            observation_history.setdefault(source_key, []).append((observation_id, row_sha))
         latest: dict[str, tuple[int, str]] = {}
+        version_observations: dict[str, list[tuple[int, str]]] = {}
         versions = 0
-        for source_key, number, row_sha, prev, event_sha, observed_row_sha, observed_source in (
+        for source_key, number, row_sha, prev, event_sha, observation_id, observed_row_sha, observed_source in (
             connection.execute(
                 "SELECT v.source_key,v.version,v.row_sha256,v.previous_event_sha256,"
-                "v.event_sha256,o.row_sha256,o.source_key FROM smarts_versions v "
+                "v.event_sha256,v.observation_id,o.row_sha256,o.source_key FROM smarts_versions v "
                 "JOIN smarts_observations o ON v.observation_id=o.id "
                 "ORDER BY v.source_key,v.version"
             )
@@ -355,6 +359,16 @@ def verify_smarts_journal(path: Path) -> dict[str, int]:
             ):
                 raise SmartsEvidenceError("SMARTS version-chain integrity failure")
             latest[source_key] = (number, event_sha)
+            version_observations.setdefault(source_key, []).append((observation_id, row_sha))
+        for source_key, observations_for_source in observation_history.items():
+            expected_events: list[tuple[int, str]] = []
+            last_row_sha: str | None = None
+            for observation_id, row_sha in observations_for_source:
+                if row_sha != last_row_sha:
+                    expected_events.append((observation_id, row_sha))
+                last_row_sha = row_sha
+            if expected_events != version_observations.get(source_key, []):
+                raise SmartsEvidenceError("Observation/version transition history mismatch")
         if any(source not in latest for source in source_rows):
             raise SmartsEvidenceError("Source observations missing version history")
         if any(row[0] not in latest for row in connection.execute(
