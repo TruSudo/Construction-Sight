@@ -60,6 +60,7 @@ constructionsight-smarts-snapshot-diff = "constructionsight.smarts_snapshot_diff
 constructionsight-smarts-inspections = "constructionsight.smarts_inspection_review:main"
 constructionsight-smarts-compliance = "constructionsight.smarts_compliance_review:main"
 constructionsight-smarts-source-review = "constructionsight.smarts_source_review_cli:main"
+constructionsight-smarts-catalog = "constructionsight.smarts_catalog_probe:main"
 constructionsight-ceqanet-fixtures = "constructionsight.ceqanet_fixture_query_cli:app"
 constructionsight-ceqanet-listing-plan = "constructionsight.ceqanet_listing_plan_cli:app"
 constructionsight-ceqanet-listing-execute = "constructionsight.ceqanet_listing_execute_cli:app"
