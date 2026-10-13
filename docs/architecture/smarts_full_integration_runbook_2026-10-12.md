@@ -1,0 +1,141 @@
+# SMARTS source integration — operator runbook (2026-10-12)
+
+## Scope and evidence classification
+
+The development implementation supports four distinct forms of evidence:
+
+1. **Bounded public API lookup** of exact San Bernardino or Riverside construction
+   facility identities, normalized to the existing source-neutral intake and
+   site-resolution preview. No physical work or contract demand is inferred.
+2. **Opt-in, private immutable local response journal** with semantic source-row
+   versioning and a crash-recoverable 1–25 exact-identity roster collector.
+3. **Offline comparison of two supplied construction-facility CSV exports**,
+   emitting content-change candidates but no automatic deletion findings.
+4. **Offline, source-scoped corroboration** against inspection, violation, and
+   enforcement CSV exports, with direct APP_ID/WDID agreement and strict
+   county/program scope. These outputs never certify a parcel/project match.
+
+All four are development/review capabilities, not evidence of production
+ingestion, guaranteed weekly coverage, active building work, lead maturity,
+or a commercial opportunity. The work leaves the entity graph, approved GUI
+and watchlist mutations unchanged.
+
+## Official public source references
+
+Publisher: California State Water Resources Control Board.
+Dataset: https://publish.data.ca.gov/dataset/stormwater-regulatory-including-enforcement-actions-information-and-water-quality-results
+
+| Role | Catalog resource ID | Implemented stage |
+| --- | --- | --- |
+| Construction facility information | `8a0ed456-ca69-4b29-9c5b-5de3958dc963` | Exact API preview, evidence journal, offline CSV diff |
+| Inspections | `33047e47-7d44-46aa-9e0f-1a0f1b0cad66` | Offline source-ID joins only |
+| Violations | `9b69a654-0c9a-4865-8d10-38c55b1b8c58` | Offline source-ID joins only |
+| Enforcement actions | `9cf197f4-f1d5-4d43-b94b-ccb155ef14cf` | Offline source-ID joins only |
+
+The same catalog contains construction-monitoring and industrial resources.
+They are **not** automatically added to the construction-intelligence graph.
+The source catalog listed a weekly update cadence and the files were last
+updated on 2026-10-02 when checked on 2026-10-12. Dates and counts are
+publisher metadata, not direct inspection of source file bytes.
+
+The dataset-level rights statement reads "No Restrictions on Public Use";
+individual resources also display "No License Provided". Attribution, terms
+for redistribution/retention and any source-specific operational restrictions
+must be confirmed in the approved access-governance record before automated
+production harvest and resale-oriented use. Public access alone does not
+turn source-personal contact fields into outreach authorization.
+
+## Private-source handling and manual reproducible workflow
+
+Use an owner-controlled private folder **outside** the Git repository. Retain
+original exports unchanged, along with official download URL, acquisition
+timestamp, source resource ID, last-modified metadata if available and original
+file hash. Do not commit, publish, email or log raw exports, whose records may
+include names, phone numbers and addresses.
+
+Acquire the exact Construction Discharge Facility Information, Inspections,
+Violations and Enforcement Actions resource exports from the official catalog.
+The offline review tools deliberately do not download them, and never request
+credentials, bypass the original hosting controls, or scrape reports.
+
+Use separate original facility exports from two genuinely different capture
+dates for longitudinal differences:
+
+```bash
+python -m constructionsight.smarts_source_review_cli \
+  --county Riverside \
+  --previous /private/smarts/facilities-older.csv \
+  --current /private/smarts/facilities-newer.csv \
+  --inspections /private/smarts/inspections.csv \
+  --violations /private/smarts/violations.csv \
+  --enforcement /private/smarts/enforcement.csv
+```
+
+To review San Bernardino separately, change the county and use the same
+retained full-source files as inputs. The implementation accepts only exact
+spellings `San Bernardino` and `Riverside`. The reviewed construction-facility
+rows are scoped by `SITE_COUNTY`; other datasets by `PLACE_COUNTY`.
+
+If only the source changes need review, omit `--inspections`, `--violations`
+and `--enforcement`. Individual entry points are
+`constructionsight-smarts-snapshot-diff`,
+`constructionsight-smarts-inspections`,
+`constructionsight-smarts-compliance`, and
+`constructionsight-smarts-source-review` after package installation.
+
+Every output includes original file SHA-256 digests. The output is a bounded
+**non-contact review preview**: preview lists are not complete change ledgers.
+Regulatory observations, even when linked with exact source identifiers, do
+not independently certify project commencement, safety/security needs or
+an authorized customer bid request.
+
+## Fail-closed behavior and known limits
+
+- Retained CSV source files are capped at 128 MiB and 250,000 rows apiece,
+  matching the current published facility/inspection/compliance file scale,
+  but this is not guaranteed for later publications. Reject oversized files.
+- Duplicate source identities or source alias drift invalidate a facility
+  snapshot. Unmatched inspection/compliance records are counted, not assumed
+  to reference a project; conflicting aliases never create positive links.
+- Only rows whose `PERMIT_TYPE` explicitly contains `Construction` pass
+  the inspection/compliance program gate. Different/unknown vocabulary is
+  *not* inferred as construction and requires manual schema review.
+- Regulatory dates are source-reported. Unparseable/missing dates are retained
+  as unverified, not fabricated.
+- A missing source identity from a later file is
+  `missing_from_new` **not** deletion, expiration or physical completion.
+- CSV cell values are strings; their canonical hashes are intentionally
+  not treated as identical to the typed CKAN JSON semantic hashes.
+- Differences do not prove completeness, freshness, stable pagination,
+  licensing conditions, or change-feed monotonicity.
+- No source records or personal contact fields are persisted by these
+  offline commands, and no new source-specific application schema is created.
+  The owner-controlled raw CSV files are retained externally.
+- Summaries cannot authorize outreach, source maturity promotion, watchlist
+  alerts, graph/parcel joins, price quotes, proposals or bids.
+
+## Quality and deployment boundaries
+
+The SMARTS development-specific GitHub workflow
+`.github/workflows/smarts-dev-ci.yml` runs focused SMARTS regression tests,
+repository Ruff checks, strict Mypy, and the full regression suite on Python
+3.11 and 3.12. Evaluate each run at its **exact SHA**, never infer a later
+head is certified by an earlier passing check.
+
+Remaining promotion gates:
+
+1. Retain and hash actual official source files from separate publication
+   periods, with acquisition timestamps and source-use governance clearance.
+2. Verify published schema and filter vocabulary against real-world records,
+   explicitly quantify missing/ambiguous records and county coverage.
+3. Implement a reviewed, versioned, atomic source snapshot store with
+   checkpoint/backups, completeness reconciliation and crash recovery.
+4. Design non-mutating links to official assessor parcels, city planning,
+   building permits/inspections, CEQA and contractors, with accepted/rejected
+   evidence and reproducible human-review state.
+5. Wire a **read-only reviewed** source-health/candidate projection into the
+   approved desktop GUI without changing its layout or enabling network polling,
+   lead promotion, automatic outreach or bids.
+6. Obtain a new production-specific assurance/certification pass and
+   separately authorize rollout. The development PR does not merge itself.
+
