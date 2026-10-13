@@ -158,6 +158,16 @@ def test_actual_loopback_endpoint_reads_only_selected_journal(tmp_path: Path) ->
     append_snapshot(
         ledger_path=csv_history, csv_path=private_csv, county="Riverside"
     )
+    later_csv = journal.parent / "source-later.csv"
+    later_csv.write_text(
+        "_id,APP_ID,WDID,SITE_COUNTY,STATUS,CONTACT_EMAIL\\n"
+        "2,101,8 33C101,Riverside,Terminated,private@example.test\\n",
+        encoding="utf-8",
+    )
+    later_csv.chmod(0o600)
+    append_snapshot(
+        ledger_path=csv_history, csv_path=later_csv, county="Riverside"
+    )
     history_digest = hashlib.sha256(csv_history.read_bytes()).hexdigest()
     server = ThreadingHTTPServer(
         ("127.0.0.1", 0),
@@ -188,8 +198,22 @@ def test_actual_loopback_endpoint_reads_only_selected_journal(tmp_path: Path) ->
         assert payload["source_identities"] == 1
         assert payload["csv_snapshot_history_configured"] is True
         assert payload["csv_snapshot_history_integrity_verified"] is True
-        assert payload["csv_snapshots"] == 1
-        assert payload["csv_source_row_observations"] == 1
+        assert payload["csv_snapshots"] == 2
+        assert payload["csv_source_row_observations"] == 2
+        assert payload["csv_change_candidates"] == 1
+        assert hashlib.sha256(csv_history.read_bytes()).hexdigest() == history_digest
+        change_status, changes = get("/api/smarts-changes?county=Riverside&limit=10")
+        assert change_status == 200
+        assert changes["total"] == 1
+        assert changes["returned"] == 1
+        assert changes["items"][0]["outcome"] == "changed"
+        assert changes["items"][0]["source_scoped_candidate_only"] is True
+        assert changes["outreach_authorized"] is False
+        assert changes["missing_is_deletion"] is False
+        assert "private@example.test" not in json.dumps(changes)
+        assert get("/api/smarts-changes?q=construction")[0] == 400
+        assert get("/api/smarts-changes?limit=26")[0] == 400
+        assert get("/api/smarts-changes?county=Riverside&county=Riverside")[0] == 400
         assert hashlib.sha256(csv_history.read_bytes()).hexdigest() == history_digest
         assert payload["network_executed"] is False
         assert payload["lead_readiness_authorized"] is False
