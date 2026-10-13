@@ -320,6 +320,95 @@ def verify_snapshot_history(path: Path) -> dict[str, int]:
         connection.close()
 
 
+
+def review_snapshot_changes(
+    ledger_path: Path | None, *, county: str = "", limit: int = 10, offset: int = 0,
+) -> dict[str, object]:
+    """Page verified retained source change events, without exposing CSV rows.
+
+    Every query verifies the complete private evidence history in the same
+    read-only SQLite snapshot before returning an event or source identifier.
+    """
+    if county not in ("", *COUNTIES):
+        raise SmartsHistoryError("Invalid SMARTS change-review county")
+    if (
+        type(limit) is not int or not 1 <= limit <= 25
+        or type(offset) is not int or not 0 <= offset <= 1_000_000
+    ):
+        raise SmartsHistoryError("Invalid SMARTS change-review page bounds")
+    items: list[dict[str, object]] = []
+    total = 0
+    if ledger_path is not None:
+        connection = _database(ledger_path, read_only=True)
+        try:
+            _, counts = _audit(connection)
+            clause = "WHERE s.county=?" if county else ""
+            args: tuple[str, ...] = (county,) if county else ()
+            total = connection.execute(
+                "SELECT COUNT(*) FROM snapshot_events e "
+                "JOIN snapshot_captures s ON s.id=e.snapshot_id " + clause,
+                args,
+            ).fetchone()[0]
+            if type(total) is not int or total < 0 or total > counts["change_candidates"]:
+                raise SmartsHistoryError("Snapshot review event count is inconsistent")
+            if not county and total != counts["change_candidates"]:
+                raise SmartsHistoryError("Global review event count differs from evidence")
+            cursor = connection.execute(
+                "SELECT e.snapshot_id,s.county,s.recorded_at,s.reported_publication_at,"
+                "s.file_sha256,e.source_key,e.outcome,e.previous_sha256,e.current_sha256 "
+                "FROM snapshot_events e "
+                "JOIN snapshot_captures s ON s.id=e.snapshot_id "
+                + clause + " ORDER BY e.snapshot_id DESC,e.source_key ASC "
+                "LIMIT ? OFFSET ?",
+                (*args, limit, offset),
+            )
+            items = [
+                {
+                    "snapshot_id": snapshot_id,
+                    "county": recorded_county,
+                    "captured_at": captured_at,
+                    "reported_publication_at": publication,
+                    "original_file_sha256": file_sha,
+                    "source_key": source_key,
+                    "outcome": outcome,
+                    "previous_row_sha256": old_sha,
+                    "current_row_sha256": new_sha,
+                    "source_scoped_candidate_only": True,
+                }
+                for (
+                    snapshot_id, recorded_county, captured_at, publication, file_sha,
+                    source_key, outcome, old_sha, new_sha,
+                ) in cursor
+            ]
+            connection.rollback()
+        finally:
+            connection.close()
+    return {
+        "schema_version": "constructionsight.smarts_change_review.v1",
+        "configured": ledger_path is not None,
+        "verified_private_history": ledger_path is not None,
+        "county_filter": county,
+        "limit": limit,
+        "offset": offset,
+        "total": total,
+        "returned": len(items),
+        "has_more": offset + len(items) < total,
+        "items": items,
+        "read_only": True,
+        "network_executed": False,
+        "history_mutated": False,
+        "raw_csv_exposed": False,
+        "missing_is_deletion": False,
+        "source_identity_is_project_identity": False,
+        "parcel_or_project_matches_verified": False,
+        "live_collection_enabled": False,
+        "lead_readiness_authorized": False,
+        "outreach_authorized": False,
+        "bid_authorized": False,
+    }
+
+
+
 def append_snapshot(
     *, ledger_path: Path, csv_path: Path, county: str,
     reported_publication_at: str | None = None,
