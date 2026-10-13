@@ -1,0 +1,1 @@
+{"name":"constructionsight-visual-check","private":true,"scripts":{"capture":"node capture.js"},"devDependencies":{"playwright":"1.62.1"}}

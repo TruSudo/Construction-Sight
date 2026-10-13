@@ -1,0 +1,166 @@
+{
+  "reference_sha256": "8b8116b93641fe5a15d18dc410d2d683a29646feba3098970769549c13521d86",
+  "reference_viewport": [
+    1536,
+    864
+  ],
+  "requested_viewport": [
+    1672,
+    941
+  ],
+  "native_reference_available": false,
+  "font_identity": "unverified; requires original font assets",
+  "boxes": {
+    "sidebar": [
+      0,
+      0,
+      296,
+      864
+    ],
+    "header": [
+      296,
+      0,
+      1536,
+      55
+    ],
+    "hero": [
+      296,
+      55,
+      1536,
+      157
+    ],
+    "kpis": [
+      310,
+      167,
+      1521,
+      245
+    ],
+    "map": [
+      310,
+      255,
+      1065,
+      623
+    ],
+    "dossier": [
+      1078,
+      255,
+      1521,
+      679
+    ],
+    "leads": [
+      310,
+      635,
+      1065,
+      844
+    ],
+    "watchlist": [
+      1078,
+      691,
+      1521,
+      846
+    ]
+  },
+  "colors": {
+    "sidebar": {
+      "hex": "#18191b",
+      "sample_box": [
+        5,
+        205,
+        285,
+        700
+      ],
+      "mode_pixels": 26974
+    },
+    "header": {
+      "hex": "#1d1e20",
+      "sample_box": [
+        310,
+        5,
+        1500,
+        49
+      ],
+      "mode_pixels": 6994
+    },
+    "panel": {
+      "hex": "#181818",
+      "sample_box": [
+        313,
+        169,
+        541,
+        244
+      ],
+      "mode_pixels": 3547
+    },
+    "border": {
+      "hex": "#262626",
+      "sample_pixel": [
+        500,
+        167
+      ]
+    },
+    "amber": {
+      "hex": "#dca234",
+      "sample_box": [
+        13,
+        210,
+        16,
+        239
+      ],
+      "mode_pixels": 8,
+      "method": "dominant foreground RGB selected by color family"
+    },
+    "text": {
+      "hex": "#ffffff",
+      "sample_box": [
+        328,
+        91,
+        944,
+        116
+      ],
+      "mode_pixels": 308,
+      "method": "dominant foreground RGB selected by color family"
+    },
+    "green": {
+      "hex": "#3cbf4d",
+      "sample_box": [
+        570,
+        185,
+        590,
+        203
+      ],
+      "mode_pixels": 2,
+      "method": "dominant foreground RGB selected by color family"
+    },
+    "red": {
+      "hex": "#ee3733",
+      "sample_box": [
+        1060,
+        185,
+        1080,
+        204
+      ],
+      "mode_pixels": 3,
+      "method": "dominant foreground RGB selected by color family"
+    }
+  },
+  "css_geometry": {
+    "sidebar_width": 296,
+    "header_height": 55,
+    "hero_height": 102,
+    "content_inset": 14,
+    "column_gap": 13,
+    "left_column_width": 755,
+    "right_column_width": 443,
+    "kpi_height": 78,
+    "card_header_height": 44
+  },
+  "target_scale": [
+    1.0885416666666667,
+    1.0891203703703705
+  ],
+  "visual_test": {
+    "channel_tolerance": 12,
+    "max_changed_static_pixels_fraction": 0.005,
+    "max_channel_mae": 2.0
+  }
+}

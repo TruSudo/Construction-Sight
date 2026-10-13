@@ -28,6 +28,7 @@ dev = [
   "pytest==9.0.3",
   "ruff==0.12.4",
   "mypy==1.17.0",
+  "Pillow==12.3.0",
 ]
 
 [project.scripts]

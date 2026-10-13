@@ -1,0 +1,11 @@
+{
+  "industrial": 40,
+  "commercial": 30,
+  "residential": 20,
+  "infrastructure": 10,
+  "commenced": 30,
+  "upcoming": 20,
+  "unknown_stage": 5,
+  "repeat_developer": 5,
+  "repeat_cap": 20
+}

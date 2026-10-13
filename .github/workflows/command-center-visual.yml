@@ -1,0 +1,48 @@
+name: Command Center visual comparison
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'pyproject.toml'
+      - '.github/workflows/command-center-visual.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  visual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Install visual test dependencies
+        run: |
+          python -m pip install -e '.[dev]'
+          npm --prefix tests/visual install
+          cd tests/visual
+          npx playwright install --with-deps chromium
+      - name: Capture offline Demo at native target viewport
+        run: |
+          PYTHONPATH=src python -m constructionsight.live_command_center --demo --no-browser > /tmp/command-center.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl --silent --fail http://127.0.0.1:8765/ > /dev/null; then break; fi
+            sleep 0.2
+          done
+          mkdir -p tests/visual/output
+          node tests/visual/capture.js http://127.0.0.1:8765 tests/visual/output/actual.png
+      - name: Compare reference, fonts and static pixels
+        run: >-
+          python tests/visual/compare_mockup.py
+          tests/visual/reference.png
+          tests/visual/output/actual.png tests/visual/output
+      - name: Save screenshot and diff even when comparison fails
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: command-center-visual-diff
+          path: tests/visual/output/
