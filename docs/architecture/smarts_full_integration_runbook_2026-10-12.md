@@ -45,6 +45,23 @@ must be confirmed in the approved access-governance record before automated
 production harvest and resale-oriented use. Public access alone does not
 turn source-personal contact fields into outreach authorization.
 
+## Opt-in published-catalog freshness and schema observation
+
+`python -m constructionsight.smarts_catalog_probe --execute-live` makes a
+single, explicitly authorized, bounded read-only `package_show` request to
+the fixed public California SMARTS dataset identifier. It validates that the
+four approved resource IDs remain present and labeled CSV, then emits only
+resource names, reported sizes, last-modified metadata and the complete
+metadata-response SHA-256. The installed command alias is
+`constructionsight-smarts-catalog --execute-live`. No dataset is downloaded,
+no background polling is scheduled, no source rows or contacts are logged,
+and no publication cadence or legal-use rights is automatically certified.
+
+The metadata probe is a separate health *observation*; a newer
+`last_modified` should prompt an operator to investigate a newly available
+official export, not advance a completeness watermark. A failed/redirected/
+non-JSON/missing-resource response must block source promotion.
+
 ## Private-source handling and manual reproducible workflow
 
 Use an owner-controlled private folder **outside** the Git repository. Retain
