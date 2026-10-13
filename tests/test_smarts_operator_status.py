@@ -5,7 +5,10 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+from http.client import HTTPConnection
+from http.server import ThreadingHTTPServer
 from pathlib import Path
+from threading import Thread
 
 import pytest
 
@@ -15,11 +18,13 @@ from constructionsight.smarts_evidence_ledger import (
     record_smarts_observation,
     verify_smarts_journal,
 )
+from constructionsight.operator_web import create_handler
 from constructionsight.smarts_intake_bridge import build_smarts_intake_preview
 from constructionsight.smarts_operator_status import (
     SCHEMA_VERSION,
     build_smarts_operator_status,
 )
+from constructionsight.storage.database import create_database_engine, initialize_database
 
 
 def _page(status: str) -> SmartsPage:
@@ -127,3 +132,56 @@ def test_world_readable_journal_refused(tmp_path: Path) -> None:
     path.chmod(0o644)
     with pytest.raises(SmartsEvidenceError, match="mode 0600"):
         build_smarts_operator_status(path)
+
+
+def test_actual_loopback_endpoint_reads_only_selected_journal(tmp_path: Path) -> None:
+    """Exercise the actual HTTP route and explicit opt-in configuration."""
+    database = tmp_path / "operator.sqlite3"
+    engine = create_database_engine(f"sqlite:///{database}")
+    initialize_database(engine)
+    engine.dispose()
+    journal = _private_path(tmp_path)
+    page = _page("Active")
+    record_smarts_observation(
+        journal, page, build_smarts_intake_preview(page, page.records[0])
+    )
+    before = hashlib.sha256(journal.read_bytes()).hexdigest()
+    server = ThreadingHTTPServer(
+        ("127.0.0.1", 0), create_handler(database, smarts_journal_path=journal)
+    )
+    thread = Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
+    thread.start()
+    try:
+        port = server.server_address[1]
+
+        def get(path: str) -> tuple[int, dict[str, object]]:
+            connection = HTTPConnection("127.0.0.1", port, timeout=3)
+            try:
+                connection.request("GET", path, headers={"Host": f"127.0.0.1:{port}"})
+                response = connection.getresponse()
+                return response.status, json.loads(response.read())
+            finally:
+                connection.close()
+
+        status, payload = get("/api/smarts-status")
+        assert status == 200
+        assert payload["journal_integrity_verified"] is True
+        assert payload["observations"] == 1
+        assert payload["semantic_versions"] == 1
+        assert payload["source_identities"] == 1
+        assert payload["network_executed"] is False
+        assert payload["lead_readiness_authorized"] is False
+        assert "private@example.test" not in json.dumps(payload)
+        assert get("/api/smarts-status?county=Riverside")[0] == 400
+
+        with sqlite3.connect(journal) as db:
+            db.execute("ALTER TABLE smarts_observations ADD COLUMN unauthorized TEXT")
+        failure_status, error = get("/api/smarts-status")
+        assert failure_status == 503
+        assert "private@example.test" not in json.dumps(error)
+        assert "unauthorized" not in json.dumps(error)
+        assert before != hashlib.sha256(journal.read_bytes()).hexdigest()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
