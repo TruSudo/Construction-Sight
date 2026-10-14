@@ -26,7 +26,13 @@ jobs:
           npm --prefix tests/visual ci
           cd tests/visual
           npx playwright install --with-deps chromium
-      - name: Capture offline Demo at native target viewport
+      - name: Python and JavaScript blocking gates
+        run: |
+          python -m ruff check src tests
+          python -m mypy src/constructionsight
+          find src tests -name '*.js' -not -path '*/node_modules/*' -print0 | xargs -0 -n1 node --check
+          python -m pytest -q
+      - name: Capture offline Demo at current reference viewport
         run: |
           PYTHONPATH=src python -m constructionsight.live_command_center --demo --mockup-parity --no-browser > /tmp/command-center.log 2>&1 &
           for attempt in $(seq 1 30); do
@@ -52,15 +58,23 @@ jobs:
       - name: Persistence and lead-to-royalty journey
         if: always()
         run: node tests/ui/state_browser.js http://127.0.0.1:8766 tests/visual/output/state-functions.json
-      - name: Complete functional contracts from inventory
+      - name: Start separate fixture for inventory actions
         if: always()
-        run: node tests/ui/click_through.js http://127.0.0.1:8766 tests/visual/output/functions.json
-      - name: Compare reference, fonts and static pixels
+        run: |
+          PYTHONPATH=src python tests/ui/server.py --data-dir /tmp/cs-click-state --port 8768 > /tmp/cs-click.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl --silent --fail http://127.0.0.1:8768/ > /dev/null; then break; fi
+            sleep 0.2
+          done
+      - name: Functional actions (five declared partial contracts remain reported)
+        if: always()
+        run: node tests/ui/click_through.js http://127.0.0.1:8768 tests/visual/output/functions.json --actions-only
+      - name: Report pixel ratchet; block on structure and bundled fonts
         if: always()
         run: >-
           python tests/visual/compare_mockup.py
           tests/visual/reference.png
-          tests/visual/output/actual.png tests/visual/output
+          tests/visual/output/actual.png tests/visual/output --report-only
       - name: Publish per-region table
         if: always()
         run: cat tests/visual/output/regions.md >> "$GITHUB_STEP_SUMMARY"

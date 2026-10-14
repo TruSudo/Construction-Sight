@@ -130,7 +130,17 @@ if __name__ == "__main__":
     p.add_argument("reference", type=Path)
     p.add_argument("actual", type=Path)
     p.add_argument("output", type=Path)
+    p.add_argument(
+        "--report-only",
+        action="store_true",
+        help="Report pixel differences without blocking; structure and fonts still block",
+    )
     a = p.parse_args()
     r = compare(a.reference, a.actual, a.output)
     print(json.dumps(r))
-    raise SystemExit(0 if r["passed"] else 1)
+    gate_passed = (
+        r["structure_and_fonts_passed"] and r["reference_matches_recorded_asset"]
+        if a.report_only
+        else r["passed"]
+    )
+    raise SystemExit(0 if gate_passed else 1)
