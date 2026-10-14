@@ -169,7 +169,11 @@ def test_http_workflow_export_warning_and_outcome_restart(tmp_path: Path) -> Non
         with httpx.Client(base_url=url, trust_env=False) as c:
             assert c.get("/icons.js").status_code == 200
             assert c.get("/api/leads", headers={"Host": "external.example"}).status_code == 403
-            assert len(c.get("/api/terms").json()) == 3
+            terms = c.get("/api/terms").json()
+            assert {"California SMARTS", "Fontana historical property records", "Map setting"} <= {
+                t["source"] for t in terms
+            }
+            assert all(t["summary"] for t in terms)
             rows = c.get("/api/leads").json()
             assert "last good" in rows["warning"] and rows["rows"][0]["new_today"]
             payload = {"status": "Won", "notes": "Demo outcome"}

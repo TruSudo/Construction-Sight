@@ -21,6 +21,7 @@ import httpx
 
 from constructionsight import command_center_commercial as commercial
 from constructionsight import command_center_state as state
+from constructionsight.contact_call_list import bulk_import, call_list_csv, contact_coverage
 from constructionsight.fontana_permits import fetch_candidates, retain_candidates
 from constructionsight.lead_quality import quality_report
 from constructionsight.lead_watchlist import update_watch, watchlist
@@ -260,6 +261,13 @@ def make_server(
                 )
             elif path == "/api/capture":
                 body, mime = json.dumps(capture_status).encode(), "application/json"
+            elif path == "/api/contact-coverage":
+                body, mime = (
+                    json.dumps(contact_coverage(current()["rows"])).encode(),
+                    "application/json",
+                )
+            elif path == "/api/call-list.csv":
+                body, mime = call_list_csv(current()["rows"]), "text/csv; charset=utf-8"
             elif path == "/api/quality":
                 body, mime = (
                     json.dumps(quality_report(current()["rows"])).encode(),
@@ -419,6 +427,7 @@ def make_server(
                         "conditions_url": None,
                     },
                 ]
+                conditions += json.loads((ASSETS / "contact_source_terms.json").read_text())
                 body, mime = json.dumps(conditions).encode(), "application/json"
             elif path == "/api/runs":
                 body, mime = (
@@ -520,6 +529,7 @@ def make_server(
                 "/api/price-book",
                 "/api/royalty-contract",
                 "/api/royalty-entry",
+                "/api/smarts-contacts-bulk",
             ) or path.startswith(
                 (
                     "/api/facts/",
@@ -554,7 +564,11 @@ def make_server(
                 if not isinstance(payload, dict):
                     raise ValueError("Feedback must be an object")
                 if is_local:
-                    if path == "/api/settings":
+                    if path == "/api/smarts-contacts-bulk":
+                        if payload:
+                            raise ValueError("Bulk contact import takes no options")
+                        result = bulk_import(directory, current()["rows"])
+                    elif path == "/api/settings":
                         result = state.save_settings(directory, payload)
                     elif path == "/api/notifications/read":
                         result = state.mark_read(directory, payload)

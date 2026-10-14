@@ -181,7 +181,9 @@ def attach(directory: Path, rows: list[dict[str, Any]]) -> None:
         for field, fact in facts.get(key, {}).items():
             row[field] = fact["value"]
             row["field_sources"][field] = {k: v for k, v in fact.items() if k != "value"}
-        row["sourced_contacts"] = contacts.get(key, [])
+        from constructionsight.contact_call_list import contact_view
+
+        row["sourced_contacts"] = [contact_view(c) for c in contacts.get(key, [])]
         row["do_not_contact"] = bool(controls.get(key, {}).get("dnc"))
         row["hidden"] = bool(controls.get(key, {}).get("hidden"))
         row["outreach_queued"] = key in queued
@@ -478,10 +480,18 @@ def import_smarts_contacts(directory: Path, row: dict[str, Any]) -> dict[str, An
     path = directory / "evidence.sqlite3"
     with sqlite3.connect(f"file:{path}?mode=ro", uri=True) as db:
         raw = db.execute(
-            "SELECT raw_response FROM smarts_observations WHERE source_key=? "
+            "SELECT raw_response,request_url FROM smarts_observations WHERE source_key=? "
             "AND row_sha256=? AND response_sha256=? ORDER BY id DESC LIMIT 1",
             (row["source_key"], row["row_sha256"], row["response_sha256"]),
-        ).fetchone()[0]
+        ).fetchone()
+    return _import_verified_contact_body(directory, row, raw[0], source_url=raw[1])
+
+
+def _import_verified_contact_body(
+    directory: Path, row: dict[str, Any], raw: bytes, *, source_url: str = ""
+) -> dict[str, Any]:
+    if hashlib.sha256(raw).hexdigest() != row["response_sha256"]:
+        raise ValueError("Original response hash mismatch")
     records = json.loads(raw)["result"]["records"]
     record = next(
         r
@@ -489,6 +499,7 @@ def import_smarts_contacts(directory: Path, row: dict[str, Any]) -> dict[str, An
         if fingerprint({k: v for k, v in r.items() if k != "_id"}) == row["row_sha256"]
     )
     saved = []
+    reported_kinds = []
 
     def text(field: str) -> str:
         value = str(record.get(field) or "").strip()
@@ -504,6 +515,7 @@ def import_smarts_contacts(directory: Path, row: dict[str, Any]) -> dict[str, An
             phone = ""
         if not email and not phone:
             continue
+        reported_kinds.append(label)
         saved.append(
             save_contact(
                 directory,
@@ -524,13 +536,32 @@ def import_smarts_contacts(directory: Path, row: dict[str, Any]) -> dict[str, An
                     "phone": phone,
                     "source": (
                         f"SMARTS source-reported {label} contact; "
-                        f"response SHA-256 {row['response_sha256']}"
+                        f"response SHA-256 {row['response_sha256']}; source {source_url}"
                     ),
                 },
             )
         )
+    for contact, kind in zip(saved, reported_kinds, strict=True):
+        with connect(directory) as db:
+            item = db.execute(
+                "SELECT data FROM cc_contacts WHERE id=?", (contact["id"],)
+            ).fetchone()
+            stored = json.loads(item["data"])
+            stored["source_kinds"] = sorted(set(stored.get("source_kinds", [])) | {kind})
+            if (
+                source_url
+                and row["response_sha256"] in stored.get("source", "")
+                and source_url not in stored["source"]
+            ):
+                stored["source"] += "; source " + source_url
+            contact["source"] = stored["source"]
+            db.execute(
+                "UPDATE cc_contacts SET data=? WHERE id=?", (json.dumps(stored), contact["id"])
+            )
+            contact["source_kinds"] = stored["source_kinds"]
     return {
         "contacts": saved,
+        "reported_contact_kinds": reported_kinds,
         "message": "Source-reported regulatory contact; purchasing authority is unverified",
     }
 

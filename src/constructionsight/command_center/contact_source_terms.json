@@ -1,0 +1,20 @@
+[
+  {
+    "source": "California Secretary of State",
+    "url": "https://www.sos.ca.gov/business-programs/bizfile/privacy-warning-terms-and-conditions-use",
+    "summary": "Reviewed 2026-10-14. Public business records are viewable, but terms restrict automated devices/page scraping and commercial exploitation. No automated search or scraper built. Public business-details API is currently government-agency-only. Bulk orders are a separate route and may have fees; no paid route is enabled.",
+    "route": "Manual review only; no scraper or paid API"
+  },
+  {
+    "source": "CSLB published license-master download",
+    "url": "https://web.cslb.ca.gov/onlineservices/dataportal/ContractorList",
+    "summary": "Reviewed 2026-10-14. Explicitly published free CSV/XLS download includes business phones, license data and personnel records. It supplies no email addresses. Published status is a dated snapshot, so use Instant License Check for current status. Importer accepts operator-downloaded CSV with a verified file hash, exact unambiguous business-name match and explicit apply; no CAPTCHA bypass or automated per-license scraping.",
+    "route": "Free published CSV import"
+  },
+  {
+    "source": "Company websites (KB Home reviewed example)",
+    "url": "https://www.kbhome.com/terms",
+    "summary": "Reviewed 2026-10-14. KB Home limits site content to personal informational use or home-purchase purposes; copying/distribution for other use is restricted. Commercial enrichment from this site is disabled. Other company websites require individual terms review; there is no generic website scraper or inferred email generator.",
+    "route": "No automated commercial enrichment; review each publisher first"
+  }
+]
