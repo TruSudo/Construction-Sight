@@ -22,7 +22,7 @@ from zoneinfo import ZoneInfo
 
 import httpx
 
-from constructionsight import calibration, data_folder, offline_map
+from constructionsight import calibration, commercial_catalog, data_folder, offline_map
 from constructionsight import command_center_commercial as commercial
 from constructionsight import command_center_state as state
 from constructionsight.contact_call_list import bulk_import, call_list_csv, contact_coverage
@@ -319,6 +319,7 @@ def make_server(
             elif directory and path in (
                 "/api/bids",
                 "/api/price-book",
+                "/api/scope-template",
                 "/api/royalties",
                 "/api/scopes",
             ):
@@ -329,9 +330,19 @@ def make_server(
                     if path == "/api/price-book"
                     else commercial.ledger(directory)
                     if path == "/api/royalties"
-                    else commercial.SCOPES
+                    else commercial_catalog.scopes(directory)
                 )
                 body, mime = json.dumps(value).encode(), "application/json"
+            elif directory and path == "/api/catalog":
+                body = json.dumps(
+                    {
+                        "scopes": commercial_catalog.current(directory, "scope"),
+                        "prices": commercial_catalog.current(directory, "price"),
+                        "scope_history": commercial_catalog.history(directory, "scope"),
+                        "price_history": commercial_catalog.history(directory, "price"),
+                    }
+                ).encode()
+                mime = "application/json"
             elif directory and path.startswith("/api/bid-history/"):
                 body, mime = (
                     json.dumps(commercial.bids(directory, unquote(path[17:]))).encode(),
@@ -579,6 +590,7 @@ def make_server(
                 "/api/capture",
                 "/api/price-book",
                 "/api/royalty-contract",
+                "/api/scope-template",
                 "/api/royalty-entry",
                 "/api/smarts-contacts-bulk",
                 "/api/data-folder",
@@ -746,6 +758,8 @@ def make_server(
                         if payload:
                             raise ValueError("Capture takes no options")
                         result = capture()
+                    elif path == "/api/scope-template":
+                        result = commercial_catalog.save_scope(directory, payload)
                     elif path == "/api/price-book":
                         result = commercial.save_price(directory, payload)
                     elif path == "/api/royalty-contract":

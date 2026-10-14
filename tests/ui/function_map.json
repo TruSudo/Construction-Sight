@@ -370,13 +370,13 @@
       "selector": "nav button[data-page=\"Bid Studio\"]",
       "behavior": "Open functional Bid Studio workspace",
       "data_source": "Real SMARTS capture and persistent local SQLite operator data; isolated Demo test fixture",
-      "status": "Partial",
+      "status": "Working",
       "test": {
         "runner": "tests/ui/click_through.js",
         "scenario": "navigate",
         "page": "Bid Studio"
       },
-      "limitation": "Reusable scope editing and price-book editing remain incomplete."
+      "limitation": null
     },
     {
       "id": "nav_royalty_ledger",

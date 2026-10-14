@@ -261,13 +261,22 @@ def bids(directory: Path, bid_id: str | None = None) -> list[dict[str, Any]]:
 
 
 def prices(directory: Path) -> list[dict[str, Any]]:
-    initialize(directory)
-    with connect(directory) as db:
-        return [json.loads(row["data"]) for row in db.execute("SELECT * FROM cc_prices")]
+    from constructionsight.commercial_catalog import current
+
+    return current(directory, "price")
 
 
 def save_price(directory: Path, payload: dict[str, Any]) -> dict[str, Any]:
-    if set(payload) - {"id", "description", "category", "unit", "unit_price", "basis"}:
+    if set(payload) - {
+        "id",
+        "expected_version",
+        "description",
+        "category",
+        "unit",
+        "unit_price",
+        "basis",
+        "service",
+    }:
         raise ValueError("Unknown price-book field")
     data = {
         "id": payload.get("id") or str(uuid.uuid4()),
@@ -276,15 +285,17 @@ def save_price(directory: Path, payload: dict[str, Any]) -> dict[str, Any]:
         "basis": required(payload.get("basis")),
         "unit_price_minor": money(payload.get("unit_price")),
         "category": payload.get("category"),
+        "service": payload.get("service"),
         "source": "Entered by user",
         "at": now(),
     }
     if data["category"] not in CATEGORIES or not isinstance(data["id"], str):
         raise ValueError("Invalid price-book entry")
-    initialize(directory)
-    with connect(directory) as db:
-        db.execute("INSERT OR REPLACE INTO cc_prices VALUES (?,?)", (data["id"], json.dumps(data)))
-    return data
+    if data["service"] is not None and data["service"] not in SCOPES:
+        raise ValueError("Choose a supported security service")
+    from constructionsight.commercial_catalog import store
+
+    return store(directory, "price", data, payload.get("expected_version", 0))
 
 
 def contract(directory: Path, payload: dict[str, Any]) -> dict[str, Any]:
