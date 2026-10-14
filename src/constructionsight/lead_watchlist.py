@@ -17,7 +17,7 @@ from constructionsight.smarts_active import PUBLIC_FIELDS
 
 def retained(row: dict[str, Any]) -> dict[str, Any]:
     return {
-        key: row.get(key)
+        key: row.get("source_fields", row).get(key) if key in PUBLIC_FIELDS else row.get(key)
         for key in (
             *PUBLIC_FIELDS,
             "source_key",

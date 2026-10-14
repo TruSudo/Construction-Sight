@@ -35,9 +35,26 @@ jobs:
           done
           mkdir -p tests/visual/output
           node tests/visual/capture.js http://127.0.0.1:8765 tests/visual/output/actual.png
+      - name: Structure and fonts with retained genuine source data
+        if: always()
+        run: |
+          PYTHONPATH=src python tests/ui/server.py --real-fixture --data-dir /tmp/cs-real-state --port 8767 > /tmp/cs-real.log 2>&1 &
+          mkdir -p tests/visual/output/real
+          node tests/visual/capture.js http://127.0.0.1:8767 tests/visual/output/real/actual.png
+      - name: Start isolated writable Demo for functional checks
+        if: always()
+        run: |
+          PYTHONPATH=src python tests/ui/server.py --data-dir /tmp/cs-ui-state --port 8766 > /tmp/cs-ui.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl --silent --fail http://127.0.0.1:8766/ > /dev/null; then break; fi
+            sleep 0.2
+          done
+      - name: Persistence and lead-to-royalty journey
+        if: always()
+        run: node tests/ui/state_browser.js http://127.0.0.1:8766 tests/visual/output/state-functions.json
       - name: Complete functional contracts from inventory
         if: always()
-        run: node tests/ui/click_through.js http://127.0.0.1:8765 tests/visual/output/functions.json
+        run: node tests/ui/click_through.js http://127.0.0.1:8766 tests/visual/output/functions.json
       - name: Compare reference, fonts and static pixels
         if: always()
         run: >-

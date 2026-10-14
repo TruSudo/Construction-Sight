@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import argparse
+import csv
+import io
 import json
 import shutil
 import sys
+import threading
 import webbrowser
 from datetime import UTC, datetime, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -16,6 +19,8 @@ from zoneinfo import ZoneInfo
 
 import httpx
 
+from constructionsight import command_center_commercial as commercial
+from constructionsight import command_center_state as state
 from constructionsight.fontana_permits import fetch_candidates, retain_candidates
 from constructionsight.lead_watchlist import update_watch, watchlist
 from constructionsight.lead_workflow import (
@@ -63,6 +68,7 @@ def readiness(row: dict[str, Any]) -> str:
         and verification.get("verified") is True
         and verification.get("source")
         and has_contact
+        and row.get("project_type") in ("industrial", "commercial", "residential")
         and not row.get("conflicting_fields")
     ):
         return "ready"
@@ -75,7 +81,10 @@ def projection(
     if parity and (not snapshot.get("demo") or directory is not None):
         raise ValueError("Mockup parity requires an isolated Demo fixture")
     weights_path = directory / "weights.json" if directory else None
-    rows = rank_leads(snapshot["rows"], weights=load_weights(weights_path))
+    prefs = state.settings(directory) if directory else None
+    rows = rank_leads(
+        snapshot["rows"], weights=prefs["weights"] if prefs else load_weights(weights_path)
+    )
     feedback = get_feedback(directory) if directory else {}
     permits_file = directory / "fontana-permits.json" if directory else None
     permits = json.loads(permits_file.read_text()) if permits_file and permits_file.exists() else {}
@@ -85,6 +94,10 @@ def projection(
         row["permit_candidates"] = (
             {k: v for k, v in candidate.items() if k != "raw_response"} if candidate else None
         )
+    if directory:
+        state.attach(directory, rows)
+        assert prefs is not None
+        rows = rank_leads(rows, weights=prefs["weights"])
     cutoff = (datetime.now(UTC) - timedelta(days=7)).isoformat()
     local_today = datetime.now(ZoneInfo("America/Los_Angeles")).date()
     for row in rows:
@@ -103,7 +116,9 @@ def projection(
         )
     map_file = directory / "map.json" if directory else None
     map_settings = (
-        json.loads(map_file.read_text())
+        prefs["map"]
+        if prefs
+        else json.loads(map_file.read_text())
         if map_file and map_file.exists()
         else {"offline_first": True, "url_template": None, "attribution": None}
     )
@@ -118,6 +133,9 @@ def projection(
     latest = runs[0] if runs else None
     return {
         "rows": rows,
+        "settings": prefs,
+        "deltas": state.deltas(directory, rows) if directory else {},
+        "read_only": directory is None,
         "readiness_rule": READINESS_RULE,
         "mockup_parity": parity,
         "parity_watches": snapshot.get("parity_watches", []) if parity else [],
@@ -152,6 +170,8 @@ def make_server(
         raise ValueError("Mockup parity requires an isolated Demo fixture")
     if directory:
         directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+        state.initialize(directory)
+        commercial.initialize(directory)
         if not (directory / "map.json").exists():
             (directory / "map.json").write_text(
                 json.dumps(
@@ -168,14 +188,191 @@ def make_server(
         )
         return projection(current_snapshot, directory, parity=parity)
 
+    capture_status: dict[str, Any] = {"running": False, "message": "Idle"}
+    capture_mutex = threading.Lock()
+
+    def capture() -> dict[str, Any]:
+        assert directory is not None
+        if not state.settings(directory)["source_enabled"]:
+            raise ValueError("SMARTS is disabled")
+        if not capture_mutex.acquire(blocking=False):
+            raise ValueError("Capture is already running")
+        capture_status.update(running=True, message="Fetching official SMARTS Active rows")
+
+        def worker() -> None:
+            run_id = None
+            try:
+                with capture_lock(directory):
+                    run_id = begin_run(directory)
+                    with httpx.Client(timeout=60, headers={"User-Agent": USER_AGENT}) as client:
+                        captured = collect_active(client, directory)
+                    finish_run(directory, run_id, captured)
+                    capture_status["message"] = f"Captured {len(captured['rows'])} rows"
+            except (ValueError, OSError, httpx.HTTPError) as exc:
+                if run_id is not None:
+                    finish_run(directory, run_id, None, f"{type(exc).__name__}: {exc}")
+                capture_status["message"] = str(exc)
+            finally:
+                capture_status["running"] = False
+                capture_mutex.release()
+
+        threading.Thread(target=worker, daemon=True).start()
+        return dict(capture_status)
+
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:
+            try:
+                self.get_response()
+            except (ValueError, OSError) as exc:
+                self.send_error(409, str(exc))
+
+        def get_response(self) -> None:
             port = cast(ThreadingHTTPServer, self.server).server_port
             if self.headers.get("Host") not in (f"127.0.0.1:{port}", f"localhost:{port}"):
                 self.send_error(403)
                 return
             path = urlsplit(self.path).path
-            if path == "/api/leads":
+            query = parse_qs(urlsplit(self.path).query)
+            value: Any
+            if directory and path == "/api/settings":
+                body, mime = json.dumps(state.settings(directory)).encode(), "application/json"
+            elif directory and path == "/api/notifications":
+                body, mime = (
+                    json.dumps(state.notifications(directory, current()["rows"])).encode(),
+                    "application/json",
+                )
+            elif path == "/api/capture":
+                body, mime = json.dumps(capture_status).encode(), "application/json"
+            elif path == "/api/quality":
+                import re
+                from collections import Counter
+
+                rows = current()["rows"]
+                unknown = [r for r in rows if r["project_type"] == "unknown"]
+                tokens = Counter(
+                    t
+                    for r in unknown
+                    for t in re.findall(
+                        r"\b\w{2,}\b",
+                        (
+                            str(r.get("SITE_NAME") or "") + " " + str(r.get("DEVELOPER_NAME") or "")
+                        ).casefold(),
+                    )
+                )
+                body, mime = (
+                    json.dumps(
+                        {
+                            "total": len(rows),
+                            "unknown": len(unknown),
+                            "unknown_percent": len(unknown) / len(rows) * 100 if rows else None,
+                            "excluded": sum(r["project_type"] == "infrastructure" for r in rows),
+                            "unknown_tokens": tokens.most_common(100),
+                            "method": "Name keywords; manual type overrides retain provenance",
+                        }
+                    ).encode(),
+                    "application/json",
+                )
+            elif directory and path.startswith("/api/photo/"):
+                with connect(directory) as db:
+                    photo = db.execute(
+                        "SELECT data,mime FROM cc_photos WHERE key=?", (unquote(path[11:]),)
+                    ).fetchone()
+                if photo is None:
+                    self.send_error(404)
+                    return
+                body, mime = photo["data"], photo["mime"]
+            elif directory and path == "/api/backup.zip":
+                body, mime = state.backup(directory), "application/zip"
+            elif directory and path in (
+                "/api/bids",
+                "/api/price-book",
+                "/api/royalties",
+                "/api/scopes",
+            ):
+                value = (
+                    commercial.bids(directory)
+                    if path == "/api/bids"
+                    else commercial.prices(directory)
+                    if path == "/api/price-book"
+                    else commercial.ledger(directory)
+                    if path == "/api/royalties"
+                    else commercial.SCOPES
+                )
+                body, mime = json.dumps(value).encode(), "application/json"
+            elif directory and path.startswith("/api/bid-history/"):
+                body, mime = (
+                    json.dumps(commercial.bids(directory, unquote(path[17:]))).encode(),
+                    "application/json",
+                )
+            elif directory and path.startswith("/api/proposal/"):
+                versions = commercial.bids(directory, unquote(path[14:]))
+                bid = next(
+                    (
+                        b
+                        for b in versions
+                        if str(b["version"])
+                        == query.get("version", [str(versions[0]["version"]) if versions else ""])[
+                            0
+                        ]
+                    ),
+                    None,
+                )
+                if not bid:
+                    self.send_error(404)
+                    return
+                body, mime = (
+                    commercial.proposal_pdf(bid, state.settings(directory)["profile"]["company"]),
+                    "application/pdf",
+                )
+            elif directory and path == "/api/royalties.csv":
+                stream = io.StringIO(newline="")
+                writer = csv.writer(stream)
+                fields = (
+                    "partner",
+                    "contract_minor",
+                    "calculated_minor",
+                    "invoiced_minor",
+                    "received_minor",
+                    "receivable_minor",
+                    "credit_minor",
+                )
+                writer.writerow(fields)
+                for item in commercial.ledger(directory):
+                    writer.writerow(
+                        [
+                            (
+                                "'" + str(item[k])
+                                if str(item[k]).lstrip().startswith(("=", "+", "-", "@"))
+                                else item[k]
+                            )
+                            for k in fields
+                        ]
+                    )
+                body, mime = stream.getvalue().encode("utf-8-sig"), "text/csv; charset=utf-8"
+            elif path.startswith(("/api/lead/", "/api/evidence/")):
+                key = unquote(path.split("/", 3)[3])
+                lead = next((r for r in current()["rows"] if r["source_key"] == key), None)
+                if lead is None:
+                    self.send_error(404)
+                    return
+                value = (
+                    state.evidence(directory, lead, verify=query.get("verify") == ["1"])
+                    if directory and path.startswith("/api/evidence/")
+                    else {
+                        **lead,
+                        "activity": state.activity(directory, key) if directory else [],
+                        "bids": [b for b in commercial.bids(directory) if b["source_key"] == key]
+                        if directory
+                        else [],
+                        "royalties": [
+                            r for r in commercial.ledger(directory) if r["source_key"] == key
+                        ]
+                        if directory
+                        else [],
+                    }
+                )
+                body, mime = json.dumps(value).encode(), "application/json"
+            elif path == "/api/leads":
                 body, mime = json.dumps(current(), allow_nan=False).encode(), "application/json"
             elif path == "/api/outreach":
                 if directory:
@@ -323,9 +520,29 @@ def make_server(
 
         def do_POST(self) -> None:
             path = urlsplit(self.path).path
+            is_local = path in (
+                "/api/settings",
+                "/api/notifications/read",
+                "/api/capture",
+                "/api/price-book",
+                "/api/royalty-contract",
+                "/api/royalty-entry",
+            ) or path.startswith(
+                (
+                    "/api/facts/",
+                    "/api/contacts/",
+                    "/api/smarts-contacts/",
+                    "/api/photo/",
+                    "/api/control/",
+                    "/api/activity/",
+                    "/api/bids/",
+                )
+            )
             is_watch = path.startswith("/api/watchlist/")
             is_outreach = path.startswith("/api/outreach/")
-            if not directory or not (is_watch or is_outreach or path.startswith("/api/feedback/")):
+            if not directory or not (
+                is_local or is_watch or is_outreach or path.startswith("/api/feedback/")
+            ):
                 self.send_error(501)
                 return
             host = self.headers.get("Host", "")
@@ -338,11 +555,64 @@ def make_server(
                 return
             try:
                 length = int(self.headers.get("Content-Length", "0"))
-                if not 0 < length <= 65536:
+                if not 0 < length <= (1_400_000 if path.startswith("/api/photo/") else 65536):
                     raise ValueError("Invalid feedback size")
                 payload = json.loads(self.rfile.read(length))
                 if not isinstance(payload, dict):
                     raise ValueError("Feedback must be an object")
+                if is_local:
+                    if path == "/api/settings":
+                        result = state.save_settings(directory, payload)
+                    elif path == "/api/notifications/read":
+                        result = state.mark_read(directory, payload)
+                    elif path == "/api/capture":
+                        if payload:
+                            raise ValueError("Capture takes no options")
+                        result = capture()
+                    elif path == "/api/price-book":
+                        result = commercial.save_price(directory, payload)
+                    elif path == "/api/royalty-contract":
+                        result = commercial.contract(directory, payload)
+                    elif path == "/api/royalty-entry":
+                        result = commercial.transaction(directory, payload)
+                    else:
+                        key = unquote(path.split("/", 3)[3])
+                        lead = next((r for r in current()["rows"] if r["source_key"] == key), None)
+                        if lead is None:
+                            raise ValueError("Unknown lead")
+                        family = path.split("/")[2]
+                        if family == "facts":
+                            result = state.save_facts(directory, key, payload)
+                        elif family == "photo":
+                            result = state.save_photo(directory, key, payload)
+                        elif family == "smarts-contacts":
+                            if payload:
+                                raise ValueError("Contact import takes no options")
+                            result = state.import_smarts_contacts(directory, lead)
+                        elif family == "contacts":
+                            result = state.save_contact(directory, key, payload)
+                        elif family == "control":
+                            result = state.control(directory, key, payload)
+                        elif family == "bids":
+                            result = commercial.save_bid(directory, lead, payload)
+                        else:
+                            if (
+                                set(payload) != {"kind", "note"}
+                                or payload["kind"]
+                                not in ("called", "emailed", "replied", "voicemail", "note")
+                                or not isinstance(payload["note"], str)
+                                or len(payload["note"]) > 10000
+                            ):
+                                raise ValueError("Invalid activity")
+                            state.event(directory, key, payload["kind"], {"note": payload["note"]})
+                            result = {"saved": True}
+                    body = json.dumps(result).encode()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", str(len(body)))
+                    self.end_headers()
+                    self.wfile.write(body)
+                    return
                 prefix = (
                     "/api/watchlist/"
                     if is_watch
@@ -359,16 +629,7 @@ def make_server(
                         raise ValueError("Invalid outreach queue request")
                     if lead.get("do_not_contact") or lead["feedback"]["status"] == "Not a fit":
                         raise ValueError("Do-Not-Contact or excluded lead")
-                    with connect(directory) as db:
-                        db.execute(
-                            "CREATE TABLE IF NOT EXISTS outreach_queue "
-                            "(source_key TEXT PRIMARY KEY, added_at TEXT NOT NULL)"
-                        )
-                        db.execute(
-                            "INSERT OR IGNORE INTO outreach_queue VALUES (?,?)",
-                            (key, datetime.now(UTC).isoformat()),
-                        )
-                    result = {"source_key": key, "queued": True}
+                    result = state.queue(directory, lead)
                 elif is_watch:
                     result = update_watch(directory, key, payload, lead)
                 else:

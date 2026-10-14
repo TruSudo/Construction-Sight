@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from collections import Counter
 from datetime import date
 from pathlib import Path
@@ -27,7 +28,18 @@ KEYWORDS = {
     "industrial": ("logistic", "warehouse", "distribution", "industrial", "fulfillment"),
     "commercial": ("retail", "commercial", "hotel", "shopping", "office", "hospital"),
     "residential": ("residential", "apartment", "housing", "homes", "townhome"),
-    "infrastructure": ("road", "street", "pipeline", "highway", "utility", "bridge"),
+    "infrastructure": (
+        "road",
+        "roads",
+        "street",
+        "pipeline",
+        "pipelines",
+        "highway",
+        "utility",
+        "utilities",
+        "bridge",
+        "solar",
+    ),
 }
 
 
@@ -54,10 +66,23 @@ def rank_leads(
         text = (
             str(row.get("SITE_NAME") or "") + " " + str(row.get("DEVELOPER_NAME") or "")
         ).casefold()
-        project_type = next(
-            (kind for kind, words in KEYWORDS.items() if any(word in text for word in words)),
-            "unknown",
+        excluded = any(
+            re.search(r"\b" + word + r"\b", str(row.get("SITE_NAME") or "").casefold())
+            for word in KEYWORDS["infrastructure"]
         )
+        project_type = (
+            "infrastructure"
+            if excluded
+            else next(
+                (kind for kind, words in KEYWORDS.items() if any(word in text for word in words)),
+                "unknown",
+            )
+        )
+        if row.get("field_sources", {}).get("project_type", {}).get("source") == "Entered by user":
+            project_type = row["project_type"]
+        sources = dict(row.get("field_sources", {}))
+        sources.setdefault("project_type", {"source": "Name-based classifier; type unverified"})
+        sources.setdefault("stage", {"source": "Derived from SMARTS reported construction dates"})
         score = weights.get(project_type, 0)
         reasons = [f"Name keywords: {project_type} (+{score})"]
         start = parse_date(row.get("CONSTRUCTION_COMMENCEMENT_DATE"))
@@ -85,8 +110,11 @@ def rank_leads(
             {
                 **row,
                 "security_fit": min(score, 100),
+                "field_sources": sources,
                 "project_type": project_type,
-                "stage": stage,
+                "stage": row.get("stage")
+                if row.get("field_sources", {}).get("stage", {}).get("source") == "Entered by user"
+                else stage,
                 "reason": "; ".join(reasons),
                 "fit_band": "high" if score >= 60 else "review" if score >= 30 else "low",
             }

@@ -17,7 +17,16 @@ from typing import Any
 
 from constructionsight.security_fit import parse_date
 
-STATUSES = ("New", "Reviewing", "Contacted", "Quoted", "Won", "Lost", "Not a fit")
+STATUSES = (
+    "New",
+    "Reviewing",
+    "Outreach queued",
+    "Contacted",
+    "Quoted",
+    "Won",
+    "Lost",
+    "Not a fit",
+)
 REASONS = (
     "Project too small",
     "Wrong project type",

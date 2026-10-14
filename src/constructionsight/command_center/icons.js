@@ -1,5 +1,10 @@
 'use strict';
 const ICON_PATHS={
+ dots:'<circle cx="12" cy="5" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="12" cy="19" r="1" fill="currentColor"/>',
+ command:'<path d="M8 16V6a3 3 0 1 0-3 3h13a3 3 0 1 0-3-3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3"/>',
+ down:'<path d="m6 9 6 6 6-6"/>',
+ up:'<path d="M12 20V4m-6 6 6-6 6 6"/>',
+ arrow:'<path d="M3 12h18m-7-6 6 6-6 6"/>',
  grid:'<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>',
  chart:'<path d="M4 20V11h3v9m4 0V6h3v14m4 0V3h3v17"/>',
  pin:'<path d="M20 10c0 6-8 11-8 11S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3"/>',

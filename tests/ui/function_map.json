@@ -5,405 +5,417 @@
       "id": "search",
       "selector": "#search",
       "behavior": "Global grouped search, keyboard selection, Enter opens dossier",
-      "data_source": "SMARTS rows, contacts and persisted notes",
-      "status": "Partial",
+      "data_source": "Real SMARTS capture and persistent local SQLite operator data; isolated Demo test fixture",
+      "status": "Working",
       "test": {
         "runner": "tests/ui/click_through.js",
-        "action": "fill",
-        "value": "Riverside",
-        "expect": "#dossier h2",
-        "text": "Riverside"
-      }
+        "scenario": "search"
+      },
+      "limitation": null
     },
     {
       "id": "region",
       "selector": "#county",
       "behavior": "Scope KPIs, map, opportunities, notifications and watchlist",
-      "data_source": "Dataset counties and cities",
-      "status": "Partial",
+      "data_source": "Real SMARTS capture and persistent local SQLite operator data; isolated Demo test fixture",
+      "status": "Working",
       "test": {
         "runner": "tests/ui/click_through.js",
-        "action": "select",
-        "value": "Riverside",
-        "expect_count": 244
-      }
+        "scenario": "region"
+      },
+      "limitation": null
     },
     {
       "id": "bell",
       "selector": "#notifications",
       "behavior": "Show new leads, due reminders, failed runs and changes; mark read",
-      "data_source": "Capture history and watches",
-      "status": "Partial",
+      "data_source": "Real SMARTS capture and persistent local SQLite operator data; isolated Demo test fixture",
+      "status": "Working",
       "test": {
         "runner": "tests/ui/click_through.js",
-        "action": "click",
-        "expect": "#tools[open]"
-      }
+        "scenario": "bell"
+      },
+      "limitation": null
     },
     {
       "id": "user_menu",
       "selector": "#workspace-menu",
       "behavior": "Edit profile, region, weights, map, backup and export",
-      "data_source": "Local settings",
+      "data_source": "Real SMARTS capture and persistent local SQLite operator data; isolated Demo test fixture",
       "status": "Partial",
       "test": {
         "runner": "tests/ui/click_through.js",
-        "action": "click",
-        "expect": "#tools[open]"
-      }
+        "scenario": "settings"
+      },
+      "limitation": "Data folder is displayed; relocation and backup restore still need implementation."
     },
     {
       "id": "kpi_total",
       "selector": "[data-kpi=\"total\"]",
       "behavior": "Clear readiness filter",
-      "data_source": "Scoped lead rows",
+      "data_source": "Real SMARTS capture and persistent local SQLite operator data; isolated Demo test fixture",
       "status": "Working",
       "test": {
         "runner": "tests/ui/click_through.js",
-        "action": "click",
-        "expect_count": 247
-      }
+        "scenario": "kpi",
+        "filter": ""
+      },
+      "limitation": null
     },
     {
       "id": "kpi_ready",
       "selector": "[data-kpi=\"ready\"]",
       "behavior": "Filter map and table to outreach-ready rows",
-      "data_source": "Verified site + sourced contact + high fit + no DNC",
+      "data_source": "Real SMARTS capture and persistent local SQLite operator data; isolated Demo test fixture",
       "status": "Working",
       "test": {
         "runner": "tests/ui/click_through.js",
-        "action": "click",
-        "expect_count": 86
-      }
+        "scenario": "kpi",
+        "filter": "ready"
+      },
+      "limitation": null
     },
     {
       "id": "kpi_review",
       "selector": "[data-kpi=\"review\"]",
       "behavior": "Filter to human review",
-      "data_source": "Computed readiness",
+      "data_source": "Real SMARTS capture and persistent local SQLite operator data; isolated Demo test fixture",
       "status": "Working",
       "test": {
         "runner": "tests/ui/click_through.js",
-        "action": "click",
-        "expect_count": 104
-      }
+        "scenario": "kpi",
+        "filter": "review"
+      },
+      "limitation": null
     },
     {
       "id": "kpi_not_ready",
       "selector": "[data-kpi=\"not_ready\"]",
       "behavior": "Filter low-fit/excluded rows",
-      "data_source": "Computed readiness",
+      "data_source": "Real SMARTS capture and persistent local SQLite operator data; isolated Demo test fixture",
       "status": "Working",
       "test": {
         "runner": "tests/ui/click_through.js",
-        "action": "click",
-        "expect_count": 57
-      }
+        "scenario": "kpi",
+        "filter": "not_ready"
+      },
+      "limitation": null
     },
     {
       "id": "kpi_new",
       "selector": "[data-kpi=\"new\"]",
       "behavior": "Filter newly observed rows within seven days",
-      "data_source": "First-seen timestamps",
+      "data_source": "Real SMARTS capture and persistent local SQLite operator data; isolated Demo test fixture",
       "status": "Working",
       "test": {
         "runner": "tests/ui/click_through.js",
-        "action": "click",
-        "expect_count": 28
-      }
+        "scenario": "kpi",
+        "filter": "new"
+      },
+      "limitation": null
     },
     {
       "id": "project_type",
       "selector": "#type",
       "behavior": "Filter map and opportunity table",
-      "data_source": "Source classifier",
+      "data_source": "Real SMARTS capture and persistent local SQLite operator data; isolated Demo test fixture",
       "status": "Working",
       "test": {
         "runner": "tests/ui/click_through.js",
-        "action": "select",
-        "value": "industrial",
-        "expect": "#leads tr"
-      }
+        "scenario": "type"
+      },
+      "limitation": null
     },
     {
       "id": "zoom_in",
       "selector": "#zoom-in",
       "behavior": "Increase geographic zoom",
-      "data_source": "WGS84 source coordinates",
+      "data_source": "Real SMARTS capture and persistent local SQLite operator data; isolated Demo test fixture",
       "status": "Working",
       "test": {
         "runner": "tests/ui/click_through.js",
-        "action": "click",
-        "changed": "#points",
-        "attribute": "innerHTML"
-      }
+        "scenario": "zoom",
+        "delta": 1
+      },
+      "limitation": null
     },
     {
       "id": "zoom_out",
       "selector": "#zoom-out",
       "behavior": "Decrease geographic zoom",
-      "data_source": "WGS84 source coordinates",
+      "data_source": "Real SMARTS capture and persistent local SQLite operator data; isolated Demo test fixture",
       "status": "Working",
       "test": {
         "runner": "tests/ui/click_through.js",
-        "action": "click",
-        "changed": "#points",
-        "attribute": "innerHTML"
-      }
+        "scenario": "zoom",
+        "delta": -1
+      },
+      "limitation": null
     },
     {
       "id": "layers",
       "selector": "#layers",
       "behavior": "Toggle readiness/county/heat layers",
-      "data_source": "Coordinates and official county boundaries",
-      "status": "Partial",
-      "test": {
-        "runner": "tests/ui/click_through.js",
-        "action": "click",
-        "expect": "#tools[open]"
-      }
-    },
-    {
-      "id": "marker",
-      "selector": "#points circle:last-child",
-      "behavior": "Select lead and show popup/dossier",
-      "data_source": "Source coordinates",
+      "data_source": "Real SMARTS capture and persistent local SQLite operator data; isolated Demo test fixture",
       "status": "Working",
       "test": {
         "runner": "tests/ui/click_through.js",
-        "action": "click",
-        "changed": "#dossier",
-        "attribute": "innerHTML"
-      }
+        "scenario": "layers"
+      },
+      "limitation": null
+    },
+    {
+      "id": "marker",
+      "selector": "#points [data-key]",
+      "behavior": "Select lead and show popup/dossier",
+      "data_source": "Real SMARTS capture and persistent local SQLite operator data; isolated Demo test fixture",
+      "status": "Working",
+      "test": {
+        "runner": "tests/ui/click_through.js",
+        "scenario": "marker"
+      },
+      "limitation": null
     },
     {
       "id": "map_popup",
-      "selector": "#map-overlay",
+      "selector": "#popup-open",
       "behavior": "Open selected lead from popup",
-      "data_source": "Selected source row",
-      "status": "Missing",
+      "data_source": "Real SMARTS capture and persistent local SQLite operator data; isolated Demo test fixture",
+      "status": "Working",
       "test": {
         "runner": "tests/ui/click_through.js",
-        "action": "click",
-        "expect": "#work-lead[open]"
-      }
+        "scenario": "popup"
+      },
+      "limitation": null
     },
     {
       "id": "dossier_menu",
       "selector": "#dossier-menu",
       "behavior": "Status, note, DNC, export, hide",
-      "data_source": "Persistent lead workflow",
-      "status": "Partial",
+      "data_source": "Real SMARTS capture and persistent local SQLite operator data; isolated Demo test fixture",
+      "status": "Working",
       "test": {
         "runner": "tests/ui/click_through.js",
-        "action": "click",
-        "expect": "#watch-dialog[open]"
-      }
+        "scenario": "menu"
+      },
+      "limitation": null
     },
     {
       "id": "outreach_add",
       "selector": "#add-outreach",
       "behavior": "Persist queue membership and update status; enforce DNC",
-      "data_source": "Local outreach queue",
-      "status": "Partial",
+      "data_source": "Real SMARTS capture and persistent local SQLite operator data; isolated Demo test fixture",
+      "status": "Working",
       "test": {
         "runner": "tests/ui/click_through.js",
-        "action": "persist",
-        "endpoint": "/api/outreach"
-      }
+        "scenario": "outreach"
+      },
+      "limitation": null
     },
     {
       "id": "full_dossier",
       "selector": "#edit-lead",
       "behavior": "All facts, provenance, contacts, notes, timeline, bids and royalty",
-      "data_source": "Evidence ledger and commercial modules",
-      "status": "Partial",
+      "data_source": "Real SMARTS capture and persistent local SQLite operator data; isolated Demo test fixture",
+      "status": "Working",
       "test": {
         "runner": "tests/ui/click_through.js",
-        "action": "click",
-        "expect": "#work-lead[open]"
-      }
+        "scenario": "dossier"
+      },
+      "limitation": null
     },
     {
       "id": "recent_row",
       "selector": "#leads tr:nth-child(2)",
       "behavior": "Select lead in dossier",
-      "data_source": "Newest source observations",
+      "data_source": "Real SMARTS capture and persistent local SQLite operator data; isolated Demo test fixture",
       "status": "Working",
       "test": {
         "runner": "tests/ui/click_through.js",
-        "action": "click",
-        "changed": "#dossier",
-        "attribute": "innerHTML"
-      }
+        "scenario": "row"
+      },
+      "limitation": null
     },
     {
       "id": "recent_all",
       "selector": "#view-leads",
       "behavior": "Open complete Lead Console",
-      "data_source": "Ranked source rows",
-      "status": "Partial",
+      "data_source": "Real SMARTS capture and persistent local SQLite operator data; isolated Demo test fixture",
+      "status": "Working",
       "test": {
         "runner": "tests/ui/click_through.js",
-        "action": "click",
-        "expect": "#tools[open]"
-      }
+        "scenario": "navigate",
+        "page": "Lead Console"
+      },
+      "limitation": null
     },
     {
       "id": "watch_row",
       "selector": ".watch-row",
       "behavior": "Open watched lead",
-      "data_source": "Persistent watch record",
-      "status": "Partial",
+      "data_source": "Real SMARTS capture and persistent local SQLite operator data; isolated Demo test fixture",
+      "status": "Working",
       "test": {
         "runner": "tests/ui/click_through.js",
-        "action": "click",
-        "expect": "#watch-dialog[open]"
-      }
+        "scenario": "watch"
+      },
+      "limitation": null
     },
     {
       "id": "watch_all",
       "selector": "#view-watches",
       "behavior": "Open full watchlist",
-      "data_source": "Persistent watches",
-      "status": "Partial",
+      "data_source": "Real SMARTS capture and persistent local SQLite operator data; isolated Demo test fixture",
+      "status": "Working",
       "test": {
         "runner": "tests/ui/click_through.js",
-        "action": "click",
-        "expect": "#tools[open]"
-      }
+        "scenario": "navigate",
+        "page": "Watchlist"
+      },
+      "limitation": null
     },
     {
       "id": "nav_command_center",
       "selector": "nav button[data-page=\"Command Center\"]",
       "behavior": "Open functional Command Center workspace",
-      "data_source": "Existing domain services and persistent local records",
+      "data_source": "Real SMARTS capture and persistent local SQLite operator data; isolated Demo test fixture",
       "status": "Working",
       "test": {
         "runner": "tests/ui/click_through.js",
-        "action": "navigate",
+        "scenario": "navigate",
         "page": "Command Center"
-      }
+      },
+      "limitation": null
     },
     {
       "id": "nav_project_intelligence",
       "selector": "nav button[data-page=\"Project Intelligence\"]",
       "behavior": "Open functional Project Intelligence workspace",
-      "data_source": "Existing domain services and persistent local records",
-      "status": "Missing",
+      "data_source": "Real SMARTS capture and persistent local SQLite operator data; isolated Demo test fixture",
+      "status": "Partial",
       "test": {
         "runner": "tests/ui/click_through.js",
-        "action": "navigate",
+        "scenario": "navigate",
         "page": "Project Intelligence"
-      }
+      },
+      "limitation": "Calibration UI and cohort review remain to be completed."
     },
     {
       "id": "nav_site_map",
       "selector": "nav button[data-page=\"Site Map\"]",
       "behavior": "Open functional Site Map workspace",
-      "data_source": "Existing domain services and persistent local records",
-      "status": "Missing",
+      "data_source": "Real SMARTS capture and persistent local SQLite operator data; isolated Demo test fixture",
+      "status": "Partial",
       "test": {
         "runner": "tests/ui/click_through.js",
-        "action": "navigate",
+        "scenario": "navigate",
         "page": "Site Map"
-      }
+      },
+      "limitation": "Offline PMTiles basemap and highway shields remain unavailable."
     },
     {
       "id": "nav_entity_network",
       "selector": "nav button[data-page=\"Entity Network\"]",
       "behavior": "Open functional Entity Network workspace",
-      "data_source": "Existing domain services and persistent local records",
-      "status": "Missing",
+      "data_source": "Real SMARTS capture and persistent local SQLite operator data; isolated Demo test fixture",
+      "status": "Working",
       "test": {
         "runner": "tests/ui/click_through.js",
-        "action": "navigate",
+        "scenario": "navigate",
         "page": "Entity Network"
-      }
+      },
+      "limitation": null
     },
     {
       "id": "nav_evidence_chains",
       "selector": "nav button[data-page=\"Evidence Chains\"]",
       "behavior": "Open functional Evidence Chains workspace",
-      "data_source": "Existing domain services and persistent local records",
-      "status": "Missing",
+      "data_source": "Real SMARTS capture and persistent local SQLite operator data; isolated Demo test fixture",
+      "status": "Working",
       "test": {
         "runner": "tests/ui/click_through.js",
-        "action": "navigate",
+        "scenario": "navigate",
         "page": "Evidence Chains"
-      }
+      },
+      "limitation": null
     },
     {
       "id": "nav_lead_console",
       "selector": "nav button[data-page=\"Lead Console\"]",
       "behavior": "Open functional Lead Console workspace",
-      "data_source": "Existing domain services and persistent local records",
-      "status": "Partial",
+      "data_source": "Real SMARTS capture and persistent local SQLite operator data; isolated Demo test fixture",
+      "status": "Working",
       "test": {
         "runner": "tests/ui/click_through.js",
-        "action": "navigate",
+        "scenario": "navigate",
         "page": "Lead Console"
-      }
+      },
+      "limitation": null
     },
     {
       "id": "nav_outreach",
       "selector": "nav button[data-page=\"Outreach\"]",
       "behavior": "Open functional Outreach workspace",
-      "data_source": "Existing domain services and persistent local records",
-      "status": "Partial",
+      "data_source": "Real SMARTS capture and persistent local SQLite operator data; isolated Demo test fixture",
+      "status": "Working",
       "test": {
         "runner": "tests/ui/click_through.js",
-        "action": "navigate",
+        "scenario": "navigate",
         "page": "Outreach"
-      }
+      },
+      "limitation": null
     },
     {
       "id": "nav_bid_studio",
       "selector": "nav button[data-page=\"Bid Studio\"]",
       "behavior": "Open functional Bid Studio workspace",
-      "data_source": "Existing domain services and persistent local records",
-      "status": "Missing",
+      "data_source": "Real SMARTS capture and persistent local SQLite operator data; isolated Demo test fixture",
+      "status": "Partial",
       "test": {
         "runner": "tests/ui/click_through.js",
-        "action": "navigate",
+        "scenario": "navigate",
         "page": "Bid Studio"
-      }
+      },
+      "limitation": "Reusable scope editing and price-book editing remain incomplete."
     },
     {
       "id": "nav_royalty_ledger",
       "selector": "nav button[data-page=\"Royalty Ledger\"]",
       "behavior": "Open functional Royalty Ledger workspace",
-      "data_source": "Existing domain services and persistent local records",
-      "status": "Missing",
+      "data_source": "Real SMARTS capture and persistent local SQLite operator data; isolated Demo test fixture",
+      "status": "Working",
       "test": {
         "runner": "tests/ui/click_through.js",
-        "action": "navigate",
+        "scenario": "navigate",
         "page": "Royalty Ledger"
-      }
+      },
+      "limitation": null
     },
     {
       "id": "nav_watchlist",
       "selector": "nav button[data-page=\"Watchlist\"]",
       "behavior": "Open functional Watchlist workspace",
-      "data_source": "Existing domain services and persistent local records",
-      "status": "Partial",
+      "data_source": "Real SMARTS capture and persistent local SQLite operator data; isolated Demo test fixture",
+      "status": "Working",
       "test": {
         "runner": "tests/ui/click_through.js",
-        "action": "navigate",
+        "scenario": "navigate",
         "page": "Watchlist"
-      }
+      },
+      "limitation": null
     },
     {
       "id": "nav_sources_&_collection",
       "selector": "nav button[data-page=\"Sources & Collection\"]",
       "behavior": "Open functional Sources & Collection workspace",
-      "data_source": "Existing domain services and persistent local records",
+      "data_source": "Real SMARTS capture and persistent local SQLite operator data; isolated Demo test fixture",
       "status": "Partial",
       "test": {
         "runner": "tests/ui/click_through.js",
-        "action": "navigate",
+        "scenario": "navigate",
         "page": "Sources & Collection"
-      }
+      },
+      "limitation": "Daily scheduling is not configured; SMARTS is the current live source."
     }
   ]
 }

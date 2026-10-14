@@ -21,6 +21,9 @@ dependencies = [
   "rich==14.0.0",
   "sqlalchemy==2.0.41",
   "python-dateutil==2.9.0.post0",
+  "reportlab==4.4.9",
+  "charset-normalizer==3.5.2",
+  "Pillow==12.3.0",
 ]
 
 [project.optional-dependencies]
@@ -28,6 +31,7 @@ dev = [
   "pytest==9.0.3",
   "ruff==0.12.4",
   "mypy==1.17.0",
+  "types-reportlab==5.0.0.20261008",
   "Pillow==12.3.0",
 ]
 
