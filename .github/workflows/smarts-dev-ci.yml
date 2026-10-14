@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - agent/smarts-source-neutral-integration-2026-10-12
+      - main
   pull_request:
     branches:
       - agent/smarts-source-neutral-integration-2026-10-12
+      - main
   workflow_dispatch:
 
 permissions:

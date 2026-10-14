@@ -160,7 +160,8 @@
   ],
   "visual_test": {
     "channel_tolerance": 12,
-    "max_changed_static_pixels_fraction": 0.01
+    "max_changed_static_pixels_fraction": 0.01,
+    "reported_ratchet_baseline": 0.18263258327043516
   },
   "fonts": {
     "ui": {

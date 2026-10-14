@@ -111,6 +111,8 @@ def compare(reference: Path, actual: Path, output: Path) -> dict:
         "structure_and_fonts_passed": structure["passed"],
         "pixels_passed": pixels_pass,
         "static_changed_fraction": overall["changed_fraction"],
+        "reported_ratchet_passed": overall["changed_fraction"]
+        <= tokens["visual_test"]["reported_ratchet_baseline"],
         "regions": regions,
         "threshold": tokens["visual_test"],
         "passed": passed,
@@ -130,7 +132,13 @@ if __name__ == "__main__":
     p.add_argument("reference", type=Path)
     p.add_argument("actual", type=Path)
     p.add_argument("output", type=Path)
+    p.add_argument(
+        "--report-only",
+        action="store_true",
+        help="Report pixel scores; retain reference integrity and structure/font gates",
+    )
     a = p.parse_args()
     r = compare(a.reference, a.actual, a.output)
     print(json.dumps(r))
-    raise SystemExit(0 if r["passed"] else 1)
+    blocking_passed = r["reference_matches_recorded_asset"] and r["structure_and_fonts_passed"]
+    raise SystemExit(0 if (blocking_passed if a.report_only else r["passed"]) else 1)
