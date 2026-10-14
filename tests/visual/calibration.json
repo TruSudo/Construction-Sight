@@ -1,0 +1,21 @@
+{
+  "reference_sha256": "8b8116b93641fe5a15d18dc410d2d683a29646feba3098970769549c13521d86",
+  "viewport": [
+    1536,
+    864
+  ],
+  "blur_radius": 0.8,
+  "tile_size": 32,
+  "tile_stride": 16,
+  "metric": "maximum masked mean RGB error in overlapping 32px tiles after 0.8px blur",
+  "thresholds": {
+    "sidebar": 16.40478515625,
+    "header": 4.996907552083333,
+    "hero": 12.125162760416666,
+    "kpis": 10.258951822916666,
+    "map": 6.796941489361703,
+    "dossier": 16.83666729670699,
+    "leads": 9.89111328125,
+    "watchlist": 10.436848958333334
+  }
+}

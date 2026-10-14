@@ -32,6 +32,8 @@ jobs:
           python -m mypy src/constructionsight
           find src tests -name '*.js' -not -path '*/node_modules/*' -print0 | xargs -0 -n1 node --check
           python -m pytest -q
+      - name: Challenge recorded perceptual calibration
+        run: python tests/visual/calibrate.py tests/visual/output/calibration
       - name: Capture offline Demo at current reference viewport
         run: |
           PYTHONPATH=src python -m constructionsight.live_command_center --demo --mockup-parity --no-browser > /tmp/command-center.log 2>&1 &
@@ -73,11 +75,13 @@ jobs:
         if: always()
         run: >-
           python tests/visual/compare_mockup.py
-          tests/visual/reference.png
+          tests/visual/reference_native_1536x864.png
           tests/visual/output/actual.png tests/visual/output --report-only
       - name: Publish per-region table
         if: always()
-        run: cat tests/visual/output/regions.md >> "$GITHUB_STEP_SUMMARY"
+        run: |
+          cat tests/visual/output/calibration/calibration.md >> "$GITHUB_STEP_SUMMARY"
+          cat tests/visual/output/regions.md >> "$GITHUB_STEP_SUMMARY"
       - name: Save screenshot and diff even when comparison fails
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a

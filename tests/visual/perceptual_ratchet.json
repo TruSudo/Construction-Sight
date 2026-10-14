@@ -1,0 +1,16 @@
+{
+  "reference_sha256": "8b8116b93641fe5a15d18dc410d2d683a29646feba3098970769549c13521d86",
+  "calibration_sha256": "5dd1a16d7fc2019742158aac45a8315ece92a9396d42c32592d6d9c57f1d9df8",
+  "regions": {
+    "sidebar": 45.916666666666664,
+    "header": 21.820963541666668,
+    "hero": 89.27701822916667,
+    "kpis": 64.61067708333333,
+    "map": 44.90262172284644,
+    "dossier": 40.018880208333336,
+    "leads": 32.826497395833336,
+    "watchlist": 19.507161458333332
+  },
+  "tolerance_rgb": 0.1,
+  "note": "Initial perceptual app baseline after calibrated metric adoption; does not imply reference fidelity."
+}

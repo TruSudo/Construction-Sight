@@ -159,9 +159,8 @@
     1
   ],
   "visual_test": {
-    "channel_tolerance": 12,
-    "max_changed_static_pixels_fraction": 0.01,
-    "reported_ratchet_baseline": 0.18263258327043516
+    "metric": "local blurred RGB error",
+    "blocking": "reference integrity, calibration and structure/fonts; app scores are a non-blocking ratchet"
   },
   "fonts": {
     "ui": {
@@ -199,18 +198,6 @@
       1062,
       620
     ],
-    "brand_antialiasing": [
-      36,
-      30,
-      269,
-      188
-    ],
-    "hero_texture": [
-      984,
-      56,
-      1252,
-      155
-    ],
     "sidebar_texture": [
       0,
       710,
@@ -226,5 +213,227 @@
     "dossier_heading": 283,
     "watchlist_heading": 712
   },
-  "baseline_method": "Raster glyph bounds, adjusted for bundled-font descenders; estimated reference baselines."
+  "baseline_method": "Native reference raster ink bounds retained per heading. Baselines are estimates because the raster has no font metrics; bundled-font baseline positions are checked within 1px.",
+  "reference_acceptance": "User authorized available 1536\u00d7864 raster as authoritative on 2026-10-14; no original 1672\u00d7941 exists.",
+  "map_control_boxes": [
+    [
+      322,
+      310,
+      358,
+      417
+    ],
+    [
+      323,
+      536,
+      478,
+      614
+    ],
+    [
+      681,
+      449,
+      858,
+      498
+    ]
+  ],
+  "map_marker_centers": [
+    [
+      504,
+      357
+    ],
+    [
+      621,
+      339
+    ],
+    [
+      800,
+      359
+    ],
+    [
+      558,
+      410
+    ],
+    [
+      633,
+      417
+    ],
+    [
+      711,
+      414
+    ],
+    [
+      792,
+      415
+    ],
+    [
+      419,
+      470
+    ],
+    [
+      489,
+      503
+    ],
+    [
+      671,
+      507
+    ],
+    [
+      790,
+      518
+    ],
+    [
+      701,
+      557
+    ],
+    [
+      861,
+      548
+    ]
+  ],
+  "calibration_element_boxes": {
+    "sidebar": [
+      31,
+      213,
+      51,
+      239
+    ],
+    "header": [
+      326,
+      17,
+      344,
+      36
+    ],
+    "hero": [
+      326,
+      91,
+      891,
+      115
+    ],
+    "kpis": [
+      572,
+      184,
+      590,
+      202
+    ],
+    "map": [
+      330,
+      320,
+      349,
+      335
+    ],
+    "dossier": [
+      1124,
+      269,
+      1245,
+      287
+    ],
+    "leads": [
+      359,
+      648,
+      496,
+      667
+    ],
+    "watchlist": [
+      1093,
+      698,
+      1115,
+      718
+    ]
+  },
+  "hero_asset": {
+    "path": "hero-art.png",
+    "crop_box": [
+      984,
+      56,
+      1252,
+      155
+    ],
+    "sha256": "1732cc8f740f7ad2a0210e66aadf3ae9c17f1728b72f1d313bde8b0a16236e0d",
+    "source_sha256": "8b8116b93641fe5a15d18dc410d2d683a29646feba3098970769549c13521d86"
+  },
+  "reference_text_ink_measurements": {
+    "hero_heading": {
+      "roi": [
+        326,
+        89,
+        932,
+        117
+      ],
+      "ink_box": [
+        327,
+        92,
+        887,
+        117
+      ]
+    },
+    "hero_subtitle": {
+      "roi": [
+        326,
+        122,
+        946,
+        141
+      ],
+      "ink_box": [
+        327,
+        127,
+        937,
+        140
+      ]
+    },
+    "map_heading": {
+      "roi": [
+        359,
+        268,
+        423,
+        286
+      ],
+      "ink_box": [
+        362,
+        271,
+        419,
+        284
+      ]
+    },
+    "recent_heading": {
+      "roi": [
+        359,
+        645,
+        502,
+        669
+      ],
+      "ink_box": [
+        361,
+        650,
+        490,
+        663
+      ]
+    },
+    "dossier_heading": {
+      "roi": [
+        1123,
+        267,
+        1281,
+        289
+      ],
+      "ink_box": [
+        1125,
+        273,
+        1225,
+        286
+      ]
+    },
+    "watchlist_heading": {
+      "roi": [
+        1121,
+        697,
+        1307,
+        721
+      ],
+      "ink_box": [
+        1127,
+        703,
+        1261,
+        712
+      ]
+    }
+  }
 }
