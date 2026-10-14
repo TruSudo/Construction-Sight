@@ -111,6 +111,8 @@ def compare(reference: Path, actual: Path, output: Path) -> dict:
         "structure_and_fonts_passed": structure["passed"],
         "pixels_passed": pixels_pass,
         "static_changed_fraction": overall["changed_fraction"],
+        "reported_ratchet_passed": overall["changed_fraction"]
+        <= tokens["visual_test"]["reported_ratchet_baseline"],
         "regions": regions,
         "threshold": tokens["visual_test"],
         "passed": passed,
