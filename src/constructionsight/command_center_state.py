@@ -64,6 +64,12 @@ def initialize(directory: Path) -> None:
           CREATE TABLE IF NOT EXISTS cc_facts(key TEXT PRIMARY KEY,data TEXT NOT NULL);
           CREATE TABLE IF NOT EXISTS cc_contacts(
             id INTEGER PRIMARY KEY,key TEXT NOT NULL,data TEXT NOT NULL);
+          CREATE TABLE IF NOT EXISTS cc_weight_changes(
+            id INTEGER PRIMARY KEY,at TEXT NOT NULL,data TEXT NOT NULL);
+          CREATE TRIGGER IF NOT EXISTS cc_weights_no_update BEFORE UPDATE ON cc_weight_changes
+            BEGIN SELECT RAISE(ABORT,'Weights changelog is immutable'); END;
+          CREATE TRIGGER IF NOT EXISTS cc_weights_no_delete BEFORE DELETE ON cc_weight_changes
+            BEGIN SELECT RAISE(ABORT,'Weights changelog is immutable'); END;
           CREATE TABLE IF NOT EXISTS cc_controls(
             key TEXT PRIMARY KEY,dnc INTEGER NOT NULL DEFAULT 0,hidden INTEGER NOT NULL DEFAULT 0);
           CREATE TABLE IF NOT EXISTS cc_events(
@@ -91,7 +97,12 @@ def settings(directory: Path) -> dict[str, Any]:
     return result
 
 
-def save_settings(directory: Path, payload: dict[str, Any]) -> dict[str, Any]:
+def save_settings(
+    directory: Path,
+    payload: dict[str, Any],
+    *,
+    weight_reason: str = "Reviewed through User settings",
+) -> dict[str, Any]:
     if set(payload) - (set(DEFAULTS)):
         raise ValueError("Unknown setting")
     for key, value in payload.items():
@@ -147,6 +158,18 @@ def save_settings(directory: Path, payload: dict[str, Any]) -> dict[str, Any]:
         prior = db.execute("SELECT data FROM cc_settings WHERE id=1").fetchone()
         data = json.loads(prior["data"]) if prior else settings(directory)
         data.pop("data_folder", None)
+        if "weights" in payload and payload["weights"] != data["weights"]:
+            change = {
+                "before": data["weights"],
+                "after": payload["weights"],
+                "reason": weight_reason,
+                "reviewer": payload.get("profile", data["profile"])["name"] or "—",
+                "before_digest": fingerprint(data["weights"]),
+                "after_digest": fingerprint(payload["weights"]),
+            }
+            db.execute(
+                "INSERT INTO cc_weight_changes(at,data) VALUES (?,?)", (now(), json.dumps(change))
+            )
         data.update(payload)
         db.execute("INSERT OR REPLACE INTO cc_settings VALUES (1,?)", (json.dumps(data),))
     return settings(directory)

@@ -22,9 +22,9 @@ from zoneinfo import ZoneInfo
 
 import httpx
 
+from constructionsight import calibration, data_folder
 from constructionsight import command_center_commercial as commercial
 from constructionsight import command_center_state as state
-from constructionsight import data_folder
 from constructionsight.contact_call_list import bulk_import, call_list_csv, contact_coverage
 from constructionsight.fontana_permits import fetch_candidates, retain_candidates
 from constructionsight.lead_quality import quality_report
@@ -463,6 +463,18 @@ def make_server(
                     json.dumps(developer_accounts(current()["rows"])).encode(),
                     "application/json",
                 )
+            elif path == "/api/calibration":
+                rows = current()["rows"]
+                body = json.dumps(
+                    {
+                        "cohorts": calibration.report(rows),
+                        "weights_digest": state.fingerprint(state.settings(directory)["weights"])
+                        if directory
+                        else None,
+                        "changes": calibration.changes(directory) if directory else [],
+                    }
+                ).encode()
+                mime = "application/json"
             elif path == "/api/outcomes":
                 rows = current()["rows"]
                 if directory:
@@ -546,6 +558,7 @@ def make_server(
             path = urlsplit(self.path).path
             is_local = path in (
                 "/api/settings",
+                "/api/weights-reviewed",
                 "/api/notifications/read",
                 "/api/capture",
                 "/api/price-book",
@@ -665,6 +678,8 @@ def make_server(
                         if payload:
                             raise ValueError("Bulk contact import takes no options")
                         result = bulk_import(directory, current()["rows"])
+                    elif path == "/api/weights-reviewed":
+                        result = calibration.apply(directory, payload)
                     elif path == "/api/settings":
                         result = state.save_settings(directory, payload)
                     elif path == "/api/notifications/read":

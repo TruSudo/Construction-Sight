@@ -63,6 +63,9 @@ jobs:
       - name: Delayed workspace response regression
         if: always()
         run: node tests/ui/workspace_race.js http://127.0.0.1:8766
+      - name: Reviewed calibration changes
+        if: always()
+        run: node tests/ui/calibration.js http://127.0.0.1:8766
       - name: Backup, restore and relocation through user menu
         if: always()
         run: |

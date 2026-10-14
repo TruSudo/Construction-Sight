@@ -292,13 +292,13 @@
       "selector": "nav button[data-page=\"Project Intelligence\"]",
       "behavior": "Open functional Project Intelligence workspace",
       "data_source": "Real SMARTS capture and persistent local SQLite operator data; isolated Demo test fixture",
-      "status": "Partial",
+      "status": "Working",
       "test": {
         "runner": "tests/ui/click_through.js",
         "scenario": "navigate",
         "page": "Project Intelligence"
       },
-      "limitation": "Calibration UI and cohort review remain to be completed."
+      "limitation": null
     },
     {
       "id": "nav_site_map",
