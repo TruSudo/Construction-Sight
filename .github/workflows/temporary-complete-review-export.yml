@@ -1,0 +1,50 @@
+name: Temporary complete repository review export
+
+on:
+  push:
+    branches:
+      - agent/export-complete-review-2026-10-14
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    name: Package all public branches and history
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Build self-contained review ZIP
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p staging output
+          git clone --no-single-branch https://github.com/TruSudo/Construction-Sight.git staging/Construction-Sight
+          git -C staging/Construction-Sight fetch origin '+refs/heads/*:refs/remotes/origin/*' '+refs/tags/*:refs/tags/*' --prune
+          git -C staging/Construction-Sight fetch origin '+refs/pull/*/head:refs/remotes/origin/pull/*' || echo 'Pull-request ref fetch unavailable'
+          git -C staging/Construction-Sight switch --detach origin/agent/daily-lead-workflow-2026-10-13
+          git -C staging/Construction-Sight for-each-ref --sort=refname --format='%(objectname) %(refname)' > staging/GIT_REFS.txt
+          git -C staging/Construction-Sight branch -a > staging/BRANCHES.txt
+          git -C staging/Construction-Sight rev-parse HEAD > staging/CHECKED_OUT_SHA.txt
+          git -C staging/Construction-Sight bundle create ../ConstructionSight-all-refs.bundle --all
+          cat > staging/README_FOR_CLAUDE.md <<'EOF'
+          # ConstructionSight complete Git review export
+          Source: https://github.com/TruSudo/Construction-Sight
+          The checked-out worktree is agent/daily-lead-workflow-2026-10-13.
+          Construction-Sight/.git retains all remotely fetched branch, tag, and pull-request references and history.
+          ConstructionSight-all-refs.bundle is a portable Git history archive containing all fetched references.
+          GIT_REFS.txt and BRANCHES.txt list available refs at generation time.
+          This package does not include uncommitted local files, production databases, private records, or external CI artifacts.
+          Evaluate actual code functionality versus demo, mock, unverified, or pending features.
+          EOF
+          ( cd staging && zip -q -r -y ../output/ConstructionSight-COMPLETE-all-branches-and-history.zip . )
+          unzip -tq output/ConstructionSight-COMPLETE-all-branches-and-history.zip
+          sha256sum output/ConstructionSight-COMPLETE-all-branches-and-history.zip
+          ls -lh output/ConstructionSight-COMPLETE-all-branches-and-history.zip
+      - name: Publish review ZIP for phone download
+        uses: actions/upload-artifact@v4
+        with:
+          name: ConstructionSight-COMPLETE-all-branches-and-history
+          path: output/ConstructionSight-COMPLETE-all-branches-and-history.zip
+          retention-days: 7
+          if-no-files-found: error
