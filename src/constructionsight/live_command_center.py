@@ -22,6 +22,7 @@ import httpx
 from constructionsight import command_center_commercial as commercial
 from constructionsight import command_center_state as state
 from constructionsight.fontana_permits import fetch_candidates, retain_candidates
+from constructionsight.lead_quality import quality_report
 from constructionsight.lead_watchlist import update_watch, watchlist
 from constructionsight.lead_workflow import (
     REASONS,
@@ -37,6 +38,7 @@ from constructionsight.lead_workflow import (
     run_history,
     save_feedback,
 )
+from constructionsight.parcel_use_enrichment import load_claims
 from constructionsight.security_fit import WEIGHTS_PATH, load_weights, rank_leads
 from constructionsight.smarts_active import collect_active
 from constructionsight.smarts_api import USER_AGENT
@@ -85,6 +87,19 @@ def projection(
     rows = rank_leads(
         snapshot["rows"], weights=prefs["weights"] if prefs else load_weights(weights_path)
     )
+    parcel_warning = None
+    if directory:
+        try:
+            parcel_claims = load_claims(directory, rows)
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            parcel_claims = {}
+            parcel_warning = "Parcel enrichment rejected; no parcel type claims applied: " + str(
+                exc
+            )
+        for row in rows:
+            if row.get("source_key") in parcel_claims:
+                row["parcel_use_claim"] = parcel_claims[row["source_key"]]
+        rows = rank_leads(rows, weights=prefs["weights"] if prefs else load_weights(weights_path))
     feedback = get_feedback(directory) if directory else {}
     permits_file = directory / "fontana-permits.json" if directory else None
     permits = json.loads(permits_file.read_text()) if permits_file and permits_file.exists() else {}
@@ -139,9 +154,11 @@ def projection(
         "readiness_rule": READINESS_RULE,
         "mockup_parity": parity,
         "parity_watches": snapshot.get("parity_watches", []) if parity else [],
-        "warning": ("Capture failed; showing last good data. " + str(latest["error"]))
-        if latest and latest["outcome"] == "error"
-        else None,
+        "warning": (
+            ("Capture failed; showing last good data. " + str(latest["error"]))
+            if latest and latest["outcome"] == "error"
+            else parcel_warning
+        ),
         "map_settings": map_settings,
         "statuses": STATUSES,
         "reasons": REASONS,
@@ -244,32 +261,8 @@ def make_server(
             elif path == "/api/capture":
                 body, mime = json.dumps(capture_status).encode(), "application/json"
             elif path == "/api/quality":
-                import re
-                from collections import Counter
-
-                rows = current()["rows"]
-                unknown = [r for r in rows if r["project_type"] == "unknown"]
-                tokens = Counter(
-                    t
-                    for r in unknown
-                    for t in re.findall(
-                        r"\b\w{2,}\b",
-                        (
-                            str(r.get("SITE_NAME") or "") + " " + str(r.get("DEVELOPER_NAME") or "")
-                        ).casefold(),
-                    )
-                )
                 body, mime = (
-                    json.dumps(
-                        {
-                            "total": len(rows),
-                            "unknown": len(unknown),
-                            "unknown_percent": len(unknown) / len(rows) * 100 if rows else None,
-                            "excluded": sum(r["project_type"] == "infrastructure" for r in rows),
-                            "unknown_tokens": tokens.most_common(100),
-                            "method": "Name keywords; manual type overrides retain provenance",
-                        }
-                    ).encode(),
+                    json.dumps(quality_report(current()["rows"])).encode(),
                     "application/json",
                 )
             elif directory and path.startswith("/api/photo/"):

@@ -60,6 +60,9 @@ jobs:
       - name: Persistence and lead-to-royalty journey
         if: always()
         run: node tests/ui/state_browser.js http://127.0.0.1:8766 tests/visual/output/state-functions.json
+      - name: Delayed workspace response regression
+        if: always()
+        run: node tests/ui/workspace_race.js http://127.0.0.1:8766
       - name: Start separate fixture for inventory actions
         if: always()
         run: |

@@ -1,0 +1,277 @@
+{
+  "version": 1,
+  "label": "Name-based classifier; type unverified",
+  "method": "Whole words and phrases; site name first. Developer lexical cues only for non-excluded types. Generic tract, park, center and developer identities alone do not prove use.",
+  "rules": [
+    {
+      "subtype": "solar",
+      "project_type": "infrastructure",
+      "keywords": [
+        "solar",
+        "photovoltaic",
+        "solar farm",
+        "battery energy storage"
+      ],
+      "excluded": true
+    },
+    {
+      "subtype": "utility_infrastructure",
+      "project_type": "infrastructure",
+      "keywords": [
+        "pipeline",
+        "pipelines",
+        "highway",
+        "bridge",
+        "road",
+        "roads",
+        "roadway",
+        "street improvements",
+        "sewer",
+        "water main",
+        "storm drain",
+        "pump station",
+        "substation",
+        "12kv",
+        "transmission line",
+        "gas main",
+        "pavement",
+        "repaving",
+        "widening",
+        "drainage channel",
+        "ditch",
+        "flood control",
+        "water treatment",
+        "water reclamation",
+        "utility",
+        "utilities"
+      ],
+      "excluded": true
+    },
+    {
+      "subtype": "multifamily",
+      "project_type": "residential",
+      "keywords": [
+        "apartment",
+        "apartments",
+        "multifamily",
+        "multi family",
+        "multi-family",
+        "townhome",
+        "townhomes",
+        "condominium",
+        "condominiums",
+        "housing",
+        "affordable housing"
+      ],
+      "excluded": false
+    },
+    {
+      "subtype": "senior_living",
+      "project_type": "residential",
+      "keywords": [
+        "senior living",
+        "assisted living",
+        "memory care",
+        "senior housing",
+        "retirement community"
+      ],
+      "excluded": false
+    },
+    {
+      "subtype": "residential",
+      "project_type": "residential",
+      "keywords": [
+        "residential",
+        "residence",
+        "residences",
+        "homes",
+        "homebuilder",
+        "single family",
+        "single-family",
+        "sfr"
+      ],
+      "excluded": false
+    },
+    {
+      "subtype": "school",
+      "project_type": "commercial",
+      "keywords": [
+        "school",
+        "schools",
+        "elementary",
+        "middle school",
+        "high school",
+        "college",
+        "university"
+      ],
+      "excluded": false
+    },
+    {
+      "subtype": "medical",
+      "project_type": "commercial",
+      "keywords": [
+        "medical",
+        "hospital",
+        "clinic",
+        "healthcare",
+        "health care",
+        "urgent care",
+        "dental",
+        "surgery"
+      ],
+      "excluded": false
+    },
+    {
+      "subtype": "hotel",
+      "project_type": "commercial",
+      "keywords": [
+        "hotel",
+        "hotels",
+        "motel",
+        "resort",
+        "hampton inn",
+        "holiday inn"
+      ],
+      "excluded": false
+    },
+    {
+      "subtype": "storage",
+      "project_type": "commercial",
+      "keywords": [
+        "storage",
+        "self storage",
+        "self-storage",
+        "mini storage"
+      ],
+      "excluded": false
+    },
+    {
+      "subtype": "warehouse_logistics",
+      "project_type": "industrial",
+      "keywords": [
+        "logistic",
+        "logistics",
+        "warehouse",
+        "warehouses",
+        "distribution",
+        "industrial",
+        "fulfillment",
+        "fulfilment"
+      ],
+      "excluded": false
+    },
+    {
+      "subtype": "data_center",
+      "project_type": "industrial",
+      "keywords": [
+        "data center",
+        "data centre",
+        "datacenter"
+      ],
+      "excluded": false
+    },
+    {
+      "subtype": "cannabis",
+      "project_type": "industrial",
+      "keywords": [
+        "cannabis",
+        "cultivation",
+        "dispensary",
+        "marijuana"
+      ],
+      "excluded": false
+    },
+    {
+      "subtype": "auto",
+      "project_type": "commercial",
+      "keywords": [
+        "car wash",
+        "carwash",
+        "auto",
+        "automotive",
+        "dealership",
+        "truck stop",
+        "gas station",
+        "service station",
+        "quick quack",
+        "fuel station"
+      ],
+      "excluded": false
+    },
+    {
+      "subtype": "church",
+      "project_type": "commercial",
+      "keywords": [
+        "church",
+        "temple",
+        "synagogue",
+        "mosque",
+        "worship"
+      ],
+      "excluded": false
+    },
+    {
+      "subtype": "retail",
+      "project_type": "commercial",
+      "keywords": [
+        "retail",
+        "shopping",
+        "marketplace",
+        "shopping center",
+        "shopping centre",
+        "supermarket",
+        "grocery",
+        "restaurant",
+        "mcdonalds",
+        "mcdonald s",
+        "chick fil a",
+        "chick-fil-a",
+        "starbucks",
+        "dutch bros",
+        "costco",
+        "walmart",
+        "dollar general",
+        "7 eleven",
+        "7-eleven"
+      ],
+      "excluded": false
+    },
+    {
+      "subtype": "office_business",
+      "project_type": "commercial",
+      "keywords": [
+        "commercial",
+        "office",
+        "business park",
+        "business center",
+        "commerce center",
+        "commerce park"
+      ],
+      "excluded": false
+    },
+    {
+      "subtype": "civic",
+      "project_type": "commercial",
+      "keywords": [
+        "library",
+        "community center",
+        "fire station",
+        "police station",
+        "courthouse",
+        "city hall"
+      ],
+      "excluded": false
+    },
+    {
+      "subtype": "manufacturing",
+      "project_type": "industrial",
+      "keywords": [
+        "manufacturing",
+        "factory",
+        "processing plant",
+        "fabrication"
+      ],
+      "excluded": false
+    }
+  ]
+}

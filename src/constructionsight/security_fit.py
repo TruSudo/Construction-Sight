@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import json
-import re
 from collections import Counter
 from datetime import date
 from pathlib import Path
 from typing import Any
+
+from constructionsight.lead_quality import classify_names
 
 WEIGHTS_PATH = Path(__file__).parent / "command_center" / "security_fit_weights.json"
 WEIGHTS: dict[str, int] = json.loads(WEIGHTS_PATH.read_text())
@@ -22,25 +23,6 @@ def load_weights(path: Path | None = None) -> dict[str, int]:
     ):
         raise ValueError("Weights must contain the configured names and integers from 0 to 100")
     return weights
-
-
-KEYWORDS = {
-    "industrial": ("logistic", "warehouse", "distribution", "industrial", "fulfillment"),
-    "commercial": ("retail", "commercial", "hotel", "shopping", "office", "hospital"),
-    "residential": ("residential", "apartment", "housing", "homes", "townhome"),
-    "infrastructure": (
-        "road",
-        "roads",
-        "street",
-        "pipeline",
-        "pipelines",
-        "highway",
-        "utility",
-        "utilities",
-        "bridge",
-        "solar",
-    ),
-}
 
 
 def parse_date(value: Any) -> date | None:
@@ -63,25 +45,21 @@ def rank_leads(
     counts = Counter(developer_key(row) for row in rows if developer_key(row))
     ranked = []
     for row in rows:
-        text = (
-            str(row.get("SITE_NAME") or "") + " " + str(row.get("DEVELOPER_NAME") or "")
-        ).casefold()
-        excluded = any(
-            re.search(r"\b" + word + r"\b", str(row.get("SITE_NAME") or "").casefold())
-            for word in KEYWORDS["infrastructure"]
-        )
-        project_type = (
-            "infrastructure"
-            if excluded
-            else next(
-                (kind for kind, words in KEYWORDS.items() if any(word in text for word in words)),
-                "unknown",
-            )
-        )
+        classification = classify_names(row)
+        if classification["project_type"] == "unknown" and row.get("parcel_use_claim"):
+            claim = row["parcel_use_claim"]
+            if (
+                claim.get("source") == "Source-claimed, from parcel use code"
+                and claim.get("verified") is False
+            ):
+                classification = claim
+        project_type = classification["project_type"]
         if row.get("field_sources", {}).get("project_type", {}).get("source") == "Entered by user":
             project_type = row["project_type"]
         sources = dict(row.get("field_sources", {}))
-        sources.setdefault("project_type", {"source": "Name-based classifier; type unverified"})
+        if sources.get("project_type", {}).get("source") != "Entered by user":
+            sources["project_type"] = classification
+        subtype = classification.get("subtype")
         sources.setdefault("stage", {"source": "Derived from SMARTS reported construction dates"})
         score = weights.get(project_type, 0)
         reasons = [f"Name keywords: {project_type} (+{score})"]
@@ -112,6 +90,7 @@ def rank_leads(
                 "security_fit": min(score, 100),
                 "field_sources": sources,
                 "project_type": project_type,
+                "project_subtype": subtype,
                 "stage": row.get("stage")
                 if row.get("field_sources", {}).get("stage", {}).get("source") == "Entered by user"
                 else stage,
