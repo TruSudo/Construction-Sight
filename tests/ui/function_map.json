@@ -305,13 +305,13 @@
       "selector": "nav button[data-page=\"Site Map\"]",
       "behavior": "Open functional Site Map workspace",
       "data_source": "Real SMARTS capture and persistent local SQLite operator data; isolated Demo test fixture",
-      "status": "Partial",
+      "status": "Working",
       "test": {
         "runner": "tests/ui/click_through.js",
         "scenario": "navigate",
         "page": "Site Map"
       },
-      "limitation": "Offline PMTiles basemap and highway shields remain unavailable."
+      "limitation": null
     },
     {
       "id": "nav_entity_network",

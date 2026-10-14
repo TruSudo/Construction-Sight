@@ -14,6 +14,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--data-dir", type=Path, required=True)
 parser.add_argument("--port", type=int, default=8766)
 parser.add_argument("--real-fixture", action="store_true")
+parser.add_argument("--local-map-fixture", action="store_true")
 args = parser.parse_args()
 if args.real_fixture:
     snapshot = json.loads((Path(__file__).parents[1] / "visual/real-capture.json").read_text())
@@ -44,6 +45,18 @@ if not args.real_fixture:
         row["source_key"],
         {"action": "save", "note": "Demo follow-up", "remind_on": "2000-01-01"},
         row,
+    )
+if args.local_map_fixture:
+    from constructionsight.data_folder import digest
+    from constructionsight.offline_map import build
+
+    extract = Path(__file__).parents[1] / "visual/offline-map-fixture.osm"
+    build(
+        extract,
+        args.data_dir / "basemap.pmtiles",
+        expected_sha256=digest(extract),
+        max_zoom=8,
+        source_url="Demo fixture",
     )
 server = make_server(snapshot, args.port, args.data_dir)
 print(

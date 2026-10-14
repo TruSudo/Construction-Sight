@@ -22,7 +22,7 @@ from zoneinfo import ZoneInfo
 
 import httpx
 
-from constructionsight import calibration, data_folder
+from constructionsight import calibration, data_folder, offline_map
 from constructionsight import command_center_commercial as commercial
 from constructionsight import command_center_state as state
 from constructionsight.contact_call_list import bulk_import, call_list_csv, contact_coverage
@@ -156,6 +156,9 @@ def projection(
         "settings": prefs,
         "deltas": state.deltas(directory, rows) if directory else {},
         "read_only": directory is None,
+        "local_map": offline_map.metadata(directory / "basemap.pmtiles")
+        if directory and (directory / "basemap.pmtiles").exists()
+        else None,
         "readiness_rule": READINESS_RULE,
         "mockup_parity": parity,
         "parity_watches": snapshot.get("parity_watches", []) if parity else [],
@@ -275,6 +278,18 @@ def make_server(
                     json.dumps(state.notifications(directory, current()["rows"])).encode(),
                     "application/json",
                 )
+            elif directory and path.startswith("/api/offline-map/"):
+                parts = path.removesuffix(".png").split("/")
+                if len(parts) != 6 or not (directory / "basemap.pmtiles").exists():
+                    self.send_error(404)
+                    return
+                tile = offline_map.tile(
+                    directory / "basemap.pmtiles", int(parts[3]), int(parts[4]), int(parts[5])
+                )
+                if tile is None:
+                    self.send_error(404, "Outside local map coverage")
+                    return
+                body, mime = tile, "image/png"
             elif path == "/api/capture":
                 body, mime = json.dumps(capture_status).encode(), "application/json"
             elif path == "/api/contact-coverage":
@@ -525,7 +540,7 @@ def make_server(
                 path.startswith("/")
                 and ".." not in path
                 and (ASSETS / path.lstrip("/")).is_file()
-                and Path(path).suffix in (".css", ".js", ".png", ".json", ".woff2")
+                and Path(path).suffix in (".css", ".js", ".png", ".json", ".woff2", ".svg")
                 and Path(path).name not in ("demo.json",)
             ):
                 asset = ASSETS / ("index.html" if path == "/" else path.lstrip("/"))
@@ -535,6 +550,7 @@ def make_server(
                     ".css": "text/css",
                     ".js": "application/javascript",
                     ".png": "image/png",
+                    ".svg": "image/svg+xml",
                     ".json": "application/json",
                     ".woff2": "font/woff2",
                 }[asset.suffix]
@@ -567,6 +583,7 @@ def make_server(
                 "/api/smarts-contacts-bulk",
                 "/api/data-folder",
                 "/api/restore-preview",
+                "/api/offline-map-install",
                 "/api/restore-apply",
             ) or path.startswith(
                 (
@@ -596,6 +613,47 @@ def make_server(
                 return
             try:
                 length = int(self.headers.get("Content-Length", "0"))
+                if path == "/api/offline-map-install":
+                    if not 0 < length <= 500_000_000:
+                        raise ValueError("Invalid local map size")
+                    with tempfile.TemporaryDirectory(
+                        prefix="cs-map-install-", dir=directory
+                    ) as temporary:
+                        archive_path = Path(temporary) / "basemap.pmtiles"
+                        with archive_path.open("wb") as out:
+                            remaining = length
+                            while remaining:
+                                chunk = self.rfile.read(min(1_048_576, remaining))
+                                if not chunk:
+                                    raise ValueError("Incomplete map upload")
+                                out.write(chunk)
+                                remaining -= len(chunk)
+                        expected = self.headers.get("X-Archive-SHA256")
+                        actual = data_folder.digest(archive_path)
+                        if expected != actual:
+                            raise ValueError("Local map SHA-256 mismatch")
+                        info = offline_map.metadata(archive_path)
+                        if (
+                            (
+                                info.get("source_url") != offline_map.SOURCE
+                                and not (
+                                    snapshot.get("demo")
+                                    and info.get("source_url") == "Demo fixture"
+                                )
+                            )
+                            or info.get("attribution") != offline_map.ATTRIBUTION
+                            or info.get("format") != "png"
+                        ):
+                            raise ValueError("Choose a locally built ConstructionSight OSM archive")
+                        archive_path.chmod(0o600)
+                        archive_path.replace(directory / "basemap.pmtiles")
+                        body = json.dumps({"installed": True, "archive_sha256": actual}).encode()
+                        self.send_response(200)
+                        self.send_header("Content-Type", "application/json")
+                        self.send_header("Content-Length", str(len(body)))
+                        self.end_headers()
+                        self.wfile.write(body)
+                        return
                 if path == "/api/restore-preview":
                     if not 0 < length <= 5_000_000_000:
                         raise ValueError("Invalid backup upload size")

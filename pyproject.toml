@@ -24,10 +24,13 @@ dependencies = [
   "reportlab==4.4.9",
   "charset-normalizer==3.5.2",
   "Pillow==12.3.0",
+  "pmtiles==3.8.1",
 ]
 
 [project.optional-dependencies]
+maps = ["osmium==4.3.1"]
 dev = [
+  "osmium==4.3.1",
   "pytest==9.0.3",
   "ruff==0.12.4",
   "mypy==1.17.0",
@@ -63,6 +66,7 @@ constructionsight-smarts-preview = "constructionsight.smarts_intake_cli:main"
 constructionsight-smarts-review = "constructionsight.smarts_recent_review_cli:main"
 constructionsight-cslb-contacts = "constructionsight.cslb_contact_import:main"
 constructionsight-contact-call-list = "constructionsight.contact_call_list:main"
+constructionsight-build-basemap = "constructionsight.offline_map:main"
 constructionsight-parcel-use = "constructionsight.parcel_use_enrichment:main"
 constructionsight-smarts-collect = "constructionsight.smarts_collection:main"
 constructionsight-smarts-snapshot-diff = "constructionsight.smarts_snapshot_diff:main"

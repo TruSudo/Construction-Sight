@@ -22,3 +22,5 @@ h1{font-size:30px;line-height:36px}.hero p{font-size:15px}.leads .card-head{heig
 #dossier-menu .icon{width:10px;height:19px}#view-watches .icon{width:13px;height:13px}.right>.card:last-child .card-head i .icon{fill:var(--amber)}
 
 #contact-summary{font-size:10px;padding:5px 7px;color:var(--muted);white-space:nowrap}
+
+#tiles img.local-tile{filter:none}#highway-shields text{font-family:var(--font)}

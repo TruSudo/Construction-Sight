@@ -75,6 +75,15 @@ jobs:
             sleep 0.2
           done
           node tests/ui/data_folder.js http://127.0.0.1:8769
+      - name: Local OSM PMTiles and SVG shields
+        if: always()
+        run: |
+          PYTHONPATH=src python tests/ui/server.py --local-map-fixture --data-dir /tmp/cs-map-state --port 8770 > /tmp/cs-map.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl --silent --fail http://127.0.0.1:8770/ > /dev/null; then break; fi
+            sleep 0.2
+          done
+          node tests/ui/offline_map.js http://127.0.0.1:8770 /tmp/cs-map-state/basemap.pmtiles
       - name: Start separate fixture for inventory actions
         if: always()
         run: |

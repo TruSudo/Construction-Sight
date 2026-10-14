@@ -1,0 +1,6 @@
+<?xml version="1.0"?><osm version="0.6">
+<node id="1" lat="34.00" lon="-117.30" version="1">
+<tag k="place" v="city"/><tag k="name" v="Demo fixture city"/></node>
+<node id="2" lat="34.01" lon="-117.29" version="1"/>
+<way id="1" version="1"><nd ref="1"/><nd ref="2"/>
+<tag k="highway" v="motorway"/><tag k="ref" v="I 215"/></way></osm>
