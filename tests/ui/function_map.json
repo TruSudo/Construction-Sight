@@ -40,14 +40,14 @@
     {
       "id": "user_menu",
       "selector": "#workspace-menu",
-      "behavior": "Edit profile, region, weights, map, backup and export",
+      "behavior": "Edit profile, region, weights, map, backup and export; relocate data folder, integrity-checked backup, dry-run and apply restore",
       "data_source": "Real SMARTS capture and persistent local SQLite operator data; isolated Demo test fixture",
-      "status": "Partial",
+      "status": "Working",
       "test": {
         "runner": "tests/ui/click_through.js",
         "scenario": "settings"
       },
-      "limitation": "Data folder is displayed; relocation and backup restore still need implementation."
+      "limitation": null
     },
     {
       "id": "kpi_total",

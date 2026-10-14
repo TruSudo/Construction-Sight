@@ -8,8 +8,6 @@ import io
 import json
 import re
 import sqlite3
-import tempfile
-import zipfile
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
@@ -416,26 +414,9 @@ def evidence(directory: Path, row: dict[str, Any], *, verify: bool = False) -> d
 
 
 def backup(directory: Path) -> bytes:
-    """Consistent binary SQLite copies; never materialize large evidence SQL in memory."""
-    out = io.BytesIO()
-    with (
-        tempfile.TemporaryDirectory() as temp,
-        zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z,
-    ):
-        for path in sorted(directory.iterdir()):
-            if path.is_symlink() or not path.is_file() or path.suffix not in (".json", ".sqlite3"):
-                continue
-            if path.suffix == ".sqlite3":
-                copy = Path(temp) / path.name
-                with (
-                    sqlite3.connect(f"file:{path}?mode=ro", uri=True) as source,
-                    sqlite3.connect(copy) as target,
-                ):
-                    source.backup(target)
-                z.write(copy, path.name)
-            else:
-                z.write(path, path.name)
-    return out.getvalue()
+    from constructionsight.data_folder import make_backup
+
+    return make_backup(directory)
 
 
 def fingerprint(value: Any) -> str:

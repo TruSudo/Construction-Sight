@@ -63,6 +63,15 @@ jobs:
       - name: Delayed workspace response regression
         if: always()
         run: node tests/ui/workspace_race.js http://127.0.0.1:8766
+      - name: Backup, restore and relocation through user menu
+        if: always()
+        run: |
+          PYTHONPATH=src python tests/ui/server.py --data-dir /tmp/cs-folder-state --port 8769 > /tmp/cs-folder.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl --silent --fail http://127.0.0.1:8769/ > /dev/null; then break; fi
+            sleep 0.2
+          done
+          node tests/ui/data_folder.js http://127.0.0.1:8769
       - name: Start separate fixture for inventory actions
         if: always()
         run: |
@@ -71,7 +80,7 @@ jobs:
             if curl --silent --fail http://127.0.0.1:8768/ > /dev/null; then break; fi
             sleep 0.2
           done
-      - name: Functional actions (five declared partial contracts remain reported)
+      - name: Functional actions (remaining partial contracts stay reported)
         if: always()
         run: node tests/ui/click_through.js http://127.0.0.1:8768 tests/visual/output/functions.json --actions-only
       - name: Report pixel ratchet; block on structure and bundled fonts

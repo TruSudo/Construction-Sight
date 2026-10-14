@@ -7,9 +7,12 @@ import csv
 import io
 import json
 import shutil
+import sqlite3
 import sys
+import tempfile
 import threading
 import webbrowser
+import zipfile
 from datetime import UTC, datetime, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -21,6 +24,7 @@ import httpx
 
 from constructionsight import command_center_commercial as commercial
 from constructionsight import command_center_state as state
+from constructionsight import data_folder
 from constructionsight.contact_call_list import bulk_import, call_list_csv, contact_coverage
 from constructionsight.fontana_permits import fetch_candidates, retain_candidates
 from constructionsight.lead_quality import quality_report
@@ -182,11 +186,18 @@ def projection(
 
 
 def make_server(
-    snapshot: dict[str, Any], port: int, directory: Path | None = None, *, parity: bool = False
+    snapshot: dict[str, Any],
+    port: int,
+    directory: Path | None = None,
+    *,
+    parity: bool = False,
+    startup_directory: Path | None = None,
 ) -> ThreadingHTTPServer:
     if parity and (not snapshot.get("demo") or directory is not None):
         raise ValueError("Mockup parity requires an isolated Demo fixture")
+    startup_directory = startup_directory or directory
     if directory:
+        directory = data_folder.resolve_folder(directory)
         directory.mkdir(mode=0o700, parents=True, exist_ok=True)
         state.initialize(directory)
         commercial.initialize(directory)
@@ -206,6 +217,9 @@ def make_server(
         )
         return projection(current_snapshot, directory, parity=parity)
 
+    restore_previews: dict[str, tuple[tempfile.TemporaryDirectory[str], dict[str, Any]]] = {}
+    maintenance = threading.RLock()
+
     capture_status: dict[str, Any] = {"running": False, "message": "Idle"}
     capture_mutex = threading.Lock()
 
@@ -217,18 +231,20 @@ def make_server(
             raise ValueError("Capture is already running")
         capture_status.update(running=True, message="Fetching official SMARTS Active rows")
 
+        capture_directory = directory
+
         def worker() -> None:
             run_id = None
             try:
-                with capture_lock(directory):
-                    run_id = begin_run(directory)
+                with capture_lock(capture_directory):
+                    run_id = begin_run(capture_directory)
                     with httpx.Client(timeout=60, headers={"User-Agent": USER_AGENT}) as client:
-                        captured = collect_active(client, directory)
-                    finish_run(directory, run_id, captured)
+                        captured = collect_active(client, capture_directory)
+                    finish_run(capture_directory, run_id, captured)
                     capture_status["message"] = f"Captured {len(captured['rows'])} rows"
             except (ValueError, OSError, httpx.HTTPError) as exc:
                 if run_id is not None:
-                    finish_run(directory, run_id, None, f"{type(exc).__name__}: {exc}")
+                    finish_run(capture_directory, run_id, None, f"{type(exc).__name__}: {exc}")
                 capture_status["message"] = str(exc)
             finally:
                 capture_status["running"] = False
@@ -283,7 +299,8 @@ def make_server(
                     return
                 body, mime = photo["data"], photo["mime"]
             elif directory and path == "/api/backup.zip":
-                body, mime = state.backup(directory), "application/zip"
+                with maintenance, capture_lock(directory):
+                    body, mime = state.backup(directory), "application/zip"
             elif directory and path in (
                 "/api/bids",
                 "/api/price-book",
@@ -521,6 +538,11 @@ def make_server(
             self.wfile.write(body)
 
         def do_POST(self) -> None:
+            with maintenance:
+                self.local_post()
+
+        def local_post(self) -> None:
+            nonlocal directory
             path = urlsplit(self.path).path
             is_local = path in (
                 "/api/settings",
@@ -530,6 +552,9 @@ def make_server(
                 "/api/royalty-contract",
                 "/api/royalty-entry",
                 "/api/smarts-contacts-bulk",
+                "/api/data-folder",
+                "/api/restore-preview",
+                "/api/restore-apply",
             ) or path.startswith(
                 (
                     "/api/facts/",
@@ -558,13 +583,85 @@ def make_server(
                 return
             try:
                 length = int(self.headers.get("Content-Length", "0"))
+                if path == "/api/restore-preview":
+                    if not 0 < length <= 5_000_000_000:
+                        raise ValueError("Invalid backup upload size")
+                    with maintenance:
+                        for temp, _ in restore_previews.values():
+                            temp.cleanup()
+                        restore_previews.clear()
+                        staged = tempfile.TemporaryDirectory(
+                            prefix="cs-restore-", dir=directory.parent
+                        )
+                        try:
+                            with tempfile.TemporaryDirectory(prefix="cs-upload-") as upload:
+                                archive_path = Path(upload) / "backup.zip"
+                                with archive_path.open("wb") as out:
+                                    remaining = length
+                                    while remaining:
+                                        chunk = self.rfile.read(min(1_048_576, remaining))
+                                        if not chunk:
+                                            raise ValueError("Incomplete backup upload")
+                                        out.write(chunk)
+                                        remaining -= len(chunk)
+                                report = data_folder.preview_restore(
+                                    archive_path, Path(staged.name) / "data"
+                                )
+                            token = report["archive_sha256"]
+                            restore_previews[token] = (staged, report)
+                            body = json.dumps(
+                                {k: v for k, v in report.items() if k != "files"}
+                            ).encode()
+                            self.send_response(200)
+                            self.send_header("Content-Type", "application/json")
+                            self.send_header("Content-Length", str(len(body)))
+                            self.end_headers()
+                            self.wfile.write(body)
+                            return
+                        except Exception:
+                            staged.cleanup()
+                            raise
                 if not 0 < length <= (1_400_000 if path.startswith("/api/photo/") else 65536):
                     raise ValueError("Invalid feedback size")
                 payload = json.loads(self.rfile.read(length))
                 if not isinstance(payload, dict):
                     raise ValueError("Feedback must be an object")
                 if is_local:
-                    if path == "/api/smarts-contacts-bulk":
+                    if path in ("/api/data-folder", "/api/restore-apply"):
+                        with maintenance, capture_mutex:
+                            if capture_status["running"]:
+                                raise ValueError(
+                                    "Wait for collection to finish before changing folders"
+                                )
+                            with capture_lock(directory):
+                                if path == "/api/data-folder":
+                                    if set(payload) != {"directory"} or not isinstance(
+                                        payload["directory"], str
+                                    ):
+                                        raise ValueError("Provide a destination folder")
+                                    result = data_folder.relocate(
+                                        directory, Path(payload["directory"])
+                                    )
+                                else:
+                                    if (
+                                        set(payload) != {"token"}
+                                        or payload["token"] not in restore_previews
+                                    ):
+                                        raise ValueError("Preview this backup before applying it")
+                                    staged, report = restore_previews.pop(payload["token"])
+                                    try:
+                                        result = data_folder.apply_restore(
+                                            Path(staged.name) / "data",
+                                            report,
+                                            data_folder.new_restore_path(directory),
+                                        )
+                                    finally:
+                                        staged.cleanup()
+                                assert startup_directory is not None
+                                target = Path(result["directory"])
+                                data_folder.point_startup(startup_directory, target)
+                                directory = target
+                    elif path == "/api/smarts-contacts-bulk":
                         if payload:
                             raise ValueError("Bulk contact import takes no options")
                         result = bulk_import(directory, current()["rows"])
@@ -643,7 +740,7 @@ def make_server(
                     assert lead is not None
                     result = save_feedback(directory, key, payload, lead)
                 body = json.dumps(result).encode()
-            except (ValueError, KeyError) as exc:
+            except (ValueError, KeyError, OSError, sqlite3.Error, zipfile.BadZipFile) as exc:
                 self.send_error(400, str(exc))
                 return
             self.send_response(200)
@@ -678,7 +775,9 @@ def main(argv: list[str] | None = None) -> int:
         help="Explicit bounded historical address research for one current SMARTS lead",
     )
     args = parser.parse_args(argv)
+    startup_directory = args.data_dir
     try:
+        args.data_dir = data_folder.resolve_folder(args.data_dir)
         if args.mockup_parity:
             if not args.demo or args.capture_only or args.fontana_source_key:
                 raise ValueError("Mockup parity is an isolated visual test; requires --demo")
@@ -727,7 +826,11 @@ def main(argv: list[str] | None = None) -> int:
         if args.capture_only:
             return 0
         server = make_server(
-            snapshot, args.port, None if args.demo else args.data_dir, parity=args.mockup_parity
+            snapshot,
+            args.port,
+            None if args.demo else args.data_dir,
+            parity=args.mockup_parity,
+            startup_directory=startup_directory,
         )
     except (ValueError, OSError, httpx.HTTPError) as exc:
         print(f"Command Center unavailable: {type(exc).__name__}: {exc}", file=sys.stderr)
