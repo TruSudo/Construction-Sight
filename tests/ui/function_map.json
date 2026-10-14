@@ -409,13 +409,13 @@
       "selector": "nav button[data-page=\"Sources & Collection\"]",
       "behavior": "Open functional Sources & Collection workspace",
       "data_source": "Real SMARTS capture and persistent local SQLite operator data; isolated Demo test fixture",
-      "status": "Partial",
+      "status": "Working",
       "test": {
         "runner": "tests/ui/click_through.js",
         "scenario": "navigate",
         "page": "Sources & Collection"
       },
-      "limitation": "Daily scheduling is not configured; SMARTS is the current live source."
+      "limitation": null
     }
   ]
 }

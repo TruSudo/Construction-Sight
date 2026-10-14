@@ -22,7 +22,13 @@ from zoneinfo import ZoneInfo
 
 import httpx
 
-from constructionsight import calibration, commercial_catalog, data_folder, offline_map
+from constructionsight import (
+    calibration,
+    collection_schedule,
+    commercial_catalog,
+    data_folder,
+    offline_map,
+)
 from constructionsight import command_center_commercial as commercial
 from constructionsight import command_center_state as state
 from constructionsight.contact_call_list import bulk_import, call_list_csv, contact_coverage
@@ -165,7 +171,7 @@ def projection(
         "warning": (
             ("Capture failed; showing last good data. " + str(latest["error"]))
             if latest and latest["outcome"] == "error"
-            else parcel_warning
+            else (collection_schedule.warning(directory) if directory else None) or parcel_warning
         ),
         "map_settings": map_settings,
         "statuses": STATUSES,
@@ -489,6 +495,10 @@ def make_server(
                     json.dumps(developer_accounts(current()["rows"])).encode(),
                     "application/json",
                 )
+            elif directory and path == "/api/schedule":
+                assert startup_directory is not None
+                body = json.dumps(collection_schedule.status(directory, startup_directory)).encode()
+                mime = "application/json"
             elif path == "/api/calibration":
                 rows = current()["rows"]
                 body = json.dumps(
@@ -586,6 +596,9 @@ def make_server(
             is_local = path in (
                 "/api/settings",
                 "/api/weights-reviewed",
+                "/api/schedule",
+                "/api/schedule-install",
+                "/api/schedule-disable",
                 "/api/notifications/read",
                 "/api/capture",
                 "/api/price-book",
@@ -748,6 +761,23 @@ def make_server(
                         if payload:
                             raise ValueError("Bulk contact import takes no options")
                         result = bulk_import(directory, current()["rows"])
+                    elif path in (
+                        "/api/schedule",
+                        "/api/schedule-install",
+                        "/api/schedule-disable",
+                    ):
+                        assert startup_directory is not None
+                        if path == "/api/schedule":
+                            collection_schedule.save(directory, payload)
+                            result = collection_schedule.status(directory, startup_directory)
+                        elif path == "/api/schedule-install":
+                            result = collection_schedule.install(
+                                directory, startup_directory, payload
+                            )
+                        else:
+                            if payload:
+                                raise ValueError("Disable takes no options")
+                            result = collection_schedule.disable(directory, startup_directory)
                     elif path == "/api/weights-reviewed":
                         result = calibration.apply(directory, payload)
                     elif path == "/api/settings":

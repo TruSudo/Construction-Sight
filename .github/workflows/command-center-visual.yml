@@ -87,6 +87,15 @@ jobs:
             sleep 0.2
           done
           node tests/ui/offline_map.js http://127.0.0.1:8770 /tmp/cs-map-state/basemap.pmtiles
+      - name: Daily schedule integration in isolated Demo
+        if: always()
+        run: |
+          PYTHONPATH=src python tests/ui/server.py --schedule-fixture --data-dir /tmp/cs-schedule-state --port 8771 > /tmp/cs-schedule.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl --silent --fail http://127.0.0.1:8771/ > /dev/null; then break; fi
+            sleep 0.2
+          done
+          node tests/ui/schedule.js http://127.0.0.1:8771
       - name: Start separate fixture for inventory actions
         if: always()
         run: |
@@ -95,9 +104,9 @@ jobs:
             if curl --silent --fail http://127.0.0.1:8768/ > /dev/null; then break; fi
             sleep 0.2
           done
-      - name: Functional actions (remaining partial contracts stay reported)
+      - name: Functional actions and all 33 complete contracts
         if: always()
-        run: node tests/ui/click_through.js http://127.0.0.1:8768 tests/visual/output/functions.json --actions-only
+        run: node tests/ui/click_through.js http://127.0.0.1:8768 tests/visual/output/functions.json
       - name: Report pixel ratchet; block on structure and bundled fonts
         if: always()
         run: >-
