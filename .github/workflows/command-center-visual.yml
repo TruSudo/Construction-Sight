@@ -23,23 +23,30 @@ jobs:
       - name: Install visual test dependencies
         run: |
           python -m pip install -e '.[dev]'
-          npm --prefix tests/visual install
+          npm --prefix tests/visual ci
           cd tests/visual
           npx playwright install --with-deps chromium
       - name: Capture offline Demo at native target viewport
         run: |
-          PYTHONPATH=src python -m constructionsight.live_command_center --demo --no-browser > /tmp/command-center.log 2>&1 &
+          PYTHONPATH=src python -m constructionsight.live_command_center --demo --mockup-parity --no-browser > /tmp/command-center.log 2>&1 &
           for attempt in $(seq 1 30); do
             if curl --silent --fail http://127.0.0.1:8765/ > /dev/null; then break; fi
             sleep 0.2
           done
           mkdir -p tests/visual/output
           node tests/visual/capture.js http://127.0.0.1:8765 tests/visual/output/actual.png
+      - name: Complete functional contracts from inventory
+        if: always()
+        run: node tests/ui/click_through.js http://127.0.0.1:8765 tests/visual/output/functions.json
       - name: Compare reference, fonts and static pixels
+        if: always()
         run: >-
           python tests/visual/compare_mockup.py
           tests/visual/reference.png
           tests/visual/output/actual.png tests/visual/output
+      - name: Publish per-region table
+        if: always()
+        run: cat tests/visual/output/regions.md >> "$GITHUB_STEP_SUMMARY"
       - name: Save screenshot and diff even when comparison fails
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a

@@ -1,0 +1,409 @@
+{
+  "schema_version": 1,
+  "controls": [
+    {
+      "id": "search",
+      "selector": "#search",
+      "behavior": "Global grouped search, keyboard selection, Enter opens dossier",
+      "data_source": "SMARTS rows, contacts and persisted notes",
+      "status": "Partial",
+      "test": {
+        "runner": "tests/ui/click_through.js",
+        "action": "fill",
+        "value": "Riverside",
+        "expect": "#dossier h2",
+        "text": "Riverside"
+      }
+    },
+    {
+      "id": "region",
+      "selector": "#county",
+      "behavior": "Scope KPIs, map, opportunities, notifications and watchlist",
+      "data_source": "Dataset counties and cities",
+      "status": "Partial",
+      "test": {
+        "runner": "tests/ui/click_through.js",
+        "action": "select",
+        "value": "Riverside",
+        "expect_count": 244
+      }
+    },
+    {
+      "id": "bell",
+      "selector": "#notifications",
+      "behavior": "Show new leads, due reminders, failed runs and changes; mark read",
+      "data_source": "Capture history and watches",
+      "status": "Partial",
+      "test": {
+        "runner": "tests/ui/click_through.js",
+        "action": "click",
+        "expect": "#tools[open]"
+      }
+    },
+    {
+      "id": "user_menu",
+      "selector": "#workspace-menu",
+      "behavior": "Edit profile, region, weights, map, backup and export",
+      "data_source": "Local settings",
+      "status": "Partial",
+      "test": {
+        "runner": "tests/ui/click_through.js",
+        "action": "click",
+        "expect": "#tools[open]"
+      }
+    },
+    {
+      "id": "kpi_total",
+      "selector": "[data-kpi=\"total\"]",
+      "behavior": "Clear readiness filter",
+      "data_source": "Scoped lead rows",
+      "status": "Working",
+      "test": {
+        "runner": "tests/ui/click_through.js",
+        "action": "click",
+        "expect_count": 247
+      }
+    },
+    {
+      "id": "kpi_ready",
+      "selector": "[data-kpi=\"ready\"]",
+      "behavior": "Filter map and table to outreach-ready rows",
+      "data_source": "Verified site + sourced contact + high fit + no DNC",
+      "status": "Working",
+      "test": {
+        "runner": "tests/ui/click_through.js",
+        "action": "click",
+        "expect_count": 86
+      }
+    },
+    {
+      "id": "kpi_review",
+      "selector": "[data-kpi=\"review\"]",
+      "behavior": "Filter to human review",
+      "data_source": "Computed readiness",
+      "status": "Working",
+      "test": {
+        "runner": "tests/ui/click_through.js",
+        "action": "click",
+        "expect_count": 104
+      }
+    },
+    {
+      "id": "kpi_not_ready",
+      "selector": "[data-kpi=\"not_ready\"]",
+      "behavior": "Filter low-fit/excluded rows",
+      "data_source": "Computed readiness",
+      "status": "Working",
+      "test": {
+        "runner": "tests/ui/click_through.js",
+        "action": "click",
+        "expect_count": 57
+      }
+    },
+    {
+      "id": "kpi_new",
+      "selector": "[data-kpi=\"new\"]",
+      "behavior": "Filter newly observed rows within seven days",
+      "data_source": "First-seen timestamps",
+      "status": "Working",
+      "test": {
+        "runner": "tests/ui/click_through.js",
+        "action": "click",
+        "expect_count": 28
+      }
+    },
+    {
+      "id": "project_type",
+      "selector": "#type",
+      "behavior": "Filter map and opportunity table",
+      "data_source": "Source classifier",
+      "status": "Working",
+      "test": {
+        "runner": "tests/ui/click_through.js",
+        "action": "select",
+        "value": "industrial",
+        "expect": "#leads tr"
+      }
+    },
+    {
+      "id": "zoom_in",
+      "selector": "#zoom-in",
+      "behavior": "Increase geographic zoom",
+      "data_source": "WGS84 source coordinates",
+      "status": "Working",
+      "test": {
+        "runner": "tests/ui/click_through.js",
+        "action": "click",
+        "changed": "#points",
+        "attribute": "innerHTML"
+      }
+    },
+    {
+      "id": "zoom_out",
+      "selector": "#zoom-out",
+      "behavior": "Decrease geographic zoom",
+      "data_source": "WGS84 source coordinates",
+      "status": "Working",
+      "test": {
+        "runner": "tests/ui/click_through.js",
+        "action": "click",
+        "changed": "#points",
+        "attribute": "innerHTML"
+      }
+    },
+    {
+      "id": "layers",
+      "selector": "#layers",
+      "behavior": "Toggle readiness/county/heat layers",
+      "data_source": "Coordinates and official county boundaries",
+      "status": "Partial",
+      "test": {
+        "runner": "tests/ui/click_through.js",
+        "action": "click",
+        "expect": "#tools[open]"
+      }
+    },
+    {
+      "id": "marker",
+      "selector": "#points circle:last-child",
+      "behavior": "Select lead and show popup/dossier",
+      "data_source": "Source coordinates",
+      "status": "Working",
+      "test": {
+        "runner": "tests/ui/click_through.js",
+        "action": "click",
+        "changed": "#dossier",
+        "attribute": "innerHTML"
+      }
+    },
+    {
+      "id": "map_popup",
+      "selector": "#map-overlay",
+      "behavior": "Open selected lead from popup",
+      "data_source": "Selected source row",
+      "status": "Missing",
+      "test": {
+        "runner": "tests/ui/click_through.js",
+        "action": "click",
+        "expect": "#work-lead[open]"
+      }
+    },
+    {
+      "id": "dossier_menu",
+      "selector": "#dossier-menu",
+      "behavior": "Status, note, DNC, export, hide",
+      "data_source": "Persistent lead workflow",
+      "status": "Partial",
+      "test": {
+        "runner": "tests/ui/click_through.js",
+        "action": "click",
+        "expect": "#watch-dialog[open]"
+      }
+    },
+    {
+      "id": "outreach_add",
+      "selector": "#add-outreach",
+      "behavior": "Persist queue membership and update status; enforce DNC",
+      "data_source": "Local outreach queue",
+      "status": "Partial",
+      "test": {
+        "runner": "tests/ui/click_through.js",
+        "action": "persist",
+        "endpoint": "/api/outreach"
+      }
+    },
+    {
+      "id": "full_dossier",
+      "selector": "#edit-lead",
+      "behavior": "All facts, provenance, contacts, notes, timeline, bids and royalty",
+      "data_source": "Evidence ledger and commercial modules",
+      "status": "Partial",
+      "test": {
+        "runner": "tests/ui/click_through.js",
+        "action": "click",
+        "expect": "#work-lead[open]"
+      }
+    },
+    {
+      "id": "recent_row",
+      "selector": "#leads tr:nth-child(2)",
+      "behavior": "Select lead in dossier",
+      "data_source": "Newest source observations",
+      "status": "Working",
+      "test": {
+        "runner": "tests/ui/click_through.js",
+        "action": "click",
+        "changed": "#dossier",
+        "attribute": "innerHTML"
+      }
+    },
+    {
+      "id": "recent_all",
+      "selector": "#view-leads",
+      "behavior": "Open complete Lead Console",
+      "data_source": "Ranked source rows",
+      "status": "Partial",
+      "test": {
+        "runner": "tests/ui/click_through.js",
+        "action": "click",
+        "expect": "#tools[open]"
+      }
+    },
+    {
+      "id": "watch_row",
+      "selector": ".watch-row",
+      "behavior": "Open watched lead",
+      "data_source": "Persistent watch record",
+      "status": "Partial",
+      "test": {
+        "runner": "tests/ui/click_through.js",
+        "action": "click",
+        "expect": "#watch-dialog[open]"
+      }
+    },
+    {
+      "id": "watch_all",
+      "selector": "#view-watches",
+      "behavior": "Open full watchlist",
+      "data_source": "Persistent watches",
+      "status": "Partial",
+      "test": {
+        "runner": "tests/ui/click_through.js",
+        "action": "click",
+        "expect": "#tools[open]"
+      }
+    },
+    {
+      "id": "nav_command_center",
+      "selector": "nav button[data-page=\"Command Center\"]",
+      "behavior": "Open functional Command Center workspace",
+      "data_source": "Existing domain services and persistent local records",
+      "status": "Working",
+      "test": {
+        "runner": "tests/ui/click_through.js",
+        "action": "navigate",
+        "page": "Command Center"
+      }
+    },
+    {
+      "id": "nav_project_intelligence",
+      "selector": "nav button[data-page=\"Project Intelligence\"]",
+      "behavior": "Open functional Project Intelligence workspace",
+      "data_source": "Existing domain services and persistent local records",
+      "status": "Missing",
+      "test": {
+        "runner": "tests/ui/click_through.js",
+        "action": "navigate",
+        "page": "Project Intelligence"
+      }
+    },
+    {
+      "id": "nav_site_map",
+      "selector": "nav button[data-page=\"Site Map\"]",
+      "behavior": "Open functional Site Map workspace",
+      "data_source": "Existing domain services and persistent local records",
+      "status": "Missing",
+      "test": {
+        "runner": "tests/ui/click_through.js",
+        "action": "navigate",
+        "page": "Site Map"
+      }
+    },
+    {
+      "id": "nav_entity_network",
+      "selector": "nav button[data-page=\"Entity Network\"]",
+      "behavior": "Open functional Entity Network workspace",
+      "data_source": "Existing domain services and persistent local records",
+      "status": "Missing",
+      "test": {
+        "runner": "tests/ui/click_through.js",
+        "action": "navigate",
+        "page": "Entity Network"
+      }
+    },
+    {
+      "id": "nav_evidence_chains",
+      "selector": "nav button[data-page=\"Evidence Chains\"]",
+      "behavior": "Open functional Evidence Chains workspace",
+      "data_source": "Existing domain services and persistent local records",
+      "status": "Missing",
+      "test": {
+        "runner": "tests/ui/click_through.js",
+        "action": "navigate",
+        "page": "Evidence Chains"
+      }
+    },
+    {
+      "id": "nav_lead_console",
+      "selector": "nav button[data-page=\"Lead Console\"]",
+      "behavior": "Open functional Lead Console workspace",
+      "data_source": "Existing domain services and persistent local records",
+      "status": "Partial",
+      "test": {
+        "runner": "tests/ui/click_through.js",
+        "action": "navigate",
+        "page": "Lead Console"
+      }
+    },
+    {
+      "id": "nav_outreach",
+      "selector": "nav button[data-page=\"Outreach\"]",
+      "behavior": "Open functional Outreach workspace",
+      "data_source": "Existing domain services and persistent local records",
+      "status": "Partial",
+      "test": {
+        "runner": "tests/ui/click_through.js",
+        "action": "navigate",
+        "page": "Outreach"
+      }
+    },
+    {
+      "id": "nav_bid_studio",
+      "selector": "nav button[data-page=\"Bid Studio\"]",
+      "behavior": "Open functional Bid Studio workspace",
+      "data_source": "Existing domain services and persistent local records",
+      "status": "Missing",
+      "test": {
+        "runner": "tests/ui/click_through.js",
+        "action": "navigate",
+        "page": "Bid Studio"
+      }
+    },
+    {
+      "id": "nav_royalty_ledger",
+      "selector": "nav button[data-page=\"Royalty Ledger\"]",
+      "behavior": "Open functional Royalty Ledger workspace",
+      "data_source": "Existing domain services and persistent local records",
+      "status": "Missing",
+      "test": {
+        "runner": "tests/ui/click_through.js",
+        "action": "navigate",
+        "page": "Royalty Ledger"
+      }
+    },
+    {
+      "id": "nav_watchlist",
+      "selector": "nav button[data-page=\"Watchlist\"]",
+      "behavior": "Open functional Watchlist workspace",
+      "data_source": "Existing domain services and persistent local records",
+      "status": "Partial",
+      "test": {
+        "runner": "tests/ui/click_through.js",
+        "action": "navigate",
+        "page": "Watchlist"
+      }
+    },
+    {
+      "id": "nav_sources_&_collection",
+      "selector": "nav button[data-page=\"Sources & Collection\"]",
+      "behavior": "Open functional Sources & Collection workspace",
+      "data_source": "Existing domain services and persistent local records",
+      "status": "Partial",
+      "test": {
+        "runner": "tests/ui/click_through.js",
+        "action": "navigate",
+        "page": "Sources & Collection"
+      }
+    }
+  ]
+}

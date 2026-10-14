@@ -23,6 +23,7 @@ from constructionsight.lead_workflow import (
     STATUSES,
     begin_run,
     capture_lock,
+    connect,
     csv_export,
     developer_accounts,
     finish_run,
@@ -38,7 +39,41 @@ from constructionsight.smarts_api import USER_AGENT
 ASSETS = Path(__file__).parent / "command_center"
 
 
-def projection(snapshot: dict[str, Any], directory: Path | None = None) -> dict[str, Any]:
+READINESS_RULE = (
+    "Ready for Outreach: high security fit, independently verified site, at least one "
+    "sourced contact, no conflicting fields and no Do-Not-Contact flag. In Review: "
+    "a human check is needed. Not Ready: low fit, excluded infrastructure or insufficient data."
+)
+
+
+def readiness(row: dict[str, Any]) -> str:
+    if row.get("do_not_contact") or row.get("feedback", {}).get("status") == "Not a fit":
+        return "not_ready"
+    if row.get("fit_band") == "low" or row.get("project_type") == "infrastructure":
+        return "not_ready"
+    contacts = row.get("sourced_contacts", [])
+    has_contact = any(
+        isinstance(c, dict) and c.get("source") and (c.get("email") or c.get("phone"))
+        for c in contacts
+    )
+    verification = row.get("site_verification", {})
+    if (
+        row.get("fit_band") == "high"
+        and isinstance(verification, dict)
+        and verification.get("verified") is True
+        and verification.get("source")
+        and has_contact
+        and not row.get("conflicting_fields")
+    ):
+        return "ready"
+    return "review"
+
+
+def projection(
+    snapshot: dict[str, Any], directory: Path | None = None, *, parity: bool = False
+) -> dict[str, Any]:
+    if parity and (not snapshot.get("demo") or directory is not None):
+        raise ValueError("Mockup parity requires an isolated Demo fixture")
     weights_path = directory / "weights.json" if directory else None
     rows = rank_leads(snapshot["rows"], weights=load_weights(weights_path))
     feedback = get_feedback(directory) if directory else {}
@@ -53,6 +88,11 @@ def projection(snapshot: dict[str, Any], directory: Path | None = None) -> dict[
     cutoff = (datetime.now(UTC) - timedelta(days=7)).isoformat()
     local_today = datetime.now(ZoneInfo("America/Los_Angeles")).date()
     for row in rows:
+        row["readiness"] = readiness(row)
+        row["new_week"] = bool(row.get("first_seen") and row["first_seen"] >= cutoff)
+        if parity:
+            view = row["parity_view"]
+            row.update(view)
         first_seen = row.get("first_seen")
         row["new_today"] = bool(
             first_seen
@@ -78,6 +118,9 @@ def projection(snapshot: dict[str, Any], directory: Path | None = None) -> dict[
     latest = runs[0] if runs else None
     return {
         "rows": rows,
+        "readiness_rule": READINESS_RULE,
+        "mockup_parity": parity,
+        "parity_watches": snapshot.get("parity_watches", []) if parity else [],
         "warning": ("Capture failed; showing last good data. " + str(latest["error"]))
         if latest and latest["outcome"] == "error"
         else None,
@@ -103,8 +146,10 @@ def projection(snapshot: dict[str, Any], directory: Path | None = None) -> dict[
 
 
 def make_server(
-    snapshot: dict[str, Any], port: int, directory: Path | None = None
+    snapshot: dict[str, Any], port: int, directory: Path | None = None, *, parity: bool = False
 ) -> ThreadingHTTPServer:
+    if parity and (not snapshot.get("demo") or directory is not None):
+        raise ValueError("Mockup parity requires an isolated Demo fixture")
     if directory:
         directory.mkdir(mode=0o700, parents=True, exist_ok=True)
         if not (directory / "map.json").exists():
@@ -121,7 +166,7 @@ def make_server(
         current_snapshot = (
             json.loads(active.read_text()) if active and active.exists() else snapshot
         )
-        return projection(current_snapshot, directory)
+        return projection(current_snapshot, directory, parity=parity)
 
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:
@@ -132,6 +177,17 @@ def make_server(
             path = urlsplit(self.path).path
             if path == "/api/leads":
                 body, mime = json.dumps(current(), allow_nan=False).encode(), "application/json"
+            elif path == "/api/outreach":
+                if directory:
+                    with connect(directory) as db:
+                        db.execute(
+                            "CREATE TABLE IF NOT EXISTS outreach_queue "
+                            "(source_key TEXT PRIMARY KEY, added_at TEXT NOT NULL)"
+                        )
+                        queued = [dict(r) for r in db.execute("SELECT * FROM outreach_queue")]
+                else:
+                    queued = []
+                body, mime = json.dumps(queued).encode(), "application/json"
             elif path == "/api/terms":
                 conditions = [
                     {
@@ -234,25 +290,17 @@ def make_server(
                 if query.get("status"):
                     rows = [r for r in rows if r["feedback"]["status"] == query["status"][0]]
                 body, mime = csv_export(rows), "text/csv; charset=utf-8"
-            elif path in (
-                "/",
-                "/style.css",
-                "/app.js",
-                "/logo.png",
-                "/design_tokens.json",
-                "/icons.js",
+            elif path == "/parity-photo.png" and parity:
+                body = (Path(__file__).parents[2] / "tests/visual/parity-photo.png").read_bytes()
+                mime = "image/png"
+            elif path == "/" or (
+                path.startswith("/")
+                and ".." not in path
+                and (ASSETS / path.lstrip("/")).is_file()
+                and Path(path).suffix in (".css", ".js", ".png", ".json", ".woff2")
+                and Path(path).name not in ("demo.json",)
             ):
-                asset = (
-                    ASSETS
-                    / {
-                        "/": "index.html",
-                        "/style.css": "style.css",
-                        "/app.js": "app.js",
-                        "/logo.png": "logo.png",
-                        "/design_tokens.json": "design_tokens.json",
-                        "/icons.js": "icons.js",
-                    }[path]
-                )
+                asset = ASSETS / ("index.html" if path == "/" else path.lstrip("/"))
                 body = asset.read_bytes()
                 mime = {
                     ".html": "text/html",
@@ -260,6 +308,7 @@ def make_server(
                     ".js": "application/javascript",
                     ".png": "image/png",
                     ".json": "application/json",
+                    ".woff2": "font/woff2",
                 }[asset.suffix]
             else:
                 self.send_error(404)
@@ -275,7 +324,8 @@ def make_server(
         def do_POST(self) -> None:
             path = urlsplit(self.path).path
             is_watch = path.startswith("/api/watchlist/")
-            if not directory or not (is_watch or path.startswith("/api/feedback/")):
+            is_outreach = path.startswith("/api/outreach/")
+            if not directory or not (is_watch or is_outreach or path.startswith("/api/feedback/")):
                 self.send_error(501)
                 return
             host = self.headers.get("Host", "")
@@ -293,12 +343,33 @@ def make_server(
                 payload = json.loads(self.rfile.read(length))
                 if not isinstance(payload, dict):
                     raise ValueError("Feedback must be an object")
-                prefix = "/api/watchlist/" if is_watch else "/api/feedback/"
+                prefix = (
+                    "/api/watchlist/"
+                    if is_watch
+                    else "/api/outreach/"
+                    if is_outreach
+                    else "/api/feedback/"
+                )
                 key = unquote(path[len(prefix) :])
                 lead = next((r for r in current()["rows"] if r["source_key"] == key), None)
                 if lead is None and not is_watch:
                     raise ValueError("Unknown lead")
-                if is_watch:
+                if is_outreach:
+                    if payload or lead is None:
+                        raise ValueError("Invalid outreach queue request")
+                    if lead.get("do_not_contact") or lead["feedback"]["status"] == "Not a fit":
+                        raise ValueError("Do-Not-Contact or excluded lead")
+                    with connect(directory) as db:
+                        db.execute(
+                            "CREATE TABLE IF NOT EXISTS outreach_queue "
+                            "(source_key TEXT PRIMARY KEY, added_at TEXT NOT NULL)"
+                        )
+                        db.execute(
+                            "INSERT OR IGNORE INTO outreach_queue VALUES (?,?)",
+                            (key, datetime.now(UTC).isoformat()),
+                        )
+                    result = {"source_key": key, "queued": True}
+                elif is_watch:
                     result = update_watch(directory, key, payload, lead)
                 else:
                     assert lead is not None
@@ -329,6 +400,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--offline", action="store_true", help="Use the last complete real capture")
     parser.add_argument("--demo", action="store_true", help="Labeled fixture preview, no network")
+    parser.add_argument("--mockup-parity", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--no-browser", action="store_true")
     parser.add_argument(
         "--capture-only", action="store_true", help="Scheduled capture without a server"
@@ -339,7 +411,13 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
     try:
-        if args.demo:
+        if args.mockup_parity:
+            if not args.demo or args.capture_only or args.fontana_source_key:
+                raise ValueError("Mockup parity is an isolated visual test; requires --demo")
+            snapshot = json.loads(
+                (Path(__file__).parents[2] / "tests/visual/parity.json").read_text()
+            )
+        elif args.demo:
             snapshot = json.loads((ASSETS / "demo.json").read_text())
         elif args.offline:
             snapshot = json.loads((args.data_dir / "active.json").read_text())
@@ -380,7 +458,9 @@ def main(argv: list[str] | None = None) -> int:
             )
         if args.capture_only:
             return 0
-        server = make_server(snapshot, args.port, None if args.demo else args.data_dir)
+        server = make_server(
+            snapshot, args.port, None if args.demo else args.data_dir, parity=args.mockup_parity
+        )
     except (ValueError, OSError, httpx.HTTPError) as exc:
         print(f"Command Center unavailable: {type(exc).__name__}: {exc}", file=sys.stderr)
         return 1

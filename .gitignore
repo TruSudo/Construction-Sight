@@ -33,3 +33,7 @@ htmlcov/
 Thumbs.db
 .vscode/
 .idea/
+
+# Browser dependencies and generated diagnostics
+node_modules/
+tests/visual/output/

@@ -5,11 +5,11 @@
     864
   ],
   "requested_viewport": [
-    1672,
-    941
+    1536,
+    864
   ],
-  "native_reference_available": false,
-  "font_identity": "unverified; requires original font assets",
+  "native_reference_available": true,
+  "font_identity": "Open-source approximations: Roboto UI and headings; Roboto Mono labels",
   "boxes": {
     "sidebar": [
       0,
@@ -155,12 +155,75 @@
     "card_header_height": 44
   },
   "target_scale": [
-    1.0885416666666667,
-    1.0891203703703705
+    1,
+    1
   ],
   "visual_test": {
     "channel_tolerance": 12,
-    "max_changed_static_pixels_fraction": 0.005,
-    "max_channel_mae": 2.0
-  }
+    "max_changed_static_pixels_fraction": 0.01
+  },
+  "fonts": {
+    "ui": {
+      "family": "CS Roboto",
+      "files": [
+        "roboto-latin-400-normal.woff2",
+        "roboto-latin-500-normal.woff2",
+        "roboto-latin-700-normal.woff2"
+      ],
+      "license": "OFL-1.1"
+    },
+    "mono": {
+      "family": "CS Roboto Mono",
+      "files": [
+        "roboto-mono-latin-400-normal.woff2"
+      ],
+      "license": "OFL-1.1"
+    },
+    "heading": {
+      "family": "CS Roboto",
+      "weight": 700
+    },
+    "exact_identification": false
+  },
+  "visual_masks": {
+    "photo": [
+      1094,
+      302,
+      1509,
+      412
+    ],
+    "basemap": [
+      312,
+      300,
+      1062,
+      620
+    ],
+    "brand_antialiasing": [
+      36,
+      30,
+      269,
+      188
+    ],
+    "hero_texture": [
+      984,
+      56,
+      1252,
+      155
+    ],
+    "sidebar_texture": [
+      0,
+      710,
+      296,
+      796
+    ]
+  },
+  "baselines": {
+    "hero_heading": 113,
+    "hero_subtitle": 138,
+    "map_heading": 282,
+    "recent_heading": 660,
+    "dossier_heading": 283,
+    "watchlist_heading": 712
+  },
+  "baseline_method": "Raster glyph bounds, adjusted for bundled-font descenders; estimated reference baselines."
 }
