@@ -1,5 +1,8 @@
 # Repository Certification Protocol
 
+> **Historical certification reference (superseded as a routine merge gate, 2026-10-15).** The requirements below describe an optional, strict exact-tree certification protocol and its historical expectations; they are **not** the mandatory CI/release checklist for ordinary ConstructionSight development. See [README](../../README.md) and [SECURITY.md](../../SECURITY.md) for the current risk-proportionate policy. When a formal legacy certification is explicitly requested, its internal requirements remain applicable to that particular claim. The normal CI checks are defined by the active workflow files. A P2/P3 tracked defect does not automatically invalidate unrelated product delivery.
+
+
 ## Purpose
 
 ConstructionSight repository certification is a blocking integrity gate, not a general statement that every planned product capability is implemented. Certification means the complete tracked repository tree is internally consistent and contains no known defect within its documented supported scope.

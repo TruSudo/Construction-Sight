@@ -1,5 +1,8 @@
 # Semantic governance
 
+> **Historical semantic assurance architecture (2026-10-15 clarification).** The machine-readable contracts, capability boundaries and legacy certifiers documented below remain available, and applicable runtime authorization/evidence controls remain binding. Statements below making full native-maximum assurance, zero deferral or repository-wide certification mandatory for *all* development are superseded by the active [README](../../README.md) and [SECURITY.md](../../SECURITY.md). These old gates are invoked intentionally for an appropriately high-risk audit, not for every safe vertical slice. Current required CI is defined in the active workflow; do not misrepresent historical certificate status as the status of the working product.
+
+
 ConstructionSight distinguishes six control classes that must not be conflated:
 
 1. **Formatting and typing** detect style, syntax, and type-shape defects.
