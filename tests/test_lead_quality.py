@@ -34,6 +34,9 @@ from constructionsight.security_fit import rank_leads
         ("St Mary Church", "church"),
         ("Walmart Expansion", "retail"),
         ("Solar Facility", "solar"),
+        ("Mills WTP Fiber Conduits", "utility_infrastructure"),
+        ("Emergency Release Facility, Lake Perris", "utility_infrastructure"),
+        ("L&G Desert Store Expansion", "retail"),
     ],
 )
 def test_explicit_source_words_are_explainable_unverified(name: str, subtype: str) -> None:
@@ -67,6 +70,8 @@ def test_report_tokens_are_site_only_and_include_unknown_developers() -> None:
 
 def test_use_code_never_establishes_proposed_use_or_decodes_numbers() -> None:
     assert source_use_type("123") is None
+    assert source_use_type("HOMESITE/< 1 ACRE", site_name="Perez Polanco Park") is None
+    assert source_use_type("Warehouse/Dry Storage")["project_type"] == "industrial"
     assert source_use_type("Avocado Grove with SFR") is None
     claim = source_use_type("Apartment Over 100 Units")
     assert claim and claim["project_type"] == "residential" and claim["verified"] is False

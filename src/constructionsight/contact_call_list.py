@@ -6,6 +6,7 @@ import argparse
 import csv
 import io
 import json
+import re
 import sqlite3
 import tempfile
 from collections import Counter
@@ -28,6 +29,8 @@ COLUMNS = [
     "source",
     "confidence",
     "status",
+    "reliability",
+    "why",
 ]
 CONSULTANT_TERMS = (
     "stormwater",
@@ -65,9 +68,31 @@ def contact_view(contact: dict[str, Any]) -> dict[str, Any]:
         if "source-reported developer contact" in source
         else ("site" if "source-reported site contact" in source else "other")
     )
+    shared = int(contact.get("shared_developer_count") or 0)
+    hash_bound = bool(
+        re.search(r"response SHA-256 [0-9a-f]{64}; source https://publish\.data\.ca\.gov/", source)
+    )
+    reasons = ["Source-reported " + kind + " contact; purchasing authority unverified"]
+    priority = 60 if kind == "developer" else 50 if kind == "site" else 40
+    if hash_bound:
+        reasons.append("Retained SMARTS response/row hashes checked at import")
+        priority += 5
+    if flags:
+        reasons.append("Possible stormwater consultant: " + ", ".join(flags))
+        priority -= 25
+    if shared > 1:
+        reasons.append(
+            f"Email or phone shared across {shared} reported developers; "
+            "possible filing agent or related entities"
+        )
+        priority -= 30
+    reasons.append("Heuristic priority, not a verified identity or calibrated probability")
     return {
         **contact,
         "contact_kind": kind,
+        "reliability_score": max(0, priority),
+        "reliability_reasons": reasons,
+        "possible_filing_agent": shared > 1,
         "confidence": (0.4 if source.startswith("CSLB") else 0.5) if source else 0.0,
         "confidence_basis": (
             "Heuristic source-reported contact; identity and purchasing authority unverified"
@@ -75,6 +100,57 @@ def contact_view(contact: dict[str, Any]) -> dict[str, Any]:
         "possible_stormwater_consultant": bool(flags),
         "consultant_cues": flags,
     }
+
+
+def _company_key(value: Any) -> str:
+    text = " ".join(re.sub(r"[^\w\s]", " ", str(value or "").casefold()).split())
+    return "" if str(value or "").strip().casefold() in UNKNOWN_COMPANIES else text
+
+
+def _channels(contact: dict[str, Any]) -> list[tuple[str, str]]:
+    channels = []
+    email = str(contact.get("email") or "").strip().casefold()
+    phone = re.sub(
+        r"\D",
+        "",
+        re.split(
+            r"\b(?:ext|extension)\b|x", str(contact.get("phone") or ""), maxsplit=1, flags=re.I
+        )[0],
+    )
+    if len(phone) == 11 and phone.startswith("1"):
+        phone = phone[1:]
+    if email:
+        channels.append(("email", email))
+    if phone:
+        channels.append(("phone", phone))
+    return channels
+
+
+def annotate_contacts(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Compare all captured developer names; repeat sites for one company are not a flag."""
+    developers: dict[tuple[str, str], set[str]] = {}
+    for row in rows:
+        company = _company_key(row.get("DEVELOPER_NAME"))
+        if not company:
+            continue
+        for contact in row.get("sourced_contacts", []):
+            for channel in _channels(contact):
+                developers.setdefault(channel, set()).add(company)
+    output = []
+    for row in rows:
+        contacts = []
+        for contact in row.get("sourced_contacts", []):
+            shared = set().union(*(developers.get(c, set()) for c in _channels(contact)))
+            contacts.append(contact_view({**contact, "shared_developer_count": len(shared)}))
+        contacts.sort(
+            key=lambda c: (
+                -c["reliability_score"],
+                str(c.get("name") or ""),
+                str(c.get("email") or ""),
+            )
+        )
+        output.append({**row, "sourced_contacts": contacts})
+    return output
 
 
 def contact_coverage(rows: list[dict[str, Any]]) -> dict[str, Any]:
@@ -91,8 +167,10 @@ def contact_coverage(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "other_contacts": 0,
         "possible_consultant_contacts": 0,
         "possible_consultant_leads": 0,
+        "possible_filing_agent_contacts": 0,
+        "possible_filing_agent_leads": 0,
     }
-    for row in rows:
+    for row in annotate_contacts(rows):
         contacts = [
             contact_view(c)
             for c in row.get("sourced_contacts", [])
@@ -108,7 +186,9 @@ def contact_coverage(rows: list[dict[str, Any]]) -> dict[str, Any]:
         report["possible_consultant_leads"] += any(
             c["possible_stormwater_consultant"] for c in contacts
         )
+        report["possible_filing_agent_leads"] += any(c["possible_filing_agent"] for c in contacts)
         for contact in contacts:
+            report["possible_filing_agent_contacts"] += contact["possible_filing_agent"]
             for kind in contact.get("source_kinds", [contact["contact_kind"]]):
                 report[kind + "_contacts"] += 1
             report["possible_consultant_contacts"] += contact["possible_stormwater_consultant"]
@@ -197,7 +277,8 @@ def bulk_import(directory: Path, rows: list[dict[str, Any]]) -> dict[str, Any]:
 def company_call_list(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     groups: dict[str, dict[str, Any]] = {}
     for row in sorted(
-        rows, key=lambda r: (r.get("readiness") != "ready", -r.get("security_fit", 0))
+        annotate_contacts(rows),
+        key=lambda r: (r.get("readiness") != "ready", -r.get("security_fit", 0)),
     ):
         if (
             row.get("do_not_contact")
@@ -248,6 +329,7 @@ def company_call_list(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     output = []
     for group in groups.values():
         sites, contacts = group.pop("sites"), group.pop("contacts")
+        contacts.sort(key=lambda c: -c["reliability_score"])
 
         def joined(key: str, items: list[dict[str, Any]]) -> str:
             return "\n".join(dict.fromkeys(str(item.get(key) or "—") for item in items))
@@ -277,11 +359,15 @@ def company_call_list(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "phone": "\n".join(str(c.get("phone") or "—") for c in contacts),
                 "email": "\n".join(str(c.get("email") or "—") for c in contacts),
                 "source": "\n".join(str(c.get("source") or "—") for c in contacts),
-                "confidence": min(c["confidence"] for c in contacts),
+                "confidence": contacts[0]["confidence"],
+                "reliability": contacts[0]["reliability_score"],
+                "why": "\n".join("; ".join(c["reliability_reasons"]) for c in contacts),
                 "site_count": len(sites),
             }
         )
-    return output
+    return sorted(
+        output, key=lambda r: (r["status"] != "Ready for Outreach", -r["reliability"], -r["score"])
+    )
 
 
 def call_list_csv(rows: list[dict[str, Any]]) -> bytes:
