@@ -3,12 +3,12 @@
   "regions": {
     "sidebar": 38.66287878787879,
     "header": 27.19140625,
-    "hero": 73.84212239583333,
+    "hero": 54.916666666666664,
     "kpis": 37.939778645833336,
-    "map": 42.074074074074076,
-    "dossier": 40.214518229166664,
+    "map": 41.715169270833336,
+    "dossier": 35.918294270833336,
     "leads": 24.6484375,
     "watchlist": 27.809244791666668
   },
-  "purpose": "First measured app baseline at the original native viewport; reports regression only, not fidelity acceptance."
+  "purpose": "Best measured app baseline at the original native viewport; reports regression only, not fidelity acceptance."
 }
