@@ -2,6 +2,8 @@
 const $=id=>document.getElementById(id), esc=s=>String(s==null||['NA','N/A','UNKNOWN','NULL','NONE'].includes(String(s).toUpperCase())?'—':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const nav=[['grid','Command Center'],['chart','Project Intelligence'],['pin','Site Map'],['network','Entity Network'],['file','Evidence Chains'],['','COMMERCIAL'],['target','Lead Console'],['send','Outreach'],['database','Bid Studio'],['dollar','Royalty Ledger'],['','INTELLIGENCE'],['star','Watchlist'],['source_layers','Sources & Collection']];
 let data,filtered=[],selected=null,readinessFilter='',zoom=8,center=[34.05,-117.25],online=false,activePage='Command Center',watches=[],mapLayers={ready:true,review:true,not_ready:true,county:false,heat:false},includeExcluded=false,analyticFilter=null;
+let basemapMode=safeMapMode(localStorage.getItem('cs:basemap')),basemapFailed=false,mapGeneration=0;
+function setBasemap(mode){basemapMode=safeMapMode(mode);basemapFailed=false;localStorage.setItem('cs:basemap',basemapMode);drawMap();}
 const colors={ready:'#38ba52',review:'#ffb000',not_ready:'#f13e44'},bandOf=r=>({ready:'high',review:'review',not_ready:'low'}[r.readiness]);
 $('nav').innerHTML=nav.map(([symbol,name])=>symbol?`<button data-page="${name}" class="${name==='Command Center'?'active':''}"><em>${icon(symbol)}</em>${name}</button>`:`<small>${name}</small>`).join('');
 $('nav').onclick=e=>{const b=e.target.closest('button');if(b)openWorkspace(b.dataset.page);};
@@ -13,16 +15,31 @@ function world(lat,lon){const n=256*2**zoom,s=Math.sin(lat*Math.PI/180);return [
 function inverse(x,y){const n=256*2**zoom;return [Math.atan(Math.sinh(Math.PI*(1-2*y/n)))*180/Math.PI,x/n*360-180];}
 function fitBounds(){const rows=filtered.filter(point);if(!rows.length)return;center=[(Math.min(...rows.map(r=>+r.SITE_LATITUDE))+Math.max(...rows.map(r=>+r.SITE_LATITUDE)))/2,(Math.min(...rows.map(r=>+r.SITE_LONGITUDE))+Math.max(...rows.map(r=>+r.SITE_LONGITUDE)))/2];zoom=12;while(zoom>3){const [cx,cy]=world(...center);if(rows.every(r=>{const [x,y]=world(+r.SITE_LATITUDE,+r.SITE_LONGITUDE);return Math.abs(x-cx)<$('map').clientWidth/2-24&&Math.abs(y-cy)<$('map').clientHeight/2-24;}))break;zoom--;}drawMap();saveMapView();}
 let viewTimer;function saveMapView(){if(data?.read_only)return;clearTimeout(viewTimer);viewTimer=setTimeout(()=>api('/api/settings',{map_view:{center,zoom}}).catch(showError),250);}
-function drawMap(){if(!data)return;const map=$('map'),w=map.clientWidth,h=map.clientHeight,[cx,cy]=world(...center),left=cx-w/2,top=cy-h/2;$('tiles').replaceChildren();
- const localMap=!online&&data.local_map,template=online?data.map_settings.url_template:localMap?'/api/offline-map/{z}/{x}/{y}.png':null;
- if(template){for(let x=Math.floor(left/256);x<=Math.floor((left+w)/256);x++)for(let y=Math.floor(top/256);y<=Math.floor((top+h)/256);y++){if(x<0||y<0||x>=2**zoom||y>=2**zoom)continue;const img=new Image();img.alt='';img.style.left=`${x*256-left}px`;img.style.top=`${y*256-top}px`;img.className=localMap?'local-tile':'';img.src=template.replace('{z}',zoom).replace('{x}',x).replace('{y}',y);img.onerror=()=>{img.hidden=true;if(online)$('attribution').textContent='Provider unavailable · offline map';};$('tiles').append(img);}}
+function drawMap(){if(!data)return;
+ const map=$('map'),w=map.clientWidth,h=map.clientHeight,[cx,cy]=world(...center),left=cx-w/2,top=cy-h/2;
+ $('tiles').replaceChildren();
+ const generation=++mapGeneration,provider=USGS_BASEMAPS[basemapMode],configured=online&&data.map_settings.url_template;
+ const remoteRequested=basemapMode!=='offline'&&(Boolean(provider)||(basemapMode==='auto'&&Boolean(configured)));
+ const remote=remoteRequested&&!basemapFailed,localMap=!remote&&Boolean(data.local_map);
+ const template=remote&&!provider?data.map_settings.url_template:localMap?'/api/offline-map/{z}/{x}/{y}.png':null;
+ if(remote||localMap)for(const tile of mapTileGrid(center,zoom,w,h,remote&&provider?16:18)){
+  const img=new Image();img.alt='';img.style.left=tile.left+'px';img.style.top=tile.top+'px';
+  img.style.width=tile.size+'px';img.style.height=tile.size+'px';
+  img.className=localMap?'local-tile':provider&&remote?'usgs-tile':'';
+  img.src=remote&&provider?usgsTileUrl(basemapMode,tile.z,tile.x,tile.y):template.replace('{z}',tile.z).replace('{x}',tile.x).replace('{y}',tile.y);
+  img.onerror=()=>{if(generation!==mapGeneration)return;if(remote&&!basemapFailed){basemapFailed=true;drawMap();}else img.hidden=true;};
+  $('tiles').append(img);
+ }
  if(typeof renderBasemap==='function')renderBasemap(center,zoom,mapLayers);
- $('attribution').innerHTML=online?esc(data.map_settings.attribution):localMap?'<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors · ODbL</a> · local regional map (outside coverage: grid)':'Offline coordinate grid · WGS84 source points';
+ const attribution=remote&&provider?'<a href="https://www.usgs.gov/programs/national-geospatial-program/national-map" target="_blank" rel="noopener">USGS The National Map</a> · '+esc(provider.attribution):remote?esc(data.map_settings.attribution):localMap?'<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors · ODbL</a> · local regional map (outside coverage: grid)':'Offline coordinate grid · WGS84 source points';
+ $('attribution').innerHTML=(basemapFailed&&remoteRequested?'USGS / provider unavailable · offline fallback · ':'')+attribution;
+ const scale=mapScaleBar(center[0],zoom),scaleNode=$('map-scale');scaleNode.hidden=Boolean(data.mockup_parity);scaleNode.style.width=scale.pixels+'px';scaleNode.textContent=scale.label;
  renderHighwayShields(localMap?data.local_map.shields:[],left,top,w,h);
  $('map-overlay').hidden=true;if(selected&&point(selected)){const [mx,my]=world(+selected.SITE_LATITUDE,+selected.SITE_LONGITUDE),px=mx-left,py=my-top;if(px>=0&&px<w&&py>=0&&py<h){$('map-overlay').hidden=false;$('map-overlay').style.left=Math.min(px+10,w-195)+'px';$('map-overlay').style.top=Math.max(py-59,8)+'px';$('map-overlay').innerHTML=`<button id="popup-open"><b>${esc(selected.SITE_NAME)}</b><small>${esc(selected.project_type[0].toUpperCase()+selected.project_type.slice(1))} · ${selected.size_sf==null?'—':(selected.size_sf/1000).toFixed(0)+'K SF'}</small>${icon('chevron')}</button>`;}}
  document.querySelector('.legend').innerHTML=['ready','review','not_ready'].map(k=>`<div class="legend-line"><span class="dot ${bandOf({readiness:k})}"></span>${{ready:'Ready for Outreach',review:'In Review',not_ready:'Not Ready'}[k]} (${filtered.filter(r=>r.readiness===k).length})</div>`).join('');
  $('points').setAttribute('viewBox',`0 0 ${w} ${h}`);let mapped=0;
  $('points').innerHTML=filtered.filter(r=>point(r)&&mapLayers[r.readiness]).map(r=>{const [x,y]=world(+r.SITE_LATITUDE,+r.SITE_LONGITUDE),px=x-left,py=y-top;if(px<0||px>w||py<0||py>h)return '';mapped++;const chosen=r===selected,c=chosen?'#ffb000':colors[r.readiness];return `<g data-key="${esc(r.source_key)}" tabindex="0" role="button" aria-label="Select ${esc(r.SITE_NAME)}"><circle cx="${px}" cy="${py}" r="${chosen?16:11}" fill="${c}22" stroke="${c}88" stroke-width="1.5"/><circle cx="${px}" cy="${py}" r="${chosen?10:7.5}" fill="${c}" stroke="#232a23" stroke-width="2"/></g>`;}).join('');
+ $('map-coverage').hidden=Boolean(data.mockup_parity);$('map-coverage').textContent=`${mapped} visible · ${filtered.filter(point).length} geolocated · ${filtered.length-filtered.filter(point).length} without coordinates`;
  $('attribution').insertAdjacentHTML('afterbegin',`${mapped} visible points · `);if(mapLayers.heat){$('points').insertAdjacentHTML('afterbegin',filtered.filter(point).map(r=>{const[x,y]=world(+r.SITE_LATITUDE,+r.SITE_LONGITUDE);return `<circle cx="${x-left}" cy="${y-top}" r="28" fill="#ffb00015" style="pointer-events:none"/>`;}).join(''));}
 }
 $('points').onclick=e=>{const r=filtered.find(x=>x.source_key===e.target.closest('[data-key]')?.dataset.key);if(r)choose(r);};$('points').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();e.target.dispatchEvent(new MouseEvent('click',{bubbles:true}));}};
