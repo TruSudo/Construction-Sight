@@ -9,7 +9,7 @@
     941
   ],
   "native_reference_available": true,
-  "font_identity": "Open-source approximations: Roboto UI and headings; Roboto Mono labels",
+  "font_identity": "Open-source approximations: Inter heading, header, KPI numerals, dossier and watch heading; Roboto remaining UI; Roboto Mono labels. Original font identity remains unverified.",
   "boxes": {
     "sidebar": [
       0,
@@ -224,10 +224,19 @@
       "license": "OFL-1.1"
     },
     "heading": {
-      "family": "CS Roboto",
-      "weight": 700
+      "family": "CS Inter",
+      "weight": 600
     },
-    "exact_identification": false
+    "exact_identification": false,
+    "inter": {
+      "family": "CS Inter",
+      "files": [
+        "inter-latin-400-normal.woff2",
+        "inter-latin-500-normal.woff2",
+        "inter-latin-600-normal.woff2"
+      ],
+      "license": "OFL-1.1"
+    }
   },
   "visual_masks": {
     "photo": [
@@ -491,5 +500,17 @@
     ],
     "sha256": "8243b58e19a922810295ef1d07bbbc2eb9f1ff4e7e9030c5f1873ecda57ff476",
     "source_sha256": "00a043ec464728b2275ba3372421b89e1e31d7a7a76dcdb20ced9628bea03f3f"
+  },
+  "skyline_asset": {
+    "path": "skyline-native.png",
+    "crop_box": [
+      0,
+      774,
+      321,
+      941
+    ],
+    "source_sha256": "00a043ec464728b2275ba3372421b89e1e31d7a7a76dcdb20ced9628bea03f3f",
+    "sha256": "30a7f85c8fca5009b2c5396c8ba2a49285ef04cffaa5f2350eda09623f367157",
+    "text_handling": "Tagline remains live DOM text. Original tagline foreground omitted from this decorative artwork alpha channel; no navigation or labels retained."
   }
 }

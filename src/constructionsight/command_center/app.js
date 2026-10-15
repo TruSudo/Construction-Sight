@@ -1,6 +1,6 @@
 'use strict';
 const $=id=>document.getElementById(id), esc=s=>String(s==null||['NA','N/A','UNKNOWN','NULL','NONE'].includes(String(s).toUpperCase())?'—':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const nav=[['grid','Command Center'],['chart','Project Intelligence'],['pin','Site Map'],['network','Entity Network'],['file','Evidence Chains'],['','COMMERCIAL'],['target','Lead Console'],['send','Outreach'],['database','Bid Studio'],['dollar','Royalty Ledger'],['','INTELLIGENCE'],['star','Watchlist'],['layers','Sources & Collection']];
+const nav=[['grid','Command Center'],['chart','Project Intelligence'],['pin','Site Map'],['network','Entity Network'],['file','Evidence Chains'],['','COMMERCIAL'],['target','Lead Console'],['send','Outreach'],['database','Bid Studio'],['dollar','Royalty Ledger'],['','INTELLIGENCE'],['star','Watchlist'],['source_layers','Sources & Collection']];
 let data,filtered=[],selected=null,readinessFilter='',zoom=8,center=[34.05,-117.25],online=false,activePage='Command Center',watches=[],mapLayers={ready:true,review:true,not_ready:true,county:false,heat:false},includeExcluded=false,analyticFilter=null;
 const colors={ready:'#38ba52',review:'#ffb000',not_ready:'#f13e44'},bandOf=r=>({ready:'high',review:'review',not_ready:'low'}[r.readiness]);
 $('nav').innerHTML=nav.map(([symbol,name])=>symbol?`<button data-page="${name}" class="${name==='Command Center'?'active':''}"><em>${icon(symbol)}</em>${name}</button>`:`<small>${name}</small>`).join('');

@@ -1,14 +1,14 @@
 {
   "reference_sha256": "00a043ec464728b2275ba3372421b89e1e31d7a7a76dcdb20ced9628bea03f3f",
   "regions": {
-    "sidebar": 38.66287878787879,
-    "header": 27.19140625,
-    "hero": 54.916666666666664,
-    "kpis": 37.939778645833336,
-    "map": 41.715169270833336,
-    "dossier": 35.918294270833336,
-    "leads": 24.6484375,
-    "watchlist": 27.809244791666668
+    "sidebar": 27.15246212121212,
+    "header": 15.780598958333334,
+    "hero": 34.994791666666664,
+    "kpis": 28.537109375,
+    "map": 40.705729166666664,
+    "dossier": 24.9287109375,
+    "leads": 23.125325520833332,
+    "watchlist": 22.490234375
   },
   "purpose": "Best measured app baseline at the original native viewport; reports regression only, not fidelity acceptance."
 }
