@@ -2,7 +2,8 @@
 const $=id=>document.getElementById(id), esc=s=>String(s==null||['NA','N/A','UNKNOWN','NULL','NONE'].includes(String(s).toUpperCase())?'—':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const nav=[['grid','Command Center'],['chart','Project Intelligence'],['pin','Site Map'],['network','Entity Network'],['file','Evidence Chains'],['','COMMERCIAL'],['target','Lead Console'],['send','Outreach'],['database','Bid Studio'],['dollar','Royalty Ledger'],['','INTELLIGENCE'],['star','Watchlist'],['source_layers','Sources & Collection']];
 let data,filtered=[],selected=null,readinessFilter='',zoom=8,center=[34.05,-117.25],online=false,activePage='Command Center',watches=[],mapLayers={ready:true,review:true,not_ready:true,county:false,heat:false},includeExcluded=false,analyticFilter=null;
-let basemapMode=safeMapMode(localStorage.getItem('cs:basemap')),basemapFailed=false,mapGeneration=0;
+let basemapMode=safeMapMode(localStorage.getItem('cs:basemap')),basemapFailed=false,mapGeneration=0,tileSource=null;
+const tileElements=new Map();
 function setBasemap(mode){basemapMode=safeMapMode(mode);basemapFailed=false;localStorage.setItem('cs:basemap',basemapMode);drawMap();}
 const colors={ready:'#38ba52',review:'#ffb000',not_ready:'#f13e44'},bandOf=r=>({ready:'high',review:'review',not_ready:'low'}[r.readiness]);
 $('nav').innerHTML=nav.map(([symbol,name])=>symbol?`<button data-page="${name}" class="${name==='Command Center'?'active':''}"><em>${icon(symbol)}</em>${name}</button>`:`<small>${name}</small>`).join('');
@@ -17,19 +18,30 @@ function fitBounds(){const rows=filtered.filter(point);if(!rows.length)return;ce
 let viewTimer;function saveMapView(){if(data?.read_only)return;clearTimeout(viewTimer);viewTimer=setTimeout(()=>api('/api/settings',{map_view:{center,zoom}}).catch(showError),250);}
 function drawMap(){if(!data)return;
  const map=$('map'),w=map.clientWidth,h=map.clientHeight,[cx,cy]=world(...center),left=cx-w/2,top=cy-h/2;
- $('tiles').replaceChildren();
- const generation=++mapGeneration,provider=USGS_BASEMAPS[basemapMode],configured=online&&data.map_settings.url_template;
+ const provider=USGS_BASEMAPS[basemapMode],configured=online&&data.map_settings.url_template;
  const remoteRequested=basemapMode!=='offline'&&(Boolean(provider)||(basemapMode==='auto'&&Boolean(configured)));
  const remote=remoteRequested&&!basemapFailed,localMap=!remote&&Boolean(data.local_map);
  const template=remote&&!provider?data.map_settings.url_template:localMap?'/api/offline-map/{z}/{x}/{y}.png':null;
+ const source=remote?(provider?'usgs:'+provider.service:'configured:'+template):localMap?'local:'+template:'grid';
+ // Preserve existing requests and decoded images while panning within the same tiles.
+ // A source change retires prior nodes and invalidates only their error callbacks.
+ if(source!==tileSource){tileSource=source;mapGeneration++;tileElements.clear();$('tiles').replaceChildren();}
+ const generation=mapGeneration,wanted=new Set();
  if(remote||localMap)for(const tile of mapTileGrid(center,zoom,w,h,remote&&provider?16:18)){
-  const img=new Image();img.alt='';img.style.left=tile.left+'px';img.style.top=tile.top+'px';
+  const key=tile.z+'/'+tile.x+'/'+tile.y;wanted.add(key);
+  let img=tileElements.get(key);
+  if(!img){
+   img=new Image();img.alt='';img.className=localMap?'local-tile':provider&&remote?'usgs-tile':'';
+   const image=img;
+   image.onerror=()=>{if(generation!==mapGeneration||!image.isConnected)return;
+    if(remote&&!basemapFailed){basemapFailed=true;drawMap();}else image.hidden=true;};
+   image.src=remote&&provider?usgsTileUrl(basemapMode,tile.z,tile.x,tile.y):template.replace('{z}',tile.z).replace('{x}',tile.x).replace('{y}',tile.y);
+   tileElements.set(key,image);$('tiles').append(image);
+  }
+  img.style.left=tile.left+'px';img.style.top=tile.top+'px';
   img.style.width=tile.size+'px';img.style.height=tile.size+'px';
-  img.className=localMap?'local-tile':provider&&remote?'usgs-tile':'';
-  img.src=remote&&provider?usgsTileUrl(basemapMode,tile.z,tile.x,tile.y):template.replace('{z}',tile.z).replace('{x}',tile.x).replace('{y}',tile.y);
-  img.onerror=()=>{if(generation!==mapGeneration)return;if(remote&&!basemapFailed){basemapFailed=true;drawMap();}else img.hidden=true;};
-  $('tiles').append(img);
  }
+ for(const [key,img] of tileElements)if(!wanted.has(key)){img.remove();tileElements.delete(key);}
  if(typeof renderBasemap==='function')renderBasemap(center,zoom,mapLayers);
  const attribution=remote&&provider?'<a href="https://www.usgs.gov/programs/national-geospatial-program/national-map" target="_blank" rel="noopener">USGS The National Map</a> · '+esc(provider.attribution):remote?esc(data.map_settings.attribution):localMap?'<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors · ODbL</a> · local regional map (outside coverage: grid)':'Offline coordinate grid · WGS84 source points';
  $('attribution').innerHTML=(basemapFailed&&remoteRequested?'USGS / provider unavailable · offline fallback · ':'')+attribution;
