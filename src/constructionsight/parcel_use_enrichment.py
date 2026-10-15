@@ -13,7 +13,7 @@ from typing import Any
 
 import httpx
 
-from constructionsight.lead_quality import classify_names
+from constructionsight.lead_quality import classify_names, load_keywords
 
 LAYER = (
     "https://gis.countyofriverside.us/arcgis_mapping/rest/services/OpenData/Assessor/MapServer/50"
@@ -49,16 +49,46 @@ def normalized_city(value: Any) -> str:
     return re.sub(r"\s+CA(?:\s+\d{5}(?:-\d{4})?)?$", "", text)
 
 
-def source_use_type(value: Any) -> dict[str, Any] | None:
+def eligible_for_parcel_type(row: dict[str, Any]) -> bool:
+    # Existing assessment use cannot resolve a contradictory agricultural project name.
+    return row.get("project_type") == "unknown" and not re.search(
+        r"\b(?:farms?|organic|agricultur\w*|orchards?|vineyards?)\b",
+        str(row.get("SITE_NAME") or ""),
+        re.I,
+    )
+
+
+def source_use_type(value: Any, *, site_name: str = "") -> dict[str, Any] | None:
     text = str(value or "").strip()
     # A numeric code without an official codebook is never decoded by guessing.
     if not text or not re.search(r"[A-Za-z]", text):
         return None
     if re.search(r"\b(grove|agricultural|farm|orchard|vineyard|mixed)\b", text, re.I):
         return None
-    result = classify_names({"SITE_NAME": text})
+    result = None
+    for rule in load_keywords().get("parcel_use_rules", []):
+        match = next(
+            (
+                k
+                for k in rule["keywords"]
+                if re.search(r"(?<!\w)" + re.escape(k) + r"(?!\w)", text, re.I)
+            ),
+            None,
+        )
+        if match:
+            result = {
+                "project_type": rule["project_type"],
+                "subtype": rule["subtype"],
+                "matched_keyword": match,
+                "excluded": False,
+            }
+            break
+    if result is None:
+        result = classify_names({"SITE_NAME": text})
     if result["project_type"] == "unknown":
         return None
+    if result["project_type"] == "residential" and re.search(r"\bpark\b", site_name, re.I):
+        return None  # A park name does not establish a proposed residential project.
     return {
         **result,
         "source": LABEL,
@@ -97,7 +127,7 @@ def claims_from_responses(
     claims = {}
     counts = {"eligible": 0, "ambiguous": 0, "no_match": 0, "unmapped_use": 0, "classified": 0}
     for row in rows:
-        if row.get("SITE_COUNTY") != "Riverside" or row.get("project_type") != "unknown":
+        if row.get("SITE_COUNTY") != "Riverside" or not eligible_for_parcel_type(row):
             continue
         address, city = (
             normalized_address(row.get("SITE_ADDRESS")),
@@ -119,7 +149,7 @@ def claims_from_responses(
             counts["ambiguous"] += 1
             continue
         match = matches[0]
-        classified = source_use_type(match["CLASS_CODE"])
+        classified = source_use_type(match["CLASS_CODE"], site_name=str(row.get("SITE_NAME") or ""))
         if not classified:
             counts["unmapped_use"] += 1
             continue
@@ -153,7 +183,7 @@ def collect_parcel_use(
         r
         for r in rows
         if r.get("SITE_COUNTY") == "Riverside"
-        and r.get("project_type") == "unknown"
+        and eligible_for_parcel_type(r)
         and normalized_address(r.get("SITE_ADDRESS"))
     ]
     addresses = sorted(

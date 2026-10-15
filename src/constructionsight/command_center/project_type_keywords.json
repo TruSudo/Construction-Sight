@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "label": "Name-based classifier; type unverified",
   "method": "Whole words and phrases; site name first. Developer lexical cues only for non-excluded types. Generic tract, park, center and developer identities alone do not prove use.",
   "rules": [
@@ -43,7 +43,23 @@
         "water treatment",
         "water reclamation",
         "utility",
-        "utilities"
+        "utilities",
+        "water treatment plant",
+        "wtp",
+        "wastewater",
+        "fiber conduits",
+        "fiber optic",
+        "fibre optic",
+        "water system",
+        "groundwater treatment",
+        "transmission lines",
+        "guardrail",
+        "recharge basin",
+        "emergency release",
+        "reservoir",
+        "spillway",
+        "dam",
+        "dike"
       ],
       "excluded": true
     },
@@ -232,7 +248,10 @@
         "walmart",
         "dollar general",
         "7 eleven",
-        "7-eleven"
+        "7-eleven",
+        "store",
+        "food mart",
+        "home depot"
       ],
       "excluded": false
     },
@@ -272,6 +291,35 @@
         "fabrication"
       ],
       "excluded": false
+    }
+  ],
+  "parcel_use_rules": [
+    {
+      "keywords": [
+        "warehouse/dry storage",
+        "warehouse dry storage"
+      ],
+      "project_type": "industrial",
+      "subtype": "warehouse_logistics"
+    },
+    {
+      "keywords": [
+        "homesite",
+        "home site",
+        "single family res",
+        "single-family res"
+      ],
+      "project_type": "residential",
+      "subtype": "residential"
+    },
+    {
+      "keywords": [
+        "mobile home",
+        "mobilehome",
+        "manufactured home"
+      ],
+      "project_type": "residential",
+      "subtype": "residential"
     }
   ]
 }

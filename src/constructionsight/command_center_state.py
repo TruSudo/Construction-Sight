@@ -12,6 +12,7 @@ from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 from PIL import Image, UnidentifiedImageError
 
@@ -62,6 +63,7 @@ def initialize(directory: Path) -> None:
         db.executescript("""
           CREATE TABLE IF NOT EXISTS cc_settings(id INTEGER PRIMARY KEY CHECK(id=1),data TEXT);
           CREATE TABLE IF NOT EXISTS cc_facts(key TEXT PRIMARY KEY,data TEXT NOT NULL);
+          CREATE TABLE IF NOT EXISTS cc_site_reviews(key TEXT PRIMARY KEY,data TEXT NOT NULL);
           CREATE TABLE IF NOT EXISTS cc_contacts(
             id INTEGER PRIMARY KEY,key TEXT NOT NULL,data TEXT NOT NULL);
           CREATE TABLE IF NOT EXISTS cc_weight_changes(
@@ -193,6 +195,9 @@ def attach(directory: Path, rows: list[dict[str, Any]]) -> None:
             contacts.setdefault(item["key"], []).append(
                 {**json.loads(item["data"]), "id": item["id"]}
             )
+        reviews = {
+            r["key"]: json.loads(r["data"]) for r in db.execute("SELECT * FROM cc_site_reviews")
+        }
         queued = {r["source_key"] for r in db.execute("SELECT * FROM outreach_queue")}
         photos = {r["key"] for r in db.execute("SELECT key FROM cc_photos")}
     for row in rows:
@@ -211,6 +216,76 @@ def attach(directory: Path, rows: list[dict[str, Any]]) -> None:
         row["photo"] = key in photos
         if row.get("site_verified"):
             row["site_verification"] = {"verified": True, "source": "Entered by user"}
+        if key in reviews:
+            review = reviews[key]
+            current = review["site_fingerprint"] == site_fingerprint(row) and review[
+                "row_sha256"
+            ] == row.get("row_sha256")
+            row["site_verified"] = bool(review["verified"] and current)
+            row["site_verification"] = {
+                **review,
+                "verified": row["site_verified"],
+                "stale": not current,
+            }
+
+
+def site_fingerprint(row: dict[str, Any]) -> str:
+    return fingerprint(
+        {
+            k: row.get(k)
+            for k in (
+                "SITE_NAME",
+                "SITE_ADDRESS",
+                "SITE_CITY",
+                "SITE_COUNTY",
+                "SITE_LATITUDE",
+                "SITE_LONGITUDE",
+            )
+        }
+    )
+
+
+def review_site(directory: Path, row: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    if set(payload) != {"verified", "source", "note"} or type(payload["verified"]) is not bool:
+        raise ValueError("Site review requires a decision, source URL and review note")
+    source, note = payload["source"], payload["note"]
+    if (
+        not isinstance(source, str)
+        or not isinstance(note, str)
+        or len(source) > 10000
+        or len(note) > 2000
+    ):
+        raise ValueError("Invalid site review source or note")
+    url = urlsplit(source)
+    if payload["verified"] and (
+        url.scheme != "https"
+        or not url.netloc
+        or url.username
+        or url.password
+        or len(note.strip()) < 20
+    ):
+        raise ValueError(
+            "Verification requires a public HTTPS evidence URL and a note of at least 20 characters"
+        )
+    review = {
+        **payload,
+        "reviewer": settings(directory)["profile"]["name"] or "—",
+        "at": now(),
+        "site_fingerprint": site_fingerprint(row),
+        "row_sha256": row.get("row_sha256"),
+        "response_sha256": row.get("response_sha256"),
+        "method": (
+            "Operator review of independently checked physical-site evidence; "
+            "project stage and contact authority remain separate"
+        ),
+    }
+    with connect(directory) as db:
+        db.execute(
+            "INSERT OR REPLACE INTO cc_site_reviews VALUES (?,?)",
+            (row["source_key"], json.dumps(review)),
+        )
+    event(directory, row["source_key"], "site_review", review)
+    return review
 
 
 def save_facts(directory: Path, key: str, payload: dict[str, Any]) -> dict[str, Any]:
@@ -253,6 +328,8 @@ def save_facts(directory: Path, key: str, payload: dict[str, Any]) -> dict[str, 
     initialize(directory)
     with connect(directory) as db:
         db.execute("BEGIN IMMEDIATE")
+        if "site_verified" in normalized:
+            db.execute("DELETE FROM cc_site_reviews WHERE key=?", (key,))
         prior = db.execute("SELECT data FROM cc_facts WHERE key=?", (key,)).fetchone()
         facts = json.loads(prior["data"]) if prior else {}
         for field, value in normalized.items():

@@ -31,7 +31,12 @@ from constructionsight import (
 )
 from constructionsight import command_center_commercial as commercial
 from constructionsight import command_center_state as state
-from constructionsight.contact_call_list import bulk_import, call_list_csv, contact_coverage
+from constructionsight.contact_call_list import (
+    annotate_contacts,
+    bulk_import,
+    call_list_csv,
+    contact_coverage,
+)
 from constructionsight.fontana_permits import fetch_candidates, retain_candidates
 from constructionsight.lead_quality import quality_report
 from constructionsight.lead_watchlist import update_watch, watchlist
@@ -53,6 +58,7 @@ from constructionsight.parcel_use_enrichment import load_claims
 from constructionsight.security_fit import WEIGHTS_PATH, load_weights, rank_leads
 from constructionsight.smarts_active import collect_active
 from constructionsight.smarts_api import USER_AGENT
+from constructionsight.spatial_parcel_use import load_claims as load_spatial_claims
 
 ASSETS = Path(__file__).parent / "command_center"
 
@@ -101,7 +107,7 @@ def projection(
     parcel_warning = None
     if directory:
         try:
-            parcel_claims = load_claims(directory, rows)
+            parcel_claims = {**load_spatial_claims(directory, rows), **load_claims(directory, rows)}
         except (OSError, ValueError, KeyError, TypeError) as exc:
             parcel_claims = {}
             parcel_warning = "Parcel enrichment rejected; no parcel type claims applied: " + str(
@@ -124,6 +130,7 @@ def projection(
         state.attach(directory, rows)
         assert prefs is not None
         rows = rank_leads(rows, weights=prefs["weights"])
+    rows = annotate_contacts(rows)
     cutoff = (datetime.now(UTC) - timedelta(days=7)).isoformat()
     local_today = datetime.now(ZoneInfo("America/Los_Angeles")).date()
     for row in rows:
@@ -613,6 +620,7 @@ def make_server(
             ) or path.startswith(
                 (
                     "/api/facts/",
+                    "/api/site-review/",
                     "/api/contacts/",
                     "/api/smarts-contacts/",
                     "/api/photo/",
@@ -804,6 +812,8 @@ def make_server(
                         family = path.split("/")[2]
                         if family == "facts":
                             result = state.save_facts(directory, key, payload)
+                        elif family == "site-review":
+                            result = state.review_site(directory, lead, payload)
                         elif family == "photo":
                             result = state.save_photo(directory, key, payload)
                         elif family == "smarts-contacts":

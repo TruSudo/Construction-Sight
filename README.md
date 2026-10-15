@@ -15,6 +15,8 @@ This opens the localhost Command Center and obtains a bounded official SMARTS ca
 ## Use
 
 - Lead Console filters and reviews captured projects; bulk SMARTS contact import verifies retained response/row hashes. Company call-list export excludes Do-Not-Contact and combines eligible sites.
+- Contact priority explains source provenance, consultant cues and email/phone sharing across distinct reported developer names. It is a heuristic; shared details may identify filing agents or related entities.
+- Lead Console’s **Verify sites** queue supports J/K navigation and requires an evidence URL, review note and explicit decision. Reviews become stale when the captured site changes.
 - Contacts, parcel use and source statements remain source-claimed until the relevant facts are independently verified. Ready for Outreach requires sourced contact and site evidence; it is never inferred from missing facts.
 - User menu provides reversible folder relocation, integrity-checked backups, dry-run restore and reviewed local PMTiles installation.
 - Project Intelligence shows outcome cohorts and reviewed scoring changes. Bid Studio retains exact-cent estimates and reusable scope/price revisions; Royalty Ledger separates calculated, invoiced and received amounts.

@@ -120,3 +120,42 @@ def test_cslb_preview_hash_ambiguity_and_no_guessed_email(tmp_path: Path) -> Non
         ][0]["status"]
         == "ambiguous"
     )
+
+
+def test_shared_channels_flag_distinct_reported_developers_and_rank_direct_contacts() -> None:
+    from constructionsight.contact_call_list import annotate_contacts, company_call_list
+
+    def lead(key: str, company: str, email: str, phone: str) -> dict:
+        return {
+            "source_key": key,
+            "DEVELOPER_NAME": company,
+            "SITE_NAME": key,
+            "readiness": "review",
+            "security_fit": 80,
+            "sourced_contacts": [
+                {
+                    "name": key,
+                    "email": email,
+                    "phone": phone,
+                    "source": "SMARTS source-reported developer contact",
+                }
+            ],
+        }
+
+    rows = [
+        lead("a", "Company A", "Same@example.test", "+1 (951) 555-0123"),
+        lead("b", "Company A", "same@example.test", "9515550123"),
+        lead("c", "Company B", "same@example.test", "9515550123"),
+        lead("d", "Company C", "direct@example.test", "9515550456"),
+    ]
+    viewed = annotate_contacts(rows)
+    assert viewed[0]["sourced_contacts"][0]["possible_filing_agent"]
+    assert viewed[0]["sourced_contacts"][0]["shared_developer_count"] == 2
+    assert not annotate_contacts(rows[:2])[0]["sourced_contacts"][0]["possible_filing_agent"]
+    assert not viewed[3]["sourced_contacts"][0]["possible_filing_agent"]
+    assert company_call_list(rows)[0]["company"] == "Company C"
+    report = contact_coverage(rows)
+    assert report["possible_filing_agent_leads"] == 3
+    exported = call_list_csv(rows).decode("utf-8-sig")
+    assert "possible filing agent or related entities" in exported and "why" in exported
+    assert "shared_developer_count" not in rows[0]["sourced_contacts"][0]
