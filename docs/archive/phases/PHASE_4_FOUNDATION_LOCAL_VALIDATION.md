@@ -31,7 +31,7 @@ Phase 4 foundation currently includes:
 ```text
 src/constructionsight/domain_types.py
 src/constructionsight/provenance.py
-docs/PHASE_4_DOMAIN_MODEL_START.md
+docs/archive/phases/PHASE_4_DOMAIN_MODEL_START.md
 ```
 
 ## Interpretation

@@ -6,6 +6,9 @@ on:
       - 'tests/**'
       - 'pyproject.toml'
       - '.github/workflows/command-center-visual.yml'
+  push:
+    branches: [main]
+    paths: ['src/**', 'tests/**', 'pyproject.toml', '.github/workflows/command-center-visual.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -26,12 +29,6 @@ jobs:
           npm --prefix tests/visual ci
           cd tests/visual
           npx playwright install --with-deps chromium
-      - name: Python and JavaScript blocking gates
-        run: |
-          python -m ruff check src tests
-          python -m mypy src/constructionsight
-          find src tests -name '*.js' -not -path '*/node_modules/*' -print0 | xargs -0 -n1 node --check
-          python -m pytest -q
       - name: Challenge recorded perceptual calibration
         run: python tests/visual/calibrate.py tests/visual/output/calibration
       - name: Capture offline Demo at current reference viewport

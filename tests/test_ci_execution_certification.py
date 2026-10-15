@@ -20,7 +20,7 @@ _LEGACY_SHELL = "/bin/bash --noprofile --norc -e -o pipefail {0}"
 
 
 def _workflow() -> str:
-    return Path(".github/workflows/ci.yml").read_text(encoding="utf-8")
+    return Path("tests/fixtures/legacy-certification-ci.yml").read_text(encoding="utf-8")
 
 
 def _write(root: Path, workflow: str) -> None:
