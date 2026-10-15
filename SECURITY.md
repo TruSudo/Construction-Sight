@@ -1,77 +1,85 @@
 # ConstructionSight security policy
 
-## Security scope
+## Report security problems responsibly
 
-The canonical security scope is every tracked repository file: production code,
-tests, governance, CI, dependency locks, documentation claims, and retained
-evidence. Untracked caches and generated build output are not product evidence and
-cannot satisfy certification.
+Security-sensitive findings involving authorization bypass, credential disclosure,
+unsafe external effects, duplicate execution, provenance loss, supply-chain risk,
+data corruption, or boundary confusion should be reported privately through a
+GitHub security advisory if disclosure could enable exploitation. Do not publish
+exploit details in an ordinary issue before they are addressed.
 
-Report authorization bypass, stale-state or replay behavior, duplicated effects,
-unsafe network or persistence authority, provenance loss, supply-chain drift,
-cross-boundary data confusion, fail-open behavior, and certification bypass as
-security issues. Use a private GitHub security advisory when disclosure could make
-exploitation easier; do not publish exploit details in an ordinary issue first.
+## Active protection rules (2026-10-15)
 
-## Mandatory default: Native Maximum Assurance
+Security protections are **risk-proportionate** and remain mandatory where failure
+has meaningful consequences. The general development and release workflow is in
+[README.md](README.md); previously mandated five-pass, all-file, exact-tree
+certification is **not** required for routine development, feature work or merge.
+The historical contracts and tooling remain in the repository for optional
+focused audits and reproducibility of prior certification claims.
 
-ConstructionSight is a private, solo-maintained open-source program without a
-standing external reviewer. That limitation raises the mandatory native standard;
-it does not authorize self-approval or permit review to be omitted.
+**Always enforce these boundaries:**
 
-Certification requires one frozen exact commit and tree plus all of the following:
+- Collect only lawfully accessible information in accordance with source terms,
+  access restrictions, rate limits and permissions. HTTP 403 is not an invitation
+  to route around an access boundary. No credential, CAPTCHA or login bypass.
+- Preserve genuine acquired source evidence and provenance where permitted;
+  never invent facts or promote a source claim, unverified match or hypothesis to
+  verified status. Retain timestamps, source scope and explicit uncertainty.
+- Keep external sending, purchases, destructive changes and high-impact effects
+  behind the existing operator-authorization rules. No automatic outreach.
+- Protect local secrets, credentials, source evidence and user data. Preserve
+  reliable, verified backups and safe recovery paths for persistent data changes.
+- Fail closed at permission and external-effect boundaries, and report access
+  failures, stale data, and unsupported coverage honestly rather than silently
+  claiming success.
 
-1. A repository-wide Codex Security deep scan containing at least three separately
-   initiated, context-isolated complete Standard passes.
-2. A separate fresh-context security review of the exact change range.
-3. A separate fresh-context adversarial invariant and attack-path review.
-4. Blind union of every pass's candidates before deduplication or adjudication.
-5. Complete coverage, with zero coverage gaps, deferred candidates, unresolved
-   candidates, or surviving security mutants.
-6. Deterministic negative, boundary, replay, concurrency, interruption, rollback,
-   restart, and fault tests wherever the affected authority can exhibit them.
-7. Exact-lock dependency integrity, deterministic SBOMs, vulnerability audits,
-   Ruff, strict mypy, compileall, warning-strict tests on Python 3.11 and 3.12,
-   architecture/capability/governance/authorization certification, adapter and
-   source-coverage audits, and diff hygiene.
-8. Hash-bound review and gate artifacts, exact reviewed-commit and tree binding,
-   immutable defect facts, and explicit owner residual-risk acceptance.
+## Development and release security gates
 
-Each analytical pass must begin without implementation-session conclusions or the
-other passes' candidate lists. Context isolation supplies a genuine fresh take but
-is not described as external or human independence. Any code, contract, test,
-dependency, or workflow change invalidates the assurance evidence and restarts the
-entire protocol.
+Normal PRs retain existing mandatory CI: Python 3.11 and 3.12 regression tests,
+Ruff, strict Mypy, JavaScript syntax, dependency integrity and vulnerability
+audit, plus affected functional/browser and source-specific tests. Never disable
+a failing required gate merely to obtain a green PR. Run focused tests during
+implementation and the full required CI before merge.
 
-## Additive review classifications
+**Heightened adversarial review is triggered by affected risk, not by every
+change in the repository.** Use review of the relevant threat model, negative
+permission cases, replay and idempotence, concurrency, fault interruption,
+restart and rollback as applicable when changing:
 
-The assurance modes are cumulative:
+- Credential or authorization enforcement and HTTP/source-access restrictions.
+- Automatic outbound effects, billing or privileged execution.
+- Irreversible schema/data migration, deletion, backup, restore and relocation.
+- Evidence/provenance integrity, source trust boundaries and cryptographic checks.
+- CI permissions, dependency trust and vulnerability handling.
 
-- `native_maximum` is the mandatory baseline. Owner acceptance records residual
-  responsibility but is not independent approval.
-- `independent_external_model` adds a fresh exact-tree review by a different model
-  provider, such as Claude or Gemini. Provider, model, artifact, and digest must be
-  recorded. It is independent external-model review, not human approval.
-- `independent_human` adds an unrelated human GitHub reviewer whose exact-commit
-  `APPROVED` review is re-fetched and verified by CI. The reviewer may not be the
-  repository owner or pull-request author.
+Mutation tests and multi-context independent reviews may be employed for the
+specific dangerous invariants under examination. Repeating entire-repository
+assurance without a concrete risk question is not an ordinary release requirement.
 
-External-model or human review never replaces or reduces the native baseline.
-There is no `none`, bypass, waiver, or self-approval-as-independent mode.
+## Known defects and incidents
 
-## Closure and accepted limitation
+Use severity **P0 critical, P1 major, P2 moderate, P3 minor** as defined in
+README.md. P0 blocks affected execution/release immediately. P1 blocks the
+affected feature or release, but does not freeze isolated unrelated development.
+P2 and P3 are tracked and prioritized rather than treated as universal blockers.
+Never conceal a defect, fabricate a passing result, or treat an acceptance gap
+as completed functionality.
 
-Active defects, incomplete coverage, unresolved or deferred candidates, malformed
-evidence, failed gates, and evidence that does not bind the exact frozen tree block
-certification. Findings are fixed and the complete protocol is rerun; they are not
-suppressed or severity-reduced to obtain a passing result.
+On an actual safety or data-integrity incident, disable the affected action,
+preserve relevant logs/evidence, determine scope and exposure, repair the fault,
+and run targeted regression/recovery checks before reactivation. Security defects
+are not severity-downgraded merely to ship.
 
-The accepted limitation for `native_maximum` is disclosed absence of an external
-model or human reviewer. The compensating control is the materially higher native
-burden above. This limitation is not an assertion that same-provider passes equal
-external independence and is not acceptance of a known security defect.
+## Historical full-repository certification
 
-Reconsider external-model or human review whenever maintainership expands, the
-repository becomes public or multiuser, protected or regulated data enters scope,
-production scheduling or hosted identity is enabled, or deployment consequences
-materially exceed the current local operating model.
+The legacy `governance/assurance_contract.toml`, semantic certification
+commands, mutation contracts, assurance passes, archived reviews and earlier
+accepted ADRs remain available for retrospective verification and unusually
+high-risk audits. **If that historical certification is intentionally invoked,
+its own internal evidence rules still apply to the claim it makes.** Passing
+current product CI does not claim the old native-maximum certificate, and the
+old certificate is not a universal prerequisite for operating or improving the
+local-first application.
+
+No policy change here relaxes source authorization, data access, external effects,
+evidence integrity, consent or the owner's existing approval controls.
