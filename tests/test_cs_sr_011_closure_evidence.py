@@ -52,7 +52,7 @@ def test_cs_sr_011_summary_cannot_claim_repository_certification_passed() -> Non
 def test_cs_sr_011_narrative_distinguishes_subgates_from_aggregate_result() -> None:
     # Regression: CS-SR-092
     narrative = (
-        ROOT / "docs/assurance/defect_closures/CS-SR-011.md"
+        ROOT / "docs/archive/assurance/defect_closures/CS-SR-011.md"
     ).read_text(encoding="utf-8")
 
     assert "concluded failure" in narrative

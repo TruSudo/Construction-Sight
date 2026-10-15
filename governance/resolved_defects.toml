@@ -15,9 +15,9 @@ resolution_summary = "Replaced the circular all-at-once assurance prerequisite w
 resolution_commit = "53845f5bfa0d9b9c312de49eadfd7aae0178e8d9"
 resolution_tree = "1f2a7265d0c2eb448d994c585a367580f8dd09d1"
 last_active_commit = "6dc1698b988d1cc6f5d8b983af3ddd3ba65af86e"
-evidence_paths = ["docs/adr/ADR-0008-reviewed-defect-closure-history.md", "docs/assurance/defect_closures/CS-SR-026.md"]
+evidence_paths = ["docs/adr/ADR-0008-reviewed-defect-closure-history.md", "docs/archive/assurance/defect_closures/CS-SR-026.md"]
 regression_tests = ["tests/test_governance_contract_schema.py", "tests/test_review_binding_certification.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-026.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-026.md"
 
 [[defects]]
 id = "CS-SR-045"
@@ -30,9 +30,9 @@ resolution_summary = "Made unknown access facts fail closed, required an affirma
 resolution_commit = "e8fb0753be361bf909405cd0f452164e8912c817"
 resolution_tree = "4394aa0d9f704b5b08da456d4d7b3523775df005"
 last_active_commit = "d8397479da583db7d935f6eeaff1eeb47901b186"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-045.md", "src/constructionsight/legal.py", "src/constructionsight/verification/source_verifier.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-045.md", "src/constructionsight/legal.py", "src/constructionsight/verification/source_verifier.py"]
 regression_tests = ["tests/test_access_policy.py", "tests/test_adapter_base.py", "tests/test_source_verifier.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-045.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-045.md"
 
 [[defects]]
 id = "CS-SR-049"
@@ -45,9 +45,9 @@ resolution_summary = "Made unresolved duplicate review a hard durable non-action
 resolution_commit = "ceea88953af6eb39a49717946934d7abe64b59b5"
 resolution_tree = "5f69c77b9dbbbda9ef3baf0cf2415d0aaf204f6e"
 last_active_commit = "059234e6ff5de2fc6e7ebfb7dbcfa5bd795ab3e5"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-049.md", "src/constructionsight/lead_operator_service.py", "src/constructionsight/lead_workflow_models.py", "src/constructionsight/storage/lead_workflow_store.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-049.md", "src/constructionsight/lead_operator_service.py", "src/constructionsight/lead_workflow_models.py", "src/constructionsight/storage/lead_workflow_store.py"]
 regression_tests = ["tests/test_lead_workflow_models.py", "tests/test_lead_workflow_service.py", "tests/test_lead_workflow_storage.py", "tests/test_lead_workflow_transition_authorization.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-049.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-049.md"
 
 [[defects]]
 id = "CS-SR-052"
@@ -60,9 +60,9 @@ resolution_summary = "Added a canonical full-content SHA-256 digest across mater
 resolution_commit = "de1007dd04300b521b1b6ad5713b98ab82b11ddc"
 resolution_tree = "a9c7c4f1a1d3221acb875550e0c82deff7df5d76"
 last_active_commit = "4f3e45ef4fe35262f5ec89214933b4112d1c3def"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-052.md", "src/constructionsight/result_authority_models.py", "src/constructionsight/result_authority_service.py", "src/constructionsight/result_ledger_models.py", "src/constructionsight/result_ledger_service.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-052.md", "src/constructionsight/result_authority_models.py", "src/constructionsight/result_authority_service.py", "src/constructionsight/result_ledger_models.py", "src/constructionsight/result_ledger_service.py"]
 regression_tests = ["tests/test_result_authority_event_integrity.py", "tests/test_result_ledger_service.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-052.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-052.md"
 
 [[defects]]
 id = "CS-SR-056"
@@ -75,9 +75,9 @@ resolution_summary = "Added repository-owned schema version 1, canonical schema 
 resolution_commit = "1866453b6cfcf63b6c0cd2af4cbb234daa59581f"
 resolution_tree = "93e1e6893e33253adcf921e1739af8972638b4b6"
 last_active_commit = "4f3e45ef4fe35262f5ec89214933b4112d1c3def"
-evidence_paths = ["docs/architecture/database_schema_governance.md", "docs/assurance/defect_closures/CS-SR-056.md", "src/constructionsight/storage/database.py", "src/constructionsight/storage/schema_governance.py"]
+evidence_paths = ["docs/architecture/database_schema_governance.md", "docs/archive/assurance/defect_closures/CS-SR-056.md", "src/constructionsight/storage/database.py", "src/constructionsight/storage/schema_governance.py"]
 regression_tests = ["tests/test_schema_governance.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-056.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-056.md"
 
 [[defects]]
 id = "CS-SR-065"
@@ -135,9 +135,9 @@ resolution_summary = "Implemented machine-readable architecture classification, 
 resolution_commit = "74598ce80a57c02c87e2d5cde68d3bd172d4bca0"
 resolution_tree = "200e913fec0c29ef6e3160533737e9ea0b895638"
 last_active_commit = "58e54aa0e06f3d8becb744d5dc65be83b33373ce"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-001.md", "governance/architecture_contract.toml", "src/constructionsight/architecture_boundary_certification.py", "src/constructionsight/architecture_certification.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-001.md", "governance/architecture_contract.toml", "src/constructionsight/architecture_boundary_certification.py", "src/constructionsight/architecture_certification.py"]
 regression_tests = ["tests/test_architecture_boundary_certification.py", "tests/test_governance_certification.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-001.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-001.md"
 
 [[defects]]
 id = "CS-SR-002"
@@ -150,9 +150,9 @@ resolution_summary = "Implemented a strict capability contract with fail-closed 
 resolution_commit = "74598ce80a57c02c87e2d5cde68d3bd172d4bca0"
 resolution_tree = "200e913fec0c29ef6e3160533737e9ea0b895638"
 last_active_commit = "58e54aa0e06f3d8becb744d5dc65be83b33373ce"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-002.md", "governance/capability_contract.toml", "src/constructionsight/traceability_certification.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-002.md", "governance/capability_contract.toml", "src/constructionsight/traceability_certification.py"]
 regression_tests = ["tests/test_governance_certification.py", "tests/test_governance_link_certification.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-002.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-002.md"
 
 [[defects]]
 id = "CS-SR-003"
@@ -165,9 +165,9 @@ resolution_summary = "Pinned the supported dependency environments and Actions, 
 resolution_commit = "74598ce80a57c02c87e2d5cde68d3bd172d4bca0"
 resolution_tree = "200e913fec0c29ef6e3160533737e9ea0b895638"
 last_active_commit = "58e54aa0e06f3d8becb744d5dc65be83b33373ce"
-evidence_paths = [".github/workflows/ci.yml", "docs/assurance/defect_closures/CS-SR-003.md", "governance/dependency_contract.toml", "src/constructionsight/supply_chain.py"]
+evidence_paths = [".github/workflows/ci.yml", "docs/archive/assurance/defect_closures/CS-SR-003.md", "governance/dependency_contract.toml", "src/constructionsight/supply_chain.py"]
 regression_tests = ["tests/test_ci_action_certification.py", "tests/test_supply_chain.py", "tests/test_vulnerability_certification.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-003.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-003.md"
 
 [[defects]]
 id = "CS-SR-004"
@@ -180,9 +180,9 @@ resolution_summary = "Implemented the network contract, approved transport class
 resolution_commit = "74598ce80a57c02c87e2d5cde68d3bd172d4bca0"
 resolution_tree = "200e913fec0c29ef6e3160533737e9ea0b895638"
 last_active_commit = "58e54aa0e06f3d8becb744d5dc65be83b33373ce"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-004.md", "governance/network_contract.toml", "src/constructionsight/governance_certification.py", "src/constructionsight/governance_certification_core.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-004.md", "governance/network_contract.toml", "src/constructionsight/governance_certification.py", "src/constructionsight/governance_certification_core.py"]
 regression_tests = ["tests/test_governance_certification.py", "tests/test_repository_certification.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-004.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-004.md"
 
 [[defects]]
 id = "CS-SR-005"
@@ -195,9 +195,9 @@ resolution_summary = "Implemented general scope-bound authorization decisions an
 resolution_commit = "74598ce80a57c02c87e2d5cde68d3bd172d4bca0"
 resolution_tree = "200e913fec0c29ef6e3160533737e9ea0b895638"
 last_active_commit = "58e54aa0e06f3d8becb744d5dc65be83b33373ce"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-005.md", "governance/authorization_contract.toml", "src/constructionsight/authorization_decision.py", "src/constructionsight/authorization_decision_models.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-005.md", "governance/authorization_contract.toml", "src/constructionsight/authorization_decision.py", "src/constructionsight/authorization_decision_models.py"]
 regression_tests = ["tests/test_authorization_decision.py", "tests/test_semantic_authorization_certification.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-005.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-005.md"
 
 [[defects]]
 id = "CS-SR-006"
@@ -210,9 +210,9 @@ resolution_summary = "Expanded deterministic repository certification to enforce
 resolution_commit = "74598ce80a57c02c87e2d5cde68d3bd172d4bca0"
 resolution_tree = "200e913fec0c29ef6e3160533737e9ea0b895638"
 last_active_commit = "58e54aa0e06f3d8becb744d5dc65be83b33373ce"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-006.md", "src/constructionsight/governance_certification.py", "src/constructionsight/governance_contract_schema.py", "src/constructionsight/repository_certification.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-006.md", "src/constructionsight/governance_certification.py", "src/constructionsight/governance_contract_schema.py", "src/constructionsight/repository_certification.py"]
 regression_tests = ["tests/test_governance_certification.py", "tests/test_governance_contract_schema.py", "tests/test_repository_certification.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-006.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-006.md"
 
 [[defects]]
 id = "CS-SR-009"
@@ -225,9 +225,9 @@ resolution_summary = "Unified logical requirement parsing across lock verificati
 resolution_commit = "74598ce80a57c02c87e2d5cde68d3bd172d4bca0"
 resolution_tree = "200e913fec0c29ef6e3160533737e9ea0b895638"
 last_active_commit = "58e54aa0e06f3d8becb744d5dc65be83b33373ce"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-009.md", "src/constructionsight/dependency_certification.py", "src/constructionsight/supply_chain.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-009.md", "src/constructionsight/dependency_certification.py", "src/constructionsight/supply_chain.py"]
 regression_tests = ["tests/test_dependency_certification.py", "tests/test_supply_chain.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-009.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-009.md"
 
 [[defects]]
 id = "CS-SR-010"
@@ -240,9 +240,9 @@ resolution_summary = "Integrated focused mutation certification into both suppor
 resolution_commit = "74598ce80a57c02c87e2d5cde68d3bd172d4bca0"
 resolution_tree = "200e913fec0c29ef6e3160533737e9ea0b895638"
 last_active_commit = "58e54aa0e06f3d8becb744d5dc65be83b33373ce"
-evidence_paths = [".github/workflows/ci.yml", "docs/assurance/defect_closures/CS-SR-010.md", "governance/mutation_contract.toml", "src/constructionsight/mutation_certification.py"]
+evidence_paths = [".github/workflows/ci.yml", "docs/archive/assurance/defect_closures/CS-SR-010.md", "governance/mutation_contract.toml", "src/constructionsight/mutation_certification.py"]
 regression_tests = ["tests/test_mutation_detection.py", "tests/test_mutation_governance_overlay.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-010.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-010.md"
 
 [[defects]]
 id = "CS-SR-012"
@@ -255,9 +255,9 @@ resolution_summary = "Implemented exact installed-environment inventory validati
 resolution_commit = "74598ce80a57c02c87e2d5cde68d3bd172d4bca0"
 resolution_tree = "200e913fec0c29ef6e3160533737e9ea0b895638"
 last_active_commit = "58e54aa0e06f3d8becb744d5dc65be83b33373ce"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-012.md", "governance/dependency_contract.toml", "src/constructionsight/supply_chain.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-012.md", "governance/dependency_contract.toml", "src/constructionsight/supply_chain.py"]
 regression_tests = ["tests/test_dependency_certification.py", "tests/test_supply_chain.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-012.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-012.md"
 
 [[defects]]
 id = "CS-SR-013"
@@ -270,9 +270,9 @@ resolution_summary = "Bound deterministic SBOM output to governed verified inven
 resolution_commit = "74598ce80a57c02c87e2d5cde68d3bd172d4bca0"
 resolution_tree = "200e913fec0c29ef6e3160533737e9ea0b895638"
 last_active_commit = "58e54aa0e06f3d8becb744d5dc65be83b33373ce"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-013.md", "governance/dependency_contract.toml", "src/constructionsight/supply_chain.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-013.md", "governance/dependency_contract.toml", "src/constructionsight/supply_chain.py"]
 regression_tests = ["tests/test_supply_chain.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-013.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-013.md"
 
 [[defects]]
 id = "CS-SR-014"
@@ -285,9 +285,9 @@ resolution_summary = "Made dependency policy traceability fail closed for malfor
 resolution_commit = "74598ce80a57c02c87e2d5cde68d3bd172d4bca0"
 resolution_tree = "200e913fec0c29ef6e3160533737e9ea0b895638"
 last_active_commit = "58e54aa0e06f3d8becb744d5dc65be83b33373ce"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-014.md", "governance/dependency_contract.toml", "src/constructionsight/dependency_certification.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-014.md", "governance/dependency_contract.toml", "src/constructionsight/dependency_certification.py"]
 regression_tests = ["tests/test_dependency_certification.py", "tests/test_supply_chain.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-014.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-014.md"
 
 [[defects]]
 id = "CS-SR-015"
@@ -300,9 +300,9 @@ resolution_summary = "Implemented exact governance-surface loading and schema/no
 resolution_commit = "74598ce80a57c02c87e2d5cde68d3bd172d4bca0"
 resolution_tree = "200e913fec0c29ef6e3160533737e9ea0b895638"
 last_active_commit = "58e54aa0e06f3d8becb744d5dc65be83b33373ce"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-015.md", "src/constructionsight/governance_contract_schema.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-015.md", "src/constructionsight/governance_contract_schema.py"]
 regression_tests = ["tests/test_governance_contract_schema.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-015.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-015.md"
 
 [[defects]]
 id = "CS-SR-016"
@@ -315,9 +315,9 @@ resolution_summary = "Implemented bidirectional cross-contract governance reconc
 resolution_commit = "74598ce80a57c02c87e2d5cde68d3bd172d4bca0"
 resolution_tree = "200e913fec0c29ef6e3160533737e9ea0b895638"
 last_active_commit = "58e54aa0e06f3d8becb744d5dc65be83b33373ce"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-016.md", "src/constructionsight/governance_link_certification.py", "src/constructionsight/traceability_certification.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-016.md", "src/constructionsight/governance_link_certification.py", "src/constructionsight/traceability_certification.py"]
 regression_tests = ["tests/test_governance_certification.py", "tests/test_governance_link_certification.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-016.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-016.md"
 
 [[defects]]
 id = "CS-SR-017"
@@ -330,9 +330,9 @@ resolution_summary = "Implemented strict adversarial-contract doctrine validatio
 resolution_commit = "74598ce80a57c02c87e2d5cde68d3bd172d4bca0"
 resolution_tree = "200e913fec0c29ef6e3160533737e9ea0b895638"
 last_active_commit = "58e54aa0e06f3d8becb744d5dc65be83b33373ce"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-017.md", "governance/adversarial_test_contract.toml", "src/constructionsight/adversarial_contract_certification.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-017.md", "governance/adversarial_test_contract.toml", "src/constructionsight/adversarial_contract_certification.py"]
 regression_tests = ["tests/test_adversarial_contract_certification.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-017.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-017.md"
 
 [[defects]]
 id = "CS-SR-008"
@@ -345,9 +345,9 @@ resolution_summary = "Upgraded the affected exact supported-environment identiti
 resolution_commit = "f773c926168c6284c171bfe05aac7f729c870ddc"
 resolution_tree = "d9e084b83ee887ae65e16918592cc9410e06d87a"
 last_active_commit = "96b477307c94e288ff16165b957e3b5a835d4535"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-008.md", "requirements/py311.lock", "requirements/py312.lock", "src/constructionsight/vulnerability_certification.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-008.md", "requirements/py311.lock", "requirements/py312.lock", "src/constructionsight/vulnerability_certification.py"]
 regression_tests = ["tests/test_vulnerability_certification.py", "tests/test_vulnerability_ci_certification.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-008.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-008.md"
 
 [[defects]]
 id = "CS-SR-019"
@@ -360,9 +360,9 @@ resolution_summary = "Corrected canonical authorization/preflight identity const
 resolution_commit = "f773c926168c6284c171bfe05aac7f729c870ddc"
 resolution_tree = "d9e084b83ee887ae65e16918592cc9410e06d87a"
 last_active_commit = "96b477307c94e288ff16165b957e3b5a835d4535"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-019.md", "src/constructionsight/authorization_decision.py", "src/constructionsight/authorization_decision_models.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-019.md", "src/constructionsight/authorization_decision.py", "src/constructionsight/authorization_decision_models.py"]
 regression_tests = ["tests/test_authorization_decision.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-019.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-019.md"
 
 [[defects]]
 id = "CS-SR-020"
@@ -375,9 +375,9 @@ resolution_summary = "Routed production CEQAnet listing/CSV reads through bounde
 resolution_commit = "f773c926168c6284c171bfe05aac7f729c870ddc"
 resolution_tree = "d9e084b83ee887ae65e16918592cc9410e06d87a"
 last_active_commit = "96b477307c94e288ff16165b957e3b5a835d4535"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-020.md", "src/constructionsight/adapters/ceqanet_listing_executor.py", "src/constructionsight/ceqanet_csv_live_service.py", "src/constructionsight/http_transport.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-020.md", "src/constructionsight/adapters/ceqanet_listing_executor.py", "src/constructionsight/ceqanet_csv_live_service.py", "src/constructionsight/http_transport.py"]
 regression_tests = ["tests/test_ceqanet_csv_live.py", "tests/test_ceqanet_listing_executor.py", "tests/test_http_transport.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-020.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-020.md"
 
 [[defects]]
 id = "CS-SR-021"
@@ -390,9 +390,9 @@ resolution_summary = "Reconciled CEQAnet listing planner/executor/service/CLI ar
 resolution_commit = "f773c926168c6284c171bfe05aac7f729c870ddc"
 resolution_tree = "d9e084b83ee887ae65e16918592cc9410e06d87a"
 last_active_commit = "96b477307c94e288ff16165b957e3b5a835d4535"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-021.md", "src/constructionsight/adapters/ceqanet_listing_executor.py", "src/constructionsight/ceqanet_listing_execute_cli.py", "src/constructionsight/ceqanet_listing_service.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-021.md", "src/constructionsight/adapters/ceqanet_listing_executor.py", "src/constructionsight/ceqanet_listing_execute_cli.py", "src/constructionsight/ceqanet_listing_service.py"]
 regression_tests = ["tests/test_ceqanet_listing_execute_cli.py", "tests/test_ceqanet_listing_executor.py", "tests/test_ceqanet_listing_service.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-021.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-021.md"
 
 [[defects]]
 id = "CS-SR-022"
@@ -405,9 +405,9 @@ resolution_summary = "Made reviewed CEQAnet persistence fully prevalidated, exac
 resolution_commit = "f773c926168c6284c171bfe05aac7f729c870ddc"
 resolution_tree = "d9e084b83ee887ae65e16918592cc9410e06d87a"
 last_active_commit = "96b477307c94e288ff16165b957e3b5a835d4535"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-022.md", "src/constructionsight/ceqanet_persistence_execute.py", "src/constructionsight/operator_services/ceqanet_persistence_service.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-022.md", "src/constructionsight/ceqanet_persistence_execute.py", "src/constructionsight/operator_services/ceqanet_persistence_service.py"]
 regression_tests = ["tests/test_ceqanet_persistence_execute.py", "tests/test_ceqanet_persistence_operator_service.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-022.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-022.md"
 
 [[defects]]
 id = "CS-SR-024"
@@ -420,9 +420,9 @@ resolution_summary = "Replaced Git-parent review binding with deterministic revi
 resolution_commit = "f773c926168c6284c171bfe05aac7f729c870ddc"
 resolution_tree = "d9e084b83ee887ae65e16918592cc9410e06d87a"
 last_active_commit = "96b477307c94e288ff16165b957e3b5a835d4535"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-024.md", "src/constructionsight/assurance_certification.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-024.md", "src/constructionsight/assurance_certification.py"]
 regression_tests = ["tests/test_assurance_reviewed_tree_binding.py", "tests/test_review_binding_certification.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-024.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-024.md"
 
 [[defects]]
 id = "CS-SR-025"
@@ -435,9 +435,9 @@ resolution_summary = "Made reviewed-tree computation fail closed on staged, unst
 resolution_commit = "f773c926168c6284c171bfe05aac7f729c870ddc"
 resolution_tree = "d9e084b83ee887ae65e16918592cc9410e06d87a"
 last_active_commit = "96b477307c94e288ff16165b957e3b5a835d4535"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-025.md", "src/constructionsight/assurance_certification.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-025.md", "src/constructionsight/assurance_certification.py"]
 regression_tests = ["tests/test_assurance_reviewed_tree_binding.py", "tests/test_review_binding_certification.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-025.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-025.md"
 
 [[defects]]
 id = "CS-SR-029"
@@ -450,9 +450,9 @@ resolution_summary = "Implemented one canonical outbound URL identity with rejec
 resolution_commit = "f773c926168c6284c171bfe05aac7f729c870ddc"
 resolution_tree = "d9e084b83ee887ae65e16918592cc9410e06d87a"
 last_active_commit = "96b477307c94e288ff16165b957e3b5a835d4535"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-029.md", "src/constructionsight/http_transport.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-029.md", "src/constructionsight/http_transport.py"]
 regression_tests = ["tests/test_http_transport.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-029.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-029.md"
 
 [[defects]]
 id = "CS-SR-030"
@@ -465,9 +465,9 @@ resolution_summary = "Bound persistence authorization to a detached canonical wr
 resolution_commit = "f773c926168c6284c171bfe05aac7f729c870ddc"
 resolution_tree = "d9e084b83ee887ae65e16918592cc9410e06d87a"
 last_active_commit = "96b477307c94e288ff16165b957e3b5a835d4535"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-030.md", "src/constructionsight/ceqanet_write_plan.py", "src/constructionsight/operator_services/ceqanet_persistence_service.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-030.md", "src/constructionsight/ceqanet_write_plan.py", "src/constructionsight/operator_services/ceqanet_persistence_service.py"]
 regression_tests = ["tests/test_ceqanet_persistence_operator_service.py", "tests/test_ceqanet_write_plan.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-030.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-030.md"
 
 [[defects]]
 id = "CS-SR-031"
@@ -480,9 +480,9 @@ resolution_summary = "Isolated vulnerability tooling from quality interpreters a
 resolution_commit = "f773c926168c6284c171bfe05aac7f729c870ddc"
 resolution_tree = "d9e084b83ee887ae65e16918592cc9410e06d87a"
 last_active_commit = "96b477307c94e288ff16165b957e3b5a835d4535"
-evidence_paths = [".github/workflows/ci.yml", "docs/assurance/defect_closures/CS-SR-031.md", "src/constructionsight/supply_chain.py"]
+evidence_paths = [".github/workflows/ci.yml", "docs/archive/assurance/defect_closures/CS-SR-031.md", "src/constructionsight/supply_chain.py"]
 regression_tests = ["tests/test_assurance_preflight_certification.py", "tests/test_supply_chain.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-031.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-031.md"
 
 [[defects]]
 id = "CS-SR-032"
@@ -495,9 +495,9 @@ resolution_summary = "Denied redirects at request time across production-visible
 resolution_commit = "f773c926168c6284c171bfe05aac7f729c870ddc"
 resolution_tree = "d9e084b83ee887ae65e16918592cc9410e06d87a"
 last_active_commit = "96b477307c94e288ff16165b957e3b5a835d4535"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-032.md", "src/constructionsight/ceqanet_detail_http.py", "src/constructionsight/ceqanet_discovery_http.py", "src/constructionsight/http_transport.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-032.md", "src/constructionsight/ceqanet_detail_http.py", "src/constructionsight/ceqanet_discovery_http.py", "src/constructionsight/http_transport.py"]
 regression_tests = ["tests/test_ceqanet_discovery_http.py", "tests/test_ceqanet_listing_executor.py", "tests/test_http_transport.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-032.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-032.md"
 
 [[defects]]
 id = "CS-SR-033"
@@ -510,9 +510,9 @@ resolution_summary = "Added tracked-symlink rejection and centralized symlink-re
 resolution_commit = "f773c926168c6284c171bfe05aac7f729c870ddc"
 resolution_tree = "d9e084b83ee887ae65e16918592cc9410e06d87a"
 last_active_commit = "96b477307c94e288ff16165b957e3b5a835d4535"
-evidence_paths = [".github/workflows/ci.yml", "docs/assurance/defect_closures/CS-SR-033.md", "src/constructionsight/repository_path_certification.py"]
+evidence_paths = [".github/workflows/ci.yml", "docs/archive/assurance/defect_closures/CS-SR-033.md", "src/constructionsight/repository_path_certification.py"]
 regression_tests = ["tests/test_assurance_preflight_certification.py", "tests/test_repository_path_certification.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-033.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-033.md"
 
 [[defects]]
 id = "CS-SR-035"
@@ -525,9 +525,9 @@ resolution_summary = "Bound executable CEQAnet network policy to exact canonical
 resolution_commit = "f773c926168c6284c171bfe05aac7f729c870ddc"
 resolution_tree = "d9e084b83ee887ae65e16918592cc9410e06d87a"
 last_active_commit = "96b477307c94e288ff16165b957e3b5a835d4535"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-035.md", "src/constructionsight/adapters/ceqanet_listing.py", "src/constructionsight/adapters/ceqanet_query.py", "src/constructionsight/ceqanet_listing_service.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-035.md", "src/constructionsight/adapters/ceqanet_listing.py", "src/constructionsight/adapters/ceqanet_query.py", "src/constructionsight/ceqanet_listing_service.py"]
 regression_tests = ["tests/test_ceqanet_listing_plan.py", "tests/test_ceqanet_listing_service.py", "tests/test_ceqanet_search_contract.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-035.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-035.md"
 
 [[defects]]
 id = "CS-SR-036"
@@ -540,9 +540,9 @@ resolution_summary = "Pinned pip 26.2 in both artifact-hashed supported-environm
 resolution_commit = "f773c926168c6284c171bfe05aac7f729c870ddc"
 resolution_tree = "d9e084b83ee887ae65e16918592cc9410e06d87a"
 last_active_commit = "96b477307c94e288ff16165b957e3b5a835d4535"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-036.md", "requirements/py311.lock", "requirements/py312.lock", "src/constructionsight/vulnerability_certification.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-036.md", "requirements/py311.lock", "requirements/py312.lock", "src/constructionsight/vulnerability_certification.py"]
 regression_tests = ["tests/test_vulnerability_certification.py", "tests/test_vulnerability_ci_certification.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-036.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-036.md"
 
 [[defects]]
 id = "CS-SR-037"
@@ -555,9 +555,9 @@ resolution_summary = "Made production HTTP construct and transmit the exact auth
 resolution_commit = "f773c926168c6284c171bfe05aac7f729c870ddc"
 resolution_tree = "d9e084b83ee887ae65e16918592cc9410e06d87a"
 last_active_commit = "96b477307c94e288ff16165b957e3b5a835d4535"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-037.md", "src/constructionsight/http_transport.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-037.md", "src/constructionsight/http_transport.py"]
 regression_tests = ["tests/test_http_transport.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-037.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-037.md"
 
 [[defects]]
 id = "CS-SR-038"
@@ -570,9 +570,9 @@ resolution_summary = "Removed effect-capable response-hook authority from produc
 resolution_commit = "f773c926168c6284c171bfe05aac7f729c870ddc"
 resolution_tree = "d9e084b83ee887ae65e16918592cc9410e06d87a"
 last_active_commit = "96b477307c94e288ff16165b957e3b5a835d4535"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-038.md", "src/constructionsight/http_transport.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-038.md", "src/constructionsight/http_transport.py"]
 regression_tests = ["tests/test_http_transport.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-038.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-038.md"
 
 [[defects]]
 id = "CS-SR-039"
@@ -585,9 +585,9 @@ resolution_summary = "Made production HTTP environment-independent with reviewed
 resolution_commit = "f773c926168c6284c171bfe05aac7f729c870ddc"
 resolution_tree = "d9e084b83ee887ae65e16918592cc9410e06d87a"
 last_active_commit = "96b477307c94e288ff16165b957e3b5a835d4535"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-039.md", "src/constructionsight/http_transport.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-039.md", "src/constructionsight/http_transport.py"]
 regression_tests = ["tests/test_http_transport.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-039.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-039.md"
 
 [[defects]]
 id = "CS-SR-040"
@@ -600,9 +600,9 @@ resolution_summary = "Routed production ArcGIS acquisition through governed exac
 resolution_commit = "f773c926168c6284c171bfe05aac7f729c870ddc"
 resolution_tree = "d9e084b83ee887ae65e16918592cc9410e06d87a"
 last_active_commit = "96b477307c94e288ff16165b957e3b5a835d4535"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-040.md", "src/constructionsight/operator_services/parcel_arcgis_service.py", "src/constructionsight/parcel_source_acquisition_http.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-040.md", "src/constructionsight/operator_services/parcel_arcgis_service.py", "src/constructionsight/parcel_source_acquisition_http.py"]
 regression_tests = ["tests/test_arcgis_transport_semantic_equivalence.py", "tests/test_parcel_arcgis_operator_service.py", "tests/test_parcel_source_acquisition_http.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-040.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-040.md"
 
 [[defects]]
 id = "CS-SR-041"
@@ -615,9 +615,9 @@ resolution_summary = "Enforced ArcGIS response size limits before full materiali
 resolution_commit = "f773c926168c6284c171bfe05aac7f729c870ddc"
 resolution_tree = "d9e084b83ee887ae65e16918592cc9410e06d87a"
 last_active_commit = "96b477307c94e288ff16165b957e3b5a835d4535"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-041.md", "src/constructionsight/parcel_source_acquisition_http.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-041.md", "src/constructionsight/parcel_source_acquisition_http.py"]
 regression_tests = ["tests/test_parcel_source_acquisition_http.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-041.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-041.md"
 
 [[defects]]
 id = "CS-SR-042"
@@ -630,9 +630,9 @@ resolution_summary = "Restricted CSV success media types so HTML login/denial/er
 resolution_commit = "f773c926168c6284c171bfe05aac7f729c870ddc"
 resolution_tree = "d9e084b83ee887ae65e16918592cc9410e06d87a"
 last_active_commit = "96b477307c94e288ff16165b957e3b5a835d4535"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-042.md", "src/constructionsight/ceqanet_csv_live_service.py", "src/constructionsight/http_transport.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-042.md", "src/constructionsight/ceqanet_csv_live_service.py", "src/constructionsight/http_transport.py"]
 regression_tests = ["tests/test_ceqanet_csv_live.py", "tests/test_http_transport.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-042.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-042.md"
 
 [[defects]]
 id = "CS-SR-048"
@@ -646,9 +646,9 @@ resolution_summary = "Made confidence operational rather than descriptive: every
 resolution_commit = "13e4ebf9befbac90154110b315e855ba6b2d31dd"
 resolution_tree = "aaf777d2ab495eefc5e39dc9a336800c2080cc74"
 last_active_commit = "22ff17f177fc26d9056f2678cc18f4c9ad4894eb"
-evidence_paths = ["docs/architecture/opportunity_enrichment_spine.md", "docs/assurance/defect_closures/CS-SR-048.md", "src/constructionsight/opportunity_enrichment_models.py", "src/constructionsight/opportunity_enrichment_service.py", "src/constructionsight/opportunity_scoring_profile.py"]
+evidence_paths = ["docs/architecture/opportunity_enrichment_spine.md", "docs/archive/assurance/defect_closures/CS-SR-048.md", "src/constructionsight/opportunity_enrichment_models.py", "src/constructionsight/opportunity_enrichment_service.py", "src/constructionsight/opportunity_scoring_profile.py"]
 regression_tests = ["tests/test_opportunity_enrichment_models.py", "tests/test_opportunity_enrichment_service.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-048.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-048.md"
 
 [[defects]]
 id = "CS-SR-068"
@@ -781,7 +781,7 @@ resolution_summary = "Corrected the recorded import-order, nested-context and lo
 resolution_commit = "008a1a29cf3dccbff2ecf3113c50777607fa33fb"
 resolution_tree = "3b7eb4801095f49f73de42dd07d011c1e7e91389"
 last_active_commit = "07710b9d9b6ca35d5fe3c4a046112d9e04ed8f8f"
-evidence_paths = ["docs/assurance/consolidation_defect_triage_2026-09-24.md", "docs/assurance/defect_closures/CS-SR-075.md", "tests/test_ceqanet_operator_bundle_verify.py", "tests/test_effect_consumption.py"]
+evidence_paths = ["docs/archive/assurance/consolidation_defect_triage_2026-09-24.md", "docs/assurance/defect_closures/CS-SR-075.md", "tests/test_ceqanet_operator_bundle_verify.py", "tests/test_effect_consumption.py"]
 regression_tests = ["tests/test_ceqanet_operator_archive.py", "tests/test_ceqanet_operator_bundle.py", "tests/test_ceqanet_operator_bundle_verify.py", "tests/test_effect_consumption.py", "tests/test_parcel_source_acquisition_bundle.py"]
 closure_evidence = "docs/assurance/defect_closures/CS-SR-075.md"
 
@@ -796,9 +796,9 @@ resolution_summary = "Canonical defect closure now reloads the named last-active
 resolution_commit = "3f932df4a275f894796c8779fb376fb6bd8eb4f5"
 resolution_tree = "316fff8506714d00fb1ca3a8cc4f5c06ff372ce5"
 last_active_commit = "35bf620b8bd434ad8ca83192d2f92581efc54696"
-evidence_paths = ["docs/adr/ADR-0008-reviewed-defect-closure-history.md", "docs/assurance/defect_closures/CS-SR-028.md", "src/constructionsight/defect_closure_certification.py"]
+evidence_paths = ["docs/adr/ADR-0008-reviewed-defect-closure-history.md", "docs/archive/assurance/defect_closures/CS-SR-028.md", "src/constructionsight/defect_closure_certification.py"]
 regression_tests = ["tests/test_governance_contract_schema.py", "tests/test_review_binding_certification.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-028.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-028.md"
 
 [[defects]]
 id = "CS-SR-062"
@@ -856,9 +856,9 @@ resolution_summary = "Centralized runtime artifact access behind canonical path 
 resolution_commit = "62d747172892adb9be24a4d331428080edd91ad2"
 resolution_tree = "1225a6fe9f94a164609654cd467994fb35fef2ab"
 last_active_commit = "c633af8716159d0db01b1f5893fe6d25c28d8351"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-054.md", "docs/audits/evidence/2026-09-21-loader-batch/manifest.json", "docs/audits/evidence/2026-09-21-output-batch/manifest.json", "src/constructionsight/storage/runtime_artifacts.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-054.md", "docs/audits/evidence/2026-09-21-loader-batch/manifest.json", "docs/audits/evidence/2026-09-21-output-batch/manifest.json", "src/constructionsight/storage/runtime_artifacts.py"]
 regression_tests = ["tests/test_runtime_artifact_publication.py", "tests/test_runtime_artifacts.py", "tests/test_runtime_evidence_loaders.py", "tests/test_runtime_output_writers.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-054.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-054.md"
 
 [[defects]]
 id = "CS-SR-055"
@@ -871,9 +871,9 @@ resolution_summary = "Applied pre-materialization ceilings across local intake, 
 resolution_commit = "49c79447491bd531299331ad6a5846e64eb1c08e"
 resolution_tree = "383837c5d2ca7900ae0e501153cd902f2967e6ea"
 last_active_commit = "c633af8716159d0db01b1f5893fe6d25c28d8351"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-055.md", "docs/audits/evidence/2026-09-21-loader-batch/manifest.json", "src/constructionsight/adapters/runner.py", "src/constructionsight/intake_service.py", "src/constructionsight/storage/runtime_artifacts.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-055.md", "docs/audits/evidence/2026-09-21-loader-batch/manifest.json", "src/constructionsight/adapters/runner.py", "src/constructionsight/intake_service.py", "src/constructionsight/storage/runtime_artifacts.py"]
 regression_tests = ["tests/test_adapter_runner.py", "tests/test_ceqanet_operator_archive_verify.py", "tests/test_intake_service.py", "tests/test_parcel_source_acquisition_bundle.py", "tests/test_runtime_evidence_loaders.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-055.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-055.md"
 
 [[defects]]
 id = "CS-SR-018"
@@ -886,9 +886,9 @@ resolution_summary = "The repository now mechanically forbids CLI-to-transport i
 resolution_commit = "0f26546f8e415fdf37910b0b26d39bf2ca84dbae"
 resolution_tree = "24b66aa15ad9b192347e8dba9322d3c0da5074c3"
 last_active_commit = "93442dc0dc5eb2db26bf2e0a652a2c45db55598e"
-evidence_paths = ["docs/adr/ADR-0004-authorization-boundaries.md", "docs/assurance/defect_closures/CS-SR-018.md", "governance/architecture_contract.toml", "src/constructionsight/architecture_boundary_certification.py", "src/constructionsight/semantic_authorization_certification.py"]
+evidence_paths = ["docs/adr/ADR-0004-authorization-boundaries.md", "docs/archive/assurance/defect_closures/CS-SR-018.md", "governance/architecture_contract.toml", "src/constructionsight/architecture_boundary_certification.py", "src/constructionsight/semantic_authorization_certification.py"]
 regression_tests = ["tests/test_architecture_boundary_certification.py", "tests/test_semantic_authorization_certification.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-018.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-018.md"
 
 [[defects]]
 id = "CS-SR-034"
@@ -901,9 +901,9 @@ resolution_summary = "Replaced authorized-looking-name trust with a resolved, pa
 resolution_commit = "b76be5c8d3a57ec68aeb4490b486c1802f66ba30"
 resolution_tree = "ede507fe2df4107804f75b58d6e6b4d984674b4b"
 last_active_commit = "93442dc0dc5eb2db26bf2e0a652a2c45db55598e"
-evidence_paths = ["docs/adr/ADR-0004-authorization-boundaries.md", "docs/assurance/defect_closures/CS-SR-034.md", "src/constructionsight/semantic_authorization_certification.py"]
+evidence_paths = ["docs/adr/ADR-0004-authorization-boundaries.md", "docs/archive/assurance/defect_closures/CS-SR-034.md", "src/constructionsight/semantic_authorization_certification.py"]
 regression_tests = ["tests/test_semantic_authorization_certification.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-034.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-034.md"
 
 [[defects]]
 id = "CS-SR-043"
@@ -916,9 +916,9 @@ resolution_summary = "Production authorization facades now execute effects only 
 resolution_commit = "0f26546f8e415fdf37910b0b26d39bf2ca84dbae"
 resolution_tree = "24b66aa15ad9b192347e8dba9322d3c0da5074c3"
 last_active_commit = "93442dc0dc5eb2db26bf2e0a652a2c45db55598e"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-043.md", "docs/audits/cs_sr_061_effect_consumption_remediation_2026-08-22.md", "src/constructionsight/effect_consumption.py", "src/constructionsight/semantic_authorization_certification.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-043.md", "docs/audits/cs_sr_061_effect_consumption_remediation_2026-08-22.md", "src/constructionsight/effect_consumption.py", "src/constructionsight/semantic_authorization_certification.py"]
 regression_tests = ["tests/test_adversarial_semantic_witnesses.py", "tests/test_effect_consumption.py", "tests/test_semantic_authorization_certification.py", "tests/test_source_http_effect_ownership.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-043.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-043.md"
 
 [[defects]]
 id = "CS-SR-044"
@@ -931,9 +931,9 @@ resolution_summary = "Authoritative effect time is now acquired internally by Co
 resolution_commit = "0f26546f8e415fdf37910b0b26d39bf2ca84dbae"
 resolution_tree = "24b66aa15ad9b192347e8dba9322d3c0da5074c3"
 last_active_commit = "93442dc0dc5eb2db26bf2e0a652a2c45db55598e"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-044.md", "docs/audits/cs_sr_061_effect_consumption_remediation_2026-08-22.md", "src/constructionsight/effect_consumption.py", "src/constructionsight/semantic_authorization_certification.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-044.md", "docs/audits/cs_sr_061_effect_consumption_remediation_2026-08-22.md", "src/constructionsight/effect_consumption.py", "src/constructionsight/semantic_authorization_certification.py"]
 regression_tests = ["tests/test_effect_consumption.py", "tests/test_semantic_authorization_certification.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-044.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-044.md"
 
 [[defects]]
 id = "CS-SR-050"
@@ -946,9 +946,9 @@ resolution_summary = "Bound durable lead-workflow transitions to an exact databa
 resolution_commit = "a90615d23039a3b0ce5cf989ce6006f352825af6"
 resolution_tree = "454bf65e924ea0a40fea8fcd68675cd6b1209acb"
 last_active_commit = "63ca6ca95e1574b912efc8254b1b60adbbaf2a85"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-050.md", "src/constructionsight/lead_operator_service.py", "src/constructionsight/storage/lead_workflow_store.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-050.md", "src/constructionsight/lead_operator_service.py", "src/constructionsight/storage/lead_workflow_store.py"]
 regression_tests = ["tests/test_lead_workflow_storage.py", "tests/test_lead_workflow_transition_authorization.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-050.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-050.md"
 
 [[defects]]
 id = "CS-SR-051"
@@ -961,9 +961,9 @@ resolution_summary = "Separated mutable workflow projection updates from immutab
 resolution_commit = "a90615d23039a3b0ce5cf989ce6006f352825af6"
 resolution_tree = "454bf65e924ea0a40fea8fcd68675cd6b1209acb"
 last_active_commit = "63ca6ca95e1574b912efc8254b1b60adbbaf2a85"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-051.md", "src/constructionsight/result_ledger_service.py", "src/constructionsight/storage/lead_workflow_store.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-051.md", "src/constructionsight/result_ledger_service.py", "src/constructionsight/storage/lead_workflow_store.py"]
 regression_tests = ["tests/test_lead_workflow_storage.py", "tests/test_result_ledger_supersession.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-051.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-051.md"
 
 [[defects]]
 id = "CS-SR-053"
@@ -976,9 +976,9 @@ resolution_summary = "Replaced authoritative share arithmetic with exact integer
 resolution_commit = "30b911d0fa01c5dff84d99b2c8ed98a396bbc744"
 resolution_tree = "c6f0f492bc47e082e48561b92c913c9f544d6373"
 last_active_commit = "63ca6ca95e1574b912efc8254b1b60adbbaf2a85"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-053.md", "src/constructionsight/result_ledger_service.py", "src/constructionsight/storage/lead_workflow_orm.py", "src/constructionsight/storage/lead_workflow_store.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-053.md", "src/constructionsight/result_ledger_service.py", "src/constructionsight/storage/lead_workflow_orm.py", "src/constructionsight/storage/lead_workflow_store.py"]
 regression_tests = ["tests/test_lead_workflow_storage.py", "tests/test_result_ledger_precision.py", "tests/test_result_ledger_service.py", "tests/test_result_ledger_share_state.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-053.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-053.md"
 
 [[defects]]
 id = "CS-SR-057"
@@ -991,9 +991,9 @@ resolution_summary = "Enforced valid site coordinate and nonnegative physical bo
 resolution_commit = "f0086bebd54a8261311741eea66379c27e9edcf8"
 resolution_tree = "cd853dd0da066466199d995a9ceda525846c3487"
 last_active_commit = "63ca6ca95e1574b912efc8254b1b60adbbaf2a85"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-057.md", "src/constructionsight/permit_models.py", "src/constructionsight/planning_models.py", "src/constructionsight/site_models.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-057.md", "src/constructionsight/permit_models.py", "src/constructionsight/planning_models.py", "src/constructionsight/site_models.py"]
 regression_tests = ["tests/test_permit_models.py", "tests/test_planning_models.py", "tests/test_site_models.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-057.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-057.md"
 
 [[defects]]
 id = "CS-SR-007"
@@ -1006,9 +1006,9 @@ resolution_summary = "Replaced an escapable high-risk-only review obligation wit
 resolution_commit = "65b2ef5e726d8ab810776d1774edc74b1b70bc4c"
 resolution_tree = "0930ed4c5e9ffe508e8677b1d311f38606bc2a52"
 last_active_commit = "0440c7dbf61fc526875a736f577fccdaa878f3ee"
-evidence_paths = ["docs/adr/ADR-0009-native-maximum-assurance.md", "docs/assurance/defect_closures/CS-SR-007.md", "governance/assurance_contract.toml", "src/constructionsight/assurance_certification.py"]
+evidence_paths = ["docs/adr/ADR-0009-native-maximum-assurance.md", "docs/archive/assurance/defect_closures/CS-SR-007.md", "governance/assurance_contract.toml", "src/constructionsight/assurance_certification.py"]
 regression_tests = ["tests/test_assurance_certification.py", "tests/test_assurance_reviewed_tree_binding.py", "tests/test_review_binding_certification.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-007.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-007.md"
 
 [[defects]]
 id = "CS-SR-027"
@@ -1021,9 +1021,9 @@ resolution_summary = "Bound independent-human assurance to a real GitHub review 
 resolution_commit = "65b2ef5e726d8ab810776d1774edc74b1b70bc4c"
 resolution_tree = "0930ed4c5e9ffe508e8677b1d311f38606bc2a52"
 last_active_commit = "0440c7dbf61fc526875a736f577fccdaa878f3ee"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-027.md", "src/constructionsight/github_review_certification.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-027.md", "src/constructionsight/github_review_certification.py"]
 regression_tests = ["tests/test_ci_exact_head_contract.py", "tests/test_github_review_certification.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-027.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-027.md"
 
 [[defects]]
 id = "CS-SR-066"
@@ -1051,9 +1051,9 @@ resolution_summary = "Restored synchronized domain/application boundaries and ca
 resolution_commit = "6cd5c369b4c82abbcf678e971bc2c1f3376e7772"
 resolution_tree = "09fc0a45f1a25178cf04859928ec777ea3a3031b"
 last_active_commit = "02ab5cd8b3be9e703fde4c9295fb25772b403b0c"
-evidence_paths = [".github/workflows/ci.yml", "docs/assurance/defect_closures/CS-SR-023.md", "governance/mutation_contract.toml", "src/constructionsight/architecture_boundary_certification.py"]
+evidence_paths = [".github/workflows/ci.yml", "docs/archive/assurance/defect_closures/CS-SR-023.md", "governance/mutation_contract.toml", "src/constructionsight/architecture_boundary_certification.py"]
 regression_tests = ["tests/test_architecture_boundary_certification.py", "tests/test_ci_exact_head_contract.py", "tests/test_governance_contract_schema.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-023.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-023.md"
 
 [[defects]]
 id = "CS-SR-046"
@@ -1066,9 +1066,9 @@ resolution_summary = "Removed caller-authored generic verification/confidence au
 resolution_commit = "6cd5c369b4c82abbcf678e971bc2c1f3376e7772"
 resolution_tree = "09fc0a45f1a25178cf04859928ec777ea3a3031b"
 last_active_commit = "02ab5cd8b3be9e703fde4c9295fb25772b403b0c"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-046.md", "src/constructionsight/ceqanet_persistence_preview.py", "src/constructionsight/provenance.py", "src/constructionsight/source_candidate_docket_service.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-046.md", "src/constructionsight/ceqanet_persistence_preview.py", "src/constructionsight/provenance.py", "src/constructionsight/source_candidate_docket_service.py"]
 regression_tests = ["tests/test_ceqanet_persistence_preview.py", "tests/test_provenance_authority.py", "tests/test_source_candidate_docket.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-046.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-046.md"
 
 [[defects]]
 id = "CS-SR-047"
@@ -1081,9 +1081,9 @@ resolution_summary = "Introduced canonical versioned normalization and full-dige
 resolution_commit = "6cd5c369b4c82abbcf678e971bc2c1f3376e7772"
 resolution_tree = "09fc0a45f1a25178cf04859928ec777ea3a3031b"
 last_active_commit = "02ab5cd8b3be9e703fde4c9295fb25772b403b0c"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-047.md", "src/constructionsight/contractor_identity_models.py", "src/constructionsight/intelligence/artifact_identity.py", "src/constructionsight/lead_dedupe_models.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-047.md", "src/constructionsight/contractor_identity_models.py", "src/constructionsight/intelligence/artifact_identity.py", "src/constructionsight/lead_dedupe_models.py"]
 regression_tests = ["tests/test_artifact_resolution_service.py", "tests/test_derived_identity_integrity.py", "tests/test_lead_dedupe_models.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-047.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-047.md"
 
 [[defects]]
 id = "CS-SR-058"
@@ -1096,9 +1096,9 @@ resolution_summary = "Implemented a staged, serialized coupled-artifact publicat
 resolution_commit = "6cd5c369b4c82abbcf678e971bc2c1f3376e7772"
 resolution_tree = "09fc0a45f1a25178cf04859928ec777ea3a3031b"
 last_active_commit = "02ab5cd8b3be9e703fde4c9295fb25772b403b0c"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-058.md", "src/constructionsight/ceqanet_operator_bundle.py", "src/constructionsight/storage/runtime_artifacts.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-058.md", "src/constructionsight/ceqanet_operator_bundle.py", "src/constructionsight/storage/runtime_artifacts.py"]
 regression_tests = ["tests/test_ceqanet_operator_bundle.py", "tests/test_runtime_evidence_loaders.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-058.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-058.md"
 
 [[defects]]
 id = "CS-SR-059"
@@ -1111,9 +1111,9 @@ resolution_summary = "Made digest-bound and evidence-bearing nested collections 
 resolution_commit = "6cd5c369b4c82abbcf678e971bc2c1f3376e7772"
 resolution_tree = "09fc0a45f1a25178cf04859928ec777ea3a3031b"
 last_active_commit = "02ab5cd8b3be9e703fde4c9295fb25772b403b0c"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-059.md", "src/constructionsight/ceqanet_csv_live_models.py", "src/constructionsight/parcel_core_models.py", "src/constructionsight/result_ledger_models.py"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-059.md", "src/constructionsight/ceqanet_csv_live_models.py", "src/constructionsight/parcel_core_models.py", "src/constructionsight/result_ledger_models.py"]
 regression_tests = ["tests/test_deep_content_immutability.py", "tests/test_parcel_observation_service.py", "tests/test_result_ledger_service.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-059.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-059.md"
 
 [[defects]]
 id = "CS-SR-011"
@@ -1126,9 +1126,9 @@ resolution_summary = "Canonical pull-request CI run #1551 executed against exact
 resolution_commit = "381a64ecc4e35601453091ac880af0d6328d85a9"
 resolution_tree = "ec4523d97cb9d67f8b9c195c1b6caf59cebe80c3"
 last_active_commit = "381a64ecc4e35601453091ac880af0d6328d85a9"
-evidence_paths = [".github/workflows/ci.yml", "docs/assurance/defect_closures/CS-SR-011.md", "docs/assurance/evidence/CS-SR-011-ci-1551.json"]
+evidence_paths = [".github/workflows/ci.yml", "docs/archive/assurance/defect_closures/CS-SR-011.md", "docs/assurance/evidence/CS-SR-011-ci-1551.json"]
 regression_tests = ["tests/test_assurance_preflight_certification.py", "tests/test_ci_exact_head_contract.py", "tests/test_cs_sr_011_closure_evidence.py"]
-closure_evidence = "docs/assurance/defect_closures/CS-SR-011.md"
+closure_evidence = "docs/archive/assurance/defect_closures/CS-SR-011.md"
 
 [[defects]]
 id = "CS-SR-076"
@@ -1377,11 +1377,11 @@ area = "defect-closure-evidence-accuracy"
 root_cause = "The permanent CS-SR-011 closure summary states that repository/semantic certification passed, but the cited exact-head CI run completed with mandatory quality-gate failure and repository certification blockers."
 discovered_against = "539939a8cdef813b919b1c725fa1439d03d97ea7"
 required_resolution = "Correct the permanent closure evidence to accurately distinguish passing individual sub-gates from the failed aggregate/repository certification result, retain the exact run provenance, and add a regression preventing unsupported closure claims."
-resolution_summary = "Machine-verified closure proof for CS-SR-092: required_resolution_sha256=8ab30e1d786e4f58c9336283ab4a9a1eb1580f07984b850e1dd198ece58ea2e0; implementation_paths=[docs/assurance/defect_closures/CS-SR-011.md]; regression_tests=[tests/test_cs_sr_011_closure_evidence.py]."
+resolution_summary = "Machine-verified closure proof for CS-SR-092: required_resolution_sha256=8ab30e1d786e4f58c9336283ab4a9a1eb1580f07984b850e1dd198ece58ea2e0; implementation_paths=[docs/archive/assurance/defect_closures/CS-SR-011.md]; regression_tests=[tests/test_cs_sr_011_closure_evidence.py]."
 resolution_commit = "8459597bccc7e2b7cf2f573dd601339dc0a74ca2"
 resolution_tree = "3428bd7b6d3c600058af9e6327a42b8197a3ab56"
 last_active_commit = "8459597bccc7e2b7cf2f573dd601339dc0a74ca2"
-evidence_paths = ["docs/assurance/defect_closures/CS-SR-011.md","docs/assurance/defect_closures/CS-SR-092.md","docs/assurance/defect_closures/CS-SR-092.proof.json"]
+evidence_paths = ["docs/archive/assurance/defect_closures/CS-SR-011.md","docs/assurance/defect_closures/CS-SR-092.md","docs/assurance/defect_closures/CS-SR-092.proof.json"]
 regression_tests = ["tests/test_cs_sr_011_closure_evidence.py"]
 closure_evidence = "docs/assurance/defect_closures/CS-SR-092.md"
 
