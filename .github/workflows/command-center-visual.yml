@@ -111,7 +111,7 @@ jobs:
         if: always()
         run: >-
           python tests/visual/compare_mockup.py
-          tests/visual/reference_native_1536x864.png
+          tests/visual/reference_native_1672x941.png
           tests/visual/output/actual.png tests/visual/output --report-only
       - name: Publish per-region table
         if: always()
