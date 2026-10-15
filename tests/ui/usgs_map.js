@@ -34,6 +34,26 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42
   assert.ok(Math.abs(report.tileWidth-report.expectedWidth)<0.01,'Fractional zoom tile size wrong');
   if(report.markerX!==null)assert.ok(Math.abs(report.markerX-report.expectedMarkerX)<0.01,'Lead marker projected at wrong coordinate');
   assert.ok(report.scale&&report.coverage.includes('geolocated'),'Missing functional map scale or coverage count');
+  const pan=await page.evaluate(()=>{
+   const initial=Array.from(tileElements.values()),generation=mapGeneration,origin=world(...center);
+   const start=performance.now();
+   for(let i=0;i<40;i++){center=inverse(origin[0]+i*.3,origin[1]+i*.2);drawMap();}
+   return {duration:performance.now()-start,unchangedSource:generation===mapGeneration,
+    reused:Array.from(tileElements.values()).filter(node=>initial.includes(node)).length,
+    tiles:tileElements.size,nodes:document.querySelector('#tiles').childElementCount,
+    accurateMarkers:Array.from(document.querySelectorAll('#points g[data-key]')).every(el=>{
+     const row=filtered.find(r=>r.source_key===el.dataset.key);
+     const [px,py]=world(+row.SITE_LATITUDE,+row.SITE_LONGITUDE),[cx,cy]=world(...center);
+     const circle=el.querySelector('circle');
+     return Math.abs(+circle.getAttribute('cx')-(px-cx+$('map').clientWidth/2))<.02
+      &&Math.abs(+circle.getAttribute('cy')-(py-cy+$('map').clientHeight/2))<.02;
+    })};
+  });
+  assert.ok(pan.unchangedSource&&pan.reused>0,'Continuous panning replaced all cached tiles');
+  assert.equal(pan.tiles,pan.nodes,'Tile cache and DOM diverged during panning');
+  assert.ok(pan.accurateMarkers,'Construction markers drifted from projected sites after repeated pans');
+  assert.ok(pan.duration<1200,'Synchronous panning took more than 1.2 seconds for 40 frames');
+
   await page.evaluate(()=>{zoom=10.125;drawMap();});
   report=await page.evaluate(()=>{const img=document.querySelector('#tiles img.usgs-tile'),z=Number(img.src.match(/\/tile\/(\d+)\//)[1]);return {width:+img.style.width.slice(0,-2),zoom,tileLevel:z};});
   assert.ok(Math.abs(report.width-256*2**(report.zoom-report.tileLevel))<0.01,'Fractional zoom misaligned after redraw');
