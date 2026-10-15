@@ -54,6 +54,9 @@ jobs:
             if curl --silent --fail http://127.0.0.1:8766/ > /dev/null; then break; fi
             sleep 0.2
           done
+      - name: USGS basemap projection and offline failure recovery
+        if: always()
+        run: node tests/ui/usgs_map.js http://127.0.0.1:8766
       - name: Persistence and lead-to-royalty journey
         if: always()
         run: node tests/ui/state_browser.js http://127.0.0.1:8766 tests/visual/output/state-functions.json
