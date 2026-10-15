@@ -116,11 +116,18 @@ jobs:
           python tests/visual/compare_mockup.py
           tests/visual/reference_native_1672x941.png
           tests/visual/output/actual.png tests/visual/output --report-only
+      - name: Locate native-viewport mismatch hotspots
+        if: always()
+        run: >-
+          python tests/visual/hotspots.py
+          tests/visual/reference_native_1672x941.png
+          tests/visual/output/actual.png tests/visual/output
       - name: Publish per-region table
         if: always()
         run: |
           cat tests/visual/output/calibration/calibration.md >> "$GITHUB_STEP_SUMMARY"
           cat tests/visual/output/regions.md >> "$GITHUB_STEP_SUMMARY"
+          cat tests/visual/output/native-hotspots.md >> "$GITHUB_STEP_SUMMARY"
       - name: Save screenshot and diff even when comparison fails
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
