@@ -12,14 +12,14 @@ from perceptual import BLUR_RADIUS, TILE_SIZE, TILE_STRIDE, region_scores
 from PIL import Image, ImageChops, ImageDraw
 
 TOKENS = Path(__file__).parents[2] / "src/constructionsight/command_center/design_tokens.json"
-REFERENCE = Path(__file__).with_name("reference_native_1536x864.png")
+REFERENCE = Path(__file__).with_name("reference_native_1672x941.png")
 CALIBRATION = Path(__file__).with_name("calibration.json")
 
 
 def challenges(reference: Image.Image, tokens: dict[str, Any]) -> dict[str, Image.Image]:
-    resampled = reference.resize((1152, 648), Image.Resampling.LANCZOS).resize(
-        reference.size, Image.Resampling.LANCZOS
-    )
+    resampled = reference.resize(
+        (round(reference.width * 0.75), round(reference.height * 0.75)), Image.Resampling.LANCZOS
+    ).resize(reference.size, Image.Resampling.LANCZOS)
     shifted = Image.new("RGB", reference.size, "#181818")
     shifted.paste(reference, (3, 0))
     wrong_color = reference.copy()

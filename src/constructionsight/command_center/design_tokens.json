@@ -1,12 +1,12 @@
 {
-  "reference_sha256": "8b8116b93641fe5a15d18dc410d2d683a29646feba3098970769549c13521d86",
+  "reference_sha256": "00a043ec464728b2275ba3372421b89e1e31d7a7a76dcdb20ced9628bea03f3f",
   "reference_viewport": [
-    1536,
-    864
+    1672,
+    941
   ],
   "requested_viewport": [
-    1536,
-    864
+    1672,
+    941
   ],
   "native_reference_available": true,
   "font_identity": "Open-source approximations: Roboto UI and headings; Roboto Mono labels",
@@ -14,50 +14,50 @@
     "sidebar": [
       0,
       0,
-      296,
-      864
+      321,
+      941
     ],
     "header": [
-      296,
+      321,
       0,
-      1536,
-      55
+      1672,
+      59
     ],
     "hero": [
-      296,
-      55,
-      1536,
-      157
+      321,
+      59,
+      1672,
+      171
     ],
     "kpis": [
-      310,
-      167,
-      1521,
-      245
+      338,
+      182,
+      1656,
+      267
     ],
     "map": [
-      310,
-      255,
-      1065,
-      623
-    ],
-    "dossier": [
-      1078,
-      255,
-      1521,
+      338,
+      278,
+      1159,
       679
     ],
+    "dossier": [
+      1174,
+      278,
+      1656,
+      740
+    ],
     "leads": [
-      310,
-      635,
-      1065,
-      844
+      338,
+      692,
+      1159,
+      919
     ],
     "watchlist": [
-      1078,
-      691,
-      1521,
-      846
+      1174,
+      752,
+      1656,
+      921
     ]
   },
   "colors": {
@@ -65,94 +65,138 @@
       "hex": "#18191b",
       "sample_box": [
         5,
-        205,
-        285,
-        700
+        223,
+        310,
+        762
       ],
-      "mode_pixels": 26974
+      "native_sample_mode_rgb": [
+        24,
+        25,
+        26
+      ],
+      "native_sample_mode_pixels": 20703,
+      "method": "CSS paint approximation; native raster sample mode recorded separately"
     },
     "header": {
       "hex": "#1d1e20",
       "sample_box": [
-        310,
+        337,
         5,
-        1500,
-        49
+        1633,
+        53
       ],
-      "mode_pixels": 6994
+      "native_sample_mode_rgb": [
+        29,
+        30,
+        31
+      ],
+      "native_sample_mode_pixels": 3964,
+      "method": "CSS paint approximation; native raster sample mode recorded separately"
     },
     "panel": {
       "hex": "#181818",
       "sample_box": [
-        313,
-        169,
-        541,
-        244
+        341,
+        184,
+        589,
+        266
       ],
-      "mode_pixels": 3547
+      "native_sample_mode_rgb": [
+        24,
+        24,
+        24
+      ],
+      "native_sample_mode_pixels": 2093,
+      "method": "CSS paint approximation; native raster sample mode recorded separately"
     },
     "border": {
       "hex": "#262626",
       "sample_pixel": [
-        500,
-        167
-      ]
+        544,
+        182
+      ],
+      "native_sample_rgb": [
+        40,
+        39,
+        39
+      ],
+      "method": "CSS paint approximation; native raster pixel recorded separately"
     },
     "amber": {
       "hex": "#dca234",
       "sample_box": [
-        13,
-        210,
-        16,
-        239
+        14,
+        229,
+        17,
+        260
       ],
-      "mode_pixels": 8,
-      "method": "dominant foreground RGB selected by color family"
+      "native_sample_mode_rgb": [
+        242,
+        154,
+        4
+      ],
+      "native_sample_mode_pixels": 3,
+      "method": "CSS paint approximation; native raster sample mode recorded separately"
     },
     "text": {
       "hex": "#ffffff",
       "sample_box": [
-        328,
-        91,
-        944,
-        116
+        357,
+        99,
+        1028,
+        126
       ],
-      "mode_pixels": 308,
-      "method": "dominant foreground RGB selected by color family"
+      "native_sample_mode_rgb": [
+        255,
+        255,
+        255
+      ],
+      "native_sample_mode_pixels": 1265,
+      "method": "CSS paint approximation; native raster sample mode recorded separately"
     },
     "green": {
       "hex": "#3cbf4d",
       "sample_box": [
-        570,
-        185,
-        590,
-        203
+        620,
+        201,
+        642,
+        221
       ],
-      "mode_pixels": 2,
-      "method": "dominant foreground RGB selected by color family"
+      "native_sample_mode_rgb": [
+        26,
+        27,
+        25
+      ],
+      "native_sample_mode_pixels": 11,
+      "method": "CSS paint approximation; native raster sample mode recorded separately"
     },
     "red": {
       "hex": "#ee3733",
       "sample_box": [
-        1060,
-        185,
-        1080,
-        204
+        1154,
+        201,
+        1176,
+        222
       ],
-      "mode_pixels": 3,
-      "method": "dominant foreground RGB selected by color family"
+      "native_sample_mode_rgb": [
+        24,
+        25,
+        24
+      ],
+      "native_sample_mode_pixels": 11,
+      "method": "CSS paint approximation; native raster sample mode recorded separately"
     }
   },
   "css_geometry": {
-    "sidebar_width": 296,
-    "header_height": 55,
-    "hero_height": 102,
-    "content_inset": 14,
-    "column_gap": 13,
-    "left_column_width": 755,
-    "right_column_width": 443,
-    "kpi_height": 78,
-    "card_header_height": 44
+    "sidebar_width": 321,
+    "header_height": 59,
+    "hero_height": 112,
+    "content_inset": 17,
+    "column_gap": 15,
+    "left_column_width": 821,
+    "right_column_width": 482,
+    "kpi_height": 85,
+    "card_header_height": 46
   },
   "target_scale": [
     1,
@@ -187,253 +231,265 @@
   },
   "visual_masks": {
     "photo": [
-      1094,
-      302,
-      1509,
-      412
+      1190,
+      328,
+      1643,
+      449
     ],
     "basemap": [
-      312,
-      300,
-      1062,
-      620
+      340,
+      325,
+      1157,
+      677
     ],
     "sidebar_texture": [
       0,
-      710,
-      296,
-      796
+      774,
+      320,
+      869
     ]
   },
   "baselines": {
-    "hero_heading": 113,
-    "hero_subtitle": 138,
-    "map_heading": 282,
-    "recent_heading": 660,
-    "dossier_heading": 283,
-    "watchlist_heading": 712
+    "hero_heading": 124,
+    "hero_subtitle": 151,
+    "map_heading": 307,
+    "recent_heading": 719,
+    "dossier_heading": 309,
+    "watchlist_heading": 776
   },
-  "baseline_method": "Native reference raster ink bounds retained per heading. Baselines are estimates because the raster has no font metrics; bundled-font baseline positions are checked within 1px.",
-  "reference_acceptance": "User authorized available 1536\u00d7864 raster as authoritative on 2026-10-14; no original 1672\u00d7941 exists.",
+  "baseline_method": "Native raster foreground ink bounds; baselines estimated from descenders. Raster has no original font metrics. Structure/estimated bundled-font baselines checked within 1px.",
+  "reference_acceptance": "Original 1672\u00d7941 PNG supplied in construction-sight-mockup-fullsize.zip; retained byte-for-byte. Replaces the resized 1536\u00d7864 reference.",
   "map_control_boxes": [
     [
-      322,
-      310,
-      358,
-      417
+      351,
+      337,
+      391,
+      453
     ],
     [
-      323,
-      536,
-      478,
-      614
+      351,
+      583,
+      521,
+      668
     ],
     [
-      681,
-      449,
-      858,
-      498
+      741,
+      488,
+      935,
+      542
     ]
   ],
   "map_marker_centers": [
     [
-      504,
-      357
+      550,
+      389
     ],
     [
-      621,
-      339
+      676,
+      369
     ],
     [
-      800,
-      359
+      870,
+      391
     ],
     [
-      558,
-      410
+      607,
+      447
     ],
     [
-      633,
-      417
+      689,
+      454
     ],
     [
-      711,
-      414
+      773,
+      450
     ],
     [
-      792,
-      415
+      862,
+      451
     ],
     [
-      419,
-      470
+      455,
+      511
     ],
     [
-      489,
-      503
+      532,
+      547
     ],
     [
-      671,
-      507
-    ],
-    [
-      790,
-      518
-    ],
-    [
-      701,
-      557
+      730,
+      551
     ],
     [
       861,
-      548
+      564
+    ],
+    [
+      764,
+      607
+    ],
+    [
+      938,
+      596
     ]
   ],
   "calibration_element_boxes": {
     "sidebar": [
-      31,
-      213,
-      51,
-      239
+      34,
+      232,
+      56,
+      260
     ],
     "header": [
-      326,
-      17,
-      344,
-      36
+      355,
+      19,
+      375,
+      39
     ],
     "hero": [
-      326,
-      91,
-      891,
-      115
+      355,
+      99,
+      965,
+      128
     ],
     "kpis": [
-      572,
-      184,
-      590,
-      202
+      622,
+      200,
+      642,
+      220
     ],
     "map": [
-      330,
-      320,
-      349,
-      335
+      361,
+      347,
+      381,
+      364
     ],
     "dossier": [
-      1124,
-      269,
-      1245,
-      287
+      1224,
+      294,
+      1355,
+      314
     ],
     "leads": [
-      359,
-      648,
-      496,
-      667
+      392,
+      706,
+      541,
+      726
     ],
     "watchlist": [
-      1093,
-      698,
-      1115,
-      718
+      1190,
+      758,
+      1215,
+      781
     ]
   },
   "hero_asset": {
     "path": "hero-art.png",
     "crop_box": [
-      984,
-      56,
-      1252,
-      155
+      1055,
+      60,
+      1363,
+      169
     ],
-    "sha256": "1732cc8f740f7ad2a0210e66aadf3ae9c17f1728b72f1d313bde8b0a16236e0d",
-    "source_sha256": "8b8116b93641fe5a15d18dc410d2d683a29646feba3098970769549c13521d86"
+    "sha256": "bc5d5acf689b396ae416268d6d799a781eb87f7ee4a066656ad3d6417bc1ddfc",
+    "source_sha256": "00a043ec464728b2275ba3372421b89e1e31d7a7a76dcdb20ced9628bea03f3f"
   },
   "reference_text_ink_measurements": {
     "hero_heading": {
       "roi": [
-        326,
-        89,
-        932,
-        117
+        353,
+        98,
+        982,
+        134
       ],
       "ink_box": [
-        327,
-        92,
-        887,
-        117
+        356,
+        100,
+        965,
+        130
       ]
     },
     "hero_subtitle": {
       "roi": [
-        326,
-        122,
-        946,
-        141
+        353,
+        135,
+        1025,
+        156
       ],
       "ink_box": [
-        327,
-        127,
-        937,
-        140
+        356,
+        138,
+        1020,
+        154
       ]
     },
     "map_heading": {
       "roi": [
-        359,
-        268,
-        423,
-        286
+        391,
+        292,
+        468,
+        315
       ],
       "ink_box": [
-        362,
-        271,
-        419,
-        284
+        394,
+        295,
+        456,
+        310
       ]
     },
     "recent_heading": {
       "roi": [
-        359,
-        645,
-        502,
-        669
+        390,
+        704,
+        557,
+        727
       ],
       "ink_box": [
-        361,
-        650,
-        490,
-        663
+        393,
+        709,
+        533,
+        722
       ]
     },
     "dossier_heading": {
       "roi": [
-        1123,
-        267,
-        1281,
-        289
+        1220,
+        292,
+        1382,
+        315
       ],
       "ink_box": [
-        1125,
-        273,
         1225,
-        286
+        297,
+        1333,
+        312
       ]
     },
     "watchlist_heading": {
       "roi": [
-        1121,
-        697,
-        1307,
-        721
+        1220,
+        763,
+        1420,
+        786
       ],
       "ink_box": [
-        1127,
-        703,
-        1261,
-        712
+        1227,
+        766,
+        1373,
+        776
       ]
     }
+  },
+  "box_measurement_method": "Visible native panel/border extents, with 1px tolerance for raster shadows and antialiasing.",
+  "brand_asset": {
+    "path": "brand-native.png",
+    "crop_box": [
+      38,
+      34,
+      286,
+      204
+    ],
+    "sha256": "8243b58e19a922810295ef1d07bbbc2eb9f1ff4e7e9030c5f1873ecda57ff476",
+    "source_sha256": "00a043ec464728b2275ba3372421b89e1e31d7a7a76dcdb20ced9628bea03f3f"
   }
 }

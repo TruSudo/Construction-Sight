@@ -37,3 +37,5 @@ python3 -m venv .venv
 Run affected tests while editing; run the full suite before merging. CI blocks on tests, Ruff, strict Mypy, JavaScript syntax and dependency vulnerability auditing. The browser workflow checks structure, bundled fonts and actual interactions, and reports the calibrated visual comparison. Historical certification tooling remains available for reference; it is not a production merge gate.
 
 `STATUS.md` is the single current handoff. Superseded phase reports and early audit-tool closure narratives live in `docs/archive/`. Captured source data and retained evidence are not archived or rewritten by documentation cleanup.
+
+The visual workflow uses the original `tests/visual/reference_native_1672x941.png` at device scale 1. `design_tokens.json` records its SHA-256, native measurements and asset crops. Calibration challenges distinguish resampling from 3px displacement, a wrong design color and missing elements. Per-region scores and a four-panel comparison report remaining fidelity differences; the original font identity is unknown and scores remain non-blocking.
