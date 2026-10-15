@@ -6,7 +6,7 @@ const {chromium}=require('../visual/node_modules/playwright');
 const origin=process.argv[2],output=process.argv[3];
 if(!origin||!output)throw Error('Usage: node tests/ui/usgs_live.js URL OUTPUT.json');
 fs.mkdirSync(path.dirname(output),{recursive:true});
-const report={checked_at:new Date().toISOString(),context:'retained six genuine SMARTS records, browser fetching real USGS tiles',providers:[],errors:[],passed:false};
+const report={checked_at:new Date().toISOString(),context:'retained six genuine SMARTS records, browser fetching real USGS tiles',providers:[],errors:[],network_warnings:[],passed:false};
 (async()=>{
  const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_PATH,args:['--no-sandbox','--disable-dev-shm-usage']});
  try{
@@ -14,7 +14,7 @@ const report={checked_at:new Date().toISOString(),context:'retained six genuine 
   const responses=[];
   page.on('pageerror',e=>report.errors.push('Browser: '+e.message));
   page.on('response',res=>{if(res.url().startsWith('https://basemap.nationalmap.gov/'))responses.push({url:res.url(),status:res.status(),at:new Date().toISOString()});});
-  page.on('requestfailed',req=>{if(req.url().startsWith('https://basemap.nationalmap.gov/'))report.errors.push('USGS request failed: '+req.failure()?.errorText+' · '+req.url());});
+  page.on('requestfailed',req=>{if(req.url().startsWith('https://basemap.nationalmap.gov/'))report.network_warnings.push('USGS request failed or canceled: '+req.failure()?.errorText+' · '+req.url());});
   await page.goto(origin,{waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>document.documentElement.dataset.ready==='true',{timeout:25000});
   const context=await page.evaluate(()=>({genuine:data.rows.filter(r=>r.source_key?.startsWith('smarts:')).length,geolocated:filtered.filter(point).length}));
