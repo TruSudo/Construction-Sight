@@ -58,6 +58,11 @@ from constructionsight.parcel_use_enrichment import load_claims
 from constructionsight.security_fit import WEIGHTS_PATH, load_weights, rank_leads
 from constructionsight.smarts_active import collect_active
 from constructionsight.smarts_api import USER_AGENT
+from constructionsight.source_intelligence_bridge import (
+    source_intelligence_overview,
+    source_intelligence_site_picture,
+)
+from constructionsight.storage.operator_read_store import create_operator_read_engine
 from constructionsight.spatial_parcel_use import load_claims as load_spatial_claims
 
 ASSETS = Path(__file__).parent / "command_center"
@@ -208,9 +213,15 @@ def make_server(
     *,
     parity: bool = False,
     startup_directory: Path | None = None,
+    operator_database: Path | None = None,
 ) -> ThreadingHTTPServer:
     if parity and (not snapshot.get("demo") or directory is not None):
         raise ValueError("Mockup parity requires an isolated Demo fixture")
+    if snapshot.get("demo") and operator_database is not None:
+        raise ValueError("Demo is isolated from the operator database")
+    if operator_database is not None:
+        read_engine = create_operator_read_engine(operator_database)
+        read_engine.dispose()
     startup_directory = startup_directory or directory
     if directory:
         directory = data_folder.resolve_folder(directory)
@@ -283,6 +294,44 @@ def make_server(
                 return
             path = urlsplit(self.path).path
             query = parse_qs(urlsplit(self.path).query)
+            if path == "/api/source-intelligence" or path.startswith(
+                "/api/site-intelligence/"
+            ):
+                host = self.headers.get("Host", "")
+                origins = self.headers.get_all("Origin", [])
+                if (
+                    len(self.headers.get_all("Host", [])) != 1
+                    or (origins and origins != [f"http://{host}"])
+                    or self.headers.get("Sec-Fetch-Site") == "cross-site"
+                ):
+                    self.send_error(403, "Local same-origin access required")
+                    return
+                try:
+                    if path == "/api/source-intelligence":
+                        response = source_intelligence_overview(operator_database)
+                    else:
+                        key = unquote(path.removeprefix("/api/site-intelligence/"))
+                        row = next(
+                            (r for r in current()["rows"] if r["source_key"] == key),
+                            None,
+                        )
+                        if row is None:
+                            self.send_error(404, "Unknown SMARTS source record")
+                            return
+                        response = source_intelligence_site_picture(operator_database, row)
+                except Exception:
+                    # Fail closed without exposing database paths or exception text.
+                    self.send_error(503, "Government record view unavailable")
+                    return
+                body = json.dumps(response).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.send_header("Cache-Control", "no-store")
+                self.send_header("X-Content-Type-Options", "nosniff")
+                self.end_headers()
+                self.wfile.write(body)
+                return
             value: Any
             if directory and path == "/api/settings":
                 body, mime = json.dumps(state.settings(directory)).encode(), "application/json"
@@ -895,6 +944,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--mockup-parity", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--no-browser", action="store_true")
     parser.add_argument(
+        "--operator-database", type=Path,
+        help="Existing CEQA/permit SQLite database (read-only, never initialized)",
+    )
+    parser.add_argument(
         "--capture-only", action="store_true", help="Scheduled capture without a server"
     )
     parser.add_argument(
@@ -958,6 +1011,7 @@ def main(argv: list[str] | None = None) -> int:
             None if args.demo else args.data_dir,
             parity=args.mockup_parity,
             startup_directory=startup_directory,
+            operator_database=args.operator_database,
         )
     except (ValueError, OSError, httpx.HTTPError) as exc:
         print(f"Command Center unavailable: {type(exc).__name__}: {exc}", file=sys.stderr)
