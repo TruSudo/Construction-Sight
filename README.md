@@ -12,6 +12,8 @@ Requires Python 3.11 or 3.12. From this checkout:
 
 This opens the localhost Command Center and obtains a bounded official SMARTS capture. Use `./run-command-center.sh --offline` to open the retained capture, or `./run-command-center.sh --demo` for the isolated fixture. Default data folder: `~/.local/share/constructionsight/command-center`.
 
+**Entry points:** `./run-command-center.sh` / `constructionsight-command-center` is the current native-layout lead product. The installed `constructionsight-operator` and `constructionsight-desktop` commands use the separate earlier operator interface; they remain available for compatibility and specialized workflows, not as substitutes for the native-layout visual acceptance target. Do not delete their implementation until those workflows are explicitly migrated and tested.
+
 ## Use
 
 - Lead Console filters and reviews captured projects; bulk SMARTS contact import verifies retained response/row hashes. Company call-list export excludes Do-Not-Contact and combines eligible sites.
