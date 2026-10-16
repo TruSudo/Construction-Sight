@@ -274,7 +274,13 @@ def deployment_preflight(
     for name, content in expected.items():
         path = units / name
         try:
-            if path.is_symlink() or not path.is_file() or path.read_text() != content:
+            attributes = path.lstat()
+            if (
+                not stat.S_ISREG(attributes.st_mode)
+                or attributes.st_uid != os.geteuid()
+                or stat.S_IMODE(attributes.st_mode) & 0o077
+                or path.read_text() != content
+            ):
                 unit_files_match = False
         except OSError:
             unit_files_match = False
