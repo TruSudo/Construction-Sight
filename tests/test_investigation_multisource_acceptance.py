@@ -10,14 +10,17 @@ import json
 import os
 import subprocess
 import sys
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
 
+import constructionsight.effect_consumption as effect_consumption
 from constructionsight.agenda_models import AgendaItemRecord
 from constructionsight.ceqa_models import CeqaRecord
 from constructionsight.intelligence.investigation_query_service import InvestigationQueryService
+from constructionsight.intelligence.investigation_review_service import InvestigationReviewService
+from constructionsight.intelligence.investigation_service import InvestigationService
 from constructionsight.intelligence.schemas import RelationshipAssertion, RelationshipStatus
 from constructionsight.investigation_runtime import InvestigationRuntime
 from constructionsight.parcel_core_models import ParcelCoreRecord
@@ -372,5 +375,136 @@ def test_conflicting_cross_source_candidate_is_visible_but_does_not_merge_eviden
                 "Conflicting cross-source candidate evidence" in gap
                 for gap in dossier["assessment"]["gaps"]
             )
+    finally:
+        runtime.close()
+
+
+def test_reviewed_three_typed_source_families_assemble_and_reassess_after_retained_revision(
+    tmp_path, monkeypatch
+):
+    """Real adapters + shared queue + authorized review, still entirely offline."""
+    directory = tmp_path / "private"
+    directory.mkdir(mode=0o700)
+    monkeypatch.setattr(
+        effect_consumption,
+        "_CONSUMPTION_DATABASE_PATH",
+        tmp_path / "typed-source-review-effects.sqlite3",
+    )
+    runtime = InvestigationRuntime(directory)
+    try:
+        sources = retained_inputs()[:3]
+        for kind, record in sources:
+            runtime.enqueue_bytes(record.model_dump_json(round_trip=True).encode(), kind)
+        first = runtime.process(max_jobs=150)
+        assert first["failed_jobs"] == 0
+
+        with managed_session(runtime.queue.factory) as session:
+            store = IntelligenceStore(session)
+            service = InvestigationService(store)
+            inventory = InvestigationQueryService(store).inventory(limit=20)
+            assert inventory["total"] == 3
+            source_ids = {
+                row["source_records"][0]["source_family"]: InvestigationQueryService(store)
+                .dossier(row["investigation_id"])["source_observations"][0]["evidence"]
+                for row in inventory["rows"]
+            }
+            assert set(source_ids) == {"ceqa", "planning", "permit"}
+            investigations = {
+                row["source_records"][0]["source_family"]: row["investigation_id"]
+                for row in inventory["rows"]
+            }
+            from constructionsight.intelligence.investigation_service import (
+                source_record_identity,
+            )
+            for family in ("planning", "permit"):
+                service.correlate(
+                    source_record_identity(
+                        service.current_observation(
+                            next(
+                                edge.subject_entity_id
+                                for edge in store.list_relationships_for_target(
+                                    investigations["ceqa"]
+                                )
+                                if edge.predicate
+                                == "source_record_for_unresolved_investigation"
+                            )
+                        ).evidence
+                    ),
+                    next(
+                        edge.subject_entity_id
+                        for edge in store.list_relationships_for_target(
+                            investigations[family]
+                        )
+                        if edge.predicate == "source_record_for_unresolved_investigation"
+                    ),
+                )
+            candidates = {
+                (
+                    relation.object_entity_id
+                    if relation.subject_entity_id == investigations["ceqa"]
+                    else relation.subject_entity_id
+                ): relation.relationship_id
+                for relation in store.list_relationships()
+                if relation.predicate == "possible_same_project_requires_review"
+                and investigations["ceqa"] in {
+                    relation.subject_entity_id,
+                    relation.object_entity_id,
+                }
+            }
+            assert investigations["planning"] in candidates
+            assert investigations["permit"] in candidates
+
+        reviewer = InvestigationReviewService(runtime.engine)
+        for family in ("planning", "permit"):
+            target = candidates[investigations[family]]
+            preview = reviewer.preview(target)
+            result = reviewer.review(
+                target,
+                decision="associate",
+                target_id=investigations["ceqa"],
+                expected_identity=preview["expected_identity"],
+                reason="Synthetic typed source records reviewed for contextual association",
+                caller_confirmation=True,
+                operator_id="operator:synthetic-typed-sources",
+            )
+            assert result["identity_independently_verified"] is False
+
+        with managed_session(runtime.queue.factory) as session:
+            store = IntelligenceStore(session)
+            query = InvestigationQueryService(store)
+            assert query.inventory()["total"] == 1
+            dossier = query.dossier(investigations["ceqa"])
+            assert {item["source_family"] for item in dossier["source_membership"]} == {
+                "ceqa", "planning", "permit"
+            }
+            assert dossier["cross_source_investigation"]["reviewed_context_source_count"] == 2
+            assert len(dossier["chronology"]) == 3
+            assert not dossier["pending_association_reviews"]
+
+        permit = sources[2][1]
+        revision = permit.model_copy(
+            update={
+                "description": "Synthetic revised building permit",
+                "provenance": [
+                    Provenance(source_name="Synthetic public source", captured_at=AT + timedelta(days=3))
+                ],
+            }
+        )
+        runtime.enqueue_bytes(revision.model_dump_json(round_trip=True).encode(), "permit")
+        assert runtime.process(max_jobs=100)["failed_jobs"] == 0
+        with managed_session(runtime.queue.factory) as session:
+            dossier = InvestigationQueryService(IntelligenceStore(session)).dossier(
+                investigations["ceqa"]
+            )
+            assert len(dossier["chronology"]) == 4
+            revisions = [
+                event for event in dossier["chronology"] if event["source_family"] == "permit"
+            ]
+            assert len(revisions) == 2
+            assert [event["is_current_source_revision"] for event in revisions] == [False, True]
+            assert dossier["pending_association_reviews"]
+            assert dossier["cross_source_investigation"]["requires_association_reassessment"]
+            assert dossier["cross_source_investigation"]["identity_independently_verified"] is False
+            assert dossier["cross_source_investigation"]["commercial_authority_granted"] is False
     finally:
         runtime.close()
