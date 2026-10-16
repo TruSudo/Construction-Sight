@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
+from typing import Any
 
 import httpx
 import pytest
@@ -50,6 +51,39 @@ def test_explicit_source_words_are_explainable_unverified(name: str, subtype: st
 @pytest.mark.parametrize("name", ["TRACT 12345", "Hillside Park", "Centerpoint 123", "Automaton"])
 def test_generic_tokens_do_not_manufacture_a_project_type(name: str) -> None:
     assert classify_names({"SITE_NAME": name})["project_type"] == "unknown"
+
+
+def test_ranking_reads_keyword_rules_once_per_batch_and_reloads_next_batch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import constructionsight.lead_quality as lead_quality
+
+    original = lead_quality.load_keywords
+    count = 0
+
+    def tracked_keywords() -> dict[str, Any]:
+        nonlocal count
+        count += 1
+        if count == 1:
+            return original()
+        # A new batch must observe changed rules, never a process-global cache.
+        return {"label": original()["label"], "rules": []}
+
+    monkeypatch.setattr(lead_quality, "load_keywords", tracked_keywords)
+    rows = [
+        {"SITE_NAME": "New Hotel", "DEVELOPER_NAME": "Sample Builder"},
+        {"SITE_NAME": "New Hotel Phase 2", "DEVELOPER_NAME": "Sample Builder"},
+    ]
+    first = rank_leads(rows)
+    assert count == 1
+    assert all(row["project_type"] == "commercial" for row in first)
+    assert all(row["field_sources"]["project_type"]["verified"] is False for row in first)
+    second = rank_leads(rows)
+    assert count == 2
+    assert all(row["project_type"] == "unknown" for row in second)
+    assert all(row["field_sources"]["project_type"]["verified"] is False for row in second)
+    assert rank_leads([]) == []
+    assert count == 2
 
 
 def test_report_tokens_are_site_only_and_include_unknown_developers() -> None:
