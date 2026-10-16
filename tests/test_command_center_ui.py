@@ -2,9 +2,11 @@
 from __future__ import annotations
 
 import re
+import tomllib
 from html.parser import HTMLParser
 from pathlib import Path
 
+from constructionsight.live_command_center import ASSETS as NATIVE_ASSETS
 from constructionsight.operator_web import _ASSETS
 
 ASSETS = Path(__file__).resolve().parents[1] / "src" / "constructionsight"
@@ -19,6 +21,27 @@ class _Ids(HTMLParser):
         identifier = dict(attrs).get("id")
         if identifier is not None:
             self.ids.append(identifier)
+
+
+def test_b2_both_operator_entrypoints_and_storage_contracts_remain_available() -> None:
+    """Different data backends must be reconciled before either UI can be retired."""
+    root = Path(__file__).resolve().parents[1]
+    project = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
+    commands = project["project"]["scripts"]
+    assert commands["constructionsight-command-center"] == "constructionsight.live_command_center:main"
+    assert commands["constructionsight-operator"] == "constructionsight.operator_web:main"
+    assert commands["constructionsight-desktop"] == "constructionsight.operator_web:desktop_main"
+
+    assert (NATIVE_ASSETS / "index.html").is_file()
+    assert _ASSETS["/"] == ("operator_command_center.html", "text/html; charset=utf-8")
+    assert _ASSETS["/workspace"] == ("operator_ui.html", "text/html; charset=utf-8")
+    native_script = (NATIVE_ASSETS / "app.js").read_text(encoding="utf-8")
+    legacy_script = (ASSETS / "operator_command_center.js").read_text(encoding="utf-8")
+    assert "/api/leads" in native_script  # Retained SMARTS capture / local workflow.
+    assert "/api/snapshot?" in legacy_script  # Relational CEQA/permit read model.
+    assert "/api/candidate-preview?" in legacy_script
+    assert "/api/footprint?" in legacy_script
+    assert "/api/workflows?" in legacy_script
 
 
 def test_command_center_is_default_with_legacy_workspace_preserved() -> None:
