@@ -309,19 +309,9 @@ def create_handler(
         """Serve loopback reads plus same-origin, watchlist-only local mutations."""
 
         def do_GET(self) -> None:
-            address = self.server.server_address
-            if not isinstance(address, tuple):
-                raise ValueError("TCP server address required")
-            port = address[1]
-            allowed_hosts = {f"127.0.0.1:{port}", f"localhost:{port}"}
-            hosts = self.headers.get_all("Host", [])
-            origins = self.headers.get_all("Origin", [])
-            if (
-                len(hosts) != 1
-                or hosts[0] not in allowed_hosts
-                or (origins and origins != [f"http://{hosts[0]}"])
-                or self.headers.get("Sec-Fetch-Site") == "cross-site"
-            ):
+            # Use the same fail-closed Host/Origin check as the guarded
+            # operator write endpoints; do not maintain a second copy.
+            if not self._local_request_allowed():
                 self._send_json(
                     {"error": "Local same-origin access required."}, status=HTTPStatus.FORBIDDEN
                 )
