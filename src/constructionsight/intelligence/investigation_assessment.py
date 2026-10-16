@@ -191,11 +191,17 @@ def assess_investigation_evidence(
     if relationship_contradictions:
         gap("relationship_conflicts", "Retained graph conflict evidence requires human assessment.")
     if any(link["contradictory_evidence_ids"] for link in candidate_links):
-        gap("candidate_conflicts", "Potential cross-investigation links contain conflicting evidence.")
+        gap(
+            "candidate_conflicts",
+            "Potential cross-investigation links contain conflicting evidence.",
+        )
     if candidate_links:
         gap("identity_candidates", "Unreviewed cross-investigation candidates remain separate.")
     if pending_association_reviews:
-        gap("association_reassessment", "A reviewed association predates changed retained evidence.")
+        gap(
+            "association_reassessment",
+            "A reviewed association predates changed retained evidence.",
+        )
     if source_history_truncated or revision_truncated:
         gap("bounded_history", "The current evidence page does not show complete source history.")
     if claims_truncated:
