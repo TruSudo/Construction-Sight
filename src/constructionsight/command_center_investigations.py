@@ -22,13 +22,22 @@ from constructionsight.storage.operator_read_store import create_operator_read_e
 
 
 def investigation_view(
-    directory: Path, *, investigation_id: str | None = None, after: str | None = None
+    directory: Path,
+    *,
+    investigation_id: str | None = None,
+    after: str | None = None,
+    revision_only: bool = False,
+    filters: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     """Query authoritative state with an owner-only, existing SQLite mode=ro connection."""
     if investigation_id is not None and (not investigation_id or len(investigation_id) > 255):
         raise ValueError("invalid investigation identifier")
     if investigation_id is not None and after is not None:
         raise ValueError("dossier requests cannot carry inventory cursors")
+    if investigation_id is not None and filters:
+        raise ValueError("dossier requests cannot carry inventory filters")
+    if revision_only and (investigation_id is not None or after is not None or filters):
+        raise ValueError("revision requests cannot carry filters, identity or cursor")
     database = directory / "investigations.sqlite3"
     # Missing worker initialization is not evidence that no investigations exist.
     if not database.exists() and not database.is_symlink():
@@ -52,10 +61,22 @@ def investigation_view(
         raise ValueError("investigation store is unavailable or unreadable") from exc
     try:
         with managed_session(session_factory(engine)) as session:
-            service = InvestigationQueryService(IntelligenceStore(session))
+            store = IntelligenceStore(session)
+            if revision_only:
+                return {"available": True, "event_cursor": store.runtime_event_cursor()}
+            service = InvestigationQueryService(store)
             if investigation_id is not None:
                 return service.dossier(investigation_id, evidence_limit=100)
-            result = service.inventory(after=after, limit=50)
+            options = filters or {}
+            result = service.inventory(
+                after=after,
+                limit=50,
+                text=options.get("text", ""),
+                county=options.get("county", ""),
+                city=options.get("city", ""),
+                source_family=options.get("source_family", ""),
+                location=options.get("location", ""),
+            )
             return {"available": True, **result}
     except SQLAlchemyError as exc:
         raise ValueError("investigation store query failed") from exc

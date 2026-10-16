@@ -437,6 +437,23 @@ def make_server(
                 cursor_values = query.get("after", [])
                 if len(cursor_values) > 1:
                     raise ValueError("one inventory cursor permitted")
+                filter_names = {
+                    "q": "text",
+                    "county": "county",
+                    "city": "city",
+                    "source": "source_family",
+                    "location": "location",
+                }
+                filters: dict[str, str] = {}
+                for parameter, argument in filter_names.items():
+                    values = query.get(parameter, [])
+                    if len(values) > 1:
+                        raise ValueError("one value permitted per investigation filter")
+                    if values:
+                        filters[argument] = values[0]
+                revision_values = query.get("revision", [])
+                if revision_values and revision_values != ["1"]:
+                    raise ValueError("invalid investigation revision query")
                 investigation_id = None
                 if path != "/api/investigations":
                     investigation_id = unquote(path.removeprefix("/api/investigations/"))
@@ -447,6 +464,8 @@ def make_server(
                     directory,
                     investigation_id=investigation_id,
                     after=cursor_values[0] if cursor_values else None,
+                    revision_only=bool(revision_values),
+                    filters=filters,
                 )
                 body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
             elif path == "/api/leads":

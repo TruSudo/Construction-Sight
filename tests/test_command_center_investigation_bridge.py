@@ -42,6 +42,7 @@ def test_native_routes_share_worker_inventory_without_db_initialization(tmp_path
             assert empty.status_code == 200
             assert empty.json()["available"] is False
             assert empty.json()["rows"] == []
+            assert client.get("/api/investigations?revision=1").json()["available"] is False
             assert not (directory / "investigations.sqlite3").exists()
 
             runtime = InvestigationRuntime(directory)
@@ -92,11 +93,40 @@ def test_native_routes_share_worker_inventory_without_db_initialization(tmp_path
             assert client.get("/api/investigations?after=not-a-valid-identity").status_code == 200
             assert client.post("/api/investigations").status_code == 501
             assert client.get("/api/investigations/" + identity + "/bad").status_code != 200
+            revision = client.get("/api/investigations?revision=1").json()
+            assert revision["available"] is True
+            assert revision["event_cursor"] == data["event_cursor"]
+            assert "rows" not in revision
+            assert len(client.get("/api/investigations?q=environmental").json()["rows"]) == 1
+            assert client.get("/api/investigations?q=absent-term").json()["rows"] == []
+            assert len(client.get("/api/investigations?source=ceqa").json()["rows"]) == 1
+            assert client.get("/api/investigations?source=permit").json()["rows"] == []
+            assert len(client.get("/api/investigations?county=Riverside").json()["rows"]) == 1
+            assert client.get("/api/investigations?county=Los+Angeles").json()["rows"] == []
+            assert len(client.get("/api/investigations?location=unmapped").json()["rows"]) == 1
+            assert client.get("/api/investigations?location=mapped").json()["rows"] == []
+            assert client.get("/api/investigations?location=invalid").status_code == 409
+            assert client.get("/api/investigations?q=a&q=b").status_code == 409
+            assert client.get("/api/investigations?revision=1&q=a").status_code == 409
+            assert client.get("/api/investigations?q=" + "a" * 256).status_code == 409
             assert hashlib.sha256(database.read_bytes()).hexdigest() == before
+
+            runtime = InvestigationRuntime(directory)
+            try:
+                changed = record.model_copy(update={"title": "Revised retained application"})
+                runtime.enqueue_bytes(changed.model_dump_json(round_trip=True).encode(), "ceqa")
+                assert runtime.process(max_jobs=100)["failed_jobs"] == 0
+            finally:
+                runtime.close()
+            updated = client.get("/api/investigations").json()
+            assert updated["event_cursor"] > revision["event_cursor"]
+            assert updated["total"] == 1
+            assert updated["rows"][0]["investigation_id"] == identity
+            assert updated["rows"][0]["title"] == "Revised retained application"
     finally:
         server.shutdown()
         server.server_close()
-        thread.join()
+    thread.join()
 
 
 def test_untrusted_investigation_db_is_not_followed(tmp_path: Path) -> None:
@@ -118,3 +148,42 @@ def test_untrusted_investigation_db_is_not_followed(tmp_path: Path) -> None:
         server.shutdown()
         server.server_close()
         thread.join()
+
+
+def test_native_filtered_inventory_keeps_scan_continuation(tmp_path: Path) -> None:
+    from constructionsight.intelligence.investigation_query_service import InvestigationQueryService
+    from constructionsight.intelligence.schemas import EvidenceRecord, ProjectCluster
+    from constructionsight.storage.database import managed_session
+    from constructionsight.storage.intelligence_store import IntelligenceStore
+
+    directory = tmp_path / "private"
+    directory.mkdir(mode=0o700)
+    runtime = InvestigationRuntime(directory)
+    try:
+        with managed_session(runtime.queue.factory) as session:
+            store = IntelligenceStore(session)
+            store.upsert_evidence(EvidenceRecord(
+                evidence_id="test:paging:evidence", source_name="Synthetic paging fixture",
+                record_type="document", evidence_text="Synthetic retained pagination evidence"
+            ))
+            store.upsert_project_cluster(ProjectCluster(
+                project_cluster_id="test:paging:001", project_name="First nonmatching record",
+                evidence_record_ids=["test:paging:evidence"]
+            ))
+            store.upsert_project_cluster(ProjectCluster(
+                project_cluster_id="test:paging:002", project_name="Needle beyond first scan",
+                evidence_record_ids=["test:paging:evidence"]
+            ))
+            session.commit()
+        with managed_session(runtime.queue.factory) as session:
+            query = InvestigationQueryService(IntelligenceStore(session))
+            first = query.inventory(limit=1, text="Needle")
+            assert first["rows"] == []
+            assert first["has_more"] is True
+            assert first["scanned_on_page"] == 1
+            second = query.inventory(limit=1, text="Needle", after=first["next_cursor"])
+            assert second["has_more"] is False
+            assert len(second["rows"]) == 1
+            assert second["rows"][0]["investigation_id"] == "test:paging:002"
+    finally:
+        runtime.close()

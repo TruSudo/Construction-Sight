@@ -8,6 +8,7 @@ from pathlib import Path
 
 from constructionsight.agenda_models import AgendaItemRecord
 from constructionsight.ceqa_models import CeqaRecord
+from constructionsight.entity_models import Entity
 from constructionsight.investigation_runtime import InvestigationRuntime
 from constructionsight.provenance import Provenance
 from constructionsight.site_models import Site
@@ -22,27 +23,42 @@ def main() -> None:
             captured_at=datetime(2026, 10, 16, tzinfo=UTC),
         )
     ]
-    site = Site(
-        site_key="synthetic:shared-workspace-site", county="Riverside", apn="123-456-789"
-    )
+    site = Site(site_key="synthetic:shared-workspace-site", county="Riverside", apn="123-456-789")
     records = (
-        ("ceqa", CeqaRecord(
-            ceqa_key="synthetic:browser:ceqa:1",
-            title="Synthetic CEQA application",
-            county="Riverside",
-            state_clearinghouse_number="2026101234",
-            site=site.model_copy(update={"latitude": 34.05, "longitude": -117.25}),
-            provenance=provenance,
-        )),
-        ("agenda", AgendaItemRecord(
-            agenda_key="synthetic:browser:agenda:1",
-            title="Synthetic planning hearing",
-            meeting_body="Planning Commission",
-            jurisdiction="Synthetic municipality",
-            county="Riverside",
-            site=site,
-            provenance=provenance,
-        )),
+        (
+            "ceqa",
+            CeqaRecord(
+                ceqa_key="synthetic:browser:ceqa:1",
+                title=(
+                    "Synthetic CEQA application — revised retained evidence"
+                    if len(sys.argv) > 2
+                    else "Synthetic CEQA application"
+                ),
+                entities=[
+                    Entity(
+                        entity_key="synthetic:browser:developer",
+                        name="Synthetic Evidence Development",
+                        role="developer",
+                    )
+                ],
+                county="Riverside",
+                state_clearinghouse_number="2026101234",
+                site=site.model_copy(update={"latitude": 34.05, "longitude": -117.25}),
+                provenance=provenance,
+            ),
+        ),
+        (
+            "agenda",
+            AgendaItemRecord(
+                agenda_key="synthetic:browser:agenda:1",
+                title="Synthetic planning hearing",
+                meeting_body="Planning Commission",
+                jurisdiction="Synthetic municipality",
+                county="Riverside",
+                site=site,
+                provenance=provenance,
+            ),
+        ),
     )
     runtime = InvestigationRuntime(directory)
     try:

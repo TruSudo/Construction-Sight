@@ -293,3 +293,39 @@ source is pending. These local checks are not a browser or live-source acceptanc
 Next: finish Entity Network, unified filtering/search, revision-driven refresh and
 cross-view acceptance. Phase 3 owner-device/source operational verification and Phase 4
 live end-to-end acceptance remain open; Phase 5 is not complete. Main unchanged.
+
+
+## Current Phase 5 implementation — final integration, acceptance pending
+
+Shared investigation inventory now supports bounded retained-text/party, source-family,
+county, source-claimed city and mapped/unmapped filters. Scan cursors remain available
+even when a filtered page has no matches; totals are explicitly all-scope totals.
+A cheap read-only revision query drives bounded five-second refresh of active native
+views. Detached views stop polling, overlapping and late responses are discarded,
+failures mark the retained display stale, and an open investigation dossier follows
+the same committed revision without promoting source claims.
+
+Entity Network now exposes persisted canonical investigation/source/party/candidate
+identities and original relationship/evidence IDs from the shared dossier, alongside
+the preserved commercial source view. Candidate edges remain uncertain; rejected,
+stale and superseded edges are excluded from the current network. Global search can
+find retained investigations and parties, with explicit bounded-search continuation.
+Dossiers expose retained artifact content/digests/limitations and discrepancy/candidate
+details. All five native views use the same inventory/filter contract. Commercial
+filters and actions retain their existing authority; unassessed investigations are
+not automatically added to outreach or bids.
+
+Local verification: three focused HTTP/query acceptance tests pass (2.57s), covering
+read-only bytes, absent/unsafe store handling, filter validation, nonmatching first-page
+continuation, same-identity revision and revision cursor advancement. Strict Mypy passes
+for the three affected source modules with silent imported-module traversal. Ruff and
+changed JavaScript syntax pass. Expanded Playwright acceptance covers five-view IDs,
+map/dossier keyboard navigation, mapped/unmapped/source filters, persisted developer
+relationships, global party search and an actual separate-worker source revision
+reaching the open inventory/dossier without reload. Exact-source full CI/browser
+results are pending, so Phase 5 acceptance is not yet asserted.
+
+Phase 3 owner-Zorin deployment and permitted live-source operation, Phase 4 live-source
+operational acceptance, Phase 6 live Relationship Graph delivery/replay/full-screen
+interaction, Phase 7 historical assurance reconciliation and Phase 8 parity remain open.
+No main merge, source activation, owner-device changes or commercial submissions.

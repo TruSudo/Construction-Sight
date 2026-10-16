@@ -67,12 +67,26 @@ class InvestigationQueryService:
     def __init__(self, store: IntelligenceStore) -> None:
         self.store = store
 
-    def inventory(self, *, after: str | None = None, limit: int = 50) -> dict[str, Any]:
+    def inventory(
+        self,
+        *,
+        after: str | None = None,
+        limit: int = 50,
+        text: str = "",
+        county: str = "",
+        city: str = "",
+        source_family: str = "",
+        location: str = "",
+    ) -> dict[str, Any]:
         """Return a bounded canonical inventory; reviewed aliases never create duplicate rows."""
         if type(limit) is not int or not 1 <= limit <= 100:
             raise ValueError("inventory limit must be between 1 and 100")
         if after is not None and (not after.strip() or len(after) > 255):
             raise ValueError("invalid inventory cursor")
+        if any(len(value) > 255 for value in (text, county, city, source_family)):
+            raise ValueError("investigation filter exceeds 255 characters")
+        if location not in {"", "mapped", "unmapped"}:
+            raise ValueError("invalid investigation location filter")
         ensure_database_transaction(self.store.session)
         aliases = select(IntelligenceRelationshipRecord.subject_entity_id).where(
             IntelligenceRelationshipRecord.predicate == "reviewed_investigation_alias",
@@ -101,11 +115,48 @@ class InvestigationQueryService:
         for identity in identities[:limit]:
             dossier = self.dossier(identity, evidence_limit=1)
             observations = dossier["source_observations"]
+            counties = sorted({item["county"] for item in observations if item["county"]})
+            cities = sorted(
+                {
+                    str(record["site"]["city"])
+                    for item in observations
+                    if isinstance(
+                        record := item["evidence"]["raw_observations"].get(
+                            "normalized_source_record"
+                        ),
+                        dict,
+                    )
+                    and isinstance(record.get("site"), dict)
+                    and record["site"].get("city")
+                }
+            )
+            families = {item["evidence"]["source_family"] for item in observations}
+            if county and county not in counties:
+                continue
+            if city and city not in cities:
+                continue
+            if source_family and source_family not in families:
+                continue
+            if location and bool(dossier["source_claimed_points"]) != (location == "mapped"):
+                continue
+            if (
+                text
+                and text.casefold()
+                not in str(
+                    {
+                        "investigation": dossier["investigation"],
+                        "observations": observations,
+                        "parties": dossier["source_parties"],
+                    }
+                ).casefold()
+            ):
+                continue
             rows.append(
                 {
                     "investigation_id": identity,
                     "title": dossier["investigation"]["project_name"],
-                    "counties": sorted({item["county"] for item in observations if item["county"]}),
+                    "counties": counties,
+                    "cities": cities,
                     "points": dossier["source_claimed_points"],
                     "source_records": [
                         {
@@ -124,6 +175,8 @@ class InvestigationQueryService:
             "schema_version": "constructionsight.investigation-inventory/v1",
             "event_cursor": self.store.runtime_event_cursor(),
             "total": total,
+            "scanned_on_page": min(len(identities), limit),
+            "filtered_on_page": len(rows),
             "rows": rows,
             "has_more": len(identities) > limit,
             "next_cursor": identities[limit - 1] if len(identities) > limit else None,
@@ -278,8 +331,7 @@ class InvestigationQueryService:
                         edge.predicate == "source_record_for_unresolved_investigation"
                         or (
                             edge.predicate == "reviewed_source_context"
-                            and edge.relationship_status
-                            in ACTIVE_INVESTIGATION_CONTEXT_STATUSES
+                            and edge.relationship_status in ACTIVE_INVESTIGATION_CONTEXT_STATUSES
                         )
                     )
                 )
@@ -552,20 +604,14 @@ class InvestigationQueryService:
                 ),
                 "retained_chronology_events_on_page": len(chronology),
                 "source_history_truncated": (
-                    sources_truncated
-                    or len(page) > 1000
-                    or len(all_evidence_ids) > evidence_limit
+                    sources_truncated or len(page) > 1000 or len(all_evidence_ids) > evidence_limit
                 ),
                 "requires_association_reassessment": bool(pending_reviews),
-                "claim_discrepancy_count": len(
-                    evidence_assessment["source_claim_discrepancies"]
-                ),
+                "claim_discrepancy_count": len(evidence_assessment["source_claim_discrepancies"]),
                 "historical_source_change_count": len(
                     evidence_assessment["source_revision_changes"]
                 ),
-                "unresolved_information_gap_count": len(
-                    evidence_assessment["information_gaps"]
-                ),
+                "unresolved_information_gap_count": len(evidence_assessment["information_gaps"]),
                 "identity_independently_verified": False,
                 "commercial_authority_granted": False,
             },
