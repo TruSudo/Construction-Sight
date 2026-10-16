@@ -4,7 +4,8 @@ import json
 import subprocess
 
 from constructionsight import collection_schedule as schedule
-from constructionsight.investigation_runtime import main
+from constructionsight.investigation_jobs import JobDefinition
+from constructionsight.investigation_runtime import InvestigationRuntime, main
 
 
 def _manager(*args):
@@ -38,6 +39,8 @@ def test_preflight_requires_exact_reviewed_units_active_timers_and_private_data(
 ):
     directory = tmp_path / "private"
     directory.mkdir(mode=0o700)
+    runtime = InvestigationRuntime(directory)
+    runtime.close()
     unit_dir = tmp_path / "units"
     unit_dir.mkdir()
     preview = schedule.preview(directory, directory)
@@ -101,6 +104,8 @@ def test_preflight_requires_exact_reviewed_units_active_timers_and_private_data(
 def test_preflight_rejects_overly_permissive_directory_and_schedule_warning(tmp_path, monkeypatch):
     directory = tmp_path / "private"
     directory.mkdir(mode=0o700)
+    runtime = InvestigationRuntime(directory)
+    runtime.close()
     units = tmp_path / "units"
     units.mkdir()
     preview = schedule.preview(directory, directory)
@@ -130,3 +135,71 @@ def test_preflight_rejects_overly_permissive_directory_and_schedule_warning(tmp_
     assert report["checks"]["private_data_directory"] is True
     assert report["local_service_preflight_passed"] is False
     assert "schedule_or_intake_warning" in report["blockers"]
+
+
+def test_preflight_exposes_pending_work_and_blocks_terminal_job_failures(
+    tmp_path, monkeypatch
+):
+    directory = tmp_path / "private"
+    directory.mkdir(mode=0o700)
+    runtime = InvestigationRuntime(directory)
+    unit_dir = tmp_path / "units"
+    unit_dir.mkdir()
+    preview = schedule.preview(directory, directory)
+    for name, key in (
+        (schedule.UNIT + ".service", "service"),
+        (schedule.UNIT + ".timer", "timer"),
+        (schedule.WORKER_UNIT + ".service", "investigation_service"),
+        (schedule.WORKER_UNIT + ".timer", "investigation_timer"),
+    ):
+        path = unit_dir / name
+        path.write_text(preview[key])
+        path.chmod(0o600)
+    schedule.write(
+        directory,
+        {**schedule.DEFAULT, "enabled": True, "installed_digest": preview["digest"]},
+    )
+    monkeypatch.setattr(schedule, "systemctl", _manager)
+    try:
+        initial = schedule.deployment_preflight(directory, directory, unit_directory=unit_dir)
+        assert initial["local_service_preflight_passed"] is True
+        assert initial["investigation_queue"]["pending"] == 0
+        assert initial["investigation_queue"]["terminal_failures"] == 0
+
+        runtime.queue.enqueue(
+            JobDefinition(
+                kind="parcel_assess", inputs={"source_id": "permit:demo", "receipt_id": "obs:demo"}
+            )
+        )
+        queued = schedule.deployment_preflight(directory, directory, unit_directory=unit_dir)
+        assert queued["local_service_preflight_passed"] is True
+        assert queued["investigation_queue"]["counts"]["queued"] == 1
+        assert queued["investigation_queue"]["pending"] == 1
+
+        claim = runtime.queue.claim("synthetic-test-worker")
+        assert claim is not None
+        runtime.queue.fail(claim, error_code="synthetic_nonretryable", retryable=False)
+        failed = schedule.deployment_preflight(directory, directory, unit_directory=unit_dir)
+        assert failed["local_service_preflight_passed"] is False
+        assert "no_terminal_investigation_job_failures" in failed["blockers"]
+        assert failed["investigation_queue"]["counts"]["failed"] == 1
+        assert failed["investigation_queue"]["terminal_failures"] == 1
+    finally:
+        runtime.close()
+
+
+def test_queue_health_does_not_create_database_and_rejects_untrusted_file(tmp_path):
+    directory = tmp_path / "private"
+    directory.mkdir(mode=0o700)
+    missing = schedule.investigation_queue_health(directory)
+    assert missing["available"] is False
+    assert missing["error_code"] == "database_not_initialized"
+    assert not (directory / "investigations.sqlite3").exists()
+
+    original = tmp_path / "public.sqlite3"
+    original.write_bytes(b"untrusted")
+    (directory / "investigations.sqlite3").symlink_to(original)
+    rejected = schedule.investigation_queue_health(directory)
+    assert rejected["available"] is False
+    assert rejected["error_code"].startswith("database_read_failed:")
+    assert original.read_bytes() == b"untrusted"
