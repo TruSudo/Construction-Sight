@@ -11,10 +11,12 @@ Relationship Graph remain the goal. Full unification and functional parity are n
 - Latest implementation commit: `ff35100` (automatic parcel reassessment).
 - Earlier continuation commits: `0c92c2e` (remaining producers/inventory), `8dbbc82`
   (durable worker/recovery), `c28c577` (concurrent backup and CLI failure reporting).
-- Published checkpoint / draft PR #234: `e7218594645e8968741270ca8118a838626c8dc0`.
+- Published implementation / draft PR #234: `67e1e99b93a3e6da15ba473c6d5c8988448854fe`.
 - Main baseline: `4c8f8eaf08653e2d571b0df821b862dcc9b158ac`.
-- Publication of continuation commits was blocked by automatic approval review;
-  explicit approval to publish source/tests to the GitHub repository remains required.
+- Owner explicitly authorized publication on 2026-10-16. The connected GitHub
+  publication commit `67e1e99` has the exact tested tree of local checkpoint `75d4217`:
+  `71ab0138e047470961d4be87d92f3066831e8472`. Original local commits are preserved.
+  A subsequent status-only publication records this mapping; CI is pending.
 - No main merge, branch deletion, history rewrite, original-UI retirement, expanded
   source authorization, automated commercial action or owner-device deployment.
 - After any interruption, check `git status` and `git rev-parse HEAD` on this branch.
