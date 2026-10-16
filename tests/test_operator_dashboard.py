@@ -746,6 +746,9 @@ def test_b2_legacy_get_guard_preserves_static_and_api_same_origin(database, rout
         assert headers["X-Content-Type-Options"] == "nosniff"
         assert "unsafe-inline" not in headers["Content-Security-Policy"]
         assert _get(port, route)[0] == 200  # Normal loopback GET has no Origin.
+        assert _get(
+            port, route, headers={"Host": f"localhost:{port}", "Origin": f"http://localhost:{port}"}
+        )[0] == 200  # The documented localhost alias has identical access policy.
         for denied in (
             {"Host": "attacker.example"},
             {"Origin": "http://attacker.example"},
