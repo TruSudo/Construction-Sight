@@ -103,27 +103,29 @@ def test_retained_source_families_cooperate_across_worker_restarts_without_false
 
     # Each source is delivered independently, not merged by a shared APN.
     for kind, record in sources:
-        path = tmp_path / f"{kind}.json"
+        path = directory / "investigation-inbox" / kind / f"{kind}.json"
         original = record.model_dump_json(round_trip=True).encode()
-        path.write_bytes(original)
         source_files.append((path, kind, original))
 
-    for path, kind, _ in source_files[:2]:
+    for path, _, original in source_files[:2]:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(original)
         runtime = InvestigationRuntime(directory)
         try:
-            runtime.enqueue_json(path, kind)
-            report = runtime.process(max_jobs=100)
-            assert report["failed_jobs"] == 0
+            # The worker discovers new inputs itself, without a manual enqueue.
+            report = runtime.process(max_jobs=100, poll_inbox=True)
+            assert report["failed_jobs"] == report["inbox_failed"] == 0
         finally:
             runtime.close()
 
     # Simulate another independent worker process after the initial evidence.
     runtime = InvestigationRuntime(directory)
     try:
-        for path, kind, _ in source_files[2:]:
-            runtime.enqueue_json(path, kind)
-        report = runtime.process(max_jobs=150)
-        assert report["failed_jobs"] == 0
+        for path, _, original in source_files[2:]:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(original)
+        report = runtime.process(max_jobs=150, poll_inbox=True)
+        assert report["failed_jobs"] == report["inbox_failed"] == 0
         with managed_session(runtime.queue.factory) as session:
             store = IntelligenceStore(session)
             query = InvestigationQueryService(store)
@@ -175,10 +177,11 @@ def test_retained_source_families_cooperate_across_worker_restarts_without_false
     # Replay is idempotent even after another process/worker has taken over.
     runtime = InvestigationRuntime(directory)
     try:
-        for path, kind, original in source_files:
+        for path, _, original in source_files:
             assert path.read_bytes() == original
-            assert runtime.enqueue_json(path, kind).status == "completed"
-        assert runtime.process(max_jobs=150)["processed_jobs"] == 0
+        report = runtime.process(max_jobs=150, poll_inbox=True)
+        assert report["failed_jobs"] == 0
+        assert report["processed_jobs"] == 0
         with managed_session(runtime.queue.factory) as session:
             store = IntelligenceStore(session)
             assert store.runtime_event_cursor() == cursor
