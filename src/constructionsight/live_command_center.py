@@ -31,6 +31,7 @@ from constructionsight import (
 )
 from constructionsight import command_center_commercial as commercial
 from constructionsight import command_center_state as state
+from constructionsight.command_center_investigations import investigation_view
 from constructionsight.contact_call_list import (
     annotate_contacts,
     bulk_import,
@@ -429,6 +430,25 @@ def make_server(
                     }
                 )
                 body, mime = json.dumps(value).encode(), "application/json"
+            elif path == "/api/investigations" or path.startswith("/api/investigations/"):
+                if directory is None:
+                    self.send_error(404, "Local investigation data folder is unavailable")
+                    return
+                cursor_values = query.get("after", [])
+                if len(cursor_values) > 1:
+                    raise ValueError("one inventory cursor permitted")
+                investigation_id = None
+                if path != "/api/investigations":
+                    investigation_id = unquote(path.removeprefix("/api/investigations/"))
+                    if not investigation_id or "/" in investigation_id:
+                        self.send_error(404)
+                        return
+                value = investigation_view(
+                    directory,
+                    investigation_id=investigation_id,
+                    after=cursor_values[0] if cursor_values else None,
+                )
+                body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
             elif path == "/api/leads":
                 body, mime = json.dumps(current(), allow_nan=False).encode(), "application/json"
             elif path == "/api/outreach":
