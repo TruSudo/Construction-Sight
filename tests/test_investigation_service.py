@@ -531,3 +531,116 @@ def test_failed_association_rolls_back_alias_context_and_candidate_together(
         )
         dossier = InvestigationQueryService(store).dossier(right.investigation_id)
         assert dossier["investigation"]["project_cluster_id"] == right.investigation_id
+
+
+def test_three_reviewed_sources_share_revision_aware_chronology_without_identity_upgrade(
+    factory, tmp_path, monkeypatch
+):
+    monkeypatch.setattr(
+        effect_consumption,
+        "_CONSUMPTION_DATABASE_PATH",
+        tmp_path / "three-source-review-effects.sqlite3",
+    )
+    left, middle, right = observation("ceqa"), observation("permit"), observation("planning")
+    with managed_session(factory) as session:
+        store = IntelligenceStore(session)
+        service = InvestigationService(store)
+        for record in (left, middle, right):
+            service.ingest(record)
+        for record in (middle, right):
+            service.correlate(left.source_entity_id, record.source_entity_id)
+        relations = {
+            r.object_entity_id if r.subject_entity_id == left.investigation_id
+            else r.subject_entity_id: r.relationship_id
+            for r in store.list_relationships()
+            if r.predicate == "possible_same_project_requires_review"
+            and left.investigation_id in {r.subject_entity_id, r.object_entity_id}
+        }
+        assert set(relations) == {middle.investigation_id, right.investigation_id}
+        unreviewed = InvestigationQueryService(store).dossier(left.investigation_id)
+        assert len(unreviewed["source_observations"]) == 1
+        assert len(unreviewed["candidate_source_links"]) == 2
+        assert unreviewed["cross_source_investigation"]["reviewed_context_source_count"] == 0
+        assert unreviewed["source_membership"][0]["membership_basis"] == "source_anchor"
+
+    reviews = InvestigationReviewService(factory.kw["bind"])
+    for record in (middle, right):
+        relation_id = relations[record.investigation_id]
+        preview = reviews.preview(relation_id)
+        applied = reviews.review(
+            relation_id,
+            decision="associate",
+            target_id=left.investigation_id,
+            expected_identity=preview["expected_identity"],
+            reason="Synthetic three-family investigation context review",
+            caller_confirmation=True,
+            operator_id="operator:three-source-test",
+        )
+        assert applied["identity_independently_verified"] is False
+
+    with managed_session(factory) as session:
+        store = IntelligenceStore(session)
+        query = InvestigationQueryService(store)
+        assert query.inventory()["total"] == 1
+        dossier = query.dossier(right.investigation_id)
+        assert dossier["investigation"]["project_cluster_id"] == left.investigation_id
+        membership = dossier["source_membership"]
+        assert {item["source_family"] for item in membership} == {
+            "family:ceqa", "family:permit", "family:planning"
+        }
+        assert len(membership) == 3
+        assert sum(item["membership_basis"] == "source_anchor" for item in membership) == 1
+        assert sum(
+            item["membership_basis"] == "reviewed_source_context" for item in membership
+        ) == 2
+        assert all(item["retained_revision_count"] == 1 for item in membership)
+        assert len(dossier["chronology"]) == 3
+        assert all(event["is_current_source_revision"] for event in dossier["chronology"])
+        assert len(dossier["association_review_states"]) == 2
+        assert all(
+            not state["requires_reassessment"] for state in dossier["association_review_states"]
+        )
+        assert dossier["cross_source_investigation"]["reviewed_context_source_count"] == 2
+        assert dossier["assessment"]["identity_independently_verified"] is False
+        assert dossier["assessment"]["commercial_authority_granted"] is False
+
+    # New conflicting location claim stays attributable to its own source.
+    revised_source = observation("planning", day=2, apn="999-888-777")
+    with managed_session(factory) as session:
+        store = IntelligenceStore(session)
+        InvestigationService(store).ingest(revised_source)
+        dossier = InvestigationQueryService(store).dossier(left.investigation_id)
+        membership = dossier["source_membership"]
+        revised_member = next(item for item in membership if item["source_family"] == "family:planning")
+        assert revised_member["retained_revision_count"] == 2
+        assert revised_member["current_evidence_id"] == revised_source.evidence.evidence_id
+        assert len(dossier["chronology"]) == 4
+        history = [
+            event for event in dossier["chronology"]
+            if event["source_family"] == "family:planning"
+        ]
+        assert len(history) == 2
+        assert [event["is_current_source_revision"] for event in history] == [False, True]
+        assert history[-1]["effective_at"] == revised_source.effective_at.isoformat()
+        assert history[-1]["membership_basis"] == "reviewed_source_context"
+        assert len(dossier["pending_association_reviews"]) >= 1
+        stale = [
+            state for state in dossier["association_review_states"]
+            if state["requires_reassessment"]
+        ]
+        assert stale
+        assert any(
+            change["source_id"] == revised_source.source_entity_id
+            and revised_source.evidence.evidence_id in change["current_evidence_ids"]
+            for state in stale for change in state["changed_sources"]
+        )
+        assert dossier["cross_source_investigation"]["requires_association_reassessment"]
+        assert dossier["cross_source_investigation"]["source_record_count"] == 3
+        assert dossier["cross_source_investigation"]["source_families"] == [
+            "family:ceqa", "family:permit", "family:planning"
+        ]
+        assert dossier["cross_source_investigation"]["identity_independently_verified"] is False
+        assert dossier["cross_source_investigation"]["commercial_authority_granted"] is False
+        assert dossier["cross_source_investigation"]["source_history_truncated"] is False
+        assert len(store.list_project_clusters()) == 3
+        assert len(store.list_evidence()) == 4
