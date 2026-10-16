@@ -6,6 +6,12 @@ reviewed grant to acquire data.
 """
 
 from datetime import UTC, datetime
+import hashlib
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
 
 import pytest
 
@@ -189,3 +195,92 @@ def test_retained_source_families_cooperate_across_worker_restarts_without_false
             assert InvestigationQueryService(store).inventory()["total"] == 5
     finally:
         runtime.close()
+
+
+def test_actual_cli_processes_resume_five_source_families_from_retained_inbox(tmp_path):
+    """Distinct OS processes use the same durable queue; no network or UI is involved."""
+    directory = tmp_path / "private"
+    directory.mkdir(mode=0o700)
+    items = retained_inputs()
+    source_files = []
+    for kind, record in items:
+        path = directory / "investigation-inbox" / kind / f"{kind}.json"
+        source_files.append((path, record.model_dump_json(round_trip=True).encode()))
+
+    repository = Path(__file__).parents[1]
+    environment = {
+        **os.environ,
+        "PYTHONPATH": str(repository / "src") + os.pathsep + os.environ.get("PYTHONPATH", ""),
+    }
+
+    def turn(max_jobs):
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "constructionsight.investigation_runtime",
+                "--data-dir",
+                str(directory),
+                "run",
+                "--poll-inbox",
+                "--max-jobs",
+                str(max_jobs),
+            ],
+            env=environment,
+            capture_output=True,
+            text=True,
+            timeout=90,
+        )
+        assert result.returncode == 0, result.stderr
+        return json.loads(result.stdout)
+
+    # The first process exits with unfinished dependent jobs on disk.
+    first_path, first_bytes = source_files[0]
+    first_path.parent.mkdir(parents=True, mode=0o700)
+    first_path.write_bytes(first_bytes)
+    first = turn(1)
+    assert first["processed_jobs"] == 1
+    assert first["inbox_failed"] == 0
+
+    # A different process discovers remaining jurisdictions and resumes everything.
+    for path, content in source_files[1:]:
+        path.parent.mkdir(parents=True, mode=0o700)
+        path.write_bytes(content)
+    second = turn(150)
+    assert second["failed_jobs"] == second["inbox_failed"] == 0
+    assert second["processed_jobs"] >= 4
+
+    runtime = InvestigationRuntime(directory)
+    try:
+        with managed_session(runtime.queue.factory) as session:
+            store = IntelligenceStore(session)
+            query = InvestigationQueryService(store)
+            inventory = query.inventory(limit=20)
+            assert inventory["total"] == 5
+            assert all(
+                not row["assessment"]["identity_independently_verified"]
+                and not row["assessment"]["commercial_authority_granted"]
+                for row in inventory["rows"]
+            )
+            assert any(
+                relationship.predicate == "possible_same_project_requires_review"
+                for relationship in store.list_relationships()
+            )
+            cursor = store.runtime_event_cursor()
+    finally:
+        runtime.close()
+
+    # A third independent OS process must not replay an unchanged source.
+    third = turn(150)
+    assert third["processed_jobs"] == third["failed_jobs"] == 0
+    runtime = InvestigationRuntime(directory)
+    try:
+        with managed_session(runtime.queue.factory) as session:
+            assert IntelligenceStore(session).runtime_event_cursor() == cursor
+    finally:
+        runtime.close()
+
+    for path, content in source_files:
+        assert path.read_bytes() == content
+        digest = hashlib.sha256(content).hexdigest()
+        assert (directory / "investigation-inputs" / digest).read_bytes() == content
