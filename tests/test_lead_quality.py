@@ -69,7 +69,8 @@ def test_ranking_reads_keyword_rules_once_per_batch_and_reloads_next_batch(
         # A new batch must observe changed rules, never a process-global cache.
         return {"label": original()["label"], "rules": []}
 
-    monkeypatch.setattr(lead_quality, "load_keywords", tracked_keywords)
+    # The ranking module imports the loader directly; instrument that lookup.
+    monkeypatch.setattr("constructionsight.security_fit.load_keywords", tracked_keywords)
     rows = [
         {"SITE_NAME": "New Hotel", "DEVELOPER_NAME": "Sample Builder"},
         {"SITE_NAME": "New Hotel Phase 2", "DEVELOPER_NAME": "Sample Builder"},
