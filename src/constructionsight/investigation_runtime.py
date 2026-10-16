@@ -687,6 +687,7 @@ def main(argv: list[str] | None = None) -> int:
     run.add_argument("--max-jobs", default=25, type=int)
     commands.add_parser("status")
     commands.add_parser("units")
+    commands.add_parser("preflight")
     args = parser.parse_args(argv)
     if args.command == "run" and not 1 <= args.max_jobs <= 500:
         parser.error("max-jobs must be between 1 and 500")
@@ -695,6 +696,11 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(systemd_units(Path(sys.executable), startup)))
         return 0
     directory = data_folder.resolve_folder(startup)
+    if args.command == "preflight":
+        from constructionsight.collection_schedule import deployment_preflight
+
+        print(json.dumps(deployment_preflight(directory, startup)))
+        return 0
     runtime = InvestigationRuntime(directory)
     try:
         if args.command == "enqueue":
