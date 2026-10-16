@@ -1,0 +1,772 @@
+# CONSTRUCTIONSIGHT — VIAM-GRADE TOTAL SYSTEM UNIFICATION
+## MASTER IMPLEMENTATION DIRECTIVE
+### One Product · One Intelligence Engine · One Investigative Reality · Complete Functional Preservation
+
+**Repository:** `TruSudo/Construction-Sight`
+
+**Operating mode:** Autonomous, preservation-first engineering on development branches.
+
+**Primary objective:** Reconcile and unify every mandatory capability developed throughout ConstructionSight's history into the approved native Command Center, with automated multi-source investigations, continuous intelligence enrichment, shared assurance services, and a live interactive Relationship Graph.
+
+**This is an implementation assignment—not merely an architectural analysis or documentation exercise.**
+
+---
+
+# I. THE NON-NEGOTIABLE PRODUCT DEFINITION
+
+ConstructionSight was always intended to be one intelligent construction-site investigation and commercial operations platform.
+
+Its development became fragmented between:
+
+1. The original operator system, containing extensive CEQA, permitting, parcel, identity-resolution, evidence, source-access, investigative, and assurance functionality.
+2. The newer native Command Center, containing SMARTS intelligence, lead workflows, USGS mapping, commercial operations, and the approved desktop interface.
+
+**Both systems' functionality is mandatory.**
+
+The native Command Center is the definitive product and sole target operator experience.
+
+The original dashboard is not a competing product. Its capabilities must be incorporated into the unified architecture.
+
+Do not solve this problem by maintaining two dashboards, connecting them through navigation links, displaying unrelated source tables together, or building redundant systems around the same data.
+
+The objective is:
+
+**ONE COORDINATED INTELLIGENCE ENGINE → ONE SHARED INVESTIGATION STATE → MULTIPLE SYNCHRONIZED COMMAND CENTER VIEWS.**
+
+Every source, investigative service, and assurance mechanism must contribute appropriately to this common operating system.
+
+---
+
+# II. PRESERVATION-FIRST FORENSIC RECONCILIATION
+
+Before architectural changes, determine exactly what exists.
+
+Examine:
+
+- `main`
+- All relevant development and historical branches
+- Open and closed pull requests
+- Commit histories and previous integrations
+- Archived recovery branches
+- Existing application modules
+- Database schemas and storage services
+- Assurance implementations and evidence
+- Regression and integration tests
+- Existing operator interfaces and APIs
+
+Explicitly verify:
+
+- `archive/pre-pass-a-2026-10-15`
+- `archive/silent-risk-e47e335`
+- `archive/silent-risk-e49cca5`
+- Historical native-assurance and silent-risk branches
+- CEQAnet and permitting branches
+- Parcel and ArcGIS development
+- Identity-resolution and entity-graph development
+- PRs #143, #155, #158, #186, #193, and #195
+- PR #232, the Pass B optimization
+- PR #233, the Pass B-2 operator-parity work
+- `feature/unified-command-center-source-intelligence-2026-10-16`
+
+The latest unified-intelligence branch contains preliminary, incompletely validated integration work. Inspect it critically; do not assume its new matching logic, endpoints, or UI changes are correct or complete.
+
+For every historical capability, determine whether it is:
+
+- Fully integrated and operational
+- Implemented but disconnected
+- Partially integrated
+- Available on a historical branch
+- Replaced with proven equivalent functionality
+- Missing, defective, or weakened
+
+Verify using actual code, tests, runtime behavior, and retained evidence.
+
+**Closing a PR does not prove its functionality was integrated. Having code somewhere in the repository does not prove it is operational.**
+
+Preserve all unique work until its functional and assurance equivalence is demonstrated.
+
+Do not delete branches, rewrite history, discard evidence, or remove the original operator implementation during discovery.
+
+---
+
+# III. VIAM INVESTIGATIVE ARCHITECTURE
+
+Apply VIAM-grade principles of intelligence fusion, evidentiary integrity, identity resolution, temporal reasoning, contradiction detection, and explainable conclusions.
+
+The unified processing architecture must follow:
+
+**DISCOVER → COLLECT → PRESERVE → NORMALIZE → RESOLVE → CORRELATE → ENRICH → ANALYZE → VERIFY/ASSESS → PUBLISH → MONITOR → REINVESTIGATE**
+
+Each stage must feed the next while retaining auditability.
+
+Reuse ConstructionSight's existing intake, site-resolution, artifact-identity, entity, parcel, provenance, and assurance services wherever appropriate.
+
+Do not build simplified replacements for mature existing functionality.
+
+Distinguish conceptual VIAM requirements from actual implemented runtime guarantees.
+
+---
+
+# IV. AUTONOMOUS BACKGROUND INTELLIGENCE — CORE REQUIREMENT
+
+**ConstructionSight must automatically perform the substantial investigative work in the background.**
+
+The application is not intended to require manual research into every data source.
+
+Its services must cooperate to discover, investigate, correlate, enrich, and maintain construction-site intelligence.
+
+Implement reliable orchestration supporting:
+
+1. Scheduled and appropriately triggered source acquisition.
+2. Automatic ingestion of newly available evidence.
+3. Normalization and source-specific identity preservation.
+4. Candidate project and site resolution.
+5. Cross-source searches and enrichment using authorized sources.
+6. Evidence and relationship correlation.
+7. Chronological reconstruction.
+8. Contradiction and information-gap detection.
+9. Explainable investigation assessment.
+10. Publication into the unified investigation state.
+11. Incremental updates to all Command Center views.
+12. Ongoing monitoring and targeted reinvestigation.
+
+Background work must not depend on ChatGPT Work remaining active.
+
+Use reliable local scheduling and runtime services appropriate for deployment on Zorin Linux.
+
+Required operational characteristics include:
+
+- Persistent job state
+- Idempotent execution
+- Incremental processing
+- Duplicate suppression
+- Dependency-aware tasks
+- Bounded workloads
+- Source-specific access restrictions and rate limits
+- Controlled retries and failure recovery
+- Restart-safe processing
+- Durable source revisions
+- Investigation revision tracking
+- Evidence lineage
+- Meaningful change detection
+- Reassessment when important evidence changes
+
+Every background operation must respect existing lawful-access and authorization constraints.
+
+The system must distinguish a completed processing job from a fully investigated site. Unknowns and unresolved questions must remain visible.
+
+---
+
+# V. COMPLETE MULTI-SOURCE INTELLIGENCE FUSION
+
+Integrate all relevant existing and future sources into one investigative infrastructure.
+
+Sources include:
+
+- California SMARTS
+- CEQAnet environmental review filings
+- County and municipal construction permits
+- Planning applications and approvals
+- Parcel and assessor information
+- ArcGIS and other authorized GIS services
+- Owner, developer, contractor, and consultant records
+- Government agendas and staff reports
+- Inspections and construction milestones
+- Public procurement and government contractor information, when implemented
+- Future lawful satellite and aerial imagery integrations
+- Other approved sources already supported by the repository
+
+Each source must retain its own record identity, provenance, evidentiary limitations, collection history, and access rules.
+
+**Do not confuse common location with common project identity.**
+
+A parcel can contain multiple projects. A project can span multiple parcels. Different source records may concern separate activities at the same address.
+
+Use the existing artifact-based identity resolution and parcel-backed site resolution infrastructure to evaluate relationships.
+
+Correlate using independently supported combinations of:
+
+- APN and parcel geometry
+- Addresses
+- Coordinates
+- Government identifiers
+- SMARTS identifiers
+- CEQA SCH numbers
+- Planning cases
+- Permit numbers
+- Development descriptions
+- Owners and developers
+- Contractors and related entities
+- Temporal relationships
+- Source evidence
+
+Use appropriately weighted and explainable relationships, with explicit handling of conflicting or ambiguous identities.
+
+Never automatically promote an uncertain relationship into verified identity.
+
+---
+
+# VI. SHARED SITE INVESTIGATION — THE PRIMARY DATA PRODUCT
+
+**The primary product of the intelligence engine is a continuously maintained, evidence-backed site/project investigation—not a raw source record.**
+
+Each investigation must assemble the most defensible available account of the subject.
+
+The investigation should contain, where available:
+
+- Site and project identities
+- Related source records
+- Parcel and location evidence
+- Owners, developers, contractors, and other parties
+- Source-backed descriptions
+- Relevant environmental review
+- Permits and approvals
+- Construction lifecycle observations
+- Dated milestones
+- Inspection evidence
+- Conflicting claims
+- Missing evidence
+- Possible and confirmed relationships
+- Provenance and verification status
+- Historical revisions
+- Recommended next verification actions
+- Operational relevance and readiness assessments
+
+Separate:
+
+**Evidence certainty, identity confidence, investigation completeness, construction activity, and commercial readiness.**
+
+These are different dimensions and must not be collapsed into one score.
+
+For example, SMARTS regulatory status does not establish that construction is currently underway.
+
+A CEQA approval is not an issued building permit.
+
+A permit issuance does not establish that construction has started.
+
+Satellite imagery must not be represented as current construction evidence without appropriate acquisition timing, interpretation, and independent corroboration.
+
+Present what the evidence supports, expose uncertainty, and never manufacture missing facts.
+
+---
+
+# VII. COMPLETE ASSURANCE INTEGRATION
+
+The months of assurance, remediation, certification, and defect-resolution work are mandatory architectural assets.
+
+Audit and reconcile:
+
+- Native Maximum Assurance
+- Silent-risk hardening
+- Historical defect closures
+- Evidence integrity and provenance
+- Retained source responses and digests
+- Source-access authorization
+- Identity-resolution safeguards
+- Source authority and verification rules
+- Database integrity
+- Transaction boundaries
+- Immutable evidence history
+- Duplicate suppression
+- Contradiction handling
+- Historical revision integrity
+- Recovery and rollback
+- Supply-chain security
+- Dependency integrity
+- Financial calculation integrity
+- Outreach and bid authorization
+- Existing regression tests
+
+For every safeguard, verify that the unified runtime actually enforces it on the applicable processing paths.
+
+An assurance mechanism existing in an unused module is insufficient.
+
+Do not bypass mature assurance infrastructure when integrating older features with the native Command Center.
+
+Do not indiscriminately restore obsolete governance requirements either.
+
+Apply the project's updated risk-proportionate development approach, retaining real safeguards while avoiding unnecessary procedural paralysis.
+
+**Preserve the guarantees, not outdated complexity.**
+
+---
+
+# VIII. ONE APPROVED NATIVE COMMAND CENTER
+
+The newer native Command Center remains the sole target UI.
+
+Preserve the approved **1672 × 941 charcoal-and-amber desktop design** and its layout, styling, fonts, sidebar, proportions, and visual hierarchy.
+
+Integrate all capabilities into the existing product, including:
+
+- Command Center overview
+- Lead Console
+- Project Intelligence
+- Site Map
+- Entity Network
+- Evidence Chains
+- Complete Site/Project Dossiers
+- Source Registry and Collection
+- Watchlists and alerts
+- Search and advanced filters
+- Historical timeline
+- Relationship Graph
+- Outreach preparation and tracking
+- Bid Studio
+- Royalty Ledger
+- Relevant original operator workflows
+- AI-assisted intelligence where appropriate, without making AI a runtime dependency
+
+**These must operate on the same underlying investigations.**
+
+Selecting a site on the map should open the same investigation that appears in the lead console, entity network, evidence chain, and Relationship Graph.
+
+New background evidence must update relevant views automatically.
+
+Do not introduce decorative controls, fabricated content, or independent sources of truth.
+
+The old dashboard may remain available as a temporary compatibility and verification interface until functional equivalence is demonstrated.
+
+---
+
+# IX. AUTOMATIC MAP AND INTERFACE POPULATION
+
+The map, lead inventory, dossiers, and other interfaces must be populated from the shared intelligence engine.
+
+Newly discovered or materially changed investigations should automatically trigger appropriate updates to:
+
+- Site/project inventories
+- Validated geographic representations
+- Map markers
+- Investigation dossiers
+- Entity relationships
+- Evidence chains
+- Construction timelines
+- Search indexes
+- Filters and geographic groupings
+- Readiness classifications
+- Watchlists
+- Change notifications
+- Review queues
+
+Do not invent coordinates.
+
+Unmapped investigations must remain visible through a separate review queue.
+
+Use explainable prioritization incorporating geography, commercial relevance, source freshness, evidence sufficiency, timing, contact availability, and unresolved contradictions.
+
+Preserve the existing red/yellow/green readiness concept, with reasons for each classification.
+
+A site may be commercially interesting while identity or construction status remains unverified.
+
+Automated intelligence must never independently authorize sending outreach, submitting bids, or entering binding commercial commitments.
+
+---
+
+# X. LIVE RELATIONSHIP GRAPH — DIRECT VIEW OF THE ENGINE
+
+**MANDATORY FEATURE: The Relationship Graph must be an interactive, real-time visualization of the unified intelligence system's actual investigative state and processing activity.**
+
+It is not a separate investigation engine.
+
+It is not an independent source of information.
+
+It is not a decorative visualization.
+
+**THE ENGINE PERFORMS THE INVESTIGATION. THE GRAPH REVEALS ITS WORK.**
+
+## A. Fundamental architecture
+
+The unified engine must maintain authoritative, durable investigation state and an auditable history of material events.
+
+The Relationship Graph must read directly from that shared infrastructure.
+
+When background processing creates or changes a supported relationship, the graph should reflect the committed change.
+
+Opening the graph must not be required for background investigation to occur.
+
+The graph must reconstruct already completed work when opened later.
+
+## B. Live visualization
+
+Use the visual exploration style of VirusTotal Graph and an Obsidian vault network, adapted to ConstructionSight's approved industrial aesthetic.
+
+The graph should organically display:
+
+- Construction sites
+- Projects
+- Parcels
+- SMARTS observations
+- CEQA documents
+- Permits
+- Planning cases
+- Government source records
+- Developers and owners
+- Contractors and subcontractors
+- Consultants
+- Contacts
+- Inspections and milestones
+- Evidence artifacts
+- Identity candidates
+- Contradictions and investigative gaps
+
+Every node and edge must correspond to a retained entity, observation, candidate, or reviewed relationship.
+
+## C. Live investigative events
+
+Visualize actual recorded events such as:
+
+- New source observation received
+- Evidence retained
+- Site investigation created
+- Identity candidate generated
+- CEQA filing correlated
+- Permit or parcel relationship evaluated
+- Entity relationship identified
+- Contradiction detected
+- Enrichment task started
+- Enrichment completed
+- Identity relationship validated
+- Relationship rejected or superseded
+- Investigation state updated
+- Investigation requiring human review
+
+Clearly distinguish:
+
+1. **Committed knowledge:** Relationships and findings already recorded.
+2. **Processing activity:** Work the engine is currently performing.
+3. **Unresolved candidates:** Possible relationships that have not been established.
+
+An animated connection must never falsely imply that an uncertain match has become verified.
+
+Never create simulated investigation activity simply to make the graph appear alive.
+
+## D. Real-time synchronization
+
+Implement appropriate local event delivery, such as server-sent events or another justified mechanism.
+
+Requirements:
+
+- Snapshot of authoritative state on opening
+- Live incremental updates
+- Stable node and edge identities
+- Durable revision identifiers
+- Resumable event handling where appropriate
+- Reconnection and missed-event recovery
+- Idempotent graph updates
+- No duplicate nodes from repeated events
+- Consistency across application restart
+- Clear connection and processing status
+- Controlled memory and performance usage
+
+The authoritative store—not the browser's temporary graph state—determines investigative reality.
+
+Only committed information may update established graph relationships.
+
+## E. User interaction
+
+Implement:
+
+- Zoom, pan, and drag
+- Node expansion and collapse
+- Force-directed or hybrid layout
+- Search and focus
+- Relationship-depth controls
+- Entity and source filters
+- Date and chronology filters
+- Confidence and verification filters
+- Evidence inspection
+- Contradiction highlighting
+- Clustering
+- Saved investigation views
+- Historical event replay
+- Optional live-activity highlighting
+- Reduced-motion and keyboard-accessible behavior
+- Direct navigation to map locations and dossiers
+
+Expanding a node should retrieve already indexed relationships.
+
+It must not independently begin unrestricted investigations.
+
+Additional research requests must enter the same authorized background task pipeline.
+
+## F. Real-time versus historical operation
+
+The graph must support two complementary experiences.
+
+**Live mode:** The operator watches actual ongoing processing and committed investigative changes.
+
+**Historical mode:** The operator inspects the accumulated network and can explore how relationships evolved through recorded events.
+
+Closing or pausing the graph must not stop the investigation engine.
+
+Reopening it must show everything persisted while it was closed.
+
+## G. Single reality across all views
+
+The Relationship Graph, Site Map, Project Intelligence, Evidence Chains, dossiers, and lead rankings must all derive from the same governed investigation state.
+
+A relationship reviewed or rejected through an authorized workflow must be reflected consistently everywhere.
+
+The graph does not maintain its own alternative identity-resolution decisions.
+
+## H. Graph acceptance testing
+
+Demonstrate that:
+
+1. The background engine ingests an actual retained source observation.
+2. Evidence is persisted with provenance.
+3. A supported identity relationship or candidate is created.
+4. The graph receives the committed event and updates.
+5. Clicking a node exposes the corresponding evidence.
+6. A related source observation updates the same investigation.
+7. The graph updates without refresh.
+8. Contradictory evidence is visibly distinguished.
+9. Closing the graph does not interrupt background processing.
+10. Reopening it reconstructs the authoritative current network.
+11. The map and dossier agree with the graph.
+12. No duplicate or invented findings appear.
+
+**A visually animated demonstration is insufficient without proving actual backend integration.**
+
+---
+
+# XI. SHARED RUNTIME AND DATA ARCHITECTURE
+
+Build one coordinated runtime:
+
+**Native Command Center → Shared Application Services → Unified Investigation/Identity/Evidence Layer → Governed Source Adapters and Persistence.**
+
+Retain multiple internal stores when necessary, but define their responsibilities explicitly.
+
+Do not indiscriminately merge databases.
+
+Ensure consistent:
+
+- Source identities
+- Investigation identities
+- Evidence references
+- Relationship IDs
+- Version history
+- Assurance rules
+- Query semantics
+- Change propagation
+- Write authorization
+- Transaction boundaries
+- Recovery behavior
+
+Reuse existing services first.
+
+Avoid competing matching engines, duplicate source registries, redundant investigation stores, and competing scoring systems.
+
+No permanent second dashboard server.
+
+---
+
+# XII. IMPLEMENTATION ORDER
+
+Proceed through substantial, testable vertical slices.
+
+## Phase 1 — Preservation and capability audit
+
+Complete the forensic inventory.
+
+Determine precisely which historical features and safeguards are currently operational, disconnected, incomplete, or absent.
+
+Prioritize assurance gaps and missing intelligence functionality.
+
+## Phase 2 — Unified investigation foundation
+
+Connect existing SMARTS, CEQA, permit, parcel, and entity services to the common investigative data model.
+
+Do not treat source-record aggregation alone as site resolution.
+
+Preserve source-specific records, uncertain relationships, and contradictions.
+
+## Phase 3 — Automated background orchestration
+
+Implement or integrate durable background investigative processing.
+
+Prove that incoming source information can trigger coordinated enrichment and investigation updates without a user manually initiating each step.
+
+## Phase 4 — Cross-source investigation
+
+Demonstrate an end-to-end site investigation built through cooperating sources.
+
+Show identity decisions, evidence, chronology, contradictions, and unresolved gaps.
+
+## Phase 5 — Command Center integration
+
+Populate the native map, dossiers, lead console, entity network, evidence viewer, and filters from the common investigation state.
+
+Maintain approved UI visual acceptance requirements.
+
+## Phase 6 — Live Relationship Graph
+
+Connect the graph directly to persisted investigation state and background processing events.
+
+Prove live updates, replay, reconnection, and agreement with the map and dossiers.
+
+## Phase 7 — Assurance and regression completion
+
+Verify that every integrated workflow invokes the required existing safeguards.
+
+Reconcile missing historical tests and evidence.
+
+## Phase 8 — Full functional-parity review
+
+Compare the original operator system with the unified Command Center.
+
+Identify any remaining capability not yet incorporated or proven equivalent.
+
+Do not delete the original interface without my explicit approval.
+
+---
+
+# XIII. TESTING AND ACCEPTANCE
+
+Use appropriate focused tests throughout implementation.
+
+Before proposing merges, run the applicable complete quality and integration gates:
+
+- Python 3.11 and 3.12
+- Ruff
+- Strict Mypy
+- JavaScript syntax validation
+- Existing supply-chain and dependency checks
+- Identity-resolution tests
+- Provenance and evidence integrity
+- Cross-source correlation tests
+- Database consistency
+- Background orchestration tests
+- Recovery and restart tests
+- Contradiction handling
+- Functional browser tests
+- Live graph synchronization tests
+- Existing visual structure and font checks
+- Calibrated pixel-parity reporting
+
+Do not confuse test success with complete feature parity.
+
+Demonstrate realistic retained-data workflows alongside controlled synthetic failure cases.
+
+Report exact results.
+
+Do not invent benchmarks, current coverage, verified contacts, completed integrations, or legal authorizations.
+
+---
+
+# XIV. ENGINEERING SAFETY AND AUTHORITY
+
+You have standing authorization to:
+
+- Inspect the repository
+- Analyze historical commits and branches
+- Create development branches
+- Implement code
+- Commit changes
+- Open pull requests
+- Run automated tests
+- Perform ordinary nondestructive engineering work
+
+You do not have authorization to:
+
+- Merge into `main` without explicit approval
+- Delete branches or discard historical work
+- Rewrite commit history
+- Remove unique functionality or assurance evidence
+- Circumvent source restrictions
+- Bypass authentication or HTTP 403 responses
+- Fabricate project information or evidence
+- Automatically send outreach
+- Submit bids without approval
+- Treat inferred site identities as independently verified
+- Weaken commercial authorization rules
+
+Do not introduce unreviewed security or privacy exposures while integrating systems.
+
+Preserve the original operator implementation until migration acceptance is established.
+
+---
+
+# XV. PRODUCTIVITY AND INTERRUPTION RECOVERY
+
+This assignment should produce substantial working software, not an excessive collection of governance documents.
+
+Use the existing `STATUS.md` for concise development state.
+
+Prefer meaningful vertical slices and sufficiently complete PRs.
+
+Avoid unnecessary repeated analyses and redundant test execution.
+
+However, never skip tests necessary to establish the safety of new changes.
+
+ChatGPT Work usage may terminate before a long task is complete.
+
+Protect progress through:
+
+- Durable development commits
+- Small recoverable implementation boundaries
+- Preserved recovery branches
+- No partially destructive operations
+- Clear pending-test states
+- An accurate latest commit SHA
+- The next immediately executable task
+
+If interrupted, the next session should be able to resume without reconstructing the entire effort.
+
+After each major slice, report:
+
+**LIVE:** Operational functionality demonstrated.
+
+**INTEGRATED:** Capabilities connected to the unified engine.
+
+**ASSURANCE:** Safeguards enforced and tested.
+
+**PARTIAL:** Remaining gaps and incomplete integrations.
+
+**TESTS:** Exact results.
+
+**NEXT:** The next highest-value implementation step.
+
+---
+
+# XVI. FINAL ACCEPTANCE — ONE COHERENT INTELLIGENCE SYSTEM
+
+ConstructionSight may be declared unified only when:
+
+1. All mandatory historical and newer capabilities are accounted for.
+2. Every capability is integrated or has a demonstrated equivalent.
+3. The application operates as one coordinated intelligence system.
+4. Background services automatically investigate and enrich relevant sites.
+5. Source evidence, identities, timelines, and relationships remain traceable.
+6. Contradictions and unresolved questions are represented honestly.
+7. The Command Center automatically displays the resulting investigations.
+8. The map, dossiers, graph, and lead rankings use the same investigation state.
+9. The live Relationship Graph reflects actual committed changes and processing events.
+10. Historical assurance mechanisms protect the relevant unified workflows.
+11. Commercial actions preserve their authorization boundaries.
+12. The approved native visual design remains intact.
+13. Applicable quality and integration tests pass.
+14. No valuable historical work has been discarded.
+15. The original operator interface is no longer required for any mandatory functionality before its retirement is proposed.
+
+## BEGIN EXECUTION
+
+First verify the current repository and preservation baseline.
+
+Then perform a focused, evidence-based capability and assurance reconciliation.
+
+Immediately begin implementing the highest-value missing end-to-end integration on a development branch.
+
+Prioritize the shared investigation engine, automated cooperation between sources, and the architecture that allows all Command Center interfaces—including the live Relationship Graph—to reflect the same investigative state.
+
+Continue autonomously, commit recoverable progress, and report verified outcomes.
+
+**FINAL DIRECTIVE:**
+
+ConstructionSight must not be a collection of separate tools that happen to share a dashboard.
+
+It must be **one continuously operating, evidence-governed investigative intelligence system**, where source adapters collaborate in the background, findings converge into coherent site investigations, assurance protects every relevant workflow, and the approved native Command Center—including its live Relationship Graph—reveals that unified intelligence to the operator.
+
+**Preserve everything valuable. Integrate deliberately. Test rigorously. Never invent certainty.**
