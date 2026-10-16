@@ -96,6 +96,7 @@ def test_retained_source_families_cooperate_across_worker_restarts_without_false
     tmp_path, parcel_first
 ):
     directory = tmp_path / "private"
+    directory.mkdir(mode=0o700)
     source_files = []
     sources = retained_inputs()
     if parcel_first:
@@ -108,7 +109,7 @@ def test_retained_source_families_cooperate_across_worker_restarts_without_false
         source_files.append((path, kind, original))
 
     for path, _, original in source_files[:2]:
-        path.parent.mkdir(parents=True, exist_ok=True)
+        path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
         path.write_bytes(original)
         runtime = InvestigationRuntime(directory)
         try:
@@ -122,7 +123,7 @@ def test_retained_source_families_cooperate_across_worker_restarts_without_false
     runtime = InvestigationRuntime(directory)
     try:
         for path, _, original in source_files[2:]:
-            path.parent.mkdir(parents=True, exist_ok=True)
+            path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
             path.write_bytes(original)
         report = runtime.process(max_jobs=150, poll_inbox=True)
         assert report["failed_jobs"] == report["inbox_failed"] == 0
