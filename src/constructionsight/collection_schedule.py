@@ -6,10 +6,11 @@ import argparse
 import hashlib
 import json
 import os
+import sqlite3
 import stat
 import subprocess
 import sys
-from contextlib import suppress
+from contextlib import closing, suppress
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -247,12 +248,56 @@ def status(directory: Path, startup: Path) -> dict[str, Any]:
 
 
 
+
+def investigation_queue_health(directory: Path) -> dict[str, Any]:
+    """Summarize persisted job state without creating or mutating the database."""
+    from constructionsight.intelligence.schemas import RuntimeEvent
+    from constructionsight.investigation_jobs import InvestigationJobQueue
+    from constructionsight.storage.database import prepare_private_database
+
+    database = directory / "investigations.sqlite3"
+    if not database.exists() and not database.is_symlink():
+        return {"available": False, "counts": {}, "error_code": "database_not_initialized"}
+    try:
+        prepare_private_database(database, create=False)
+        counts = dict.fromkeys(
+            ("queued", "running", "retry_wait", "completed", "failed", "blocked"), 0
+        )
+        with closing(
+            sqlite3.connect(database.absolute().as_uri() + "?mode=ro", uri=True)
+        ) as connection:
+            rows = connection.execute(
+                "SELECT payload_json FROM intelligence_runtime_events WHERE id IN "
+                "(SELECT MAX(id) FROM intelligence_runtime_events "
+                "WHERE source_service LIKE 'investigation_job:%' GROUP BY source_service)"
+            )
+            for (payload,) in rows:
+                event = RuntimeEvent.model_validate_json(payload)
+                state = InvestigationJobQueue._decode(event)
+                counts[state.status] += 1
+        return {
+            "available": True,
+            "counts": counts,
+            "terminal_failures": counts["failed"] + counts["blocked"],
+            "pending": counts["queued"] + counts["running"] + counts["retry_wait"],
+            "error_code": None,
+        }
+    except (OSError, ValueError, sqlite3.Error) as exc:
+        return {
+            "available": False,
+            "counts": {},
+            "error_code": "database_read_failed:" + type(exc).__name__,
+        }
+
+
+
 def deployment_preflight(
     directory: Path, startup: Path, *, unit_directory: Path | None = None
 ) -> dict[str, Any]:
     """Read-only local service check; never installs units or grants source access."""
     snapshot = status(directory, startup)
     planned = snapshot["preview"]
+    queue = investigation_queue_health(directory)
     try:
         attributes = directory.lstat()
         private_directory = (
@@ -296,6 +341,10 @@ def deployment_preflight(
         "unit_files_match_reviewed_preview": unit_files_match,
         "capture_timer_active": snapshot["active"],
         "investigation_timer_active": snapshot["investigation_worker"]["active"],
+        "investigation_queue_readable": queue["available"],
+        "no_terminal_investigation_job_failures": bool(
+            queue["available"] and queue["terminal_failures"] == 0
+        ),
     }
     blockers = [key for key, passed in checks.items() if not passed]
     if snapshot["warning"]:
@@ -307,6 +356,7 @@ def deployment_preflight(
         "blockers": blockers,
         "warning": snapshot["warning"],
         "reviewed_bundle_digest": planned["digest"],
+        "investigation_queue": queue,
         "network_requests_made": False,
         "source_authorization_assessed": False,
         "owner_device_changes_made": False,
