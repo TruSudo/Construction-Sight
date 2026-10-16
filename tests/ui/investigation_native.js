@@ -21,6 +21,26 @@ const {chromium}=require('../visual/node_modules/playwright');
   await page.waitForSelector('section[data-shared-investigations] [data-investigation-id]');
   const analyticsIds=await page.locator('section[data-shared-investigations] [data-investigation-id]').evaluateAll(nodes=>nodes.map(n=>n.dataset.investigationId).sort());
   if(JSON.stringify(ids)!==JSON.stringify(analyticsIds))throw Error('Workspace views disagree about canonical identities');
+  for(const view of ['Lead Console','Site Map']){
+   await page.click('nav button[data-page="'+view+'"]');
+   await page.waitForSelector('section[data-shared-investigations] [data-investigation-id]');
+   const viewIds=await page.locator('section[data-shared-investigations] [data-investigation-id]').evaluateAll(nodes=>nodes.map(n=>n.dataset.investigationId).sort());
+   if(JSON.stringify(ids)!==JSON.stringify(viewIds))throw Error(view+' disagrees about canonical identities');
+  }
+  await page.click('#map-fit');
+  await page.waitForSelector('#points [data-investigation-id]');
+  const markers=page.locator('#points [data-investigation-id]');
+  if(await markers.count()!==1)throw Error('Unmapped record acquired a point or mapped record disappeared');
+  const markerId=await markers.first().getAttribute('data-investigation-id');
+  const coverage=await page.locator('#map-coverage').textContent();
+  if(!coverage.includes('1 visible source-claimed investigation points (1 on page)')||!coverage.includes('1 investigations unmapped on page'))throw Error('Investigation coverage was lost: '+coverage);
+  await markers.first().focus();
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('#export-investigation');
+  if(!(await page.locator('#action-content').textContent()).includes(markerId))throw Error('Map marker opens a different investigation');
+  await page.click('#action-close');
+  await page.click('nav button[data-page="Command Center"]');
+  if(await page.locator('#points [data-investigation-id]').count())throw Error('Investigation markers leaked into approved overview');
   if(errors.length)throw Error(errors.join('; '));
   console.log('Native shared investigation inventory, dossier, provenance and cross-view IDs: PASS');
  }finally{await browser.close();}

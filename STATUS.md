@@ -272,3 +272,24 @@ Current complete Python 3.11/3.12 CI remains pending publication of this change;
 owner-device acceptance remain outstanding. Finish the concrete current source review,
 finite-plan activation review and deployment acceptance before declaring Phase 3 complete.
 Continue with Phase 4 only after that acceptance; no main merge or historical retirement.
+
+
+## Phase 5 — Site Map and Lead Console acceptance continuation
+
+The native map and Lead Console already consume canonical investigation inventory at
+`9e0e839d6f212268f9d1b8fdf5ce36b12a92bf74`; that exact head passed both CI workflows.
+This continuation fixes investigation coverage being overwritten by lead-only map
+counts and includes source-claimed investigation coordinates in Site Map fit bounds.
+The browser fixture retains one mapped and one unmapped independent investigation;
+expanded browser acceptance checks canonical IDs across four views, keyboard marker
+to dossier navigation, coverage counts and absence of these markers in the overview.
+No real project coordinates are created by this synthetic test fixture.
+
+Local checks: both changed JavaScript files pass Node syntax validation; Python fixture
+compiles; execution of actual drawMap with controlled DOM stubs passes mapped/unmapped
+coverage and overview-isolation assertions. Full Python and Playwright CI on this new
+source is pending. These local checks are not a browser or live-source acceptance.
+
+Next: finish Entity Network, unified filtering/search, revision-driven refresh and
+cross-view acceptance. Phase 3 owner-device/source operational verification and Phase 4
+live end-to-end acceptance remain open; Phase 5 is not complete. Main unchanged.

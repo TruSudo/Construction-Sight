@@ -31,7 +31,7 @@ def main() -> None:
             title="Synthetic CEQA application",
             county="Riverside",
             state_clearinghouse_number="2026101234",
-            site=site,
+            site=site.model_copy(update={"latitude": 34.05, "longitude": -117.25}),
             provenance=provenance,
         )),
         ("agenda", AgendaItemRecord(
