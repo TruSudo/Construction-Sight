@@ -487,6 +487,17 @@ def test_reviewed_three_typed_source_families_assemble_and_reassess_after_retain
             assert [event["is_current_source_revision"] for event in revisions] == [False, True]
             assert dossier["pending_association_reviews"]
             assert dossier["cross_source_investigation"]["requires_association_reassessment"]
+            assert any(
+                item["field"] == "title"
+                and item["subsequent_evidence_id"] == revisions[-1]["evidence_id"]
+                and item["previous_evidence_id"] == revisions[0]["evidence_id"]
+                and not item["independently_verified_contradiction"]
+                for item in dossier["evidence_assessment"]["source_revision_changes"]
+            )
+            assert any(
+                gap["code"] == "association_reassessment"
+                for gap in dossier["evidence_assessment"]["information_gaps"]
+            )
             assert dossier["cross_source_investigation"]["identity_independently_verified"] is False
             assert dossier["cross_source_investigation"]["commercial_authority_granted"] is False
     finally:
