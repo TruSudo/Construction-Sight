@@ -16,6 +16,7 @@ Updated 2026-10-16. This is a current-state summary, not an assurance or release
 - **Pass A:** 189 branches audited, 109 heads reachable from `main` (including `main` and three historical archive branches), and 80 with divergent commits. None deleted or force-updated. Recovery reference: `archive/pre-pass-a-2026-10-15`.
 - **Outstanding historical PRs:** #143, #155, #158, #186, #193, #195; each has selective-reconciliation notes. Preserve unmatched assurance evidence and source-access semantics; do not mass merge stale code.
 - **Pass B:** reduce repeat work and ambiguous handoffs in small reviewed development-branch slices. Current slice shares one keyword-config load per lead-ranking batch, with a regression test proving the next batch reloads it. No behavioral changes to classification or scoring are intended. CI must pass before merging.
+- **Pass B-2 (stacked draft):** parity audit confirms two non-interchangeable operator surfaces: the native SMARTS/local-state Command Center and the earlier CEQA/permit/SQLite read-model interface (including its separate `/workspace` view). Both launches, assets and data contracts remain supported. The older operator GET handler now reuses its existing fail-closed local-origin verifier rather than duplicating authorization logic; additional HTTP and entrypoint regression checks guard the unchanged behavior. No cross-database migration, interface removal, external request, or outbound change. CI pending.
 
 ## Operator next action
 
