@@ -44,6 +44,11 @@ jobs:
         if: always()
         run: |
           PYTHONPATH=src python tests/ui/server.py --real-fixture --data-dir /tmp/cs-real-state --port 8767 > /tmp/cs-real.log 2>&1 &
+          for attempt in $(seq 1 60); do
+            if curl --silent --fail http://127.0.0.1:8767/ > /dev/null; then break; fi
+            sleep 0.2
+          done
+          curl --silent --fail http://127.0.0.1:8767/ > /dev/null
           mkdir -p tests/visual/output/real
           node tests/visual/capture.js http://127.0.0.1:8767 tests/visual/output/real/actual.png
       - name: Start isolated writable Demo for functional checks
