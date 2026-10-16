@@ -5,6 +5,8 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
+import stat
 import subprocess
 import sys
 from contextlib import suppress
@@ -241,6 +243,67 @@ def status(directory: Path, startup: Path) -> dict[str, Any]:
             "manager_error": worker_error,
             "last_result": worker_service.get("Result"),
         },
+    }
+
+
+
+def deployment_preflight(
+    directory: Path, startup: Path, *, unit_directory: Path | None = None
+) -> dict[str, Any]:
+    """Read-only local service check; never installs units or grants source access."""
+    snapshot = status(directory, startup)
+    planned = snapshot["preview"]
+    try:
+        attributes = directory.lstat()
+        private_directory = (
+            stat.S_ISDIR(attributes.st_mode)
+            and attributes.st_uid == os.geteuid()
+            and stat.S_IMODE(attributes.st_mode) & 0o077 == 0
+        )
+    except OSError:
+        private_directory = False
+
+    units = unit_directory or Path.home() / ".config/systemd/user"
+    expected = {
+        UNIT + ".service": planned["service"],
+        UNIT + ".timer": planned["timer"],
+        WORKER_UNIT + ".service": planned["investigation_service"],
+        WORKER_UNIT + ".timer": planned["investigation_timer"],
+    }
+    unit_files_match = True
+    for name, content in expected.items():
+        path = units / name
+        try:
+            if path.is_symlink() or not path.is_file() or path.read_text() != content:
+                unit_files_match = False
+        except OSError:
+            unit_files_match = False
+
+    checks = {
+        "private_data_directory": private_directory,
+        "user_manager_available": bool(
+            snapshot["available"] and not snapshot["investigation_worker"]["manager_error"]
+        ),
+        "reviewed_bundle_digest_current": bool(
+            snapshot["config"]["enabled"] and not snapshot["pending_review"]
+        ),
+        "unit_files_match_reviewed_preview": unit_files_match,
+        "capture_timer_active": snapshot["active"],
+        "investigation_timer_active": snapshot["investigation_worker"]["active"],
+    }
+    blockers = [key for key, passed in checks.items() if not passed]
+    if snapshot["warning"]:
+        blockers.append("schedule_or_intake_warning")
+    return {
+        "schema_version": "constructionsight.deployment-preflight/v1",
+        "local_service_preflight_passed": not blockers,
+        "checks": checks,
+        "blockers": blockers,
+        "warning": snapshot["warning"],
+        "reviewed_bundle_digest": planned["digest"],
+        "network_requests_made": False,
+        "source_authorization_assessed": False,
+        "owner_device_changes_made": False,
     }
 
 
