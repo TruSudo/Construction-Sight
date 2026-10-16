@@ -22,11 +22,14 @@ _LOCATION_FIELDS = (
     ("apn", IdentityArtifactType.APN),
     ("exact_site_address", IdentityArtifactType.EXACT_SITE_ADDRESS),
 )
+_PARTY_ROLES = ("owner", "developer", "general_contractor")
 _MAX_FINDINGS = 100
 _MAX_CLAIM_REFERENCES = 100
 
 
 def _values(observation: InvestigationObservation, field: str) -> list[str]:
+    if field == "title":
+        return [observation.title] if observation.title else []
     if field == "county":
         return [observation.county] if observation.county else []
     kind = IdentityArtifactType(field)
@@ -34,6 +37,8 @@ def _values(observation: InvestigationObservation, field: str) -> list[str]:
 
 
 def _normalize(field: str, raw: str) -> str:
+    if field == "title":
+        return " ".join(raw.casefold().split())
     if field == "county":
         return raw.strip().casefold().removesuffix(" county")
     return normalize_artifact_value(IdentityArtifactType(field), raw)
@@ -66,7 +71,7 @@ def assess_investigation_evidence(
     """Assess retained claims; never convert diversity into a verified conflict."""
     discrepancies: list[dict[str, Any]] = []
     claims_truncated = False
-    for field, _ in _LOCATION_FIELDS:
+    for field, _ in (*_LOCATION_FIELDS, ("title", None)):
         groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
         for observation in current:
             for raw in sorted(set(_values(observation, field))):
@@ -109,7 +114,53 @@ def assess_investigation_evidence(
                 ],
                 "claims_truncated": len(references) > _MAX_CLAIM_REFERENCES,
                 "potentially_valid_multi_location": field in {"apn", "exact_site_address"},
+                "potentially_valid_alias": field == "title",
                 "independently_verified_contradiction": False,
+                "requires_review": True,
+            }
+        )
+
+    party_variations: list[dict[str, Any]] = []
+    for role in _PARTY_ROLES:
+        claims: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        for observation in current:
+            for party in observation.parties:
+                if party.role.value != role:
+                    continue
+                canonical = " ".join(party.name.casefold().split())
+                claims[canonical].append(
+                    {
+                        "name": party.name,
+                        "source_id": observation.source_entity_id,
+                        "evidence_id": observation.evidence.evidence_id,
+                        "entity_key": party.entity_key,
+                    }
+                )
+        source_ids = {
+            claim["source_id"] for values in claims.values() for claim in values
+        }
+        if len(claims) < 2 or len(source_ids) < 2:
+            continue
+        flattened = [
+            (name, item)
+            for name, entries in sorted(claims.items())
+            for item in sorted(entries, key=lambda item: (item["source_id"], item["name"]))
+        ]
+        if len(flattened) > _MAX_CLAIM_REFERENCES:
+            claims_truncated = True
+        shown_parties: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        for name, item in flattened[:_MAX_CLAIM_REFERENCES]:
+            shown_parties[name].append(item)
+        party_variations.append(
+            {
+                "role": role,
+                "source_claims": [
+                    {"normalized_name": name, "evidence": entries}
+                    for name, entries in sorted(shown_parties.items())
+                ],
+                "claims_truncated": len(flattened) > _MAX_CLAIM_REFERENCES,
+                "classification": "unresolved_source_claimed_party_variation",
+                "independently_verified_entity_conflict": False,
                 "requires_review": True,
             }
         )
@@ -187,7 +238,15 @@ def assess_investigation_evidence(
     ):
         gap("owner_developer_evidence", "No source-claimed owner or developer is present.")
     if discrepancies:
-        gap("source_claim_variations", "Different current location claims require source review.")
+        gap(
+            "source_claim_variations",
+            "Different current location or project-title claims require source review.",
+        )
+    if party_variations:
+        gap(
+            "source_party_variations",
+            "Different source-claimed owner, developer or GC names need identity review.",
+        )
     if relationship_contradictions:
         gap("relationship_conflicts", "Retained graph conflict evidence requires human assessment.")
     if any(link["contradictory_evidence_ids"] for link in candidate_links):
@@ -210,12 +269,14 @@ def assess_investigation_evidence(
     return {
         "schema_version": "constructionsight.investigation-evidence-assessment/v1",
         "source_claim_discrepancies": discrepancies,
+        "source_party_variations": party_variations,
         "source_claim_discrepancies_truncated": claims_truncated,
         "source_revision_changes": revisions,
         "source_revision_changes_truncated": revision_truncated,
         "information_gaps": gaps,
         "human_review_required": bool(
             discrepancies
+            or party_variations
             or relationship_contradictions
             or candidate_links
             or pending_association_reviews
