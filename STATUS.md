@@ -27,7 +27,7 @@ Relationship Graph remain the goal. Full unification and functional parity are n
 | --- | --- |
 | 1 — preservation/capability audit | Baseline inventory established; functional-equivalence and assurance obligations remain recorded below |
 | 2 — shared foundation | SMARTS, CEQA, permit, parcel, planning, agenda, document and universal-intake contracts reach common persistence; dossiers, guarded reviews and canonical inventory implemented |
-| 3 — background orchestration | Durable retained-input worker, SMARTS journal polling and automatic correlation/parcel reassessment implemented; authorized acquisition and deployment/scheduling integration remain partial |
+| 3 — background orchestration | SMARTS capture-to-worker handoff, bounded retained-artifact inbox and reviewed capture/worker timer bundle implemented; CEQA background network authorization and deployment remain partial |
 | 4 — cooperating-source journey | Controlled arrival-order checks exist; complete realistic multi-source acceptance remains outstanding |
 | 5 — native integration | Shared-state migration of native map, leads, dossiers, evidence, entity views and filters remains outstanding |
 | 6 — live Relationship Graph | Durable backend events exist; live delivery, UI, replay and reconnection acceptance remain outstanding |
@@ -128,3 +128,44 @@ Prove restart-safe source-to-investigation processing without an open UI or Chat
 Then complete the Phase 4 realistic cooperating-source investigation before migrating
 native views (5), live graph (6), assurance completion (7) and functional parity (8).
 Do not mark any phase complete merely because its files or tests exist.
+
+
+## Acquisition/scheduling continuation — 2026-10-16
+
+**LIVE / INTEGRATED:** Successful native SMARTS collection now queues retained journal
+observations into the common engine. Scheduled capture drains a bounded worker turn;
+the independent worker polls journal changes and an explicitly populated private
+`investigation-inbox/<kind>/*.json`. Source kinds include the existing typed records
+and `ceqa-csv-execution`, which independently replays actual retained CSV execution
+bytes through the existing bridge and binds original plus normalized input lineage.
+Inbox cursors are restart-safe; invalid files are retained/reported and do not starve
+later inputs. Duplicate polls do not create graph activity or duplicate jobs.
+
+**ASSURANCE:** Capture and processing outcomes remain separate. Successful worker
+recovery clears stale handoff warnings only for the corresponding source capture.
+Missing comparable artifacts are an unresolved correlation outcome, not a failed job.
+Actual SMARTS 403 responses now raise a typed terminal denial, persist source disablement
+and stop later scheduled/native retries until explicit re-enablement. The previous
+scheduler only recognized an HTTP-library error string, while SMARTS used its own error.
+Symlinked inbox files/directories are rejected without following external inputs.
+
+**SCHEDULING:** The existing reviewed schedule digest covers all four capture/worker
+service and timer units; the scheduling dialog displays all four. Stale review digests
+are rejected. Installation failure attempts to disable both timers; disable handles
+both. Worker status and failures are visible through existing schedule status. Tests
+use isolated fake systemd managers; no owner-device units have been installed/enabled.
+
+**TESTS:** 81 focused acquisition/API/schedule/investigation/runtime/native checks passed
+in 62.49s. Ruff passed; strict Mypy passed for 342 modules. JS syntax and pip check passed.
+The current full regression is pending. Local Chromium is absent and its normal
+Playwright download returned invalid/truncated archive data, so no local browser pass
+is claimed. The existing GitHub visual workflow runs `tests/ui/schedule.js`, now checking
+that both worker units are visible during review. The prior published checkpoint
+`8b81ea9` passed GitHub CI and visual/browser workflows; those results do not cover this slice.
+
+**PARTIAL / NEXT:** CEQA's current exact manual request allowances explicitly deny
+background recurrence; no timer or inbox grants network permission or bypasses those
+rules. Finish Phase 3 by implementing a separately scoped, reviewed CEQA background
+acquisition capability using existing source checks, bounded plans, revocation and
+durable effect allowances. Then prove the complete Phase 4 cooperating-source journey
+before native-view migration, live graph and final assurance/parity acceptance.

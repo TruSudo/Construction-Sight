@@ -440,13 +440,14 @@ class InvestigationService:
         local_scope = bool(left.evidence.jurisdiction) and (
             left.evidence.jurisdiction == right.evidence.jurisdiction
         )
-        candidate = ArtifactResolutionService().resolve_fingerprints(
-            self._fingerprint(left, local_scope), self._fingerprint(right, local_scope)
-        )
-        if not candidate.supporting_matches:
+        resolver = ArtifactResolutionService()
+        left_fingerprint = self._fingerprint(left, local_scope)
+        right_fingerprint = self._fingerprint(right, local_scope)
+        if not resolver.find_matches(left_fingerprint, right_fingerprint):
             raise NoCorrelationEvidence(
                 "conflicting identifiers alone do not establish a candidate relationship"
             )
+        candidate = resolver.resolve_fingerprints(left_fingerprint, right_fingerprint)
         evidence_ids = sorted({left.evidence.evidence_id, right.evidence.evidence_id})
         status = (
             RelationshipStatus.CONFLICTING if candidate.conflicts else RelationshipStatus.POSSIBLE
@@ -546,6 +547,8 @@ class InvestigationService:
                         observed_at=observation.effective_at,
                     )
                 )
+        if not artifacts:
+            raise NoCorrelationEvidence("source has no comparable identity artifacts")
         return IdentityFingerprint(
             fingerprint_id=canonical_identity_fingerprint_id(
                 target_identity_id=observation.investigation_id,

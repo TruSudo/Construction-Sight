@@ -20,9 +20,11 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
-from sqlalchemy.exc import OperationalError
+from sqlalchemy.exc import OperationalError, SQLAlchemyError
 
 from constructionsight import data_folder
+from constructionsight.ceqanet_csv_live_models import CeqanetCsvLiveExecution
+from constructionsight.ceqanet_csv_operator_bridge import build_reviewed_ceqanet_csv_bridge
 from constructionsight.collection_schedule import unit_quote
 from constructionsight.intelligence.investigation_location_service import (
     InvestigationLocationService,
@@ -64,11 +66,14 @@ from constructionsight.storage.intelligence_store import IntelligenceStore
 from constructionsight.storage.runtime_artifacts import (
     publish_runtime_artifact,
     read_runtime_artifact,
+    read_runtime_text,
     runtime_artifact_parts,
+    write_runtime_text,
 )
 
 MAX_INPUT_BYTES = 16 * 1024 * 1024
 BATCH = 25
+RUNTIME_SOURCE_KINDS = (*RETAINED_SOURCE_KINDS, "ceqa-csv-execution")
 
 
 class InputRef(BaseModel):
@@ -110,18 +115,45 @@ class InvestigationRuntime:
     def __init__(self, directory: Path) -> None:
         self.directory = directory.absolute()
         self.engine = create_private_database_engine(self.directory / "investigations.sqlite3")
-        initialize_database(self.engine)
+        try:
+            initialize_database(self.engine)
+        except Exception:
+            self.engine.dispose()
+            raise
         self.queue = InvestigationJobQueue(self.engine)
 
     def close(self) -> None:
         self.engine.dispose()
 
     def enqueue_json(self, path: Path, kind: str) -> JobState:
-        if kind not in RETAINED_SOURCE_KINDS:
+        return self.enqueue_bytes(read_runtime_artifact(path, max_bytes=MAX_INPUT_BYTES), kind)
+
+    def enqueue_bytes(self, content: bytes, kind: str) -> JobState:
+        if kind not in RUNTIME_SOURCE_KINDS:
             raise ValueError("unsupported retained source family")
-        content = read_runtime_artifact(path, max_bytes=MAX_INPUT_BYTES)
         # Preserve even invalid source payloads before normalization is attempted.
         reference = retain_input(self.directory, content)
+        parent_reference = None
+        if kind == "ceqa-csv-execution":
+            payload = json.loads(content)
+            if not isinstance(payload, dict):
+                raise ValueError("CEQA execution evidence must be an object")
+            execution = CeqanetCsvLiveExecution.model_validate(
+                payload.get("live_execution", payload)
+            )
+            bridge = build_reviewed_ceqanet_csv_bridge(execution)
+            content = json.dumps(
+                [
+                    row.model_dump(mode="json", round_trip=True)
+                    for row in bridge.preview.ceqa_records
+                ],
+                sort_keys=True,
+                separators=(",", ":"),
+                allow_nan=False,
+            ).encode()
+            parent_reference = reference
+            reference = retain_input(self.directory, content)
+            kind = "ceqa"
         rows = self._json_rows(content)
         return self.queue.enqueue(
             JobDefinition(
@@ -131,6 +163,7 @@ class InvestigationRuntime:
                     "source_kind": kind,
                     "offset": 0,
                     "row_count": len(rows),
+                    **({"parent_input": parent_reference.model_dump()} if parent_reference else {}),
                 },
             )
         )
@@ -306,6 +339,10 @@ class InvestigationRuntime:
                 for item in items:
                     service.ingest(item)
                     self._lineage(store, reference, item)
+                    if inputs.get("parent_input"):
+                        parent_input = InputRef.model_validate(inputs["parent_input"])
+                        read_input(self.directory, parent_input)
+                        self._lineage(store, parent_input, item)
                     self._enrich(store, item, claim.job_id)
                 following = offset + len(items)
                 if following < len(rows):
@@ -485,6 +522,72 @@ class InvestigationRuntime:
                 claim, error_code="retained_input_or_state_validation_failed", retryable=False
             )
 
+    def process(
+        self,
+        *,
+        max_jobs: int = BATCH,
+        poll_smarts: bool = False,
+        poll_inbox: bool = False,
+        startup: Path | None = None,
+    ) -> dict[str, int]:
+        """Bound one independently scheduled turn; processing never authorizes collection."""
+        if type(max_jobs) is not int or not 1 <= max_jobs <= 500:
+            raise ValueError("max_jobs must be between 1 and 500")
+        processed = failed = 0
+        smarts_polled = False
+        active_path = self.directory / "active.json"
+        capture_at = (
+            json.loads(read_runtime_text(active_path)).get("captured_at")
+            if poll_smarts and active_path.exists()
+            else None
+        )
+        inbox = {}
+        if poll_inbox:
+            from constructionsight.investigation_inbox import poll_retained_inbox
+
+            inbox = poll_retained_inbox(self)
+        worker = f"local:{os.getpid()}:{uuid.uuid4().hex}"
+        for _ in range(max_jobs):
+            if startup is not None and data_folder.resolve_folder(startup) != self.directory:
+                break
+            if poll_smarts:
+                self.enqueue_smarts()
+                smarts_polled = (self.directory / "evidence.sqlite3").exists()
+            result = self.run_once(worker)
+            if result is None:
+                break
+            processed += 1
+            failed += result.status in {"failed", "blocked"}
+        report = {"processed_jobs": processed, "failed_jobs": failed, **inbox}
+        write_runtime_text(
+            self.directory / "investigation-worker-run.json",
+            json.dumps(
+                {
+                    "source_capture_at": capture_at,
+                    "smarts_polled": smarts_polled,
+                    "completed_at": datetime.now(UTC).isoformat(),
+                    **report,
+                }
+            ),
+        )
+        return report
+
+
+def enqueue_smarts_capture(directory: Path) -> dict[str, Any]:
+    """Notify the common engine after acquisition; keep capture and processing outcomes distinct."""
+    runtime = None
+    try:
+        runtime = InvestigationRuntime(directory)
+        job = runtime.enqueue_smarts()
+        return {"status": "queued" if job else "idle", "job_id": job.job_id if job else None}
+    except (ValueError, OSError, SQLAlchemyError):
+        # Exact source evidence is already retained. The independent worker can
+        # resume its journal cursor later; a failed handoff is not hidden as success.
+        return {"status": "error", "error_code": "investigation_handoff_failed"}
+    finally:
+        if runtime is not None:
+            runtime.close()
+
 
 def systemd_units(executable: Path, startup_directory: Path) -> dict[str, str]:
     command = " ".join(
@@ -497,6 +600,7 @@ def systemd_units(executable: Path, startup_directory: Path) -> dict[str, str]:
             startup_directory.absolute(),
             "run",
             "--poll-smarts",
+            "--poll-inbox",
             "--max-jobs",
             "100",
         )
@@ -521,9 +625,10 @@ def main(argv: list[str] | None = None) -> int:
     commands = parser.add_subparsers(dest="command", required=True)
     enqueue = commands.add_parser("enqueue")
     enqueue.add_argument("--source", required=True, type=Path)
-    enqueue.add_argument("--kind", required=True, choices=RETAINED_SOURCE_KINDS)
+    enqueue.add_argument("--kind", required=True, choices=RUNTIME_SOURCE_KINDS)
     run = commands.add_parser("run")
     run.add_argument("--poll-smarts", action="store_true")
+    run.add_argument("--poll-inbox", action="store_true")
     run.add_argument("--max-jobs", default=25, type=int)
     commands.add_parser("status")
     commands.add_parser("units")
@@ -545,22 +650,14 @@ def main(argv: list[str] | None = None) -> int:
                 json.dumps([state.model_dump(mode="json") for state in runtime.queue.list_jobs()])
             )
             return 0
-        processed = 0
-        failed = 0
-        worker = f"local:{os.getpid()}:{uuid.uuid4().hex}"
-        for _ in range(args.max_jobs):
-            if data_folder.resolve_folder(startup) != directory:
-                break
-            if args.poll_smarts:
-                runtime.enqueue_smarts()
-            result = runtime.run_once(worker)
-            if result is None:
-                break
-            processed += 1
-            if result.status in {"failed", "blocked"}:
-                failed += 1
-        print(json.dumps({"processed_jobs": processed, "failed_jobs": failed}))
-        return 1 if failed else 0
+        report = runtime.process(
+            max_jobs=args.max_jobs,
+            poll_smarts=args.poll_smarts,
+            poll_inbox=args.poll_inbox,
+            startup=startup,
+        )
+        print(json.dumps(report))
+        return 1 if report["failed_jobs"] or report.get("inbox_failed", 0) else 0
     finally:
         runtime.close()
 
