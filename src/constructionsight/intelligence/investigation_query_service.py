@@ -25,7 +25,6 @@ from constructionsight.storage.intelligence_orm import (
 )
 from constructionsight.storage.intelligence_store import IntelligenceStore
 
-
 _SOURCE_CLAIMED_DATE_FIELDS: dict[str, tuple[str, ...]] = {
     "ceqa": ("received_date", "posted_date"),
     "agenda": ("meeting_date",),
