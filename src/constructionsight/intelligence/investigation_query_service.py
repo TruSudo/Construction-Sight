@@ -210,10 +210,16 @@ class InvestigationQueryService:
         candidate_ids: set[str] = set()
         candidates_truncated = False
         for source_id in source_ids:
+            if len(candidate_links) >= 250:
+                candidates_truncated = True
+                break
             related = self.store.list_relationships_for_target(source_id, limit=251)
             if len(related) > 250:
                 candidates_truncated = True
             for relation in related[:250]:
+                if len(candidate_links) >= 250:
+                    candidates_truncated = True
+                    break
                 if (
                     relation.predicate != "possible_same_project_requires_review"
                     or relation.relationship_status
