@@ -14,6 +14,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from constructionsight.contractor_identity_service import build_contractor_identity
+from constructionsight.domain_types import PartyRole
 from constructionsight.entity_models import Entity
 from constructionsight.intelligence.artifact_identity import (
     ArtifactObservation,
@@ -113,6 +115,14 @@ class InvestigationObservation(BaseModel):
         return self.evidence.observed_at or self.evidence.retrieved_at
 
 
+class NoCorrelationEvidence(ValueError):
+    """The retained inputs do not establish a supported candidate."""
+
+
+class ReviewedCorrelation(ValueError):
+    """Automatic correlation cannot change an existing reviewed decision."""
+
+
 class InvestigationService:
     """Compose existing stores without a second matching engine or database."""
 
@@ -138,6 +148,9 @@ class InvestigationService:
             cluster = self.store.get_project_cluster(observation.investigation_id)
             if cluster is None:
                 raise ValueError("observation receipt has no investigation")
+            # Upgrade derived projections without recreating retained source facts.
+            with self.store.session.begin_nested():
+                self._update_source_parties(self.current_observation(observation.source_entity_id))
             return cluster
 
         self._begin_savepoint()
@@ -188,6 +201,7 @@ class InvestigationService:
                         "ceqa": EntityType.CEQA_RECORD,
                         "permit": EntityType.PERMIT,
                         "parcel": EntityType.PARCEL,
+                        "planning": EntityType.PLANNING_CASE,
                     }.get(observation.evidence.record_type, EntityType.DOCUMENT),
                     canonical_name=observation.title or str(observation.evidence.source_record_id),
                     first_seen=observation.effective_at,
@@ -284,9 +298,47 @@ class InvestigationService:
                 RelationshipStatus.POSSIBLE,
                 RelationshipStatus.STALE,
             }:
-                self._request_relationship_review(previous, observation)
+                if observation.evidence.evidence_id not in previous.supporting_evidence_ids:
+                    self._request_relationship_review(previous, observation)
                 continue
             existing = self.store.get_entity(party_id)
+            identifiers = {"source_entity_key": party.entity_key}
+            if party.license_number:
+                identifiers["source_claimed_license_number"] = party.license_number
+            if (
+                party.role in {PartyRole.CONTRACTOR, PartyRole.GENERAL_CONTRACTOR}
+                and party.state.upper() == "CA"
+            ):
+                assessment = build_contractor_identity(
+                    display_name=party.name,
+                    license_number=party.license_number,
+                    county=party.county or observation.county,
+                ).model_copy(update={"observed_at": observation.effective_at})
+                assessment_id = _identity(
+                    "event:source-contractor-assessment",
+                    [
+                        party_id,
+                        observation.receipt_id,
+                        assessment.model_dump(mode="json"),
+                    ],
+                )
+                self.store.add_runtime_event(
+                    RuntimeEvent(
+                        event_id=assessment_id,
+                        event_type=RuntimeEventType.ENTITY_UPDATED,
+                        source_service="investigation_contractor_assessment",
+                        created_at=observation.evidence.retrieved_at,
+                        source_record_refs=[observation.evidence.evidence_id],
+                        payload={
+                            "candidate": assessment.model_dump(mode="json"),
+                            "source_party_id": party_id,
+                            "accepted_entity_merge": False,
+                            "license_independently_verified": False,
+                        },
+                        message="Contractor assessment retained; no verification granted.",
+                    )
+                )
+                identifiers["contractor_assessment_event"] = assessment_id
             kind = next(
                 (item for item in EntityType if item.value == party.role.value), EntityType.UNKNOWN
             )
@@ -294,6 +346,9 @@ class InvestigationService:
                 entity_id=party_id,
                 entity_type=kind,
                 canonical_name=party.name,
+                identifiers=identifiers,
+                addresses=[party.business_address] if party.business_address else [],
+                jurisdictions=[party.jurisdiction] if party.jurisdiction else [],
                 evidence_record_ids=[observation.evidence.evidence_id],
                 source_names=[observation.evidence.source_name],
                 related_source_record_ids=[str(observation.evidence.source_record_id)],
@@ -381,7 +436,7 @@ class InvestigationService:
         county = (left.county or "").strip().casefold().removesuffix(" county")
         other_county = (right.county or "").strip().casefold().removesuffix(" county")
         if not county or county != other_county:
-            raise ValueError("correlation requires the same explicitly known county")
+            raise NoCorrelationEvidence("correlation requires the same explicitly known county")
         local_scope = bool(left.evidence.jurisdiction) and (
             left.evidence.jurisdiction == right.evidence.jurisdiction
         )
@@ -389,7 +444,7 @@ class InvestigationService:
             self._fingerprint(left, local_scope), self._fingerprint(right, local_scope)
         )
         if not candidate.supporting_matches:
-            raise ValueError(
+            raise NoCorrelationEvidence(
                 "conflicting identifiers alone do not establish a candidate relationship"
             )
         evidence_ids = sorted({left.evidence.evidence_id, right.evidence.evidence_id})
@@ -404,7 +459,9 @@ class InvestigationService:
             RelationshipStatus.CONFLICTING,
             RelationshipStatus.STALE,
         }:
-            raise ValueError("reviewed relationship requires the authorized review workflow")
+            raise ReviewedCorrelation(
+                "reviewed relationship requires the authorized review workflow"
+            )
         candidate = candidate.model_copy(
             update={
                 "created_at": max(left.evidence.retrieved_at, right.evidence.retrieved_at),

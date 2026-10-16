@@ -26,6 +26,7 @@ class EntityType(StrEnum):
     OWNER = "owner"
     APPLICANT = "applicant"
     GENERAL_CONTRACTOR = "general_contractor"
+    CONTRACTOR = "contractor"
     SUBCONTRACTOR = "subcontractor"
     ARCHITECT = "architect"
     ENGINEER = "engineer"
@@ -203,6 +204,13 @@ class RuntimeEventType(StrEnum):
     SOURCE_VERIFICATION_ADDED = "source_verification_added"
     EXPORT_CREATED = "export_created"
     ENRICHMENT_FAILED = "enrichment_failed"
+    BACKGROUND_JOB_QUEUED = "background_job_queued"
+    BACKGROUND_JOB_STARTED = "background_job_started"
+    BACKGROUND_JOB_COMPLETED = "background_job_completed"
+    BACKGROUND_JOB_RETRY = "background_job_retry"
+    BACKGROUND_JOB_FAILED = "background_job_failed"
+    BACKGROUND_JOB_BLOCKED = "background_job_blocked"
+    SOURCE_CURSOR_ADVANCED = "source_cursor_advanced"
 
 
 class RuntimeEventSeverity(StrEnum):

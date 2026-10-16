@@ -419,8 +419,14 @@ def test_authorized_association_and_rejection_control_one_dossier_without_erasin
             assert dossier["assessment"]["identity_independently_verified"] is False
         assert len(store.list_project_clusters()) == 2
         assert len(store.list_evidence()) == 2
+        inventory = query.inventory(limit=10)
+        assert inventory["total"] == 1
+        assert inventory["rows"][0]["investigation_id"] == left.investigation_id
         InvestigationService(store).ingest(observation("b", day=1))
-        assert query.dossier(left.investigation_id)["pending_association_reviews"]
+        revised = query.dossier(left.investigation_id)
+        assert revised["pending_association_reviews"]
+        assert len(revised["chronology"]) == 3
+        assert len(revised["evidence"]) == 3
     fresh = reviews.preview(relation.relationship_id)
     reviews.review(
         relation.relationship_id,
@@ -441,6 +447,7 @@ def test_authorized_association_and_rejection_control_one_dossier_without_erasin
             assert dossier["investigation"]["project_cluster_id"] == item.investigation_id
             assert len(dossier["source_observations"]) == 1
         assert len(store.list_evidence()) == 3
+        assert InvestigationQueryService(store).inventory()["total"] == 2
         with pytest.raises(ValueError, match="reviewed relationship"):
             InvestigationService(store).correlate(left.source_entity_id, right.source_entity_id)
 

@@ -1,148 +1,128 @@
 # ConstructionSight — system unification
 
-**Controlling assignment:** the owner's [verbatim master directive](docs/CONSTRUCTIONSIGHT_UNIFICATION_DIRECTIVE.txt).
-Follow Phases 1–8 and their acceptance criteria. One shared intelligence engine,
-one investigation state, the approved native Command Center, and the live Relationship
-Graph remain the target. Preserve all mandatory historical functionality and safeguards.
+**Controlling assignment:** [owner's verbatim directive](docs/CONSTRUCTIONSIGHT_UNIFICATION_DIRECTIVE.txt).
+Follow Phases 1–8 in order. Preserve mandatory historical functionality and safeguards.
+One shared investigation engine, the approved native Command Center and a live
+Relationship Graph remain the goal. Full unification and functional parity are not complete.
 
-**CURRENT:** preservation inventory established; Phase 2 investigation foundation in
-progress. Phases 3–8 are not accepted or complete. Full historical/native equivalence
-is unproven and remains an explicit acceptance obligation.
+## Exact recovery checkpoint
 
-Development branch: `agent/unification-implementation-2026-10-16`, based on preserved
-checkpoint `eef0aca71ea61b19aff43d7ccfb056640454170b` and main baseline
-`4c8f8eaf08653e2d571b0df821b862dcc9b158ac`. Recovery SHA is the latest commit
-on this branch (`git rev-parse HEAD`). No main merge, branch deletion, history rewrite,
-original-UI retirement, source-authority expansion or owner-device deployment performed.
+- Local branch: `agent/unification-continuation-2026-10-16`.
+- Latest implementation commit: `ff35100` (automatic parcel reassessment).
+- Earlier continuation commits: `0c92c2e` (remaining producers/inventory), `8dbbc82`
+  (durable worker/recovery), `c28c577` (concurrent backup and CLI failure reporting).
+- Published checkpoint / draft PR #234: `e7218594645e8968741270ca8118a838626c8dc0`.
+- Main baseline: `4c8f8eaf08653e2d571b0df821b862dcc9b158ac`.
+- Publication of continuation commits was blocked by automatic approval review;
+  explicit approval to publish source/tests to the GitHub repository remains required.
+- No main merge, branch deletion, history rewrite, original-UI retirement, expanded
+  source authorization, automated commercial action or owner-device deployment.
+- After any interruption, check `git status` and `git rev-parse HEAD` on this branch.
 
-## Preservation/capability findings
+## Phase checkpoint
 
-[Machine-readable evidence](docs/audits/unification-preservation-baseline-2026-10-16.json)
-retains all 193 baseline remote tips; 110 are ancestors of main and 83 have unique
-commits. It now also catalogs each non-ancestor branch's contributed runtime/test/
-evidence paths, all 333 baseline Python modules, direct test imports, static native/
-legacy import reachability, and the ten existing declared capability families.
-File ancestry/import reachability never substitutes for functional proof.
-
-Explicit archive verification: `archive/pre-pass-a-2026-10-15` at `7771e7d`,
-`archive/silent-risk-e47e335` at `e47e335`, and `archive/silent-risk-e49cca5`
-at `e49cca5` are retained ancestors of main. Native-assurance branch `10037faa`
-and silent-risk certification are ancestors; native-assurance `3e11e27` retains two
-unique commits. No historical assets discarded.
-
-Required PRs #143/#155/#158/#186/#193/#195/#232/#233 were checked: all are open
-and unmerged. #232 and #233 retain six and twelve commits beyond main respectively.
-The preliminary unified branch `86bfc264` has sixteen commits beyond main; it is a
-read-only aggregation/candidate view, not the required engine. Its incorrectly escaped
-whitespace comparator fails a repeated-space equality check; that matcher was not adopted.
-
-| Capability family | Current disposition and integration obligation |
+| Phase | Evidence-backed state |
 | --- | --- |
-| SMARTS intake, retained bytes, aliases, revisions | Implemented; bounded validated offline replay now reaches existing intelligence persistence |
-| CEQA listing/detail/CSV, recurring manifests, write plans, inbox | Implemented in historical/operator paths; typed retained CEQA records now reach common persistence; automatic acquisition still pending |
-| Permit, planning, agendas, lifecycle observations | Existing domain/adapters retained; typed permits now reach common persistence; remaining producers pending |
-| Parcel/ArcGIS acquisition, containment, assurance, longitudinal state | Existing services retained; parcel-core evidence normalization available; automatic parcel/site enrichment pending |
-| Entity/contractor/contact records | Existing services retained; CEQA/permit source parties enter common graph as unverified source claims; canonical cross-source entity resolution pending |
-| Artifact identity and parcel-backed site resolution | Existing resolver reused for project candidates; SMARTS location projection reuses existing intake/site resolver; no automatic identity merge |
-| Intelligence evidence, relationships, clusters and revision history | Existing store/graph reused; no additional database schema or competing matching engine |
-| Native map, leads, dossiers, evidence, filters, entity views | Existing native behavior retained; shared-state replacement/integration is still pending Phase 5 |
-| Background work, watchlists and alerts | Existing capture timer/watchlists retained; durable coordinated multi-source jobs and reassessment are missing |
-| Live Relationship Graph and history | Existing graph/query/event backend retained; live delivery, replay, reconnection and graph UI missing |
-| Outreach, bids, catalog and royalty/result ledgers | Both implementations retained; full equivalent functionality not established; no automated sending or binding action |
-| Assurance, recovery, supply-chain and dependency integrity | Existing assets preserved; cross-runtime enforcement must be demonstrated in Phase 7 |
+| 1 — preservation/capability audit | Baseline inventory established; functional-equivalence and assurance obligations remain recorded below |
+| 2 — shared foundation | SMARTS, CEQA, permit, parcel, planning, agenda, document and universal-intake contracts reach common persistence; dossiers, guarded reviews and canonical inventory implemented |
+| 3 — background orchestration | Durable retained-input worker, SMARTS journal polling and automatic correlation/parcel reassessment implemented; authorized acquisition and deployment/scheduling integration remain partial |
+| 4 — cooperating-source journey | Controlled arrival-order checks exist; complete realistic multi-source acceptance remains outstanding |
+| 5 — native integration | Shared-state migration of native map, leads, dossiers, evidence, entity views and filters remains outstanding |
+| 6 — live Relationship Graph | Durable backend events exist; live delivery, UI, replay and reconnection acceptance remain outstanding |
+| 7 — assurance completion | Relevant new safeguards tested; complete historical-to-unified enforcement reconciliation remains outstanding |
+| 8 — functional parity | No complete parity acceptance; original interface retained |
 
-Eight historical production paths are absent from main: three old CSV export modules,
-`money.py`, three old result-ledger-authority modules, and the preliminary source bridge.
-The evidence records current counterparts and exact gaps. Five historical test paths,
-one patch script, 25 assurance evidence paths and one closure proof also remain branch-
-retained. No absent filename is treated as proof that its behavior was lost or replaced.
+## Operational evidence and integration
 
-Known assurance differences: main's reviewed access basis accepts nonempty free text;
-PR #155 binds tri-state facts to immutable review/evidence digests. Native money uses
-Decimal/integer cents while older ledger models retain float fields; exact historical
-parity is unproven. Current SQLite connections enforce foreign keys; a historical test
-file is missing. These remain explicit remediation/verification obligations.
+- Existing `IntelligenceStore`, graph/revision services, artifact resolution, intake,
+  contractor assessment, parcel/site resolution and local review authorization are reused.
+  There is no competing matching engine, new dependency or database-schema change.
+- Source identities remain distinct. Common parcel/address produces review candidates,
+  never verified project identity. Reviewed associations/rejections preserve source IDs;
+  revised evidence triggers reassessment without silently reversing reviewed decisions.
+- Dossiers distinguish certainty, identity, completeness, activity and readiness. Current
+  construction and commercial authority remain unknown unless separately established.
+- Canonical inventory uses bounded cursor pagination, suppresses reviewed aliases and
+  retains unmapped records. Read-only inventory/dossier CLI checks preserve database bytes.
+- Source-party contractor assessments remain unverified source claims. Intake matching
+  excludes ambiguous/inferred facts and recomputes anchors from original values.
+- Jobs use the existing immutable event store. Findings, follow-up jobs and completion
+  share one transaction. Dependencies, bounded batches, replay suppression, controlled
+  retries, expiring leases, stale-worker rejection and restart recovery are implemented.
+- Original input bytes are retained before normalization. SMARTS polling retains exact
+  validated responses and checks the lineage of the committed journal cursor.
+- Site arrivals schedule parcel assessment from committed parcel inputs. Parcel arrivals
+  schedule same-county reassessment independently of project matching. Both arrival
+  orders pass controlled tests. Bounded parcel pools remain explicitly incomplete.
+- Backup/restore includes content-addressed inputs, verifies their identities and resumes
+  queued work. Refreshing inputs after database snapshots covers jobs queued during backup.
+- CLI: `python -m constructionsight.investigation_runtime --data-dir PRIVATE_DIR`
+  followed by `enqueue`, `run`, `status` or `units`. `units` previews independent systemd
+  worker/timer units without creating state. No timer is installed or enabled here.
+- Failed worker jobs are retained and produce a nonzero CLI run result.
 
-## First investigation foundation slice
-
-- `InvestigationService` composes existing `IntelligenceStore`, `IntelligenceGraphService`,
-  `ArtifactResolutionService`, source schemas and revision history. Source IDs remain
-  separate; same parcel/address produces a review candidate, never verified project identity.
-- Source observations bind normalization to immutable receipts and retained evidence.
-  Replays are idempotent, out-of-order records retain history without regressing current
-  source facts, conflicting artifacts remain explicit, and obsolete candidates become stale.
-- CEQA/permit participant roles enter the graph as source claims; reviewed party relationships
-  are preserved for review. Correlation cannot reopen a reviewed/superseded decision.
-- SQLite savepoints are anchored to the caller's outer transaction. Failure injection proves
-  rollback after evidence writes and after the entire ingestion operation.
-- Existing graph service suppresses unchanged replay events; generic entity updates no longer
-  falsely emit ENTITY_MERGED. Historical ENTITY_MERGED events remain readable.
-- New offline entrypoint: `constructionsight-investigations` or
-  `python -m constructionsight.investigation_cli --database PRIVATE_DIR/investigations.sqlite3
-  --source SOURCE --kind smarts-journal|ceqa|permit|parcel --limit 100`.
-  SMARTS `--after-id` resumes a bounded read. Source access is read-only and destination
-  files require private ownership/modes. No network is performed.
-
-**LIVE:** Actual retained SMARTS replay: ten observations -> ten investigations,
-ten source nodes, ten evidence records, ninety committed events. Replay produces
-exactly the same counts. Two genuine retained CEQA records enter the same store.
-The original 1.6 GB journal SHA-256 remains
+**Retained-data demonstrations:** the prior SMARTS replay incorporated ten observations
+into ten investigations, ten source nodes, ten evidence records and ninety events;
+replay preserved counts. Original journal digest:
 `0f64415f983c136bdb7621ae52b1977b269ae9ea2e15b3c4f36f7a17b80d000f`.
-No cross-source match or current construction claim is inferred from this demonstration.
+The canonical inventory reads twelve retained SMARTS/CEQA investigations. The latest
+worker demonstration processes two genuine retained CEQA records through five jobs:
+one ingestion, two correlation jobs and two parcel assessments. It preserves two
+investigations and one review candidate. Empty local parcel evidence produces honest
+no-match assessments. Original export bytes are unchanged and replay is idle.
+These demonstrations do not establish verified sites, current activity or complete
+cross-source investigation. No network acquisition was performed.
 
-**INTEGRATED:** Bounded offline source replay reaches existing shared persistence,
-identity candidate analysis, participants and retained graph/revision events. Native
-views and autonomous source cooperation are not connected yet.
+## Preservation and unresolved historical safeguards
 
-**ASSURANCE:** Evidence/normalization rebinding rejection, duplicate suppression,
-source identity/alias checks, caller rollback, failure recovery, county scoping,
-contradiction retention, candidate invalidation and preservation of reviewed decisions
-are implemented with focused checks. Wider assurance parity remains pending.
+[Audit evidence](docs/audits/unification-preservation-baseline-2026-10-16.json) retains
+193 baseline remote tips (110 main ancestors, 83 unique contributions), all 333 baseline
+Python modules, contributed runtime/test/evidence paths and native/legacy import
+reachability. File ancestry/imports are not functional proof. No historical assets discarded.
 
-**PARTIAL:** Phase 2 now has shared dossiers, explicit reviewed association/rejection and
-parcel-backed assessment through existing services. Remaining producer adapters and
-complete cross-source acceptance still require completion. No durable coordinated jobs, live graph UI, native migration or final
-functional parity acceptance claimed. Phases 3–8 remain outstanding.
+- Verified archives: `archive/pre-pass-a-2026-10-15` at `7771e7d`,
+  `archive/silent-risk-e47e335` at `e47e335`, `archive/silent-risk-e49cca5` at `e49cca5`.
+- Native assurance `10037faa` and silent-risk certification are ancestors;
+  native-assurance `3e11e27` retains two unique commits.
+- Required PRs #143/#155/#158/#186/#193/#195/#232/#233 were checked and remain
+  open/unmerged at the audit baseline. #232/#233 retain six/twelve commits beyond main.
+- Preliminary unified branch `86bfc264` retains sixteen commits beyond main. Its
+  read-only aggregation is not the required engine; its defective whitespace matcher
+  was not adopted.
+- Eight historical production paths are absent from main: three CSV exporters,
+  `money.py`, three result-ledger-authority modules and the preliminary bridge.
+  Current counterparts and exact gaps are indexed. Five test paths, one patch script,
+  25 assurance evidence paths and one closure proof remain branch-retained.
+- Access-basis gap: main accepts nonempty review text; PR #155 binds tri-state facts
+  to immutable review/evidence digests. Unified enforcement remains to be reconciled.
+- Native money uses Decimal/integer cents; older ledger models retain float fields.
+  Complete financial/workflow equivalence remains unproven.
+- Current SQLite connections enforce foreign keys; a historical test path is absent.
+- Original operator UI remains preserved. Approved native design is unchanged by this
+  backend continuation; absolute pixel parity is not claimed.
 
-**TESTS:** Baseline Python 3.12.14: 2,522 passed, two upstream Typer/Click warnings,
-97.51s. Focused foundation/source/graph/journal set: 29 passed in 2.56s before the
-latest candidate-invalidation tests and event-label corrections. Latest full suite: 2,538 passed, two upstream warnings, 106.67s. Ruff passes;
-strict Mypy passes across 336 source modules. JavaScript syntax passes across all
-source/test JS files. Python 3.11, complete browser/visual and final integration
-acceptance remain pending; no merge readiness claimed.
-Initial implementation failures were corrected, including empty cluster validation,
-false replay activity, regenerated preview timestamps and computed provenance fields
-breaking strict round-trip validation. Genuine retained-data replay is rerun successfully.
+## Verification
 
-**NEXT:** Connect the remaining planning/agenda/document and universal-intake
-producers to this foundation, add bounded canonical inventory queries, then complete
-Phase 2 acceptance. The next phase is durable background orchestration. Finish Phase 2 acceptance before moving to durable background jobs
-(Phase 3), cross-source journey (Phase 4), native view integration (Phase 5), live graph
-(Phase 6), assurance completion (Phase 7) and full functional parity (Phase 8).
+- Earlier full regression before the last worker additions: **2,567 passed**, two
+  upstream Typer/Click deprecation warnings, **663.78s**.
+- Final-tree Python 3.12.14 full regression: **2,571 passed**, two upstream
+  Typer/Click deprecation warnings, **595.59s**. This covers implementation `ff35100`;
+  the subsequent checkpoint update changes only this status file.
+- Focused foundation/source/site-resolution/database checks: 49 passed, two upstream
+  warnings, 55.77s. Existing backup/schedule checks: five passed, 2.43s.
+- Worker checks cover concurrency, dependencies, restart, stale leases, bounded retry,
+  rollback, exact-byte tampering, bounded continuation, SMARTS cursor, backup/restore,
+  concurrent enqueue during backup and CLI failure reporting. Both parcel-arrival
+  orders passed separately (two cases, 6.72s).
+- Ruff passed; strict Mypy passed for 341 modules; JavaScript syntax and pip check passed.
+- Python 3.11, fresh browser/visual acceptance, vulnerability audit and complete final
+  integration gates are not newly verified in this local continuation. No merge readiness claimed.
 
-## Shared dossier, parcel and review slice — 2026-10-16
+## Next immediately executable task
 
-- Dossiers use existing committed investigations, evidence, relationships and events,
-  with separate certainty/identity/completeness/activity/readiness dimensions. Cited
-  candidate evidence is labelled separately from associated source membership.
-- Durable ordered event cursors support bounded resume. Revision identities bind the
-  prior event tip so recurring A→B→A→B transitions retain every actual change.
-- `--show INVESTIGATION_ID` reads an existing database without mutation.
-  `--review RELATIONSHIP_ID` previews scope; explicit `--decision associate|reject`,
-  `--expected`, `--reason`, and `--confirm` use existing local authorization and durable
-  protected-effect consumption. Associations remain unverified, preserve source IDs,
-  and resolve both entry points to one dossier; rejection restores separate accounts.
-  Source revisions trigger reassessment without silently reversing a reviewed decision.
-- Existing parcel/site resolver and immutable resolution store are now called from
-  investigation assessment. Known counties constrain matching. A corrected fallback
-  digest remains valid after recording the no-match limitation. Parcel inputs/evidence
-  remain retained; geography never establishes verified project identity.
-- Controlled tests cover association/rejection, stale authorization, partial-write
-  rollback, alias/dossier agreement, source revisions, bounded reads and parcel replay.
-- Genuine retained CEQA documents sharing SCH 2026030377 produce a review candidate
-  and a dossier citing both documents. They remain two separate source identities;
-  current construction and independently verified identity remain unknown.
-- Latest local verification: 2,547 tests passed, two upstream Typer/Click warnings,
-  114.72s; Ruff passes; strict Mypy passes on 339 modules. First published slice
-  `3870cee` passed GitHub CI run 1805 and visual comparison run 42. This newer tree
-  still needs its own CI confirmation. No merge or final parity acceptance claimed.
+Finish Phase 3: connect existing authorized capture/CEQA producers and local scheduling
+to this durable queue, respecting existing access reviews, rate limits and 403 stops.
+Prove restart-safe source-to-investigation processing without an open UI or ChatGPT.
+Then complete the Phase 4 realistic cooperating-source investigation before migrating
+native views (5), live graph (6), assurance completion (7) and functional parity (8).
+Do not mark any phase complete merely because its files or tests exist.

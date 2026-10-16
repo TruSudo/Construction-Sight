@@ -9,6 +9,7 @@ from constructionsight.ceqa_models import CeqaRecord
 from constructionsight.domain_types import PartyRole
 from constructionsight.entity_models import Entity
 from constructionsight.intelligence.artifact_identity import IdentityArtifactType as Artifact
+from constructionsight.intelligence.investigation_query_service import InvestigationQueryService
 from constructionsight.intelligence.investigation_service import InvestigationService
 from constructionsight.intelligence.investigation_sources import (
     from_domain,
@@ -36,6 +37,48 @@ from constructionsight.storage.database import (
 from constructionsight.storage.intelligence_store import IntelligenceStore
 
 AT = datetime(2026, 10, 16, tzinfo=UTC)
+
+
+def test_existing_contractor_assessment_is_retained_without_merging_or_verifying_license(tmp_path):
+    record = PermitRecord(
+        permit_key="permit:contractor",
+        permit_number="BLD-1",
+        county="Riverside",
+        jurisdiction="Test city",
+        entities=[
+            Entity(
+                entity_key="party:contractor",
+                name="Synthetic Contractor",
+                role=PartyRole.CONTRACTOR,
+                license_number="1234567",
+            )
+        ],
+        provenance=[
+            Provenance(
+                source_name="Synthetic permit portal",
+                captured_at=AT,
+                evidence_text="Synthetic retained permit record",
+            )
+        ],
+    )
+    item = from_domain(record)
+    engine = create_database_engine(f"sqlite+pysqlite:///{tmp_path / 'contractors.sqlite3'}")
+    initialize_database(engine)
+    with managed_session(session_factory(engine)) as session:
+        store = IntelligenceStore(session)
+        service = InvestigationService(store)
+        service.ingest(item)
+        cursor = store.runtime_event_cursor()
+        dossier = InvestigationQueryService(store).dossier(item.investigation_id)
+        party = dossier["source_parties"][0]
+        assert party["entity"]["entity_type"] == "contractor"
+        assert party["entity"]["identifiers"]["source_claimed_license_number"] == "1234567"
+        assert party["contractor_assessment"]["accepted_entity_merge"] is False
+        assert party["contractor_assessment"]["license_independently_verified"] is False
+        assert party["contractor_assessment"]["candidate"]["status"] == "unknown"
+        service.ingest(item)
+        assert store.runtime_event_cursor() == cursor
+    engine.dispose()
 
 
 def source_journal(tmp_path):

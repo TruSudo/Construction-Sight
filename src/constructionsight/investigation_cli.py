@@ -4,55 +4,28 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
-import stat
 from pathlib import Path
 
-from constructionsight.ceqa_models import CeqaRecord
 from constructionsight.intelligence.investigation_query_service import InvestigationQueryService
 from constructionsight.intelligence.investigation_review_service import InvestigationReviewService
 from constructionsight.intelligence.investigation_service import InvestigationService
 from constructionsight.intelligence.investigation_sources import (
-    from_domain,
-    from_parcel,
+    RETAINED_SOURCE_KINDS,
     from_smarts,
+    normalize_retained_record,
 )
-from constructionsight.parcel_core_models import ParcelCoreRecord
-from constructionsight.permit_models import PermitRecord
 from constructionsight.smarts_evidence_ledger import read_smarts_observations
 from constructionsight.storage.database import (
-    create_database_engine,
+    create_private_database_engine,
     initialize_database,
     managed_session,
     session_factory,
 )
+from constructionsight.storage.database import (
+    prepare_private_database as _private_target,
+)
 from constructionsight.storage.intelligence_store import IntelligenceStore
 from constructionsight.storage.operator_read_store import create_operator_read_engine
-
-
-def _private_target(path: Path, *, create: bool = True) -> Path:
-    path = path.absolute()
-    if create:
-        path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-    info = path.parent.lstat()
-    if not stat.S_ISDIR(info.st_mode) or info.st_uid != os.geteuid() or info.st_mode & 0o077:
-        raise ValueError("investigation database requires an owner-only directory (0700)")
-    if create:
-        try:
-            fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
-        except FileExistsError:
-            pass
-        else:
-            os.close(fd)
-    info = path.lstat()
-    if (
-        not stat.S_ISREG(info.st_mode)
-        or info.st_uid != os.geteuid()
-        or stat.S_IMODE(info.st_mode) != 0o600
-        or info.st_nlink != 1
-    ):
-        raise ValueError("investigation database must be a private, owned regular file (0600)")
-    return path
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -60,6 +33,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--database", required=True, type=Path)
     parser.add_argument("--source", type=Path)
     parser.add_argument("--show", metavar="INVESTIGATION_ID")
+    parser.add_argument("--inventory", action="store_true")
+    parser.add_argument("--after-inventory")
     parser.add_argument("--review", metavar="RELATIONSHIP_ID")
     parser.add_argument("--decision", choices=("associate", "reject"))
     parser.add_argument("--target")
@@ -67,10 +42,39 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--reason")
     parser.add_argument("--operator")
     parser.add_argument("--confirm", action="store_true")
-    parser.add_argument("--kind", choices=("smarts-journal", "ceqa", "permit", "parcel"))
+    parser.add_argument("--kind", choices=("smarts-journal", *RETAINED_SOURCE_KINDS))
     parser.add_argument("--after-id", type=int, default=0)
     parser.add_argument("--limit", type=int, default=100)
     args = parser.parse_args(argv)
+    if args.inventory:
+        if any(
+            [
+                args.source,
+                args.kind,
+                args.review,
+                args.show,
+                args.decision,
+                args.target,
+                args.expected,
+                args.reason,
+                args.operator,
+                args.confirm,
+                args.after_id,
+            ]
+        ):
+            parser.error("inventory is a read-only operation")
+        engine = create_operator_read_engine(args.database)
+        try:
+            with managed_session(session_factory(engine)) as session:
+                report = InvestigationQueryService(IntelligenceStore(session)).inventory(
+                    after=args.after_inventory, limit=args.limit
+                )
+                print(json.dumps(report))
+        finally:
+            engine.dispose()
+        return 0
+    if args.after_inventory:
+        parser.error("after-inventory requires --inventory")
     if args.review:
         if args.source or args.kind or args.show or args.after_id:
             parser.error("review cannot be combined with source replay or dossier display")
@@ -82,7 +86,7 @@ def main(argv: list[str] | None = None) -> int:
             if not args.expected or not args.reason:
                 parser.error("a review decision requires --expected and --reason")
             target = _private_target(args.database, create=False)
-            engine = create_database_engine(f"sqlite+pysqlite:///{target}")
+            engine = create_private_database_engine(target, create=False)
         try:
             review_service = InvestigationReviewService(engine)
             result = (
@@ -136,17 +140,11 @@ def main(argv: list[str] | None = None) -> int:
         rows = payload if isinstance(payload, list) else [payload]
         if len(rows) > args.limit:
             raise ValueError("source JSON exceeds limit; split the retained export into batches")
-        if args.kind == "parcel":
-            observations = [from_parcel(ParcelCoreRecord.model_validate(row)) for row in rows]
-        else:
-            model: type[CeqaRecord] | type[PermitRecord] = (
-                CeqaRecord if args.kind == "ceqa" else PermitRecord
-            )
-            observations = [from_domain(model.model_validate(row)) for row in rows]
+        observations = [normalize_retained_record(args.kind, row) for row in rows]
         next_cursor = None
     # Validate all retained input before opening the destination database.
     target = _private_target(args.database)
-    engine = create_database_engine(f"sqlite+pysqlite:///{target}")
+    engine = create_private_database_engine(target, create=False)
     try:
         initialize_database(engine)
         with managed_session(session_factory(engine)) as session:

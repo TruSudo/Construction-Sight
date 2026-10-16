@@ -10,6 +10,7 @@ from collections.abc import Iterable
 from constructionsight.domain_types import confidence_band
 from constructionsight.intake_models import (
     ExtractedMaterialFact,
+    FactConfidence,
     MaterialFactKind,
     UniversalIntakeRecord,
 )
@@ -44,6 +45,8 @@ def build_site_resolution_input_from_intake(intake: UniversalIntakeRecord) -> Si
     identifiers: list[SiteIdentifier] = []
     geometry_hints: list[GeometryHint] = []
     for fact in intake.extracted_facts:
+        if fact.confidence not in {FactConfidence.SOURCE_CLAIMED, FactConfidence.VERIFIED}:
+            continue
         identifier = _identifier_from_fact(fact)
         if identifier is not None:
             identifiers.append(identifier)
@@ -52,6 +55,7 @@ def build_site_resolution_input_from_intake(intake: UniversalIntakeRecord) -> Si
             geometry_hints.append(geometry_hint)
 
     source_hints = dict(intake.source_hints)
+    source_hints.setdefault("source_name", intake.evidence.source_name)
     if intake.evidence.source_family:
         source_hints.setdefault("source_family", intake.evidence.source_family)
     if intake.evidence.source_url:
@@ -111,7 +115,7 @@ def normalize_jurisdiction(value: str) -> str:
 def _identifier_from_fact(fact: ExtractedMaterialFact) -> SiteIdentifier | None:
     """Convert a material fact into a site identifier when possible."""
 
-    value = fact.normalized_value or fact.value
+    value = fact.value
     if fact.fact_kind == MaterialFactKind.APN:
         normalized = normalize_apn(value)
         if not normalized:
@@ -135,7 +139,7 @@ def _geometry_hint_from_fact(
 ) -> GeometryHint | None:
     """Extract coordinate geometry hints from generic material facts."""
 
-    value = fact.normalized_value or fact.value
+    value = fact.value
     match = _COORDINATE_RE.search(value)
     if match is None:
         return None

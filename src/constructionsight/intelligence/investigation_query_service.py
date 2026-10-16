@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
+from sqlalchemy import func, select
+
 from constructionsight.intelligence.investigation_service import (
     InvestigationService,
     observation_receipt_identity,
@@ -16,6 +18,10 @@ from constructionsight.intelligence.relationship_query_service import (
 )
 from constructionsight.intelligence.schemas import LifecyclePhase, RelationshipStatus
 from constructionsight.storage.database import ensure_database_transaction
+from constructionsight.storage.intelligence_orm import (
+    IntelligenceProjectClusterRecord,
+    IntelligenceRelationshipRecord,
+)
 from constructionsight.storage.intelligence_store import IntelligenceStore
 
 
@@ -24,6 +30,70 @@ class InvestigationQueryService:
 
     def __init__(self, store: IntelligenceStore) -> None:
         self.store = store
+
+    def inventory(self, *, after: str | None = None, limit: int = 50) -> dict[str, Any]:
+        """Return a bounded canonical inventory; reviewed aliases never create duplicate rows."""
+        if type(limit) is not int or not 1 <= limit <= 100:
+            raise ValueError("inventory limit must be between 1 and 100")
+        if after is not None and (not after.strip() or len(after) > 255):
+            raise ValueError("invalid inventory cursor")
+        ensure_database_transaction(self.store.session)
+        aliases = select(IntelligenceRelationshipRecord.subject_entity_id).where(
+            IntelligenceRelationshipRecord.predicate == "reviewed_investigation_alias",
+            IntelligenceRelationshipRecord.relationship_status.in_(
+                [value.value for value in ACTIVE_INVESTIGATION_CONTEXT_STATUSES]
+            ),
+        )
+        predicate = ~IntelligenceProjectClusterRecord.project_cluster_id.in_(aliases)
+        total = (
+            self.store.session.scalar(
+                select(func.count()).select_from(IntelligenceProjectClusterRecord).where(predicate)
+            )
+            or 0
+        )
+        statement = select(IntelligenceProjectClusterRecord.project_cluster_id).where(predicate)
+        if after is not None:
+            statement = statement.where(IntelligenceProjectClusterRecord.project_cluster_id > after)
+        identities = list(
+            self.store.session.scalars(
+                statement.order_by(IntelligenceProjectClusterRecord.project_cluster_id).limit(
+                    limit + 1
+                )
+            )
+        )
+        rows = []
+        for identity in identities[:limit]:
+            dossier = self.dossier(identity, evidence_limit=1)
+            observations = dossier["source_observations"]
+            rows.append(
+                {
+                    "investigation_id": identity,
+                    "title": dossier["investigation"]["project_name"],
+                    "counties": sorted({item["county"] for item in observations if item["county"]}),
+                    "points": dossier["source_claimed_points"],
+                    "source_records": [
+                        {
+                            "source_name": item["evidence"]["source_name"],
+                            "source_family": item["evidence"]["source_family"],
+                            "source_record_id": item["evidence"]["source_record_id"],
+                        }
+                        for item in observations
+                    ],
+                    "assessment": dossier["assessment"],
+                    "pending_association_reviews": dossier["pending_association_reviews"],
+                    "sources_truncated": dossier["sources_truncated"],
+                }
+            )
+        return {
+            "schema_version": "constructionsight.investigation-inventory/v1",
+            "event_cursor": self.store.runtime_event_cursor(),
+            "total": total,
+            "rows": rows,
+            "has_more": len(identities) > limit,
+            "next_cursor": identities[limit - 1] if len(identities) > limit else None,
+            "mapped_on_page": sum(bool(row["points"]) for row in rows),
+            "unmapped_on_page": [row["investigation_id"] for row in rows if not row["points"]],
+        }
 
     def dossier(self, investigation_id: str, *, evidence_limit: int = 250) -> dict[str, Any]:
         if type(evidence_limit) is not int or not 1 <= evidence_limit <= 1000:
@@ -36,23 +106,6 @@ class InvestigationQueryService:
             raise ValueError("unknown investigation")
         page = self.store.list_relationships_for_target(investigation_id, limit=1001)
         relationships = page[:1000]
-        all_evidence_ids = list(
-            dict.fromkeys(
-                cluster.evidence_record_ids
-                + [
-                    identity
-                    for relationship in relationships
-                    for identity in (
-                        relationship.supporting_evidence_ids
-                        + relationship.contradictory_evidence_ids
-                    )
-                ]
-            )
-        )
-        evidence_ids = all_evidence_ids[:evidence_limit]
-        evidence = [self.store.get_evidence(identity) for identity in evidence_ids]
-        if any(item is None for item in evidence):
-            raise ValueError("investigation references missing retained evidence")
         source_ids = list(
             dict.fromkeys(
                 [
@@ -69,9 +122,77 @@ class InvestigationQueryService:
                 ]
             )
         )
+        sources_truncated = len(source_ids) > 50
+        source_ids = source_ids[:50]
+        source_entities = {}
+        for identity in source_ids:
+            source_entity = self.store.get_entity(identity)
+            if source_entity is None:
+                raise ValueError("investigation references a missing source identity")
+            source_entities[identity] = source_entity
+        all_evidence_ids = list(
+            dict.fromkeys(
+                cluster.evidence_record_ids
+                + [
+                    identity
+                    for entity in source_entities.values()
+                    for identity in entity.evidence_record_ids
+                ]
+                + [
+                    identity
+                    for relationship in relationships
+                    for identity in (
+                        relationship.supporting_evidence_ids
+                        + relationship.contradictory_evidence_ids
+                    )
+                ]
+            )
+        )
+        evidence_ids = all_evidence_ids[:evidence_limit]
+        evidence = [self.store.get_evidence(identity) for identity in evidence_ids]
+        if any(item is None for item in evidence):
+            raise ValueError("investigation references missing retained evidence")
         source_service = InvestigationService(self.store)
         current = [source_service.current_observation(identity) for identity in source_ids]
         location_assessments = []
+        party_contexts: list[dict[str, Any]] = []
+        parties_truncated = False
+        for observation in current:
+            role_page = self.store.list_relationships_for_target(
+                observation.investigation_id, limit=501
+            )
+            if len(role_page) > 500:
+                parties_truncated = True
+            for role in role_page[:500]:
+                if not role.predicate.startswith("source_claimed_") or role.relationship_status in {
+                    RelationshipStatus.STALE,
+                    RelationshipStatus.SUPERSEDED,
+                    RelationshipStatus.REJECTED,
+                }:
+                    continue
+                if len(party_contexts) >= 500:
+                    parties_truncated = True
+                    break
+                party_entity = self.store.get_entity(role.subject_entity_id)
+                if party_entity is None:
+                    raise ValueError("source participant is missing its persisted graph context")
+                assessment_id = party_entity.identifiers.get("contractor_assessment_event")
+                assessment = self.store.get_runtime_event(assessment_id) if assessment_id else None
+                if assessment_id and assessment is None:
+                    raise ValueError("source contractor assessment receipt is missing")
+                party_contexts.append(
+                    {
+                        "entity": party_entity.model_dump(mode="json"),
+                        "source_id": observation.source_entity_id,
+                        "relationship": role.model_dump(mode="json"),
+                        "canonical_investigation_id": canonical_investigation_id(
+                            self.store, role.object_entity_id
+                        ),
+                        "review_required": observation.evidence.evidence_id
+                        not in role.supporting_evidence_ids,
+                        "contractor_assessment": assessment.payload if assessment else None,
+                    }
+                )
         for source_id in source_ids:
             entity = self.store.get_entity(source_id)
             if entity is None:
@@ -170,7 +291,7 @@ class InvestigationQueryService:
             gaps.append(
                 "Source evidence changed since the reviewed association; reassessment required."
             )
-        if len(page) > 1000 or len(all_evidence_ids) > evidence_limit:
+        if sources_truncated or len(page) > 1000 or len(all_evidence_ids) > evidence_limit:
             gaps.append("This bounded dossier is incomplete; request additional retained records.")
         evidence_source_ids = {
             item.evidence_id: source_record_identity(item) for item in evidence if item is not None
@@ -195,7 +316,10 @@ class InvestigationQueryService:
             },
             "evidence_truncated": len(all_evidence_ids) > evidence_limit,
             "location_assessments": location_assessments,
+            "source_parties": party_contexts,
+            "parties_truncated": parties_truncated,
             "pending_association_reviews": pending_reviews,
+            "sources_truncated": sources_truncated,
             "source_observations": [
                 item.model_dump(mode="json", round_trip=True) for item in current
             ],
