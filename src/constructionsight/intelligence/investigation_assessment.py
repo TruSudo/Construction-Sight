@@ -8,6 +8,7 @@ relationships, permissions, network requests, or independent intelligence store.
 from __future__ import annotations
 
 from collections import defaultdict
+from itertools import pairwise
 from typing import Any
 
 from constructionsight.intelligence.artifact_identity import (
@@ -119,7 +120,7 @@ def assess_investigation_evidence(
     revisions: list[dict[str, Any]] = []
     revision_truncated = False
     for source_id, events in sorted(by_source.items()):
-        for previous, following in zip(events, events[1:]):
+        for previous, following in pairwise(events):
             for field, _ in (*_LOCATION_FIELDS, ("title", None)):
                 before = _history_values(previous["observation"], field)
                 after = _history_values(following["observation"], field)
