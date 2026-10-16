@@ -403,41 +403,21 @@ def test_reviewed_three_typed_source_families_assemble_and_reassess_after_retain
             service = InvestigationService(store)
             inventory = InvestigationQueryService(store).inventory(limit=20)
             assert inventory["total"] == 3
-            source_ids = {
-                row["source_records"][0]["source_family"]: InvestigationQueryService(store)
-                .dossier(row["investigation_id"])["source_observations"][0]["evidence"]
-                for row in inventory["rows"]
-            }
-            assert set(source_ids) == {"ceqa", "planning", "permit"}
             investigations = {
                 row["source_records"][0]["source_family"]: row["investigation_id"]
                 for row in inventory["rows"]
             }
-            from constructionsight.intelligence.investigation_service import (
-                source_record_identity,
-            )
-            for family in ("planning", "permit"):
-                service.correlate(
-                    source_record_identity(
-                        service.current_observation(
-                            next(
-                                edge.subject_entity_id
-                                for edge in store.list_relationships_for_target(
-                                    investigations["ceqa"]
-                                )
-                                if edge.predicate
-                                == "source_record_for_unresolved_investigation"
-                            )
-                        ).evidence
-                    ),
-                    next(
-                        edge.subject_entity_id
-                        for edge in store.list_relationships_for_target(
-                            investigations[family]
-                        )
-                        if edge.predicate == "source_record_for_unresolved_investigation"
-                    ),
+            assert set(investigations) == {"ceqa", "planning", "permit"}
+            source_ids = {
+                family: next(
+                    edge.subject_entity_id
+                    for edge in store.list_relationships_for_target(investigation_id)
+                    if edge.predicate == "source_record_for_unresolved_investigation"
                 )
+                for family, investigation_id in investigations.items()
+            }
+            for family in ("planning", "permit"):
+                service.correlate(source_ids["ceqa"], source_ids[family])
             candidates = {
                 (
                     relation.object_entity_id
@@ -486,7 +466,10 @@ def test_reviewed_three_typed_source_families_assemble_and_reassess_after_retain
             update={
                 "description": "Synthetic revised building permit",
                 "provenance": [
-                    Provenance(source_name="Synthetic public source", captured_at=AT + timedelta(days=3))
+                    Provenance(
+                        source_name="Synthetic public source",
+                        captured_at=AT + timedelta(days=3),
+                    )
                 ],
             }
         )
