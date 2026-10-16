@@ -28,7 +28,10 @@ def test_b2_both_operator_entrypoints_and_storage_contracts_remain_available() -
     root = Path(__file__).resolve().parents[1]
     project = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
     commands = project["project"]["scripts"]
-    assert commands["constructionsight-command-center"] == "constructionsight.live_command_center:main"
+    assert (
+        commands["constructionsight-command-center"]
+        == "constructionsight.live_command_center:main"
+    )
     assert commands["constructionsight-operator"] == "constructionsight.operator_web:main"
     assert commands["constructionsight-desktop"] == "constructionsight.operator_web:desktop_main"
 
