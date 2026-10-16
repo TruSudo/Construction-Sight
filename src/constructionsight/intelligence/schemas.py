@@ -189,6 +189,7 @@ class RuntimeEventType(StrEnum):
     SOURCE_RECORD_DISCOVERED = "source_record_discovered"
     SOURCE_RECORD_CHANGED = "source_record_changed"
     ENTITY_CREATED = "entity_created"
+    ENTITY_UPDATED = "entity_updated"
     ENTITY_MERGED = "entity_merged"
     RELATIONSHIP_CREATED = "relationship_created"
     RELATIONSHIP_UPDATED = "relationship_updated"

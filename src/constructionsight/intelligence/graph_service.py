@@ -59,11 +59,14 @@ class IntelligenceGraphService:
     def upsert_entity(self, entity: EntityIdentity) -> EntityIdentity:
         """Persist an entity identity and emit a create/update event."""
 
-        was_existing = self.store.get_entity(entity.entity_id) is not None
+        existing = self.store.get_entity(entity.entity_id)
+        if existing == entity:
+            return entity
+        was_existing = existing is not None
         self.store.upsert_entity(entity)
         self._emit_event(
             event_id=f"event:entity:{entity.entity_id}",
-            event_type=RuntimeEventType.ENTITY_MERGED
+            event_type=RuntimeEventType.ENTITY_UPDATED
             if was_existing
             else RuntimeEventType.ENTITY_CREATED,
             severity=RuntimeEventSeverity.MEDIUM,
@@ -83,7 +86,10 @@ class IntelligenceGraphService:
     def upsert_relationship(self, relationship: RelationshipAssertion) -> RelationshipAssertion:
         """Persist an evidence-backed relationship and emit a graph event."""
 
-        was_existing = self.store.get_relationship(relationship.relationship_id) is not None
+        existing = self.store.get_relationship(relationship.relationship_id)
+        if existing == relationship:
+            return relationship
+        was_existing = existing is not None
         self.store.upsert_relationship(relationship)
         self._emit_event(
             event_id=f"event:relationship:{relationship.relationship_id}",
@@ -112,7 +118,10 @@ class IntelligenceGraphService:
     def upsert_project_cluster(self, cluster: ProjectCluster) -> ProjectCluster:
         """Persist a project cluster and emit a project-cluster event."""
 
-        was_existing = self.store.get_project_cluster(cluster.project_cluster_id) is not None
+        existing = self.store.get_project_cluster(cluster.project_cluster_id)
+        if existing == cluster:
+            return cluster
+        was_existing = existing is not None
         self.store.upsert_project_cluster(cluster)
         self._emit_event(
             event_id=f"event:project_cluster:{cluster.project_cluster_id}",
@@ -141,11 +150,16 @@ class IntelligenceGraphService:
     def upsert_opportunity(self, opportunity: OpportunitySignal) -> OpportunitySignal:
         """Persist an opportunity signal and emit an opportunity event."""
 
-        was_existing = self.store.get_opportunity(opportunity.opportunity_id) is not None
+        existing = self.store.get_opportunity(opportunity.opportunity_id)
+        if existing == opportunity:
+            return opportunity
+        was_existing = existing is not None
         self.store.upsert_opportunity(opportunity)
         self._emit_event(
             event_id=f"event:opportunity:{opportunity.opportunity_id}",
-            event_type=RuntimeEventType.OPPORTUNITY_SIGNAL_CREATED,
+            event_type=RuntimeEventType.OPPORTUNITY_SIGNAL_UPDATED
+            if was_existing
+            else RuntimeEventType.OPPORTUNITY_SIGNAL_CREATED,
             severity=RuntimeEventSeverity.MEDIUM,
             message=(
                 f"Opportunity signal {'updated' if was_existing else 'recorded'}: "

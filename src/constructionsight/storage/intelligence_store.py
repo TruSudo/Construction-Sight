@@ -261,7 +261,7 @@ class IntelligenceStore:
             previous_payload_json=previous_payload_json,
             current_payload_json=current_payload_json,
             event_type=(
-                RuntimeEventType.ENTITY_MERGED
+                RuntimeEventType.ENTITY_UPDATED
                 if previous_payload_json is not None
                 else RuntimeEventType.ENTITY_CREATED
             ),
