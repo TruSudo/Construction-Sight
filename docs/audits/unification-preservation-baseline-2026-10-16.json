@@ -1,0 +1,1358 @@
+{
+  "baseline": "4c8f8eaf08653e2d571b0df821b862dcc9b158ac",
+  "directive_sha256": "b744f20a9e24eec346987183cce527d51efb80b34939914efb241927f49a3017",
+  "scope": "Remote branch ancestry only; neither functional equivalence nor completed capability audit.",
+  "branches": [
+    {
+      "ref": "origin",
+      "sha": "4c8f8eaf08653e2d571b0df821b862dcc9b158ac",
+      "main_only_commits": 0,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/agent/add-arcgis-live-rehearsal-authorization",
+      "sha": "679f15fa6d39f222c16b8c5c3e99db7662465909",
+      "main_only_commits": 1434,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/agent/add-arcgis-proof-bundle-persistence",
+      "sha": "3a75e52b4e9dc72f263800c0aea4e862713fc70c",
+      "main_only_commits": 1460,
+      "branch_only_commits": 2,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/agent/add-arcgis-rehearsal-http-adapter",
+      "sha": "9b39f7822f22a319ae2c87324a33dd0345f663c1",
+      "main_only_commits": 1456,
+      "branch_only_commits": 40,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/agent/add-arcgis-rehearsal-proof-bundle",
+      "sha": "a0214f907e9afe2a0ec0db636727a74f6efd6c4c",
+      "main_only_commits": 1455,
+      "branch_only_commits": 28,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/agent/add-parcel-arcgis-acquisition-gates",
+      "sha": "00ffa2cbbd2fdafca6719ea1f1af298cf2f3f716",
+      "main_only_commits": 1461,
+      "branch_only_commits": 3,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/agent/assurance-context-provenance-hardening",
+      "sha": "511d51cd18c3bed599b29c7ce4fc07a10c1e311d",
+      "main_only_commits": 1010,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/agent/ceqanet-csv-access-policy",
+      "sha": "919aaf94750d1346b994f0f2797844461fbd3d48",
+      "main_only_commits": 1467,
+      "branch_only_commits": 17,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/agent/ceqanet-csv-evidence-observation-1",
+      "sha": "ec2fd30069f25ddb526150069e67e2477ed958c2",
+      "main_only_commits": 1465,
+      "branch_only_commits": 16,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/agent/ceqanet-csv-evidence-series",
+      "sha": "7d1b83042fedf8759f8295d034a821d22b6b5095",
+      "main_only_commits": 1466,
+      "branch_only_commits": 39,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/agent/ceqanet-csv-export-contract-v2",
+      "sha": "7ef56c9ac329666d2d496321138eafe8c10fb350",
+      "main_only_commits": 1525,
+      "branch_only_commits": 6,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/agent/ceqanet-evidence-repair-partial-v2",
+      "sha": "a2bf6eeb59157e1a8fa09e68217bf070d4cbe958",
+      "main_only_commits": 1543,
+      "branch_only_commits": 19,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/agent/ceqanet-ingestion-dashboard",
+      "sha": "f3de9d5859261f97685e9debe33269d545dd6774",
+      "main_only_commits": 686,
+      "branch_only_commits": 8,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/agent/ceqanet-ingestion-dashboard-v2",
+      "sha": "c00e012075a7c5b1a2c41ce52c277c824adf3161",
+      "main_only_commits": 648,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/agent/ceqanet-listing-to-exact-capture-queue",
+      "sha": "10c3dc87d8ab3cd519f60c97320285a4b860c0b5",
+      "main_only_commits": 695,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/agent/ceqanet-live-csv-evidence-v4",
+      "sha": "33e92e3bc0315fb2835abfe593ac91b44a40ac6f",
+      "main_only_commits": 1481,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/agent/ceqanet-live-csv-proof-v3",
+      "sha": "421083a81b55f5e5294dd2f04016a12459cdaf76",
+      "main_only_commits": 1487,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/agent/ceqanet-official-csv-contract",
+      "sha": "ac5962209d46daacf88db8b50a2b77b05b373d81",
+      "main_only_commits": 1513,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/agent/ceqanet-queue-to-capture-provenance",
+      "sha": "5feae0a6e46300f7d7fb27e7ad3147d1e7d5c444",
+      "main_only_commits": 659,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/agent/ceqanet-recurring-run-governance",
+      "sha": "f654f907ce4a886325e73f119fb95161ed86e8f0",
+      "main_only_commits": 1547,
+      "branch_only_commits": 1,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/agent/ceqanet-source-maturity-proposal",
+      "sha": "26eb294bfcf5efbc598b093366307f84cde94603",
+      "main_only_commits": 1468,
+      "branch_only_commits": 16,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/agent/ceqanet-source-verification",
+      "sha": "05cbd23fb414d3786c3e4a70370eeb6c38365c7d",
+      "main_only_commits": 1544,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/agent/ceqanet-windows1252-replay-v5",
+      "sha": "7faa3c208190ed07e00070b762dda0a93fe573e9",
+      "main_only_commits": 1470,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/agent/certification-grade-full-repo-audit",
+      "sha": "08409bd34d2706d50c1987c0aef566faaba4a8d7",
+      "main_only_commits": 1593,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/agent/command-center-capture-queue",
+      "sha": "8f63e6dbb2513bf1ee28427fff6350d965fb1945",
+      "main_only_commits": 695,
+      "branch_only_commits": 24,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/agent/command-center-evidence-navigation",
+      "sha": "16ef29d6b28d232f5760d4e7a7c171eec1819e06",
+      "main_only_commits": 749,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/agent/command-center-filter-watchlist-navigation",
+      "sha": "f8c46f46ffbd1633c69b50f2cfcd1af96b5431c6",
+      "main_only_commits": 718,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/agent/command-center-source-registry",
+      "sha": "de19f04410f84d97209ea44e3aa387b71c4db489",
+      "main_only_commits": 695,
+      "branch_only_commits": 32,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/agent/command-center-source-verification",
+      "sha": "b1ffdc66027720e8040a1aafa1d3729ec4a72689",
+      "main_only_commits": 695,
+      "branch_only_commits": 40,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/agent/daily-lead-workflow-2026-10-13",
+      "sha": "b10cc67b553d2c7905eebf3ae051688e6385afcd",
+      "main_only_commits": 41,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/agent/explicit-source-attribution-aliases",
+      "sha": "1e78fda40bceed4a97b13e385433768e6c40f013",
+      "main_only_commits": 695,
+      "branch_only_commits": 61,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/agent/export-complete-review-2026-10-14",
+      "sha": "0ccc8e20da1e39e8bb44e39d0dfee2bc8958d94a",
+      "main_only_commits": 43,
+      "branch_only_commits": 1,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/agent/fix-ceqanet-windows1252-ruff",
+      "sha": "af2b48b61dc554f6150f5e10baa4b4fac22de291",
+      "main_only_commits": 1469,
+      "branch_only_commits": 19,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/agent/governed-ceqanet-capture-preview",
+      "sha": "8477d0e9e7dfffbaaeb62a29e562e2b496a8f11b",
+      "main_only_commits": 699,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/agent/harden-arcgis-bulk-rehearsal-proof",
+      "sha": "12770cb2b311e8c3bff40ca51ca81efc1da00bc4",
+      "main_only_commits": 1458,
+      "branch_only_commits": 29,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/agent/implement-arcgis-complete-rehearsal-executor",
+      "sha": "b40ff141511eb805a99cf6e81a15afc626c308ca",
+      "main_only_commits": 1457,
+      "branch_only_commits": 25,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/agent/lead-operator-cli",
+      "sha": "a5b25a00a43411992e645e405715fb500a1de8c9",
+      "main_only_commits": 1688,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/agent/lead-reliability-2026-10-15",
+      "sha": "699f044a18f8833238b6d450dc9ee3ddd74c2a1f",
+      "main_only_commits": 26,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/agent/live-command-center-2026-10-13",
+      "sha": "0ebadce89d865d17a2175a964264d352ba79cce4",
+      "main_only_commits": 46,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/agent/mutation-witness-validation",
+      "sha": "8435b1de35f6ffab70ec2ba74e2c6a4b95102370",
+      "main_only_commits": 1010,
+      "branch_only_commits": 2,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/agent/native-assurance-remediation",
+      "sha": "3e11e277cc1c5e0bc9d684498759d40f974b0753",
+      "main_only_commits": 403,
+      "branch_only_commits": 2,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/agent/native-assurance-remediation-076-096",
+      "sha": "10037faa8fb37d61e86b1b9a690fc09d33443e0a",
+      "main_only_commits": 331,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/agent/native-command-center-2026-10-15",
+      "sha": "06c5b1962504968862b61ab4a66dbbe5fd0c2d36",
+      "main_only_commits": 24,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/agent/operational-integration-gui",
+      "sha": "380e19c42acf3d82e7d2034de8940f2a7275b38a",
+      "main_only_commits": 829,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/agent/phase3-bid-catalog-2026-10-14",
+      "sha": "2fdd6f9fc0dfffb16d0420b95593461695145723",
+      "main_only_commits": 31,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/agent/phase3-bulk-contacts-2026-10-14",
+      "sha": "19a05f53e67e073be2d29c75c3ffd24bb4e16780",
+      "main_only_commits": 35,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/agent/phase3-calibration-2026-10-14",
+      "sha": "ae0286e837c5c09fa1baeb8d346bde897c214d2e",
+      "main_only_commits": 33,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/agent/phase3-daily-collection-2026-10-14",
+      "sha": "f4a6a80bbffacfa30e9ddddec1815e66ffbbc2ad",
+      "main_only_commits": 30,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/agent/phase3-data-folder-2026-10-14",
+      "sha": "1769437b267500e3497efe6a08a094b57a43df92",
+      "main_only_commits": 34,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/agent/phase3-lead-quality-2026-10-14",
+      "sha": "720e0f857d4030d1057b9289f00422947b193902",
+      "main_only_commits": 36,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/agent/phase3-local-basemap-2026-10-14",
+      "sha": "02570655092aa03d48249385cdb3964a5125aaa3",
+      "main_only_commits": 32,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/agent/phase3-merge-gates-2026-10-14",
+      "sha": "1ebecde0c475581ac892b45e512274de0e47e65c",
+      "main_only_commits": 38,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/agent/phase3-perceptual-visual-gate-2026-10-14",
+      "sha": "44145a95337dbf5e61a87cf2da979e8a4ec1ea81",
+      "main_only_commits": 37,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/agent/product-ci-cleanup-2026-10-15",
+      "sha": "647f55b42f066b5f7670b0ab7f34dba06ba08cd8",
+      "main_only_commits": 28,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/agent/productivity-risk-proportionate-workflow-2026-10-15",
+      "sha": "03a56e84229f930ba4420089ab78fc951eb7de9f",
+      "main_only_commits": 23,
+      "branch_only_commits": 5,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/agent/record-county-arcgis-bounded-proofs",
+      "sha": "0a9559c86430ad4160f3ecdf6d0a118b8c808baf",
+      "main_only_commits": 1459,
+      "branch_only_commits": 10,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/agent/repair-ceqanet-evidence-partial",
+      "sha": "ec805fdf41fc474d1021f46bf00570e58b365123",
+      "main_only_commits": 1526,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/agent/result-authority-operator",
+      "sha": "a876d33d030033c18c538389f11c393b4f99846b",
+      "main_only_commits": 1640,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/agent/result-ledger-authority",
+      "sha": "3eda596c7da928f0502d0bfd9dc858f91a7356dd",
+      "main_only_commits": 1675,
+      "branch_only_commits": 16,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/agent/result-ledger-correction-action",
+      "sha": "f96737884cc150396fcfc6cc210d41dc62ef4521",
+      "main_only_commits": 1665,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/agent/result-ledger-supersession",
+      "sha": "053b0099808bac770718a9f04328dcce1f898064",
+      "main_only_commits": 1710,
+      "branch_only_commits": 9,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/agent/result-ledger-supersession-v2",
+      "sha": "d7e612c240f1bc44ac83af0805f430e1b6f65041",
+      "main_only_commits": 1666,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/agent/silent-risk-certification",
+      "sha": "fa756e75cced218411cbf2d5d4c973add9d9c196",
+      "main_only_commits": 919,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/agent/smarts-public-api-probe-2026-10-12",
+      "sha": "f1adf4764a4485a47584ed0d2797a1fa5c858cb7",
+      "main_only_commits": 168,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/agent/smarts-source-neutral-integration-2026-10-12",
+      "sha": "f0478bd78552dacdd6beb3365a4c9fb184af3150",
+      "main_only_commits": 45,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/agent/source-attribution-coverage",
+      "sha": "2d98826dd224545be2112c185612a41c25718bc4",
+      "main_only_commits": 695,
+      "branch_only_commits": 51,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/agent/source-registry-controlled-apply",
+      "sha": "f45e399b18d86f34be974c437d81b1d3d16cffd5",
+      "main_only_commits": 1711,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/agent/test-drive-source-inventory",
+      "sha": "bb6c3ed1842d914b0fc28695626925f5865be21a",
+      "main_only_commits": 695,
+      "branch_only_commits": 54,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/agent/top-head-quality-and-ops",
+      "sha": "f80bfe5b207bc0467664ec66ef6db300c5e90c47",
+      "main_only_commits": 695,
+      "branch_only_commits": 9,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/agent/topology-grade-parcel-containment",
+      "sha": "b199455897feaf1cfcbf48992f525d941afe0b8a",
+      "main_only_commits": 1629,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/agent/ui-lock-command-center",
+      "sha": "4f74d875f8b7c14eb659c0c89941bc1eb261ff9d",
+      "main_only_commits": 815,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/agent/upstream-operator-cli",
+      "sha": "a64ace077b00dcd3cff085858bc9a20db402aafa",
+      "main_only_commits": 1676,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/agent/usgs-functional-basemaps-2026-10-15",
+      "sha": "a287fa681ccf3610716036cf4f7f8da9b4778a75",
+      "main_only_commits": 2,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/agent/verify-county-parcel-sources",
+      "sha": "6b259d743b38584d922ab9748b22dd4154016c1b",
+      "main_only_commits": 1462,
+      "branch_only_commits": 1,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/agent/visual-parity-refinement-2026-10-15",
+      "sha": "32c655fb84c7f6954edca346934e1450a185986d",
+      "main_only_commits": 20,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/agent/wkt-area-weighted-geometry",
+      "sha": "dac9459e7012fb3289fdca443d0807dcad549a65",
+      "main_only_commits": 1610,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/archive/pre-pass-a-2026-10-15",
+      "sha": "7771e7d422455b9fd3661f3289e4542f73854acf",
+      "main_only_commits": 22,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/archive/silent-risk-e47e335",
+      "sha": "e47e33514ef906244d1f5959af49cc193b271305",
+      "main_only_commits": 1287,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/archive/silent-risk-e49cca5",
+      "sha": "e49cca5b557bf5d2b4e34513eae8fee83ab4734a",
+      "main_only_commits": 1297,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/assurance/close-assurance-supplychain-batch",
+      "sha": "2305fb3f5bd9a01d64c36451b6eeaf8d063179fc",
+      "main_only_commits": 539,
+      "branch_only_commits": 6,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/assurance/close-ci-supply-chain-batch",
+      "sha": "043ec23e23b65f3834fccea07e2a45008841ad1c",
+      "main_only_commits": 534,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/assurance/close-cs-sr-026",
+      "sha": "41259ee8376b910fa038848832e2863900f0578a",
+      "main_only_commits": 622,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/assurance/close-cs-sr-045",
+      "sha": "c8482d7e8382b023fdb7f1ebea04df50ad574fef",
+      "main_only_commits": 619,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/assurance/close-cs-sr-048",
+      "sha": "15aff77d95361935c8b5244d259733aa32960f7c",
+      "main_only_commits": 536,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/assurance/close-cs-sr-049",
+      "sha": "175b55de1fff99c7349668c19aab0bc54adc7178",
+      "main_only_commits": 616,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/assurance/close-cs-sr-052-056",
+      "sha": "74598ce80a57c02c87e2d5cde68d3bd172d4bca0",
+      "main_only_commits": 582,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/assurance/close-foundational-governance-batch",
+      "sha": "f773c926168c6284c171bfe05aac7f729c870ddc",
+      "main_only_commits": 561,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/assurance/close-quality-regressions-065-067-070",
+      "sha": "9142ad5701c69006ef8cc3f7ad5e611d514d4e97",
+      "main_only_commits": 577,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/assurance/close-transport-authorization-batch",
+      "sha": "7456e0f9820f2af219f1ac7bc0b5deba5746ca5f",
+      "main_only_commits": 533,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/assurance/consolidation-defect-triage-2026-09-24",
+      "sha": "45f444ae3b6a187f992fb86d9d857397996e9f79",
+      "main_only_commits": 646,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/assurance/fix-cs-sr-026-incremental-closure",
+      "sha": "53845f5bfa0d9b9c312de49eadfd7aae0178e8d9",
+      "main_only_commits": 625,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/assurance/fix-cs-sr-045-lawful-access-facts",
+      "sha": "e8fb0753be361bf909405cd0f452164e8912c817",
+      "main_only_commits": 637,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/assurance/freeze-6e568d2-resolution-map",
+      "sha": "af6b4c50c23a62d4e70d761e6970843c4f199a14",
+      "main_only_commits": 631,
+      "branch_only_commits": 3,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/assurance/native-assurance-base-539939a",
+      "sha": "539939a8cdef813b919b1c725fa1439d03d97ea7",
+      "main_only_commits": 403,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/assurance/permanent-resolution-integration",
+      "sha": "ce0afda095cf03407f9b65d533d93eae2054f317",
+      "main_only_commits": 586,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/audit/pre-remediation-baseline-2026-08-21",
+      "sha": "5f101b7bdddfd695904eb02144350e06207d9ded",
+      "main_only_commits": 1102,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/cleanup/coverage-report",
+      "sha": "39d4492070f5690c3264fb4d692720119fe5f5bc",
+      "main_only_commits": 1759,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/cleanup/doctrine-runtime-sync",
+      "sha": "96b43d9c265317df4e83937737a4d4c880a64874",
+      "main_only_commits": 1780,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/cleanup/geometry-hardening",
+      "sha": "10028eeb0dd3dd4722a77f0c52aabe017de7c1c2",
+      "main_only_commits": 1761,
+      "branch_only_commits": 9,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/cleanup/lead-status-rules",
+      "sha": "18285939c2935f28537a0901f6701f55b92dbd0e",
+      "main_only_commits": 1759,
+      "branch_only_commits": 15,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/cleanup/ledger-rules",
+      "sha": "39d4492070f5690c3264fb4d692720119fe5f5bc",
+      "main_only_commits": 1759,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/cleanup/ledger-share-state",
+      "sha": "400d9744a4f4483668494d8dc3ec2b36eec9ee38",
+      "main_only_commits": 1758,
+      "branch_only_commits": 9,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/cleanup/persist-lead-workflow-records",
+      "sha": "8825371051020d3badbbc9f59a594702a29ffba7",
+      "main_only_commits": 1764,
+      "branch_only_commits": 10,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/cleanup/persist-movement-identity",
+      "sha": "017c03e15bfcfdae22f7ec2ade69a6a85d8d9edb",
+      "main_only_commits": 1766,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/cleanup/persist-parcel-site-records",
+      "sha": "1651e3f55e93acdf88d07bb846dd05ad3e1ffbfa",
+      "main_only_commits": 1763,
+      "branch_only_commits": 8,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/cleanup/post-70-doc-sync",
+      "sha": "e67907ada5d12eb1f1dcc2e93b8f37c9d2fca4a9",
+      "main_only_commits": 1756,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/cleanup/post-72-audit-refresh",
+      "sha": "3d4d81160c8b1113c6a32041ebf12f8da4bd986e",
+      "main_only_commits": 1754,
+      "branch_only_commits": 3,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/cleanup/post-75-audit-package-reconciliation",
+      "sha": "ec904b55cca0f665959e9569f91c06f2ca4c2c98",
+      "main_only_commits": 1751,
+      "branch_only_commits": 4,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/cleanup/post-80-source-plan-reconciliation",
+      "sha": "b26e6ef17e1b2ff0bc840bfea5dc17c2ba72ae3f",
+      "main_only_commits": 1736,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/cleanup/source-observation-template",
+      "sha": "1987dda64b8bcf04f79e83948fd6867a73d1f400",
+      "main_only_commits": 1749,
+      "branch_only_commits": 5,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/cleanup/source-plan-apply-output",
+      "sha": "2ff3faf21333edc7c25037867818fe34af8a536e",
+      "main_only_commits": 1735,
+      "branch_only_commits": 1,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/cleanup/source-promotion-plan",
+      "sha": "8c50ed7cda5bd188af2bbf38d88c46a200c5bcf4",
+      "main_only_commits": 1748,
+      "branch_only_commits": 7,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/cleanup/source-readiness-workflow",
+      "sha": "3c486ac54f61a0fffc3f808d170d4275951cd7af",
+      "main_only_commits": 1753,
+      "branch_only_commits": 11,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/cleanup/source-registry-update-plan",
+      "sha": "166aa350e6c6fd02e3ae3a440e3ad0c51ffe2f77",
+      "main_only_commits": 1738,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/cleanup/source-report-docs",
+      "sha": "806c361ed528be195caaaa1df04c71ef871f6c34",
+      "main_only_commits": 1756,
+      "branch_only_commits": 1,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/cleanup/source-status",
+      "sha": "4077c874a299d06530e4f67af63ad099aeaf03cc",
+      "main_only_commits": 1757,
+      "branch_only_commits": 12,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/cleanup/source-status-command-shape",
+      "sha": "f782877898dcc81604372f348c9476603d5aac20",
+      "main_only_commits": 1755,
+      "branch_only_commits": 2,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/cleanup/source-verification-checklist",
+      "sha": "12063ce8d902758c32c0eb7493325b5f0d307685",
+      "main_only_commits": 1750,
+      "branch_only_commits": 10,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/cleanup/storage-coverage-matrix",
+      "sha": "8a95f66f0ebafee899c6e0c67df53afca1669e0b",
+      "main_only_commits": 1778,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/cleanup/storage-summary-cli",
+      "sha": "90a200531b79250ef597a0c56dbfc089c2141042",
+      "main_only_commits": 1762,
+      "branch_only_commits": 6,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/cleanup/verification-report",
+      "sha": "6236a9e8b8e06bac94239f52042a195b0adc86ba",
+      "main_only_commits": 1752,
+      "branch_only_commits": 9,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/cleanup/versioned-scoring-profile",
+      "sha": "181eaeb840fec189d5a646270f6f07bcdc6b12f5",
+      "main_only_commits": 1760,
+      "branch_only_commits": 12,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/codex/parcel-longitudinal-evidence",
+      "sha": "2421fe52cf6b9e30db14b499b61084daec81c149",
+      "main_only_commits": 1463,
+      "branch_only_commits": 1,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/feature/artifact-resolution-examples",
+      "sha": "297ded6b64d753ed82365151a2c50dfef9558617",
+      "main_only_commits": 2037,
+      "branch_only_commits": 5,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/feature/artifact-resolution-examples-clean",
+      "sha": "60a152dc2b43a01699ab298ba5ae2b0a7258d0e7",
+      "main_only_commits": 2030,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/feature/ceqanet-chain-report-cli",
+      "sha": "494a088e10900e90da4017c11f894ffee79c746d",
+      "main_only_commits": 1950,
+      "branch_only_commits": 4,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/feature/ceqanet-detail-enrichment",
+      "sha": "5e63ad787a03acb17686828dc7d55d866385ab69",
+      "main_only_commits": 1953,
+      "branch_only_commits": 5,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/feature/ceqanet-detail-enrichment-cli",
+      "sha": "d2734152fd40c7b7a04b4059de59d39f8914940e",
+      "main_only_commits": 1952,
+      "branch_only_commits": 1,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/feature/ceqanet-detail-execute-cli",
+      "sha": "38c3ea56f2e275ee3a4d5a5f5793b853fbb912d3",
+      "main_only_commits": 1951,
+      "branch_only_commits": 4,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/feature/ceqanet-fixture-query",
+      "sha": "43d52c91dc73611c66c56c17562bc281fae7943c",
+      "main_only_commits": 2028,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/feature/ceqanet-fixture-query-cli",
+      "sha": "4f045dc7151ddb5c6769c5152d991c98c25502a5",
+      "main_only_commits": 2017,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/feature/ceqanet-listing-dry-run",
+      "sha": "76181acda6534956a3fbff3fe852310a257dc7f5",
+      "main_only_commits": 2007,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/feature/ceqanet-listing-dry-run-cli",
+      "sha": "4a7fa0f170a21948870521f684545ac2f1703747",
+      "main_only_commits": 2003,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/feature/ceqanet-listing-execute-cli",
+      "sha": "105f93bd5f564bbea545b0f4777dddf9e902ca6f",
+      "main_only_commits": 1996,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/feature/ceqanet-listing-live-executor-contract",
+      "sha": "f1ebe4a5df2a55f6a11634b545579baa533b9b76",
+      "main_only_commits": 2000,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/feature/ceqanet-listing-plan-cli",
+      "sha": "147ba2e28017fde6afd3c72d73d5c36585756bc2",
+      "main_only_commits": 2010,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/feature/ceqanet-operator-archive",
+      "sha": "8c064c7cc534ab2e745289878dac8b666da20a18",
+      "main_only_commits": 1940,
+      "branch_only_commits": 8,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/feature/ceqanet-operator-archive-verify",
+      "sha": "46a034b73eae05f31885217ea932f691c086e2e4",
+      "main_only_commits": 1939,
+      "branch_only_commits": 5,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/feature/ceqanet-operator-bundle",
+      "sha": "f94ea82ef1434e4c419d1bd0e3414f1c45bbffef",
+      "main_only_commits": 1944,
+      "branch_only_commits": 7,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/feature/ceqanet-operator-bundle-components",
+      "sha": "b7a4c30432af0d480bf7f82e2e869e10fa0bd03e",
+      "main_only_commits": 1943,
+      "branch_only_commits": 4,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/feature/ceqanet-operator-bundle-verify",
+      "sha": "4388a24d8748fcd2f4ca8991eacffbc7a8038748",
+      "main_only_commits": 1942,
+      "branch_only_commits": 6,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/feature/ceqanet-operator-export",
+      "sha": "d61198bed7d479da228aab2b8f261853c44a624a",
+      "main_only_commits": 1941,
+      "branch_only_commits": 7,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/feature/ceqanet-operator-package",
+      "sha": "1d33f60c32d39b27788967181b9528cbd55bb1e0",
+      "main_only_commits": 1946,
+      "branch_only_commits": 7,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/feature/ceqanet-operator-report",
+      "sha": "629732dc66bdd94992fe1c834e452112311e9afc",
+      "main_only_commits": 1945,
+      "branch_only_commits": 8,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/feature/ceqanet-persistence-execution",
+      "sha": "17e2e43266898e1efa3526cd7d3b6a3fd2fe2720",
+      "main_only_commits": 1947,
+      "branch_only_commits": 7,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/feature/ceqanet-persistence-preview",
+      "sha": "4a248a59f09616908dffa7017596fd4330eb0363",
+      "main_only_commits": 1949,
+      "branch_only_commits": 7,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/feature/ceqanet-readonly-listing-plan",
+      "sha": "e060713ee33634a4f1f3a4df81e09e17ead5499e",
+      "main_only_commits": 2014,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/feature/ceqanet-write-plan-preview",
+      "sha": "232e444466bb85e8094be6840f0c36210dd39881",
+      "main_only_commits": 1948,
+      "branch_only_commits": 8,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/feature/contractor-identity-spine",
+      "sha": "5f466ac07e09955e4cfdabceb1918075e7a2de51",
+      "main_only_commits": 1825,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/feature/decision-record-spine",
+      "sha": "4c7773724a53ee72988ad67b60633fc7219379f6",
+      "main_only_commits": 1819,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/feature/external-intelligence-capability-spine",
+      "sha": "8940dec62074ce5b9dd98a1cb55f3fdcd15b3d61",
+      "main_only_commits": 1917,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/feature/external-intelligence-capability-spine-main-ci",
+      "sha": "8940dec62074ce5b9dd98a1cb55f3fdcd15b3d61",
+      "main_only_commits": 1917,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/feature/lead-duplicate-suppression",
+      "sha": "eeaa87f401486c8ed4d98cdfc5599467a767b149",
+      "main_only_commits": 1798,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/feature/lead-workflow-status-spine",
+      "sha": "ebcee77172338ebe53f755b237fed4c5d06c0445",
+      "main_only_commits": 1791,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/feature/opportunity-action-package",
+      "sha": "b01a00537777dc962d1e8831aa27451e0e05c6eb",
+      "main_only_commits": 1803,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/feature/opportunity-enrichment-spine",
+      "sha": "f673925e6a46cdde8a49fe1985fe35570a25ea0c",
+      "main_only_commits": 1810,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/feature/opportunity-transition-intake",
+      "sha": "67723569fb0b560995d04e80279c48790fe705a1",
+      "main_only_commits": 1917,
+      "branch_only_commits": 1,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/feature/parcel-fact-assurance",
+      "sha": "7643bfbf8216ca2b00d84937130b5f782250d79d",
+      "main_only_commits": 1464,
+      "branch_only_commits": 3,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/feature/parcel-import-preview",
+      "sha": "0317f84a9276eb5d668a9b72949fdd019904ba02",
+      "main_only_commits": 1858,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/feature/parcel-record-geometry-normalization",
+      "sha": "1e1ae6d194b3f88250a59164e30fe462c593c90b",
+      "main_only_commits": 1847,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/feature/parcel-site-resolution-spine",
+      "sha": "4c6d1496a034c801815adcb9bd5761f129e14961",
+      "main_only_commits": 1902,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/feature/parcel-source-registry",
+      "sha": "0b7d986d2416b7dbf2a7168ce238e7808b3133e5",
+      "main_only_commits": 1887,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/feature/parcel-source-schema-preview",
+      "sha": "8c7413a43fce89a2515c25b1d2d5b0b7fa6bd687",
+      "main_only_commits": 1867,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/feature/permit-snapshot-transition-spine",
+      "sha": "4607b5b74100d8499d123dc1a3cdda3a82d297aa",
+      "main_only_commits": 1833,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/feature/repo-wide-ruff-baseline-cleanup",
+      "sha": "5366428ea2964c3305a4477ce3ef8f476430de3a",
+      "main_only_commits": 2035,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/feature/result-ledger",
+      "sha": "d090f0740ffb052ccf61c0d296cc01357e0a2ad8",
+      "main_only_commits": 1786,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/feature/shovels-regrid-gap-alignment",
+      "sha": "19344349f54d994f5e8481efa8c866ac65f04889",
+      "main_only_commits": 1878,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/feature/site-resolution-parcel-enrichment",
+      "sha": "018d268b23fa79964fc10886369e52ac822d48e9",
+      "main_only_commits": 1841,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/feature/unified-command-center-source-intelligence-2026-10-16",
+      "sha": "86bfc264a969e952a30ade987d6c510283a0af6d",
+      "main_only_commits": 0,
+      "branch_only_commits": 16,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/feature/universal-intake-spine",
+      "sha": "0cfb641b8f444075e3a1a4231a89c0da8b31173a",
+      "main_only_commits": 1938,
+      "branch_only_commits": 28,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/fix/cs-sr-045-lawful-access-facts",
+      "sha": "42642d460ec7b9ad44183e0e3a4f8662afa089b7",
+      "main_only_commits": 646,
+      "branch_only_commits": 26,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/fix/cs-sr-046-epistemic-provenance",
+      "sha": "3b8c333636c56b0113f4bee36b74367bc8f7ee75",
+      "main_only_commits": 646,
+      "branch_only_commits": 42,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/integration/constructionsight-baseline-2026-09-24",
+      "sha": "6e568d2c266550be14f50f1270f4a5d13889d787",
+      "main_only_commits": 631,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/integration/freeze-6e568d2-2026-09-25",
+      "sha": "6e568d2c266550be14f50f1270f4a5d13889d787",
+      "main_only_commits": 631,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/integration/full-reconciliation-2026-09-28",
+      "sha": "745bbbb138d8d32544e17741f0c43df8d7ac868c",
+      "main_only_commits": 174,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/integration/reconcile-source-inventory-2026-09-24",
+      "sha": "4dbd1a4bd8b36fa7af27aab65b19bcfbfbabc548",
+      "main_only_commits": 648,
+      "branch_only_commits": 57,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/main",
+      "sha": "4c8f8eaf08653e2d571b0df821b862dcc9b158ac",
+      "main_only_commits": 0,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/noop",
+      "sha": "b601bf7caca9f0efc9bfea885f5b18ae556bed1f",
+      "main_only_commits": 1040,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/noop2",
+      "sha": "db183c03d12993812af573e3ea66ca0f174ddfcc",
+      "main_only_commits": 1040,
+      "branch_only_commits": 14,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/phase3/merge-now",
+      "sha": "d82690539ab302810900ec74a5534f157c965fab",
+      "main_only_commits": 40,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/refactor/pass-b-lead-ranking-and-handoff-2026-10-16",
+      "sha": "eb649023413f4b245e372ef8290d30735efa2a50",
+      "main_only_commits": 0,
+      "branch_only_commits": 6,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/refactor/pass-b2-operator-interface-parity-2026-10-16",
+      "sha": "bb5c69f6b6b8d7219cd3a5422bfac1910773f151",
+      "main_only_commits": 0,
+      "branch_only_commits": 12,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/release/integrated-baseline-2026-09-24",
+      "sha": "891679d9ca2cb1262faa2da67460ba9c47f29296",
+      "main_only_commits": 651,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/remediation/closure-certification-sync",
+      "sha": "f1a777ba9b4b20bf5eb53ab1d17a35c50e2eca08",
+      "main_only_commits": 355,
+      "branch_only_commits": 5,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/remediation/confidence-test-fixtures",
+      "sha": "eb07760e8de6aa45d3001ae1a7e374f09cba0434",
+      "main_only_commits": 532,
+      "branch_only_commits": 1,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/remediation/cs-sr-048-current-line",
+      "sha": "13e4ebf9befbac90154110b315e855ba6b2d31dd",
+      "main_only_commits": 538,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/remediation/cs-sr-053-fixed-decimal",
+      "sha": "7456e0f9820f2af219f1ac7bc0b5deba5746ca5f",
+      "main_only_commits": 533,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/remediation/cs-sr-053-fixed-decimal-v2",
+      "sha": "7b4782b212da4fa3490ce9688b404b41015fd6a4",
+      "main_only_commits": 532,
+      "branch_only_commits": 4,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/remediation/operational-confidence-gating",
+      "sha": "b555632e1d91faf1a7a64be3ecebd765f83bd0c6",
+      "main_only_commits": 631,
+      "branch_only_commits": 6,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/remediation/result-ledger-content-and-money",
+      "sha": "de1007dd04300b521b1b6ad5713b98ab82b11ddc",
+      "main_only_commits": 625,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/remediation/schema-version-governance",
+      "sha": "1866453b6cfcf63b6c0cd2af4cbb234daa59581f",
+      "main_only_commits": 626,
+      "branch_only_commits": 0,
+      "ancestor_of_main": true
+    },
+    {
+      "ref": "origin/remediation/test-governance-sync-batch",
+      "sha": "eb07760e8de6aa45d3001ae1a7e374f09cba0434",
+      "main_only_commits": 532,
+      "branch_only_commits": 1,
+      "ancestor_of_main": false
+    },
+    {
+      "ref": "origin/research/smarts-five-case-enrichment-2026-10-12",
+      "sha": "792d8b07b044f92cbf3cd566f56f246cc999d1c0",
+      "main_only_commits": 174,
+      "branch_only_commits": 3,
+      "ancestor_of_main": false
+    }
+  ]
+}
