@@ -7,28 +7,45 @@ Relationship Graph remain the goal. Full unification and functional parity are n
 
 ## Exact recovery checkpoint
 
-- Local branch: `agent/unification-continuation-2026-10-16`.
-- Latest implementation commit: `c7c6741` (separately reviewed finite CEQA background acquisition).
-- Prior acquisition implementation: `0e18db9` (SMARTS/inbox/timers and activation rollback).
-- Earlier continuation commits: `0c92c2e` (remaining producers/inventory), `8dbbc82`
-  (durable worker/recovery), `c28c577` (concurrent backup and CLI failure reporting).
-- Published implementation / draft PR #234: `ed35d7a59dc36287692ebcb14b7401404da3366a`.
-- Exact implementation tree: `779c4411499cc1bd93e2748062c8243baa347609`;
-  verified identical to preserved local `c7c67419f69b7a181a8c396c4b2bf820a0fa62ca`.
-- Source CI: 2,606 passed on each Python 3.11/3.12; quality gates, dependency
-  vulnerability audits and the browser/visual workflow passed. Subsequent checkpoint
-  documentation does not change source code.
-- Main baseline: `4c8f8eaf08653e2d571b0df821b862dcc9b158ac`.
-- Owner explicitly authorized publication on 2026-10-16. The connected GitHub
-  publication commit `67e1e99` has the exact tested tree of local checkpoint `75d4217`:
-  `71ab0138e047470961d4be87d92f3066831e8472`. Original local commits are preserved.
-  The later acquisition publication `b370621` exactly matches local `0e18db9`.
-  Its browser/visual workflow passed, including the reviewed timer dialog; both
-  Python 3.11/3.12 quality gates and dependency vulnerability audits passed. No new owner approval is required
-  for ordinary continuation/publication on this development branch.
-- No main merge, branch deletion, history rewrite, original-UI retirement, expanded
-  source authorization, automated commercial action or owner-device deployment.
-- After any interruption, check `git status` and `git rev-parse HEAD` on this branch.
+- Development branch: `agent/unification-implementation-2026-10-16`, draft PR #234.
+- Latest implementation source: `44e80090219a0ad0938dbec44848233d089bcf2d`.
+- This recovery update changes STATUS.md only; the source acceptance below is pinned to that implementation commit.
+- Phase 5 native integration is implemented. Exact-source acceptance results are recorded below.
+- Main remains `4c8f8eaf08653e2d571b0df821b862dcc9b158ac`; no merge or owner-device/source activation.
+- Next development task: Phase 6 live Relationship Graph, using BOTH an embedded Command Center graph and an expandable full-screen VirusTotal Threat Graph-style interface, preserving the approved charcoal-and-amber design. Both modes must use the same committed investigation state/events. Phase 5's entity projection is not Phase 6 completion.
+- Operational checks still open: owner-Zorin/systemd deployment, permissioned live-source background acquisition, and real live cooperating-source acceptance from Phases 3–4.
+- Preserve all original interfaces, historical branches and assurance evidence through Phase 8 acceptance.
+
+## Phase 5 development acceptance — verified
+
+**Accepted source:** `44e80090219a0ad0938dbec44848233d089bcf2d`.
+
+- [Full CI 38983505421](https://github.com/TruSudo/Construction-Sight/actions/runs/38983505421):
+  Python 3.11 **2,635 passed**, two non-failing warnings, 221.05s;
+  Python 3.12 **2,635 passed**, two non-failing warnings, 221.93s.
+  Ruff, strict Mypy (345 source files), JavaScript checks, dependency integrity and
+  vulnerability auditing passed; no known dependency vulnerabilities reported.
+- [Browser/visual 38983505583](https://github.com/TruSudo/Construction-Sight/actions/runs/38983505583):
+  native shared-investigation journey passed, existing **33/33 actions and 33/33 contracts**
+  passed, independent worker source-revision publication and dossier refresh passed,
+  refresh failure/manual recovery passed, source/location filtering, canonical-ID
+  consistency, unmapped handling, global party search and persisted entity/evidence
+  inspection passed. Live USGS observational probe passed.
+- Approved desktop structure/fonts and reported non-blocking pixel ratchet passed.
+  Absolute pixel matching did **not** pass and is not claimed; no pixel gate was weakened.
+- LIVE (controlled retained-fixture runtime): five native workspaces consume canonical
+  investigations, retained evidence and actual worker revisions without reload.
+- INTEGRATED: Site Map, Lead Console, Project Intelligence, Evidence Chains, dossiers,
+  Entity Network, bounded shared search/filtering, region choices and revision refresh.
+- ASSURANCE: owner-only/read-only existing-store access, preserved IDs/lineage, bounded
+  requests, continuation for nonmatching scan pages, late-response/disposed-view guards,
+  uncertainty and commercial-authorization boundaries remain enforced and tested.
+- PARTIAL: owner-device systemd deployment and permissioned real-source operational
+  acquisition/acceptance from Phases 3–4 remain open. Retained browser fixture data are
+  deliberately synthetic. This is Phase 5 development acceptance, not production/live-source
+  certification, Phase 6 graph acceptance, historical assurance completion or full parity.
+- NEXT: Phase 6 live Relationship Graph in embedded and expandable full-screen
+  VirusTotal Threat Graph-style modes over the same durable events/state.
 
 ## Phase checkpoint
 
@@ -37,8 +54,8 @@ Relationship Graph remain the goal. Full unification and functional parity are n
 | 1 — preservation/capability audit | Baseline inventory established; functional-equivalence and assurance obligations remain recorded below |
 | 2 — shared foundation | SMARTS, CEQA, permit, parcel, planning, agenda, document and universal-intake contracts reach common persistence; dossiers, guarded reviews and canonical inventory implemented |
 | 3 — background orchestration | SMARTS/inbox/timers connected; separately reviewed finite CEQA background lane implemented; real-source activation and owner-device deployment remain unaccepted |
-| 4 — cooperating-source journey | Controlled arrival-order checks exist; complete realistic multi-source acceptance remains outstanding |
-| 5 — native integration | Shared-state migration of native map, leads, dossiers, evidence, entity views and filters remains outstanding |
+| 4 — cooperating-source journey | Controlled and retained public-excerpt implementation acceptance exists; live-source operational acceptance remains open |
+| 5 — native integration | Development acceptance complete at 44e80090; full Python and browser gates passed; operational field checks remain open under Phases 3–4 |
 | 6 — live Relationship Graph | Durable backend events exist; live delivery, UI, replay and reconnection acceptance remain outstanding |
 | 7 — assurance completion | Relevant new safeguards tested; complete historical-to-unified enforcement reconciliation remains outstanding |
 | 8 — functional parity | No complete parity acceptance; original interface retained |
@@ -295,7 +312,7 @@ cross-view acceptance. Phase 3 owner-device/source operational verification and 
 live end-to-end acceptance remain open; Phase 5 is not complete. Main unchanged.
 
 
-## Current Phase 5 implementation — final integration, acceptance pending
+## Phase 5 implementation notes — before final acceptance
 
 Shared investigation inventory now supports bounded retained-text/party, source-family,
 county, source-claimed city and mapped/unmapped filters. Scan cursors remain available
@@ -329,3 +346,30 @@ Phase 3 owner-Zorin deployment and permitted live-source operation, Phase 4 live
 operational acceptance, Phase 6 live Relationship Graph delivery/replay/full-screen
 interaction, Phase 7 historical assurance reconciliation and Phase 8 parity remain open.
 No main merge, source activation, owner-device changes or commercial submissions.
+
+
+## Historical recovery checkpoints
+
+- Local branch: `agent/unification-continuation-2026-10-16`.
+- Latest implementation commit: `c7c6741` (separately reviewed finite CEQA background acquisition).
+- Prior acquisition implementation: `0e18db9` (SMARTS/inbox/timers and activation rollback).
+- Earlier continuation commits: `0c92c2e` (remaining producers/inventory), `8dbbc82`
+  (durable worker/recovery), `c28c577` (concurrent backup and CLI failure reporting).
+- Published implementation / draft PR #234: `ed35d7a59dc36287692ebcb14b7401404da3366a`.
+- Exact implementation tree: `779c4411499cc1bd93e2748062c8243baa347609`;
+  verified identical to preserved local `c7c67419f69b7a181a8c396c4b2bf820a0fa62ca`.
+- Source CI: 2,606 passed on each Python 3.11/3.12; quality gates, dependency
+  vulnerability audits and the browser/visual workflow passed. Subsequent checkpoint
+  documentation does not change source code.
+- Main baseline: `4c8f8eaf08653e2d571b0df821b862dcc9b158ac`.
+- Owner explicitly authorized publication on 2026-10-16. The connected GitHub
+  publication commit `67e1e99` has the exact tested tree of local checkpoint `75d4217`:
+  `71ab0138e047470961d4be87d92f3066831e8472`. Original local commits are preserved.
+  The later acquisition publication `b370621` exactly matches local `0e18db9`.
+  Its browser/visual workflow passed, including the reviewed timer dialog; both
+  Python 3.11/3.12 quality gates and dependency vulnerability audits passed. No new owner approval is required
+  for ordinary continuation/publication on this development branch.
+- No main merge, branch deletion, history rewrite, original-UI retirement, expanded
+  source authorization, automated commercial action or owner-device deployment.
+- After any interruption, check `git status` and `git rev-parse HEAD` on this branch.
+
