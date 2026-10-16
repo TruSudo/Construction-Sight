@@ -16,8 +16,15 @@ from constructionsight.site_models import Site
 def main() -> None:
     directory = Path(sys.argv[1])
     directory.mkdir(mode=0o700, parents=True, exist_ok=True)
-    provenance = [Provenance(source_name="Offline browser fixture", captured_at=datetime(2026, 10, 16, tzinfo=UTC))]
-    site = Site(site_key="synthetic:shared-workspace-site", county="Riverside", apn="123-456-789")
+    provenance = [
+        Provenance(
+            source_name="Offline browser fixture",
+            captured_at=datetime(2026, 10, 16, tzinfo=UTC),
+        )
+    ]
+    site = Site(
+        site_key="synthetic:shared-workspace-site", county="Riverside", apn="123-456-789"
+    )
     records = (
         ("ceqa", CeqaRecord(
             ceqa_key="synthetic:browser:ceqa:1",
