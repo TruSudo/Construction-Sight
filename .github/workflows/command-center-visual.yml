@@ -44,6 +44,11 @@ jobs:
         if: always()
         run: |
           PYTHONPATH=src python tests/ui/server.py --real-fixture --data-dir /tmp/cs-real-state --port 8767 > /tmp/cs-real.log 2>&1 &
+          for attempt in $(seq 1 60); do
+            if curl --silent --fail http://127.0.0.1:8767/ > /dev/null; then break; fi
+            sleep 0.2
+          done
+          curl --silent --fail http://127.0.0.1:8767/ > /dev/null
           mkdir -p tests/visual/output/real
           node tests/visual/capture.js http://127.0.0.1:8767 tests/visual/output/real/actual.png
       - name: Start isolated writable Demo for functional checks
@@ -54,6 +59,9 @@ jobs:
             if curl --silent --fail http://127.0.0.1:8766/ > /dev/null; then break; fi
             sleep 0.2
           done
+      - name: USGS basemap projection and offline failure recovery
+        if: always()
+        run: node tests/ui/usgs_map.js http://127.0.0.1:8766
       - name: Persistence and lead-to-royalty journey
         if: always()
         run: node tests/ui/state_browser.js http://127.0.0.1:8766 tests/visual/output/state-functions.json
@@ -113,14 +121,67 @@ jobs:
           python tests/visual/compare_mockup.py
           tests/visual/reference_native_1672x941.png
           tests/visual/output/actual.png tests/visual/output --report-only
+      - name: Locate native-viewport mismatch hotspots
+        if: always()
+        run: >-
+          python tests/visual/hotspots.py
+          tests/visual/reference_native_1672x941.png
+          tests/visual/output/actual.png tests/visual/output
       - name: Publish per-region table
         if: always()
         run: |
           cat tests/visual/output/calibration/calibration.md >> "$GITHUB_STEP_SUMMARY"
           cat tests/visual/output/regions.md >> "$GITHUB_STEP_SUMMARY"
+          cat tests/visual/output/native-hotspots.md >> "$GITHUB_STEP_SUMMARY"
       - name: Save screenshot and diff even when comparison fails
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: command-center-visual-diff
           path: tests/visual/output/
+
+  usgs-live:
+    name: Live USGS imagery and navigation probe (observational)
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Install bounded browser probe
+        run: |
+          python -m pip install -e '.[dev]'
+          npm --prefix tests/visual ci
+          cd tests/visual
+          npx playwright install --with-deps chromium
+      - name: Start retained genuine SMARTS fixture
+        run: |
+          PYTHONPATH=src python tests/ui/server.py --real-fixture --data-dir /tmp/cs-usgs-real --port 8774 > /tmp/cs-usgs-real.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl --silent --fail http://127.0.0.1:8774/ > /dev/null; then break; fi
+            sleep 0.2
+          done
+      - name: Load real official USGS imagery and pan/zoom over genuine source markers
+        id: probe
+        continue-on-error: true
+        run: node tests/ui/usgs_live.js http://127.0.0.1:8774 tests/visual/output/usgs-live/report.json
+      - name: Report external-provider result without disguising outages
+        if: always()
+        run: |
+          echo "### Live USGS HTTP/image browser probe" >> "$GITHUB_STEP_SUMMARY"
+          echo "Probe result: ${{ steps.probe.outcome }} (observational, not a code-quality gate)." >> "$GITHUB_STEP_SUMMARY"
+          if [ -f tests/visual/output/usgs-live/report.json ]; then
+            echo 'Detailed JSON, timestamps, tile successes, and screenshots are in the usgs-live-probe artifact.' >> "$GITHUB_STEP_SUMMARY"
+            python -c 'import json; p=json.load(open("tests/visual/output/usgs-live/report.json")); print("Live imagery PASS" if p["passed"] else "Live imagery NOT VERIFIED; see artifact for provider errors"); [print(x["service"], "PASS" if x["passed"] else "FAIL", x.get("loaded_tiles",0), "loaded tiles", x.get("error","")) for x in p["providers"]]' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'Live probe did not produce a report.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Retain proof of actual live USGS imagery / failures
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: usgs-live-probe
+          path: tests/visual/output/usgs-live/
