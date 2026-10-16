@@ -637,6 +637,27 @@ def test_three_reviewed_sources_share_revision_aware_chronology_without_identity
             for state in stale for change in state["changed_sources"]
         )
         assert dossier["cross_source_investigation"]["requires_association_reassessment"]
+        evidence_analysis = dossier["evidence_assessment"]
+        apn_variations = [
+            finding
+            for finding in evidence_analysis["source_claim_discrepancies"]
+            if finding["field"] == "apn"
+        ]
+        assert len(apn_variations) == 1
+        assert not apn_variations[0]["independently_verified_contradiction"]
+        assert {item["normalized_claim"] for item in apn_variations[0]["claims"]} == {
+            "123-456-789", "999-888-777"
+        }
+        assert any(
+            finding["field"] == "apn"
+            and finding["subsequent_evidence_id"] == revised_source.evidence.evidence_id
+            for finding in evidence_analysis["source_revision_changes"]
+        )
+        assert {"source_claim_variations", "association_reassessment"} <= {
+            item["code"] for item in evidence_analysis["information_gaps"]
+        }
+        assert dossier["assessment"]["human_review_required"] is True
+        assert dossier["assessment"]["identity_independently_verified"] is False
         assert dossier["cross_source_investigation"]["source_record_count"] == 3
         assert dossier["cross_source_investigation"]["source_families"] == [
             "family:ceqa", "family:permit", "family:planning"
