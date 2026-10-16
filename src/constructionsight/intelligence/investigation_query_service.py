@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Any
 
 from sqlalchemy import func, select
@@ -17,13 +17,53 @@ from constructionsight.intelligence.relationship_query_service import (
     ACTIVE_INVESTIGATION_CONTEXT_STATUSES,
     canonical_investigation_id,
 )
-from constructionsight.intelligence.schemas import LifecyclePhase, RelationshipStatus
+from constructionsight.intelligence.schemas import (
+    EvidenceRecord,
+    LifecyclePhase,
+    RelationshipStatus,
+)
 from constructionsight.storage.database import ensure_database_transaction
 from constructionsight.storage.intelligence_orm import (
     IntelligenceProjectClusterRecord,
     IntelligenceRelationshipRecord,
 )
 from constructionsight.storage.intelligence_store import IntelligenceStore
+
+
+# These are document/agency event dates, not worker observation timestamps or
+# independent verification of physical construction. Never replace retained_at.
+_SOURCE_CLAIMED_DATE_FIELDS: dict[str, tuple[str, ...]] = {
+    "ceqa": ("received_date", "posted_date"),
+    "agenda": ("meeting_date",),
+    "planning": ("filed_date", "hearing_date", "approval_date"),
+    "permit": ("applied_date", "issued_date", "finaled_date"),
+}
+
+
+def _source_claimed_milestones(evidence: EvidenceRecord) -> list[dict[str, str]]:
+    """Expose only exact retained, typed source date claims alongside the chronology."""
+    record = evidence.raw_observations.get("normalized_source_record")
+    if not isinstance(record, dict):
+        return []
+    milestones = []
+    for field in _SOURCE_CLAIMED_DATE_FIELDS.get(evidence.source_family or "", ()):
+        value = record.get(field)
+        if not isinstance(value, str):
+            continue
+        try:
+            parsed = date.fromisoformat(value)
+        except ValueError:
+            continue
+        if parsed.isoformat() != value:
+            continue
+        milestones.append(
+            {
+                "field": field,
+                "date": value,
+                "certainty": "source_claimed_not_independently_verified",
+            }
+        )
+    return milestones
 
 
 class InvestigationQueryService:
@@ -351,6 +391,7 @@ class InvestigationQueryService:
                         "time_basis": "source_observed_at"
                         if item.observed_at
                         else "retention_time_only",
+                        "source_claimed_milestones": _source_claimed_milestones(item),
                         "evidence_id": item.evidence_id,
                         "source_id": source_id,
                         "source_family": item.source_family,
