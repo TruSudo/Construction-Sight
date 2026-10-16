@@ -114,6 +114,16 @@ def test_official_two_filing_sch_replay_preserves_separate_evidence_and_unknowns
                     "https://ceqanet.lci.ca.gov/2025100627",
                     "https://ceqanet.lci.ca.gov/2025100627/3",
                 }
+                chronology = dossier["chronology"]
+                assert len(chronology) == 1
+                assert chronology[0]["time_basis"] == "retention_time_only"
+                assert chronology[0]["source_claimed_milestones"] == [
+                    {
+                        "field": "received_date",
+                        "date": normalized["received_date"],
+                        "certainty": "source_claimed_not_independently_verified",
+                    }
+                ]
                 assert dossier["assessment"]["commercial_readiness"] == "unassessed"
             event_cursor = store.runtime_event_cursor()
 
@@ -259,6 +269,30 @@ def test_public_ceqa_and_city_hearing_reviewed_context_with_later_nod(tmp_path, 
             }
             assert dossier["cross_source_investigation"]["reviewed_context_source_count"] == 1
             assert len(dossier["chronology"]) == 2
+            milestones = {
+                event["source_family"]: event["source_claimed_milestones"]
+                for event in dossier["chronology"]
+            }
+            assert milestones == {
+                "ceqa": [
+                    {
+                        "field": "received_date",
+                        "date": "2025-10-14",
+                        "certainty": "source_claimed_not_independently_verified",
+                    }
+                ],
+                "agenda": [
+                    {
+                        "field": "meeting_date",
+                        "date": "2025-11-18",
+                        "certainty": "source_claimed_not_independently_verified",
+                    }
+                ],
+            }
+            assert all(
+                event["time_basis"] == "retention_time_only"
+                for event in dossier["chronology"]
+            )
             assert dossier["assessment"]["identity_independently_verified"] is False
             assert dossier["assessment"]["commercial_authority_granted"] is False
 
