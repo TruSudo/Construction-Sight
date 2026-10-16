@@ -5,6 +5,8 @@ Synthetic claims here are not evidence of real jurisdictional project activity.
 
 from datetime import UTC, datetime, timedelta
 
+from constructionsight.domain_types import PartyRole
+from constructionsight.entity_models import Entity
 from constructionsight.intelligence.artifact_identity import IdentityArtifactType as Artifact
 from constructionsight.intelligence.investigation_assessment import (
     assess_investigation_evidence,
@@ -23,6 +25,7 @@ def source(
     address: str | None = None,
     day: int = 0,
     title: str | None = None,
+    parties: list[Entity] | None = None,
 ) -> InvestigationObservation:
     artifacts: dict[Artifact, list[str]] = {}
     if apns:
@@ -43,6 +46,7 @@ def source(
         title=title,
         county=county,
         artifacts=artifacts,
+        parties=parties or [],
     )
 
 
@@ -160,3 +164,37 @@ def test_claim_preview_is_bounded_without_discarding_review_warning():
     assert {"bounded_history", "bounded_claims"} <= {
         item["code"] for item in report["information_gaps"]
     }
+
+
+def test_unreconciled_titles_and_owner_names_are_evidence_claims_not_identity_proof():
+    left = source(
+        "ceqa",
+        apns=["123"],
+        title="Warehouse development",
+        parties=[Entity(entity_key="ceqa-owner", name="Acme Land LLC", role=PartyRole.OWNER)],
+    )
+    right = source(
+        "planning",
+        apns=["123"],
+        title="Logistics park",
+        parties=[Entity(entity_key="planning-owner", name="Acme Holdings", role=PartyRole.OWNER)],
+    )
+    report = assess([left, right])
+    title = next(
+        item for item in report["source_claim_discrepancies"] if item["field"] == "title"
+    )
+    assert title["potentially_valid_alias"] is True
+    assert title["independently_verified_contradiction"] is False
+    owners = report["source_party_variations"]
+    assert len(owners) == 1
+    assert owners[0]["role"] == "owner"
+    assert owners[0]["independently_verified_entity_conflict"] is False
+    assert {
+        item["evidence_id"]
+        for claim in owners[0]["source_claims"]
+        for item in claim["evidence"]
+    } == {left.evidence.evidence_id, right.evidence.evidence_id}
+    assert {"source_party_variations", "source_claim_variations"} <= {
+        gap["code"] for gap in report["information_gaps"]
+    }
+    assert report["independently_verified_project_identity"] is False
