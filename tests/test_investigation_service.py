@@ -611,7 +611,9 @@ def test_three_reviewed_sources_share_revision_aware_chronology_without_identity
         InvestigationService(store).ingest(revised_source)
         dossier = InvestigationQueryService(store).dossier(left.investigation_id)
         membership = dossier["source_membership"]
-        revised_member = next(item for item in membership if item["source_family"] == "family:planning")
+        revised_member = next(
+            item for item in membership if item["source_family"] == "family:planning"
+        )
         assert revised_member["retained_revision_count"] == 2
         assert revised_member["current_evidence_id"] == revised_source.evidence.evidence_id
         assert len(dossier["chronology"]) == 4
