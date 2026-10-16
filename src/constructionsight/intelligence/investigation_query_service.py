@@ -26,8 +26,6 @@ from constructionsight.storage.intelligence_orm import (
 from constructionsight.storage.intelligence_store import IntelligenceStore
 
 
-# These are document/agency event dates, not worker observation timestamps or
-# independent verification of physical construction. Never replace retained_at.
 _SOURCE_CLAIMED_DATE_FIELDS: dict[str, tuple[str, ...]] = {
     "ceqa": ("received_date", "posted_date"),
     "agenda": ("meeting_date",),
