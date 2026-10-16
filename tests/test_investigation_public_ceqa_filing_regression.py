@@ -15,6 +15,7 @@ into parcel identifiers or site geometry.
 import hashlib
 from datetime import UTC, date, datetime
 
+from constructionsight.agenda_models import AgendaItemRecord
 from constructionsight.ceqa_models import CeqaRecord
 from constructionsight.intelligence.investigation_query_service import InvestigationQueryService
 from constructionsight.investigation_runtime import InvestigationRuntime
@@ -128,3 +129,96 @@ def test_official_two_filing_sch_replay_preserves_separate_evidence_and_unknowns
     for original in originals:
         digest = hashlib.sha256(original).hexdigest()
         assert (directory / "investigation-inputs" / digest).read_bytes() == original
+
+
+def test_public_ceqa_and_city_hearing_with_shared_parcel_stay_review_candidates(tmp_path):
+    """Real page-backed field excerpts, not an authorized live source-acquisition test.
+
+    California CEQAnet MND: https://ceqanet.lci.ca.gov/2025100627
+    Fontana Legistar public hearing item 25-0659:
+    https://fontana.legistar.com/LegislationDetail.aspx?ID=7737395
+
+    Both list APN 0228-051-01. This is one explicitly named parcel in a
+    multi-parcel proposal, not an inferred sole project footprint. A shared
+    parcel must create no independently verified same-project identity.
+    """
+    directory = tmp_path / "private"
+    directory.mkdir(mode=0o700)
+    apn = "0228-051-01"
+    ceqa = official_page_excerpts()[0].model_copy(
+        update={
+            "site": Site(
+                site_key="ceqanet:one-explicitly-listed-parcel:2025100627",
+                county="San Bernardino",
+                jurisdiction="City of Fontana",
+                city="Fontana",
+                apn=apn,
+            )
+        }
+    )
+    agenda = AgendaItemRecord(
+        agenda_key="fontana:legistar:25-0659",
+        meeting_body="Planning Commission",
+        jurisdiction="City of Fontana",
+        county="San Bernardino",
+        meeting_date=date(2025, 11, 18),
+        item_number="25-0659",
+        title="Fontana Walnut Residential Project - MCN 24-0060",
+        site=Site(
+            site_key="fontana:legistar:25-0659:one-listed-parcel",
+            county="San Bernardino",
+            jurisdiction="City of Fontana",
+            city="Fontana",
+            apn=apn,
+        ),
+        provenance=[
+            Provenance(
+                source_name="Fontana Legistar public agenda (manual field excerpt)",
+                source_url=(
+                    "https://fontana.legistar.com/LegislationDetail.aspx?"
+                    "GUID=3577A726-0646-4B6A-B3D5-126C8DB52D2B&"
+                    "ID=7737395&Options=&Search="
+                ),
+                captured_at=REVIEWED_AT,
+                notes="Selected official HTML fields only, not retained raw HTTP capture.",
+            )
+        ],
+    )
+
+    runtime = InvestigationRuntime(directory)
+    try:
+        for kind, record in (("ceqa", ceqa), ("agenda", agenda)):
+            runtime.enqueue_bytes(record.model_dump_json(round_trip=True).encode(), kind)
+        report = runtime.process(max_jobs=100)
+        assert report["failed_jobs"] == 0
+        with managed_session(runtime.queue.factory) as session:
+            store = IntelligenceStore(session)
+            query = InvestigationQueryService(store)
+            rows = query.inventory(limit=10)["rows"]
+            assert len(rows) == 2
+            assert {row["source_records"][0]["source_family"] for row in rows} == {
+                "ceqa", "agenda"
+            }
+            # Candidate is backed by a shared explicit APN, not promoted by
+            # similar names, a public hearing, or the existence of an MND.
+            relations = [
+                relation for relation in store.list_relationships()
+                if relation.predicate == "possible_same_project_requires_review"
+            ]
+            assert relations
+            assert all(
+                not row["assessment"]["identity_independently_verified"]
+                and not row["assessment"]["commercial_authority_granted"]
+                for row in rows
+            )
+            for row in rows:
+                dossier = query.dossier(row["investigation_id"])
+                assert len(dossier["source_membership"]) == 1
+                assert dossier["assessment"]["commercial_readiness"] == "unassessed"
+                assert dossier["candidate_source_links"]
+                assert all(
+                    not item["identity_verified"] and not item["membership_confirmed"]
+                    for item in dossier["candidate_source_links"]
+                )
+    finally:
+        runtime.close()
