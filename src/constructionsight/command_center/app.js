@@ -1,6 +1,7 @@
 'use strict';
 const $=id=>document.getElementById(id), esc=s=>String(s==null||['NA','N/A','UNKNOWN','NULL','NONE'].includes(String(s).toUpperCase())?'—':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const nav=[['grid','Command Center'],['chart','Project Intelligence'],['pin','Site Map'],['network','Entity Network'],['file','Evidence Chains'],['','COMMERCIAL'],['target','Lead Console'],['send','Outreach'],['database','Bid Studio'],['dollar','Royalty Ledger'],['','INTELLIGENCE'],['star','Watchlist'],['source_layers','Sources & Collection']];
+let activeInvestigationMapRows=[];
 let data,filtered=[],selected=null,readinessFilter='',zoom=8,center=[34.05,-117.25],online=false,activePage='Command Center',watches=[],mapLayers={ready:true,review:true,not_ready:true,county:false,heat:false},includeExcluded=false,analyticFilter=null;
 let basemapMode=safeMapMode(localStorage.getItem('cs:basemap')),basemapFailed=false,mapGeneration=0,tileSource=null;
 const tileElements=new Map();
@@ -51,12 +52,36 @@ function drawMap(){if(!data)return;
  document.querySelector('.legend').innerHTML=['ready','review','not_ready'].map(k=>`<div class="legend-line"><span class="dot ${bandOf({readiness:k})}"></span>${{ready:'Ready for Outreach',review:'In Review',not_ready:'Not Ready'}[k]} (${filtered.filter(r=>r.readiness===k).length})</div>`).join('');
  $('points').setAttribute('viewBox',`0 0 ${w} ${h}`);let mapped=0;
  $('points').innerHTML=filtered.filter(r=>point(r)&&mapLayers[r.readiness]).map(r=>{const [x,y]=world(+r.SITE_LATITUDE,+r.SITE_LONGITUDE),px=x-left,py=y-top;if(px<0||px>w||py<0||py>h)return '';mapped++;const chosen=r===selected,c=chosen?'#ffb000':colors[r.readiness];return `<g data-key="${esc(r.source_key)}" tabindex="0" role="button" aria-label="Select ${esc(r.SITE_NAME)}"><circle cx="${px}" cy="${py}" r="${chosen?16:11}" fill="${c}22" stroke="${c}88" stroke-width="1.5"/><circle cx="${px}" cy="${py}" r="${chosen?10:7.5}" fill="${c}" stroke="#232a23" stroke-width="2"/></g>`;}).join('');
+ // Investigation points are source claims, not verified sites or commercial leads.
+ // Render only within the full Site Map workspace, preserving approved mockup parity.
+ if(activePage==='Site Map'&&!data.mockup_parity){
+  let claimedVisible=0,claimedMapped=0;
+  for(const record of activeInvestigationMapRows){
+   for(const location of record.points||[]){
+    const lat=location.latitude,lon=location.longitude;
+    if(typeof lat!=='number'||typeof lon!=='number'||!Number.isFinite(lat)||!Number.isFinite(lon)||Math.abs(lat)>85||Math.abs(lon)>180)continue;
+    claimedMapped++;
+    const [x,y]=world(lat,lon),px=x-left,py=y-top;
+    if(px<0||px>w||py<0||py>h)continue;
+    claimedVisible++;
+    const id=esc(record.investigation_id);
+    const label=esc(record.title||record.investigation_id);
+    $('points').insertAdjacentHTML('beforeend',
+     '<g data-investigation-id="'+id+'" role="button" tabindex="0" aria-label="Source-claimed investigation: '+label+'">'+
+     '<title>Source-claimed point · identity and construction unverified</title>'+
+     '<path d="M'+px+' '+(py-12)+'L'+(px+12)+' '+py+'L'+px+' '+(py+12)+'L'+(px-12)+' '+py+'Z" fill="#ffb00033" stroke="#ffb000" stroke-width="2"/>'+
+     '<circle cx="'+px+'" cy="'+py+'" r="3" fill="#fff2b7"/></g>');
+   }
+  }
+  const unmapped=activeInvestigationMapRows.filter(r=>!(r.points||[]).some(p=>typeof p.latitude==='number'&&typeof p.longitude==='number'&&Number.isFinite(p.latitude)&&Number.isFinite(p.longitude)&&Math.abs(p.latitude)<=85&&Math.abs(p.longitude)<=180)).length;
+  $('map-coverage').textContent+=' · '+claimedVisible+' visible source-claimed investigation points ('+claimedMapped+' on page) · '+unmapped+' investigations unmapped on page';
+ }
  $('map-coverage').hidden=Boolean(data.mockup_parity);$('map-coverage').textContent=`${mapped} visible · ${filtered.filter(point).length} geolocated · ${filtered.length-filtered.filter(point).length} without coordinates`;
  $('attribution').insertAdjacentHTML('afterbegin',`${mapped} visible points · `);if(mapLayers.heat){$('points').insertAdjacentHTML('afterbegin',filtered.filter(point).map(r=>{const[x,y]=world(+r.SITE_LATITUDE,+r.SITE_LONGITUDE);return `<circle cx="${x-left}" cy="${y-top}" r="28" fill="#ffb00015" style="pointer-events:none"/>`;}).join(''));}
 }
-$('points').onclick=e=>{const r=filtered.find(x=>x.source_key===e.target.closest('[data-key]')?.dataset.key);if(r)choose(r);};$('points').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();e.target.dispatchEvent(new MouseEvent('click',{bubbles:true}));}};
+$('points').onclick=e=>{const investigation=e.target.closest('[data-investigation-id]');if(investigation){perform(()=>openInvestigationDossier(investigation.dataset.investigationId));return;}const r=filtered.find(x=>x.source_key===e.target.closest('[data-key]')?.dataset.key);if(r)choose(r);};$('points').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();e.target.dispatchEvent(new MouseEvent('click',{bubbles:true}));}};
 $('zoom-in').onclick=()=>{zoom=Math.min(18,zoom+1);drawMap();saveMapView();};$('zoom-out').onclick=()=>{zoom=Math.max(3,zoom-1);drawMap();saveMapView();};
-let drag; $('map').onpointerdown=e=>{if(e.target.closest('button,[data-key],a'))return;drag={x:e.clientX,y:e.clientY,origin:world(...center)};$('map').setPointerCapture(e.pointerId);};$('map').onpointermove=e=>{if(!drag)return;const scale=Number(document.documentElement.style.getPropertyValue('--shell-scale'));center=inverse(drag.origin[0]-(e.clientX-drag.x)/scale,drag.origin[1]-(e.clientY-drag.y)/scale);drawMap();};$('map').onpointerup=()=>{if(drag){drag=null;saveMapView();}};
+let drag; $('map').onpointerdown=e=>{if(e.target.closest('button,[data-key],[data-investigation-id],a'))return;drag={x:e.clientX,y:e.clientY,origin:world(...center)};$('map').setPointerCapture(e.pointerId);};$('map').onpointermove=e=>{if(!drag)return;const scale=Number(document.documentElement.style.getPropertyValue('--shell-scale'));center=inverse(drag.origin[0]-(e.clientX-drag.x)/scale,drag.origin[1]-(e.clientY-drag.y)/scale);drawMap();};$('map').onpointerup=()=>{if(drag){drag=null;saveMapView();}};
 function dossier(r){if(!r){$('dossier').innerHTML='<p class="stub-small">No matching leads.</p>';return;}
  const fields=[['Project ID','project_id',r.project_id||r.WDID||r.APP_ID],['Stage','stage',r.stage],['Permit Type','permit_type',r.permit_type],['Size','size_sf',r.size_sf==null?'—':Number(r.size_sf).toLocaleString()+' SF'],['Est. Value','value',r.value==null?'—':'$'+Number(r.value).toLocaleString()],['Owner','OWNER_NAME',r.OWNER_NAME],['Architect','architect',r.architect],['General Contractor','contractor',r.contractor],['Permit Date','permit_date',r.permit_date]];
  $('dossier-status').innerHTML=`<span class="status-dot"></span>${{ready:'READY FOR OUTREACH',review:'IN REVIEW',not_ready:'NOT READY'}[r.readiness]}`;$('dossier-status').style.color=colors[r.readiness];
