@@ -317,3 +317,32 @@ def test_review_digest_covers_changes_to_independent_worker(tmp_path, monkeypatc
     assert schedule.preview(tmp_path, tmp_path)["digest"] != before["digest"]
     with pytest.raises(ValueError, match="Review"):
         schedule.install(tmp_path, tmp_path, {"reviewed": True, "digest": before["digest"]})
+
+
+def test_partial_timer_activation_rolls_back_the_whole_reviewed_bundle(tmp_path, monkeypatch):
+    commands = []
+
+    def manager(*args):
+        commands.append(args)
+        output = ""
+        if args[0] == "show":
+            active = schedule.WORKER_UNIT not in args[1]
+            output = "ActiveState=" + ("active" if active else "inactive") + "\n"
+        return subprocess.CompletedProcess(args, 0, output, "")
+
+    monkeypatch.setattr(schedule, "systemctl", manager)
+    preview = schedule.preview(tmp_path, tmp_path)
+    with pytest.raises(ValueError, match="Timer did not become active"):
+        schedule.install(
+            tmp_path,
+            tmp_path,
+            {"reviewed": True, "digest": preview["digest"]},
+            unit_directory=tmp_path / "units",
+        )
+    assert commands[-1] == (
+        "disable",
+        "--now",
+        schedule.UNIT + ".timer",
+        schedule.WORKER_UNIT + ".timer",
+    )
+    assert not schedule.config(tmp_path)["enabled"]

@@ -282,6 +282,8 @@ def install(
         raise ValueError("Daily schedule installation failed: " + str(exc)) from exc
     result_status = status(directory, startup)
     if not result_status["active"] or not result_status["investigation_worker"]["active"]:
+        with suppress(OSError, subprocess.TimeoutExpired):
+            systemctl("disable", "--now", UNIT + ".timer", WORKER_UNIT + ".timer")
         value.update(enabled=False, install_error="Timer did not become active")
         write(directory, value)
         raise ValueError("Timer did not become active; inspect systemctl status")
