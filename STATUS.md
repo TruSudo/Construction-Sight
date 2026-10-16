@@ -8,10 +8,16 @@ Relationship Graph remain the goal. Full unification and functional parity are n
 ## Exact recovery checkpoint
 
 - Local branch: `agent/unification-continuation-2026-10-16`.
-- Latest implementation commit: `0e18db9` (acquisition/inbox/timers plus partial-activation rollback).
+- Latest implementation commit: `c7c6741` (separately reviewed finite CEQA background acquisition).
+- Prior acquisition implementation: `0e18db9` (SMARTS/inbox/timers and activation rollback).
 - Earlier continuation commits: `0c92c2e` (remaining producers/inventory), `8dbbc82`
   (durable worker/recovery), `c28c577` (concurrent backup and CLI failure reporting).
-- Published implementation / draft PR #234: `b37062131850a7f9d5955b57d4e5da273778c484`.
+- Published implementation / draft PR #234: `ed35d7a59dc36287692ebcb14b7401404da3366a`.
+- Exact implementation tree: `779c4411499cc1bd93e2748062c8243baa347609`;
+  verified identical to preserved local `c7c67419f69b7a181a8c396c4b2bf820a0fa62ca`.
+- Source CI: 2,606 passed on each Python 3.11/3.12; quality gates, dependency
+  vulnerability audits and the browser/visual workflow passed. Subsequent checkpoint
+  documentation does not change source code.
 - Main baseline: `4c8f8eaf08653e2d571b0df821b862dcc9b158ac`.
 - Owner explicitly authorized publication on 2026-10-16. The connected GitHub
   publication commit `67e1e99` has the exact tested tree of local checkpoint `75d4217`:
@@ -120,13 +126,13 @@ reachability. File ancestry/imports are not functional proof. No historical asse
   concurrent enqueue during backup and CLI failure reporting. Both parcel-arrival
   orders passed separately (two cases, 6.72s).
 - Ruff passed; strict Mypy passed for 341 modules; JavaScript syntax and pip check passed.
-- Current acquisition source checkpoint `b370621` passed Python 3.11/3.12 CI, browser/visual
+- Prior acquisition source checkpoint `b370621` passed Python 3.11/3.12 CI, browser/visual
   workflow and dependency vulnerability audits. Complete final integration and functional
   parity remain unaccepted. No merge readiness claimed.
 
 ## Next immediately executable task
 
-Validate the new finite CEQA background lane on the published source checkpoint.
+The published finite CEQA background lane passed full CI and browser validation.
 Real-source operation still requires an exact current source review and explicit plan
 activation; no CEQA plan or owner-device timer is enabled here. Complete operational
 Phase 3 acceptance with the realistic multi-source journey, without skipping safeguards.
@@ -233,7 +239,12 @@ investigation worker then handles only due approved windows.
 
 Validation: 65 focused background/acquisition/runtime/manual-CEQA/scheduling tests
 passed in 32.77s, including 25 new background cases. Ruff, strict Mypy (343 modules),
-JS syntax and pip check passed. Full CI and browser results are pending publication;
-earlier 2,581-test CI results above describe the preceding source tree.
+JS syntax and pip check passed. Current published source `ed35d7a` passed full CI: Python 3.12 **2,606 passed**,
+two warnings, **229.36s**; Python 3.11 **2,606 passed**, two warnings, **276.14s**.
+Both complete quality gates and dependency vulnerability audits passed. The
+browser/visual workflow passed, including the updated four-unit review and explicit
+separate CEQA approval scope. Absolute pixel parity is not claimed.
+CI run: `38948226703`; browser/visual run: `38948226682`.
+Earlier 2,581-test CI results above describe the preceding source tree.
 Native-view migration, live graph delivery/UI, full historical assurance reconciliation
 and complete functional parity remain outstanding; no main merge or deployment.
