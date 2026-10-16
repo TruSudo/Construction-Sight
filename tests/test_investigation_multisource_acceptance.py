@@ -18,6 +18,7 @@ import pytest
 from constructionsight.agenda_models import AgendaItemRecord
 from constructionsight.ceqa_models import CeqaRecord
 from constructionsight.intelligence.investigation_query_service import InvestigationQueryService
+from constructionsight.intelligence.schemas import RelationshipAssertion, RelationshipStatus
 from constructionsight.investigation_runtime import InvestigationRuntime
 from constructionsight.parcel_core_models import ParcelCoreRecord
 from constructionsight.permit_models import PermitRecord
@@ -172,6 +173,35 @@ def test_retained_source_families_cooperate_across_worker_restarts_without_false
                 relation.predicate == "possible_same_project_requires_review"
                 for relation in store.list_relationships()
             )
+            # Cross-source candidates are visible, but not silently included
+            # as verified project members or mixed into the source chronology.
+            candidate_dossiers = [
+                query.dossier(row["investigation_id"]) for row in inventory["rows"]
+            ]
+            assert any(dossier["candidate_source_links"] for dossier in candidate_dossiers)
+            for dossier in candidate_dossiers:
+                own_ids = {
+                    item["evidence"]["evidence_id"]
+                    for item in dossier["source_observations"]
+                }
+                for link in dossier["candidate_source_links"]:
+                    assert link["candidate_evidence_id"] not in own_ids
+                    assert link["membership_confirmed"] is False
+                    assert link["identity_verified"] is False
+                    assert link["supporting_evidence_ids"]
+                    assert link["candidate_source_family"]
+                    assert link["candidate_investigation_id"] != (
+                        dossier["investigation"]["project_cluster_id"]
+                    )
+                    assert all(
+                        event["evidence_id"] != link["candidate_evidence_id"]
+                        for event in dossier["chronology"]
+                    )
+                if dossier["candidate_source_links"]:
+                    assert any(
+                        "Cross-source project candidates require identity review"
+                        in gap for gap in dossier["assessment"]["gaps"]
+                    )
             assert all(
                 query.dossier(row["investigation_id"])["assessment"]["commercial_readiness"]
                 == "unassessed"
@@ -284,3 +314,66 @@ def test_actual_cli_processes_resume_five_source_families_from_retained_inbox(tm
         assert path.read_bytes() == content
         digest = hashlib.sha256(content).hexdigest()
         assert (directory / "investigation-inputs" / digest).read_bytes() == content
+
+
+def test_conflicting_cross_source_candidate_is_visible_but_does_not_merge_evidence(
+    tmp_path,
+):
+    directory = tmp_path / "private"
+    directory.mkdir(mode=0o700)
+    runtime = InvestigationRuntime(directory)
+    try:
+        for kind, record in retained_inputs()[:2]:
+            runtime.enqueue_bytes(record.model_dump_json(round_trip=True).encode(), kind)
+        assert runtime.process(max_jobs=100)["failed_jobs"] == 0
+        with managed_session(runtime.queue.factory) as session:
+            store = IntelligenceStore(session)
+            query = InvestigationQueryService(store)
+            rows = query.inventory()["rows"]
+            assert len(rows) == 2
+            left, right = rows
+            left_dossier = query.dossier(left["investigation_id"])
+            right_dossier = query.dossier(right["investigation_id"])
+            left_edge = next(
+                relation for relation in left_dossier["relationships"]
+                if relation["predicate"] == "source_record_for_unresolved_investigation"
+            )
+            right_edge = next(
+                relation for relation in right_dossier["relationships"]
+                if relation["predicate"] == "source_record_for_unresolved_investigation"
+            )
+            left_evidence = left_dossier["source_observations"][0]["evidence"]["evidence_id"]
+            right_evidence = right_dossier["source_observations"][0]["evidence"]["evidence_id"]
+            store.upsert_relationship(
+                RelationshipAssertion(
+                    relationship_id="synthetic:conflicting-potential-match",
+                    subject_entity_id=left_edge["subject_entity_id"],
+                    object_entity_id=right_edge["subject_entity_id"],
+                    predicate="possible_same_project_requires_review",
+                    relationship_status=RelationshipStatus.CONFLICTING,
+                    evidence_summary="Synthetic identity artifacts disagree; review is mandatory.",
+                    supporting_evidence_ids=[left_evidence, right_evidence],
+                    contradictory_evidence_ids=[left_evidence, right_evidence],
+                )
+            )
+            dossier = query.dossier(left["investigation_id"])
+            link = next(
+                item for item in dossier["candidate_source_links"]
+                if item["relationship_id"] == "synthetic:conflicting-potential-match"
+            )
+            assert link["relationship_status"] == "conflicting"
+            assert link["candidate_evidence_id"] == right_evidence
+            assert link["candidate_investigation_id"] == right["investigation_id"]
+            assert set(link["contradictory_evidence_ids"]) == {left_evidence, right_evidence}
+            assert link["membership_confirmed"] is False
+            assert link["identity_verified"] is False
+            assert len(dossier["source_observations"]) == 1
+            assert all(
+                event["evidence_id"] != right_evidence for event in dossier["chronology"]
+            )
+            assert any(
+                "Conflicting cross-source candidate evidence" in gap
+                for gap in dossier["assessment"]["gaps"]
+            )
+    finally:
+        runtime.close()
