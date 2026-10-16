@@ -729,6 +729,49 @@ def test_http_rejects_foreign_origins(database, headers):
         assert _get(port, headers=headers)[0] == 403
 
 
+@pytest.mark.parametrize(
+    "route",
+    ["/", "/workspace", "/operator_command_center.js", "/operator_ui.js", "/api/health"],
+)
+def test_b2_legacy_get_guard_preserves_static_and_api_same_origin(database, route):
+    """All legacy surfaces share one read guard; a browser origin cannot widen it."""
+    path, _ = database
+    with _server(path) as port:
+        baseline = path.read_bytes()
+        allowed = {"Origin": f"http://127.0.0.1:{port}"}
+        status, headers, body = _get(port, route, headers=allowed)
+        assert status == 200
+        assert body
+        assert headers["Cache-Control"] == "no-store"
+        assert headers["X-Content-Type-Options"] == "nosniff"
+        assert "unsafe-inline" not in headers["Content-Security-Policy"]
+        assert _get(port, route)[0] == 200  # Normal loopback GET has no Origin.
+        for denied in (
+            {"Host": "attacker.example"},
+            {"Origin": "http://attacker.example"},
+            {"Origin": f"http://localhost:{port}"},  # Origin must match Host.
+            {"Sec-Fetch-Site": "cross-site"},
+        ):
+            result, _, payload = _get(port, route, headers=denied)
+            assert result == 403
+            assert json.loads(payload)["error"] == "Local same-origin access required."
+        assert path.read_bytes() == baseline
+
+
+def test_b2_legacy_workspace_and_database_snapshots_remain_separate(database):
+    """The retained relational operator UI must not disappear during consolidation."""
+    path, _ = database
+    with _server(path) as port:
+        index_status, _, index = _get(port, "/")
+        old_status, _, old = _get(port, "/workspace")
+        api_status, _, payload = _get(port, "/api/snapshot?kind=all&limit=1&offset=0")
+        assert (index_status, old_status, api_status) == (200, 200, 200)
+        assert b"Command Center" in index and b"workspace" in old.lower()
+        result = json.loads(payload)
+        assert result["read_only"] is True
+        assert result["total"] == 0
+
+
 def test_http_errors_do_not_expose_database_paths_or_repair_data(database):
     path, engine = database
     with Session(engine) as session, session.begin():
