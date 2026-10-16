@@ -35,12 +35,14 @@ async function renderInvestigationInventory(box,onPage=()=>{}){
  const input=host.querySelector('[data-investigation-search]'),source=host.querySelector('[data-investigation-source]'),location=host.querySelector('[data-investigation-location]');
  input.value=investigationFilters.text;source.value=investigationFilters.source;location.value=investigationFilters.location;
  async function showNetwork(id){
+  if(disposed)return;
   networkId=id;const ticket=++networkTicket;
   try{const dossier=await api('/api/investigations/'+encodeURIComponent(id));
    if((host.isConnected&&!disposed)&&ticket===networkTicket)renderSharedEntityNetwork(network,dossier);
   }catch(e){if((host.isConnected&&!disposed)&&ticket===networkTicket)network.innerHTML='<p role="alert">'+esc(e.message)+'</p>';}
  }
  async function page(nextAfter,quiet=false){
+  if(disposed)return;
   const ticket=++request;busy=true;
   if(!quiet)status.textContent='Loading committed investigation state…';
   try{
@@ -138,7 +140,7 @@ async function appendInvestigationSearch(q){
   for(let page=0;page<5;page++){
    const snapshot=await api(investigationParams(after,{q,source:'',location:''}));
    if(ticket!==investigationSearchTicket||$('search-results').hidden||$('search').value.trim().toLowerCase()!==q)return;
-   if(!snapshot.available)break;
+   if(!snapshot.available){$('search-results').insertAdjacentHTML('beforeend','<p>Shared investigation store unavailable; no investigation search count is asserted.</p>');return;}
    found.push(...snapshot.rows);remaining=snapshot.has_more;after=snapshot.next_cursor;
    if(found.length>=25||!remaining)break;
   }
