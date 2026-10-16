@@ -22,6 +22,7 @@ _LOCATION_FIELDS = (
     ("exact_site_address", IdentityArtifactType.EXACT_SITE_ADDRESS),
 )
 _MAX_FINDINGS = 100
+_MAX_CLAIM_REFERENCES = 100
 
 
 def _values(observation: InvestigationObservation, field: str) -> list[str]:
@@ -38,6 +39,9 @@ def _normalize(field: str, raw: str) -> str:
 
 
 def _history_values(payload: dict[str, Any], field: str) -> tuple[str, ...]:
+    if field == "title":
+        value = payload.get("title")
+        return (value.strip().casefold(),) if isinstance(value, str) and value.strip() else ()
     if field == "county":
         value = payload.get("county")
         raw = [value] if isinstance(value, str) and value.strip() else []
@@ -60,6 +64,7 @@ def assess_investigation_evidence(
 ) -> dict[str, Any]:
     """Assess retained claims; never convert diversity into a verified conflict."""
     discrepancies: list[dict[str, Any]] = []
+    claims_truncated = False
     for field, _ in _LOCATION_FIELDS:
         groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
         for observation in current:
@@ -74,21 +79,34 @@ def assess_investigation_evidence(
                         "source_claim": raw,
                     }
                 )
-        if len(groups) < 2:
+        unique_sources = {
+            entry["source_id"] for entries in groups.values() for entry in entries
+        }
+        if len(groups) < 2 or len(unique_sources) < 2:
             continue
         # Different parcels or addresses may both be correct for a multi-site
         # project. Even a county difference is a question, not a finding of error.
-        claims = [
-            {"normalized_claim": value, "sources": sorted(
-                entries, key=lambda item: (item["source_id"], item["source_claim"])
-            )}
+        references = [
+            (value, item)
             for value, entries in sorted(groups.items())
+            for item in sorted(
+                entries, key=lambda entry: (entry["source_id"], entry["source_claim"])
+            )
         ]
+        if len(references) > _MAX_CLAIM_REFERENCES:
+            claims_truncated = True
+        shown: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        for value, item in references[:_MAX_CLAIM_REFERENCES]:
+            shown[value].append(item)
         discrepancies.append(
             {
                 "field": field,
                 "classification": "source_claim_variation_requires_review",
-                "claims": claims,
+                "claims": [
+                    {"normalized_claim": value, "sources": entries}
+                    for value, entries in sorted(shown.items())
+                ],
+                "claims_truncated": len(references) > _MAX_CLAIM_REFERENCES,
                 "potentially_valid_multi_location": field in {"apn", "exact_site_address"},
                 "independently_verified_contradiction": False,
                 "requires_review": True,
@@ -102,7 +120,7 @@ def assess_investigation_evidence(
     revision_truncated = False
     for source_id, events in sorted(by_source.items()):
         for previous, following in zip(events, events[1:]):
-            for field, _ in _LOCATION_FIELDS:
+            for field, _ in (*_LOCATION_FIELDS, ("title", None)):
                 before = _history_values(previous["observation"], field)
                 after = _history_values(following["observation"], field)
                 if before == after:
@@ -179,10 +197,13 @@ def assess_investigation_evidence(
         gap("association_reassessment", "A reviewed association predates changed retained evidence.")
     if source_history_truncated or revision_truncated:
         gap("bounded_history", "The current evidence page does not show complete source history.")
+    if claims_truncated:
+        gap("bounded_claims", "The source-claim review preview exceeds its bounded evidence page.")
 
     return {
         "schema_version": "constructionsight.investigation-evidence-assessment/v1",
         "source_claim_discrepancies": discrepancies,
+        "source_claim_discrepancies_truncated": claims_truncated,
         "source_revision_changes": revisions,
         "source_revision_changes_truncated": revision_truncated,
         "information_gaps": gaps,
@@ -192,6 +213,7 @@ def assess_investigation_evidence(
             or candidate_links
             or pending_association_reviews
             or revision_truncated
+            or claims_truncated
         ),
         "independently_verified_project_identity": False,
         "commercial_authority_granted": False,
