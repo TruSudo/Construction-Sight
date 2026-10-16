@@ -5,13 +5,13 @@ offline functional test, not evidence of live public-source coverage or a
 reviewed grant to acquire data.
 """
 
-from datetime import UTC, datetime
 import hashlib
 import json
 import os
-from pathlib import Path
 import subprocess
 import sys
+from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 
