@@ -127,7 +127,8 @@ def preview(directory: Path, startup: Path, python: Path | None = None) -> dict[
             "Zorin OS / Ubuntu: user timers run while logged in unless lingering is enabled. "
             "Persistent catches up one missed run after downtime; it does not wake a "
             "powered-off computer. Keep this Python environment and application installed. "
-            "Nothing sends outreach."
+            "CEQA background requests require a separate reviewed finite plan; "
+            "installing these units grants no CEQA access. Nothing sends outreach."
         ),
     }
 
@@ -161,6 +162,10 @@ def warning(directory: Path) -> str | None:
         return "Last scheduled run failed: " + str(
             last.get("error") or "See source run history and journalctl"
         )
+    ceqa_path = directory / "ceqa-background-run.json"
+    ceqa = json.loads(ceqa_path.read_text()) if ceqa_path.exists() else {}
+    if ceqa.get("ceqa_failed"):
+        return "CEQA background acquisition stopped; inspect its reviewed plan and retained result"
     active = directory / "active.json"
     if active.exists():
         snapshot = json.loads(active.read_text())

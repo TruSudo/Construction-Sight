@@ -1,8 +1,9 @@
 """Independent local worker for retained evidence and shared investigations.
 
 Input snapshots are durable before jobs become visible. A claimed job's knowledge,
-children and completion share one SQLite transaction. No network acquisition or
-human identity-review action is performed by this worker.
+children and completion share one SQLite transaction. Network acquisition requires
+a separate reviewed finite CEQA background plan;
+retained processing itself grants no network or human identity-review authority.
 """
 
 from __future__ import annotations
@@ -73,7 +74,7 @@ from constructionsight.storage.runtime_artifacts import (
 
 MAX_INPUT_BYTES = 16 * 1024 * 1024
 BATCH = 25
-RUNTIME_SOURCE_KINDS = (*RETAINED_SOURCE_KINDS, "ceqa-csv-execution")
+RUNTIME_SOURCE_KINDS = (*RETAINED_SOURCE_KINDS, "ceqa-csv-execution", "ceqa-listing-execution")
 
 
 class InputRef(BaseModel):
@@ -134,6 +135,19 @@ class InvestigationRuntime:
         # Preserve even invalid source payloads before normalization is attempted.
         reference = retain_input(self.directory, content)
         parent_reference = None
+        if kind == "ceqa-listing-execution":
+            from constructionsight.ceqanet_background import BackgroundListingEvidence
+
+            evidence = BackgroundListingEvidence.model_validate_json(content)
+            rows = evidence.normalized_records()
+            if not rows:
+                raise ValueError("CEQA listing has no usable retained records")
+            content = json.dumps(
+                rows, sort_keys=True, separators=(",", ":"), allow_nan=False
+            ).encode()
+            parent_reference = reference
+            reference = retain_input(self.directory, content)
+            kind = "ceqa"
         if kind == "ceqa-csv-execution":
             payload = json.loads(content)
             if not isinstance(payload, dict):
@@ -528,6 +542,7 @@ class InvestigationRuntime:
         max_jobs: int = BATCH,
         poll_smarts: bool = False,
         poll_inbox: bool = False,
+        poll_ceqa: bool = False,
         startup: Path | None = None,
     ) -> dict[str, int]:
         """Bound one independently scheduled turn; processing never authorizes collection."""
@@ -541,6 +556,21 @@ class InvestigationRuntime:
             if poll_smarts and active_path.exists()
             else None
         )
+        acquisition = {}
+        if poll_ceqa:
+            from constructionsight.ceqanet_background import poll_background
+
+            if startup is None or data_folder.resolve_folder(startup) == self.directory:
+                try:
+                    acquisition = poll_background(self)
+                except (ValueError, OSError, SQLAlchemyError):
+                    # An invalid acquisition capability cannot prevent already
+                    # retained evidence from progressing through independent jobs.
+                    acquisition = {"ceqa_acquired": 0, "ceqa_failed": 1}
+                write_runtime_text(
+                    self.directory / "ceqa-background-run.json",
+                    json.dumps({"completed_at": datetime.now(UTC).isoformat(), **acquisition}),
+                )
         inbox = {}
         if poll_inbox:
             from constructionsight.investigation_inbox import poll_retained_inbox
@@ -558,7 +588,7 @@ class InvestigationRuntime:
                 break
             processed += 1
             failed += result.status in {"failed", "blocked"}
-        report = {"processed_jobs": processed, "failed_jobs": failed, **inbox}
+        report = {"processed_jobs": processed, "failed_jobs": failed, **inbox, **acquisition}
         write_runtime_text(
             self.directory / "investigation-worker-run.json",
             json.dumps(
@@ -601,6 +631,7 @@ def systemd_units(executable: Path, startup_directory: Path) -> dict[str, str]:
             "run",
             "--poll-smarts",
             "--poll-inbox",
+            "--poll-ceqa",
             "--max-jobs",
             "100",
         )
@@ -629,6 +660,7 @@ def main(argv: list[str] | None = None) -> int:
     run = commands.add_parser("run")
     run.add_argument("--poll-smarts", action="store_true")
     run.add_argument("--poll-inbox", action="store_true")
+    run.add_argument("--poll-ceqa", action="store_true")
     run.add_argument("--max-jobs", default=25, type=int)
     commands.add_parser("status")
     commands.add_parser("units")
@@ -654,10 +686,17 @@ def main(argv: list[str] | None = None) -> int:
             max_jobs=args.max_jobs,
             poll_smarts=args.poll_smarts,
             poll_inbox=args.poll_inbox,
+            poll_ceqa=args.poll_ceqa,
             startup=startup,
         )
         print(json.dumps(report))
-        return 1 if report["failed_jobs"] or report.get("inbox_failed", 0) else 0
+        return (
+            1
+            if report["failed_jobs"]
+            or report.get("inbox_failed", 0)
+            or report.get("ceqa_failed", 0)
+            else 0
+        )
     finally:
         runtime.close()
 

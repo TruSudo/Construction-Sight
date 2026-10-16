@@ -30,7 +30,7 @@ Relationship Graph remain the goal. Full unification and functional parity are n
 | --- | --- |
 | 1 — preservation/capability audit | Baseline inventory established; functional-equivalence and assurance obligations remain recorded below |
 | 2 — shared foundation | SMARTS, CEQA, permit, parcel, planning, agenda, document and universal-intake contracts reach common persistence; dossiers, guarded reviews and canonical inventory implemented |
-| 3 — background orchestration | SMARTS capture-to-worker handoff, bounded retained-artifact inbox and reviewed capture/worker timer bundle implemented; CEQA background network authorization and deployment remain partial |
+| 3 — background orchestration | SMARTS/inbox/timers connected; separately reviewed finite CEQA background lane implemented; real-source activation and owner-device deployment remain unaccepted |
 | 4 — cooperating-source journey | Controlled arrival-order checks exist; complete realistic multi-source acceptance remains outstanding |
 | 5 — native integration | Shared-state migration of native map, leads, dossiers, evidence, entity views and filters remains outstanding |
 | 6 — live Relationship Graph | Durable backend events exist; live delivery, UI, replay and reconnection acceptance remain outstanding |
@@ -126,11 +126,10 @@ reachability. File ancestry/imports are not functional proof. No historical asse
 
 ## Next immediately executable task
 
-Finish Phase 3: add a separately scoped, reviewed CEQA background-acquisition lane
-using existing access checks, bounded plans, revocation and durable effect allowances.
-SMARTS capture, retained-artifact inbox and reviewed timer bundle are now connected.
-Respect source-specific access reviews, rate limits and 403 stops.
-Prove restart-safe source-to-investigation processing without an open UI or ChatGPT.
+Validate the new finite CEQA background lane on the published source checkpoint.
+Real-source operation still requires an exact current source review and explicit plan
+activation; no CEQA plan or owner-device timer is enabled here. Complete operational
+Phase 3 acceptance with the realistic multi-source journey, without skipping safeguards.
 Then complete the Phase 4 realistic cooperating-source investigation before migrating
 native views (5), live graph (6), assurance completion (7) and functional parity (8).
 Do not mark any phase complete merely because its files or tests exist.
@@ -171,7 +170,7 @@ is claimed. The existing GitHub visual workflow runs `tests/ui/schedule.js`, now
 that both worker units are visible during review. Current published source `b370621` passed the browser/visual workflow, including the
 expanded four-unit schedule review. This is CI browser proof, not a local browser pass.
 
-**PARTIAL / NEXT:** CEQA's current exact manual request allowances explicitly deny
+**HISTORICAL CHECKPOINT:** CEQA's exact manual request allowances explicitly deny
 background recurrence; no timer or inbox grants network permission or bypasses those
 rules. Finish Phase 3 by implementing a separately scoped, reviewed CEQA background
 acquisition capability using existing source checks, bounded plans, revocation and
@@ -192,3 +191,49 @@ before native-view migration, live graph and final assurance/parity acceptance.
   including Ruff, strict Mypy, JS syntax, pip check and dependency vulnerability audits.
   CI run: `38939767419`; visual/browser run: `38939767402`. The two warnings are
   upstream Typer/Click deprecations. Subsequent status-only edits do not change source code.
+
+
+## Finite CEQA background continuation — 2026-10-16
+
+A separate `ceqanet_background` capability builds and previews up to 31 exact daily
+listing windows. Enabling requires the exact plan digest and explicit background
+confirmation. Its source definition, live registry/checklist identities, expiry,
+execution limits and approval are bound together. The manual CEQA facade and its
+no-recurrence restriction are unchanged. No real source request or activation was
+performed during this implementation.
+
+Each window permits one bounded CS-NET-002 GET page, at most 50,000 bytes and 20 seconds,
+with no redirects, credentials, downloads or automatic network retries. Actual captures
+remain at least 24 hours apart; old windows are skipped rather than fetched in a burst.
+This is bounded partial discovery, not complete CEQA coverage. Generic provenance
+remains unverified; missing county/location is not inferred from search filters.
+Distinct captured documents/revisions preserve separate source record identities.
+
+The independent worker's `--poll-ceqa` hook is dormant without a reviewed enabled plan.
+Exact original execution artifacts are retained before normalization and linked to
+shared-engine jobs. Retained result handoffs recover after restart or revocation.
+Access failures, CAPTCHA/login/paywall warnings, truncation, transport errors and
+ambiguous interrupted attempts stop further requests. Invalid acquisition configuration
+does not prevent unrelated retained jobs from progressing. Worker failures surface in
+the existing schedule warning. The reviewed timer digest includes the changed command;
+the native review explicitly distinguishes CEQA plan approval from timer installation.
+
+Existing authorization, protected-effect consumption, bounded listing executor,
+verification, result parser and persistence preview are reused. Durable request
+reservations, approvals and stop/revocation receipts survive observation-backup rollback;
+copied data directories do not inherit an operative grant. Original local files and
+historical functions remain preserved. No dependency or database-schema change.
+
+Operator entry point: `python -m constructionsight.ceqanet_background --data-dir DIR`
+with `build`, `preview`, `enable` or `revoke`. `build` accepts a reviewed one-page
+`--definition`, current `--registry` and `--checklist`, timezone-aware `--first-due`
+and `--days` (1–31). `enable --plan FILE --approved-digest SHA --confirm-background`
+records a separate finite approval and performs no network request. The existing
+investigation worker then handles only due approved windows.
+
+Validation: 65 focused background/acquisition/runtime/manual-CEQA/scheduling tests
+passed in 32.77s, including 25 new background cases. Ruff, strict Mypy (343 modules),
+JS syntax and pip check passed. Full CI and browser results are pending publication;
+earlier 2,581-test CI results above describe the preceding source tree.
+Native-view migration, live graph delivery/UI, full historical assurance reconciliation
+and complete functional parity remain outstanding; no main merge or deployment.
