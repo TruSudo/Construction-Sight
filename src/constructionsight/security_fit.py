@@ -8,7 +8,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-from constructionsight.lead_quality import classify_names
+from constructionsight.lead_quality import classify_names, load_keywords
 
 WEIGHTS_PATH = Path(__file__).parent / "command_center" / "security_fit_weights.json"
 WEIGHTS: dict[str, int] = json.loads(WEIGHTS_PATH.read_text())
@@ -42,10 +42,11 @@ def rank_leads(
 ) -> list[dict[str, Any]]:
     today = today or date.today()
     weights = weights if weights is not None else load_weights()
-    counts = Counter(developer_key(row) for row in rows if developer_key(row))
+    counts = Counter(key for row in rows if (key := developer_key(row)))
+    keyword_config = load_keywords() if rows else None
     ranked = []
     for row in rows:
-        classification = classify_names(row)
+        classification = classify_names(row, config=keyword_config)
         if classification["project_type"] == "unknown" and row.get("parcel_use_claim"):
             claim = row["parcel_use_claim"]
             if (
