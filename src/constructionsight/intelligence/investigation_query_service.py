@@ -203,6 +203,71 @@ class InvestigationQueryService:
                 if event is None:
                     raise ValueError("source location assessment receipt is missing")
                 location_assessments.append(event.payload)
+        # Source-to-source correlation is a review candidate, never an automatic
+        # membership assertion. Expose its retained evidence without adding the
+        # other source to this investigation's timeline, parties or source list.
+        candidate_links: list[dict[str, Any]] = []
+        candidate_ids: set[str] = set()
+        candidates_truncated = False
+        for source_id in source_ids:
+            related = self.store.list_relationships_for_target(source_id, limit=251)
+            if len(related) > 250:
+                candidates_truncated = True
+            for relation in related[:250]:
+                if (
+                    relation.predicate != "possible_same_project_requires_review"
+                    or relation.relationship_status
+                    in {
+                        RelationshipStatus.REJECTED,
+                        RelationshipStatus.SUPERSEDED,
+                        RelationshipStatus.STALE,
+                    }
+                    or relation.relationship_id in candidate_ids
+                ):
+                    continue
+                other_id = (
+                    relation.object_entity_id
+                    if relation.subject_entity_id == source_id
+                    else relation.subject_entity_id
+                )
+                if other_id in source_ids:
+                    continue
+                other = source_service.current_observation(other_id)
+                other_investigation = canonical_investigation_id(
+                    self.store, other.investigation_id
+                )
+                if other_investigation == investigation_id:
+                    continue
+                candidate_ids.add(relation.relationship_id)
+                candidate_links.append(
+                    {
+                        "relationship_id": relation.relationship_id,
+                        "source_id": source_id,
+                        "candidate_source_id": other_id,
+                        "candidate_investigation_id": other_investigation,
+                        "candidate_source_family": other.evidence.source_family,
+                        "candidate_source_record_id": other.evidence.source_record_id,
+                        "candidate_evidence_id": other.evidence.evidence_id,
+                        "candidate_effective_at": other.effective_at.isoformat(),
+                        "candidate_time_basis": (
+                            "source_observed_at"
+                            if other.evidence.observed_at
+                            else "retention_time_only"
+                        ),
+                        "relationship_status": relation.relationship_status.value,
+                        "supporting_evidence_ids": relation.supporting_evidence_ids,
+                        "contradictory_evidence_ids": relation.contradictory_evidence_ids,
+                        "evidence_summary": relation.evidence_summary,
+                        "identity_verified": False,
+                        "membership_confirmed": False,
+                    }
+                )
+        candidate_links.sort(
+            key=lambda item: (
+                item["candidate_effective_at"],
+                item["relationship_id"],
+            )
+        )
         chronology: list[dict[str, Any]] = []
         for item in evidence:
             if item is None:
@@ -244,6 +309,14 @@ class InvestigationQueryService:
         )
         if len(families) < 2:
             gaps.append("No corroborated multi-source investigation membership established.")
+        if candidate_links:
+            gaps.append(
+                "Cross-source project candidates require identity review before shared membership."
+            )
+        if any(item["contradictory_evidence_ids"] for item in candidate_links):
+            gaps.append("Conflicting cross-source candidate evidence requires investigation.")
+        if candidates_truncated:
+            gaps.append("Candidate associations exceed the bounded dossier review page.")
         points = [
             {
                 "latitude": item.latitude,
@@ -319,6 +392,8 @@ class InvestigationQueryService:
             "source_parties": party_contexts,
             "parties_truncated": parties_truncated,
             "pending_association_reviews": pending_reviews,
+            "candidate_source_links": candidate_links,
+            "candidate_links_truncated": candidates_truncated,
             "sources_truncated": sources_truncated,
             "source_observations": [
                 item.model_dump(mode="json", round_trip=True) for item in current
