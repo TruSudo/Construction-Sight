@@ -7,6 +7,7 @@ from typing import Any
 
 from sqlalchemy import func, select
 
+from constructionsight.intelligence.investigation_assessment import assess_investigation_evidence
 from constructionsight.intelligence.investigation_service import (
     InvestigationService,
     observation_receipt_identity,
@@ -461,6 +462,18 @@ class InvestigationQueryService:
             )
         if sources_truncated or len(page) > 1000 or len(all_evidence_ids) > evidence_limit:
             gaps.append("This bounded dossier is incomplete; request additional retained records.")
+        source_history_truncated = (
+            sources_truncated or len(page) > 1000 or len(all_evidence_ids) > evidence_limit
+        )
+        evidence_assessment = assess_investigation_evidence(
+            current,
+            chronology,
+            candidate_links=candidate_links,
+            pending_association_reviews=pending_reviews,
+            source_parties=party_contexts,
+            source_history_truncated=source_history_truncated,
+            relationship_contradictions=len(contradictions),
+        )
         evidence_source_ids = {
             item.evidence_id: source_record_identity(item) for item in evidence if item is not None
         }
@@ -491,6 +504,7 @@ class InvestigationQueryService:
                 association_review_states, key=lambda item: item["relationship_id"]
             ),
             "source_membership": source_membership,
+            "evidence_assessment": evidence_assessment,
             "cross_source_investigation": {
                 "source_record_count": len(current),
                 "source_families": families,
@@ -505,6 +519,15 @@ class InvestigationQueryService:
                     or len(all_evidence_ids) > evidence_limit
                 ),
                 "requires_association_reassessment": bool(pending_reviews),
+                "claim_discrepancy_count": len(
+                    evidence_assessment["source_claim_discrepancies"]
+                ),
+                "historical_source_change_count": len(
+                    evidence_assessment["source_revision_changes"]
+                ),
+                "unresolved_information_gap_count": len(
+                    evidence_assessment["information_gaps"]
+                ),
                 "identity_independently_verified": False,
                 "commercial_authority_granted": False,
             },
@@ -525,6 +548,8 @@ class InvestigationQueryService:
                 "identity_independently_verified": False,
                 "investigation_completeness": "partial",
                 "gaps": gaps,
+                "information_gaps": evidence_assessment["information_gaps"],
+                "human_review_required": evidence_assessment["human_review_required"],
                 "construction_activity": cluster.lifecycle_phase.value,
                 "commercial_readiness": "unassessed",
                 "commercial_authority_granted": False,
