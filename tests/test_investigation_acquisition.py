@@ -2,7 +2,9 @@
 
 import hashlib
 import json
+import os
 import subprocess
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -274,6 +276,122 @@ def test_actual_retained_ceqa_execution_is_replayed_offline_with_original_lineag
         with managed_session(runtime.queue.factory) as session:
             assert IntelligenceStore(session).runtime_event_cursor() == cursor
         assert evidence.read_bytes() == content
+    finally:
+        runtime.close()
+
+
+def test_independent_worker_resumes_genuine_retained_ceqa_after_process_exit(tmp_path):
+    repository = Path(__file__).parents[1]
+    evidence = (
+        repository / "evidence/source_verification/ceqanet_csv_live_execution_2026-07-12.json"
+    )
+    original = evidence.read_bytes()
+    directory = tmp_path / "private"
+    directory.mkdir(mode=0o700)
+    inbox = directory / "investigation-inbox" / "ceqa-csv-execution"
+    inbox.mkdir(parents=True)
+    (inbox / "retained.json").write_bytes(original)
+    command = [
+        sys.executable, "-m", "constructionsight.investigation_runtime",
+        "--data-dir", str(directory), "run", "--poll-inbox", "--max-jobs",
+    ]
+    environment = {
+        **os.environ,
+        "PYTHONPATH": str(repository / "src") + os.pathsep + os.environ.get("PYTHONPATH", ""),
+    }
+
+    def turn(limit):
+        result = subprocess.run(
+            [*command, str(limit)], capture_output=True, text=True,
+            env=environment, timeout=60,
+        )
+        assert result.returncode == 0, result.stderr
+        return json.loads(result.stdout)
+
+    assert turn(1)["processed_jobs"] == 1
+    assert turn(25)["processed_jobs"] == 4
+    runtime = InvestigationRuntime(directory)
+    try:
+        with managed_session(runtime.queue.factory) as session:
+            store = IntelligenceStore(session)
+            inventory = InvestigationQueryService(store).inventory()
+            assert inventory["total"] == 2 and inventory["mapped_on_page"] == 0
+            assert all(
+                not row["assessment"]["identity_independently_verified"]
+                for row in inventory["rows"]
+            )
+            cursor = store.runtime_event_cursor()
+        assert turn(25)["processed_jobs"] == 0
+        with managed_session(runtime.queue.factory) as session:
+            assert IntelligenceStore(session).runtime_event_cursor() == cursor
+    finally:
+        runtime.close()
+    digest = hashlib.sha256(original).hexdigest()
+    assert (directory / "investigation-inputs" / digest).read_bytes() == original
+    assert evidence.read_bytes() == original
+    assert not (directory / "ceqa-background").exists()
+
+
+@pytest.mark.parametrize("barrier", ["inbox-cursor", "inbox-link", "smarts-journal", "metadata"])
+def test_broken_intake_cannot_starve_retained_jobs_and_warning_requires_recovery(
+    tmp_path, monkeypatch, capsys, barrier
+):
+    from constructionsight.investigation_runtime import main
+
+    directory = tmp_path / "private"
+    runtime = InvestigationRuntime(directory)
+    job = runtime.enqueue_bytes(permit("independent").encode(), "permit")
+    runtime.close()
+    lane = "inbox" if barrier.startswith("inbox") else "smarts"
+    if barrier == "inbox-cursor":
+        broken = directory / "investigation-inbox-cursor.json"
+        broken.write_text('{"after": null}')
+    elif barrier == "inbox-link":
+        outside = tmp_path / "outside"
+        outside.mkdir()
+        broken = directory / "investigation-inbox" / "permit"
+        broken.parent.mkdir()
+        broken.symlink_to(outside, target_is_directory=True)
+    else:
+        broken = directory / ("evidence.sqlite3" if barrier == "smarts-journal" else "active.json")
+        broken.write_bytes(b"invalid journal" if barrier == "smarts-journal" else b"[]")
+    original = broken.read_bytes() if not broken.is_symlink() else None
+
+    def no_network(*args, **kwargs):
+        pytest.fail("Recovery of retained jobs must not issue network requests")
+
+    monkeypatch.setattr(httpx.Client, "send", no_network)
+    args = ["--data-dir", str(directory), "run", "--max-jobs", "25"]
+    assert main([*args, "--poll-" + lane]) == 1
+    report = json.loads(capsys.readouterr().out)
+    assert report[lane + "_failed"] == 1
+    assert report["failed_jobs"] == 0 and report["processed_jobs"] > 0
+    runtime = InvestigationRuntime(directory)
+    try:
+        assert next(j for j in runtime.queue.list_jobs() if j.job_id == job.job_id).status == (
+            "completed"
+        )
+        with managed_session(runtime.queue.factory) as session:
+            store = IntelligenceStore(session)
+            assert InvestigationQueryService(store).inventory()["total"] == 1
+            cursor = store.runtime_event_cursor()
+    finally:
+        runtime.close()
+    if original is not None:
+        assert broken.read_bytes() == original
+    assert f"{lane} intake failed" in schedule.warning(directory)
+    # A retained-only turn must not hide a source lane that still needs repair.
+    assert main(args) == 0
+    capsys.readouterr()
+    assert f"{lane} intake failed" in schedule.warning(directory)
+    broken.unlink()
+    assert main([*args, "--poll-" + lane]) == 0
+    assert json.loads(capsys.readouterr().out)[lane + "_failed"] == 0
+    assert schedule.warning(directory) is None
+    runtime = InvestigationRuntime(directory)
+    try:
+        with managed_session(runtime.queue.factory) as session:
+            assert IntelligenceStore(session).runtime_event_cursor() == cursor
     finally:
         runtime.close()
 

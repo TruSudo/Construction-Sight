@@ -166,6 +166,11 @@ def warning(directory: Path) -> str | None:
     ceqa = json.loads(ceqa_path.read_text()) if ceqa_path.exists() else {}
     if ceqa.get("ceqa_failed"):
         return "CEQA background acquisition stopped; inspect its reviewed plan and retained result"
+    for lane in ("smarts", "inbox"):
+        poll_path = directory / f"investigation-{lane}-run.json"
+        poll = json.loads(poll_path.read_text()) if poll_path.exists() else {}
+        if poll.get(f"{lane}_failed"):
+            return f"Investigation {lane} intake failed; retained evidence requires review"
     active = directory / "active.json"
     if active.exists():
         snapshot = json.loads(active.read_text())
@@ -178,6 +183,7 @@ def warning(directory: Path) -> str | None:
                 and snapshot.get("captured_at")
                 and worker.get("source_capture_at") == snapshot["captured_at"]
                 and worker.get("failed_jobs") == 0
+                and worker.get("smarts_failed", 0) == 0
             ):
                 return (
                     "Source evidence retained; investigation handoff failed. "
@@ -331,7 +337,11 @@ def run(startup: Path) -> int:
             investigation = runtime.process(
                 max_jobs=25, poll_smarts=True, poll_inbox=True, startup=startup
             )
-            if investigation["failed_jobs"] or investigation.get("inbox_failed", 0):
+            if (
+                investigation["failed_jobs"]
+                or investigation.get("inbox_failed", 0)
+                or investigation.get("smarts_failed", 0)
+            ):
                 result = 1
         except (ValueError, OSError, SQLAlchemyError):
             investigation = {"error_code": "investigation_processing_failed"}

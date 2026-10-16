@@ -248,3 +248,27 @@ CI run: `38948226703`; browser/visual run: `38948226682`.
 Earlier 2,581-test CI results above describe the preceding source tree.
 Native-view migration, live graph delivery/UI, full historical assurance reconciliation
 and complete functional parity remain outstanding; no main merge or deployment.
+
+## Phase 3 independent-worker recovery continuation — 2026-10-16
+
+SMARTS journal/capture metadata failures and inbox cursor/directory failures now report
+separate intake failures while allowing unrelated retained jobs to progress. A failed
+SMARTS poll is attempted once per worker turn; source bytes and committed cursor remain
+unchanged. CLI and scheduled capture return failure for unsuccessful intake instead of
+reporting the whole turn as successful. Independent last-poll receipts keep the existing
+schedule warning visible across retained-only turns until that lane is polled successfully.
+These are offline processing retries, not new network acquisition authority.
+
+The genuine retained CEQA CSV execution also passed a standalone process-boundary journey:
+one worker automatically discovers the inbox input and executes one ingestion job;
+a fresh worker completes four dependent jobs; a third is idle without duplicate events.
+Two investigations remain unmapped and unverified, with exact original execution bytes
+retained. No dashboard, live CEQA request, enabled plan or installed timer is involved.
+
+Validation: **71 focused tests passed in 38.92s**, including five new recovery/process
+cases. Ruff over src/tests, strict Mypy over 343 modules and dependency integrity passed.
+Current complete Python 3.11/3.12 CI remains pending publication of this change; the
+2,606-test results above belong to the preceding source tree. Phase 3 live source and
+owner-device acceptance remain outstanding. Finish the concrete current source review,
+finite-plan activation review and deployment acceptance before declaring Phase 3 complete.
+Continue with Phase 4 only after that acceptance; no main merge or historical retirement.

@@ -550,12 +550,17 @@ class InvestigationRuntime:
             raise ValueError("max_jobs must be between 1 and 500")
         processed = failed = 0
         smarts_polled = False
+        smarts_failed = 0
         active_path = self.directory / "active.json"
-        capture_at = (
-            json.loads(read_runtime_text(active_path)).get("captured_at")
-            if poll_smarts and active_path.exists()
-            else None
-        )
+        capture_at = None
+        if poll_smarts and active_path.exists():
+            try:
+                snapshot = json.loads(read_runtime_text(active_path))
+                if not isinstance(snapshot, dict):
+                    raise ValueError("invalid SMARTS capture metadata")
+                capture_at = snapshot.get("captured_at")
+            except (ValueError, OSError):
+                smarts_failed = 1
         acquisition = {}
         if poll_ceqa:
             from constructionsight.ceqanet_background import poll_background
@@ -575,20 +580,38 @@ class InvestigationRuntime:
         if poll_inbox:
             from constructionsight.investigation_inbox import poll_retained_inbox
 
-            inbox = poll_retained_inbox(self)
+            try:
+                inbox = poll_retained_inbox(self)
+            except (ValueError, OSError, SQLAlchemyError, sqlite3.Error):
+                inbox = {"inbox_examined": 0, "inbox_accepted": 0, "inbox_failed": 1}
+            write_runtime_text(
+                self.directory / "investigation-inbox-run.json", json.dumps(inbox)
+            )
         worker = f"local:{os.getpid()}:{uuid.uuid4().hex}"
         for _ in range(max_jobs):
             if startup is not None and data_folder.resolve_folder(startup) != self.directory:
                 break
-            if poll_smarts:
-                self.enqueue_smarts()
-                smarts_polled = (self.directory / "evidence.sqlite3").exists()
+            if poll_smarts and not smarts_failed:
+                try:
+                    self.enqueue_smarts()
+                    smarts_polled = (self.directory / "evidence.sqlite3").exists()
+                except (ValueError, OSError, SQLAlchemyError, sqlite3.Error):
+                    # Keep the cursor and source bytes intact. A broken source lane
+                    # must not starve unrelated jobs already retained in the queue.
+                    smarts_failed = 1
             result = self.run_once(worker)
             if result is None:
                 break
             processed += 1
             failed += result.status in {"failed", "blocked"}
-        report = {"processed_jobs": processed, "failed_jobs": failed, **inbox, **acquisition}
+        smarts = {"smarts_failed": smarts_failed} if poll_smarts else {}
+        if poll_smarts:
+            write_runtime_text(
+                self.directory / "investigation-smarts-run.json", json.dumps(smarts)
+            )
+        report = {
+            "processed_jobs": processed, "failed_jobs": failed, **inbox, **acquisition, **smarts
+        }
         write_runtime_text(
             self.directory / "investigation-worker-run.json",
             json.dumps(
@@ -695,6 +718,7 @@ def main(argv: list[str] | None = None) -> int:
             if report["failed_jobs"]
             or report.get("inbox_failed", 0)
             or report.get("ceqa_failed", 0)
+            or report.get("smarts_failed", 0)
             else 0
         )
     finally:
