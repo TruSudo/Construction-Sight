@@ -15,9 +15,11 @@ into parcel identifiers or site geometry.
 import hashlib
 from datetime import UTC, date, datetime
 
+import constructionsight.effect_consumption as effect_consumption
 from constructionsight.agenda_models import AgendaItemRecord
 from constructionsight.ceqa_models import CeqaRecord
 from constructionsight.intelligence.investigation_query_service import InvestigationQueryService
+from constructionsight.intelligence.investigation_review_service import InvestigationReviewService
 from constructionsight.investigation_runtime import InvestigationRuntime
 from constructionsight.provenance import Provenance
 from constructionsight.site_models import Site
@@ -131,7 +133,7 @@ def test_official_two_filing_sch_replay_preserves_separate_evidence_and_unknowns
         assert (directory / "investigation-inputs" / digest).read_bytes() == original
 
 
-def test_public_ceqa_and_city_hearing_with_shared_parcel_stay_review_candidates(tmp_path):
+def test_public_ceqa_and_city_hearing_reviewed_context_with_later_nod(tmp_path, monkeypatch):
     """Real page-backed field excerpts, not an authorized live source-acquisition test.
 
     California CEQAnet MND: https://ceqanet.lci.ca.gov/2025100627
@@ -144,6 +146,11 @@ def test_public_ceqa_and_city_hearing_with_shared_parcel_stay_review_candidates(
     """
     directory = tmp_path / "private"
     directory.mkdir(mode=0o700)
+    monkeypatch.setattr(
+        effect_consumption,
+        "_CONSUMPTION_DATABASE_PATH",
+        tmp_path / "public-page-excerpts-review-effects.sqlite3",
+    )
     apn = "0228-051-01"
     ceqa = official_page_excerpts()[0].model_copy(
         update={
@@ -202,10 +209,17 @@ def test_public_ceqa_and_city_hearing_with_shared_parcel_stay_review_candidates(
             # Candidate is backed by a shared explicit APN, not promoted by
             # similar names, a public hearing, or the existence of an MND.
             relations = [
-                relation for relation in store.list_relationships()
+                relation
+                for relation in store.list_relationships()
                 if relation.predicate == "possible_same_project_requires_review"
             ]
             assert relations
+            anchor_id = next(
+                row["investigation_id"]
+                for row in rows
+                if row["source_records"][0]["source_family"] == "ceqa"
+            )
+            candidate_id = relations[0].relationship_id
             assert all(
                 not row["assessment"]["identity_independently_verified"]
                 and not row["assessment"]["commercial_authority_granted"]
@@ -220,5 +234,58 @@ def test_public_ceqa_and_city_hearing_with_shared_parcel_stay_review_candidates(
                     not item["identity_verified"] and not item["membership_confirmed"]
                     for item in dossier["candidate_source_links"]
                 )
+
+        # This reviewer is explicitly synthetic: it tests the operator-review
+        # boundary, and does NOT establish factual project identity.
+        reviewer = InvestigationReviewService(runtime.engine)
+        preview = reviewer.preview(candidate_id)
+        result = reviewer.review(
+            candidate_id,
+            decision="associate",
+            target_id=anchor_id,
+            expected_identity=preview["expected_identity"],
+            reason="Offline test: retain two public page excerpts as related context only",
+            caller_confirmation=True,
+            operator_id="operator:offline-public-page-test",
+        )
+        assert result["identity_independently_verified"] is False
+
+        with managed_session(runtime.queue.factory) as session:
+            query = InvestigationQueryService(IntelligenceStore(session))
+            assert query.inventory(limit=10)["total"] == 1
+            dossier = query.dossier(anchor_id)
+            assert {row["source_family"] for row in dossier["source_membership"]} == {
+                "ceqa", "agenda"
+            }
+            assert dossier["cross_source_investigation"]["reviewed_context_source_count"] == 1
+            assert len(dossier["chronology"]) == 2
+            assert dossier["assessment"]["identity_independently_verified"] is False
+            assert dossier["assessment"]["commercial_authority_granted"] is False
+
+        # A later NOD under the same SCH is a distinct official filing.
+        # The site has multiple parcels; review of MND/agenda does not grant
+        # approval to silently attach later government evidence.
+        nod = official_page_excerpts()[1]
+        runtime.enqueue_bytes(nod.model_dump_json(round_trip=True).encode(), "ceqa")
+        assert runtime.process(max_jobs=100)["failed_jobs"] == 0
+        with managed_session(runtime.queue.factory) as session:
+            query = InvestigationQueryService(IntelligenceStore(session))
+            inventory = query.inventory(limit=10)
+            assert inventory["total"] == 2
+            dossier = query.dossier(anchor_id)
+            assert {row["source_family"] for row in dossier["source_membership"]} == {
+                "ceqa", "agenda"
+            }
+            assert len(dossier["chronology"]) == 2
+            assert dossier["assessment"]["identity_independently_verified"] is False
+            assert dossier["assessment"]["commercial_authority_granted"] is False
+            assert dossier["assessment"]["commercial_readiness"] == "unassessed"
+            assert any(
+                row["source_records"][0]["source_record_id"] == nod.ceqa_key
+                for row in inventory["rows"]
+            )
+
+        replay = runtime.process(max_jobs=100)
+        assert replay["processed_jobs"] == replay["failed_jobs"] == 0
     finally:
         runtime.close()
