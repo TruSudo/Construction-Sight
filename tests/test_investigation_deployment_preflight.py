@@ -49,6 +49,7 @@ def test_preflight_requires_exact_reviewed_units_active_timers_and_private_data(
     }
     for name, content in units.items():
         (unit_dir / name).write_text(content)
+        (unit_dir / name).chmod(0o600)
     schedule.write(
         directory,
         {
@@ -74,10 +75,15 @@ def test_preflight_requires_exact_reviewed_units_active_timers_and_private_data(
     assert changed["checks"]["unit_files_match_reviewed_preview"] is False
     assert changed["checks"]["reviewed_bundle_digest_current"] is True
 
+    # Restore exact bytes, but reject a world-readable installed unit.
+    service = unit_dir / (schedule.WORKER_UNIT + ".service")
+    service.write_text(preview["investigation_service"])
+    service.chmod(0o644)
+    insecure = schedule.deployment_preflight(directory, directory, unit_directory=unit_dir)
+    assert insecure["checks"]["unit_files_match_reviewed_preview"] is False
+    service.chmod(0o600)
+
     # Restored units still cannot pass if the operator has not reviewed this digest.
-    (unit_dir / (schedule.WORKER_UNIT + ".service")).write_text(
-        preview["investigation_service"]
-    )
     schedule.write(
         directory,
         {
@@ -105,6 +111,7 @@ def test_preflight_rejects_overly_permissive_directory_and_schedule_warning(tmp_
         (schedule.WORKER_UNIT + ".timer", "investigation_timer"),
     ):
         (units / name).write_text(preview[key])
+        (units / name).chmod(0o600)
     schedule.write(
         directory,
         {**schedule.DEFAULT, "enabled": True, "installed_digest": preview["digest"]},
