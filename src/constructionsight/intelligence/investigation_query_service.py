@@ -17,11 +17,7 @@ from constructionsight.intelligence.relationship_query_service import (
     ACTIVE_INVESTIGATION_CONTEXT_STATUSES,
     canonical_investigation_id,
 )
-from constructionsight.intelligence.schemas import (
-    EvidenceRecord,
-    LifecyclePhase,
-    RelationshipStatus,
-)
+from constructionsight.intelligence.schemas import LifecyclePhase, RelationshipStatus
 from constructionsight.storage.database import ensure_database_transaction
 from constructionsight.storage.intelligence_orm import (
     IntelligenceProjectClusterRecord,
@@ -40,13 +36,15 @@ _SOURCE_CLAIMED_DATE_FIELDS: dict[str, tuple[str, ...]] = {
 }
 
 
-def _source_claimed_milestones(evidence: EvidenceRecord) -> list[dict[str, str]]:
+def _source_claimed_milestones(
+    raw_observations: dict[str, Any], source_family: str | None
+) -> list[dict[str, str]]:
     """Expose only exact retained, typed source date claims alongside the chronology."""
-    record = evidence.raw_observations.get("normalized_source_record")
+    record = raw_observations.get("normalized_source_record")
     if not isinstance(record, dict):
         return []
     milestones = []
-    for field in _SOURCE_CLAIMED_DATE_FIELDS.get(evidence.source_family or "", ()):
+    for field in _SOURCE_CLAIMED_DATE_FIELDS.get(source_family or "", ()):
         value = record.get(field)
         if not isinstance(value, str):
             continue
@@ -391,7 +389,9 @@ class InvestigationQueryService:
                         "time_basis": "source_observed_at"
                         if item.observed_at
                         else "retention_time_only",
-                        "source_claimed_milestones": _source_claimed_milestones(item),
+                        "source_claimed_milestones": _source_claimed_milestones(
+                            item.raw_observations, item.source_family
+                        ),
                         "evidence_id": item.evidence_id,
                         "source_id": source_id,
                         "source_family": item.source_family,
