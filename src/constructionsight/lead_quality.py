@@ -16,8 +16,11 @@ def load_keywords() -> dict[str, Any]:
     return value
 
 
-def classify_names(row: dict[str, Any]) -> dict[str, Any]:
-    config = load_keywords()
+def classify_names(
+    row: dict[str, Any], *, config: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    # A ranking batch can share one loaded config without hiding later rule edits.
+    config = config if config is not None else load_keywords()
     for field, confidence in (("SITE_NAME", 0.7), ("DEVELOPER_NAME", 0.4)):
         text = str(row.get(field) or "").casefold()
         text = re.sub(r"\s+", " ", text)
