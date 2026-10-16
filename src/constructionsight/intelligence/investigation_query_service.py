@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import func, select
@@ -49,10 +49,10 @@ def _source_claimed_milestones(
         if not isinstance(value, str):
             continue
         try:
-            parsed = date.fromisoformat(value)
+            parsed = datetime.fromisoformat(value)
         except ValueError:
             continue
-        if parsed.isoformat() != value:
+        if parsed.date().isoformat() != value:
             continue
         milestones.append(
             {
