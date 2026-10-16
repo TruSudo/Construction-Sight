@@ -282,6 +282,55 @@ class InvestigationQueryService:
                 }
             )
         candidate_links.sort(key=lambda item: item["relationship_id"])
+        source_membership: list[dict[str, Any]] = []
+        source_membership_by_id: dict[str, str] = {}
+        current_by_id = {item.source_entity_id: item for item in current}
+        for source_id in source_ids:
+            entity = source_entities[source_id]
+            observation = current_by_id[source_id]
+            membership_edges = [
+                relation
+                for relation in relationships
+                if relation.subject_entity_id == source_id
+                and relation.object_entity_id == investigation_id
+                and (
+                    relation.predicate == "source_record_for_unresolved_investigation"
+                    or (
+                        relation.predicate == "reviewed_source_context"
+                        and relation.relationship_status in ACTIVE_INVESTIGATION_CONTEXT_STATUSES
+                    )
+                )
+            ]
+            if not membership_edges:
+                raise ValueError("source lacks an active investigation membership")
+            # A source anchored to its own investigation is not an externally
+            # verified project identity; reviewed links are context only.
+            basis = (
+                "source_anchor"
+                if any(
+                    edge.predicate == "source_record_for_unresolved_investigation"
+                    for edge in membership_edges
+                )
+                else "reviewed_source_context"
+            )
+            source_membership_by_id[source_id] = basis
+            source_membership.append(
+                {
+                    "source_id": source_id,
+                    "source_family": observation.evidence.source_family,
+                    "source_record_id": observation.evidence.source_record_id,
+                    "membership_basis": basis,
+                    "membership_relationship_ids": sorted(
+                        edge.relationship_id for edge in membership_edges
+                    ),
+                    "current_evidence_id": observation.evidence.evidence_id,
+                    "retained_evidence_ids": list(entity.evidence_record_ids),
+                    "retained_revision_count": len(entity.evidence_record_ids),
+                    "identity_independently_verified": False,
+                }
+            )
+        source_membership.sort(key=lambda item: item["source_id"])
+
         chronology: list[dict[str, Any]] = []
         for item in evidence:
             if item is None:
@@ -303,6 +352,12 @@ class InvestigationQueryService:
                         else "retention_time_only",
                         "evidence_id": item.evidence_id,
                         "source_id": source_id,
+                        "source_family": item.source_family,
+                        "source_record_id": item.source_record_id,
+                        "membership_basis": source_membership_by_id[source_id],
+                        "is_current_source_revision": (
+                            current_by_id[source_id].evidence.evidence_id == item.evidence_id
+                        ),
                         "observation": receipt.payload,
                     }
                 )
@@ -361,6 +416,7 @@ class InvestigationQueryService:
         if contradictions:
             gaps.append("Unresolved conflicting identity artifacts require review.")
         pending_reviews = []
+        association_review_states: list[dict[str, Any]] = []
         for relationship in relationships:
             if (
                 relationship.predicate != "possible_same_project_requires_review"
@@ -371,11 +427,34 @@ class InvestigationQueryService:
             review = self.store.get_runtime_event(relationship.enrichment_run_id)
             if review is None or review.source_service != "investigation_identity_review":
                 continue
-            for source_id, retained_revisions in review.payload.get("source_revisions", {}).items():
+            retained = review.payload.get("source_revisions", {})
+            if not isinstance(retained, dict):
+                raise ValueError("association review has invalid retained source revisions")
+            changed_sources = []
+            for source_id, retained_revisions in sorted(retained.items()):
                 entity = self.store.get_entity(source_id)
                 if entity is None or entity.evidence_record_ids != retained_revisions:
-                    pending_reviews.append(relationship.relationship_id)
-                    break
+                    changed_sources.append(
+                        {
+                            "source_id": source_id,
+                            "reviewed_evidence_ids": retained_revisions,
+                            "current_evidence_ids": (
+                                list(entity.evidence_record_ids) if entity else None
+                            ),
+                        }
+                    )
+            if changed_sources:
+                pending_reviews.append(relationship.relationship_id)
+            association_review_states.append(
+                {
+                    "relationship_id": relationship.relationship_id,
+                    "review_event_id": review.event_id,
+                    "reviewed_at": review.created_at.isoformat(),
+                    "requires_reassessment": bool(changed_sources),
+                    "changed_sources": changed_sources,
+                    "identity_independently_verified": False,
+                }
+            )
         if pending_reviews:
             gaps.append(
                 "Source evidence changed since the reviewed association; reassessment required."
@@ -408,6 +487,27 @@ class InvestigationQueryService:
             "source_parties": party_contexts,
             "parties_truncated": parties_truncated,
             "pending_association_reviews": pending_reviews,
+            "association_review_states": sorted(
+                association_review_states, key=lambda item: item["relationship_id"]
+            ),
+            "source_membership": source_membership,
+            "cross_source_investigation": {
+                "source_record_count": len(current),
+                "source_families": families,
+                "reviewed_context_source_count": sum(
+                    item["membership_basis"] == "reviewed_source_context"
+                    for item in source_membership
+                ),
+                "retained_chronology_events_on_page": len(chronology),
+                "source_history_truncated": (
+                    sources_truncated
+                    or len(page) > 1000
+                    or len(all_evidence_ids) > evidence_limit
+                ),
+                "requires_association_reassessment": bool(pending_reviews),
+                "identity_independently_verified": False,
+                "commercial_authority_granted": False,
+            },
             "candidate_source_links": candidate_links,
             "candidate_links_truncated": candidates_truncated,
             "sources_truncated": sources_truncated,
