@@ -142,6 +142,8 @@ class IntelligenceStore:
         if previous_payload_json == current_payload_json:
             return
         revision_payload: dict[str, Any] = {
+            # Bind recurring A→B transitions to their temporal event lineage.
+            "previous_runtime_event_id": self.latest_runtime_event_id(),
             "record_kind": record_kind,
             "logical_id": logical_id,
             "previous_payload": (
@@ -379,10 +381,12 @@ class IntelligenceStore:
         records = self.session.scalars(self._apply_limit(statement, limit)).all()
         return [_json_to_model(record.payload_json, RelationshipAssertion) for record in records]
 
-    def list_relationships_for_target(self, target_id: str) -> list[RelationshipAssertion]:
+    def list_relationships_for_target(
+        self, target_id: str, *, limit: int | None = None,
+    ) -> list[RelationshipAssertion]:
         """Return all relationships connected to one entity or project target."""
 
-        records = self.session.scalars(
+        statement = (
             select(IntelligenceRelationshipRecord)
             .where(
                 or_(
@@ -391,7 +395,8 @@ class IntelligenceStore:
                 )
             )
             .order_by(IntelligenceRelationshipRecord.id.desc())
-        ).all()
+        )
+        records = self.session.scalars(self._apply_limit(statement, limit)).all()
         return [_json_to_model(record.payload_json, RelationshipAssertion) for record in records]
 
     def upsert_project_cluster(self, cluster: ProjectCluster) -> IntelligenceProjectClusterRecord:
@@ -574,6 +579,44 @@ class IntelligenceStore:
             if record is not None
             else None
         )
+
+    def latest_runtime_event_id(self) -> str | None:
+        """Return the persisted event tip for revision lineage in this transaction."""
+
+        return self.session.scalar(
+            select(IntelligenceRuntimeEventRecord.event_id)
+            .order_by(IntelligenceRuntimeEventRecord.id.desc())
+            .limit(1)
+        )
+
+    def runtime_event_cursor(self) -> int:
+        """Return the durable high-water sequence visible in the current transaction."""
+        return self.session.scalar(
+            select(IntelligenceRuntimeEventRecord.id)
+            .order_by(IntelligenceRuntimeEventRecord.id.desc()).limit(1)
+        ) or 0
+
+    def runtime_event_page(
+        self,
+        *,
+        after: int = 0,
+        limit: int = 250,
+    ) -> list[tuple[int, RuntimeEvent]]:
+        """Read a bounded ordered page using durable database sequence cursors."""
+
+        if type(after) is not int or after < 0:
+            raise ValueError("event cursor must be a nonnegative integer")
+        if type(limit) is not int or not 1 <= limit <= 1000:
+            raise ValueError("event page limit must be between 1 and 1000")
+        records = self.session.scalars(
+            select(IntelligenceRuntimeEventRecord)
+            .where(IntelligenceRuntimeEventRecord.id > after)
+            .order_by(IntelligenceRuntimeEventRecord.id)
+            .limit(limit)
+        ).all()
+        return [
+            (record.id, _json_to_model(record.payload_json, RuntimeEvent)) for record in records
+        ]
 
     def add_runtime_event(self, event: RuntimeEvent) -> IntelligenceRuntimeEventRecord:
         """Append one immutable runtime event or accept an exact replay."""

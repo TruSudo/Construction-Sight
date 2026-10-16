@@ -36,7 +36,11 @@ def resolve_site_with_parcels(
         fallback = resolve_site(site_input)
         fallback.limitations.append("no parcel core record matched site signals")
         fallback.limitations = _unique(fallback.limitations)
-        return fallback
+        # Limitations participate in semantic identity. Recompute after appending
+        # the parcel-search outcome so the existing immutable result store accepts it.
+        return SiteResolutionResult.model_validate(
+            fallback.model_dump(exclude={"resolution_id"})
+        )
 
     top_score = matches[0][1]
     top_matches = [match for match in matches if match[1] == top_score]
@@ -75,8 +79,15 @@ def _match_parcels(
 
     apn = _identifier_value(site_input.identifiers, SiteIdentifierKind.APN)
     address = _identifier_value(site_input.identifiers, SiteIdentifierKind.ADDRESS)
+    county = site_input.source_hints.get("county") or _identifier_value(
+        site_input.identifiers, SiteIdentifierKind.COUNTY
+    )
     matches: list[ParcelMatch] = []
     for parcel in parcels:
+        if county and (
+            _normalize_county_identity(county) != _normalize_county_identity(parcel.county)
+        ):
+            continue
         score = 0
         reasons: list[str] = []
         match_limitations: list[str] = []

@@ -99,9 +99,9 @@ source identity/alias checks, caller rollback, failure recovery, county scoping,
 contradiction retention, candidate invalidation and preservation of reviewed decisions
 are implemented with focused checks. Wider assurance parity remains pending.
 
-**PARTIAL:** Phase 2 lacks completed shared dossier/query projections, full existing
-producer integration, reviewed cross-source investigation membership and parcel-backed
-corroboration. No durable coordinated jobs, live graph UI, native migration or final
+**PARTIAL:** Phase 2 now has shared dossiers, explicit reviewed association/rejection and
+parcel-backed assessment through existing services. Remaining producer adapters and
+complete cross-source acceptance still require completion. No durable coordinated jobs, live graph UI, native migration or final
 functional parity acceptance claimed. Phases 3–8 remain outstanding.
 
 **TESTS:** Baseline Python 3.12.14: 2,522 passed, two upstream Typer/Click warnings,
@@ -114,8 +114,35 @@ Initial implementation failures were corrected, including empty cluster validati
 false replay activity, regenerated preview timestamps and computed provenance fields
 breaking strict round-trip validation. Genuine retained-data replay is rerun successfully.
 
-**NEXT:** Finish and verify this Phase 2 slice, publish a recoverable development
-commit, then add common investigation query/dossier projections and connect remaining
-existing producers. Finish Phase 2 acceptance before moving to durable background jobs
+**NEXT:** Connect the remaining planning/agenda/document and universal-intake
+producers to this foundation, add bounded canonical inventory queries, then complete
+Phase 2 acceptance. The next phase is durable background orchestration. Finish Phase 2 acceptance before moving to durable background jobs
 (Phase 3), cross-source journey (Phase 4), native view integration (Phase 5), live graph
 (Phase 6), assurance completion (Phase 7) and full functional parity (Phase 8).
+
+## Shared dossier, parcel and review slice — 2026-10-16
+
+- Dossiers use existing committed investigations, evidence, relationships and events,
+  with separate certainty/identity/completeness/activity/readiness dimensions. Cited
+  candidate evidence is labelled separately from associated source membership.
+- Durable ordered event cursors support bounded resume. Revision identities bind the
+  prior event tip so recurring A→B→A→B transitions retain every actual change.
+- `--show INVESTIGATION_ID` reads an existing database without mutation.
+  `--review RELATIONSHIP_ID` previews scope; explicit `--decision associate|reject`,
+  `--expected`, `--reason`, and `--confirm` use existing local authorization and durable
+  protected-effect consumption. Associations remain unverified, preserve source IDs,
+  and resolve both entry points to one dossier; rejection restores separate accounts.
+  Source revisions trigger reassessment without silently reversing a reviewed decision.
+- Existing parcel/site resolver and immutable resolution store are now called from
+  investigation assessment. Known counties constrain matching. A corrected fallback
+  digest remains valid after recording the no-match limitation. Parcel inputs/evidence
+  remain retained; geography never establishes verified project identity.
+- Controlled tests cover association/rejection, stale authorization, partial-write
+  rollback, alias/dossier agreement, source revisions, bounded reads and parcel replay.
+- Genuine retained CEQA documents sharing SCH 2026030377 produce a review candidate
+  and a dossier citing both documents. They remain two separate source identities;
+  current construction and independently verified identity remain unknown.
+- Latest local verification: 2,547 tests passed, two upstream Typer/Click warnings,
+  114.72s; Ruff passes; strict Mypy passes on 339 modules. First published slice
+  `3870cee` passed GitHub CI run 1805 and visual comparison run 42. This newer tree
+  still needs its own CI confirmation. No merge or final parity acceptance claimed.

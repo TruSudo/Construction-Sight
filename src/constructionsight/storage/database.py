@@ -6,6 +6,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from importlib import import_module
 from pathlib import Path
+from sqlite3 import Connection as SQLiteConnection
 from typing import Any
 
 from sqlalchemy import Engine, create_engine, event
@@ -73,6 +74,19 @@ def session_factory(engine: Engine) -> sessionmaker[Session]:
     """Create a configured SQLAlchemy session factory."""
 
     return sessionmaker(bind=engine, autoflush=False, expire_on_commit=False, future=True)
+
+
+def ensure_database_transaction(session: Session) -> None:
+    """Ensure SQLite reads/savepoints belong to the caller's actual outer transaction.
+
+    sqlite3 legacy transaction control does not BEGIN for SELECT or SAVEPOINT.
+    SQLAlchemy still owns commit/rollback; this establishes the missing driver boundary.
+    Other drivers already begin through SQLAlchemy's normal transaction machinery.
+    """
+    connection = session.connection()
+    driver = connection.connection.driver_connection
+    if isinstance(driver, SQLiteConnection) and not driver.in_transaction:
+        connection.exec_driver_sql("BEGIN")
 
 
 @contextmanager

@@ -10,7 +10,6 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import datetime
-from sqlite3 import Connection as SQLiteConnection
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -39,12 +38,28 @@ from constructionsight.intelligence.schemas import (
     RuntimeEvent,
     RuntimeEventType,
 )
+from constructionsight.storage.database import ensure_database_transaction
 from constructionsight.storage.intelligence_store import IntelligenceStore
 
 
 def _identity(namespace: str, value: Any) -> str:
     canonical = json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False)
     return f"{namespace}:{hashlib.sha256(canonical.encode()).hexdigest()}"
+
+
+def source_record_identity(evidence: EvidenceRecord) -> str:
+    return _identity(
+        "source-record",
+        [
+            evidence.source_family,
+            evidence.source_name,
+            evidence.source_record_id,
+        ],
+    )
+
+
+def observation_receipt_identity(source_id: str, evidence_id: str) -> str:
+    return _identity("event:investigation-observation", [source_id, evidence_id])
 
 
 class InvestigationObservation(BaseModel):
@@ -56,7 +71,7 @@ class InvestigationObservation(BaseModel):
     title: str | None = None
     county: str | None = None
     artifacts: dict[IdentityArtifactType, list[str]] = Field(default_factory=dict)
-    parties: list[Entity] = Field(default_factory=list)
+    parties: list[Entity] = Field(default_factory=list, max_length=250)
     latitude: float | None = Field(default=None, ge=-90, le=90, allow_inf_nan=False)
     longitude: float | None = Field(default=None, ge=-180, le=180, allow_inf_nan=False)
 
@@ -77,18 +92,13 @@ class InvestigationObservation(BaseModel):
                 raise ValueError("artifact values must be nonempty source claims")
             if len(values) != len(set(values)):
                 raise ValueError("duplicate artifact values are not allowed")
+        if sum(map(len, self.artifacts.values())) > 500:
+            raise ValueError("an observation may contain at most 500 identity artifacts")
         return self
 
     @property
     def source_entity_id(self) -> str:
-        return _identity(
-            "source-record",
-            [
-                self.evidence.source_family,
-                self.evidence.source_name,
-                self.evidence.source_record_id,
-            ],
-        )
+        return source_record_identity(self.evidence)
 
     @property
     def investigation_id(self) -> str:
@@ -96,13 +106,7 @@ class InvestigationObservation(BaseModel):
 
     @property
     def receipt_id(self) -> str:
-        return _identity(
-            "event:investigation-observation",
-            [
-                self.source_entity_id,
-                self.evidence.evidence_id,
-            ],
-        )
+        return observation_receipt_identity(self.source_entity_id, self.evidence.evidence_id)
 
     @property
     def effective_at(self) -> datetime:
@@ -117,12 +121,7 @@ class InvestigationService:
         self.graph = IntelligenceGraphService(store, source_service="investigation_service")
 
     def _begin_savepoint(self) -> None:
-        # sqlite3 legacy transaction mode does not BEGIN for SELECT or SAVEPOINT.
-        # Ensure RELEASE cannot commit independently of the caller's outer transaction.
-        connection = self.store.session.connection()
-        driver = connection.connection.driver_connection
-        if isinstance(driver, SQLiteConnection) and not driver.in_transaction:
-            connection.exec_driver_sql("BEGIN")
+        ensure_database_transaction(self.store.session)
 
     def ingest(self, observation: InvestigationObservation) -> ProjectCluster:
         """Atomically retain an observation, source identity, investigation and event."""
@@ -228,16 +227,28 @@ class InvestigationService:
             )
             if latest:
                 self._update_source_parties(observation)
-                for relationship in self.store.list_relationships_for_target(
-                    observation.investigation_id
-                ):
+                related = {
+                    relationship.relationship_id: relationship
+                    for target in (observation.investigation_id, observation.source_entity_id)
+                    for relationship in self.store.list_relationships_for_target(target)
+                }
+                for relationship in related.values():
                     if (
-                        relationship.predicate == "possible_same_project_requires_review"
-                        and relationship.relationship_status
-                        in {RelationshipStatus.POSSIBLE, RelationshipStatus.CONFLICTING}
+                        relationship.predicate
+                        in {
+                            "possible_same_project_requires_review",
+                            "parcel_location_candidate",
+                        }
                         and observation.evidence.evidence_id
                         not in relationship.supporting_evidence_ids
                     ):
+                        if relationship.relationship_status not in {
+                            RelationshipStatus.POSSIBLE,
+                            RelationshipStatus.CONFLICTING,
+                        }:
+                            if relationship.relationship_status is not RelationshipStatus.STALE:
+                                self._request_relationship_review(relationship, observation)
+                            continue
                         self.graph.upsert_relationship(
                             RelationshipAssertion.model_validate(
                                 relationship.model_copy(

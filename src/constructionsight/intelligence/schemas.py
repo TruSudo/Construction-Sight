@@ -68,6 +68,7 @@ class RelationshipStatus(StrEnum):
     UNRESOLVED = "unresolved"
     SUPERSEDED = "superseded"
     STALE = "stale"
+    REJECTED = "rejected"
 
 
 class CoverageStatus(StrEnum):

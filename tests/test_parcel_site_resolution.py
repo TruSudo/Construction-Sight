@@ -87,6 +87,27 @@ def test_resolve_site_with_parcels_prefers_exact_apn_match() -> None:
     assert "APN matched parcel core record" in candidate.reasons
 
 
+def test_known_county_prevents_same_apn_from_matching_a_different_county() -> None:
+    site_input = SiteResolutionInput(
+        source_name="Synthetic source",
+        identifiers=[_identifier(SiteIdentifierKind.APN, "12345678")],
+        source_hints={"county": "San Bernardino County"},
+    )
+    result = resolve_site_with_parcels(site_input, [_parcel("parcel:riverside", "12345678")])
+    assert all(candidate.county != "Riverside" for candidate in result.candidates)
+    assert "no parcel core record matched site signals" in result.limitations
+    assert result.resolution_id == result.computed_resolution_id()
+
+
+def test_no_parcel_match_retains_a_valid_content_bound_resolution_identity() -> None:
+    site_input = SiteResolutionInput(
+        source_name="Synthetic source",
+        identifiers=[_identifier(SiteIdentifierKind.APN, "12345678")],
+    )
+    result = resolve_site_with_parcels(site_input, [])
+    assert result.resolution_id == result.computed_resolution_id()
+
+
 def test_resolve_site_with_parcels_combines_apn_address_and_point() -> None:
     site_input = SiteResolutionInput(
         source_name="test source",

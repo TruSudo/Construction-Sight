@@ -196,6 +196,7 @@ class IntelligenceGraphService:
         """Persist a runtime event for a graph operation."""
 
         event_identity_payload = {
+            "state_revision": self.store.latest_runtime_event_id(),
             "event_namespace": event_id,
             "event_type": event_type.value,
             "severity": severity.value,

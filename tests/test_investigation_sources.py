@@ -189,6 +189,12 @@ def test_cli_replays_into_shared_store_idempotently_and_keeps_source_bytes(tmp_p
     assert first["identity_verified"] is False
     assert source.read_bytes() == original
     assert destination.stat().st_mode & 0o777 == 0o600
+    database_bytes = destination.read_bytes()
+    assert main(["--database", str(destination), "--show", first["investigation_ids"][0]]) == 0
+    dossier = json.loads(capsys.readouterr().out)
+    assert dossier["investigation"]["project_cluster_id"] == first["investigation_ids"][0]
+    assert dossier["source_claimed_points"][0]["certainty"] == "source_claimed"
+    assert destination.read_bytes() == database_bytes
     with sqlite3.connect(destination) as connection:
         assert counts == [
             connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]

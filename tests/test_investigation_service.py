@@ -2,7 +2,15 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
+import constructionsight.effect_consumption as effect_consumption
+from constructionsight.authorization_decision import AuthorizationDeniedError
 from constructionsight.intelligence.artifact_identity import IdentityArtifactType as Artifact
+from constructionsight.intelligence.graph_service import IntelligenceGraphService
+from constructionsight.intelligence.investigation_location_service import (
+    InvestigationLocationService,
+)
+from constructionsight.intelligence.investigation_query_service import InvestigationQueryService
+from constructionsight.intelligence.investigation_review_service import InvestigationReviewService
 from constructionsight.intelligence.investigation_service import (
     InvestigationObservation,
     InvestigationService,
@@ -12,6 +20,7 @@ from constructionsight.intelligence.schemas import (
     LifecyclePhase,
     RelationshipStatus,
 )
+from constructionsight.parcel_core_models import ParcelCoreRecord
 from constructionsight.storage.database import (
     create_database_engine,
     initialize_database,
@@ -209,6 +218,126 @@ def test_correlation_cannot_reopen_a_reviewed_rejection(factory):
             service.correlate(left.source_entity_id, right.source_entity_id)
 
 
+def test_temporal_reversion_retains_each_real_change_and_resumable_event_cursor(factory):
+    item = observation()
+    with managed_session(factory) as session:
+        store = IntelligenceStore(session)
+        service = InvestigationService(store)
+        service.ingest(item)
+        entity = store.get_entity(item.source_entity_id)
+        updated = entity.model_copy(update={"canonical_name": "Revised source title"})
+        for value in [updated, entity, updated]:
+            service.graph.upsert_entity(value)
+        revisions = [
+            event
+            for event in store.list_runtime_events()
+            if event.source_service == "intelligence_store_revision"
+            and event.payload["record_kind"] == "entity"
+        ]
+        assert len(revisions) == 4
+        assert len({event.event_id for event in revisions}) == 4
+        assert all(event.event_type.value != "entity_merged" for event in revisions)
+        first = store.runtime_event_page(limit=3)
+        assert len(first) == 3
+        cursor = first[-1][0]
+        remaining = store.runtime_event_page(after=cursor)
+        assert not (
+            {event.event_id for _, event in first} & {event.event_id for _, event in remaining}
+        )
+    with managed_session(factory) as session:
+        store = IntelligenceStore(session)
+        assert store.runtime_event_page(after=cursor) == remaining
+        with pytest.raises(ValueError, match="cursor"):
+            store.runtime_event_page(after=True)
+
+
+def test_shared_dossier_preserves_chronology_uncertainty_conflicts_and_unmapped_records(factory):
+    older = observation("a")
+    newer = observation("a", day=2, sch="2026010001")
+    conflicting = observation("b", sch="2026010002")
+    with managed_session(factory) as session:
+        store = IntelligenceStore(session)
+        service = InvestigationService(store)
+        service.ingest(newer)
+        service.ingest(older)
+        service.ingest(conflicting)
+        service.correlate(newer.source_entity_id, conflicting.source_entity_id)
+        before = store.runtime_event_cursor()
+        dossier = InvestigationQueryService(store).dossier(older.investigation_id)
+        assert dossier["event_cursor"] == before == store.runtime_event_cursor()
+        assert len(dossier["evidence"]) == 3
+        assert dossier["evidence_context"][conflicting.evidence.evidence_id] == (
+            "cited_relationship_evidence_only"
+        )
+        assert len(dossier["chronology"]) == 2
+        assert dossier["chronology"][0]["evidence_id"] == older.evidence.evidence_id
+        assert (
+            dossier["source_observations"][0]["evidence"]["evidence_id"]
+            == newer.evidence.evidence_id
+        )
+        assert dossier["contradictions"]
+        assert dossier["source_claimed_points"] == []
+        assessment = dossier["assessment"]
+        assert assessment["investigation_completeness"] == "partial"
+        assert assessment["identity_independently_verified"] is False
+        assert assessment["construction_activity"] == "unknown"
+        assert assessment["commercial_readiness"] == "unassessed"
+        bounded = InvestigationQueryService(store).dossier(older.investigation_id, evidence_limit=1)
+        assert bounded["evidence_truncated"] is True
+        with pytest.raises(ValueError, match="unknown investigation"):
+            InvestigationQueryService(store).dossier("absent")
+
+
+def test_parcel_assessment_reuses_existing_resolution_retains_evidence_and_invalidates_on_change(
+    factory,
+):
+    item = observation()
+    parcel = ParcelCoreRecord(
+        parcel_record_id="parcel:synthetic",
+        source_key="synthetic:assessor",
+        source_record_id="p-1",
+        apn="123-456-789",
+        normalized_apn="123456789",
+        county="Riverside",
+        created_at=AT,
+    )
+    with managed_session(factory) as session:
+        store = IntelligenceStore(session)
+        service = InvestigationService(store)
+        service.ingest(item)
+        locations = InvestigationLocationService(store)
+        first = locations.resolve(item.source_entity_id, [parcel])
+        cursor = store.runtime_event_cursor()
+        assert locations.resolve(item.source_entity_id, [parcel]) == first
+        assert store.runtime_event_cursor() == cursor
+        dossier = InvestigationQueryService(store).dossier(item.investigation_id)
+        assert len(dossier["location_assessments"]) == 1
+        assert dossier["location_assessments"][0]["candidate_pool_complete"] is False
+        assert dossier["location_assessments"][0]["project_identity_verified"] is False
+        assert len(dossier["evidence"]) == 2
+        assert dossier["source_claimed_points"] == []
+        service.ingest(observation(day=1))
+        assert (
+            InvestigationQueryService(store).dossier(item.investigation_id)["location_assessments"]
+            == []
+        )
+        relation = next(
+            r for r in store.list_relationships() if r.predicate == "parcel_location_candidate"
+        )
+        assert relation.relationship_status is RelationshipStatus.STALE
+
+
+def test_empty_parcel_assessment_is_persistable_idempotent_and_honestly_incomplete(factory):
+    item = observation()
+    with managed_session(factory) as session:
+        store = IntelligenceStore(session)
+        InvestigationService(store).ingest(item)
+        locations = InvestigationLocationService(store)
+        result = locations.resolve(item.source_entity_id, [])
+        assert "no parcel core record matched site signals" in result.limitations
+        assert locations.resolve(item.source_entity_id, []) == result
+
+
 def test_fault_after_evidence_retention_rolls_back_entire_observation(factory, monkeypatch):
     with managed_session(factory) as session:
         store = IntelligenceStore(session)
@@ -236,3 +365,162 @@ def test_observation_rejects_naive_time_incomplete_location_and_unbound_identity
         InvestigationObservation.model_validate(
             item.model_copy(update={"latitude": 34}).model_dump()
         )
+
+
+def test_authorized_association_and_rejection_control_one_dossier_without_erasing_sources(
+    factory,
+    tmp_path,
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        effect_consumption, "_CONSUMPTION_DATABASE_PATH", tmp_path / "review-effects.sqlite3"
+    )
+    left, right = observation("a"), observation("b")
+    with managed_session(factory) as session:
+        store = IntelligenceStore(session)
+        service = InvestigationService(store)
+        service.ingest(left)
+        service.ingest(right)
+        service.correlate(left.source_entity_id, right.source_entity_id)
+        relation = next(
+            r
+            for r in store.list_relationships()
+            if r.predicate == "possible_same_project_requires_review"
+        )
+    reviews = InvestigationReviewService(factory.kw["bind"])
+    preview = reviews.preview(relation.relationship_id)
+    with pytest.raises(AuthorizationDeniedError):
+        reviews.review(
+            relation.relationship_id,
+            decision="associate",
+            target_id=left.investigation_id,
+            expected_identity=preview["expected_identity"],
+            reason="Synthetic explicit source review",
+            caller_confirmation=False,
+        )
+    result = reviews.review(
+        relation.relationship_id,
+        decision="associate",
+        target_id=left.investigation_id,
+        expected_identity=preview["expected_identity"],
+        reason="Synthetic explicit source review",
+        caller_confirmation=True,
+        operator_id="operator:synthetic-test",
+    )
+    assert result["identity_independently_verified"] is False
+    with managed_session(factory) as session:
+        store = IntelligenceStore(session)
+        query = InvestigationQueryService(store)
+        for identity in [left.investigation_id, right.investigation_id]:
+            dossier = query.dossier(identity)
+            assert dossier["investigation"]["project_cluster_id"] == left.investigation_id
+            assert len(dossier["source_observations"]) == 2
+            assert dossier["pending_association_reviews"] == []
+            assert dossier["assessment"]["identity_independently_verified"] is False
+        assert len(store.list_project_clusters()) == 2
+        assert len(store.list_evidence()) == 2
+        InvestigationService(store).ingest(observation("b", day=1))
+        assert query.dossier(left.investigation_id)["pending_association_reviews"]
+    fresh = reviews.preview(relation.relationship_id)
+    reviews.review(
+        relation.relationship_id,
+        decision="reject",
+        target_id=None,
+        expected_identity=fresh["expected_identity"],
+        reason="Synthetic rejection after new evidence",
+        caller_confirmation=True,
+        operator_id="operator:synthetic-test",
+    )
+    with managed_session(factory) as session:
+        store = IntelligenceStore(session)
+        assert store.get_relationship(relation.relationship_id).relationship_status is (
+            RelationshipStatus.REJECTED
+        )
+        for item in [left, right]:
+            dossier = InvestigationQueryService(store).dossier(item.investigation_id)
+            assert dossier["investigation"]["project_cluster_id"] == item.investigation_id
+            assert len(dossier["source_observations"]) == 1
+        assert len(store.list_evidence()) == 3
+        with pytest.raises(ValueError, match="reviewed relationship"):
+            InvestigationService(store).correlate(left.source_entity_id, right.source_entity_id)
+
+
+def test_stale_review_cannot_apply_after_new_source_evidence(factory, tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        effect_consumption, "_CONSUMPTION_DATABASE_PATH", tmp_path / "stale-review-effects.sqlite3"
+    )
+    left, right = observation("a"), observation("b")
+    with managed_session(factory) as session:
+        store = IntelligenceStore(session)
+        service = InvestigationService(store)
+        service.ingest(left)
+        service.ingest(right)
+        service.correlate(left.source_entity_id, right.source_entity_id)
+        relation = next(
+            r
+            for r in store.list_relationships()
+            if r.predicate == "possible_same_project_requires_review"
+        )
+    reviews = InvestigationReviewService(factory.kw["bind"])
+    preview = reviews.preview(relation.relationship_id)
+    with managed_session(factory) as session:
+        InvestigationService(IntelligenceStore(session)).ingest(observation("b", day=1))
+    with pytest.raises(AuthorizationDeniedError):
+        reviews.review(
+            relation.relationship_id,
+            decision="associate",
+            target_id=left.investigation_id,
+            expected_identity=preview["expected_identity"],
+            reason="Synthetic stale review",
+            caller_confirmation=True,
+        )
+
+
+def test_failed_association_rolls_back_alias_context_and_candidate_together(
+    factory,
+    tmp_path,
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        effect_consumption, "_CONSUMPTION_DATABASE_PATH", tmp_path / "failed-review-effects.sqlite3"
+    )
+    left, right = observation("a"), observation("b")
+    with managed_session(factory) as session:
+        store = IntelligenceStore(session)
+        service = InvestigationService(store)
+        service.ingest(left)
+        service.ingest(right)
+        service.correlate(left.source_entity_id, right.source_entity_id)
+        relation = next(
+            r
+            for r in store.list_relationships()
+            if r.predicate == "possible_same_project_requires_review"
+        )
+        cursor = store.runtime_event_cursor()
+    reviews = InvestigationReviewService(factory.kw["bind"])
+    preview = reviews.preview(relation.relationship_id)
+    original = IntelligenceGraphService.upsert_relationship
+
+    def inject_failure(self, relationship):
+        if relationship.predicate == "reviewed_source_context":
+            raise ValueError("synthetic failure after alias write")
+        return original(self, relationship)
+
+    monkeypatch.setattr(IntelligenceGraphService, "upsert_relationship", inject_failure)
+    with pytest.raises(ValueError, match="after alias write"):
+        reviews.review(
+            relation.relationship_id,
+            decision="associate",
+            target_id=left.investigation_id,
+            expected_identity=preview["expected_identity"],
+            reason="Synthetic failure rollback verification",
+            caller_confirmation=True,
+        )
+    with managed_session(factory) as session:
+        store = IntelligenceStore(session)
+        assert store.runtime_event_cursor() == cursor
+        assert store.get_relationship(relation.relationship_id).relationship_status is (
+            RelationshipStatus.POSSIBLE
+        )
+        dossier = InvestigationQueryService(store).dossier(right.investigation_id)
+        assert dossier["investigation"]["project_cluster_id"] == right.investigation_id
