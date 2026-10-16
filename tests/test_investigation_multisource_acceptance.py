@@ -502,3 +502,138 @@ def test_reviewed_three_typed_source_families_assemble_and_reassess_after_retain
             assert dossier["cross_source_investigation"]["commercial_authority_granted"] is False
     finally:
         runtime.close()
+
+
+def test_complete_five_family_reviewed_investigation_and_source_revision(tmp_path, monkeypatch):
+    """Full offline acceptance: five source families, review, history and reinvestigation."""
+    directory = tmp_path / "private"
+    directory.mkdir(mode=0o700)
+    monkeypatch.setattr(
+        effect_consumption,
+        "_CONSUMPTION_DATABASE_PATH",
+        tmp_path / "five-family-review-effects.sqlite3",
+    )
+    records = retained_inputs()
+    anchored = []
+    for kind, record in records:
+        if kind == "agenda":
+            record = record.model_copy(
+                update={"site": Site(site_key="synthetic:agenda-site", county="Riverside", apn=APN)}
+            )
+        anchored.append((kind, record))
+
+    runtime = InvestigationRuntime(directory)
+    try:
+        for kind, record in anchored:
+            runtime.enqueue_bytes(record.model_dump_json(round_trip=True).encode(), kind)
+        first = runtime.process(max_jobs=450)
+        assert first["failed_jobs"] == 0
+        with managed_session(runtime.queue.factory) as session:
+            store = IntelligenceStore(session)
+            inventory = InvestigationQueryService(store).inventory(limit=20)
+            assert inventory["total"] == 5
+            investigations = {
+                row["source_records"][0]["source_family"]: row["investigation_id"]
+                for row in inventory["rows"]
+            }
+            assert set(investigations) == {"ceqa", "planning", "permit", "parcel", "agenda"}
+            assert all(
+                not row["assessment"]["identity_independently_verified"]
+                for row in inventory["rows"]
+            )
+            relations = {}
+            for relation in store.list_relationships_for_target(investigations["ceqa"]):
+                if relation.predicate != "possible_same_project_requires_review":
+                    continue
+                opposite = (
+                    relation.object_entity_id
+                    if relation.subject_entity_id == investigations["ceqa"]
+                    else relation.subject_entity_id
+                )
+                relations[opposite] = relation.relationship_id
+            assert set(investigations.values()) - {investigations["ceqa"]} <= set(relations)
+
+        review = InvestigationReviewService(runtime.engine)
+        for family in ("planning", "permit", "parcel", "agenda"):
+            relation_id = relations[investigations[family]]
+            preview = review.preview(relation_id)
+            result = review.review(
+                relation_id,
+                decision="associate",
+                target_id=investigations["ceqa"],
+                expected_identity=preview["expected_identity"],
+                reason="Synthetic five-family retained source-context acceptance",
+                caller_confirmation=True,
+                operator_id="operator:five-family-test",
+            )
+            assert result["identity_independently_verified"] is False
+
+        with managed_session(runtime.queue.factory) as session:
+            store = IntelligenceStore(session)
+            query = InvestigationQueryService(store)
+            assert query.inventory(limit=10)["total"] == 1
+            dossier = query.dossier(investigations["ceqa"])
+            assert {item["source_family"] for item in dossier["source_membership"]} == {
+                "ceqa", "planning", "permit", "parcel", "agenda"
+            }
+            assert dossier["cross_source_investigation"]["source_record_count"] == 5
+            assert dossier["cross_source_investigation"]["reviewed_context_source_count"] == 4
+            assert len(dossier["chronology"]) == 5
+            assert len(dossier["association_review_states"]) == 4
+            assert dossier["pending_association_reviews"] == []
+            assert dossier["evidence_assessment"]["source_claim_discrepancies"] == []
+            assert dossier["assessment"]["commercial_authority_granted"] is False
+            assert dossier["assessment"]["identity_independently_verified"] is False
+            cursor = store.runtime_event_cursor()
+
+        # Unchanged retained source inputs are idempotent across an independent turn.
+        idle = runtime.process(max_jobs=450)
+        assert idle["processed_jobs"] == idle["failed_jobs"] == 0
+        with managed_session(runtime.queue.factory) as session:
+            assert IntelligenceStore(session).runtime_event_cursor() == cursor
+
+        planning_record = anchored[1][1]
+        assert isinstance(planning_record, PlanningCaseRecord)
+        old_site = planning_record.site
+        assert old_site is not None
+        changed = planning_record.model_copy(
+            update={
+                "site": old_site.model_copy(update={"apn": "999-888-777"}),
+                "description": "Synthetic revised planning description",
+                "provenance": [
+                    Provenance(
+                        source_name="Synthetic public source",
+                        captured_at=AT + timedelta(days=2),
+                    )
+                ],
+            }
+        )
+        runtime.enqueue_bytes(changed.model_dump_json(round_trip=True).encode(), "planning")
+        revised_report = runtime.process(max_jobs=450)
+        assert revised_report["failed_jobs"] == 0
+
+        with managed_session(runtime.queue.factory) as session:
+            store = IntelligenceStore(session)
+            dossier = InvestigationQueryService(store).dossier(investigations["ceqa"])
+            assert len(dossier["chronology"]) == 6
+            assert dossier["cross_source_investigation"]["source_record_count"] == 5
+            assert dossier["cross_source_investigation"]["requires_association_reassessment"]
+            assert dossier["pending_association_reviews"]
+            analysis = dossier["evidence_assessment"]
+            assert any(
+                value["field"] == "apn"
+                and not value["independently_verified_contradiction"]
+                for value in analysis["source_claim_discrepancies"]
+            )
+            assert {row["field"] for row in analysis["source_revision_changes"]} >= {
+                "apn", "title"
+            }
+            assert {"association_reassessment", "source_claim_variations"} <= {
+                gap["code"] for gap in analysis["information_gaps"]
+            }
+            assert dossier["assessment"]["identity_independently_verified"] is False
+            assert dossier["assessment"]["commercial_authority_granted"] is False
+            assert len(store.list_project_clusters()) == 5
+            assert len(store.list_evidence()) >= 6
+    finally:
+        runtime.close()
