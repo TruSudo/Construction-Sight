@@ -203,77 +203,85 @@ class InvestigationQueryService:
                 if event is None:
                     raise ValueError("source location assessment receipt is missing")
                 location_assessments.append(event.payload)
-        # Source-to-source correlation is a review candidate, never an automatic
-        # membership assertion. Expose its retained evidence without adding the
-        # other source to this investigation's timeline, parties or source list.
+        # Correlation edges join investigation identities, not source records.
+        # Inspect their retained source context without merging unreviewed claims
+        # into this investigation's evidence, timeline or commercial assessment.
         candidate_links: list[dict[str, Any]] = []
-        candidate_ids: set[str] = set()
         candidates_truncated = False
-        for source_id in source_ids:
+        for relation in relationships:
+            if (
+                relation.predicate != "possible_same_project_requires_review"
+                or relation.relationship_status
+                in {
+                    RelationshipStatus.REJECTED,
+                    RelationshipStatus.SUPERSEDED,
+                    RelationshipStatus.STALE,
+                }
+            ):
+                continue
             if len(candidate_links) >= 250:
                 candidates_truncated = True
                 break
-            related = self.store.list_relationships_for_target(source_id, limit=251)
-            if len(related) > 250:
-                candidates_truncated = True
-            for relation in related[:250]:
-                if len(candidate_links) >= 250:
-                    candidates_truncated = True
-                    break
-                if (
-                    relation.predicate != "possible_same_project_requires_review"
-                    or relation.relationship_status
-                    in {
-                        RelationshipStatus.REJECTED,
-                        RelationshipStatus.SUPERSEDED,
-                        RelationshipStatus.STALE,
-                    }
-                    or relation.relationship_id in candidate_ids
-                ):
-                    continue
-                other_id = (
-                    relation.object_entity_id
-                    if relation.subject_entity_id == source_id
-                    else relation.subject_entity_id
+            other_id = (
+                relation.object_entity_id
+                if relation.subject_entity_id == investigation_id
+                else relation.subject_entity_id
+            )
+            other_canonical = canonical_investigation_id(self.store, other_id)
+            if other_canonical == investigation_id:
+                continue
+            if self.store.get_project_cluster(other_canonical) is None:
+                raise ValueError("candidate relationship references a missing investigation")
+            adjacent = self.store.list_relationships_for_target(other_canonical, limit=251)
+            external_ids = list(
+                dict.fromkeys(
+                    edge.subject_entity_id
+                    for edge in adjacent
+                    if edge.object_entity_id == other_canonical
+                    and (
+                        edge.predicate == "source_record_for_unresolved_investigation"
+                        or (
+                            edge.predicate == "reviewed_source_context"
+                            and edge.relationship_status
+                            in ACTIVE_INVESTIGATION_CONTEXT_STATUSES
+                        )
+                    )
                 )
-                if other_id in source_ids:
-                    continue
-                other = source_service.current_observation(other_id)
-                other_investigation = canonical_investigation_id(
-                    self.store, other.investigation_id
-                )
-                if other_investigation == investigation_id:
-                    continue
-                candidate_ids.add(relation.relationship_id)
-                candidate_links.append(
+            )
+            candidate_sources_truncated = len(adjacent) > 250 or len(external_ids) > 10
+            candidate_sources: list[dict[str, Any]] = []
+            for source_id in external_ids[:10]:
+                other = source_service.current_observation(source_id)
+                candidate_sources.append(
                     {
-                        "relationship_id": relation.relationship_id,
                         "source_id": source_id,
-                        "candidate_source_id": other_id,
-                        "candidate_investigation_id": other_investigation,
-                        "candidate_source_family": other.evidence.source_family,
-                        "candidate_source_record_id": other.evidence.source_record_id,
-                        "candidate_evidence_id": other.evidence.evidence_id,
-                        "candidate_effective_at": other.effective_at.isoformat(),
-                        "candidate_time_basis": (
+                        "source_family": other.evidence.source_family,
+                        "source_record_id": other.evidence.source_record_id,
+                        "evidence_id": other.evidence.evidence_id,
+                        "effective_at": other.effective_at.isoformat(),
+                        "time_basis": (
                             "source_observed_at"
                             if other.evidence.observed_at
                             else "retention_time_only"
                         ),
-                        "relationship_status": relation.relationship_status.value,
-                        "supporting_evidence_ids": relation.supporting_evidence_ids,
-                        "contradictory_evidence_ids": relation.contradictory_evidence_ids,
-                        "evidence_summary": relation.evidence_summary,
-                        "identity_verified": False,
-                        "membership_confirmed": False,
+                        "limitations": other.evidence.limitations,
                     }
                 )
-        candidate_links.sort(
-            key=lambda item: (
-                item["candidate_effective_at"],
-                item["relationship_id"],
+            candidate_links.append(
+                {
+                    "relationship_id": relation.relationship_id,
+                    "candidate_investigation_id": other_canonical,
+                    "candidate_sources": candidate_sources,
+                    "candidate_sources_truncated": candidate_sources_truncated,
+                    "relationship_status": relation.relationship_status.value,
+                    "supporting_evidence_ids": relation.supporting_evidence_ids,
+                    "contradictory_evidence_ids": relation.contradictory_evidence_ids,
+                    "evidence_summary": relation.evidence_summary,
+                    "identity_verified": False,
+                    "membership_confirmed": False,
+                }
             )
-        )
+        candidate_links.sort(key=lambda item: item["relationship_id"])
         chronology: list[dict[str, Any]] = []
         for item in evidence:
             if item is None:
@@ -323,6 +331,8 @@ class InvestigationQueryService:
             gaps.append("Conflicting cross-source candidate evidence requires investigation.")
         if candidates_truncated:
             gaps.append("Candidate associations exceed the bounded dossier review page.")
+        if any(link["candidate_sources_truncated"] for link in candidate_links):
+            gaps.append("Some candidate source context exceeds the bounded evidence preview.")
         points = [
             {
                 "latitude": item.latitude,
