@@ -68,6 +68,11 @@ jobs:
       - name: Delayed workspace response regression
         if: always()
         run: node tests/ui/workspace_race.js http://127.0.0.1:8766
+      - name: Shared investigation evidence in native workspaces
+        if: always()
+        run: |
+          PYTHONPATH=src python tests/ui/seed_investigations.py /tmp/cs-ui-state
+          node tests/ui/investigation_native.js http://127.0.0.1:8766
       - name: Versioned scope and price editing
         if: always()
         run: node tests/ui/catalog.js http://127.0.0.1:8766
