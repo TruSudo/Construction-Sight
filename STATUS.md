@@ -8,15 +8,18 @@ Relationship Graph remain the goal. Full unification and functional parity are n
 ## Exact recovery checkpoint
 
 - Local branch: `agent/unification-continuation-2026-10-16`.
-- Latest implementation commit: `ff35100` (automatic parcel reassessment).
+- Latest implementation commit: `0e18db9` (acquisition/inbox/timers plus partial-activation rollback).
 - Earlier continuation commits: `0c92c2e` (remaining producers/inventory), `8dbbc82`
   (durable worker/recovery), `c28c577` (concurrent backup and CLI failure reporting).
-- Published implementation / draft PR #234: `67e1e99b93a3e6da15ba473c6d5c8988448854fe`.
+- Published implementation / draft PR #234: `b37062131850a7f9d5955b57d4e5da273778c484`.
 - Main baseline: `4c8f8eaf08653e2d571b0df821b862dcc9b158ac`.
 - Owner explicitly authorized publication on 2026-10-16. The connected GitHub
   publication commit `67e1e99` has the exact tested tree of local checkpoint `75d4217`:
   `71ab0138e047470961d4be87d92f3066831e8472`. Original local commits are preserved.
-  A subsequent status-only publication records this mapping; CI is pending.
+  The later acquisition publication `b370621` exactly matches local `0e18db9`.
+  Its browser/visual workflow passed, including the reviewed timer dialog; both
+  Python 3.11/3.12 quality gates and dependency vulnerability audits passed. No new owner approval is required
+  for ordinary continuation/publication on this development branch.
 - No main merge, branch deletion, history rewrite, original-UI retirement, expanded
   source authorization, automated commercial action or owner-device deployment.
 - After any interruption, check `git status` and `git rev-parse HEAD` on this branch.
@@ -107,7 +110,7 @@ reachability. File ancestry/imports are not functional proof. No historical asse
 
 - Earlier full regression before the last worker additions: **2,567 passed**, two
   upstream Typer/Click deprecation warnings, **663.78s**.
-- Final-tree Python 3.12.14 full regression: **2,571 passed**, two upstream
+- Prior foundation-tree Python 3.12.14 full regression: **2,571 passed**, two upstream
   Typer/Click deprecation warnings, **595.59s**. This covers implementation `ff35100`;
   the subsequent checkpoint update changes only this status file.
 - Focused foundation/source/site-resolution/database checks: 49 passed, two upstream
@@ -117,13 +120,16 @@ reachability. File ancestry/imports are not functional proof. No historical asse
   concurrent enqueue during backup and CLI failure reporting. Both parcel-arrival
   orders passed separately (two cases, 6.72s).
 - Ruff passed; strict Mypy passed for 341 modules; JavaScript syntax and pip check passed.
-- Python 3.11, fresh browser/visual acceptance, vulnerability audit and complete final
-  integration gates are not newly verified in this local continuation. No merge readiness claimed.
+- Current acquisition source checkpoint `b370621` passed Python 3.11/3.12 CI, browser/visual
+  workflow and dependency vulnerability audits. Complete final integration and functional
+  parity remain unaccepted. No merge readiness claimed.
 
 ## Next immediately executable task
 
-Finish Phase 3: connect existing authorized capture/CEQA producers and local scheduling
-to this durable queue, respecting existing access reviews, rate limits and 403 stops.
+Finish Phase 3: add a separately scoped, reviewed CEQA background-acquisition lane
+using existing access checks, bounded plans, revocation and durable effect allowances.
+SMARTS capture, retained-artifact inbox and reviewed timer bundle are now connected.
+Respect source-specific access reviews, rate limits and 403 stops.
 Prove restart-safe source-to-investigation processing without an open UI or ChatGPT.
 Then complete the Phase 4 realistic cooperating-source investigation before migrating
 native views (5), live graph (6), assurance completion (7) and functional parity (8).
@@ -157,11 +163,13 @@ use isolated fake systemd managers; no owner-device units have been installed/en
 
 **TESTS:** 81 focused acquisition/API/schedule/investigation/runtime/native checks passed
 in 62.49s. Ruff passed; strict Mypy passed for 342 modules. JS syntax and pip check passed.
-The current full regression is pending. Local Chromium is absent and its normal
+The local acquisition-tree full regression passed (2,580 tests, two upstream warnings,
+541.52s); final-source CI adds the activation test and passes 2,581 on each Python version.
+Local Chromium is absent and its normal
 Playwright download returned invalid/truncated archive data, so no local browser pass
 is claimed. The existing GitHub visual workflow runs `tests/ui/schedule.js`, now checking
-that both worker units are visible during review. The prior published checkpoint
-`8b81ea9` passed GitHub CI and visual/browser workflows; those results do not cover this slice.
+that both worker units are visible during review. Current published source `b370621` passed the browser/visual workflow, including the
+expanded four-unit schedule review. This is CI browser proof, not a local browser pass.
 
 **PARTIAL / NEXT:** CEQA's current exact manual request allowances explicitly deny
 background recurrence; no timer or inbox grants network permission or bypasses those
@@ -169,3 +177,18 @@ rules. Finish Phase 3 by implementing a separately scoped, reviewed CEQA backgro
 acquisition capability using existing source checks, bounded plans, revocation and
 durable effect allowances. Then prove the complete Phase 4 cooperating-source journey
 before native-view migration, live graph and final assurance/parity acceptance.
+
+
+### Final acquisition checkpoint verification
+
+- `281b3e3` / published `3e281f8`: acquisition, inbox and scheduling integration;
+  local Python 3.12 regression: **2,580 passed**, two upstream warnings, **541.52s**.
+- `0e18db9` / published `b370621`: final two-line activation rollback plus its
+  controlled failure case. Updated acquisition/scheduling set: **13 passed**, 13.26s.
+- Published current tree: `11505f2da148cb5c4950811491be23edc954345c`, verified identical to local `0e18db9`.
+- Current browser/visual workflow passed; its Daily schedule integration step passed.
+- Current source CI: **Python 3.12: 2,581 passed**, two warnings, **199.00s**;
+  **Python 3.11: 2,581 passed**, two warnings, **203.79s**. Both quality jobs passed,
+  including Ruff, strict Mypy, JS syntax, pip check and dependency vulnerability audits.
+  CI run: `38939767419`; visual/browser run: `38939767402`. The two warnings are
+  upstream Typer/Click deprecations. Subsequent status-only edits do not change source code.
