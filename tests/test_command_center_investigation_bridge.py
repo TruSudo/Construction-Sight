@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Any
 
 import httpx
-import pytest
 
 from constructionsight.ceqa_models import CeqaRecord
 from constructionsight.investigation_runtime import InvestigationRuntime
