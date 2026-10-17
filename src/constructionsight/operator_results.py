@@ -97,7 +97,7 @@ def read_validated_result_history(
         "current": current.to_dict(),
         "revision_count": len(history),
         "history": [record.to_dict() for record in history],
-    })
+    }
 
 
 def build_result_ledger_snapshot(
