@@ -35,6 +35,10 @@ def test_unconfigured_legacy_source_does_not_create_or_fake_zero_results(tmp_pat
                 "/api/source-registry",
                 "/api/source-revision",
                 "/api/source-review-queue",
+                "/api/source-watchlist",
+                "/api/workflow-summary",
+                "/api/workflows",
+                "/api/results",
             ):
                 response = client.get(endpoint)
                 assert response.status_code == 200
@@ -71,6 +75,21 @@ def test_existing_legacy_source_db_is_reused_by_native_without_mutation(tmp_path
             assert registry.json()["available"] is True
             assert registry.json()["read_only"] is True
             assert registry.json()["network_collection_enabled"] is False
+            watch = client.get("/api/source-watchlist")
+            assert watch.status_code == 200
+            assert watch.json()["available"] is True
+            assert watch.json()["total"] == 0
+            summary = client.get("/api/workflow-summary")
+            assert summary.status_code == 200
+            assert summary.json()["total"] == 0
+            workflows = client.get("/api/workflows?limit=25&offset=0")
+            assert workflows.status_code == 200
+            assert workflows.json()["leads"] == []
+            results = client.get("/api/results?limit=25&offset=0")
+            assert results.status_code == 200
+            assert results.json()["results"] == []
+            assert client.get("/api/workflow-summary?unexpected=1").status_code == 409
+            assert client.get("/api/results?limit=100").status_code == 409
             revision = client.get("/api/source-revision")
             assert revision.status_code == 200
             assert revision.json()["source_families"]["ceqa"]["record_count"] == 1
