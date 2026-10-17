@@ -524,7 +524,8 @@ function renderRetainedCommercialPreviewTools(root, records) {
     '</div>' +
     '<h3>Outreach preview · never sends</h3>' +
     '<form id="original-outreach-form" class="form-grid">' +
-    options('channel', ['email', 'phone'], 'email', 'Contact channel') +
+    options('channel', ['email', 'phone', 'procurement_portal', 'web_form', 'other'],
+      'email', 'Contact channel') +
     field('destination', 'Exact reviewed contact destination', '', 'text', true) +
     field('business_role', 'Contact business role', '', 'text', true) +
     field('source_name', 'Contact evidence source', '', 'text', true) +
@@ -535,7 +536,8 @@ function renderRetainedCommercialPreviewTools(root, records) {
     '<button type="submit">Preview unsent outreach</button></form>' +
     '<h3>Prospect-requested bid · evidence first</h3>' +
     '<form id="original-request-form" class="form-grid">' +
-    options('request_channel', ['email', 'phone', 'other'], 'email', 'Request channel') +
+    options('request_channel', ['email', 'phone', 'procurement_portal',
+      'web_form', 'meeting', 'other'], 'email', 'Request channel') +
     field('requester_business_name', 'Requesting business', '', 'text', true) +
     field('requester_business_role', 'Requester role', '', 'text', true) +
     field('request_source_name', 'Original request evidence source', '', 'text', true) +
@@ -638,7 +640,10 @@ function renderRetainedCommercialPreviewTools(root, records) {
     return {
       request_evidence: requestEvidence, currency_code: 'USD',
       line_items: Array.from(priceLines.querySelectorAll('.original-price-line'))
-        .map(row => Object.fromEntries(new FormDataRow(row))),
+        .map(row => Object.fromEntries(
+          Array.from(row.querySelectorAll('input[name]'))
+            .map(input => [input.name, input.value])
+        )),
       assumptions: lines(fields.assumptions),
       exclusions: lines(fields.exclusions),
       validity_note: fields.validity_note
@@ -659,13 +664,4 @@ function renderRetainedCommercialPreviewTools(root, records) {
       additional_terms: lines(fields.additional_terms)
     };
   });
-}
-
-// Read independent input controls without inventing a browser FormData-like object.
-function FormDataRow(row) {
-  const values = new FormData();
-  row.querySelectorAll('input[name]').forEach(input => {
-    values.append(input.name, input.value);
-  });
-  return values;
 }
