@@ -29,6 +29,16 @@ const {chromium} = require('../visual/node_modules/playwright');
         !evidence.includes('normalized_source_sha256')) {
       throw Error('Exact retained evidence is not inspectable');
     }
+    await page.locator('#source-reconcile-audit').click();
+    await page.waitForFunction(() =>
+      document.querySelector('#action-content')?.textContent
+        .includes('"job_status": "queued"'));
+    const audit = await page.locator('#action-content').textContent();
+    if (!audit.includes('original-replay-audit/v1') ||
+        !audit.includes('Reviewed exact retained source and confirm native worker') ||
+        !audit.includes('"commercial_authority_granted": false')) {
+      throw Error('Exact reviewed replay reason was not retained in auditable worker state');
+    }
     await page.click('#action-close');
     await page.locator('[data-source-reconcile]').first().click();
     await page.waitForSelector('#source-reconcile-queue');
@@ -42,9 +52,7 @@ const {chromium} = require('../visual/node_modules/playwright');
       .fill('Reviewed exact retained source and confirm native worker queue only.');
     await page.locator('#source-reconcile-confirm').check();
     await page.locator('#source-reconcile-queue').click();
-    await page.waitForFunction(() =>
-      document.querySelector('#action-content')?.textContent
-        .includes('Queued, not necessarily processed'));
+    await page.waitForSelector('#source-reconcile-audit');
     const queued = await page.locator('#action-content').textContent();
     if (!queued.includes('"outreach_authorized": false') ||
         !queued.includes('"bid_authorized": false')) {
