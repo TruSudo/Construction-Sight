@@ -298,7 +298,7 @@ const {chromium} = require('../visual/node_modules/playwright');
     await originalResultHistory.locator('[data-original-record]').first().click();
     await page.waitForSelector('#action-dialog[open]');
     if (!(await page.locator('#action-content').textContent())
-      .includes('synthetic:historical-page:23')) {
+      .includes('lead-review:phase8:pagination:23')) {
       throw Error('Original result second page did not open retained history');
     }
     await page.click('#action-close');
