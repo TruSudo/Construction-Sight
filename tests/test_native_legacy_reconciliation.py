@@ -91,7 +91,7 @@ def test_exact_original_source_replay_is_confirmed_idempotent_and_noncommercial(
                 processed = runtime.process(max_jobs=15)
             finally:
                 runtime.close()
-            assert processed["processed"] >= 1, processed
+            assert processed["processed_jobs"] >= 1, processed
             after = client.get("/api/source-reconciliation", params=selection)
             assert after.status_code == 200, after.text
             state = after.json()
