@@ -17,6 +17,7 @@ import pytest
 
 import constructionsight.effect_consumption as effect_consumption
 from constructionsight.agenda_models import AgendaItemRecord
+from constructionsight.command_center_graph import graph_view
 from constructionsight.ceqa_models import CeqaRecord
 from constructionsight.intelligence.investigation_query_service import InvestigationQueryService
 from constructionsight.intelligence.investigation_review_service import InvestigationReviewService
@@ -585,6 +586,16 @@ def test_complete_five_family_reviewed_investigation_and_source_revision(tmp_pat
             assert dossier["assessment"]["commercial_authority_granted"] is False
             assert dossier["assessment"]["identity_independently_verified"] is False
             cursor = store.runtime_event_cursor()
+            cursor_anchor = store.latest_runtime_event_id()
+            assert cursor_anchor is not None
+        reviewed_graph = graph_view(
+            directory, mode="history", after=cursor, anchor=cursor_anchor
+        )
+        assert reviewed_graph["historical"] is True
+        assert reviewed_graph["replayed_revisions"] >= 5
+        assert reviewed_graph["nodes"]
+        assert all(node["identity_verified"] is False for node in reviewed_graph["nodes"])
+        assert reviewed_graph["commercial_authority_granted"] is False
 
         # Unchanged retained source inputs are idempotent across an independent turn.
         idle = runtime.process(max_jobs=450)
@@ -635,5 +646,14 @@ def test_complete_five_family_reviewed_investigation_and_source_revision(tmp_pat
             assert dossier["assessment"]["commercial_authority_granted"] is False
             assert len(store.list_project_clusters()) == 5
             assert len(store.list_evidence()) >= 6
+        after_graph = graph_view(directory)
+        earlier = graph_view(
+            directory, mode="history", after=cursor, anchor=cursor_anchor
+        )
+        assert earlier["nodes"] == reviewed_graph["nodes"]
+        assert earlier["edges"] == reviewed_graph["edges"]
+        assert after_graph["cursor"] > earlier["cursor"]
+        assert after_graph["commercial_authority_granted"] is False
+        assert earlier["commercial_authority_granted"] is False
     finally:
         runtime.close()
