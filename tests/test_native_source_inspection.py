@@ -44,6 +44,8 @@ def test_unconfigured_legacy_source_does_not_create_or_fake_zero_results(tmp_pat
                 "/api/source-entity-neighborhood?entity_key=fixture:party",
                 "/api/source-timeline",
                 "/api/source-footprint",
+                "/api/source-capture-queue",
+                "/api/source-ingestion-inbox",
             ):
                 response = client.get(endpoint)
                 assert response.status_code == 200
@@ -151,6 +153,16 @@ def test_existing_legacy_source_db_is_reused_by_native_without_mutation(tmp_path
             assert client.get("/api/source-entity-index?role=nope").status_code == 409
             assert client.get("/api/source-timeline?entity_key=%00bad").status_code == 409
             assert client.get("/api/source-footprint?unexpected=1").status_code == 409
+            capture = client.get("/api/source-capture-queue")
+            inbox = client.get("/api/source-ingestion-inbox")
+            assert capture.status_code == 200
+            assert inbox.status_code == 200
+            assert capture.json()["configured"] is False
+            assert inbox.json()["configured"] is False
+            assert capture.json()["read_only"] is True
+            assert inbox.json()["network_executed"] is False
+            assert client.get("/api/source-capture-queue?other=1").status_code == 409
+            assert client.get("/api/source-ingestion-inbox?kind=ceqa").status_code == 409
             assert client.post("/api/source-entity-index", json={}).status_code == 501
             assert client.post("/api/source-registry", json={}).status_code == 501
     finally:
@@ -170,6 +182,16 @@ def test_native_refuses_symlinked_or_missing_operator_source_db(tmp_path: Path) 
     with pytest.raises(ValueError, match="existing regular file"):
         make_server(
             snapshot(), 0, tmp_path / "private", operator_database=tmp_path / "missing.sqlite3"
+        )
+    with pytest.raises(ValueError, match="must be paired"):
+        make_server(
+            snapshot(), 0, tmp_path / "private", operator_database=target,
+            operator_ceqanet_listing=tmp_path / "listing.json",
+        )
+    with pytest.raises(ValueError, match="require an existing operator database"):
+        make_server(
+            snapshot(), 0, tmp_path / "private",
+            operator_capture_queue=tmp_path / "capture.json",
         )
     with pytest.raises(ValueError, match="demo/parity"):
         make_server(
