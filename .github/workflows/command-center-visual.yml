@@ -89,7 +89,7 @@ jobs:
       - name: Native retained source registry and original commercial inspection
         if: always()
         run: |
-          PYTHONPATH=src python tests/ui/source_inspection_server.py --data-dir /tmp/cs-source-native --port 8783 > /tmp/cs-source.log 2>&1 &
+          PYTHONPATH=src:. python tests/ui/source_inspection_server.py --data-dir /tmp/cs-source-native --port 8783 > /tmp/cs-source.log 2>&1 &
           for attempt in $(seq 1 40); do
             if curl --silent --fail http://127.0.0.1:8783/ > /dev/null; then break; fi
             sleep 0.2
