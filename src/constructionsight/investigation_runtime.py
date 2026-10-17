@@ -17,7 +17,7 @@ import sys
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
@@ -75,6 +75,20 @@ from constructionsight.storage.runtime_artifacts import (
 MAX_INPUT_BYTES = 16 * 1024 * 1024
 BATCH = 25
 RUNTIME_SOURCE_KINDS = (*RETAINED_SOURCE_KINDS, "ceqa-csv-execution", "ceqa-listing-execution")
+
+
+class OriginalReplayApproval(BaseModel):
+    """Immutable human decision bound to one original retained source and job."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+
+    kind: Literal["ceqa", "permit"]
+    record_id: str = Field(min_length=1, max_length=255)
+    source_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    source_entity_id: str = Field(min_length=1, max_length=255)
+    expected_evidence_id: str = Field(min_length=1, max_length=255)
+    review_reason: str = Field(min_length=10, max_length=2000)
+    local_user_confirmation: Literal[True]
 
 
 class InputRef(BaseModel):
@@ -350,6 +364,30 @@ class InvestigationRuntime:
                     normalize_retained_record(inputs["source_kind"], row)
                     for row in rows[offset : offset + BATCH]
                 ]
+                approval_raw = inputs.get("original_replay_approval")
+                if approval_raw is not None:
+                    approval = OriginalReplayApproval.model_validate(approval_raw)
+                    if (
+                        len(rows) != 1 or len(items) != 1 or offset != 0
+                        or inputs["source_kind"] != approval.kind
+                        or reference.sha256 != approval.source_sha256
+                        or items[0].evidence.source_record_id != approval.record_id
+                        or items[0].source_entity_id != approval.source_entity_id
+                        or items[0].evidence.evidence_id != approval.expected_evidence_id
+                    ):
+                        raise ValueError("reviewed replay does not match exact retained source")
+                    if store.get_entity(approval.source_entity_id) is not None:
+                        raise ValueError("original replay became stale; existing source requires review")
+                    audit = store.get_runtime_event(
+                        _identity("event:original-source-replay-approval", claim.job_id)
+                    )
+                    if (
+                        audit is None
+                        or audit.source_service != "original_source_replay_approval"
+                        or audit.correlation_id != claim.job_id
+                        or audit.payload != approval.model_dump(mode="json")
+                    ):
+                        raise ValueError("original source replay approval audit is missing")
                 for item in items:
                     service.ingest(item)
                     self._lineage(store, reference, item)
