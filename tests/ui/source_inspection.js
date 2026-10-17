@@ -38,8 +38,14 @@ const {chromium} = require('../visual/node_modules/playwright');
     if (!lineage.includes('"matching_workflow_total": 1') ||
         !lineage.includes('"review_package_status": "ready"') ||
         !lineage.includes('"identity_association_verified": false') ||
-        !lineage.includes('"commercial_authority_granted": false')) {
-      throw Error('Original workflow lineage conflated candidate with commercial authority');
+        !lineage.includes('"commercial_authority_granted": false') ||
+        !lineage.includes('"history_integrity_validated": true') ||
+        !lineage.includes('"revision_count": 2') ||
+        !lineage.includes('"gross_value_minor": 123456') ||
+        !lineage.includes('"share_rate_ppm": 100000') ||
+        !lineage.includes('"calculated_share_minor": 12346') ||
+        !lineage.includes('"payment_received_verified": false')) {
+      throw Error('Original workflow, outcome revision and royalty cautions lost lineage');
     }
     await page.click('#action-close');
     await page.locator('[data-source-reconcile]').first().click();
