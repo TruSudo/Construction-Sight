@@ -7,7 +7,7 @@ Relationship Graph remain the goal. Full unification and functional parity are n
 
 ## Exact recovery checkpoint
 
-- Development branch: `agent/unification-implementation-2026-10-16`, draft PR #234. Latest fully verified Phase 8 application/test source: `db5c1a0db3c0f817a05d0ed956fc7dd19f6d8f91` (full quality gates and browser workflow passed). Phase 7 remains accepted at `3429b14f847163083dfdf32b181bc231d17605c6`.
+- Development branch: `agent/unification-implementation-2026-10-16`, draft PR #234. Latest fully verified Phase 8 application/test source: `b746ec4374ef623a0a7dbe0dbb47848428bb3685` (full quality gates and browser workflow passed). Phase 7 remains accepted at `3429b14f847163083dfdf32b181bc231d17605c6`.
 - Latest source accepted for Phase 6: `5c03cd80cde497b2dfc0e3533a913000db280812` (anchored historical snapshots, retained-history timeline/comparison, saved layouts, source/date/confidence controls, source grouping, activity highlighting, and bidirectional graph/map navigation). Phase 5 remains pinned to `44e80090219a0ad0938dbec44848233d089bcf2d`.
 - **Phase 7 implementation and regression acceptance is complete** for the controlling directive and currently integrated runtime. The final reconciliation and exact-source results below supersede the older continuation checkpoints. Phase 8 is now in progress; preserve the original interface and all historical assets.
 - Phase 5 native integration is implemented. Exact-source acceptance results are recorded below.
@@ -18,7 +18,7 @@ Relationship Graph remain the goal. Full unification and functional parity are n
 
 ## Phase 8 — IN PROGRESS: native preservation and original-workflow parity
 
-**Verified application/test source:** `db5c1a0db3c0f817a05d0ed956fc7dd19f6d8f91`.
+**Verified application/test source:** `b746ec4374ef623a0a7dbe0dbb47848428bb3685`.
 Original operator assets, historical branches, the previous native association-review
 acceptance, and the shared investigation graph remain preserved. The legacy database
 is an explicitly selected, separate source; displaying its records does **not**
@@ -69,6 +69,31 @@ automatically reconcile them into the canonical native site investigation.
   commercial action is performed.
 - All additions remain confined to existing Command Center workspaces; the
   approved overview/sidebar structure was not replaced or redesigned.
+
+**Latest verified original workflow → exact source reverse attribution:**
+
+- Historical records in native **Bid Studio** and **Royalty Ledger** now offer
+  an explicit read-only reverse lookup. The operator selects the exact original
+  CEQA or permit family and source record ID. The existing normalized source
+  candidate identity must equal the persisted original workflow base-candidate
+  ID. The review package, original workflow, complete result revision chain
+  and every retained historical share are independently integrity-checked.
+  Missing, mismatched or contradictory records are rejected; **name, address,
+  APN and fuzzy similarity never create the relationship**.
+- The native canonical dossier navigation is enabled only when the exact
+  original source is also the currently retained native observation; otherwise
+  the attribution remains an original-source candidate without a native link.
+  The original database remains read-only and no snapshot is fetched. Original
+  workflow status, historical shares, bids and payments stay informational;
+  none is promoted to verified entitlement or commercial authority.
+- [CI 39038800038](https://github.com/TruSudo/Construction-Sight/actions/runs/39038800038):
+  **2,747 passed on Python 3.11 and 2,747 passed on Python 3.12**,
+  with two non-failing warnings each; strict Mypy, Ruff and JS syntax passed.
+- [Command Center / USGS 39038800032](https://github.com/TruSudo/Construction-Sight/actions/runs/39038800032):
+  both jobs passed, including negative and positive reverse-attribution
+  browser checks, original financial views, native investigation navigation
+  and all configured functional-contract checks. Exact approved-mockup
+  pixel parity remains unverified.
 
 **Latest verified canonical dossier → exact original finance lineage:**
 
