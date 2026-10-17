@@ -30,6 +30,18 @@ const {chromium} = require('../visual/node_modules/playwright');
       throw Error('Exact retained evidence is not inspectable');
     }
     await page.click('#action-close');
+    await page.locator('[data-source-lineage]').first().click();
+    await page.waitForFunction(() =>
+      document.querySelector('#action-content')?.textContent
+        .includes('"schema_version": "constructionsight.original-workflow-candidate-lineage/v1"'));
+    const lineage = await page.locator('#action-content').textContent();
+    if (!lineage.includes('"matching_workflow_total": 1') ||
+        !lineage.includes('"review_package_status": "ready"') ||
+        !lineage.includes('"identity_association_verified": false') ||
+        !lineage.includes('"commercial_authority_granted": false')) {
+      throw Error('Original workflow lineage conflated candidate with commercial authority');
+    }
+    await page.click('#action-close');
     await page.locator('[data-source-reconcile]').first().click();
     await page.waitForSelector('#source-reconcile-queue');
     const reconciliation = await page.locator('#action-content').textContent();
