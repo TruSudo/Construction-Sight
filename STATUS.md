@@ -8,13 +8,42 @@ Relationship Graph remain the goal. Full unification and functional parity are n
 ## Exact recovery checkpoint
 
 - Development branch: `agent/unification-implementation-2026-10-16`, draft PR #234.
-- Latest implementation source: `db525989acec562637a329e6dc9de93b73e04cd3` (Phase 6 first live graph slice). Phase 5 acceptance remains pinned to `44e80090219a0ad0938dbec44848233d089bcf2d`.
+- Latest implementation source: `271ac23575fa55a3693d8a1ea6d203676db95a9f` (Phase 6 source/date/confidence controls, saved layouts, evidence collapse, node-kind arrangement and graph-to-map navigation). Phase 5 remains pinned to `44e80090219a0ad0938dbec44848233d089bcf2d`.
 - This recovery update changes STATUS.md only; the source acceptance below is pinned to that implementation commit.
 - Phase 5 native integration is implemented. Exact-source acceptance results are recorded below.
 - Main remains `4c8f8eaf08653e2d571b0df821b862dcc9b158ac`; no merge or owner-device/source activation.
-- Next development task: continue Phase 6 with historical graph-state replay, saved investigation views/layouts, remaining source/date/confidence controls, clustering and full graph-to-map/authorized-review acceptance. Embedded and expanded modes are implemented in the first slice over the same committed state/events; Phase 6 is not complete.
+- Next development task: complete Phase 6 historical graph-state replay from retained full before/after revision events, richer evidence-aware clustering/history controls and realistic retained cross-source acceptance. Browser-local saved views, the initial source/date/confidence controls, evidence collapse, deterministic node-kind arrangement and source-claimed graph-to-map navigation are implemented; full Phase 6 is not complete.
 - Operational checks still open: owner-Zorin/systemd deployment, permissioned live-source background acquisition, and real live cooperating-source acceptance from Phases 3–4.
 - Preserve all original interfaces, historical branches and assurance evidence through Phase 8 acceptance.
+
+## Phase 6 controls and graph-to-map development acceptance — verified
+
+**Exact accepted source:** `271ac23575fa55a3693d8a1ea6d203676db95a9f` on draft PR #234.
+
+- [Full CI 38987482832](https://github.com/TruSudo/Construction-Sight/actions/runs/38987482832):
+  Python **3.11: 2,640 passed** (two non-failing warnings);
+  Python **3.12: 2,640 passed** (two non-failing warnings).
+  Ruff, strict Mypy, JavaScript syntax, dependency integrity and vulnerability checks passed.
+- [Command Center and live USGS 38987482794](https://github.com/TruSudo/Construction-Sight/actions/runs/38987482794):
+  both workflow jobs successful. The real browser's extended Phase 6 journey checked
+  source-family filtering against authoritative edge families, future-date exclusion,
+  evidence-node collapse, named saved-layout/filter restore, exact node identity
+  preservation after node-kind arrangement, and navigation to the existing Site Map
+  centered on retained, source-claimed dossier coordinates. Earlier shared canvas,
+  evidence inspector, dossier, independent worker and reconnect tests remain passing.
+- The graph API now exposes exact persisted source-family, date-basis and timestamp
+  details for retained nodes/edges with recorded assertion confidence. Client
+  display filters do not alter the intelligence store or verify construction/identity.
+  Saved layout coordinates and filters are confined to the local browser; no source
+  evidence or inferred relationship is stored there. Unmapped canonical investigations
+  do not receive invented coordinates or map pins.
+- **Remaining Phase 6:** reconstruct historically faithful graph state as of a retained
+  revision (separate from paged activity events), broader evidence-aware clustering,
+  and complete realistically retained cross-source acceptance. No laptop deployment,
+  live jurisdictional permission/collection acceptance, source activation, outreach,
+  bid submission, main merge or legacy-interface retirement.
+- This document-only checkpoint follows the exact CI-certified source and does not
+  change application or test code.
 
 ## Phase 6 first-slice acceptance — verified, Phase 6 still partial
 
@@ -80,7 +109,7 @@ Relationship Graph remain the goal. Full unification and functional parity are n
 | 3 — background orchestration | SMARTS/inbox/timers connected; separately reviewed finite CEQA background lane implemented; real-source activation and owner-device deployment remain unaccepted |
 | 4 — cooperating-source journey | Controlled and retained public-excerpt implementation acceptance exists; live-source operational acceptance remains open |
 | 5 — native integration | Development acceptance complete at 44e80090; full Python and browser gates passed; operational field checks remain open under Phases 3–4 |
-| 6 — live Relationship Graph | First live snapshot/event slice and embedded/expanded graph implemented; worker continuity, cursor recovery and evidence navigation accepted; historical graph replay and remaining graph interactions remain open |
+| 6 — live Relationship Graph | Embedded/expanded live graph and retained cursor recovery accepted; saved browser-local views, source/date/confidence filters, evidence collapse, node-kind grouping and exact source-point map navigation accepted; full historical graph-state replay remains open |
 | 7 — assurance completion | Relevant new safeguards tested; complete historical-to-unified enforcement reconciliation remains outstanding |
 | 8 — functional parity | No complete parity acceptance; original interface retained |
 
