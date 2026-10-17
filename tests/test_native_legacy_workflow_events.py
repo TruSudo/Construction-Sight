@@ -90,7 +90,12 @@ def test_original_history_rejects_forged_or_orphan_transition_event_rows(
                 ),
                 workflow_id=workflow_id,
             )
-    with Session(engine) as session, pytest.raises(ValueError, match="transition"):
+    expected_error = (
+        "persisted event was changed or reordered"
+        if corruption == "edit_previous_status"
+        else "transition rows and projection disagree"
+    )
+    with Session(engine) as session, pytest.raises(ValueError, match=expected_error):
         workflow = load_persisted_lead_workflow(session, workflow_id)
         verified_original_workflow_events(session, workflow)
     engine.dispose()
