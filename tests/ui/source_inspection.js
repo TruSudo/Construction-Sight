@@ -262,8 +262,9 @@ const {chromium} = require('../visual/node_modules/playwright');
       throw Error('Native result comparison is absent: ' + resultText.slice(0, 500));
     }
     await page.click('nav button[data-page="Project Intelligence"]');
-    await page.waitForSelector('[data-investigation-id]');
-    await page.locator('[data-investigation-id]').first().click();
+    await page.waitForSelector('[data-shared-investigations] button[data-investigation-id]');
+    await page.locator('[data-shared-investigations] button[data-investigation-id]')
+      .first().click();
     await page.waitForSelector('#action-dialog[open] [data-dossier-original-source]');
     const nativeDossier = await page.locator('#action-content').textContent();
     if (!nativeDossier.includes('phase8:browser:dossier') ||
