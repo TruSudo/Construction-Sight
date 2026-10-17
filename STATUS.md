@@ -7,7 +7,7 @@ Relationship Graph remain the goal. Full unification and functional parity are n
 
 ## Exact recovery checkpoint
 
-- Development branch: `agent/unification-implementation-2026-10-16`, draft PR #234. Latest fully verified Phase 8 application/test source: `5da35fcf94a1167cc0390ae562868e600fe6d406` (full quality gates and browser workflow passed). Phase 7 remains accepted at `3429b14f847163083dfdf32b181bc231d17605c6`.
+- Development branch: `agent/unification-implementation-2026-10-16`, draft PR #234. Latest fully verified Phase 8 application/test source: `db5c1a0db3c0f817a05d0ed956fc7dd19f6d8f91` (full quality gates and browser workflow passed). Phase 7 remains accepted at `3429b14f847163083dfdf32b181bc231d17605c6`.
 - Latest source accepted for Phase 6: `5c03cd80cde497b2dfc0e3533a913000db280812` (anchored historical snapshots, retained-history timeline/comparison, saved layouts, source/date/confidence controls, source grouping, activity highlighting, and bidirectional graph/map navigation). Phase 5 remains pinned to `44e80090219a0ad0938dbec44848233d089bcf2d`.
 - **Phase 7 implementation and regression acceptance is complete** for the controlling directive and currently integrated runtime. The final reconciliation and exact-source results below supersede the older continuation checkpoints. Phase 8 is now in progress; preserve the original interface and all historical assets.
 - Phase 5 native integration is implemented. Exact-source acceptance results are recorded below.
@@ -18,7 +18,7 @@ Relationship Graph remain the goal. Full unification and functional parity are n
 
 ## Phase 8 — IN PROGRESS: native preservation and original-workflow parity
 
-**Verified application/test source:** `5da35fcf94a1167cc0390ae562868e600fe6d406`.
+**Verified application/test source:** `db5c1a0db3c0f817a05d0ed956fc7dd19f6d8f91`.
 Original operator assets, historical branches, the previous native association-review
 acceptance, and the shared investigation graph remain preserved. The legacy database
 is an explicitly selected, separate source; displaying its records does **not**
@@ -69,6 +69,30 @@ automatically reconcile them into the canonical native site investigation.
   commercial action is performed.
 - All additions remain confined to existing Command Center workspaces; the
   approved overview/sidebar structure was not replaced or redesigned.
+
+**Latest verified canonical dossier → exact original finance lineage:**
+
+- The approved native shared-investigation dossier now displays a bounded
+  exact-source selector for CEQA/permit memberships. Historical original
+  workflow/outcome evidence is shown there **only** when the preserved original
+  record, the deterministic native source entity, its current evidence ID,
+  the original source SHA-256 and the canonical investigation all match.
+  Disagreement, missing original data or stale evidence fails closed without
+  joining historical money or creating project/commercial authority.
+- A controlled browser fixture exercises a separately retained native CEQA
+  investigation with original workflow and calculated share, plus an unmatched
+  original source whose worker replay still requires explicit approval. The
+  native dossier can export the exact matched lineage JSON. Original source
+  and finance records remain unchanged and cannot establish verified payment,
+  royalty entitlement, binding bid or a separately proved construction project.
+- [CI 39037098362](https://github.com/TruSudo/Construction-Sight/actions/runs/39037098362):
+  **2,747 passed on Python 3.11 and 2,747 passed on Python 3.12**,
+  two non-failing warnings each; strict Mypy and Ruff passed.
+- [Command Center / USGS 39037098367](https://github.com/TruSudo/Construction-Sight/actions/runs/39037098367):
+  both jobs passed, including exact native dossier finance lineage, existing
+  source/watch/capture/SMARTS/commercial journeys, graph, map and all
+  configured functional-contract checks. Pixel-perfect approved mockup parity
+  and owner-device/live-source validation are still open.
 
 **Latest historical outcome and calculated-share integrity parity:**
 
