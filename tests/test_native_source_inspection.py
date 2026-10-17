@@ -41,7 +41,7 @@ def test_unconfigured_legacy_source_does_not_create_or_fake_zero_results(tmp_pat
                 "/api/workflows",
                 "/api/results",
                 "/api/source-entity-index",
-                "/api/source-entity-neighborhood",
+                "/api/source-entity-neighborhood?entity_key=fixture:party",
                 "/api/source-timeline",
                 "/api/source-footprint",
             ):
