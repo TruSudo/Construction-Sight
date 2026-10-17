@@ -13,6 +13,7 @@ from typing import Any, Literal
 
 from sqlalchemy.orm import Session
 
+from constructionsight.command_center_legacy_events import verified_original_workflow_events
 from constructionsight.command_center_legacy_lineage import _outcome_revision
 from constructionsight.command_center_legacy_reconciliation import (
     preview_legacy_reconciliation,
@@ -73,6 +74,7 @@ def original_workflow_source_attribution(
                 or review.base_candidate_id != candidate_key
             ):
                 raise ValueError("original review package disagrees with exact source identity")
+            transition_history = verified_original_workflow_events(session, workflow)
             validated = read_validated_result_history(session, workflow_id)
             if validated is not None and validated["package_id"] != workflow.package_id:
                 raise ValueError("original outcome package disagrees with exact workflow")
@@ -90,6 +92,7 @@ def original_workflow_source_attribution(
         "original_workflow_id": workflow.workflow_id,
         "original_package_id": workflow.package_id,
         "historical_workflow_status": workflow.status.value,
+        "historical_workflow_transition_history": transition_history,
         "review_package_status": review.status.value,
         "original_source": source["original_source"],
         "source_entity_id": source["source_entity_id"],
