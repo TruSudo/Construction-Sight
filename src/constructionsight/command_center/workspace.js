@@ -58,6 +58,21 @@ async function openInvestigationDossier(identity,refresh=false){
   table(['Family','Original record','Membership basis','Current evidence ID'],sources.map(m=>[
     esc(m.source_family||'—'),esc(m.source_record_id||'—'),esc(m.membership_basis||'—'),esc(m.current_evidence_id||'—')
   ]))+
+  '<h3>Exact original commercial lineage</h3>'+
+  '<p>Inspect historical workflow/outcome and calculated-share records only for '+
+  'the current exact native source evidence. Original records do not establish '+
+  'a verified project, bid authority, contractual royalty or payment.</p>'+
+  '<div id="native-original-lineage">'+
+  table(['Source','Recorded evidence','Inspect original workflow and outcome'],
+   sources.filter(m=>['ceqa','permit'].includes(m.source_family))
+    .slice(0,25).map((m,i)=>[
+     esc(m.source_family+' · '+m.source_record_id),
+     esc(m.current_evidence_id||'Unknown current evidence'),
+     '<button data-dossier-original-source="'+i+'">Inspect exact lineage</button>'
+    ]))+
+  (sources.filter(m=>['ceqa','permit'].includes(m.source_family)).length>25?
+   '<p>Bounded to the first 25 CEQA/permit source memberships; others are not examined.</p>':'')+
+  '<div id="native-original-lineage-detail" role="status"></div></div>'+
   '<h3>Evidence chronology</h3>'+
   table(['Source','Retention time','Agency-reported milestones','Evidence revision'],chronology.map(e=>[
     esc(e.source_family||'—'),esc(e.retained_at||'—'),milestones(e),esc(e.evidence_id||'—')+(e.is_current_source_revision?' · current':' · historical')
@@ -72,6 +87,59 @@ async function openInvestigationDossier(identity,refresh=false){
  currentInvestigationIdentity=identity;
  $('action-content').scrollTop=scroll;
  $('export-investigation').onclick=()=>download('investigation-dossier.json',dossier);
+ const originalSources=sources.filter(m=>['ceqa','permit'].includes(m.source_family)).slice(0,25);
+ document.querySelectorAll('[data-dossier-original-source]').forEach(button=>{
+  button.onclick=()=>perform(async()=>{
+   const source=originalSources[Number(button.dataset.dossierOriginalSource)];
+   const detail=$('native-original-lineage-detail');
+   if(!source||!detail)return;
+   detail.textContent='Checking exact current source evidence against preserved operator records…';
+   try{
+    const params=new URLSearchParams({kind:source.source_family,record_id:source.source_record_id,limit:'20',offset:'0'});
+    const result=await api('/api/source-commercial-lineage?'+params);
+    if(ticket!==modalTicket||!$('action-dialog').open)return;
+    const exact=result.original_source?.kind===source.source_family&&
+     result.original_source?.record_id===source.source_record_id&&
+     result.source_entity_id===source.source_id&&
+     result.native_state==='exact_observation_already_retained'&&
+     result.canonical_investigation_id===(info.project_cluster_id||identity);
+    if(!exact){
+     detail.innerHTML='<p role="alert">Original workflow evidence does not match '+
+      'the current exact source membership; no commercial context was attached. '+
+      'Reload the investigation and inspect both evidence revisions before proceeding.</p>';
+     return;
+    }
+    if(!source.current_evidence_id){
+     detail.innerHTML='<p role="alert">Current native evidence identity is absent. '+
+      'No original commercial context can be associated.</p>';return;
+    }
+    const verification=await api('/api/source-reconciliation?'+
+      new URLSearchParams({kind:source.source_family,record_id:source.source_record_id}));
+    if(ticket!==modalTicket||!$('action-dialog').open)return;
+    if(verification.native_evidence_id!==source.current_evidence_id||
+       verification.native_state!=='exact_observation_already_retained'||
+       verification.canonical_investigation_id!==(info.project_cluster_id||identity)||
+       verification.original_source?.source_sha256!==result.original_source?.source_sha256){
+     detail.innerHTML='<p role="alert">Source evidence changed or no longer '+
+      'matches the dossier. Historical financial context is withheld.</p>';return;
+    }
+    detail.innerHTML='<h4>Exact retained original commercial context</h4>'+
+      '<p>Verified only as exact source evidence and historical candidate-key lineage, '+
+      'not same-project identity, contract, royalty entitlement, payment or permission to bid.</p>'+
+      '<p>Matching original workflows: '+esc(result.matching_workflow_total)+
+      '. Returned '+esc(result.matching_workflows?.length||0)+
+      (result.has_more?' · additional records remain beyond this page.':'')+'</p>'+
+      '<pre>'+esc(JSON.stringify(result,null,2))+'</pre>'+
+      '<button id="export-native-source-lineage">Export exact lineage JSON</button>';
+    $('export-native-source-lineage').onclick=()=>
+     download('investigation-original-financial-lineage.json',result);
+   }catch(error){
+    if(ticket===modalTicket&&$('action-dialog').open)
+     detail.innerHTML='<p role="alert">Exact original lineage unavailable: '+
+      esc(error.message)+'. No financial linkage was asserted.</p>';
+   }
+  });
+ });
  bindAssociationReviews(identity);
 }
 async function openWorkspace(name,key){activePage=name;activeInvestigationMapRows=[];hideSearch();if($('map').parentNode!==mapHome)mapHome.append($('map'));if($('lead-filters').parentNode!==filterHome)filterHome.append($('lead-filters'));$('lead-filters').hidden=true;document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===name));const home=name==='Command Center';$('workspace').hidden=!home;$('stub').hidden=home;$('stub-title').textContent=name;if(home){document.querySelectorAll('[data-live-graph]').forEach(h=>h.dispatchEvent(new Event('graph-dispose')));document.querySelectorAll('[data-shared-investigations]').forEach(h=>h.dispatchEvent(new Event('investigation-dispose')));apply();refreshChrome();return;}const previous=$('section-content');previous.querySelectorAll('[data-live-graph]').forEach(h=>h.dispatchEvent(new Event('graph-dispose')));previous.querySelectorAll('[data-shared-investigations]').forEach(h=>h.dispatchEvent(new Event('investigation-dispose')));const box=previous.cloneNode(false);previous.replaceWith(box);try{if(name==='Lead Console'){box.innerHTML='<div id="console-toolbar"></div><div id="console-table"></div>';$('lead-filters').hidden=false;box.prepend($('lead-filters'));renderConsole();await renderInvestigationInventory(box);}else if(name==='Watchlist')renderWatchlist(box);else if(name==='Sources & Collection')await renderSources(box);else if(name==='Outreach')await renderOutreach(box);else if(name==='Project Intelligence'){await renderAnalytics(box);await renderInvestigationInventory(box);}else if(name==='Entity Network'){renderNetwork(box);const live=document.createElement('button');live.id='open-live-relationship-graph';live.textContent='Live Relationship Graph';box.prepend(live);live.onclick=()=>perform(()=>openLiveRelationshipGraph(box));await renderInvestigationInventory(box);}else if(name==='Evidence Chains'){box.innerHTML='<p>Select a source record to inspect its retained evidence and field provenance.</p>'+table(['Project','Source','Row hash'],baseRows().map(r=>[`<button data-open="${esc(r.source_key)}">${esc(r.SITE_NAME)}</button>`,'California SMARTS',`<button data-evidence="${esc(r.source_key)}">${esc(r.row_sha256)}</button>`]));box.querySelectorAll('[data-evidence]').forEach(b=>b.onclick=()=>openDossier(b.dataset.evidence,'evidence'));await renderInvestigationInventory(box);}else if(name==='Site Map'){renderSiteMap(box);await renderInvestigationInventory(box,rows=>{activeInvestigationMapRows=rows;drawMap();});}else if(name==='Bid Studio'){await renderBids(box,key);await renderLegacyCommercial(box,name);}else if(name==='Royalty Ledger'){await renderRoyalties(box);await renderLegacyCommercial(box,name);}drawMap();}catch(e){showError(e);}}
