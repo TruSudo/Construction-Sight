@@ -52,6 +52,10 @@ const {spawnSync}=require('child_process');
   const retainedAgain=await page.evaluate(async()=>fetch('/api/investigation-graph').then(r=>r.json()));
   if(JSON.stringify(retainedAgain.nodes)!==JSON.stringify(initial.nodes))
    throw Error('Saving or filtering a browser layout modified authoritative graph nodes');
+  await page.click('[data-graph-group]');
+  const afterGrouping=await page.locator('[data-live-node]').evaluateAll(nodes=>nodes.map(n=>n.dataset.liveNode).sort());
+  if(JSON.stringify(afterGrouping)!==JSON.stringify(initial.nodes.map(n=>n.id).sort()))
+   throw Error('Node grouping invented, removed or duplicated retained nodes');
   await page.locator('[data-graph-canvas]').evaluate(node=>node.dataset.canvasIdentity='same-canvas');
   await page.click('[data-graph-full]');
   if(!(await page.locator('[data-live-graph]').getAttribute('class')).includes('graph-expanded'))throw Error('Full-screen graph did not expand');
@@ -90,6 +94,19 @@ const {spawnSync}=require('child_process');
   await page.click('#open-live-relationship-graph');await page.waitForSelector('[data-live-node]');
   const reopened=await page.locator('[data-live-node]').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('aria-label')).join(' '));
   if(!reopened.includes('phase6-while-closed'))throw Error('Reopened graph failed to reconstruct closed-worker changes');
+  const dossierLocation=await page.evaluate(async id=>{
+   const dossier=await fetch('/api/investigations/'+encodeURIComponent(id)).then(r=>r.json());
+   return dossier.source_claimed_points?.find(p=>typeof p.latitude==='number'&&typeof p.longitude==='number');
+  },root.id);
+  if(!dossierLocation)throw Error('Source-claimed coordinate missing from map navigation fixture');
+  await page.locator('[data-live-node="'+root.id+'"]').focus();await page.keyboard.press('Enter');
+  await page.click('[data-graph-map]');
+  await page.waitForSelector('[data-investigation-id="'+root.id+'"]');
+  if(await page.locator('#stub-title').textContent()!=='Site Map')
+   throw Error('Graph coordinate navigation did not enter the existing Site Map');
+  const pointCentered=await page.evaluate(p=>Math.abs(center[0]-p.latitude)<.0001&&
+   Math.abs(center[1]-p.longitude)<.0001,dossierLocation);
+  if(!pointCentered)throw Error('Map was not centered on exact retained source-claimed coordinates');
   if(errors.length)throw Error(errors.join('; '));
   console.log('Live graph: shared embedded/full-screen state, canonical evidence, worker continuity, committed events, disconnection recovery and reopen reconstruction PASS');
  }finally{await browser.close();}
