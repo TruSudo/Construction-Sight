@@ -19,7 +19,13 @@ function fitBounds(){const investigationPoints=activePage==='Site Map'?activeInv
 let viewTimer;function saveMapView(){if(data?.read_only)return;clearTimeout(viewTimer);viewTimer=setTimeout(()=>api('/api/settings',{map_view:{center,zoom}}).catch(showError),250);}
 function drawMap(){if(!data)return;
  const map=$('map'),w=map.clientWidth,h=map.clientHeight,[cx,cy]=world(...center),left=cx-w/2,top=cy-h/2;
- const provider=USGS_BASEMAPS[basemapMode],configured=online&&data.map_settings.url_template;
+ const configured=online&&data.map_settings.url_template;
+ // Auto keeps a user-installed local regional map and any explicit configured
+ // provider. Otherwise use the public, credential-free USGS imagery/topo map.
+ // Do not fetch remote tiles in the reproducible screenshot-only Demo fixture.
+ const defaultUSGS=basemapMode==='auto'&&!configured&&!data.local_map&&!data.mockup_parity;
+ const provider=USGS_BASEMAPS[basemapMode]||
+  (defaultUSGS?USGS_BASEMAPS['usgs-imagery-topo']:null);
  const remoteRequested=basemapMode!=='offline'&&(Boolean(provider)||(basemapMode==='auto'&&Boolean(configured)));
  const remote=remoteRequested&&!basemapFailed,localMap=!remote&&Boolean(data.local_map);
  const template=remote&&!provider?data.map_settings.url_template:localMap?'/api/offline-map/{z}/{x}/{y}.png':null;
