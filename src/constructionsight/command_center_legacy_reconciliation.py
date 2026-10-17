@@ -14,14 +14,15 @@ from pathlib import Path
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from constructionsight.ceqa_models import CeqaRecord
 from constructionsight.intelligence.investigation_service import InvestigationService
 from constructionsight.intelligence.investigation_sources import from_domain
 from constructionsight.intelligence.relationship_query_service import canonical_investigation_id
 from constructionsight.investigation_runtime import InvestigationRuntime
 from constructionsight.operator_source_candidate import build_source_candidate_preview
+from constructionsight.permit_models import PermitRecord
 from constructionsight.storage.database import prepare_private_database
 from constructionsight.storage.domain_store import CeqaStore, PermitStore
 from constructionsight.storage.intelligence_store import IntelligenceStore
@@ -72,9 +73,8 @@ def _native(
     directory: Path, *, kind: Literal["ceqa", "permit"], raw: dict[str, Any],
 ) -> dict[str, Any]:
     observation = from_domain(
-        __import__("constructionsight.ceqa_models", fromlist=["CeqaRecord"]).CeqaRecord.model_validate(raw)
-        if kind == "ceqa" else
-        __import__("constructionsight.permit_models", fromlist=["PermitRecord"]).PermitRecord.model_validate(raw)
+        CeqaRecord.model_validate(raw) if kind == "ceqa"
+        else PermitRecord.model_validate(raw)
     )
     db = directory / "investigations.sqlite3"
     base: dict[str, Any] = {
