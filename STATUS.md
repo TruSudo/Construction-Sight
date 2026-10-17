@@ -7,23 +7,25 @@ Relationship Graph remain the goal. Full unification and functional parity are n
 
 ## Exact recovery checkpoint
 
-- Development branch: `agent/unification-implementation-2026-10-16`, draft PR #234. Latest Phase 7 application/test source: `c57c9d0fd92aae357535be60c7e9c2a87eba2e22` (tree `b89d0bcc63f00aebcecdde694fcea8d57d10465f`).
+- Development branch: `agent/unification-implementation-2026-10-16`, draft PR #234. Latest accepted Phase 7 application/test source: `3429b14f847163083dfdf32b181bc231d17605c6` (tree `16a6c2d65345b461e40977586f9aa7dc5009411e`).
 - Latest source accepted for Phase 6: `5c03cd80cde497b2dfc0e3533a913000db280812` (anchored historical snapshots, retained-history timeline/comparison, saved layouts, source/date/confidence controls, source grouping, activity highlighting, and bidirectional graph/map navigation). Phase 5 remains pinned to `44e80090219a0ad0938dbec44848233d089bcf2d`.
-- Phase 7 continuation restores and extends historical integrity tests and binds the preserved source-verification API to the exact reviewed URL; Phase 6 acceptance remains pinned to its source revision below.
+- **Phase 7 implementation and regression acceptance is complete** for the controlling directive and currently integrated runtime. The final reconciliation and exact-source results below supersede the older continuation checkpoints. Next: Phase 8 full functional-parity review; preserve the original interface and all historical assets.
 - Phase 5 native integration is implemented. Exact-source acceptance results are recorded below.
 - Main remains `4c8f8eaf08653e2d571b0df821b862dcc9b158ac`; no merge or owner-device/source activation.
-- Phase 6 implementation acceptance is complete for the controlling Phase 6 directive: the same persisted investigation graph and committed worker events drive embedded/full-screen views, bounded anchored historical replay, connection recovery, dossiers and bidirectional map navigation. Next follow the unchanged directive into Phase 7 historical safeguard reconciliation, without claiming real-source/device operational acceptance.
+- Phase 6 implementation acceptance is complete for the controlling Phase 6 directive: the same persisted investigation graph and committed worker events drive embedded/full-screen views, bounded anchored historical replay, connection recovery, dossiers and bidirectional map navigation. Phase 7 safeguard reconciliation is now accepted below; next follow the unchanged directive into Phase 8, without claiming real-source/device operational acceptance.
 - Operational checks still open: owner-Zorin/systemd deployment, permissioned live-source background acquisition, and real live cooperating-source acceptance from Phases 3–4.
 - Preserve all original interfaces, historical branches and assurance evidence through Phase 8 acceptance.
 
-## Phase 7 final reconciliation — acceptance candidate, gates pending
+## Phase 7 — IMPLEMENTATION AND REGRESSION ACCEPTED
 
 The following reconciles the controlling directive's assurance obligations for the
 **currently integrated workflows**. It does not retire historical capabilities,
 reuse an old certificate as current authority, accept the owner's deployment, or
 substitute for Phase 8 feature parity.
 
-Concrete repairs in this candidate:
+Exact accepted application/test source: `3429b14f847163083dfdf32b181bc231d17605c6`; tree `16a6c2d65345b461e40977586f9aa7dc5009411e`. This acceptance-record update changes STATUS.md only.
+
+Concrete completed repairs:
 - Native bid/royalty operations now reuse private-file database preparation and enable/verify SQLite foreign keys. Symlinked or nonprivate workflow stores fail closed without changing the target file.
 - Native royalty contracts are immutable at the database boundary. Ledger inserts require an existing contract; reads verify exact pinned bid versions, indexed identities, contract values, rates, calculations, entry kinds and original/reversal relationships. Backup/restore applies the same financial read validation without modifying the snapshot.
 - Legacy share-model validation now uses decimal half-even math, matching existing scaled-integer calculation at half-cent boundaries. Legacy fractional inputs remain readable where previously supported; new-write precision guards remain unchanged.
@@ -51,9 +53,15 @@ Historical test/evidence reconciliation (all original blobs/branches preserved):
 | `test_ceqanet_csv_export.py` (`59978b3c`) | Current `test_ceqanet_csv_contract.py` and `test_ceqanet_csv_live.py` cover exact project/document URLs, scope mismatch, parser/header limits, explicit execution, response/body/URL tampering and offline CLI; operator service tests add exact effect binding |
 | `test_ceqanet_ingestion_inbox.py` (`fd04d786`) | Existing `test_operator_ingestion_inbox.py` retains the original read-only workflow; shared inbox/source/runtime and public-filing regressions prove automatic retained ingestion, canonical state and unchanged source bytes |
 | `test_ceqanet_verified_source_maturity.py` (`a0bbe286`) | Historical dated registry/checklist/plan/audit evidence remains an archival certificate. Current maturity/access-policy/recurring-run/background tests enforce digest identity, reviewed evidence scope, expiry/current-state drift and blocked access; no historical verified label activates a current source |
-| `test_result_ledger_authority.py` (`618b7116`) | Current immutable content-digest/revision/head/event services replace obsolete duplicate authority tables. Existing operator/event/supersession/CAS/rollback tests preserve history and stale-state rejection; this candidate restores the previously missing workflow-finality rule and proves rejection before authority/ledger writes |
+| `test_result_ledger_authority.py` (`618b7116`) | Current immutable content-digest/revision/head/event services replace obsolete duplicate authority tables. Existing operator/event/supersession/CAS/rollback tests preserve history and stale-state rejection; Phase 7 restores the previously missing workflow-finality rule and proves rejection before authority/ledger writes |
 
-Focused acceptance passed: 60 native financial/data-folder/workflow tests, 52 financial/result/public-source regression tests and 48 final evidence/authority tests (overlapping suites, not additive). Ruff, strict Mypy and current full regression/browser/dual-Python CI must pass before changing Phase 7 to implementation complete. Phase 8 parity and the unchanged Phase 3/4 owner-device/live-source acceptance remain open.
+Exact-source acceptance:
+- [Full CI 39015279406](https://github.com/TruSudo/Construction-Sight/actions/runs/39015279406): **2,725 passed on Python 3.11 and 2,725 passed on Python 3.12**, two non-failing upstream Typer/Click warnings per leg. Ruff, strict Mypy (**347 source files**), JavaScript syntax, dependency integrity and dependency vulnerability audits passed; no known dependency vulnerabilities reported.
+- Local Python 3.12: **2,725 passed**, two upstream warnings, **290.21s**. Focused native financial/data-folder/workflow, financial/result/public-source and final evidence/authority suites also passed; their overlapping counts are not added to the full regression count.
+- [Browser/USGS 39015279426](https://github.com/TruSudo/Construction-Sight/actions/runs/39015279426): both jobs passed. **33/33 actions and 33/33 complete workflow contracts**, shared investigation/live graph continuity, native commercial and backup/restore journeys, structure/fonts and the reported visual ratchet passed. **Exact pixel parity did not pass and is not claimed**; Phase 8 must account for visual/functional parity separately.
+- No active defects are declared in the retained current `governance/active_defects.toml`. Historical Native Maximum Assurance and silent-risk evidence retain their original scope; this acceptance is not a newly issued formal native-maximum certificate or a representation that old artifacts certify the current tree.
+
+**Phase 7 development implementation/regression acceptance is complete.** All identified applicable safeguard gaps from the historical reconciliation are repaired or have a tested current equivalent, with historical assets and evidence preserved. Remaining source/device operational checks from Phases 3–4 are unchanged and still open. **Next: Phase 8 full functional-parity review**, including mandatory capabilities not yet proven equivalent in the approved native interface. No main merge, source activation, owner-device deployment, automatic outreach, bid submission or original-interface retirement is authorized by this status update.
 
 ## Phase 7 continuation — explicit facts and immutable access-review identity
 
@@ -177,7 +185,7 @@ Focused acceptance passed: 60 native financial/data-folder/workflow tests, 52 fi
 | 4 — cooperating-source journey | Controlled and retained public-excerpt implementation acceptance exists; live-source operational acceptance remains open |
 | 5 — native integration | Development acceptance complete at 44e80090; full Python and browser gates passed; operational field checks remain open under Phases 3–4 |
 | 6 — live Relationship Graph | Development acceptance complete at `5c03cd80`; persisted live graph, full before/after revision replay, event-cursor recovery, saved layouts, filters, source grouping, activity highlighting, dossier/evidence inspection and bidirectional Site Map navigation validated by full CI and browser tests |
-| 7 — assurance completion | Relevant new safeguards tested; complete historical-to-unified enforcement reconciliation remains outstanding |
+| 7 — assurance completion | Implementation/regression acceptance complete at `3429b14f`; historical safeguard/test reconciliation, financial/result authority and evidence integrity repairs passed full dual-Python and browser gates; operational field acceptance remains open under Phases 3–4 |
 | 8 — functional parity | No complete parity acceptance; original interface retained |
 
 ## Operational evidence and integration
