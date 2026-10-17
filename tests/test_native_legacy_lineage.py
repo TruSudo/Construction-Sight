@@ -211,7 +211,8 @@ def test_superseded_original_share_cannot_hide_corrupt_minor_unit_receipt(
             .where(ResultShareRecordRow.share_record_id == first.share.share_record_id)
             .values(share_value_minor=99999)
         )
-    with Session(engine) as session:
-        with pytest.raises(ValueError, match="exact money index disagree"):
-            read_validated_result_history(session, workflow.workflow_id)
+    with Session(engine) as session, pytest.raises(
+        ValueError, match="exact money index disagree"
+    ):
+        read_validated_result_history(session, workflow.workflow_id)
     engine.dispose()
