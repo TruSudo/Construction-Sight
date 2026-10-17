@@ -377,7 +377,9 @@ class InvestigationRuntime:
                     ):
                         raise ValueError("reviewed replay does not match exact retained source")
                     if store.get_entity(approval.source_entity_id) is not None:
-                        raise ValueError("original replay became stale; existing source requires review")
+                        raise ValueError(
+                            "original replay became stale; existing source requires review"
+                        )
                     audit = store.get_runtime_event(
                         _identity("event:original-source-replay-approval", claim.job_id)
                     )
