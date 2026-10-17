@@ -14,9 +14,13 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from constructionsight.operator_dashboard import (
+    build_entity_neighborhood,
+    build_geographic_footprint,
+    build_historical_timeline,
     build_workflow_snapshot,
     build_workflow_status_summary,
 )
+from constructionsight.operator_entity_index import build_entity_index
 from constructionsight.operator_parcel_candidates import inspect_parcel_candidates
 from constructionsight.operator_results import build_result_ledger_snapshot
 from constructionsight.operator_source_candidate import (
@@ -41,6 +45,10 @@ SOURCE_INSPECTION_ROUTES = frozenset(
         "/api/workflow-summary",
         "/api/workflows",
         "/api/results",
+        "/api/source-entity-index",
+        "/api/source-entity-neighborhood",
+        "/api/source-timeline",
+        "/api/source-footprint",
     }
 )
 
@@ -66,6 +74,10 @@ def source_inspection(
             workflow=route in {"/api/workflows", "/api/results"},
             results=route == "/api/results",
             candidate=route in {"/api/parcel-candidates", "/api/candidate-preview"},
+            entity=route == "/api/source-entity-neighborhood",
+            entity_index=route == "/api/source-entity-index",
+            timeline=route == "/api/source-timeline",
+            footprint=route == "/api/source-footprint",
         )
     if database is None:
         return {
@@ -106,6 +118,29 @@ def source_inspection(
                 result = build_result_ledger_snapshot(
                     session, limit=params.limit, offset=params.offset
                 )
+            elif route == "/api/source-entity-index":
+                assert params is not None
+                result = build_entity_index(
+                    session, kind=params.kind, county=params.county,
+                    role=params.role_filter,
+                ).model_dump(mode="json")
+            elif route == "/api/source-entity-neighborhood":
+                assert params is not None and params.entity_key is not None
+                result = build_entity_neighborhood(
+                    session, entity_key=params.entity_key,
+                    kind=params.kind, county=params.county,
+                ).model_dump(mode="json")
+            elif route == "/api/source-timeline":
+                assert params is not None
+                result = build_historical_timeline(
+                    session, kind=params.kind, query=params.query,
+                    county=params.county, entity_key=params.entity_key,
+                ).model_dump(mode="json")
+            elif route == "/api/source-footprint":
+                assert params is not None
+                result = build_geographic_footprint(
+                    session, kind=params.kind, query=params.query, county=params.county,
+                ).model_dump(mode="json")
             elif route == "/api/source-review-queue":
                 assert params is not None
                 result = build_source_review_queue(
