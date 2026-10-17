@@ -7,7 +7,7 @@ Relationship Graph remain the goal. Full unification and functional parity are n
 
 ## Exact recovery checkpoint
 
-- Development branch: `agent/unification-implementation-2026-10-16`, draft PR #234. Latest fully verified Phase 8 application/test source: `b746ec4374ef623a0a7dbe0dbb47848428bb3685` (full quality gates and browser workflow passed). Phase 7 remains accepted at `3429b14f847163083dfdf32b181bc231d17605c6`.
+- Development branch: `agent/unification-implementation-2026-10-16`, draft PR #234. Latest fully verified Phase 8 application/test source: `ff21ac551dcdd3b14fdfe37ee8262a30de2bc17a` (full quality gates and browser workflow passed). Phase 7 remains accepted at `3429b14f847163083dfdf32b181bc231d17605c6`.
 - Latest source accepted for Phase 6: `5c03cd80cde497b2dfc0e3533a913000db280812` (anchored historical snapshots, retained-history timeline/comparison, saved layouts, source/date/confidence controls, source grouping, activity highlighting, and bidirectional graph/map navigation). Phase 5 remains pinned to `44e80090219a0ad0938dbec44848233d089bcf2d`.
 - **Phase 7 implementation and regression acceptance is complete** for the controlling directive and currently integrated runtime. The final reconciliation and exact-source results below supersede the older continuation checkpoints. Phase 8 is now in progress; preserve the original interface and all historical assets.
 - Phase 5 native integration is implemented. Exact-source acceptance results are recorded below.
@@ -18,7 +18,7 @@ Relationship Graph remain the goal. Full unification and functional parity are n
 
 ## Phase 8 — IN PROGRESS: native preservation and original-workflow parity
 
-**Verified application/test source:** `b746ec4374ef623a0a7dbe0dbb47848428bb3685`.
+**Verified application/test source:** `ff21ac551dcdd3b14fdfe37ee8262a30de2bc17a`.
 Original operator assets, historical branches, the previous native association-review
 acceptance, and the shared investigation graph remain preserved. The legacy database
 is an explicitly selected, separate source; displaying its records does **not**
@@ -69,6 +69,22 @@ automatically reconcile them into the canonical native site investigation.
   commercial action is performed.
 - All additions remain confined to existing Command Center workspaces; the
   approved overview/sidebar structure was not replaced or redesigned.
+
+**Latest verified original workflow transition-history integrity:**
+
+- Both original-source → historical workflow and historical-workflow → native-source
+  lineage now verify every persisted original workflow status event against the
+  immutable event rows, in chronological order, including its exact ID, status
+  transition, timestamp, reason, payload and legal transition matrix. Missing,
+  altered, reordered or additional events fail closed; the bounded read does not
+  modify the original records or grant native sales/payment authority.
+- [Python CI](https://github.com/TruSudo/Construction-Sight/actions/runs/39041837361):
+  **2,750 passed** on Python 3.11 and **2,750 passed** on Python 3.12,
+  two non-failing warnings on each. Ruff, strict Mypy and JS checks passed.
+- [Visual and USGS](https://github.com/TruSudo/Construction-Sight/actions/runs/39041837289):
+  both jobs passed, including the new two-event history and original financial
+  lineage in both native directions, with existing map/graph/browser safeguards.
+  Exact approved-mockup pixel parity remains an open separate criterion.
 
 **Latest verified original workflow → exact source reverse attribution:**
 
