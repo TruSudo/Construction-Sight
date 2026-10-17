@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 from datetime import UTC, date, datetime
 from pathlib import Path
 
@@ -15,6 +16,8 @@ from constructionsight.provenance import Provenance
 from constructionsight.site_models import Site
 from constructionsight.storage.database import create_database_engine, initialize_database
 from constructionsight.storage.domain_store import CeqaStore
+from tests.test_operator_capture_queue import _payload as capture_fixture
+from tests.test_operator_ingestion_inbox import _write_artifacts
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--data-dir", type=Path, required=True)
@@ -55,6 +58,9 @@ with Session(engine) as session, session.begin():
         )
     )
 engine.dispose()
+listing, review = _write_artifacts(args.data_dir)
+capture = args.data_dir / "capture.json"
+capture.write_text(json.dumps(capture_fixture()), encoding="utf-8")
 snapshot = {
     "rows": [],
     "captured_at": "2026-10-17T09:00:00+00:00",
@@ -64,7 +70,9 @@ snapshot = {
     "missing_count": 0,
 }
 server = make_server(
-    snapshot, args.port, args.data_dir / "native", operator_database=database
+    snapshot, args.port, args.data_dir / "native", operator_database=database,
+    operator_capture_queue=capture, operator_ceqanet_listing=listing,
+    operator_ceqanet_review_queue=review,
 )
 print("Phase 8 read-only source fixture", server.server_port, flush=True)
 try:
