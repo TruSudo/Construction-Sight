@@ -38,6 +38,33 @@ const {chromium} = require('../visual/node_modules/playwright');
       throw Error('Source-specific parcel candidates were not retained');
     }
     await page.click('#action-close');
+    await page.locator('[data-history-mode="entities"]').click();
+    await page.waitForSelector('[data-historical-entity]');
+    const entityText = await page.locator('#retained-history-results').textContent();
+    if (!entityText.includes('phase8:browser:entity') ||
+        !entityText.includes('Synthetic Contractor')) {
+      throw Error('Retained entity-key index not inspectable');
+    }
+    await page.locator('[data-historical-entity]').first().click();
+    await page.waitForSelector('#action-dialog[open]');
+    const neighborhood = await page.locator('#action-content').textContent();
+    if (!neighborhood.includes('phase8:browser:source')) {
+      throw Error('Exact source-key co-occurrence did not retain source evidence');
+    }
+    await page.click('#action-close');
+    await page.locator('[data-history-mode="timeline"]').click();
+    await page.waitForFunction(() => document.querySelector('#retained-history-results')?.textContent.includes('ceqa_posted'));
+    const chronology = await page.locator('#retained-history-results').textContent();
+    if (!chronology.includes('2026-10-13') || !chronology.includes('ceqa_received')) {
+      throw Error('Recorded original CEQA timeline missing');
+    }
+    await page.locator('[data-history-mode="footprint"]').click();
+    await page.waitForFunction(() => document.querySelector('#retained-history-results')?.textContent.includes('33.95'));
+    const footprint = await page.locator('#retained-history-results').textContent();
+    if (!footprint.includes('-117.36') ||
+        !(await page.locator('#retained-history-export').isVisible())) {
+      throw Error('Original geocoded evidence not inspectable/exportable');
+    }
     await page.click('nav button[data-page="Bid Studio"]');
     await page.waitForSelector('.retained-source-inspection');
     if (!(await page.locator('.retained-source-inspection').textContent())
