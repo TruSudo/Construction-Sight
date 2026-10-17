@@ -71,6 +71,7 @@ async function renderRetainedSources(box) {
     '<button type="submit">Inspect</button></form>' +
     '<div id="retained-source-queue" aria-live="polite"></div>' +
     '<div id="retained-capture-inbox" aria-live="polite"></div>' +
+    '<div id="retained-smarts-history" aria-live="polite"></div>' +
     '<div id="retained-history-inspection"></div>';
   root.querySelector('#retained-registry-export').onclick = () =>
     download('retained-source-registry.json', registry);
@@ -146,6 +147,7 @@ async function renderRetainedSources(box) {
   await loadPage();
   await Promise.all([
     renderRetainedCaptureInbox(root.querySelector('#retained-capture-inbox')),
+    renderRetainedSmartsHistory(root.querySelector('#retained-smarts-history')),
     renderRetainedHistory(root.querySelector('#retained-history-inspection'))
   ]);
 }
@@ -206,6 +208,105 @@ async function renderRetainedCaptureInbox(box) {
       '<h3>Original CEQA capture & ingestion</h3><p role="alert">' +
       esc(error.message) + '</p>';
   }
+}
+
+
+// Original SMARTS snapshot ledger, not current bid readiness or an identity join.
+async function renderRetainedSmartsHistory(box) {
+  if (!box || !box.isConnected || activePage !== 'Sources & Collection') return;
+  box.innerHTML = '<h3>Original SMARTS snapshot change review</h3>' +
+    '<p role="status">Checking private evidence history…</p>';
+  let status;
+  try {
+    status = await api('/api/source-smarts-status');
+  } catch (error) {
+    if (box.isConnected) box.innerHTML = '<h3>Original SMARTS snapshot change review</h3>' +
+      '<p role="alert">' + esc(error.message) + '</p>';
+    return;
+  }
+  if (!box.isConnected || activePage !== 'Sources & Collection') return;
+  if (!status.available || !status.csv_snapshot_history_configured) {
+    box.innerHTML = '<h3>Original SMARTS snapshot change review</h3>' +
+      '<p>No private SMARTS snapshot history is connected. Use ' +
+      '<code>--operator-smarts-history</code> to inspect existing retained CSV evidence. ' +
+      'This does not indicate that no jurisdictional changes exist.</p>';
+    return;
+  }
+  box.innerHTML = '<h3>Original SMARTS snapshot change review</h3>' +
+    '<p>Verified private snapshot history: ' + esc(status.csv_snapshots) +
+    ' captures and ' + esc(status.csv_change_candidates) +
+    ' candidate changes. Neither a source event nor a parcel candidate is a verified ' +
+    'project association; no remote collection or commercial action is performed here.</p>' +
+    '<form id="source-smarts-filters" class="source-toolbar">' +
+    '<label>County <select name="county"><option value="">Both</option>' +
+    '<option>San Bernardino</option><option>Riverside</option></select></label>' +
+    '<button type="submit">Inspect history</button></form>' +
+    '<div id="source-smarts-change-results" aria-live="polite"></div>';
+  const form = box.querySelector('#source-smarts-filters');
+  const results = box.querySelector('#source-smarts-change-results');
+  let offset = 0, serial = 0;
+  async function load() {
+    const request = ++serial, pageOffset = offset;
+    results.textContent = 'Inspecting verified SMARTS change history…';
+    try {
+      const page = await api('/api/source-smarts-changes?' + new URLSearchParams({
+        county: form.elements.county.value, limit: '10', offset: String(offset)
+      }));
+      if (!box.isConnected || activePage !== 'Sources & Collection' ||
+          request !== serial || pageOffset !== offset) return;
+      if (!page.available) {
+        results.textContent = 'The private SMARTS evidence history is unavailable.';
+        return;
+      }
+      const events = page.items || [];
+      results.innerHTML = '<p>' + esc(page.total) + ' retained change observations; ' +
+        'offset ' + esc(page.offset) + '. “Missing from new” is not proof of deletion.</p>' +
+        table(['Source', 'County', 'Event', 'Capture', 'Exact review'], events.map((item, i) => [
+          esc(item.source_key), esc(item.county), esc(item.outcome),
+          esc(item.captured_at),
+          '<button data-smarts-parcel="' + i + '">Parcel candidates</button>'
+        ])) +
+        '<div class="source-toolbar"><button id="source-smarts-prev"' +
+        (offset ? '' : ' disabled') + '>Previous</button>' +
+        '<button id="source-smarts-next"' + (page.has_more ? '' : ' disabled') +
+        '>Next</button>' +
+        '<button id="source-smarts-export">Export reviewed page JSON</button></div>';
+      results.querySelector('#source-smarts-prev').onclick = () => {
+        offset = Math.max(0, offset - 10);
+        perform(load);
+      };
+      results.querySelector('#source-smarts-next').onclick = () => {
+        offset += 10;
+        perform(load);
+      };
+      results.querySelector('#source-smarts-export').onclick = () =>
+        download('original-smarts-changes.json', page);
+      results.querySelectorAll('[data-smarts-parcel]').forEach(button => {
+        button.onclick = () => perform(async () => {
+          const item = events[Number(button.dataset.smartsParcel)];
+          const details = await api('/api/source-smarts-parcel-candidates?' +
+            new URLSearchParams({
+              snapshot_id: String(item.snapshot_id), source_key: item.source_key
+            }));
+          if (!box.isConnected || activePage !== 'Sources & Collection') return;
+          modal('Original SMARTS parcel evidence',
+            '<p>Candidate-only matching on a retained exact source event. ' +
+            'No parcel identity, construction activity, investigation association ' +
+            'or bid authority is established.</p><pre>' +
+            esc(JSON.stringify(details, null, 2)) + '</pre>');
+        });
+      });
+    } catch (error) {
+      if (results.isConnected && request === serial) results.innerHTML =
+        '<p role="alert">' + esc(error.message) + '</p>';
+    }
+  }
+  form.onsubmit = event => {
+    event.preventDefault();
+    offset = 0;
+    perform(load);
+  };
+  await load();
 }
 
 // Original source-scoped investigation projections. Keys here are NOT native verified identities.
