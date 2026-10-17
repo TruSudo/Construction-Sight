@@ -7,7 +7,7 @@ Relationship Graph remain the goal. Full unification and functional parity are n
 
 ## Exact recovery checkpoint
 
-- Development branch: `agent/unification-implementation-2026-10-16`, draft PR #234. Latest accepted Phase 7 application/test source: `3429b14f847163083dfdf32b181bc231d17605c6` (tree `16a6c2d65345b461e40977586f9aa7dc5009411e`).
+- Development branch: `agent/unification-implementation-2026-10-16`, draft PR #234. Latest accepted Phase 8 first-slice application/test source: `54d56d3014dd1056ead08f7e9332c5c1705a6a20` (tree `0d6de027718b8ff0873cbae62631e5262f55ccb3`). Phase 7 remains accepted at `3429b14f847163083dfdf32b181bc231d17605c6`.
 - Latest source accepted for Phase 6: `5c03cd80cde497b2dfc0e3533a913000db280812` (anchored historical snapshots, retained-history timeline/comparison, saved layouts, source/date/confidence controls, source grouping, activity highlighting, and bidirectional graph/map navigation). Phase 5 remains pinned to `44e80090219a0ad0938dbec44848233d089bcf2d`.
 - **Phase 7 implementation and regression acceptance is complete** for the controlling directive and currently integrated runtime. The final reconciliation and exact-source results below supersede the older continuation checkpoints. Phase 8 is now in progress; preserve the original interface and all historical assets.
 - Phase 5 native integration is implemented. Exact-source acceptance results are recorded below.
@@ -25,7 +25,7 @@ The original operator interface and historical assets remain intact.
 | Capability | Native integration / parity finding | Remaining work |
 | --- | --- | --- |
 | Shared investigation inventory, dossiers, evidence, map and live/historical graph | Existing native views query the governed investigation state; prior Phase 5/6 acceptance is retained | Compare all original footprint, timeline and entity-query controls/exports against native equivalents |
-| Human review of uncertain source associations | This slice connects the existing evidence-bound review service to native dossiers: inspect both source records/evidence, explicitly associate/reject, download receipt and reassess changed evidence | Complete browser acceptance below; broader parcel/source-review workflows remain separate |
+| Human review of uncertain source associations | This slice connects the existing evidence-bound review service to native dossiers: inspect both source records/evidence, explicitly associate/reject, download receipt and reassess changed evidence | Browser acceptance passed below; broader parcel/source-review workflows remain separate |
 | Source registry and source revision inspection | Original `/api/source-registry` and `/api/source-revision` remain preserved; native Sources & Collection has SMARTS collection/scheduling and separate reviewed CEQA background controls | Integrate the existing governed registry/revision projection into the native source workspace; prove equivalent inspection |
 | Parcel and source-review queues | Original SMARTS parcel candidates, parcel candidates, candidate preview and source-review queue services remain available | Native equivalents are not yet demonstrated; reuse existing resolution/review boundaries |
 | Capture queue, ingestion inbox and operator exports | Original capture queue/inbox/package capabilities remain; shared retained-input processing and native dossier JSON export cover part of the workflow | Compare queue inspection, retained capture handling and report/archive exports; implement missing native actions |
@@ -45,12 +45,13 @@ preview and new confirmation, with no automatic retry. Late preview responses ca
 replace another open dialog. Multiline validation errors are flattened before entering
 HTTP status headers, repairing a failure exposed by negative endpoint tests.
 
-Verification: nine focused native review tests passed, including unchanged preview
-bytes, strict/overbroad payload rejection, cross-origin rejection, missing-store
-noncreation, association/rejection agreement and worker-revision invalidation. Full
-regression and the new browser journey are pending on this source checkpoint. The
-browser journey covers explicit confirmation, reassessment, late-dialog responses,
-shared graph agreement and dialog bounds at the approved 1672×941 viewport.
+Exact accepted application/test source: `54d56d3014dd1056ead08f7e9332c5c1705a6a20`;
+tree `0d6de027718b8ff0873cbae62631e5262f55ccb3`. This acceptance-record update
+changes STATUS.md only.
+
+- [Full CI 39019756687](https://github.com/TruSudo/Construction-Sight/actions/runs/39019756687): **2,734 passed on Python 3.11 and 2,734 passed on Python 3.12**, two non-failing upstream Typer/Click warnings per leg. Ruff, strict Mypy (**347 source files**), JavaScript syntax, dependency integrity and vulnerability audits passed; no known dependency vulnerabilities reported.
+- [Browser/USGS 39019756683](https://github.com/TruSudo/Construction-Sight/actions/runs/39019756683): both jobs passed. The new journey requires both retained claims and hashed evidence payloads in review details, and passes explicit confirmation, stale-source rejection, reassessment, late-dialog safety and canonical graph agreement. Existing shared investigation/live graph, commercial, backup/restore and **33/33 actions plus 33/33 complete contracts** passed. Review dialog bounds passed at **1672×941**; the initial slice's matching dialog layout was also visually inspected from its captured screenshot. Structure/fonts and the reported visual ratchet passed; **exact pixel parity did not pass and is not claimed**.
+- Local Python 3.12: **2,734 passed**, two upstream warnings, **327.59s** on initial slice `3eab8e397187cac30ea6cd2a3cf20de1e212f1b9`. After the final evidence-display binding and stronger assertions, all **nine focused native review tests passed again in 13.33s**; no Python application behavior changed after the full local run. Focused tests cover unchanged preview bytes, strict/overbroad payload rejection, cross-origin rejection, missing-store noncreation, source preservation, replay rejection and worker-revision invalidation. Their overlapping count is not added to the full regression total.
 
 **Phase 8 is not complete.** Next integrate governed source registry/revision inspection,
 then resolve the remaining native parity gaps above. Earlier source/device operational
