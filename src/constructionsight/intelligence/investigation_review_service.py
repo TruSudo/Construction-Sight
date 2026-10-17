@@ -15,6 +15,7 @@ from constructionsight.authorization_decision import AuthorizationDeniedError
 from constructionsight.effect_consumption import _execute_owned_effect
 from constructionsight.effect_consumption_models import EffectReplayPolicy
 from constructionsight.intelligence.graph_service import IntelligenceGraphService
+from constructionsight.intelligence.investigation_query_service import InvestigationQueryService
 from constructionsight.intelligence.investigation_service import _identity
 from constructionsight.intelligence.relationship_query_service import canonical_investigation_id
 from constructionsight.intelligence.schemas import (
@@ -70,12 +71,18 @@ class InvestigationReviewService:
 
     def preview(self, relationship_id: str) -> dict[str, Any]:
         with managed_session(self.factory) as session:
-            relation, state, _ = self._load(IntelligenceStore(session), relationship_id)
+            store = IntelligenceStore(session)
+            relation, state, _ = self._load(store, relationship_id)
+            choices = [relation.subject_entity_id, relation.object_entity_id]
             return {
                 "review_applied": False,
                 "relationship": relation.model_dump(mode="json"),
                 "expected_identity": state,
-                "target_choices": [relation.subject_entity_id, relation.object_entity_id],
+                "target_choices": choices,
+                "investigations": {
+                    identity: InvestigationQueryService(store).dossier(identity, evidence_limit=20)
+                    for identity in choices
+                },
                 "identity_independently_verified": False,
                 "limitations": [
                     "Association records reviewed source context, not independent verification.",

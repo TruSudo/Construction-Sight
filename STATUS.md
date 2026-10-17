@@ -9,12 +9,53 @@ Relationship Graph remain the goal. Full unification and functional parity are n
 
 - Development branch: `agent/unification-implementation-2026-10-16`, draft PR #234. Latest accepted Phase 7 application/test source: `3429b14f847163083dfdf32b181bc231d17605c6` (tree `16a6c2d65345b461e40977586f9aa7dc5009411e`).
 - Latest source accepted for Phase 6: `5c03cd80cde497b2dfc0e3533a913000db280812` (anchored historical snapshots, retained-history timeline/comparison, saved layouts, source/date/confidence controls, source grouping, activity highlighting, and bidirectional graph/map navigation). Phase 5 remains pinned to `44e80090219a0ad0938dbec44848233d089bcf2d`.
-- **Phase 7 implementation and regression acceptance is complete** for the controlling directive and currently integrated runtime. The final reconciliation and exact-source results below supersede the older continuation checkpoints. Next: Phase 8 full functional-parity review; preserve the original interface and all historical assets.
+- **Phase 7 implementation and regression acceptance is complete** for the controlling directive and currently integrated runtime. The final reconciliation and exact-source results below supersede the older continuation checkpoints. Phase 8 is now in progress; preserve the original interface and all historical assets.
 - Phase 5 native integration is implemented. Exact-source acceptance results are recorded below.
 - Main remains `4c8f8eaf08653e2d571b0df821b862dcc9b158ac`; no merge or owner-device/source activation.
 - Phase 6 implementation acceptance is complete for the controlling Phase 6 directive: the same persisted investigation graph and committed worker events drive embedded/full-screen views, bounded anchored historical replay, connection recovery, dossiers and bidirectional map navigation. Phase 7 safeguard reconciliation is now accepted below; next follow the unchanged directive into Phase 8, without claiming real-source/device operational acceptance.
 - Operational checks still open: owner-Zorin/systemd deployment, permissioned live-source background acquisition, and real live cooperating-source acceptance from Phases 3–4.
 - Preserve all original interfaces, historical branches and assurance evidence through Phase 8 acceptance.
+
+## Phase 8 — IN PROGRESS: native association review
+
+Initial parity comparison uses the preserved operator routes/services and Phase 1
+capability baseline. Passing regression tests does not establish native feature parity.
+The original operator interface and historical assets remain intact.
+
+| Capability | Native integration / parity finding | Remaining work |
+| --- | --- | --- |
+| Shared investigation inventory, dossiers, evidence, map and live/historical graph | Existing native views query the governed investigation state; prior Phase 5/6 acceptance is retained | Compare all original footprint, timeline and entity-query controls/exports against native equivalents |
+| Human review of uncertain source associations | This slice connects the existing evidence-bound review service to native dossiers: inspect both source records/evidence, explicitly associate/reject, download receipt and reassess changed evidence | Complete browser acceptance below; broader parcel/source-review workflows remain separate |
+| Source registry and source revision inspection | Original `/api/source-registry` and `/api/source-revision` remain preserved; native Sources & Collection has SMARTS collection/scheduling and separate reviewed CEQA background controls | Integrate the existing governed registry/revision projection into the native source workspace; prove equivalent inspection |
+| Parcel and source-review queues | Original SMARTS parcel candidates, parcel candidates, candidate preview and source-review queue services remain available | Native equivalents are not yet demonstrated; reuse existing resolution/review boundaries |
+| Capture queue, ingestion inbox and operator exports | Original capture queue/inbox/package capabilities remain; shared retained-input processing and native dossier JSON export cover part of the workflow | Compare queue inspection, retained capture handling and report/archive exports; implement missing native actions |
+| Watchlists and monitoring | Native lead watchlist and original CEQA/permit source watchlist use distinct existing boundaries | Preserve source-specific watch/archive behavior and prove investigation monitoring parity |
+| Commercial workflows/results | Native versioned bid/royalty operations and legacy authoritative workflow/result services retain their safeguards | Native commercial screens are not yet proven equivalent to legacy workflow/result, request-evidence and preview/draft capabilities |
+| Approved visual design | New controls are confined to existing dossier dialogs, with scoped review styles; overview structure is retained | Exact pixel parity remains unaccepted; retain calibrated structure/font/pixel reporting |
+
+Implementation: preview and write reuse `InvestigationReviewService` over the existing
+private investigation store. Preview is read-only and binds both displayed source
+contexts to current state. Writes require strict input, explicit confirmation and a
+reason, and retain the service's stale-state, immutable audit and protected-effect
+checks. Local Host/Origin checks and the maintenance lock still apply. Association
+changes shared canonical inventory/graph context; rejection restores separate views.
+Neither decision verifies project identity or grants commercial authority. Retained
+source bytes remain unchanged. A failed/disconnected submission requires a fresh
+preview and new confirmation, with no automatic retry. Late preview responses cannot
+replace another open dialog. Multiline validation errors are flattened before entering
+HTTP status headers, repairing a failure exposed by negative endpoint tests.
+
+Verification: nine focused native review tests passed, including unchanged preview
+bytes, strict/overbroad payload rejection, cross-origin rejection, missing-store
+noncreation, association/rejection agreement and worker-revision invalidation. Full
+regression and the new browser journey are pending on this source checkpoint. The
+browser journey covers explicit confirmation, reassessment, late-dialog responses,
+shared graph agreement and dialog bounds at the approved 1672×941 viewport.
+
+**Phase 8 is not complete.** Next integrate governed source registry/revision inspection,
+then resolve the remaining native parity gaps above. Earlier source/device operational
+checks remain open. No main merge, original-interface retirement, live-source activation,
+owner-device deployment, outreach or bid submission has occurred.
 
 ## Phase 7 — IMPLEMENTATION AND REGRESSION ACCEPTED
 

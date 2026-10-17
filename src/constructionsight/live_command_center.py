@@ -32,7 +32,11 @@ from constructionsight import (
 from constructionsight import command_center_commercial as commercial
 from constructionsight import command_center_state as state
 from constructionsight.command_center_graph import graph_view
-from constructionsight.command_center_investigations import investigation_view
+from constructionsight.command_center_investigations import (
+    apply_investigation_review,
+    investigation_review_preview,
+    investigation_view,
+)
 from constructionsight.contact_call_list import (
     annotate_contacts,
     bulk_import,
@@ -272,6 +276,17 @@ def make_server(
         return dict(capture_status)
 
     class Handler(BaseHTTPRequestHandler):
+        def send_error(
+            self, code: int, message: str | None = None, explain: str | None = None,
+        ) -> None:
+            # Validation messages may contain newlines or user-entered Unicode;
+            # an HTTP reason phrase must never carry control characters.
+            if message is not None:
+                message = " ".join(
+                    "".join(c if 32 <= ord(c) <= 126 else " " for c in message).split()
+                )[:2000]
+            super().send_error(code, message, explain)
+
         def do_GET(self) -> None:
             try:
                 self.get_response()
@@ -463,6 +478,12 @@ def make_server(
                     anchor=query.get("anchor", [None])[0],
                     evidence_id=query.get("id", [None])[0],
                 )
+                body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
+            elif path == "/api/investigation-review":
+                choices = query.get("relationship", [])
+                if directory is None or set(query) != {"relationship"} or len(choices) != 1:
+                    raise ValueError("provide one existing candidate relationship")
+                value = investigation_review_preview(directory, choices[0])
                 body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
             elif path == "/api/investigations" or path.startswith("/api/investigations/"):
                 if directory is None:
@@ -685,6 +706,7 @@ def make_server(
                 "/api/royalty-contract",
                 "/api/scope-template",
                 "/api/royalty-entry",
+                "/api/investigation-review",
                 "/api/smarts-contacts-bulk",
                 "/api/data-folder",
                 "/api/restore-preview",
@@ -838,6 +860,8 @@ def make_server(
                                 target = Path(result["directory"])
                                 data_folder.point_startup(startup_directory, target)
                                 directory = target
+                    elif path == "/api/investigation-review":
+                        result = apply_investigation_review(directory, payload)
                     elif path == "/api/smarts-contacts-bulk":
                         if payload:
                             raise ValueError("Bulk contact import takes no options")

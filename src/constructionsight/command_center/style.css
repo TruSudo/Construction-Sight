@@ -98,3 +98,10 @@ header{font-family:'CS Inter';padding-top:9px;padding-bottom:9px;background:line
 #tiles img.usgs-tile{filter:none}
 #map-coverage{position:absolute;z-index:3;top:10px;right:10px;max-width:50%;border:1px solid #414141;border-radius:4px;background:#151a1bdd;color:#ddd;font:10px var(--mono);padding:5px 7px;pointer-events:none}
 #map-scale{position:absolute;z-index:3;right:12px;bottom:26px;height:8px;border-left:2px solid #fff;border-bottom:2px solid #fff;border-right:2px solid #fff;color:#fff;text-align:center;white-space:nowrap;font:10px var(--mono);text-shadow:0 1px 3px #000;background:#1115;box-sizing:content-box;pointer-events:none}
+
+/* Scoped to explicit association review; approved overview remains unchanged. */
+.association-review-preview{overflow-wrap:anywhere;min-width:0}
+.association-review-preview table{table-layout:fixed;width:100%}
+.association-review-preview select{width:100%;min-width:0;max-width:100%}
+.association-review-preview .form-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.association-review-preview pre{white-space:pre-wrap;overflow-wrap:anywhere}

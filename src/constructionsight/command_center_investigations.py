@@ -1,24 +1,71 @@
-"""Read-only bridge from the native Command Center to the existing investigation store.
+"""Native queries and explicit local reviews over the existing investigation store.
 
-The worker owns all evidence, identity decisions and revisions. This adapter
-does not initialize the database, invent map points or apply commercial scores.
+Queries remain read-only. Review writes use the established evidence-bound service;
+this bridge never initializes the database, invents map points or applies commercial scores.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.exc import SQLAlchemyError
 
+from constructionsight.authorization_decision import AuthorizationDeniedError
 from constructionsight.intelligence.investigation_query_service import InvestigationQueryService
+from constructionsight.intelligence.investigation_review_service import InvestigationReviewService
 from constructionsight.storage.database import (
+    create_private_database_engine,
     managed_session,
     prepare_private_database,
     session_factory,
 )
 from constructionsight.storage.intelligence_store import IntelligenceStore
 from constructionsight.storage.operator_read_store import create_operator_read_engine
+
+
+class AssociationReviewRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True, frozen=True)
+
+    relationship_id: str = Field(min_length=1, max_length=255)
+    expected_identity: str = Field(min_length=1, max_length=255)
+    decision: Literal["associate", "reject"]
+    target_id: str | None = Field(default=None, min_length=1, max_length=255)
+    reason: str = Field(min_length=1, max_length=4000)
+    caller_confirmation: bool
+    operator_id: str | None = Field(default=None, min_length=1, max_length=255)
+
+
+def investigation_review_preview(directory: Path, relationship_id: str) -> dict[str, Any]:
+    """Preview an existing candidate and evidence in a read-only SQLite snapshot."""
+    if not relationship_id or len(relationship_id) > 255:
+        raise ValueError("invalid candidate relationship identifier")
+    database = prepare_private_database(directory / "investigations.sqlite3", create=False)
+    engine = create_operator_read_engine(database)
+    try:
+        return InvestigationReviewService(engine).preview(relationship_id)
+    except SQLAlchemyError as exc:
+        raise ValueError("investigation review preview is unavailable") from exc
+    finally:
+        engine.dispose()
+
+
+def apply_investigation_review(directory: Path, payload: dict[str, Any]) -> dict[str, Any]:
+    """Use the existing scope-bound local review effect; never initialize a store."""
+    request = AssociationReviewRequest.model_validate(payload)
+    if not request.caller_confirmation:
+        raise ValueError("explicit confirmation is required for an association review")
+    database = prepare_private_database(directory / "investigations.sqlite3", create=False)
+    engine = create_private_database_engine(database, create=False)
+    try:
+        return InvestigationReviewService(engine).review(**request.model_dump())
+    except AuthorizationDeniedError as exc:
+        raise ValueError(str(exc)) from exc
+    except SQLAlchemyError as exc:
+        raise ValueError("investigation review could not be committed; reload the preview") from exc
+    finally:
+        engine.dispose()
 
 
 def investigation_view(
