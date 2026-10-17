@@ -514,11 +514,10 @@ def make_server(
                 from constructionsight.operator_web import _parameters
 
                 params = _parameters(urlsplit(self.path).query, candidate=True)
-                if (
-                    directory is None or params.record_id is None
-                    or params.kind not in ("ceqa", "permit")
-                ):
+                if directory is None or params.record_id is None:
                     raise ValueError("select an exact original CEQA or permit source")
+                if params.kind == "all":
+                    raise ValueError("select a single CEQA or permit family")
                 value = preview_legacy_reconciliation(
                     directory, operator_database, kind=params.kind,
                     record_id=params.record_id,
