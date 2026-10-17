@@ -13,16 +13,16 @@ from typing import Any
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from constructionsight.operator_capture_queue import (
+    empty_operator_capture_queue,
+    load_operator_capture_queue,
+)
 from constructionsight.operator_dashboard import (
     build_entity_neighborhood,
     build_geographic_footprint,
     build_historical_timeline,
     build_workflow_snapshot,
     build_workflow_status_summary,
-)
-from constructionsight.operator_capture_queue import (
-    empty_operator_capture_queue,
-    load_operator_capture_queue,
 )
 from constructionsight.operator_entity_index import build_entity_index
 from constructionsight.operator_parcel_candidates import inspect_parcel_candidates
