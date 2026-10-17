@@ -216,7 +216,10 @@ def enqueue_legacy_reconciliation(
                     created_at=datetime.fromtimestamp(queued.created_at, UTC),
                     source_record_refs=[approval.source_entity_id],
                     payload=approval.model_dump(mode="json"),
-                    message="Original exact source replay reviewed and queued; no identity approval.",
+                    message=(
+                        "Original exact source replay reviewed and queued; "
+                        "no identity approval."
+                    ),
                 )
             )
     finally:
