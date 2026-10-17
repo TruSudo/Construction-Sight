@@ -7,7 +7,11 @@ Relationship Graph remain the goal. Full unification and functional parity are n
 
 ## Exact recovery checkpoint
 
-- Development branch: `agent/unification-implementation-2026-10-16`, draft PR #234. Latest fully verified Phase 8 application/test source: `ff21ac551dcdd3b14fdfe37ee8262a30de2bc17a` (full quality gates and browser workflow passed). Phase 7 remains accepted at `3429b14f847163083dfdf32b181bc231d17605c6`.
+- Latest Phase 8 continuation: published `efc8ba9d703c0ae3d23cdecc7f007b97e502d569`;
+  full browser/USGS checks and both complete Python quality gates passed. Local
+  `2131fa1` restores the prior source icon after its replacement measured worse;
+  that subsequent visual-only correction must receive its own comparison check.
+- Development branch: `agent/unification-implementation-2026-10-16`, draft PR #234. Latest fully verified Phase 8 application/test source: `efc8ba9d703c0ae3d23cdecc7f007b97e502d569` (full quality gates and browser workflow passed). Phase 7 remains accepted at `3429b14f847163083dfdf32b181bc231d17605c6`.
 - Latest source accepted for Phase 6: `5c03cd80cde497b2dfc0e3533a913000db280812` (anchored historical snapshots, retained-history timeline/comparison, saved layouts, source/date/confidence controls, source grouping, activity highlighting, and bidirectional graph/map navigation). Phase 5 remains pinned to `44e80090219a0ad0938dbec44848233d089bcf2d`.
 - **Phase 7 implementation and regression acceptance is complete** for the controlling directive and currently integrated runtime. The final reconciliation and exact-source results below supersede the older continuation checkpoints. Phase 8 is now in progress; preserve the original interface and all historical assets.
 - Phase 5 native integration is implemented. Exact-source acceptance results are recorded below.
@@ -18,7 +22,7 @@ Relationship Graph remain the goal. Full unification and functional parity are n
 
 ## Phase 8 — IN PROGRESS: native preservation and original-workflow parity
 
-**Verified application/test source:** `ff21ac551dcdd3b14fdfe37ee8262a30de2bc17a`.
+**Verified application/test source:** `efc8ba9d703c0ae3d23cdecc7f007b97e502d569`.
 Original operator assets, historical branches, the previous native association-review
 acceptance, and the shared investigation graph remain preserved. The legacy database
 is an explicitly selected, separate source; displaying its records does **not**
@@ -26,6 +30,30 @@ automatically reconcile them into the canonical native site investigation.
 
 **Implemented and tested in the approved native Command Center:**
 
+- Overview and Site Map now use the same retained investigation identities. The
+  automatic USGS provider is resolved before generating tile URLs; all provider
+  modes, failure fallback, region changes during requests, and stale-region
+  exclusion are exercised through the actual renderer. Unavailable or unqueried
+  stores no longer assert a completed investigation scan.
+- Native inventory, dossiers and overview now compare the existing immutable
+  event-tip ID with the sequence, detecting restored sibling histories even
+  when their event counts agree. Mixed-lineage map pages are rejected, and an
+  open overview dossier follows worker revisions. No database migration or
+  evidence/authority changes. Thirty focused investigation/graph/service tests
+  and forty original workflow/assurance tests passed locally; Ruff and strict
+  Mypy (355 modules) passed. Browser run `39056429089` passed all 33 actions and
+  33 complete contracts, retained worker/dossier refresh, and the live USGS probe.
+  Native legend spacing improved measured map error; watchlist star fill was
+  corrected. Exact approved-reference pixel parity remains open; comparison
+  thresholds, masks and the reference asset are unchanged.
+- Exact-source [Python CI 39056429072](https://github.com/TruSudo/Construction-Sight/actions/runs/39056429072):
+  **2,757 passed on Python 3.11 and 2,757 on Python 3.12**, two non-failing upstream
+  warnings each; Ruff, strict Mypy, JS syntax and dependency audit passed.
+  [Browser/USGS 39056429089](https://github.com/TruSudo/Construction-Sight/actions/runs/39056429089)
+  passed. Pixel parity did not pass: the trial source icon raised sidebar error,
+  so it is restored to the prior version. The accepted legend change reduced map
+  mean error from 11.055 to 9.982 and local peak from 34.674 to 32.999. All other
+  existing acceptance gaps below remain open; this is not Phase 8 completion.
 - The existing evidence-bound association preview, explicit associate/reject review,
   stale-evidence rejection and canonical map/graph reassessment remain intact.
 - Sources & Collection now reuses the original read-only CEQA/permit registry,
