@@ -77,10 +77,10 @@ from constructionsight.lead_workflow import (
 )
 from constructionsight.parcel_use_enrichment import load_claims
 from constructionsight.security_fit import WEIGHTS_PATH, load_weights, rank_leads
-from constructionsight.storage.runtime_artifacts import open_runtime_artifact
 from constructionsight.smarts_active import collect_active
 from constructionsight.smarts_api import USER_AGENT
 from constructionsight.spatial_parcel_use import load_claims as load_spatial_claims
+from constructionsight.storage.runtime_artifacts import open_runtime_artifact
 
 ASSETS = Path(__file__).parent / "command_center"
 
