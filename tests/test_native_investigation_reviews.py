@@ -73,6 +73,7 @@ def test_native_preview_is_read_only_and_associate_then_reject_preserves_source_
     assert preview["review_applied"] is False
     assert len(preview["investigations"]) == 2
     assert all(len(d["source_membership"]) == 1 for d in preview["investigations"].values())
+    assert all(d["evidence"] for d in preview["investigations"].values())
     assert {
         p.relative_to(directory): p.read_bytes() for p in directory.rglob("*") if p.is_file()
     } == before

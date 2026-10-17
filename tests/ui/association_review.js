@@ -37,6 +37,8 @@ const {spawnSync}=require('child_process');
   await openDossier();await page.locator('[data-association-review]').first().click();
   await page.waitForSelector('#association-review-form');
   if(!(await page.locator('#action-content').textContent()).includes('does not verify project identity'))throw Error('Review limitations missing');
+  const displayed=await page.locator('[data-review-evidence]').allTextContents();
+  if(displayed.length!==2||displayed.some(text=>{const detail=JSON.parse(text);return !detail.sources?.length||!detail.evidence?.length||detail.evidence.some(record=>!record.content_hash);}))throw Error('Retained claims or hashed evidence missing from review');
   await page.selectOption('#association-review-form [name=decision]','associate');
   const target=preview.target_choices[0];
   await page.selectOption('#association-review-form [name=target]',target);
