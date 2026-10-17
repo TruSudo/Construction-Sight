@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import threading
 from datetime import date
 from pathlib import Path
@@ -185,7 +186,7 @@ def test_original_ceqa_artifacts_are_inspected_without_ingesting_or_mutating(
     engine.dispose()
     listing, review = _write_artifacts(tmp_path)
     capture = tmp_path / "capture.json"
-    capture.write_text(__import__("json").dumps(_payload()), encoding="utf-8")
+    capture.write_text(json.dumps(_payload()), encoding="utf-8")
     paths = (database, listing, review, capture)
     original = [hashlib.sha256(path.read_bytes()).hexdigest() for path in paths]
     server = make_server(
