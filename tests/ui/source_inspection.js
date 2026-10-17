@@ -303,6 +303,9 @@ const {chromium} = require('../visual/node_modules/playwright');
     const matchedHistory = await page.locator('#original-workflow-attribution-result')
       .textContent();
     if (!matchedHistory.includes('"current_native_observation_matches_original": true') ||
+        !matchedHistory.includes('"history_integrity_validated": true') ||
+        !matchedHistory.includes('"event_count": 2') ||
+        !matchedHistory.includes('Synthetic history: original operator moved') ||
         !matchedHistory.includes('"gross_value_minor": 250000') ||
         !matchedHistory.includes('"calculated_share_minor": 20000') ||
         !matchedHistory.includes('"royalty_entitlement_verified": false') ||
@@ -335,6 +338,9 @@ const {chromium} = require('../visual/node_modules/playwright');
     const commercialContext = await page.locator('#native-original-lineage-detail')
       .textContent();
     if (!commercialContext.includes('"matching_workflow_total": 1') ||
+        !commercialContext.includes('"history_integrity_validated": true') ||
+        !commercialContext.includes('"event_count": 2') ||
+        !commercialContext.includes('Synthetic history: original operator moved') ||
         !commercialContext.includes('"gross_value_minor": 250000') ||
         !commercialContext.includes('"share_rate_ppm": 80000') ||
         !commercialContext.includes('"calculated_share_minor": 20000') ||
