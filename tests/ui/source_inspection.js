@@ -51,7 +51,7 @@ const {chromium} = require('../visual/node_modules/playwright');
     await page.locator('#source-reconcile-audit').click();
     await page.waitForFunction(() =>
       document.querySelector('#action-content')?.textContent
-        .includes('"job_status": "queued"'));
+        .includes('"schema_version": "constructionsight.original-replay-audit/v1"'));
     const audit = await page.locator('#action-content').textContent();
     if (!audit.includes('original-replay-audit/v1') ||
         !audit.includes('Reviewed exact retained source and confirm native worker') ||
