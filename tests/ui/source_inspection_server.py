@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -36,7 +37,13 @@ database = args.data_dir / "operator-source.sqlite3"
 engine = create_database_engine(f"sqlite:///{database}")
 initialize_database(engine)
 with Session(engine) as session, session.begin():
-    package = _package()
+    source_candidate_id = "source-candidate:" + hashlib.sha256(
+        json.dumps(
+            ["ceqa", "phase8:browser:source"],
+            separators=(",", ":"), ensure_ascii=False,
+        ).encode("utf-8")
+    ).hexdigest()
+    package = _package().model_copy(update={"base_candidate_id": source_candidate_id})
     workflow = create_lead_workflow(package=package)
     store_lead_review_package(session, package)
     store_lead_workflow_record(session, workflow)
