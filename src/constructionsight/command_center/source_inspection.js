@@ -7,11 +7,12 @@ async function renderRetainedSources(box) {
   root.className = 'retained-source-inspection';
   root.innerHTML = '<h3>Government source registry & retained review</h3><p role="status">Reading existing source records locally…</p>';
   box.append(root);
-  let registry, revision;
+  let registry, revision, watches;
   try {
-    [registry, revision] = await Promise.all([
+    [registry, revision, watches] = await Promise.all([
       api('/api/source-registry'),
-      api('/api/source-revision')
+      api('/api/source-revision'),
+      api('/api/source-watchlist')
     ]);
   } catch (error) {
     if (root.isConnected) root.innerHTML =
@@ -51,6 +52,16 @@ async function renderRetainedSources(box) {
       familyRows.map(([name, r]) => [
         esc(name), esc(r.record_count), esc(r.latest_updated_at), esc(r.highest_row_id)
       ])) +
+    '<h3>Source-specific watchlist</h3><p>Distinct from the commercial lead watchlist. ' +
+    'Changes in retained source records can trigger existing watches; this display does not poll sources or notify anyone.</p>' +
+    table(['Source', 'Family', 'County', 'Watch status', 'Changed'],
+      (watches.items || []).slice(0, 100).map(w => [
+        esc(w.title || w.record_id), esc(w.record_kind), esc(w.county),
+        esc(w.status), w.change_pending ? 'Retained change pending review' : '—'
+      ])) +
+    '<p>' + esc(watches.total || 0) + ' active source watches; ' +
+    'source monitoring: ' + (watches.source_monitoring_enabled ? 'enabled' : 'not enabled') +
+    '. Existing archive/add actions remain in the preserved operator system.</p>' +
     '<h3>Source observation review queue</h3>' +
     '<p>Exact retained CEQA/permit observations. Review does not merge investigations, authorize bids or send outreach.</p>' +
     '<form id="retained-source-filters" class="source-toolbar">' +
@@ -131,4 +142,56 @@ async function renderRetainedSources(box) {
     perform(loadPage);
   };
   await loadPage();
+}
+
+ 
+// A separate historical commercial read model, never a substitute for native bid authority.
+async function renderLegacyCommercial(box, category) {
+  if (!box.isConnected || activePage !== category) return;
+  const root = document.createElement('section');
+  root.className = 'retained-source-inspection';
+  root.innerHTML = '<h3>Preserved workflow / outcome records</h3><p role="status">Inspecting local records…</p>';
+  box.append(root);
+  try {
+    const [summary, page] = await Promise.all([
+      api('/api/workflow-summary'),
+      api(category === 'Bid Studio' ? '/api/workflows?limit=25&offset=0' :
+        '/api/results?limit=25&offset=0')
+    ]);
+    if (!root.isConnected || activePage !== category) return;
+    if (!summary.available || !page.available) {
+      root.innerHTML = '<h3>Preserved workflow / outcome records</h3>' +
+        '<p>Not connected. Configure the existing operator source database to inspect ' +
+        'the historical governed records without modifying them.</p>';
+      return;
+    }
+    const records = category === 'Bid Studio' ? page.leads || [] : page.results || [];
+    root.innerHTML = '<h3>Preserved workflow / outcome records</h3>' +
+      '<p>Legacy records are displayed separately from current native bids/royalties. ' +
+      'They are not independently verified current jobs, payments, or permission to send. ' +
+      'Persisted workflows: ' + esc(summary.total) + '; displayed records: ' +
+      esc(records.length) + ' of ' + esc(page.total) +
+      (page.has_more ? ' (more exist; this view is bounded to 25)' : '') + '.</p>' +
+      table(['Retained identity', 'Status / evidence', 'Inspection'],
+        records.map((r, i) => [
+          esc(r.workflow_id || r.ledger_id || r.candidate_key || 'Retained outcome'),
+          esc(r.status || r.current_status || r.summary || 'Stored historical fact'),
+          '<button data-original-record="' + i + '">Inspect history</button>'
+        ])) +
+      '<p>' + esc((page.limitations || summary.limitations || []).join(' ')) + '</p>' +
+      '<button id="legacy-record-export">Export displayed retained JSON</button>';
+    root.querySelector('#legacy-record-export').onclick = () =>
+      download(category === 'Bid Studio' ? 'original-workflows.json' :
+        'original-results.json', page);
+    root.querySelectorAll('[data-original-record]').forEach(button => {
+      button.onclick = () => modal('Preserved authoritative record',
+        '<p>Historical retained data, not a new commercial authorization.</p><pre>' +
+        esc(JSON.stringify(records[Number(button.dataset.originalRecord)], null, 2)) +
+        '</pre>');
+    });
+  } catch (error) {
+    if (root.isConnected && activePage === category)
+      root.innerHTML = '<h3>Preserved workflow / outcome records</h3>' +
+        '<p role="alert">' + esc(error.message) + '</p>';
+  }
 }
