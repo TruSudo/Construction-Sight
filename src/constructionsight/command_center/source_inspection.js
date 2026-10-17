@@ -64,6 +64,7 @@ async function renderRetainedSources(box) {
     '<button type="submit">Inspect</button></form>' +
     '<div id="retained-source-queue" aria-live="polite"></div>' +
     '<div id="retained-capture-inbox" aria-live="polite"></div>' +
+    '<div id="retained-ceqanet-export" aria-live="polite"></div>' +
     '<div id="retained-smarts-history" aria-live="polite"></div>' +
     '<div id="retained-history-inspection"></div>';
   const watchPanel = root.querySelector('#retained-source-watchlist');
@@ -230,6 +231,7 @@ async function renderRetainedSources(box) {
   await loadPage();
   await Promise.all([
     renderRetainedCaptureInbox(root.querySelector('#retained-capture-inbox')),
+    renderRetainedCeqanetExport(root.querySelector('#retained-ceqanet-export')),
     renderRetainedSmartsHistory(root.querySelector('#retained-smarts-history')),
     renderRetainedHistory(root.querySelector('#retained-history-inspection'))
   ]);
@@ -390,6 +392,64 @@ async function renderRetainedSmartsHistory(box) {
     perform(load);
   };
   await load();
+}
+
+
+// The original independently verified report / bundle / ZIP path; never source collection.
+async function renderRetainedCeqanetExport(box) {
+  if (!box || !box.isConnected || activePage !== 'Sources & Collection') return;
+  box.innerHTML = '<h3>Original CEQAnet verified operator package</h3>' +
+    '<p role="status">Checking exact configured report…</p>';
+  try {
+    const status = await api('/api/source-ceqanet-export-status');
+    if (!box.isConnected || activePage !== 'Sources & Collection') return;
+    if (!status.configured) {
+      box.innerHTML = '<h3>Original CEQAnet verified operator package</h3>' +
+        '<p>No original chain report is selected. Pass ' +
+        '<code>--operator-ceqanet-chain-report</code> at launch to enable an ' +
+        'explicit local ZIP export. No archive has been fabricated.</p>';
+      return;
+    }
+    const sha = status.retained_report_sha256;
+    box.innerHTML = '<h3>Original CEQAnet verified operator package</h3>' +
+      '<p>Exact retained chain report SHA-256: <code>' + esc(sha) + '</code>. ' +
+      'The original package, persistence/write previews, report, manifest and ' +
+      'deterministic ZIP are checked before a download is offered. Exporting ' +
+      'does not acquire records, contact prospects or authorize bids.</p>' +
+      '<label><input id="original-export-confirm" type="checkbox"> ' +
+      'I authorize only a local verified export of this exact retained report.</label>' +
+      '<button id="original-export-generate">Build verified operator ZIP</button>' +
+      '<div id="original-export-result" aria-live="polite"></div>';
+    const generate = box.querySelector('#original-export-generate');
+    generate.onclick = () => perform(async () => {
+      if (!box.querySelector('#original-export-confirm').checked) {
+        throw Error('Explicit local report export confirmation is required.');
+      }
+      generate.disabled = true;
+      try {
+        const receipt = await api('/api/source-ceqanet-export', {
+          expected_report_sha256: sha, caller_confirmation: true
+        });
+        if (!box.isConnected || activePage !== 'Sources & Collection') return;
+        if (!receipt.verification_passed || !receipt.archive_available) {
+          throw Error('Original CEQAnet ZIP verification was not established.');
+        }
+        const output = box.querySelector('#original-export-result');
+        output.innerHTML = '<p>Verified original operator ZIP is ready. ' +
+          'No commercial action was authorized.</p><a id="original-export-download" ' +
+          'href="' + esc(receipt.archive_url) +
+          '" download="ceqanet-operator-export.zip">Download verified ZIP</a>' +
+          '<details><summary>Verification receipt</summary><pre>' +
+          esc(JSON.stringify(receipt, null, 2)) + '</pre></details>';
+      } finally {
+        if (generate.isConnected) generate.disabled = false;
+      }
+    });
+  } catch (error) {
+    if (box.isConnected && activePage === 'Sources & Collection') box.innerHTML =
+      '<h3>Original CEQAnet verified operator package</h3>' +
+      '<p role="alert">' + esc(error.message) + '</p>';
+  }
 }
 
 // Original source-scoped investigation projections. Keys here are NOT native verified identities.
