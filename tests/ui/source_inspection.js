@@ -261,6 +261,63 @@ const {chromium} = require('../visual/node_modules/playwright');
     if (!resultText.includes('Legacy records are displayed separately')) {
       throw Error('Native result comparison is absent: ' + resultText.slice(0, 500));
     }
+    await page.waitForSelector('.retained-source-inspection [data-original-attribution]');
+    await page.locator('.retained-source-inspection [data-original-attribution]')
+      .first().click();
+    await page.waitForSelector('#original-workflow-attribution-form');
+    await page.locator('#original-workflow-attribution-form [name="record_id"]')
+      .fill('phase8:browser:dossier');
+    await page.locator('#original-workflow-attribution-form button[type="submit"]')
+      .click();
+    await page.waitForFunction(() =>
+      document.querySelector('#original-workflow-attribution-result')?.textContent
+        .includes('Exact attribution rejected'));
+    if ((await page.locator('#original-workflow-attribution-result').textContent())
+      .includes('canonical_investigation_id')) {
+      throw Error('Unrelated original workflow was granted a native investigation');
+    }
+    await page.locator('#original-workflow-attribution-form [name="record_id"]')
+      .fill('phase8:browser:source');
+    await page.locator('#original-workflow-attribution-form button[type="submit"]')
+      .click();
+    await page.waitForFunction(() =>
+      document.querySelector('#original-workflow-attribution-result')?.textContent
+        .includes('original-workflow-source-attribution/v1'));
+    const exactUnretained = await page.locator('#original-workflow-attribution-result')
+      .textContent();
+    if (!exactUnretained.includes('"source_identity_match": true') ||
+        !exactUnretained.includes('"current_native_observation_matches_original": false') ||
+        !exactUnretained.includes('"payment_received_verified": false') ||
+        await page.locator('#original-attribution-open-native').count()) {
+      throw Error('Unretained source was incorrectly linked to a native investigation');
+    }
+    await page.click('#action-close');
+    await page.locator('.retained-source-inspection [data-original-attribution]')
+      .nth(1).click();
+    await page.waitForSelector('#original-workflow-attribution-form');
+    await page.locator('#original-workflow-attribution-form [name="record_id"]')
+      .fill('phase8:browser:dossier');
+    await page.locator('#original-workflow-attribution-form button[type="submit"]')
+      .click();
+    await page.waitForSelector('#original-attribution-open-native');
+    const matchedHistory = await page.locator('#original-workflow-attribution-result')
+      .textContent();
+    if (!matchedHistory.includes('"current_native_observation_matches_original": true') ||
+        !matchedHistory.includes('"gross_value_minor": 250000') ||
+        !matchedHistory.includes('"calculated_share_minor": 20000') ||
+        !matchedHistory.includes('"royalty_entitlement_verified": false') ||
+        !matchedHistory.includes('"bid_authorized": false')) {
+      throw Error('Exact workflow-to-native source attribution omitted integrity safeguards');
+    }
+    await page.locator('#original-attribution-open-native').click();
+    await page.waitForFunction(() =>
+      document.querySelector('#action-content')?.textContent
+        .includes('Exact original commercial lineage'));
+    if (!(await page.locator('#action-content').textContent())
+      .includes('phase8:browser:dossier')) {
+      throw Error('Exact original Royalty Ledger workflow did not open canonical dossier');
+    }
+    await page.click('#action-close');
     await page.click('nav button[data-page="Project Intelligence"]');
     await page.waitForSelector('[data-shared-investigations] button[data-investigation-id]');
     await page.locator('[data-shared-investigations] button[data-investigation-id]')
