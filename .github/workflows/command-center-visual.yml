@@ -86,6 +86,16 @@ jobs:
             sleep 0.2
           done
           node tests/ui/association_review.js http://127.0.0.1:8782 /tmp/cs-review-state
+      - name: Native retained source registry and original commercial inspection
+        if: always()
+        run: |
+          PYTHONPATH=src python tests/ui/source_inspection_server.py --data-dir /tmp/cs-source-native --port 8783 > /tmp/cs-source.log 2>&1 &
+          for attempt in $(seq 1 40); do
+            if curl --silent --fail http://127.0.0.1:8783/ > /dev/null; then break; fi
+            sleep 0.2
+          done
+          curl --silent --fail http://127.0.0.1:8783/ > /dev/null || { cat /tmp/cs-source.log; exit 1; }
+          node tests/ui/source_inspection.js http://127.0.0.1:8783
       - name: Versioned scope and price editing
         if: always()
         run: node tests/ui/catalog.js http://127.0.0.1:8766
