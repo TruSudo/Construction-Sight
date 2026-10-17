@@ -53,6 +53,22 @@ const {chromium} = require('../visual/node_modules/playwright');
       throw Error('Original capture candidate evidence is not inspectable');
     }
     await page.click('#action-close');
+    await page.waitForSelector('#source-smarts-change-results [data-smarts-parcel]');
+    const originalSmarts = await page.locator('#retained-smarts-history').textContent();
+    if (!originalSmarts.includes('smarts:facility:Riverside:wdid:8 33C101') ||
+        !originalSmarts.includes('candidate changes') ||
+        originalSmarts.includes('secret@example.test')) {
+      throw Error('Private SMARTS changes or source privacy missing in native panel');
+    }
+    await page.locator('#source-smarts-change-results [data-smarts-parcel]').first().click();
+    await page.waitForSelector('#action-dialog[open]');
+    const smartsParcel = await page.locator('#action-content').textContent();
+    if (!smartsParcel.includes('parcel:browser:smarts') ||
+        !smartsParcel.includes('parcel_identity_verified') ||
+        !smartsParcel.includes('false') || smartsParcel.includes('secret@example.test')) {
+      throw Error('Verified current SMARTS snapshot exact parcel candidate unavailable');
+    }
+    await page.click('#action-close');
     await page.locator('[data-history-mode="entities"]').click();
     await page.waitForSelector('[data-historical-entity]');
     const entityText = await page.locator('#retained-history-results').textContent();
