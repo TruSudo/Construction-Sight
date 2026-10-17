@@ -90,7 +90,7 @@ const {spawnSync}=require('child_process');
   if(new Set(afterIds).size!==afterIds.length)throw Error('Event replay duplicated nodes');
   const historyEntries=await page.evaluate(async()=>fetch('/api/investigation-graph/history-index').then(r=>r.json()));
   if(!historyEntries.events?.length)throw Error('Retained revision timeline is empty');
-  const first=historyEntries.events[0];
+  const first={sequence:initial.cursor,event_id:initial.anchor};
   const earlier=await page.evaluate(async revision=>{
    const query=new URLSearchParams({after:String(revision.sequence),anchor:revision.event_id});
    const response=await fetch('/api/investigation-graph/history?'+query);
