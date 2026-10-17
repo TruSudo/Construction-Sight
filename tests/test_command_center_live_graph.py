@@ -184,6 +184,65 @@ def test_graph_filter_metadata_is_retained_and_read_only(tmp_path: Path) -> None
     assert (directory / "investigations.sqlite3").read_bytes() == before
 
 
+def test_historical_graph_replays_retained_before_and_after_without_mutation(
+    tmp_path: Path,
+) -> None:
+    directory = tmp_path / "private"
+    directory.mkdir(mode=0o700)
+    _ingest(directory, "Before historical revision")
+    before = graph_view(directory)
+    historical = graph_view(
+        directory, mode="history", after=before["cursor"], anchor=before["anchor"]
+    )
+    assert historical["historical"] is True
+    assert historical["as_of_sequence"] == before["cursor"]
+    assert any(node["label"] == "Before historical revision" for node in historical["nodes"])
+    _ingest(directory, "After historical revision")
+    current = graph_view(directory)
+    original_bytes = (directory / "investigations.sqlite3").read_bytes()
+    prior = graph_view(
+        directory, mode="history", after=before["cursor"], anchor=before["anchor"]
+    )
+    after = graph_view(
+        directory, mode="history", after=current["cursor"], anchor=current["anchor"]
+    )
+    assert any(node["label"] == "Before historical revision" for node in prior["nodes"])
+    assert not any(node["label"] == "After historical revision" for node in prior["nodes"])
+    assert any(node["label"] == "After historical revision" for node in after["nodes"])
+    assert {edge["id"] for edge in prior["edges"]} <= {
+        edge["id"] for edge in after["edges"]
+    }
+    assert graph_view(directory, mode="history_index")["events"]
+    assert (directory / "investigations.sqlite3").read_bytes() == original_bytes
+    assert not prior["commercial_authority_granted"]
+    assert all(node["identity_verified"] is False for node in prior["nodes"])
+
+
+def test_historical_graph_requires_exact_anchor_and_bounded_revision_lineage(
+    tmp_path: Path,
+) -> None:
+    from pytest import raises
+
+    directory = tmp_path / "private"
+    directory.mkdir(mode=0o700)
+    _ingest(directory)
+    current = graph_view(directory)
+    with raises(ValueError, match="anchor"):
+        graph_view(directory, mode="history", after=current["cursor"], anchor="wrong")
+    with raises(ValueError, match="positive"):
+        graph_view(directory, mode="history", after=0, anchor="wrong")
+    with raises(ValueError, match="ahead"):
+        graph_view(
+            directory, mode="history", after=current["cursor"] + 100, anchor="wrong"
+        )
+    index = graph_view(directory, mode="history_index")
+    assert index["events"] and index["tip"] == current["cursor"]
+    assert all(item["event_id"].startswith("event:revision:") for item in index["events"])
+    assert graph_view(
+        directory, mode="history_index", after=index["events"][-1]["sequence"]
+    )["available"]
+
+
 def test_native_graph_http_and_uncommitted_state(tmp_path: Path) -> None:
     directory = tmp_path / "private"
     directory.mkdir(mode=0o700)
