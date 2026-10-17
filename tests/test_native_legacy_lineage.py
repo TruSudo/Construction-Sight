@@ -103,6 +103,37 @@ def test_exact_original_candidate_lineage_requires_evidence_not_auto_merges(
             assert record["workflow_id"] == matched_workflow.workflow_id
             assert record["canonical_investigation_id"] is None
             assert record["original_candidate_key"] == candidate.candidate_key
+            exact = client.get("/api/original-workflow-attribution", params={
+                **selection, "workflow": matched_workflow.workflow_id,
+            })
+            assert exact.status_code == 200, exact.text
+            detail = exact.json()
+            assert detail["source_identity_match"] is True
+            assert detail["current_native_observation_matches_original"] is False
+            assert detail["canonical_investigation_id"] is None
+            assert detail["historical_result"]["revision_count"] == 2
+            assert detail["outreach_authorized"] is False
+            assert detail["bid_authorized"] is False
+            assert detail["payment_received_verified"] is False
+            assert detail["royalty_entitlement_verified"] is False
+            for invalid in (
+                {"workflow": create_lead_workflow(package=unrelated).workflow_id,
+                 **selection},
+                {"workflow": matched_workflow.workflow_id,
+                 "kind": "permit", "record_id": "phase8:lineage"},
+                {"workflow": matched_workflow.workflow_id,
+                 "kind": "ceqa", "record_id": "phase8:unrelated"},
+            ):
+                rejected = client.get("/api/original-workflow-attribution", params=invalid)
+                assert rejected.status_code == 409
+            for bad_query in (
+                "workflow=x&kind=all&record_id=phase8:lineage",
+                "workflow=x&kind=ceqa&record_id=phase8:lineage&extra=1",
+                "workflow=x&workflow=y&kind=ceqa&record_id=phase8:lineage",
+            ):
+                assert client.get(
+                    "/api/original-workflow-attribution?" + bad_query
+                ).status_code == 409
             assert record["review_package_status"] == "ready"
             outcome = record["historical_result"]
             assert outcome["has_retained_outcome"] is True
@@ -152,6 +183,16 @@ def test_exact_original_candidate_lineage_requires_evidence_not_auto_merges(
             after = aligned.json()
             assert after["native_state"] == "exact_observation_already_retained"
             assert after["canonical_investigation_id"] is not None
+            after_attribution = client.get(
+                "/api/original-workflow-attribution",
+                params={**selection, "workflow": matched_workflow.workflow_id},
+            )
+            assert after_attribution.status_code == 200, after_attribution.text
+            assert after_attribution.json()["canonical_investigation_id"] == (
+                after["canonical_investigation_id"]
+            )
+            assert after_attribution.json()["current_native_observation_matches_original"] is True
+            assert after_attribution.json()["same_project_identity_independently_verified"] is False
             assert after["matching_workflow_total"] == 1
             assert after["matching_workflows"][0]["canonical_investigation_id"] == (
                 after["canonical_investigation_id"]
