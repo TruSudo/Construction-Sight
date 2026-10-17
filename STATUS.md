@@ -7,7 +7,7 @@ Relationship Graph remain the goal. Full unification and functional parity are n
 
 ## Exact recovery checkpoint
 
-- Development branch: `agent/unification-implementation-2026-10-16`, draft PR #234. Latest fully verified Phase 8 application/test source: `f662b95b9f4db7954ce053d4e1cc46f0ebe4bcc7` (full quality gates and browser workflow passed). Phase 7 remains accepted at `3429b14f847163083dfdf32b181bc231d17605c6`.
+- Development branch: `agent/unification-implementation-2026-10-16`, draft PR #234. Latest fully verified Phase 8 application/test source: `00b67e30b19cd892a4f717072a7b65c0c1589a0a` (full quality gates and browser workflow passed). Phase 7 remains accepted at `3429b14f847163083dfdf32b181bc231d17605c6`.
 - Latest source accepted for Phase 6: `5c03cd80cde497b2dfc0e3533a913000db280812` (anchored historical snapshots, retained-history timeline/comparison, saved layouts, source/date/confidence controls, source grouping, activity highlighting, and bidirectional graph/map navigation). Phase 5 remains pinned to `44e80090219a0ad0938dbec44848233d089bcf2d`.
 - **Phase 7 implementation and regression acceptance is complete** for the controlling directive and currently integrated runtime. The final reconciliation and exact-source results below supersede the older continuation checkpoints. Phase 8 is now in progress; preserve the original interface and all historical assets.
 - Phase 5 native integration is implemented. Exact-source acceptance results are recorded below.
@@ -18,7 +18,7 @@ Relationship Graph remain the goal. Full unification and functional parity are n
 
 ## Phase 8 — IN PROGRESS: native preservation and original-workflow parity
 
-**Verified application/test source:** `f662b95b9f4db7954ce053d4e1cc46f0ebe4bcc7`.
+**Verified application/test source:** `00b67e30b19cd892a4f717072a7b65c0c1589a0a`.
 Original operator assets, historical branches, the previous native association-review
 acceptance, and the shared investigation graph remain preserved. The legacy database
 is an explicitly selected, separate source; displaying its records does **not**
@@ -70,6 +70,32 @@ automatically reconcile them into the canonical native site investigation.
 - All additions remain confined to existing Command Center workspaces; the
   approved overview/sidebar structure was not replaced or redesigned.
 
+**Latest exact-source approval audit and historical commercial candidate lineage:**
+
+- A local source-replay approval now commits **atomically** with the queued
+  investigation worker job in the existing immutable runtime-event database.
+  The approval retains the exact original source SHA-256, deterministic native
+  source/evidence identity, explicit confirmation and review reason. The worker
+  checks that audit and refuses any replay that became stale or disagrees with
+  the retained approved source. A read-only native audit view shows the current
+  job state and its original review rationale. No named operator authentication
+  or independently verified project identity is claimed.
+- A bounded native commercial lineage view now locates retained original lead
+  workflows **only** when their indexed base-candidate ID equals the original
+  CEQA/permit source-candidate identity. It validates each persisted workflow
+  and exact review package, shows historical workflow status and unverified
+  outcome revision counts, and references a canonical investigation only when
+  the current exact source observation is retained there. No source lineage
+  establishes a same-project review, commercial authorization, share
+  entitlement, paid royalty or valid contract.
+- [CI 39033370170](https://github.com/TruSudo/Construction-Sight/actions/runs/39033370170):
+  **2,746 passed on both Python 3.11 and Python 3.12**, two non-failing
+  warnings each; both quality gates passed.
+- [Browser/USGS 39033370114](https://github.com/TruSudo/Construction-Sight/actions/runs/39033370114):
+  both jobs passed, including the new audit and candidate-lineage browser
+  journey, existing commercial journeys, graph and mapping, and all configured
+  functional-contract checks. Exact approved-mockup pixel parity remains open.
+
 **Latest source-reconciliation and verified-export acceptance:**
 
 - [CI 39029895949](https://github.com/TruSudo/Construction-Sight/actions/runs/39029895949):
@@ -99,11 +125,12 @@ automatically reconcile them into the canonical native site investigation.
 **Still open before Phase 8 acceptance / merge proposal:**
 
 1. Expand the verified one-at-a-time CEQA/permit source replay into complete,
-   durable, source-scoped historical migration/reassessment where authorized.
-   Reconcile legacy commercial workflow/outcome identities and royalties with
-   native site investigations without conflating records. Record the explicit
-   replay review rationale in durable audit evidence before claiming full
-   provenance/audit parity.
+   source-scoped migration/reassessment where authorized. The exact candidate
+   lineage and durable replay reason are now accepted, but financial outcome,
+   royalty and historical workflow transitions remain **separate original
+   records**, not migrated canonical commercial state. Establish those links
+   with independent source evidence and explicit review without fabricating
+   same-project identity, payment or commercial authority.
 2. Compare the remaining historical original source/report/archive workflows
    and any original investigation controls against their native equivalents;
    the original CEQAnet chain-report ZIP pathway is now retained and proven,
