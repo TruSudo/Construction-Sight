@@ -14,11 +14,17 @@ from constructionsight.investigation_runtime import InvestigationRuntime
 from constructionsight.lead_workflow_service import create_lead_workflow
 from constructionsight.live_command_center import make_server
 from constructionsight.operator_source_candidate import build_source_candidate_preview
+from constructionsight.result_ledger_models import ResultLedgerStatus
+from constructionsight.result_ledger_service import (
+    build_result_ledger_record,
+    supersede_result_ledger_record,
+)
 from constructionsight.storage.database import create_database_engine, initialize_database
 from constructionsight.storage.domain_store import CeqaStore
 from constructionsight.storage.lead_workflow_store import (
     store_lead_review_package,
     store_lead_workflow_record,
+    store_result_ledger_record,
 )
 from tests.test_bid_proposal_service import _package
 from tests.test_command_center_investigation_bridge import snapshot
@@ -55,10 +61,22 @@ def test_exact_original_candidate_lineage_requires_evidence_not_auto_merges(
         "base_candidate_id": "unrelated:never-join",
     })
     matched_workflow = create_lead_workflow(package=matching)
+    root_result = build_result_ledger_record(
+        workflow=matched_workflow, status=ResultLedgerStatus.UNKNOWN,
+        reasons=["Synthetic outcome not established"],
+    )
+    corrected_result = supersede_result_ledger_record(
+        current=root_result, status=ResultLedgerStatus.WON,
+        correction_reason="Synthetic correction demonstrates lineage only",
+        gross_value=1234.56, share_rate=0.1,
+        reasons=["Fixture indicates a hypothetical win, not an actual contract"],
+    )
     with Session(engine) as session, session.begin():
         for package in (matching, unrelated):
             store_lead_review_package(session, package)
             store_lead_workflow_record(session, create_lead_workflow(package=package))
+        store_result_ledger_record(session, root_result)
+        store_result_ledger_record(session, corrected_result)
     engine.dispose()
     original_digest = hashlib.sha256(database.read_bytes()).hexdigest()
     directory = tmp_path / "native"
@@ -82,6 +100,28 @@ def test_exact_original_candidate_lineage_requires_evidence_not_auto_merges(
             assert record["canonical_investigation_id"] is None
             assert record["original_candidate_key"] == candidate.candidate_key
             assert record["review_package_status"] == "ready"
+            outcome = record["historical_result"]
+            assert outcome["has_retained_outcome"] is True
+            assert outcome["history_integrity_validated"] is True
+            assert outcome["revision_count"] == 2
+            assert outcome["past_revisions_must_not_be_summed"] is True
+            assert outcome["contract_verified"] is False
+            assert outcome["payment_received_verified"] is False
+            assert outcome["share_entitlement_verified"] is False
+            root = outcome["revision_history"][0]
+            current = outcome["current_revision"]
+            assert root["status"] == "unknown"
+            assert root["calculated_share_minor"] is None
+            assert root["ledger_id"] == root_result.ledger_id
+            assert current["revision"] == 2
+            assert current["supersedes_ledger_id"] == root["ledger_id"]
+            assert current["content_digest"] == corrected_result.content_digest
+            assert current["status"] == "won"
+            assert current["gross_value_minor"] == 123456
+            assert current["share_rate_ppm"] == 100000
+            assert current["calculated_share_minor"] == 12346
+            assert current["share_entitlement_verified"] is False
+            assert current["payment_received_verified"] is False
             assert record["identity_association_verified"] is False
             assert "unrelated:never-join" not in response.text
             preview = client.get("/api/source-reconciliation", params=selection).json()
