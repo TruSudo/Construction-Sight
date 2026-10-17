@@ -8,13 +8,37 @@ Relationship Graph remain the goal. Full unification and functional parity are n
 ## Exact recovery checkpoint
 
 - Development branch: `agent/unification-implementation-2026-10-16`, draft PR #234.
-- Latest implementation source: `44e80090219a0ad0938dbec44848233d089bcf2d`.
+- Latest implementation source: `db525989acec562637a329e6dc9de93b73e04cd3` (Phase 6 first live graph slice). Phase 5 acceptance remains pinned to `44e80090219a0ad0938dbec44848233d089bcf2d`.
 - This recovery update changes STATUS.md only; the source acceptance below is pinned to that implementation commit.
 - Phase 5 native integration is implemented. Exact-source acceptance results are recorded below.
 - Main remains `4c8f8eaf08653e2d571b0df821b862dcc9b158ac`; no merge or owner-device/source activation.
-- Next development task: Phase 6 live Relationship Graph, using BOTH an embedded Command Center graph and an expandable full-screen VirusTotal Threat Graph-style interface, preserving the approved charcoal-and-amber design. Both modes must use the same committed investigation state/events. Phase 5's entity projection is not Phase 6 completion.
+- Next development task: continue Phase 6 with historical graph-state replay, saved investigation views/layouts, remaining source/date/confidence controls, clustering and full graph-to-map/authorized-review acceptance. Embedded and expanded modes are implemented in the first slice over the same committed state/events; Phase 6 is not complete.
 - Operational checks still open: owner-Zorin/systemd deployment, permissioned live-source background acquisition, and real live cooperating-source acceptance from Phases 3–4.
 - Preserve all original interfaces, historical branches and assurance evidence through Phase 8 acceptance.
+
+## Phase 6 first-slice acceptance — verified, Phase 6 still partial
+
+**Source:** `db525989acec562637a329e6dc9de93b73e04cd3`.
+
+- [CI 38985087688](https://github.com/TruSudo/Construction-Sight/actions/runs/38985087688):
+  Python 3.11 **2,639 passed**, two non-failing warnings, 287.05s;
+  Python 3.12 **2,639 passed**, two non-failing warnings, 294.10s.
+  Ruff, strict Mypy (346 source files), JavaScript validation, dependency integrity
+  and vulnerability auditing passed; no known dependency vulnerabilities reported.
+- [Browser/visual 38985087540](https://github.com/TruSudo/Construction-Sight/actions/runs/38985087540):
+  both jobs successful. The new live graph journey passed shared embedded/expanded
+  canvas identity, canonical dossier and exact retained evidence inspection,
+  independent worker advancement while paused/closed, committed event delivery,
+  unique node IDs, disconnection recovery and reopen reconstruction.
+  Existing five-view investigation journey and **33/33 actions / 33/33 contracts** passed.
+- Desktop structure/fonts and the reported non-blocking pixel ratchet passed.
+  Absolute pixel parity did not pass and is not claimed.
+- Demonstrations used deliberately synthetic retained fixtures and real worker processes;
+  this is not owner-device deployment or authorized real-source operational acceptance.
+- Next: historical graph-state replay using retained before/after revisions, saved
+  investigation layouts/views, remaining source/date/confidence controls, clustering,
+  collapse, optional actual-activity highlighting and complete graph/map/review acceptance.
+  Preserve the same event-backed engine for embedded and full-screen modes.
 
 ## Phase 5 development acceptance — verified
 
@@ -56,7 +80,7 @@ Relationship Graph remain the goal. Full unification and functional parity are n
 | 3 — background orchestration | SMARTS/inbox/timers connected; separately reviewed finite CEQA background lane implemented; real-source activation and owner-device deployment remain unaccepted |
 | 4 — cooperating-source journey | Controlled and retained public-excerpt implementation acceptance exists; live-source operational acceptance remains open |
 | 5 — native integration | Development acceptance complete at 44e80090; full Python and browser gates passed; operational field checks remain open under Phases 3–4 |
-| 6 — live Relationship Graph | Durable backend events exist; live delivery, UI, replay and reconnection acceptance remain outstanding |
+| 6 — live Relationship Graph | First live snapshot/event slice and embedded/expanded graph implemented; worker continuity, cursor recovery and evidence navigation accepted; historical graph replay and remaining graph interactions remain open |
 | 7 — assurance completion | Relevant new safeguards tested; complete historical-to-unified enforcement reconciliation remains outstanding |
 | 8 — functional parity | No complete parity acceptance; original interface retained |
 
@@ -375,7 +399,7 @@ No main merge, source activation, owner-device changes or commercial submissions
 
 
 
-## Phase 6 — first live graph vertical slice (acceptance pending)
+## Phase 6 — first-slice implementation notes before final CI
 
 The existing private read-only store now supplies a bounded graph snapshot, explicit
 retained evidence references, and cursor/anchor-validated durable event pages. Snapshot
