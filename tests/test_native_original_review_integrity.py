@@ -91,11 +91,10 @@ def test_native_historical_lineage_fails_closed_on_corrupt_original_review(
                 .where(LeadReviewPackageRecord.id == row.id)
                 .values(**values)
             )
-    with Session(engine), pytest.raises(ValueError, match=error):
-        with Session(engine) as session:
-            verified_original_review_package(
-                session, package_id=package.package_id, candidate_key=key
-            )
+    with Session(engine) as session, pytest.raises(ValueError, match=error):
+        verified_original_review_package(
+            session, package_id=package.package_id, candidate_key=key
+        )
     engine.dispose()
     digest_before = hashlib.sha256(original_db.read_bytes()).hexdigest()
     server = make_server(
