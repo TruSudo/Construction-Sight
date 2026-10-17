@@ -7,7 +7,7 @@ Relationship Graph remain the goal. Full unification and functional parity are n
 
 ## Exact recovery checkpoint
 
-- Development branch: `agent/unification-implementation-2026-10-16`, draft PR #234. Latest Phase 7 application/test source: `a1766c842ddb4ba4893a6b95c8b43d2bcb53b66e` (tree `07d2c04bfd24255c077c9b699ee62f9de09071de`).
+- Development branch: `agent/unification-implementation-2026-10-16`, draft PR #234. Latest Phase 7 application/test source: `c57c9d0fd92aae357535be60c7e9c2a87eba2e22` (tree `b89d0bcc63f00aebcecdde694fcea8d57d10465f`).
 - Latest source accepted for Phase 6: `5c03cd80cde497b2dfc0e3533a913000db280812` (anchored historical snapshots, retained-history timeline/comparison, saved layouts, source/date/confidence controls, source grouping, activity highlighting, and bidirectional graph/map navigation). Phase 5 remains pinned to `44e80090219a0ad0938dbec44848233d089bcf2d`.
 - Phase 7 continuation restores and extends historical integrity tests and binds the preserved source-verification API to the exact reviewed URL; Phase 6 acceptance remains pinned to its source revision below.
 - Phase 5 native integration is implemented. Exact-source acceptance results are recorded below.
@@ -22,8 +22,8 @@ Relationship Graph remain the goal. Full unification and functional parity are n
 - An all-clear profile requires a lowercase `review:<sha256>` or `evidence:<sha256>` identity. Legacy reviewed flags and narrative fields remain accepted as caller metadata but cannot confer access. A correctly shaped identity is not independent proof of lawful source permission or proof that its supporting artifact exists.
 - Listing, detail and CSV operator authorization state explicitly includes that identity. The existing recurring CEQA lane supplies its already checked current checklist digest; no review is synthesized from source reachability, a confirmation flag or a free-text statement. Current registry/checklist drift, finite plans, effect reservations and no-retry protections remain in place.
 - Negative acceptance covers each unknown restriction before verifier/listing/detail/CSV transport, non-Boolean values, omitted facts, malformed/missing identities, and changed review identity against an existing immutable listing plan. Positive adapter/source/service fixtures now state all five facts and a deliberately synthetic review identity explicitly. Existing finite background/restart/revocation/rollback acceptance passed in the focused run.
-- Focused checks passed (107 acquisition/adapter/background tests, followed by the extended 79-case source/service suite and 67-case adapter/source/CLI compatibility suite; these overlap and are not additive). Ruff, strict Mypy (347 source files), dependency integrity and JavaScript syntax passed. Full current-source regression and dual-Python/browser CI are pending.
-- Phase 7 remains in progress: complete current-source gates, then historical financial/result-authority and retained-evidence reconciliation. No source activation, laptop installation, commercial action, main merge, historical retirement or complete safeguard-equivalence claim.
+- Exact-tree local Python 3.12 acceptance: **2,698 passed**, two upstream Typer/Click deprecation warnings, 317.11s. Focused acquisition/source/service/adapter/background and CLI compatibility tests also passed. Ruff, strict Mypy (347 source files), dependency integrity and JavaScript syntax passed. [Browser and USGS workflow](https://github.com/TruSudo/Construction-Sight/actions/runs/39011618658) passed on the exact source, including live graph continuity, **33/33 actions and 33/33 contracts**, structure/fonts and the reported visual ratchet. Exact pixel parity did not pass and is not claimed. [Dual-Python CI](https://github.com/TruSudo/Construction-Sight/actions/runs/39011618645) passed: **2,698 tests on Python 3.11 and 2,698 on Python 3.12**, two non-failing upstream warnings per leg; complete quality checks and dependency vulnerability audits passed with no known vulnerabilities. This document-only update preserves the exact validated application/test revision above.
+- Phase 7 remains in progress: current-source gates passed; next complete historical financial/result-authority and retained-evidence reconciliation. No source activation, laptop installation, commercial action, main merge, historical retirement or complete safeguard-equivalence claim.
 
 ## Phase 7 continuation — source scope and database reconnection
 
@@ -206,7 +206,7 @@ reachability. File ancestry/imports are not functional proof. No historical asse
   to immutable review/evidence digests. Unified enforcement remains to be reconciled.
 - Native money uses Decimal/integer cents; older ledger models retain float fields.
   Complete financial/workflow equivalence remains unproven.
-- Current SQLite connections enforce foreign keys; a historical test path is absent.
+- Current SQLite connections enforce foreign keys; Phase 7 restored the historical test path and added private-engine reconnection/orphan-insert acceptance.
 - Original operator UI remains preserved. Approved native design is unchanged by this
   backend continuation; absolute pixel parity is not claimed.
 
