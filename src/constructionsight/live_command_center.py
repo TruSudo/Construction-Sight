@@ -37,6 +37,7 @@ from constructionsight.command_center_investigations import (
     investigation_review_preview,
     investigation_view,
 )
+from constructionsight.command_center_retained_previews import retained_commercial_preview
 from constructionsight.command_center_sources import (
     SOURCE_INSPECTION_ROUTES,
     source_inspection,
@@ -744,6 +745,7 @@ def make_server(
                 "/api/royalty-entry",
                 "/api/investigation-review",
                 "/api/source-watchlist-action",
+                "/api/source-commercial-preview",
                 "/api/smarts-contacts-bulk",
                 "/api/data-folder",
                 "/api/restore-preview",
@@ -911,6 +913,22 @@ def make_server(
                         result = source_watch_action(
                             operator_database, action=payload["action"],
                             kind=payload["kind"], record_id=payload["record_id"],
+                        )
+                    elif path == "/api/source-commercial-preview":
+                        if (
+                            urlsplit(self.path).query
+                            or urlsplit(self.path).fragment
+                            or set(payload) != {"operation", "data"}
+                            or not isinstance(payload["operation"], str)
+                            or not isinstance(payload["data"], dict)
+                            or self.headers.get_all("Host", []) != [host]
+                            or self.headers.get_all("Origin", []) != [f"http://{host}"]
+                            or self.headers.get("Sec-Fetch-Site") == "cross-site"
+                        ):
+                            raise ValueError("exact same-origin original preview request required")
+                        result = retained_commercial_preview(
+                            operator_database, operation=payload["operation"],
+                            data=payload["data"],
                         )
                     elif path == "/api/investigation-review":
                         result = apply_investigation_review(directory, payload)
