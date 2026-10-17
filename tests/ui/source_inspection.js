@@ -259,6 +259,31 @@ const {chromium} = require('../visual/node_modules/playwright');
     if (!resultText.includes('Legacy records are displayed separately')) {
       throw Error('Native result comparison is absent: ' + resultText.slice(0, 500));
     }
+    await page.click('nav button[data-page="Project Intelligence"]');
+    await page.waitForSelector('[data-investigation-id]');
+    await page.locator('[data-investigation-id]').first().click();
+    await page.waitForSelector('#action-dialog[open] [data-dossier-original-source]');
+    const nativeDossier = await page.locator('#action-content').textContent();
+    if (!nativeDossier.includes('phase8:browser:dossier') ||
+        !nativeDossier.includes('Exact original commercial lineage')) {
+      throw Error('Canonical investigation dossier omits exact preserved original source');
+    }
+    await page.locator('[data-dossier-original-source]').first().click();
+    await page.waitForFunction(() =>
+      document.querySelector('#native-original-lineage-detail')?.textContent
+        .includes('original-workflow-candidate-lineage/v1'));
+    const commercialContext = await page.locator('#native-original-lineage-detail')
+      .textContent();
+    if (!commercialContext.includes('"matching_workflow_total": 1') ||
+        !commercialContext.includes('"gross_value_minor": 250000') ||
+        !commercialContext.includes('"share_rate_ppm": 80000') ||
+        !commercialContext.includes('"calculated_share_minor": 20000') ||
+        !commercialContext.includes('"payment_received_verified": false') ||
+        !commercialContext.includes('"share_entitlement_verified": false')) {
+      throw Error('Native dossier incorrectly promotes or omits preserved financial lineage');
+    }
+    await page.locator('#export-native-source-lineage').click();
+    await page.click('#action-close');
     if (errors.length) throw Error(errors.join('; '));
     console.log('Phase 8 native retained-source and historical-commercial read parity: PASS');
   } finally {
