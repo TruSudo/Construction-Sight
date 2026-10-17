@@ -8,12 +8,13 @@ commercial authority or evidence of a live project.
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from constructionsight.lead_workflow_models import LeadWorkflowRecord
+from constructionsight.lead_workflow_models import LeadWorkflowRecord, LeadWorkflowStatus
 from constructionsight.storage.lead_workflow_orm import LeadWorkflowEventRecord
 
 MAX_ORIGINAL_WORKFLOW_EVENTS = 500
@@ -37,8 +38,8 @@ def verified_original_workflow_events(
         raise ValueError("original workflow transition rows and projection disagree")
 
     transitions: list[dict[str, Any]] = []
-    last_status = None
-    last_at = None
+    last_status: LeadWorkflowStatus | None = None
+    last_at: datetime | None = None
     for index, (event, row) in enumerate(zip(events, rows, strict=True)):
         if index == 0:
             if event.previous_status is not None:
