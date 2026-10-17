@@ -16,7 +16,7 @@ function baseRows(){return data.rows.filter(r=>scope(r)&&(!r.hidden||$('show-hid
 function point(r){const lat=Number(r.SITE_LATITUDE),lon=Number(r.SITE_LONGITUDE);return r.SITE_LATITUDE!=null&&r.SITE_LONGITUDE!=null&&Number.isFinite(lat)&&Number.isFinite(lon)&&lat>=-85&&lat<=85&&lon>=-180&&lon<=180;}
 function world(lat,lon){const n=256*2**zoom,s=Math.sin(lat*Math.PI/180);return [(lon+180)/360*n,(.5-Math.log((1+s)/(1-s))/(4*Math.PI))*n];}
 function inverse(x,y){const n=256*2**zoom;return [Math.atan(Math.sinh(Math.PI*(1-2*y/n)))*180/Math.PI,x/n*360-180];}
-function fitBounds(){const investigationPoints=activePage==='Site Map'?activeInvestigationMapRows.flatMap(r=>(r.points||[]).map(p=>({SITE_LATITUDE:p.latitude,SITE_LONGITUDE:p.longitude}))):activePage==='Command Center'&&mapLayers.investigations?overviewInvestigationMap.rows.flatMap(r=>(r.points||[]).map(p=>({SITE_LATITUDE:p.latitude,SITE_LONGITUDE:p.longitude}))):[];const rows=[...filtered,...investigationPoints].filter(point);if(!rows.length)return;center=[(Math.min(...rows.map(r=>+r.SITE_LATITUDE))+Math.max(...rows.map(r=>+r.SITE_LATITUDE)))/2,(Math.min(...rows.map(r=>+r.SITE_LONGITUDE))+Math.max(...rows.map(r=>+r.SITE_LONGITUDE)))/2];zoom=12;while(zoom>3){const [cx,cy]=world(...center);if(rows.every(r=>{const [x,y]=world(+r.SITE_LATITUDE,+r.SITE_LONGITUDE);return Math.abs(x-cx)<$('map').clientWidth/2-24&&Math.abs(y-cy)<$('map').clientHeight/2-24;}))break;zoom--;}drawMap();saveMapView();}
+function fitBounds(){const investigationPoints=activePage==='Site Map'?activeInvestigationMapRows.flatMap(r=>(r.points||[]).map(p=>({SITE_LATITUDE:p.latitude,SITE_LONGITUDE:p.longitude}))):activePage==='Command Center'&&mapLayers.investigations&&overviewInvestigationMap.scope===$('county').value?overviewInvestigationMap.rows.flatMap(r=>(r.points||[]).map(p=>({SITE_LATITUDE:p.latitude,SITE_LONGITUDE:p.longitude}))):[];const rows=[...filtered,...investigationPoints].filter(point);if(!rows.length)return;center=[(Math.min(...rows.map(r=>+r.SITE_LATITUDE))+Math.max(...rows.map(r=>+r.SITE_LATITUDE)))/2,(Math.min(...rows.map(r=>+r.SITE_LONGITUDE))+Math.max(...rows.map(r=>+r.SITE_LONGITUDE)))/2];zoom=12;while(zoom>3){const [cx,cy]=world(...center);if(rows.every(r=>{const [x,y]=world(+r.SITE_LATITUDE,+r.SITE_LONGITUDE);return Math.abs(x-cx)<$('map').clientWidth/2-24&&Math.abs(y-cy)<$('map').clientHeight/2-24;}))break;zoom--;}drawMap();saveMapView();}
 let viewTimer;function saveMapView(){if(data?.read_only)return;clearTimeout(viewTimer);viewTimer=setTimeout(()=>api('/api/settings',{map_view:{center,zoom}}).catch(showError),250);}
 function drawMap(){if(!data)return;
  const map=$('map'),w=map.clientWidth,h=map.clientHeight,[cx,cy]=world(...center),left=cx-w/2,top=cy-h/2;
@@ -64,7 +64,7 @@ function drawMap(){if(!data)return;
  // Read the same persisted identities on both maps; these are never commercial lead dots.
  // Keep illustrative screenshot fixtures wholly isolated.
  if((activePage==='Site Map'||activePage==='Command Center')&&!data.mockup_parity&&mapLayers.investigations){
-  const investigationRows=activePage==='Site Map'?activeInvestigationMapRows:overviewInvestigationMap.rows;
+  const investigationRows=activePage==='Site Map'?activeInvestigationMapRows:overviewInvestigationMap.scope===$('county').value?overviewInvestigationMap.rows:[];
   let claimedVisible=0,claimedMapped=0;
   for(const record of investigationRows){
    for(const location of record.points||[]){
@@ -90,7 +90,8 @@ function drawMap(){if(!data)return;
  }
  if(activePage==='Command Center'&&!data.mockup_parity){
   const state=overviewInvestigationMap;
-  if(state.error)$('map-coverage').textContent+=' · Investigation map refresh failed; retained points may be stale: '+state.error;
+  if(state.scope!==$('county').value)$('map-coverage').textContent+=' · Updating shared investigations for selected region';
+  else if(state.error)$('map-coverage').textContent+=' · Investigation map refresh failed; retained points may be stale: '+state.error;
   else if(state.available===false)$('map-coverage').textContent+=' · Shared investigation store unavailable';
   else if(state.available===null)$('map-coverage').textContent+=' · Checking shared investigation store';
  }
