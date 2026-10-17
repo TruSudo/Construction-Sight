@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import threading
+from datetime import UTC, datetime
 from pathlib import Path
 
 import httpx
@@ -25,7 +26,15 @@ def test_exact_original_source_replay_is_confirmed_idempotent_and_noncommercial(
     engine = create_database_engine(f"sqlite:///{original}")
     initialize_database(engine)
     with Session(engine) as session, session.begin():
-        CeqaStore(session).upsert(_record("phase8:replay", title="Retained original source"))
+        source = _record("phase8:replay", title="Retained original source")
+        captured = datetime(2026, 10, 17, tzinfo=UTC)
+        source = source.model_copy(update={
+            "provenance": [
+                item.model_copy(update={"captured_at": captured})
+                for item in source.provenance
+            ]
+        })
+        CeqaStore(session).upsert(source)
     engine.dispose()
     original_sha = hashlib.sha256(original.read_bytes()).hexdigest()
     directory = tmp_path / "native"
