@@ -21,7 +21,10 @@ from constructionsight.intelligence.investigation_service import InvestigationSe
 from constructionsight.intelligence.investigation_sources import from_domain
 from constructionsight.intelligence.relationship_query_service import canonical_investigation_id
 from constructionsight.investigation_runtime import InvestigationRuntime
-from constructionsight.operator_source_candidate import build_source_candidate_preview
+from constructionsight.operator_source_candidate import (
+    SourceRecordNotFound,
+    build_source_candidate_preview,
+)
 from constructionsight.permit_models import PermitRecord
 from constructionsight.storage.database import prepare_private_database
 from constructionsight.storage.domain_store import CeqaStore, PermitStore
@@ -50,9 +53,12 @@ def _source(
     engine = create_operator_read_engine(operator_database)
     try:
         with Session(engine, autoflush=False) as session:
-            original = build_source_candidate_preview(
-                session, kind=kind, record_id=record_id
-            )
+            try:
+                original = build_source_candidate_preview(
+                    session, kind=kind, record_id=record_id
+                )
+            except SourceRecordNotFound as exc:
+                raise ValueError("original exact source record was not found") from exc
             record = (
                 CeqaStore(session).get(record_id) if kind == "ceqa"
                 else PermitStore(session).get(record_id)
