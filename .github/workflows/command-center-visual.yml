@@ -31,6 +31,8 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Challenge recorded perceptual calibration
         run: python tests/visual/calibrate.py tests/visual/output/calibration
+      - name: Map renderer automatic provider and fallback regression
+        run: node tests/ui/map_runtime.js
       - name: Capture offline Demo at current reference viewport
         run: |
           PYTHONPATH=src python -m constructionsight.live_command_center --demo --mockup-parity --no-browser > /tmp/command-center.log 2>&1 &

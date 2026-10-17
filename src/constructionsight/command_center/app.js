@@ -25,8 +25,8 @@ function drawMap(){if(!data)return;
  // provider. Otherwise use the public, credential-free USGS imagery/topo map.
  // Do not fetch remote tiles in the reproducible screenshot-only Demo fixture.
  const defaultUSGS=basemapMode==='auto'&&!configured&&!data.local_map&&!data.mockup_parity;
- const provider=USGS_BASEMAPS[basemapMode]||
-  (defaultUSGS?USGS_BASEMAPS['usgs-imagery-topo']:null);
+ const providerMode=defaultUSGS?'usgs-imagery-topo':basemapMode;
+ const provider=USGS_BASEMAPS[providerMode];
  const remoteRequested=basemapMode!=='offline'&&(Boolean(provider)||(basemapMode==='auto'&&Boolean(configured)));
  const remote=remoteRequested&&!basemapFailed,localMap=!remote&&Boolean(data.local_map);
  const template=remote&&!provider?data.map_settings.url_template:localMap?'/api/offline-map/{z}/{x}/{y}.png':null;
@@ -43,7 +43,7 @@ function drawMap(){if(!data)return;
    const image=img;
    image.onerror=()=>{if(generation!==mapGeneration||!image.isConnected)return;
     if(remote&&!basemapFailed){basemapFailed=true;drawMap();}else image.hidden=true;};
-   image.src=remote&&provider?usgsTileUrl(basemapMode,tile.z,tile.x,tile.y):template.replace('{z}',tile.z).replace('{x}',tile.x).replace('{y}',tile.y);
+   image.src=remote&&provider?usgsTileUrl(providerMode,tile.z,tile.x,tile.y):template.replace('{z}',tile.z).replace('{x}',tile.x).replace('{y}',tile.y);
    tileElements.set(key,image);$('tiles').append(image);
   }
   img.style.left=tile.left+'px';img.style.top=tile.top+'px';
@@ -63,7 +63,7 @@ function drawMap(){if(!data)return;
  // Investigation points are source claims, not verified sites or commercial leads.
  // Read the same persisted identities on both maps; these are never commercial lead dots.
  // Keep illustrative screenshot fixtures wholly isolated.
- if((activePage==='Site Map'||activePage==='Command Center')&&!data.mockup_parity&&mapLayers.investigations){
+ if((activePage==='Site Map'||activePage==='Command Center'&&overviewInvestigationMap.available===true&&overviewInvestigationMap.scope===$('county').value)&&!data.mockup_parity&&mapLayers.investigations){
   const investigationRows=activePage==='Site Map'?activeInvestigationMapRows:overviewInvestigationMap.scope===$('county').value?overviewInvestigationMap.rows:[];
   let claimedVisible=0,claimedMapped=0;
   for(const record of investigationRows){
@@ -149,6 +149,7 @@ async function refreshOverviewInvestigationMap(force=false){
    after=snapshot.next_cursor;
   }
   if(activePage!=='Command Center'||region!==$('county').value)return;
+  investigationRegionOptions(rows);
   Object.assign(state,{rows,cursor:revision.event_cursor,scope:region,available:true,incomplete:more,error:null});
  }catch(error){
   if(activePage==='Command Center'&&region===$('county').value)
@@ -156,6 +157,10 @@ async function refreshOverviewInvestigationMap(force=false){
  }finally{
   state.loading=false;
   if(activePage==='Command Center'&&data)drawMap();
+  // A region change during an in-flight projection must get its own snapshot
+  // immediately, without waiting for the next background refresh interval.
+  if(activePage==='Command Center'&&region!==$('county').value)
+   refreshOverviewInvestigationMap(true);
  }
 }
 async function reload(){data=await api('/api/leads');$('demo-label').hidden=!data.demo;$('warning').hidden=!data.warning;$('warning').textContent=data.warning||'';if(data.mockup_parity){zoom=10.12;center=[34.04885,-117.25125];$('operator-name').textContent='Jordan Smith';$('operator-role').textContent='Operations';$('avatar').textContent='JS';$('unread-dot').hidden=false;}else{const profile=data.settings?.profile;for(const[id,key]of [['operator-name','name'],['operator-role','role']])$(id).textContent=profile?.[key]||'—';$('avatar').textContent=profile?.name?.split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase()||'—';}apply();await refreshChrome();}
