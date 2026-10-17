@@ -114,6 +114,77 @@ const {chromium} = require('../visual/node_modules/playwright');
       .includes('Preserved workflow / outcome records')) {
       throw Error('Native workflow comparison is absent');
     }
+    await page.waitForSelector('#original-outreach-form');
+    if (!(await page.locator('[name="original-workflow"]').inputValue())
+      .startsWith('lead-workflow:')) {
+      throw Error('Retained commercial preview did not bind a persisted workflow');
+    }
+    const outreachFields = {
+      destination: 'estimator@example-contractor.test',
+      business_role: 'estimating department',
+      source_name: 'Synthetic reviewed business website',
+      source_reference: 'https://example-contractor.test/contact',
+      contact_review_basis: 'Reviewed exact business source for synthetic fixture.',
+      subject: 'Internal construction site security introduction',
+      body: 'Draft text for human review; not sent.'
+    };
+    for (const [name, value] of Object.entries(outreachFields)) {
+      await page.locator('#original-outreach-form [name="' + name + '"]').fill(value);
+    }
+    await page.locator('#original-outreach-form button[type="submit"]').click();
+    await page.waitForSelector('#action-dialog[open]');
+    const outreachPreview = await page.locator('#action-content').textContent();
+    if (!outreachPreview.includes('"external_send_authorized": false') ||
+        !outreachPreview.includes('"outreach_sent": false')) {
+      throw Error('Original governed no-send outreach preview was not upheld');
+    }
+    await page.click('#action-close');
+    const requestFields = {
+      requester_business_name: 'Synthetic Contractor LLC',
+      requester_business_role: 'estimating department',
+      request_source_name: 'Retained synthetic business email',
+      request_source_reference: 'message:fixture:request',
+      request_review_basis: 'Reviewed explicit written bid request.',
+      request_observed_at: '2026-10-08T10:00:00+00:00',
+      request_text: 'Please quote construction site night security.',
+      scope_summary: 'Night guard services for the reviewed site.'
+    };
+    for (const [name, value] of Object.entries(requestFields)) {
+      await page.locator('#original-request-form [name="' + name + '"]').fill(value);
+    }
+    await page.locator('#original-request-form button[type="submit"]').click();
+    await page.waitForSelector('#action-dialog[open]');
+    const requestPreview = await page.locator('#action-content').textContent();
+    if (!requestPreview.includes('"pricing_authorized": false') ||
+        !requestPreview.includes('"bid_submitted": false')) {
+      throw Error('Original guarded bid-request evidence unavailable');
+    }
+    await page.click('#action-close');
+    await page.locator('#original-pricing-form [name="line_key"]').fill('night-guard');
+    await page.locator('#original-pricing-form [name="description"]').fill('Night guard');
+    await page.locator('#original-pricing-form [name="pricing_basis"]').fill('Manual');
+    await page.locator('#original-pricing-form [name="amount"]').fill('125.50');
+    await page.locator('#original-pricing-form [name="validity_note"]').fill('Internal approval needed.');
+    await page.locator('#original-pricing-form button[type="submit"]').click();
+    await page.waitForSelector('#action-dialog[open]');
+    const pricingPreview = await page.locator('#action-content').textContent();
+    if (!pricingPreview.includes('"subtotal_minor": 12550') ||
+        !pricingPreview.includes('"bid_submission_authorized": false')) {
+      throw Error('Original manually reviewed exact-money pricing is absent');
+    }
+    await page.click('#action-close');
+    await page.locator('#original-proposal-form [name="proposal_title"]')
+      .fill('Internal synthetic security proposal');
+    await page.locator('#original-proposal-form [name="cover_note"]')
+      .fill('For internal review only.');
+    await page.locator('#original-proposal-form button[type="submit"]').click();
+    await page.waitForSelector('#action-dialog[open]');
+    const proposalPreview = await page.locator('#action-content').textContent();
+    if (!proposalPreview.includes('"bid_submission_authorized": false') ||
+        !proposalPreview.includes('"commercial_terms_authorized": false')) {
+      throw Error('Original internal proposal draft was incorrectly authorized');
+    }
+    await page.click('#action-close');
     await page.click('nav button[data-page="Royalty Ledger"]');
     await page.waitForFunction(() => {
       const panel = document.querySelector('.retained-source-inspection');
