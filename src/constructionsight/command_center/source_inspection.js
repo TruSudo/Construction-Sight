@@ -492,9 +492,180 @@ async function renderLegacyCommercial(box, category) {
         esc(JSON.stringify(records[Number(button.dataset.originalRecord)], null, 2)) +
         '</pre>');
     });
+    if (category === 'Bid Studio') renderRetainedCommercialPreviewTools(root, records);
   } catch (error) {
     if (root.isConnected && activePage === category)
       root.innerHTML = '<h3>Preserved workflow / outcome records</h3>' +
         '<p role="alert">' + esc(error.message) + '</p>';
   }
+}
+
+
+// Manual previews use the original persisted review and authorization services.
+// A preview is not a send action, a commercial approval, or an offer to a customer.
+function renderRetainedCommercialPreviewTools(root, records) {
+  const host = document.createElement('section');
+  host.className = 'retained-commercial-previews';
+  root.append(host);
+  const workflow = records.find(r => typeof r.workflow_id === 'string');
+  if (!workflow) {
+    host.innerHTML = '<h3>Original governed commercial previews</h3>' +
+      '<p>No retained workflow is available to review. Previews cannot be generated ' +
+      'from an invented lead or unverified source observation.</p>';
+    return;
+  }
+  host.innerHTML = '<h3>Original governed commercial previews</h3>' +
+    '<p>Manually inspect exact persisted, reviewed lead state. No outreach is sent, ' +
+    'no pricing is approved, no customer-facing bid is authorized, and no draft is ' +
+    'submitted. All previews are temporary until explicitly exported.</p>' +
+    '<div class="source-toolbar">' +
+    field('original-workflow', 'Exact preserved workflow ID', workflow.workflow_id, 'text', true) +
+    options('original-status', ['ready', 'active'], 'ready', 'Current expected workflow status') +
+    '</div>' +
+    '<h3>Outreach preview · never sends</h3>' +
+    '<form id="original-outreach-form" class="form-grid">' +
+    options('channel', ['email', 'phone'], 'email', 'Contact channel') +
+    field('destination', 'Exact reviewed contact destination', '', 'text', true) +
+    field('business_role', 'Contact business role', '', 'text', true) +
+    field('source_name', 'Contact evidence source', '', 'text', true) +
+    field('source_reference', 'Evidence reference or official URL', '', 'text', true) +
+    field('contact_review_basis', 'Reason this contact was reviewed', '', 'textarea', true) +
+    field('subject', 'Subject', '', 'text', true) +
+    field('body', 'Draft message', '', 'textarea', true) +
+    '<button type="submit">Preview unsent outreach</button></form>' +
+    '<h3>Prospect-requested bid · evidence first</h3>' +
+    '<form id="original-request-form" class="form-grid">' +
+    options('request_channel', ['email', 'phone', 'other'], 'email', 'Request channel') +
+    field('requester_business_name', 'Requesting business', '', 'text', true) +
+    field('requester_business_role', 'Requester role', '', 'text', true) +
+    field('request_source_name', 'Original request evidence source', '', 'text', true) +
+    field('request_source_reference', 'Exact request evidence reference', '', 'text', true) +
+    field('request_review_basis', 'Basis for confirming an explicit bid request', '',
+      'textarea', true) +
+    field('request_observed_at', 'Observed ISO time including timezone', '', 'text', true) +
+    field('request_text', 'Actual request text', '', 'textarea', true) +
+    field('scope_summary', 'Requested security scope', '', 'textarea', true) +
+    '<button type="submit">Validate requested-bid evidence</button></form>' +
+    '<form id="original-pricing-form" class="form-grid" hidden>' +
+    '<h3>Internal pricing · manual exact currency amounts</h3>' +
+    '<p>Requires the validated bid-request evidence above; each line has a human-entered ' +
+    'amount in dollars and cents, not an automatically inferred price.</p>' +
+    '<div id="original-price-lines"></div>' +
+    '<button type="button" id="original-price-add">Add pricing line</button>' +
+    field('assumptions', 'Assumptions (one per line)', '', 'textarea') +
+    field('exclusions', 'Exclusions (one per line)', '', 'textarea') +
+    field('validity_note', 'Terms validity note', '', 'textarea', true) +
+    '<button type="submit">Preview unapproved pricing</button></form>' +
+    '<form id="original-proposal-form" class="form-grid" hidden>' +
+    '<h3>Internal proposal draft · never submits</h3>' +
+    field('proposal_title', 'Proposal title', '', 'text', true) +
+    field('cover_note', 'Internal cover note', '', 'textarea', true) +
+    field('additional_terms', 'Additional terms (one per line)', '', 'textarea') +
+    '<button type="submit">Draft unapproved proposal</button></form>';
+  const common = () => ({
+    workflow_id: host.querySelector('[name="original-workflow"]').value.trim(),
+    expected_current_status: host.querySelector('[name="original-status"]').value
+  });
+  const outreachForm = host.querySelector('#original-outreach-form');
+  const requestForm = host.querySelector('#original-request-form');
+  const priceForm = host.querySelector('#original-pricing-form');
+  const proposalForm = host.querySelector('#original-proposal-form');
+  const priceLines = host.querySelector('#original-price-lines');
+  let requestEvidence = null, pricingEvidence = null;
+
+  function showResult(operation, result) {
+    modal('Original ' + operation + ' · reviewed preview',
+      '<p>This preview grants no sending, pricing approval or submission authority. ' +
+      'It is based on the persisted original workflow, not an unverified site claim.</p>' +
+      '<button id="original-preview-export">Export exact preview JSON</button><pre>' +
+      esc(JSON.stringify(result, null, 2)) + '</pre>');
+    document.querySelector('#original-preview-export').onclick = () =>
+      download('original-' + operation + '-preview.json', result);
+  }
+  function bindPreview(form, operation, prepare, onSuccess = () => {}) {
+    form.onsubmit = event => {
+      event.preventDefault();
+      const button = form.querySelector('button[type="submit"]');
+      if (button) button.disabled = true;
+      perform(async () => {
+        try {
+          const result = await api('/api/source-commercial-preview', {
+            operation, data: prepare(Object.fromEntries(new FormData(form)))
+          });
+          if (!root.isConnected || activePage !== 'Bid Studio') return;
+          onSuccess(result.preview);
+          showResult(operation, result);
+        } finally {
+          if (button?.isConnected) button.disabled = false;
+        }
+      });
+    };
+  }
+  const lines = text => text.split('\n').map(s => s.trim()).filter(Boolean);
+  function addPriceLine() {
+    const row = document.createElement('div');
+    row.className = 'original-price-line form-grid';
+    row.innerHTML = field('line_key', 'Line key', '', 'text', true) +
+      field('description', 'Line description', '', 'text', true) +
+      field('pricing_basis', 'Manual pricing basis', '', 'text', true) +
+      field('amount', 'Manual USD amount (e.g., 125.50)', '', 'text', true) +
+      '<button type="button" data-remove-line>Remove line</button>';
+    priceLines.append(row);
+    row.querySelector('[data-remove-line]').onclick = () => {
+      if (priceLines.children.length > 1) row.remove();
+    };
+  }
+  host.querySelector('#original-price-add').onclick = addPriceLine;
+  addPriceLine();
+  const resetChain = () => {
+    requestEvidence = null;
+    pricingEvidence = null;
+    priceForm.hidden = true;
+    proposalForm.hidden = true;
+  };
+  host.querySelector('[name="original-workflow"]').oninput = resetChain;
+  host.querySelector('[name="original-status"]').onchange = resetChain;
+  bindPreview(outreachForm, 'outreach', fields => ({...common(), ...fields}));
+  bindPreview(requestForm, 'bid_request', fields => ({...common(), ...fields}),
+    evidence => {
+      requestEvidence = evidence;
+      pricingEvidence = null;
+      priceForm.hidden = false;
+      proposalForm.hidden = true;
+    });
+  bindPreview(priceForm, 'pricing', fields => {
+    if (!requestEvidence) throw Error('Validate a current exact bid request first.');
+    return {
+      request_evidence: requestEvidence, currency_code: 'USD',
+      line_items: Array.from(priceLines.querySelectorAll('.original-price-line'))
+        .map(row => Object.fromEntries(new FormDataRow(row))),
+      assumptions: lines(fields.assumptions),
+      exclusions: lines(fields.exclusions),
+      validity_note: fields.validity_note
+    };
+  }, evidence => {
+    pricingEvidence = evidence;
+    proposalForm.hidden = false;
+  });
+  bindPreview(proposalForm, 'proposal', fields => {
+    if (!requestEvidence || !pricingEvidence) {
+      throw Error('Validate current bid request and pricing evidence first.');
+    }
+    return {
+      request_evidence: requestEvidence,
+      pricing_preview: pricingEvidence,
+      proposal_title: fields.proposal_title,
+      cover_note: fields.cover_note,
+      additional_terms: lines(fields.additional_terms)
+    };
+  });
+}
+
+// Read independent input controls without inventing a browser FormData-like object.
+function FormDataRow(row) {
+  const values = new FormData();
+  row.querySelectorAll('input[name]').forEach(input => {
+    values.append(input.name, input.value);
+  });
+  return values;
 }
