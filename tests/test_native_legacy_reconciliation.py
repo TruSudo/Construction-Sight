@@ -25,8 +25,8 @@ from constructionsight.storage.database import (
     initialize_database,
     managed_session,
 )
-from constructionsight.storage.intelligence_store import IntelligenceStore
 from constructionsight.storage.domain_store import CeqaStore
+from constructionsight.storage.intelligence_store import IntelligenceStore
 from tests.test_command_center_investigation_bridge import snapshot
 from tests.test_operator_dashboard import _record
 
