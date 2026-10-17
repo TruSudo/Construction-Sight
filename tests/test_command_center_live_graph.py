@@ -209,8 +209,13 @@ def test_historical_graph_replays_retained_before_and_after_without_mutation(
     assert any(node["label"] == "Before historical revision" for node in prior["nodes"])
     assert not any(node["label"] == "After historical revision" for node in prior["nodes"])
     assert any(node["label"] == "After historical revision" for node in after["nodes"])
-    assert {edge["id"] for edge in prior["edges"]} <= {
-        edge["id"] for edge in after["edges"]
+    # A source revision may legitimately replace a reference, so history must
+    # preserve the old exact edge set rather than assuming monotonic growth.
+    assert {edge["id"] for edge in prior["edges"]} == {
+        edge["id"] for edge in before["edges"]
+    }
+    assert {edge["id"] for edge in after["edges"]} == {
+        edge["id"] for edge in current["edges"]
     }
     assert graph_view(directory, mode="history_index")["events"]
     assert (directory / "investigations.sqlite3").read_bytes() == original_bytes
