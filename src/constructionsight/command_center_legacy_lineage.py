@@ -15,12 +15,8 @@ from sqlalchemy.orm import Session
 
 from constructionsight.command_center_legacy_events import verified_original_workflow_events
 from constructionsight.command_center_legacy_reconciliation import preview_legacy_reconciliation
-from constructionsight.lead_operator_models import LeadOperatorRecordKind
-from constructionsight.lead_operator_service import (
-    get_lead_operator_record,
-    load_persisted_lead_workflow,
-)
-from constructionsight.lead_review_models import LeadReviewPackage
+from constructionsight.command_center_legacy_review import verified_original_review_package
+from constructionsight.lead_operator_service import load_persisted_lead_workflow
 from constructionsight.operator_results import read_validated_result_history
 from constructionsight.result_ledger_models import ResultLedgerRecord
 from constructionsight.result_ledger_service import money_minor_units, share_rate_ppm_units
@@ -101,18 +97,10 @@ def original_candidate_workflow_lineage(
                 workflow = load_persisted_lead_workflow(session, workflow_id)
                 if workflow.base_candidate_id != candidate_key:
                     raise ValueError("indexed original candidate/workflow lineage disagrees")
-                review_record = get_lead_operator_record(
-                    session, LeadOperatorRecordKind.REVIEW, workflow.package_id
+                review = verified_original_review_package(
+                    session, package_id=workflow.package_id, candidate_key=candidate_key
                 )
-                review_status = "missing_review_package"
-                if review_record is not None:
-                    review = LeadReviewPackage.model_validate(review_record.payload)
-                    if (
-                        review.package_id != workflow.package_id
-                        or review.base_candidate_id != candidate_key
-                    ):
-                        raise ValueError("original workflow review package identity disagrees")
-                    review_status = review.status.value
+                review_status = review.status.value
                 transition_history = verified_original_workflow_events(session, workflow)
                 validated = read_validated_result_history(session, workflow.workflow_id)
                 if validated is not None and validated["package_id"] != workflow.package_id:
