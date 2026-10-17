@@ -70,6 +70,7 @@ async function renderRetainedSources(box) {
     '<label>Search <input name="q" maxlength="200" aria-label="Search retained source records"></label>' +
     '<button type="submit">Inspect</button></form>' +
     '<div id="retained-source-queue" aria-live="polite"></div>' +
+    '<div id="retained-capture-inbox" aria-live="polite"></div>' +
     '<div id="retained-history-inspection"></div>';
   root.querySelector('#retained-registry-export').onclick = () =>
     download('retained-source-registry.json', registry);
@@ -143,10 +144,69 @@ async function renderRetainedSources(box) {
     perform(loadPage);
   };
   await loadPage();
-  await renderRetainedHistory(root.querySelector('#retained-history-inspection'));
+  await Promise.all([
+    renderRetainedCaptureInbox(root.querySelector('#retained-capture-inbox')),
+    renderRetainedHistory(root.querySelector('#retained-history-inspection'))
+  ]);
 }
 
  
+
+
+// Reuse original bounded immutable capture and ingestion evidence without authorizing ingestion.
+async function renderRetainedCaptureInbox(box) {
+  if (!box || !box.isConnected || activePage !== 'Sources & Collection') return;
+  box.innerHTML = '<h3>Original CEQA capture & ingestion</h3>' +
+    '<p role="status">Checking configured retained artifacts…</p>';
+  try {
+    const projections = await Promise.all([
+      api('/api/source-capture-queue'), api('/api/source-ingestion-inbox')
+    ]);
+    if (!box.isConnected || activePage !== 'Sources & Collection') return;
+    const categories = ['Exact SCH capture review', 'Listing / review-queue reconciliation'];
+    box.innerHTML = '<h3>Original CEQA capture & ingestion</h3>' +
+      '<p>Original read-only capture planning and inbox reconciliation. No source ' +
+      'is fetched and no CEQA record is persisted, verified or promoted into a lead.</p>';
+    projections.forEach((projection, index) => {
+      const container = document.createElement('div');
+      box.append(container);
+      if (!projection.available || !projection.configured) {
+        container.innerHTML = '<h3>' + esc(categories[index]) + '</h3>' +
+          '<p>Not configured. Select the existing bounded artifacts at server launch. ' +
+          'Absence is not an empty jurisdictional inbox.</p>';
+        return;
+      }
+      const candidates = projection.candidates || [];
+      container.innerHTML = '<h3>' + esc(categories[index]) + '</h3>' +
+        '<p>' + esc(projection.candidate_count) + ' retained candidates; ' +
+        'showing up to ' + esc(Math.min(50, candidates.length)) +
+        ' of the returned projection. ' +
+        esc((projection.limitations || []).join(' ')) + '</p>' +
+        table(['Exact SCH / source claim', 'County / status', 'Evidence'], 
+          candidates.slice(0, 50).map((entry, i) => [
+            esc(entry.sch_number || entry.source_record_id || entry.candidate_key ||
+              entry.source_claimed_title || 'Retained CEQA observation'),
+            esc(entry.source_claimed_county || entry.county || entry.review_state ||
+              entry.status || 'Unverified'),
+            '<button data-capture-candidate="' + i + '">Inspect</button>'
+          ])) +
+        '<button data-capture-export>Export entire retained projection</button>';
+      container.querySelector('[data-capture-export]').onclick = () =>
+        download(index ? 'original-ceqa-ingestion-inbox.json' :
+          'original-ceqa-capture-queue.json', projection);
+      container.querySelectorAll('[data-capture-candidate]').forEach(button => {
+        button.onclick = () => modal('Original retained capture evidence',
+          '<p>Candidate only; human review and source authorization remain required.</p><pre>' +
+          esc(JSON.stringify(candidates[Number(button.dataset.captureCandidate)], null, 2)) +
+          '</pre>');
+      });
+    });
+  } catch (error) {
+    if (box.isConnected && activePage === 'Sources & Collection') box.innerHTML =
+      '<h3>Original CEQA capture & ingestion</h3><p role="alert">' +
+      esc(error.message) + '</p>';
+  }
+}
 
 // Original source-scoped investigation projections. Keys here are NOT native verified identities.
 async function renderRetainedHistory(box) {
