@@ -13,9 +13,7 @@ from typing import Any, Literal
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from constructionsight.command_center_legacy_reconciliation import (
-    preview_legacy_reconciliation,
-)
+from constructionsight.command_center_legacy_reconciliation import preview_legacy_reconciliation
 from constructionsight.lead_operator_models import LeadOperatorRecordKind
 from constructionsight.lead_operator_service import (
     get_lead_operator_record,
