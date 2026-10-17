@@ -38,6 +38,18 @@ const {chromium} = require('../visual/node_modules/playwright');
       throw Error('Source-specific parcel candidates were not retained');
     }
     await page.click('#action-close');
+    await page.locator('[data-source-watch]').first().click();
+    await page.waitForSelector('#retained-source-watchlist [data-source-unwatch]');
+    const activeSourceWatch = await page.locator('#retained-source-watchlist').textContent();
+    if (!activeSourceWatch.includes('Synthetic retained source observation') ||
+        !activeSourceWatch.includes('1 active source watches') ||
+        !activeSourceWatch.includes('remote source polling: disabled')) {
+      throw Error('Original source-specific watch was not persisted in native workspace');
+    }
+    await page.locator('#retained-source-watchlist [data-source-unwatch]').first().click();
+    await page.waitForFunction(() =>
+      document.querySelector('#retained-source-watchlist')?.textContent
+        .includes('0 active source watches'));
     await page.waitForSelector('#retained-capture-inbox [data-capture-candidate]');
     const captureText = await page.locator('#retained-capture-inbox').textContent();
     if (!captureText.includes('2026012345') ||
