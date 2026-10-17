@@ -110,10 +110,16 @@ def original_ceqanet_export(
     verified = verify_ceqanet_operator_archive(archive_path=archive)
     if not verified.passed:
         raise ValueError("original CEQAnet ZIP failed post-write integrity verification")
+    archive_metadata = archive_receipt.get("metadata")
+    if (
+        not isinstance(archive_metadata, dict)
+        or not isinstance(archive_metadata.get("sha256"), str)
+    ):
+        raise ValueError("original CEQAnet ZIP checksum receipt is missing")
     return {
         "schema_version": "constructionsight.original-ceqanet-export/v1",
         "retained_report_sha256": digest,
-        "archive_sha256": archive_receipt["metadata"]["sha256"],
+        "archive_sha256": archive_metadata["sha256"],
         "archive_available": True,
         "verification_passed": True,
         "existing_verified_archive": False,
