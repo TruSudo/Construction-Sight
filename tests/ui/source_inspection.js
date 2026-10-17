@@ -22,7 +22,9 @@ const {chromium} = require('../visual/node_modules/playwright');
         !initial.includes('Synthetic retained source observation')) {
       throw Error('Native source registry/revision/queue parity did not render');
     }
-    await page.locator('[data-source-preview]').first().click();
+    const sourceRow = page.locator('.retained-source-inspection tr')
+      .filter({hasText: 'Synthetic retained source observation'}).first();
+    await sourceRow.locator('[data-source-preview]').click();
     await page.waitForSelector('#action-dialog[open]');
     const evidence = await page.locator('#action-content').textContent();
     if (!evidence.includes('phase8:browser:source') ||
@@ -30,7 +32,7 @@ const {chromium} = require('../visual/node_modules/playwright');
       throw Error('Exact retained evidence is not inspectable');
     }
     await page.click('#action-close');
-    await page.locator('[data-source-lineage]').first().click();
+    await sourceRow.locator('[data-source-lineage]').click();
     await page.waitForFunction(() =>
       document.querySelector('#action-content')?.textContent
         .includes('"schema_version": "constructionsight.original-workflow-candidate-lineage/v1"'));
@@ -48,7 +50,7 @@ const {chromium} = require('../visual/node_modules/playwright');
       throw Error('Original workflow, outcome revision and royalty cautions lost lineage');
     }
     await page.click('#action-close');
-    await page.locator('[data-source-reconcile]').first().click();
+    await sourceRow.locator('[data-source-reconcile]').click();
     await page.waitForSelector('#source-reconcile-queue');
     const reconciliation = await page.locator('#action-content').textContent();
     if (!reconciliation.includes('not_in_native_store') ||
@@ -77,10 +79,10 @@ const {chromium} = require('../visual/node_modules/playwright');
       throw Error('Exact reviewed replay reason was not retained in auditable worker state');
     }
     await page.click('#action-close');
-    await page.locator('[data-source-reconcile]').first().click();
+    await sourceRow.locator('[data-source-reconcile]').click();
     await page.waitForSelector('#source-reconcile-queue');
     await page.click('#action-close');
-    await page.locator('[data-parcel-review]').first().click();
+    await sourceRow.locator('[data-parcel-review]').click();
     await page.waitForSelector('#action-dialog[open]');
     const parcel = await page.locator('#action-content').textContent();
     if (!parcel.includes('phase8:browser:source') ||
@@ -88,7 +90,7 @@ const {chromium} = require('../visual/node_modules/playwright');
       throw Error('Source-specific parcel candidates were not retained');
     }
     await page.click('#action-close');
-    await page.locator('[data-source-watch]').first().click();
+    await sourceRow.locator('[data-source-watch]').click();
     await page.waitForSelector('#retained-source-watchlist [data-source-unwatch]');
     const activeSourceWatch = await page.locator('#retained-source-watchlist').textContent();
     if (!activeSourceWatch.includes('Synthetic retained source observation') ||
