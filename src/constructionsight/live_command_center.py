@@ -40,6 +40,7 @@ from constructionsight.command_center_investigations import (
 from constructionsight.command_center_sources import (
     SOURCE_INSPECTION_ROUTES,
     source_inspection,
+    source_watch_action,
 )
 from constructionsight.contact_call_list import (
     annotate_contacts,
@@ -742,6 +743,7 @@ def make_server(
                 "/api/scope-template",
                 "/api/royalty-entry",
                 "/api/investigation-review",
+                "/api/source-watchlist-action",
                 "/api/smarts-contacts-bulk",
                 "/api/data-folder",
                 "/api/restore-preview",
@@ -895,6 +897,21 @@ def make_server(
                                 target = Path(result["directory"])
                                 data_folder.point_startup(startup_directory, target)
                                 directory = target
+                    elif path == "/api/source-watchlist-action":
+                        if (
+                            urlsplit(self.path).query
+                            or urlsplit(self.path).fragment
+                            or set(payload) != {"action", "kind", "record_id"}
+                            or not all(isinstance(v, str) for v in payload.values())
+                            or self.headers.get_all("Host", []) != [host]
+                            or self.headers.get_all("Origin", []) != [f"http://{host}"]
+                            or self.headers.get("Sec-Fetch-Site") == "cross-site"
+                        ):
+                            raise ValueError("exact same-origin source watch request required")
+                        result = source_watch_action(
+                            operator_database, action=payload["action"],
+                            kind=payload["kind"], record_id=payload["record_id"],
+                        )
                     elif path == "/api/investigation-review":
                         result = apply_investigation_review(directory, payload)
                     elif path == "/api/smarts-contacts-bulk":
