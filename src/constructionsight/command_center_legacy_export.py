@@ -31,7 +31,10 @@ def _report(chain_report: Path | None) -> tuple[str, dict[str, Any]] | None:
     if not isinstance(report, dict):
         raise ValueError("retained CEQAnet chain report must be an object")
     metadata = report.get("metadata")
-    if not isinstance(metadata, dict) or metadata.get("schema_version") != "ceqanet_chain_report.v1":
+    if (
+        not isinstance(metadata, dict)
+        or metadata.get("schema_version") != "ceqanet_chain_report.v1"
+    ):
         raise ValueError("retained CEQAnet chain report schema is incompatible")
     return digest, report
 
