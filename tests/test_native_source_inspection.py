@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import threading
+from datetime import date
 from pathlib import Path
 
 import httpx
@@ -39,6 +40,10 @@ def test_unconfigured_legacy_source_does_not_create_or_fake_zero_results(tmp_pat
                 "/api/workflow-summary",
                 "/api/workflows",
                 "/api/results",
+                "/api/source-entity-index",
+                "/api/source-entity-neighborhood",
+                "/api/source-timeline",
+                "/api/source-footprint",
             ):
                 response = client.get(endpoint)
                 assert response.status_code == 200
@@ -62,7 +67,10 @@ def test_existing_legacy_source_db_is_reused_by_native_without_mutation(tmp_path
     engine = create_database_engine(f"sqlite:///{database}")
     initialize_database(engine)
     with Session(engine) as session, session.begin():
-        CeqaStore(session).upsert(_record("phase8:record", title="Synthetic retained review"))
+        CeqaStore(session).upsert(_record(
+                "phase8:record", title="Synthetic retained review",
+                received_date=date(2026, 10, 10), posted_date=date(2026, 10, 11),
+            ))
     engine.dispose()
     original = hashlib.sha256(database.read_bytes()).hexdigest()
     server, worker = _native(tmp_path / "private", operator_database=database)
@@ -119,6 +127,31 @@ def test_existing_legacy_source_db_is_reused_by_native_without_mutation(tmp_path
             assert client.get(
                 "/api/source-review-queue?q=x&q=y"
             ).status_code == 409
+            entities = client.get("/api/source-entity-index?kind=ceqa&county=San%20Bernardino")
+            assert entities.status_code == 200, entities.text
+            assert entities.json()["entries"][0]["entity_key"] == "fixture:party"
+            assert entities.json()["entries"][0]["matching_records_in_scan"] == 1
+            neighborhood = client.get(
+                "/api/source-entity-neighborhood",
+                params={"kind": "ceqa", "entity_key": "fixture:party"},
+            )
+            assert neighborhood.status_code == 200, neighborhood.text
+            assert neighborhood.json()["records"][0]["record_id"] == "phase8:record"
+            timeline = client.get("/api/source-timeline?kind=ceqa")
+            assert timeline.status_code == 200, timeline.text
+            assert {e["event_kind"] for e in timeline.json()["events"]} == {
+                "ceqa_received", "ceqa_posted"
+            }
+            assert timeline.json()["events"][0]["recorded_date"] == "2026-10-11"
+            footprint = client.get("/api/source-footprint?kind=ceqa")
+            assert footprint.status_code == 200, footprint.text
+            assert footprint.json()["mapped_in_scan"] == 1
+            assert footprint.json()["points"][0]["record_id"] == "phase8:record"
+            assert client.get("/api/source-entity-neighborhood").status_code == 409
+            assert client.get("/api/source-entity-index?role=nope").status_code == 409
+            assert client.get("/api/source-timeline?entity_key=%00bad").status_code == 409
+            assert client.get("/api/source-footprint?unexpected=1").status_code == 409
+            assert client.post("/api/source-entity-index", json={}).status_code == 501
             assert client.post("/api/source-registry", json={}).status_code == 501
     finally:
         server.shutdown()
