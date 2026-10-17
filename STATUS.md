@@ -7,7 +7,7 @@ Relationship Graph remain the goal. Full unification and functional parity are n
 
 ## Exact recovery checkpoint
 
-- Development branch: `agent/unification-implementation-2026-10-16`, draft PR #234. Latest fully verified Phase 8 application/test source: `68c4017a9af6a6b0081294a93f66d06fb0bc97d4` (full quality gates and browser workflow passed). Phase 7 remains accepted at `3429b14f847163083dfdf32b181bc231d17605c6`.
+- Development branch: `agent/unification-implementation-2026-10-16`, draft PR #234. Latest fully verified Phase 8 application/test source: `f662b95b9f4db7954ce053d4e1cc46f0ebe4bcc7` (full quality gates and browser workflow passed). Phase 7 remains accepted at `3429b14f847163083dfdf32b181bc231d17605c6`.
 - Latest source accepted for Phase 6: `5c03cd80cde497b2dfc0e3533a913000db280812` (anchored historical snapshots, retained-history timeline/comparison, saved layouts, source/date/confidence controls, source grouping, activity highlighting, and bidirectional graph/map navigation). Phase 5 remains pinned to `44e80090219a0ad0938dbec44848233d089bcf2d`.
 - **Phase 7 implementation and regression acceptance is complete** for the controlling directive and currently integrated runtime. The final reconciliation and exact-source results below supersede the older continuation checkpoints. Phase 8 is now in progress; preserve the original interface and all historical assets.
 - Phase 5 native integration is implemented. Exact-source acceptance results are recorded below.
@@ -18,7 +18,7 @@ Relationship Graph remain the goal. Full unification and functional parity are n
 
 ## Phase 8 — IN PROGRESS: native preservation and original-workflow parity
 
-**Verified application/test source:** `68c4017a9af6a6b0081294a93f66d06fb0bc97d4`.
+**Verified application/test source:** `f662b95b9f4db7954ce053d4e1cc46f0ebe4bcc7`.
 Original operator assets, historical branches, the previous native association-review
 acceptance, and the shared investigation graph remain preserved. The legacy database
 is an explicitly selected, separate source; displaying its records does **not**
@@ -50,10 +50,40 @@ automatically reconcile them into the canonical native site investigation.
   explicit request-evidence validation, human-entered exact-money pricing, and
   an internal proposal draft. Each requires current persisted workflow authority.
   No contact, pricing terms, bid or external send is authorized by those previews.
-- All additions remain confined to the existing Command Center workspaces; the
+- Phase 8 exact-source reconciliation now compares an explicitly retained original
+  CEQA/permit observation against the deterministic source identity and current
+  evidence in the canonical investigation store. An exact same-origin,
+  human-confirmed, source-digest-bound request can enqueue a missing source
+  snapshot through the **existing durable investigation worker**. The original
+  source remains unchanged; the worker must commit the observation before the
+  canonical graph/dossier changes. Existing or contradictory native observations
+  cannot be silently replaced. No source replay proves project identity or grants
+  commercial authority.
+- The original CEQAnet chain-report package, evidence report, bundle manifest,
+  verification and deterministic ZIP archive are now available through the
+  native Sources & Collection panel. An operator must select a retained exact
+  chain report and confirm its SHA-256 before generating a verified local ZIP.
+  Downloads are served from the private local artifact area only after the
+  existing archive verifier passes. Repeat exports must match the exact
+  underlying original operator package. No remote collection or external
+  commercial action is performed.
+- All additions remain confined to existing Command Center workspaces; the
   approved overview/sidebar structure was not replaced or redesigned.
 
-**Accepted exact-source tests:**
+**Latest source-reconciliation and verified-export acceptance:**
+
+- [CI 39029895949](https://github.com/TruSudo/Construction-Sight/actions/runs/39029895949):
+  **2,744 passed on Python 3.11 and 2,744 passed on Python 3.12**;
+  two non-failing warnings each. Both configured Python quality gates,
+  strict Mypy, Ruff and dependency checks passed.
+- [Browser/USGS 39029895923](https://github.com/TruSudo/Construction-Sight/actions/runs/39029895923):
+  both jobs passed. New exact source replay and original verified ZIP download
+  were exercised in the native browser. Existing graph, evidence, map, commercial,
+  recovery and **33/33 functional actions and 33/33 complete contracts** remained
+  green. The visual structure/fonts and recorded ratchet passed, while exact
+  mockup pixel parity **did not**.
+
+**Earlier accepted Phase 8 native source/commercial integration:**
 
 - [CI 39026838373](https://github.com/TruSudo/Construction-Sight/actions/runs/39026838373):
   **2,741 passed on Python 3.11; 2,741 passed on Python 3.12**, with two
@@ -68,12 +98,16 @@ automatically reconcile them into the canonical native site investigation.
 
 **Still open before Phase 8 acceptance / merge proposal:**
 
-1. Demonstrate full semantic reconciliation of original source, identity,
-   historical workflow and outcome records with the canonical site investigation
-   across views; a read-only bridge and simultaneous display alone are not parity.
-2. Complete the original operator report/archive/package/export workflows and
-   any remaining original source and investigation controls with tested native
-   equivalents; keep the original interface until accepted.
+1. Expand the verified one-at-a-time CEQA/permit source replay into complete,
+   durable, source-scoped historical migration/reassessment where authorized.
+   Reconcile legacy commercial workflow/outcome identities and royalties with
+   native site investigations without conflating records. Record the explicit
+   replay review rationale in durable audit evidence before claiming full
+   provenance/audit parity.
+2. Compare the remaining historical original source/report/archive workflows
+   and any original investigation controls against their native equivalents;
+   the original CEQAnet chain-report ZIP pathway is now retained and proven,
+   but no general original-system retirement is authorized.
 3. Close actual approved 1672 × 941 pixel discrepancies without redesigning the UI.
 4. Reconfirm the owner-device Zorin deployment and permissioned real-source
    end-to-end field acceptance left open from Phases 3–4.
