@@ -45,10 +45,13 @@ const {chromium} = require('../visual/node_modules/playwright');
       throw Error('Native workflow comparison is absent');
     }
     await page.click('nav button[data-page="Royalty Ledger"]');
-    await page.waitForSelector('.retained-source-inspection');
-    if (!(await page.locator('.retained-source-inspection').textContent())
-      .includes('Legacy records are displayed separately')) {
-      throw Error('Native result comparison is absent');
+    await page.waitForFunction(() => {
+      const panel = document.querySelector('.retained-source-inspection');
+      return panel && !panel.querySelector('[role="status"]');
+    }, {timeout: 20000});
+    const resultText = await page.locator('.retained-source-inspection').textContent();
+    if (!resultText.includes('Legacy records are displayed separately')) {
+      throw Error('Native result comparison is absent: ' + resultText.slice(0, 500));
     }
     if (errors.length) throw Error(errors.join('; '));
     console.log('Phase 8 native retained-source and historical-commercial read parity: PASS');
