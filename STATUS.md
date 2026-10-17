@@ -9,12 +9,20 @@ Relationship Graph remain the goal. Full unification and functional parity are n
 
 - Development branch: `agent/unification-implementation-2026-10-16`, draft PR #234.
 - Latest source accepted for Phase 6: `5c03cd80cde497b2dfc0e3533a913000db280812` (anchored historical snapshots, retained-history timeline/comparison, saved layouts, source/date/confidence controls, source grouping, activity highlighting, and bidirectional graph/map navigation). Phase 5 remains pinned to `44e80090219a0ad0938dbec44848233d089bcf2d`.
-- This recovery update changes STATUS.md only; the source acceptance below is pinned to that implementation commit.
+- Phase 7 continuation restores and extends historical integrity tests and binds the preserved source-verification API to the exact reviewed URL; Phase 6 acceptance remains pinned to its source revision below.
 - Phase 5 native integration is implemented. Exact-source acceptance results are recorded below.
 - Main remains `4c8f8eaf08653e2d571b0df821b862dcc9b158ac`; no merge or owner-device/source activation.
 - Phase 6 implementation acceptance is complete for the controlling Phase 6 directive: the same persisted investigation graph and committed worker events drive embedded/full-screen views, bounded anchored historical replay, connection recovery, dossiers and bidirectional map navigation. Next follow the unchanged directive into Phase 7 historical safeguard reconciliation, without claiming real-source/device operational acceptance.
 - Operational checks still open: owner-Zorin/systemd deployment, permissioned live-source background acquisition, and real live cooperating-source acceptance from Phases 3–4.
 - Preserve all original interfaces, historical branches and assurance evidence through Phase 8 acceptance.
+
+## Phase 7 continuation — source scope and database reconnection
+
+- Recovered development head `8926ef8002cd7f8fdb5c88443209282a0e8abb45` already passed [full CI](https://github.com/TruSudo/Construction-Sight/actions/runs/38995303991) and [browser/USGS checks](https://github.com/TruSudo/Construction-Sight/actions/runs/38995303982). That checkpoint restores the historical foreign-key test and exercises retained bytes, distinct uncertain identities, commercial isolation, read-only native queries and duplicate-free worker replay through the shared runtime.
+- The preserved `SourceVerifier.verify` API now refuses an access profile whose URL differs from the actual source before calling transport. Negative cases cover another host, another path, another scheme and another query. The unified CEQA background worker uses this class's response classifier, not its verification method; this fix does not certify the background lane or grant source authority.
+- Extended the restored database regression to the actual private investigation engine: foreign keys remain enabled after disposing/reopening connections, and orphan verification inserts fail on each connection.
+- Current local focused acceptance: **17 passed**. Ruff, strict Mypy (**347 source files**), JavaScript syntax and dependency integrity passed. Full regression and current-source CI are pending; these focused results do not replace those gates.
+- Phase 7 remains **in progress**. Next reconcile the historical digest-bound access-fact review against each applicable unified acquisition boundary, then remaining historical financial/result-authority and retained-evidence obligations. Existing tests and historical assets remain preserved; no full historical safeguard equivalence is claimed. Owner-device/live-source checks remain open.
 
 ## Phase 6 implementation acceptance — VERIFIED (not owner-device production acceptance)
 

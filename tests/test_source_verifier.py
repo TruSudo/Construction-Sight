@@ -1,3 +1,5 @@
+import pytest
+
 from constructionsight.http_transport_models import (
     BoundedHttpObservation,
     BoundedHttpPolicy,
@@ -136,3 +138,24 @@ def test_verifier_preserves_transport_failure_class() -> None:
     assert result.confidence_score == 0
     assert result.notes == "HTTP verification failed closed: transport_failure"
     assert result.raw_observations["failure_kind"] == "transport_failure"
+
+
+@pytest.mark.parametrize("review_url", [
+    "https://example.gov/other",
+    "https://ezop.sbcounty.gov/other/",
+    "http://ezop.sbcounty.gov/citizenaccess/",
+    "https://ezop.sbcounty.gov/citizenaccess/?scope=other",
+])
+def test_verifier_rejects_review_for_different_url_without_network(review_url: str) -> None:
+    def forbidden_executor(
+        url: str, method: str, policy: BoundedHttpPolicy
+    ) -> BoundedHttpObservation:
+        raise AssertionError("mismatched review must never reach transport")
+
+    result = SourceVerifier(executor=forbidden_executor).verify(
+        _source(), _reviewed_profile(review_url)
+    )
+    assert result.url_reachable is False
+    assert result.confidence_score == 0
+    assert result.raw_observations["access_decision"] == "review_required"
+    assert "exact source URL" in (result.notes or "")
