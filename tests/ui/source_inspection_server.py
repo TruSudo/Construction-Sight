@@ -11,11 +11,17 @@ from sqlalchemy.orm import Session
 
 from constructionsight.ceqa_models import CeqaRecord
 from constructionsight.entity_models import Entity
+from constructionsight.lead_workflow_service import create_lead_workflow
 from constructionsight.live_command_center import make_server
 from constructionsight.provenance import Provenance
 from constructionsight.site_models import Site
 from constructionsight.storage.database import create_database_engine, initialize_database
 from constructionsight.storage.domain_store import CeqaStore
+from constructionsight.storage.lead_workflow_store import (
+    store_lead_review_package,
+    store_lead_workflow_record,
+)
+from tests.test_bid_proposal_service import _package
 from tests.test_operator_capture_queue import _payload as capture_fixture
 from tests.test_operator_ingestion_inbox import _write_artifacts
 from tests.test_smarts_parcel_review import _change, _environment, _parcel
@@ -29,6 +35,10 @@ database = args.data_dir / "operator-source.sqlite3"
 engine = create_database_engine(f"sqlite:///{database}")
 initialize_database(engine)
 with Session(engine) as session, session.begin():
+    package = _package()
+    workflow = create_lead_workflow(package=package)
+    store_lead_review_package(session, package)
+    store_lead_workflow_record(session, workflow)
     evidence = Provenance(
         source_name="Synthetic Phase 8 retained fixture",
         evidence_text="Not an actual jurisdictional observation",
