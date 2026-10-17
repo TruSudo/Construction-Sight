@@ -219,6 +219,9 @@ def make_server(
     parity: bool = False,
     startup_directory: Path | None = None,
     operator_database: Path | None = None,
+    operator_capture_queue: Path | None = None,
+    operator_ceqanet_listing: Path | None = None,
+    operator_ceqanet_review_queue: Path | None = None,
 ) -> ThreadingHTTPServer:
     if parity and (not snapshot.get("demo") or directory is not None):
         raise ValueError("Mockup parity requires an isolated Demo fixture")
@@ -227,6 +230,14 @@ def make_server(
             raise ValueError("operator source data cannot be exposed in demo/parity mode")
         if operator_database.is_symlink() or not operator_database.is_file():
             raise ValueError("operator source database must be an existing regular file")
+    if (operator_ceqanet_listing is None) != (operator_ceqanet_review_queue is None):
+        raise ValueError("CEQAnet retained listing and review-queue evidence must be paired")
+    if operator_database is None and any(
+        path is not None for path in (
+            operator_capture_queue, operator_ceqanet_listing, operator_ceqanet_review_queue
+        )
+    ):
+        raise ValueError("retained source artifacts require an existing operator database")
     startup_directory = startup_directory or directory
     if directory:
         directory = data_folder.resolve_folder(directory)
@@ -491,7 +502,10 @@ def make_server(
                 body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
             elif path in SOURCE_INSPECTION_ROUTES:
                 value = source_inspection(
-                    operator_database, route=path, query=urlsplit(self.path).query
+                    operator_database, route=path, query=urlsplit(self.path).query,
+                    capture_queue=operator_capture_queue,
+                    ceqanet_listing=operator_ceqanet_listing,
+                    ceqanet_review_queue=operator_ceqanet_review_queue,
                 )
                 body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
             elif path == "/api/investigation-review":
@@ -1012,6 +1026,18 @@ def main(argv: list[str] | None = None) -> int:
         help="Existing legacy operator SQLite database for read-only source inspection",
     )
     parser.add_argument(
+        "--operator-capture-queue", type=Path,
+        help="Exact locally retained CEQA capture-queue artifact, read-only",
+    )
+    parser.add_argument(
+        "--operator-ceqanet-listing", type=Path,
+        help="Retained CEQAnet listing evidence for original ingestion inbox",
+    )
+    parser.add_argument(
+        "--operator-ceqanet-review-queue", type=Path,
+        help="Paired retained CEQAnet review evidence for original inbox",
+    )
+    parser.add_argument(
         "--capture-only", action="store_true", help="Scheduled capture without a server"
     )
     parser.add_argument(
@@ -1076,6 +1102,9 @@ def main(argv: list[str] | None = None) -> int:
             parity=args.mockup_parity,
             startup_directory=startup_directory,
             operator_database=args.operator_database,
+            operator_capture_queue=args.operator_capture_queue,
+            operator_ceqanet_listing=args.operator_ceqanet_listing,
+            operator_ceqanet_review_queue=args.operator_ceqanet_review_queue,
         )
     except (ValueError, OSError, httpx.HTTPError) as exc:
         print(f"Command Center unavailable: {type(exc).__name__}: {exc}", file=sys.stderr)
