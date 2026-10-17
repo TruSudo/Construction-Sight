@@ -75,6 +75,7 @@ def _source(
             raw = record.model_dump(mode="json", round_trip=True)
             return {
                 "kind": kind, "record_id": record_id,
+                "candidate_key": original.candidate_key,
                 "source_sha256": original.normalized_source_sha256,
                 "preview_id": original.preview_id,
             }, raw
