@@ -42,6 +42,7 @@ from constructionsight.command_center_legacy_export import (
     original_ceqanet_export,
     original_ceqanet_export_status,
 )
+from constructionsight.command_center_legacy_lineage import original_candidate_workflow_lineage
 from constructionsight.command_center_legacy_reconciliation import (
     enqueue_legacy_reconciliation,
     original_source_replay_audit,
@@ -547,6 +548,25 @@ def make_server(
                     after=int(query.get("after", ["0"])[0]),
                     anchor=query.get("anchor", [None])[0],
                     evidence_id=query.get("id", [None])[0],
+                )
+                body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
+            elif path == "/api/source-commercial-lineage":
+                if (
+                    directory is None
+                    or set(query) - {"kind", "record_id", "offset", "limit"}
+                    or len(query.get("kind", [])) != 1
+                    or len(query.get("record_id", [])) != 1
+                    or len(query.get("offset", ["0"])) != 1
+                    or len(query.get("limit", ["20"])) != 1
+                    or query["kind"][0] not in {"ceqa", "permit"}
+                ):
+                    raise ValueError("select one exact original source candidate")
+                value = original_candidate_workflow_lineage(
+                    directory, operator_database,
+                    kind="ceqa" if query["kind"][0] == "ceqa" else "permit",
+                    record_id=query["record_id"][0],
+                    offset=int(query.get("offset", ["0"])[0]),
+                    limit=int(query.get("limit", ["20"])[0]),
                 )
                 body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
             elif path == "/api/source-reconciliation-audit":
