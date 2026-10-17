@@ -20,11 +20,45 @@ from constructionsight.lead_operator_service import (
     load_persisted_lead_workflow,
 )
 from constructionsight.lead_review_models import LeadReviewPackage
-from constructionsight.storage.lead_workflow_orm import (
-    LeadWorkflowRecordRow,
-    ResultLedgerRecordRow,
-)
+from constructionsight.operator_results import read_validated_result_history
+from constructionsight.result_ledger_models import ResultLedgerRecord
+from constructionsight.result_ledger_service import money_minor_units, share_rate_ppm_units
+from constructionsight.storage.lead_workflow_orm import LeadWorkflowRecordRow
 from constructionsight.storage.operator_read_store import create_operator_read_engine
+
+
+def _outcome_revision(source: dict[str, Any]) -> dict[str, Any]:
+    """Show exact historic money units, never inferred receivables or current royalties."""
+
+    record = ResultLedgerRecord.model_validate(source)
+    gross_minor = (
+        money_minor_units(record.gross_value, field_name="gross_value")
+        if record.gross_value is not None else None
+    )
+    return {
+        "ledger_id": record.ledger_id,
+        "revision": record.revision,
+        "supersedes_ledger_id": record.supersedes_ledger_id,
+        "correction_reason": record.correction_reason,
+        "content_digest": record.content_digest,
+        "status": record.status.value,
+        "decided_date": record.decided_date.isoformat() if record.decided_date else None,
+        "gross_value_minor": gross_minor,
+        "share_status": record.share_status.value,
+        "share_record_id": record.share.share_record_id if record.share else None,
+        "share_rate_ppm": (
+            share_rate_ppm_units(record.share.share_rate)
+            if record.share else None
+        ),
+        "calculated_share_minor": (
+            money_minor_units(record.share.share_value, field_name="share_value")
+            if record.share else None
+        ),
+        "reasons": list(record.reasons),
+        "limitations": list(record.limitations),
+        "share_entitlement_verified": False,
+        "payment_received_verified": False,
+    }
 
 
 def original_candidate_workflow_lineage(
@@ -78,18 +112,34 @@ def original_candidate_workflow_lineage(
                     ):
                         raise ValueError("original workflow review package identity disagrees")
                     review_status = review.status.value
-                result_count = session.scalar(
-                    select(func.count()).select_from(ResultLedgerRecordRow).where(
-                        ResultLedgerRecordRow.workflow_id == workflow.workflow_id
-                    )
-                ) or 0
+                validated = read_validated_result_history(session, workflow.workflow_id)
+                if validated is not None and validated["package_id"] != workflow.package_id:
+                    raise ValueError("original result and workflow package identity disagree")
+                revisions = (
+                    [_outcome_revision(entry) for entry in validated["history"]]
+                    if validated is not None else []
+                )
+                revisions.sort(key=lambda revision: revision["revision"])
+                current_result = revisions[-1] if revisions else None
                 rows.append({
                     "workflow_id": workflow.workflow_id,
                     "original_package_id": workflow.package_id,
                     "original_candidate_key": candidate_key,
                     "historical_workflow_status": workflow.status.value,
                     "review_package_status": review_status,
-                    "original_result_revision_count_unverified": result_count,
+                    "original_result_revision_count_unverified": len(revisions),
+                    "historical_result": {
+                        "has_retained_outcome": validated is not None,
+                        "history_integrity_validated": validated is not None,
+                        "revision_count": len(revisions),
+                        "current_revision": current_result,
+                        "revision_history": revisions,
+                        "latest_revision_only_is_current": True,
+                        "past_revisions_must_not_be_summed": True,
+                        "share_entitlement_verified": False,
+                        "payment_received_verified": False,
+                        "contract_verified": False,
+                    },
                     "original_workflow_limitations": list(workflow.limitations),
                     "canonical_investigation_id": (
                         source["canonical_investigation_id"]
@@ -122,7 +172,9 @@ def original_candidate_workflow_lineage(
         "limitations": [
             "Candidate lineage does not prove reviewed identity between distinct projects.",
             "Historical workflow status does not grant new outreach or bidding authority.",
-            "Result revision counts are not validation of outcome, royalty or payment.",
+            "Retained result history is integrity-checked, not proof of award or payment.",
+            "Only the latest result revision is current. Never sum superseded shares.",
+            "Calculated shares do not establish royalty agreement, entitlement or payment.",
             "Unmatched original workflows cannot be linked without independent evidence.",
         ],
     }
