@@ -128,7 +128,8 @@ async function renderRetainedSources(box) {
             esc(r.title), esc(r.record_kind), esc(r.county), esc(r.state),
             '<button data-source-preview="' + i + '">Source evidence</button> ' +
             '<button data-parcel-review="' + i + '">Parcel candidates</button> ' +
-            '<button data-source-watch="' + i + '">Watch source</button>'
+            '<button data-source-watch="' + i + '">Watch source</button> ' +
+            '<button data-source-reconcile="' + i + '">Native evidence reconciliation</button>'
           ])) +
         '<div class="source-toolbar"><button id="retained-source-previous"' +
         (offset === 0 ? ' disabled' : '') + '>Previous</button>' +
@@ -138,6 +139,60 @@ async function renderRetainedSources(box) {
         () => { offset = Math.max(0, offset - 10); perform(loadPage); };
       queue.querySelector('#retained-source-next').onclick =
         () => { offset += 10; perform(loadPage); };
+      queue.querySelectorAll('[data-source-reconcile]').forEach(button => {
+        button.onclick = () => perform(async () => {
+          const record = page.items[Number(button.dataset.sourceReconcile)];
+          const inspection = await api('/api/source-reconciliation?' +
+            new URLSearchParams({
+              kind: record.record_kind, record_id: record.record_id
+            }));
+          if (!root.isConnected || activePage !== 'Sources & Collection') return;
+          const needsReplay = inspection.replay_eligible === true;
+          modal('Exact original → native investigation reconciliation',
+            '<p>Exact original source evidence compared with the existing canonical ' +
+            'investigation store. An unmatched source is NOT an independently ' +
+            'verified project. Queuing retained evidence does not merge or authorize ' +
+            'outreach, a bid, or a commercial lead.</p><pre>' +
+            esc(JSON.stringify(inspection, null, 2)) + '</pre>' +
+            (needsReplay ?
+              '<p>To hand off only this exact snapshot to the common investigation ' +
+              'worker, provide a human review reason and explicitly confirm.</p>' +
+              '<label>Review reason <textarea id="source-reconcile-reason" ' +
+              'maxlength="2000" rows="3" required></textarea></label>' +
+              '<label><input id="source-reconcile-confirm" type="checkbox"> ' +
+              'I reviewed this specific retained source evidence; replay only.</label>' +
+              '<button id="source-reconcile-queue">Queue verified retained snapshot</button>' :
+              '<p>No replay allowed. Existing or conflicting native evidence ' +
+              'must be inspected through the canonical dossier and review workflow.</p>'));
+          const queueButton = document.querySelector('#source-reconcile-queue');
+          if (!queueButton) return;
+          queueButton.onclick = () => perform(async () => {
+            const reason = document.querySelector('#source-reconcile-reason')?.value.trim();
+            const confirmed = document.querySelector('#source-reconcile-confirm')?.checked;
+            if (!confirmed || !reason || reason.length < 10) {
+              throw Error('Enter a reason of at least 10 characters and confirm the exact replay.');
+            }
+            queueButton.disabled = true;
+            try {
+              const receipt = await api('/api/source-reconciliation-queue', {
+                kind: record.record_kind,
+                record_id: record.record_id,
+                expected_source_sha256: inspection.original_source.source_sha256,
+                expected_native_evidence_id: inspection.native_evidence_id,
+                caller_confirmation: true, review_reason: reason
+              });
+              if (!root.isConnected || activePage !== 'Sources & Collection') return;
+              modal('Retained source accepted by investigation worker queue',
+                '<p>Queued, not necessarily processed. No verified project identity ' +
+                'or commercial authority is implied. The native worker must commit ' +
+                'the evidence before it appears in canonical dossiers and the graph.</p>' +
+                '<pre>' + esc(JSON.stringify(receipt, null, 2)) + '</pre>');
+            } finally {
+              if (queueButton.isConnected) queueButton.disabled = false;
+            }
+          });
+        });
+      });
       queue.querySelectorAll('[data-source-watch]').forEach(button => {
         button.onclick = () => perform(async () => {
           const record = page.items[Number(button.dataset.sourceWatch)];
