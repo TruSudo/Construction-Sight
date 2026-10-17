@@ -136,6 +136,13 @@ const {spawnSync}=require('child_process');
   const pointCentered=await page.evaluate(p=>Math.abs(center[0]-p.latitude)<.0001&&
    Math.abs(center[1]-p.longitude)<.0001,dossierLocation);
   if(!pointCentered)throw Error('Map was not centered on exact retained source-claimed coordinates');
+  await page.waitForSelector('[data-investigation-live-graph-id="'+root.id+'"]');
+  await page.click('[data-investigation-live-graph-id="'+root.id+'"]');
+  await page.waitForSelector('[data-live-graph]');
+  await page.waitForFunction(id=>document.querySelector('[data-graph-root]')?.value===id,root.id);
+  await page.waitForSelector('[data-live-node="'+root.id+'"]');
+  if((await page.locator('#stub-title').textContent())!=='Entity Network')
+   throw Error('Map-to-graph navigation did not restore Entity Network');
   if(errors.length)throw Error(errors.join('; '));
   console.log('Live graph: shared embedded/full-screen state, canonical evidence, worker continuity, committed events, disconnection recovery and reopen reconstruction PASS');
  }finally{await browser.close();}
