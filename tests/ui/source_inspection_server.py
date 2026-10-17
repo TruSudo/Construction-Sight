@@ -14,12 +14,12 @@ from constructionsight.ceqa_models import CeqaRecord
 from constructionsight.entity_models import Entity
 from constructionsight.lead_workflow_service import create_lead_workflow
 from constructionsight.live_command_center import make_server
+from constructionsight.provenance import Provenance
 from constructionsight.result_ledger_models import ResultLedgerStatus
 from constructionsight.result_ledger_service import (
     build_result_ledger_record,
     supersede_result_ledger_record,
 )
-from constructionsight.provenance import Provenance
 from constructionsight.site_models import Site
 from constructionsight.storage.database import create_database_engine, initialize_database
 from constructionsight.storage.domain_store import CeqaStore
