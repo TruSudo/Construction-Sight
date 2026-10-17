@@ -34,7 +34,13 @@ from constructionsight.operator_source_candidate import (
 from constructionsight.operator_source_registry import build_operator_source_registry
 from constructionsight.operator_source_review_queue import build_source_review_queue
 from constructionsight.operator_source_revision import build_source_revision_snapshot
-from constructionsight.operator_watchlist import build_operator_watchlist_snapshot
+from constructionsight.operator_watchlist import (
+    add_source_watch,
+    archive_source_watch,
+    build_operator_watchlist_snapshot,
+    create_operator_watchlist_engine,
+    validate_source_selection,
+)
 from constructionsight.operator_web import (
     _build_ceqanet_ingestion_payload,
     _parameters,
@@ -231,5 +237,43 @@ def source_inspection(
         raise ValueError("source record not found") from exc
     except SQLAlchemyError as exc:
         raise ValueError("operator source inspection failed") from exc
+    finally:
+        engine.dispose()
+
+
+def source_watch_action(
+    database: Path | None, *, action: str, kind: str, record_id: str,
+) -> dict[str, Any]:
+    """Apply only the original watchlist-table mutation to an existing source identity.
+
+    The local server enforces Origin, Host, an exact request object, and the
+    maintenance lock. The original guard confines every SQL write to the local
+    intelligence watchlist table; source, investigative and commercial facts
+    remain untouched. No background monitoring or communications are started.
+    """
+
+    if action not in {"add", "archive"}:
+        raise ValueError("invalid source watch action")
+    validate_source_selection(kind=kind, record_id=record_id)
+    if database is None:
+        raise ValueError("no existing operator source database is configured")
+    if database.is_symlink() or not database.is_file():
+        raise ValueError("operator source database must be an existing regular file")
+    try:
+        engine = create_operator_watchlist_engine(database)
+    except (SQLAlchemyError, OSError, ValueError) as exc:
+        raise ValueError("source watchlist storage is unavailable") from exc
+    try:
+        with Session(engine, autoflush=False) as session, session.begin():
+            if action == "add":
+                add_source_watch(session, kind=kind, record_id=record_id)
+            else:
+                archive_source_watch(session, kind=kind, record_id=record_id)
+            result = build_operator_watchlist_snapshot(session)
+        return {"available": True, "mutation": action, **result}
+    except LookupError as exc:
+        raise ValueError("selected source or watch record was not found") from exc
+    except (SQLAlchemyError, RuntimeError) as exc:
+        raise ValueError("source watchlist operation failed") from exc
     finally:
         engine.dispose()
