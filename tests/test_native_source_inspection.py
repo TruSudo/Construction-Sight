@@ -360,7 +360,10 @@ def test_private_smarts_history_and_exact_parcel_review_reuse_original_safeguard
                 "snapshot_id=1&source_key=x&county=Riverside",
                 "snapshot_id=1&snapshot_id=1&source_key=x",
             ):
-                assert client.get("/api/source-smarts-parcel-candidates?" + query).status_code == 409
+                assert (
+                    client.get("/api/source-smarts-parcel-candidates?" + query).status_code
+                    == 409
+                )
             assert client.get("/api/source-smarts-changes?kind=ceqa").status_code == 409
             assert client.get("/api/source-smarts-changes?limit=100").status_code == 409
             assert client.get("/api/source-smarts-status?other=1").status_code == 409
