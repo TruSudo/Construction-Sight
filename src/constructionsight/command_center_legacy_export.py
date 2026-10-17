@@ -10,12 +10,15 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import zipfile
+from io import BytesIO
 from pathlib import Path
 from typing import Any
 
 from constructionsight.ceqanet_operator_archive import build_ceqanet_operator_archive
 from constructionsight.ceqanet_operator_archive_verify import verify_ceqanet_operator_archive
 from constructionsight.ceqanet_operator_export import build_ceqanet_operator_export
+from constructionsight.ceqanet_operator_package import build_ceqanet_operator_package
 from constructionsight.storage.runtime_artifacts import read_runtime_artifact
 
 _SHA = re.compile(r"[0-9a-f]{64}")
@@ -81,12 +84,15 @@ def original_ceqanet_export(
         receipt = verify_ceqanet_operator_archive(archive_path=archive)
         if not receipt.passed:
             raise ValueError("existing archive failed integrity verification")
+        existing = read_runtime_artifact(archive, max_bytes=128 * 1024 * 1024)
+        with zipfile.ZipFile(BytesIO(existing)) as verified_zip:
+            original_package = json.loads(verified_zip.read("operator-package.json"))
+        if original_package != build_ceqanet_operator_package(payload).to_dict():
+            raise ValueError("existing verified archive belongs to a different source report")
         return {
             "schema_version": "constructionsight.original-ceqanet-export/v1",
             "retained_report_sha256": digest,
-            "archive_sha256": hashlib.sha256(
-                read_runtime_artifact(archive, max_bytes=128 * 1024 * 1024)
-            ).hexdigest(),
+            "archive_sha256": hashlib.sha256(existing).hexdigest(),
             "archive_available": True,
             "verification_passed": True,
             "existing_verified_archive": True,
