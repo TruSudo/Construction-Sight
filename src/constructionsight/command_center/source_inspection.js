@@ -184,10 +184,24 @@ async function renderRetainedSources(box) {
               });
               if (!root.isConnected || activePage !== 'Sources & Collection') return;
               modal('Retained source accepted by investigation worker queue',
-                '<p>Queued, not necessarily processed. No verified project identity ' +
-                'or commercial authority is implied. The native worker must commit ' +
-                'the evidence before it appears in canonical dossiers and the graph.</p>' +
-                '<pre>' + esc(JSON.stringify(receipt, null, 2)) + '</pre>');
+                '<p>Queued, not necessarily processed. The confirmed human review ' +
+                'reason and exact source identity were durably committed as an ' +
+                'approval audit alongside the worker job. No project identity or ' +
+                'commercial authority is granted.</p>' +
+                '<button id="source-reconcile-audit">Inspect immutable approval ' +
+                'and current job status</button><pre>' +
+                esc(JSON.stringify(receipt, null, 2)) + '</pre>');
+              const auditButton = document.querySelector('#source-reconcile-audit');
+              auditButton.onclick = () => perform(async () => {
+                const audit = await api('/api/source-reconciliation-audit?' +
+                  new URLSearchParams({ job: receipt.job_id }));
+                if (!root.isConnected || activePage !== 'Sources & Collection') return;
+                modal('Retained exact-source replay approval audit',
+                  '<p>Verified record of review and present worker status. Neither ' +
+                  'completion nor approval establishes a verified construction ' +
+                  'project, contact authority or bid readiness.</p><pre>' +
+                  esc(JSON.stringify(audit, null, 2)) + '</pre>');
+              });
             } finally {
               if (queueButton.isConnected) queueButton.disabled = false;
             }
