@@ -17,8 +17,8 @@ import pytest
 
 import constructionsight.effect_consumption as effect_consumption
 from constructionsight.agenda_models import AgendaItemRecord
-from constructionsight.command_center_graph import graph_view
 from constructionsight.ceqa_models import CeqaRecord
+from constructionsight.command_center_graph import graph_view
 from constructionsight.intelligence.investigation_query_service import InvestigationQueryService
 from constructionsight.intelligence.investigation_review_service import InvestigationReviewService
 from constructionsight.intelligence.investigation_service import InvestigationService
