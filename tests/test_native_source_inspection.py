@@ -49,7 +49,8 @@ def test_unconfigured_legacy_source_does_not_create_or_fake_zero_results(tmp_pat
                 "/api/source-ingestion-inbox",
                 "/api/source-smarts-status",
                 "/api/source-smarts-changes",
-                "/api/source-smarts-parcel-candidates?snapshot_id=1&source_key=smarts%3Afacility%3ARiverside%3Awdid%3A8+33C101",
+                "/api/source-smarts-parcel-candidates?snapshot_id=1&"
+                "source_key=smarts%3Afacility%3ARiverside%3Awdid%3A8+33C101",
             ):
                 response = client.get(endpoint)
                 assert response.status_code == 200
