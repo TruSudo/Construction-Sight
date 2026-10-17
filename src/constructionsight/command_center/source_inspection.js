@@ -618,26 +618,40 @@ async function renderLegacyCommercial(box, category) {
   root.className = 'retained-source-inspection';
   root.innerHTML = '<h3>Preserved workflow / outcome records</h3><p role="status">Inspecting local records…</p>';
   box.append(root);
+  let offset = 0, pageRequest = 0;
   try {
-    const [summary, page] = await Promise.all([
-      api('/api/workflow-summary'),
-      api(category === 'Bid Studio' ? '/api/workflows?limit=25&offset=0' :
-        '/api/results?limit=25&offset=0')
-    ]);
+    const summary = await api('/api/workflow-summary');
     if (!root.isConnected || activePage !== category) return;
-    if (!summary.available || !page.available) {
+    if (!summary.available) {
       root.innerHTML = '<h3>Preserved workflow / outcome records</h3>' +
         '<p>Not connected. Configure the existing operator source database to inspect ' +
         'the historical governed records without modifying them.</p>';
       return;
     }
-    const records = category === 'Bid Studio' ? page.leads || [] : page.results || [];
+    async function loadLegacyPage(nextOffset) {
+      const ticket = ++pageRequest;
+      root.innerHTML = '<h3>Preserved workflow / outcome records</h3>' +
+        '<p role="status">Loading retained history at offset ' + esc(nextOffset) + '…</p>';
+      try {
+        const route = category === 'Bid Studio' ? '/api/workflows?' : '/api/results?';
+        const page = await api(route + new URLSearchParams({
+          limit: '25', offset: String(nextOffset)
+        }));
+        if (!root.isConnected || activePage !== category || ticket !== pageRequest) return;
+        if (!page.available) {
+          root.innerHTML = '<h3>Preserved workflow / outcome records</h3>' +
+            '<p>Original operator history is not connected.</p>';
+          return;
+        }
+        offset = nextOffset;
+        const records = category === 'Bid Studio' ? page.leads || [] : page.results || [];
     root.innerHTML = '<h3>Preserved workflow / outcome records</h3>' +
       '<p>Legacy records are displayed separately from current native bids/royalties. ' +
       'They are not independently verified current jobs, payments, or permission to send. ' +
       'Persisted workflows: ' + esc(summary.total) + '; displayed records: ' +
       esc(records.length) + ' of ' + esc(page.total) +
-      (page.has_more ? ' (more exist; this view is bounded to 25)' : '') + '.</p>' +
+      ' · page offset ' + esc(offset) +
+      (page.has_more ? ' · more original records available' : '') + '.</p>' +
       table(['Retained identity', 'Status / evidence', 'Inspection'],
         records.map((r, i) => [
           esc(r.workflow_id || r.ledger_id || r.candidate_key || 'Retained outcome'),
@@ -648,7 +662,15 @@ async function renderLegacyCommercial(box, category) {
             '">Trace exact source</button>' : '')
         ])) +
       '<p>' + esc((page.limitations || summary.limitations || []).join(' ')) + '</p>' +
+      '<div class="source-toolbar"><button data-original-previous ' +
+      (offset === 0 ? 'disabled' : '') + '>Previous historical records</button> ' +
+      '<button data-original-next ' + (page.has_more ? '' : 'disabled') +
+      '>Next historical records</button></div>' +
       '<button id="legacy-record-export">Export displayed retained JSON</button>';
+    root.querySelector('[data-original-previous]').onclick = () =>
+      perform(() => loadLegacyPage(Math.max(0, offset - 25)));
+    root.querySelector('[data-original-next]').onclick = () =>
+      perform(() => loadLegacyPage(offset + 25));
     root.querySelector('#legacy-record-export').onclick = () =>
       download(category === 'Bid Studio' ? 'original-workflows.json' :
         'original-results.json', page);
@@ -724,7 +746,17 @@ async function renderLegacyCommercial(box, category) {
         };
       });
     });
-    if (category === 'Bid Studio') renderRetainedCommercialPreviewTools(root, records);
+        if (category === 'Bid Studio') renderRetainedCommercialPreviewTools(root, records);
+      } catch (error) {
+        if (root.isConnected && activePage === category && ticket === pageRequest)
+          root.innerHTML = '<h3>Preserved workflow / outcome records</h3>' +
+            '<p role="alert">Historical page could not be loaded: ' +
+            esc(error.message) + '.</p><button data-original-retry>Retry page</button>';
+        const retry = root.querySelector('[data-original-retry]');
+        if (retry) retry.onclick = () => perform(() => loadLegacyPage(nextOffset));
+      }
+    }
+    await loadLegacyPage(0);
   } catch (error) {
     if (root.isConnected && activePage === category)
       root.innerHTML = '<h3>Preserved workflow / outcome records</h3>' +
