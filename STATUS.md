@@ -8,13 +8,23 @@ Relationship Graph remain the goal. Full unification and functional parity are n
 ## Exact recovery checkpoint
 
 - Development branch: `agent/unification-implementation-2026-10-16`, draft PR #234.
-- Latest implementation source: `271ac23575fa55a3693d8a1ea6d203676db95a9f` (Phase 6 source/date/confidence controls, saved layouts, evidence collapse, node-kind arrangement and graph-to-map navigation). Phase 5 remains pinned to `44e80090219a0ad0938dbec44848233d089bcf2d`.
+- Latest source accepted for Phase 6: `5c03cd80cde497b2dfc0e3533a913000db280812` (anchored historical snapshots, retained-history timeline/comparison, saved layouts, source/date/confidence controls, source grouping, activity highlighting, and bidirectional graph/map navigation). Phase 5 remains pinned to `44e80090219a0ad0938dbec44848233d089bcf2d`.
 - This recovery update changes STATUS.md only; the source acceptance below is pinned to that implementation commit.
 - Phase 5 native integration is implemented. Exact-source acceptance results are recorded below.
 - Main remains `4c8f8eaf08653e2d571b0df821b862dcc9b158ac`; no merge or owner-device/source activation.
-- Next development task: complete Phase 6 historical graph-state replay from retained full before/after revision events, richer evidence-aware clustering/history controls and realistic retained cross-source acceptance. Browser-local saved views, the initial source/date/confidence controls, evidence collapse, deterministic node-kind arrangement and source-claimed graph-to-map navigation are implemented; full Phase 6 is not complete.
+- Phase 6 implementation acceptance is complete for the controlling Phase 6 directive: the same persisted investigation graph and committed worker events drive embedded/full-screen views, bounded anchored historical replay, connection recovery, dossiers and bidirectional map navigation. Next follow the unchanged directive into Phase 7 historical safeguard reconciliation, without claiming real-source/device operational acceptance.
 - Operational checks still open: owner-Zorin/systemd deployment, permissioned live-source background acquisition, and real live cooperating-source acceptance from Phases 3–4.
 - Preserve all original interfaces, historical branches and assurance evidence through Phase 8 acceptance.
+
+## Phase 6 implementation acceptance — VERIFIED (not owner-device production acceptance)
+
+**Exact validated application/source revision:** `5c03cd80cde497b2dfc0e3533a913000db280812`; existing draft PR #234.
+
+- [Python full CI 38991749216](https://github.com/TruSudo/Construction-Sight/actions/runs/38991749216): **2,642 passed on Python 3.11** (316.25s) and **2,642 passed on Python 3.12** (308.88s); two non-failing Typer/Click warnings per leg. Ruff, strict Mypy, JavaScript syntax, dependency integrity and vulnerability checks passed.
+- [Browser + live USGS 38991749140](https://github.com/TruSudo/Construction-Sight/actions/runs/38991749140): both workflow jobs successful; graph acceptance exercised exact retained source/date/confidence filters, independent background worker, embedded/full-screen single-canvas identity, committed event catch-up, reconnection, immutable evidence/dossiers, saved local views, source grouping and collapse, exact-anchored historical graph snapshots and comparison, return-to-live and **bidirectional** graph/Site Map navigation. Existing 33-action/33-contract functional parity workflow and visual/USGS observational checks passed; full reference-image pixel parity is not claimed.
+- Historical state is rebuilt in memory from the existing immutable before/after graph revision journal, with exact sequence/event ID checks, bounded 12,000-event/10,000-record work, timeline pagination and explicit failure for missing/conflicting earlier revisions. Historical views are limited to complete *retained* revision chains; missing old records and past physical construction are never inferred. Historical view disables navigation into current dossiers/map coordinates to avoid time-travel ambiguity; live mode resumes the real worker event cursor.
+- The five-family retained-data acceptance exercises CEQA, planning, permit, parcel and agenda evidence with deliberate human-reviewed contextual associations, source revisions and preserved prior snapshots. Tests preserve uncertainty, distinct source identity and no implied commercial approval. No new graph store, source/credential authority, outbound actions or database schema migration was introduced.
+- Phase 6 **development implementation is accepted** against the controlling directive; external operation remains unaccepted until owner-Zorin installation, permissioned live-source collection and Phase 3/4 realistic field verification. Those conditions are not silently waived. Proceed to Phase 7 only in the original sequence, with no merge to main without authorization.
 
 ## Phase 6 controls and graph-to-map development acceptance — verified
 
@@ -109,7 +119,7 @@ Relationship Graph remain the goal. Full unification and functional parity are n
 | 3 — background orchestration | SMARTS/inbox/timers connected; separately reviewed finite CEQA background lane implemented; real-source activation and owner-device deployment remain unaccepted |
 | 4 — cooperating-source journey | Controlled and retained public-excerpt implementation acceptance exists; live-source operational acceptance remains open |
 | 5 — native integration | Development acceptance complete at 44e80090; full Python and browser gates passed; operational field checks remain open under Phases 3–4 |
-| 6 — live Relationship Graph | Embedded/expanded live graph and retained cursor recovery accepted; saved browser-local views, source/date/confidence filters, evidence collapse, node-kind grouping and exact source-point map navigation accepted; full historical graph-state replay remains open |
+| 6 — live Relationship Graph | Development acceptance complete at `5c03cd80`; persisted live graph, full before/after revision replay, event-cursor recovery, saved layouts, filters, source grouping, activity highlighting, dossier/evidence inspection and bidirectional Site Map navigation validated by full CI and browser tests |
 | 7 — assurance completion | Relevant new safeguards tested; complete historical-to-unified enforcement reconciliation remains outstanding |
 | 8 — functional parity | No complete parity acceptance; original interface retained |
 
