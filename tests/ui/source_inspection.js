@@ -89,6 +89,21 @@ const {chromium} = require('../visual/node_modules/playwright');
       throw Error('Original capture candidate evidence is not inspectable');
     }
     await page.click('#action-close');
+    await page.waitForSelector('#original-export-generate');
+    await page.locator('#original-export-confirm').check();
+    await page.locator('#original-export-generate').click();
+    await page.waitForSelector('#original-export-download');
+    const exportReport = await page.locator('#original-export-result').textContent();
+    if (!exportReport.includes('Verified original operator ZIP is ready') ||
+        !exportReport.includes('No commercial action was authorized')) {
+      throw Error('Original verified CEQAnet package/archive export is unavailable');
+    }
+    const downloadEvent = page.waitForEvent('download');
+    await page.locator('#original-export-download').click();
+    const operatorArchive = await downloadEvent;
+    if (operatorArchive.suggestedFilename() !== 'ceqanet-operator-export.zip') {
+      throw Error('Original CEQAnet ZIP download filename differs from validated export');
+    }
     await page.waitForSelector('#source-smarts-change-results [data-smarts-parcel]');
     const originalSmarts = await page.locator('#retained-smarts-history').textContent();
     if (!originalSmarts.includes('smarts:facility:Riverside:wdid:8 33C101') ||
