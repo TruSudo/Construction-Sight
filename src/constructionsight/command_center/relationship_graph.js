@@ -3,16 +3,18 @@ async function openLiveRelationshipGraph(box){
  box.querySelectorAll('[data-shared-investigations]').forEach(h=>h.dispatchEvent(new Event('investigation-dispose')));
  const host=document.createElement('section');host.className='live-graph';host.dataset.liveGraph='true';box.replaceChildren(host);
  host.innerHTML='<div class="graph-toolbar"><strong>Relationship Graph</strong><button data-graph-full>Expand full screen</button><button data-graph-pause>Pause display</button><button data-graph-refresh>Reconnect / refresh</button><button data-graph-back>Entity inventory</button></div>'+
- '<div class="graph-toolbar"><label>Root ID <input data-graph-root aria-label="Graph root ID" placeholder="All retained roots (bounded)" maxlength="255"></label><label>Depth <select data-graph-depth aria-label="Graph relationship depth"><option>1</option><option>2</option><option>3</option></select></label><button data-graph-load>Load retained neighborhood</button><input data-graph-search aria-label="Find graph node" placeholder="Find in this snapshot"><label>Relationships <select data-graph-status-filter aria-label="Graph relationship status"><option value="">All current</option><option value="confirmed">Confirmed assertion</option><option value="possible">Possible</option><option value="conflicting">Conflicting</option><option value="retained_reference">Retained evidence references</option></select></label><button data-graph-fit>Reset view</button><button data-graph-group>Arrange by node type</button></div>'+
+ '<div class="graph-toolbar"><label>Root ID <input data-graph-root aria-label="Graph root ID" placeholder="All retained roots (bounded)" maxlength="255"></label><label>Depth <select data-graph-depth aria-label="Graph relationship depth"><option>1</option><option>2</option><option>3</option></select></label><button data-graph-load>Load retained neighborhood</button><input data-graph-search aria-label="Find graph node" placeholder="Find in this snapshot"><label>Relationships <select data-graph-status-filter aria-label="Graph relationship status"><option value="">All current</option><option value="confirmed">Confirmed assertion</option><option value="possible">Possible</option><option value="conflicting">Conflicting</option><option value="retained_reference">Retained evidence references</option></select></label><button data-graph-fit>Reset view</button><button data-graph-group>Arrange by node type</button><button data-graph-family-group>Group by retained source</button><label><input type="checkbox" data-graph-activity> Highlight actual activity</label></div>'+
  '<div class="graph-toolbar graph-investigation-controls"><label>Source family <select data-graph-source aria-label="Filter graph by retained source family"><option value="">All retained families</option></select></label><label>Record updated since <input type="date" data-graph-since aria-label="Filter graph by retained record date"></label><label>Minimum assertion confidence <input data-graph-confidence type="number" min="0" max="100" step="10" value="0" aria-label="Minimum assertion confidence"></label><label><input type="checkbox" data-graph-collapse-evidence> Collapse evidence nodes</label><button data-graph-clear-filters>Clear filters</button></div>'+
  '<div class="graph-toolbar graph-saved-controls"><label>View name <input data-graph-view-name maxlength="60" aria-label="Name this local graph layout" placeholder="e.g. Riverside permits"></label><button data-graph-save>Save local view</button><label>Saved local views <select data-graph-view-list aria-label="Select saved graph view"><option value="">Select view…</option></select></label><button data-graph-restore>Restore view</button><button data-graph-delete>Delete view</button><span data-graph-storage-status role="status" class="graph-key"></span></div>'+
+ '<div class="graph-toolbar graph-history-controls"><strong>Retained history</strong><label>Revision <select data-graph-history aria-label="Select a retained graph revision"><option value="">Select a recorded revision…</option></select></label><button data-graph-history-open>View historical state</button><button data-graph-history-more>Older revisions</button><button data-graph-history-compare>Compare with current</button><button data-graph-history-live>Return to live</button><span data-graph-history-status role="status"></span></div><p data-graph-history-diff class="graph-key" aria-live="polite"></p>'+
  '<p class="graph-key">Filters affect display only. Date means retained observation/retrieval or last update, not physical construction. Confidence is a source-backed assertion score, not identity verification. Layouts/filters are stored only in this browser, never as evidence.</p><p data-graph-filter-summary class="graph-key" aria-live="polite"></p>'+
  '<p data-graph-connection role="status">Loading authoritative graph…</p><p class="graph-key">Solid: retained reference or confirmed assertion · dashed: unresolved assertion · red: conflict. Source-claimed identity and construction remain unverified.</p>'+
  '<div class="graph-body"><div class="graph-canvas-wrap"><svg data-graph-canvas role="img" aria-label="Live retained investigation relationship graph" viewBox="0 0 1100 650"><g data-graph-world></g></svg><div class="graph-zoom"><button data-graph-zoom="1.2" aria-label="Zoom graph in">+</button><button data-graph-zoom="0.833333" aria-label="Zoom graph out">−</button></div></div><div class="graph-inspector" data-graph-inspector><h3>Evidence inspector</h3><p>Select a retained node or relationship.</p></div></div>'+
  '<details open><summary>Actual recorded processing and graph events</summary><p>Pausing or closing this display does not stop the worker. Activity below is persisted; no simulated investigations are shown. Showing at most 100 delivered events.</p><ol data-graph-events></ol></details>';
  const canvas=host.querySelector('[data-graph-canvas]'),world=host.querySelector('[data-graph-world]'),connection=host.querySelector('[data-graph-connection]'),inspector=host.querySelector('[data-graph-inspector]');
  let snapshot=null,cursor=0,eventCursor=null,anchor=null,disposed=false,paused=false,timer=null,request=0,busy=false,selection=null;
- let transform={x:0,y:0,k:1},drag=null;const positions=new Map(),seenEvents=new Set(),eventLog=[];
+ let transform={x:0,y:0,k:1},drag=null,historyMode=null,historyBefore=0,historyItems=[];const positions=new Map(),seenEvents=new Set(),eventLog=[];
+ let highlightedIds=new Set();
  const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
  const viewKey='constructionsight.graph-layouts.v1';
  const viewStatus=host.querySelector('[data-graph-storage-status]');
@@ -134,7 +136,8 @@ async function openLiveRelationshipGraph(box){
    const a=positions.get(e.source),b=positions.get(e.target),uncertain=['possible','probable','unresolved'].includes(e.status);
    return '<path data-live-edge="'+esc(e.id)+'" tabindex="0" role="button" aria-label="'+esc(e.predicate+' · '+e.status)+'" d="M'+a.x+' '+a.y+'L'+b.x+' '+b.y+'" fill="none" stroke="'+(e.status==='conflicting'?'#f05c66':uncertain?'#b89145':'#65737a')+'" stroke-width="2" stroke-dasharray="'+(uncertain?'6 4':'none')+'"><title>'+esc(e.predicate+' · '+e.status)+'</title></path>';
   }).join('')+nodes.map(n=>{const p=positions.get(n.id),fill=color(n),chosen=selection?.id===n.id;
-   return '<g data-live-node="'+esc(n.id)+'" transform="translate('+p.x+' '+p.y+')" tabindex="0" role="button" aria-label="'+esc(n.kind+': '+n.label)+'"><circle r="'+(chosen?17:12)+'" fill="#222a30" stroke="'+fill+'" stroke-width="'+(chosen?3:2)+'"/><circle r="4" fill="'+fill+'"/><text y="31" text-anchor="middle" fill="#dce0e2">'+esc(n.label.slice(0,31))+'</text><title>'+esc(n.label+' · '+n.kind+' · '+n.id)+'</title></g>';
+   const active=!historyMode&&host.querySelector('[data-graph-activity]').checked&&highlightedIds.has(n.id);
+   return '<g data-live-node="'+esc(n.id)+'" transform="translate('+p.x+' '+p.y+')" tabindex="0" role="button" aria-label="'+esc(n.kind+': '+n.label)+'"><circle r="'+(chosen?17:12)+'" fill="#222a30" stroke="'+(active?'#fff2b7':fill)+'" stroke-width="'+(chosen||active?4:2)+'"/><circle r="4" fill="'+fill+'"/><text y="31" text-anchor="middle" fill="#dce0e2">'+esc(n.label.slice(0,31))+'</text><title>'+esc(n.label+' · '+n.kind+' · '+n.id)+'</title></g>';
   }).join('');
   applyTransform();
   world.querySelectorAll('[data-live-node]').forEach(g=>{g.onclick=()=>inspectNode(g.dataset.liveNode);g.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();inspectNode(g.dataset.liveNode);}};});
@@ -151,7 +154,7 @@ async function openLiveRelationshipGraph(box){
   const node=snapshot.nodes.find(n=>n.id===id);if(!node)return;selection={id,kind:'node'};
   inspector.innerHTML='<h3>'+esc(node.label)+'</h3><p>'+esc(node.kind)+' · '+esc(node.status)+'</p><code>'+esc(node.id)+'</code><p>Identity independently verified: No. Commercial authority is not granted by this view.</p>'+
    '<button data-graph-expand-node>Expand retained neighborhood</button>'+
-   (node.kind==='investigation'?'<button data-graph-dossier>Open canonical dossier</button><button data-graph-map>Locate source-claimed point on Site Map</button>':'')+
+   (node.kind==='investigation'&&!historyMode?'<button data-graph-dossier>Open canonical dossier</button><button data-graph-map>Locate source-claimed point on Site Map</button>':node.kind==='investigation'?'<p>Historical view: current dossiers and map points are intentionally unavailable here; do not confuse them with period evidence.</p>':'')+
    '<h4>Retained evidence</h4>'+(node.evidence_ids||[]).map((e,i)=>'<button data-graph-evidence="'+i+'">'+esc(e)+'</button>').join('')+'<div data-graph-artifact></div>';
   inspector.querySelector('[data-graph-expand-node]').onclick=()=>{host.querySelector('[data-graph-root]').value=node.id;loadSnapshot();};
   const dossier=inspector.querySelector('[data-graph-dossier]');if(dossier)dossier.onclick=()=>perform(()=>openInvestigationDossier(node.canonical_id||node.id));
@@ -199,8 +202,87 @@ async function openLiveRelationshipGraph(box){
   pinnedLayout=true;transform={x:0,y:0,k:1};render();
   viewMessage('Arranged exact retained nodes by recorded kind; no new relationships or inferred clusters.');
  }
+ function arrangeBySource(){
+  if(!snapshot)return;
+  const buckets=new Map();
+  for(const node of snapshot.nodes){
+   const sourceFamilies=[...new Set(snapshot.edges.filter(e=>e.source===node.id||e.target===node.id)
+    .map(e=>e.source_family).filter(Boolean))].sort();
+   const source=sourceFamilies[0]||node.source_family||'unknown source';
+   if(!buckets.has(source))buckets.set(source,[]);
+   buckets.get(source).push(node);
+  }
+  const keys=[...buckets.keys()].sort();
+  const columns=Math.min(4,Math.max(1,Math.ceil(Math.sqrt(keys.length))));
+  positions.clear();
+  for(const [groupIndex,source] of keys.entries()){
+   const members=buckets.get(source).sort((a,b)=>a.id.localeCompare(b.id));
+   const x=80+(groupIndex%columns)*1000/columns;
+   const y=70+Math.floor(groupIndex/columns)*Math.max(90,520/Math.ceil(keys.length/columns));
+   members.forEach((n,i)=>positions.set(n.id,{x:x+(i%5)*35,y:y+Math.floor(i/5)*38}));
+  }
+  pinnedLayout=true;transform={x:0,y:0,k:1};render();
+  viewMessage('Arranged by recorded source-family attribution (unknowns separate); edges and identities unchanged.');
+ }
+ async function loadHistoryIndex(){
+  try{
+   const params=historyBefore?'?after='+historyBefore:'';
+   const result=await api('/api/investigation-graph/history-index'+params);
+   if(disposed||!host.isConnected)return;
+   for(const item of result.events||[]){
+    if(!historyItems.some(old=>old.sequence===item.sequence))historyItems.push(item);
+   }
+   const select=host.querySelector('[data-graph-history]'),previous=select.value;
+   select.innerHTML='<option value="">Select a recorded revision…</option>'+historyItems.map((v,i)=>
+    '<option value="'+i+'">'+esc(v.created_at)+' · '+esc(v.message)+' (#'+v.sequence+')</option>').join('');
+   if(previous)select.value=previous;
+   historyBefore=result.next_before||0;
+   host.querySelector('[data-graph-history-more]').disabled=!result.has_more;
+   host.querySelector('[data-graph-history-status]').textContent=historyItems.length+' recorded revision choices; bounded to 100 per page.';
+  }catch(e){if(!disposed)host.querySelector('[data-graph-history-status]').textContent='Retained history index unavailable: '+e.message;}
+ }
+ async function openHistorical(){
+  const choice=host.querySelector('[data-graph-history]').value;
+  if(choice===''){host.querySelector('[data-graph-history-status]').textContent='Select a retained revision.';return;}
+  const chosen=historyItems[Number(choice)];if(!chosen)return;
+  const previous=historyMode;
+  historyMode={sequence:chosen.sequence,event_id:chosen.event_id};
+  highlightedIds.clear();pinnedLayout=false;positions.clear();
+  if(!await loadSnapshot()){
+   historyMode=previous;positions.clear();
+   await loadSnapshot();
+   host.querySelector('[data-graph-history-status]').textContent='Historical replay unavailable for that revision; current display restored.';
+   return;
+  }
+  host.querySelector('[data-graph-history-diff]').textContent='';
+  host.querySelector('[data-graph-history-status]').textContent=
+   'Replaying exact retained revision #'+chosen.sequence+'; live worker remains independent.';
+ }
+ async function returnToLive(){
+  historyMode=null;pinnedLayout=false;positions.clear();
+  await loadSnapshot();host.querySelector('[data-graph-history-diff]').textContent='';
+  host.querySelector('[data-graph-history-status]').textContent='Current committed graph; historical source truth is never inferred.';
+ }
+ async function compareHistory(){
+  if(!historyMode||!snapshot){host.querySelector('[data-graph-history-diff]').textContent='Select a historical view to compare.';return;}
+  const params=new URLSearchParams({depth:host.querySelector('[data-graph-depth]').value});
+  const root=host.querySelector('[data-graph-root]').value.trim();if(root)params.set('root',root);
+  const latest=await api('/api/investigation-graph?'+params);
+  if(!latest.available)return;
+  const compare=(older,newer)=>{
+   const old=new Map(older.map(x=>[x.id,JSON.stringify(x)]));
+   const now=new Map(newer.map(x=>[x.id,JSON.stringify(x)]));
+   return {added:[...now.keys()].filter(x=>!old.has(x)),removed:[...old.keys()].filter(x=>!now.has(x)),
+    changed:[...old.keys()].filter(x=>now.has(x)&&old.get(x)!==now.get(x))};
+  };
+  const nodes=compare(snapshot.nodes,latest.nodes),edges=compare(snapshot.edges,latest.edges);
+  host.querySelector('[data-graph-history-diff]').textContent='Compared with currently retained graph: nodes +'+nodes.added.length+
+   ' / -'+nodes.removed.length+' / revised '+nodes.changed.length+'; relationships +'+edges.added.length+
+   ' / -'+edges.removed.length+' / revised '+edges.changed.length+
+   '. Differences are between bounded snapshots, not a claim of exhaustive jurisdictional history.';
+ }
  function stateLabel(extra=''){
-  connection.textContent=(paused?'Display paused':'Connected')+' · committed revision '+cursor+' · '+(snapshot?.nodes.length||0)+' nodes / '+(snapshot?.edges.length||0)+' edges'+
+  connection.textContent=(historyMode?'Historical retained graph (not live)':paused?'Display paused':'Connected')+' · committed revision '+cursor+' · '+(snapshot?.nodes.length||0)+' nodes / '+(snapshot?.edges.length||0)+' edges'+
    (snapshot?.truncated?' · bounded neighborhood: more retained graph data exist':'')+(extra?' · '+extra:'');
   host.dataset.graphCursor=String(cursor);
  }
@@ -209,10 +291,11 @@ async function openLiveRelationshipGraph(box){
   const ticket=++request;busy=true;
   try{
    const params=new URLSearchParams({depth:host.querySelector('[data-graph-depth]').value}),root=host.querySelector('[data-graph-root]').value.trim();if(root)params.set('root',root);
-   const value=await api('/api/investigation-graph?'+params);
+   if(historyMode){params.set('after',String(historyMode.sequence));params.set('anchor',historyMode.event_id);}
+   const value=await api('/api/investigation-graph'+(historyMode?'/history':'')+'?'+params);
    if(disposed||!host.isConnected||ticket!==request)return;
    if(!value.available){connection.textContent='Investigation store unavailable. No graph count is asserted.';return;}
-   snapshot=value;cursor=value.cursor;if(eventCursor===null||resetEvents){eventCursor=value.cursor;anchor=value.anchor;}
+   snapshot=value;cursor=value.cursor;if(!historyMode&&(eventCursor===null||resetEvents)){eventCursor=value.cursor;anchor=value.anchor;}
    const sourceSelect=host.querySelector('[data-graph-source]'),currentSource=sourceSelect.value;
    const families=[...new Set(value.edges.map(e=>e.source_family).filter(f=>typeof f==='string'&&f))].sort();
    sourceSelect.innerHTML='<option value="">All retained families</option>'+families.map(f=>
@@ -229,7 +312,7 @@ async function openLiveRelationshipGraph(box){
  async function poll(){
   if(disposed||!host.isConnected)return;
   try{
-   if(!paused&&!busy&&!document.hidden){
+   if(!paused&&!historyMode&&!busy&&!document.hidden){
     const ticket=request,params=new URLSearchParams({after:String(eventCursor??cursor)});if(anchor)params.set('anchor',anchor);
     const value=await api('/api/investigation-graph/events?'+params);
     if(disposed||!host.isConnected||ticket!==request)return;
@@ -242,7 +325,8 @@ async function openLiveRelationshipGraph(box){
      while(eventLog.length>100){seenEvents.delete(eventLog.shift().event_id);}
      host.querySelector('[data-graph-events]').innerHTML=eventLog.slice().reverse().map(e=>'<li data-graph-event="'+esc(e.event_id)+'"><time>'+esc(e.created_at)+'</time> <strong>'+esc(e.event_type)+'</strong> '+esc(e.message)+'</li>').join('');
      eventCursor=value.cursor;anchor=value.anchor;
-     if(value.events?.length)await loadSnapshot();else stateLabel('event connection current');
+     highlightedIds=new Set((value.events||[]).flatMap(e=>[...(e.entity_refs||[]),...(e.project_cluster_refs||[])]));
+     if(value.events?.length)await loadSnapshot();else {render();stateLabel('event connection current');}
     }
    }
   }catch(e){if(!disposed)connection.textContent='Disconnected: '+e.message+'. Retained display may be stale; reconnect will recover from the durable cursor.';}
@@ -272,11 +356,18 @@ async function openLiveRelationshipGraph(box){
  host.querySelector('[data-graph-delete]').onclick=deleteLocalView;
  host.querySelector('[data-graph-fit]').onclick=()=>{transform={x:0,y:0,k:1};applyTransform();};
  host.querySelector('[data-graph-group]').onclick=arrangeByKind;
+ host.querySelector('[data-graph-family-group]').onclick=arrangeBySource;
+ host.querySelector('[data-graph-activity]').onchange=render;
+ host.querySelector('[data-graph-history-open]').onclick=()=>perform(openHistorical);
+ host.querySelector('[data-graph-history-more]').onclick=()=>perform(loadHistoryIndex);
+ host.querySelector('[data-graph-history-live]').onclick=()=>perform(returnToLive);
+ host.querySelector('[data-graph-history-compare]').onclick=()=>perform(compareHistory);
  host.querySelectorAll('[data-graph-zoom]').forEach(b=>b.onclick=()=>{transform.k=Math.max(.2,Math.min(5,transform.k*Number(b.dataset.graphZoom)));applyTransform();});
  canvas.onwheel=e=>{e.preventDefault();transform.k=Math.max(.2,Math.min(5,transform.k*(e.deltaY<0?1.1:1/1.1)));applyTransform();};
  function coords(e){const matrix=canvas.getScreenCTM();if(!matrix)return {x:0,y:0};const p=new DOMPoint(e.clientX,e.clientY).matrixTransform(matrix.inverse());return {x:p.x,y:p.y};}
  canvas.onpointerdown=e=>{const p=coords(e),node=e.target.closest('[data-live-node]')?.dataset.liveNode;drag={x:p.x,y:p.y,node,edge:e.target.closest('[data-live-edge]')?.dataset.liveEdge};canvas.setPointerCapture(e.pointerId);};
  canvas.onpointermove=e=>{if(!drag)return;const p=coords(e),dx=p.x-drag.x,dy=p.y-drag.y;drag.x=p.x;drag.y=p.y;if(drag.node){const n=positions.get(drag.node);n.x+=dx/transform.k;n.y+=dy/transform.k;render();}else{transform.x+=dx;transform.y+=dy;applyTransform();}};
  canvas.onpointerup=()=>{const previous=drag;drag=null;if(previous?.node)inspectNode(previous.node);else if(previous?.edge)inspectEdge(previous.edge);};
- await loadSnapshot();if(!disposed&&host.isConnected)timer=setTimeout(poll,1500);
+ await loadSnapshot();if(!disposed&&host.isConnected)await loadHistoryIndex();
+ if(!disposed&&host.isConnected)timer=setTimeout(poll,1500);
 }
