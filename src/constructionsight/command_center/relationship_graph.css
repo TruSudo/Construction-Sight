@@ -21,3 +21,12 @@
 .graph-expanded [data-graph-canvas]{height:610px}
 .graph-expanded .graph-inspector{max-height:610px}
 @media(prefers-reduced-motion:reduce){.live-graph *{animation:none!important;transition:none!important}}
+
+/* Investigation controls are confined to Phase 6 graph, never the approved dashboard shell. */
+.graph-investigation-controls,.graph-saved-controls{padding:7px 0;border-top:1px solid #394046}
+.graph-investigation-controls input[type="number"]{max-width:62px}
+.graph-investigation-controls input[type="date"]{max-width:155px}
+.graph-saved-controls input{max-width:190px}
+.graph-saved-controls select{max-width:220px}
+.graph-investigation-controls label,.graph-saved-controls label{font-size:12px}
+[data-graph-filter-summary]{margin:3px 0 8px}
