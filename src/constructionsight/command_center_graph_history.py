@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from typing import Any, cast
 
+from pydantic import BaseModel
+
 from constructionsight.intelligence.schemas import (
     EntityIdentity,
     EvidenceRecord,
@@ -66,7 +68,7 @@ class RetainedGraphHistory:
             raise ValueError("historical graph has a missing or conflicting earlier revision")
         if current.get(_IDS[kind]) != identity:
             raise ValueError("historical graph revision identity does not match its payload")
-        model = _KINDS[kind].model_validate(current)
+        model = cast(type[BaseModel], _KINDS[kind]).model_validate(current)
         self.states[kind][identity] = model
         self.revisions += 1
         if sum(len(group) for group in self.states.values()) > _HISTORY_RECORD_LIMIT:
