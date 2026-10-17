@@ -32,14 +32,14 @@ from constructionsight import (
 from constructionsight import command_center_commercial as commercial
 from constructionsight import command_center_state as state
 from constructionsight.command_center_graph import graph_view
-from constructionsight.command_center_sources import (
-    SOURCE_INSPECTION_ROUTES,
-    source_inspection,
-)
 from constructionsight.command_center_investigations import (
     apply_investigation_review,
     investigation_review_preview,
     investigation_view,
+)
+from constructionsight.command_center_sources import (
+    SOURCE_INSPECTION_ROUTES,
+    source_inspection,
 )
 from constructionsight.contact_call_list import (
     annotate_contacts,
