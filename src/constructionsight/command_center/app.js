@@ -86,7 +86,7 @@ function drawMap(){if(!data)return;
   const suffix=activePage==='Site Map'
    ?' · '+investigationRows.filter(r=>!(r.points||[]).some(p=>typeof p.latitude==='number'&&typeof p.longitude==='number'&&Number.isFinite(p.latitude)&&Number.isFinite(p.longitude)&&Math.abs(p.latitude)<=85&&Math.abs(p.longitude)<=180)).length+' investigations unmapped on page'
    :overviewInvestigationMap.incomplete?' · bounded scan: more mapped investigations remain':' · mapped investigation scan complete';
-  $('map-coverage').textContent+=' · '+claimedVisible+' visible source-claimed investigation points ('+claimedMapped+' on page or retained scan)'+suffix;
+  $('map-coverage').textContent+=' · '+claimedVisible+' visible source-claimed investigation points ('+claimedMapped+(activePage==='Site Map'?' on page':' in retained scan')+')'+suffix;
  }
  if(activePage==='Command Center'&&!data.mockup_parity){
   const state=overviewInvestigationMap;
