@@ -30,6 +30,30 @@ const {chromium} = require('../visual/node_modules/playwright');
       throw Error('Exact retained evidence is not inspectable');
     }
     await page.click('#action-close');
+    await page.locator('[data-source-reconcile]').first().click();
+    await page.waitForSelector('#source-reconcile-queue');
+    const reconciliation = await page.locator('#action-content').textContent();
+    if (!reconciliation.includes('not_in_native_store') ||
+        !reconciliation.includes('"replay_eligible": true') ||
+        !reconciliation.includes('phase8:browser:source')) {
+      throw Error('Original exact source did not present an unverified native reconciliation');
+    }
+    await page.locator('#source-reconcile-reason')
+      .fill('Reviewed exact retained source and confirm native worker queue only.');
+    await page.locator('#source-reconcile-confirm').check();
+    await page.locator('#source-reconcile-queue').click();
+    await page.waitForFunction(() =>
+      document.querySelector('#action-content')?.textContent
+        .includes('Queued, not necessarily processed'));
+    const queued = await page.locator('#action-content').textContent();
+    if (!queued.includes('"outreach_authorized": false') ||
+        !queued.includes('"bid_authorized": false')) {
+      throw Error('Native source replay queue lacks preserved no-commercial-effects guards');
+    }
+    await page.click('#action-close');
+    await page.locator('[data-source-reconcile]').first().click();
+    await page.waitForSelector('#source-reconcile-queue');
+    await page.click('#action-close');
     await page.locator('[data-parcel-review]').first().click();
     await page.waitForSelector('#action-dialog[open]');
     const parcel = await page.locator('#action-content').textContent();
