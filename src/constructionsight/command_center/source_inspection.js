@@ -130,7 +130,8 @@ async function renderRetainedSources(box) {
             '<button data-source-preview="' + i + '">Source evidence</button> ' +
             '<button data-parcel-review="' + i + '">Parcel candidates</button> ' +
             '<button data-source-watch="' + i + '">Watch source</button> ' +
-            '<button data-source-reconcile="' + i + '">Native evidence reconciliation</button>'
+            '<button data-source-reconcile="' + i + '">Native evidence reconciliation</button> ' +
+            '<button data-source-lineage="' + i + '">Original workflow lineage</button>'
           ])) +
         '<div class="source-toolbar"><button id="retained-source-previous"' +
         (offset === 0 ? ' disabled' : '') + '>Previous</button>' +
@@ -140,6 +141,39 @@ async function renderRetainedSources(box) {
         () => { offset = Math.max(0, offset - 10); perform(loadPage); };
       queue.querySelector('#retained-source-next').onclick =
         () => { offset += 10; perform(loadPage); };
+      queue.querySelectorAll('[data-source-lineage]').forEach(button => {
+        button.onclick = () => perform(async () => {
+          const record = page.items[Number(button.dataset.sourceLineage)];
+          let originalOffset = 0;
+          async function showLineage() {
+            const lineage = await api('/api/source-commercial-lineage?' +
+              new URLSearchParams({
+                kind: record.record_kind, record_id: record.record_id,
+                offset: String(originalOffset), limit: '20'
+              }));
+            if (!root.isConnected || activePage !== 'Sources & Collection') return;
+            modal('Original commercial workflow candidate lineage',
+              '<p>Exact original candidate-key equality only. Historical status, ' +
+              'result revision counts and a shared source do not establish ' +
+              'independent project identity, royalty entitlement, payment or ' +
+              'permission to contact or bid.</p>' +
+              '<pre>' + esc(JSON.stringify(lineage, null, 2)) + '</pre>' +
+              '<div class="source-toolbar"><button id="original-lineage-prev"' +
+              (originalOffset ? '' : ' disabled') + '>Previous</button>' +
+              '<button id="original-lineage-next"' +
+              (lineage.has_more ? '' : ' disabled') + '>Next</button></div>');
+            document.querySelector('#original-lineage-prev').onclick = () => {
+              originalOffset = Math.max(0, originalOffset - 20);
+              perform(showLineage);
+            };
+            document.querySelector('#original-lineage-next').onclick = () => {
+              originalOffset += 20;
+              perform(showLineage);
+            };
+          }
+          await showLineage();
+        });
+      });
       queue.querySelectorAll('[data-source-reconcile]').forEach(button => {
         button.onclick = () => perform(async () => {
           const record = page.items[Number(button.dataset.sourceReconcile)];
