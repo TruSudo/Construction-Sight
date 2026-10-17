@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from constructionsight.ceqa_models import CeqaRecord
 from constructionsight.entity_models import Entity
+from constructionsight.investigation_runtime import InvestigationRuntime
 from constructionsight.lead_workflow_service import create_lead_workflow
 from constructionsight.live_command_center import make_server
 from constructionsight.provenance import Provenance
@@ -93,7 +94,49 @@ with Session(engine) as session, session.begin():
             provenance=[evidence],
         )
     )
+    # A second exact retained source is already committed by the native
+    # investigation worker. It exercises dossier-level historical lineage
+    # without affecting the first source's explicit replay-queue browser test.
+    dossier_record = CeqaRecord(
+        ceqa_key="phase8:browser:dossier",
+        title="Synthetic native dossier with retained historical outcome",
+        county="Riverside",
+        lead_agency="Synthetic Local Review",
+        site=Site(
+            site_key="phase8:browser:dossier-site",
+            county="Riverside",
+            apn="999-888-777",
+            provenance=[evidence],
+        ),
+        provenance=[evidence],
+    )
+    CeqaStore(session).upsert(dossier_record)
+    dossier_candidate_id = "source-candidate:" + hashlib.sha256(
+        json.dumps(
+            ["ceqa", dossier_record.ceqa_key], separators=(",", ":"),
+            ensure_ascii=False,
+        ).encode("utf-8")
+    ).hexdigest()
+    dossier_package = _package().model_copy(update={
+        "package_id": "lead-review:browser:dossier",
+        "base_candidate_id": dossier_candidate_id,
+    })
+    dossier_workflow = create_lead_workflow(package=dossier_package)
+    store_lead_review_package(session, dossier_package)
+    store_lead_workflow_record(session, dossier_workflow)
+    dossier_result = build_result_ledger_record(
+        workflow=dossier_workflow, status=ResultLedgerStatus.WON,
+        gross_value=2500.0, share_rate=0.08,
+    )
+    store_result_ledger_record(session, dossier_result)
 engine.dispose()
+native = InvestigationRuntime(args.data_dir / "native")
+try:
+    native.enqueue_bytes(dossier_record.model_dump_json(round_trip=True).encode(), "ceqa")
+    if native.process(max_jobs=10)["failed_jobs"]:
+        raise RuntimeError("Synthetic native dossier fixture ingestion failed")
+finally:
+    native.close()
 smarts_root, smarts_history, _unused_smarts_database = _environment(args.data_dir / "smarts")
 _change(smarts_root, smarts_history)
 _parcel(database, "parcel:browser:smarts")
