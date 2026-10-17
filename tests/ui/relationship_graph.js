@@ -56,6 +56,10 @@ const {spawnSync}=require('child_process');
   const afterGrouping=await page.locator('[data-live-node]').evaluateAll(nodes=>nodes.map(n=>n.dataset.liveNode).sort());
   if(JSON.stringify(afterGrouping)!==JSON.stringify(initial.nodes.map(n=>n.id).sort()))
    throw Error('Node grouping invented, removed or duplicated retained nodes');
+  await page.click('[data-graph-family-group]');
+  const sourceGrouped=await page.locator('[data-live-node]').evaluateAll(nodes=>nodes.map(n=>n.dataset.liveNode).sort());
+  if(JSON.stringify(sourceGrouped)!==JSON.stringify(ids))
+   throw Error('Source grouping changed retained node identities');
   await page.locator('[data-graph-canvas]').evaluate(node=>node.dataset.canvasIdentity='same-canvas');
   await page.click('[data-graph-full]');
   if(!(await page.locator('[data-live-graph]').getAttribute('class')).includes('graph-expanded'))throw Error('Full-screen graph did not expand');
@@ -84,6 +88,31 @@ const {spawnSync}=require('child_process');
   await page.waitForSelector('[data-graph-event]');
   const afterIds=await page.locator('[data-live-node]').evaluateAll(nodes=>nodes.map(n=>n.dataset.liveNode));
   if(new Set(afterIds).size!==afterIds.length)throw Error('Event replay duplicated nodes');
+  const historyEntries=await page.evaluate(async()=>fetch('/api/investigation-graph/history-index').then(r=>r.json()));
+  if(!historyEntries.events?.length)throw Error('Retained revision timeline is empty');
+  const first=historyEntries.events[0];
+  const earlier=await page.evaluate(async revision=>{
+   const query=new URLSearchParams({after:String(revision.sequence),anchor:revision.event_id});
+   const response=await fetch('/api/investigation-graph/history?'+query);
+   if(!response.ok)throw Error('Historical graph API rejected retained revision: '+response.status);
+   return response.json();
+  },first);
+  if(!earlier.historical||earlier.as_of_sequence!==first.sequence)throw Error('Event-anchored historical projection was not retained');
+  if(earlier.nodes.some(n=>n.label.includes('phase6-background-revision')))
+   throw Error('Historical graph leaked later worker state into earlier selected revision');
+  await page.selectOption('[data-graph-history]','0');
+  await page.click('[data-graph-history-open]');
+  await page.waitForFunction(()=>document.querySelector('[data-graph-connection]').textContent.includes('Historical retained graph'));
+  if((await page.locator('[data-live-node]').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('aria-label')).join(' '))).includes('phase6-background-revision'))
+   throw Error('Historical canvas displayed current instead of retained earlier label');
+  await page.click('[data-graph-history-compare]');
+  await page.waitForFunction(()=>document.querySelector('[data-graph-history-diff]').textContent.includes('Compared with'));
+  if(!(await page.locator('[data-graph-history-diff]').textContent()).includes('revised'))
+   throw Error('Historical compare did not report changed retained records');
+  await page.click('[data-graph-history-live]');
+  await page.waitForFunction(()=>document.querySelector('[data-graph-connection]').textContent.startsWith('Connected'));
+  await page.waitForSelector('[data-live-node="'+root.id+'"]');
+
   await page.route('**/api/investigation-graph/events?*',route=>route.fulfill({status:503,body:'controlled graph connection failure'}));
   await page.waitForFunction(()=>document.querySelector('[data-graph-connection]').textContent.includes('Disconnected'),{},{timeout:10000});
   await page.unroute('**/api/investigation-graph/events?*');
