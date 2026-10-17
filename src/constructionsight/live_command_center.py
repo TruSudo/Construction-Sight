@@ -44,6 +44,7 @@ from constructionsight.command_center_legacy_export import (
 )
 from constructionsight.command_center_legacy_reconciliation import (
     enqueue_legacy_reconciliation,
+    original_source_replay_audit,
     preview_legacy_reconciliation,
 )
 from constructionsight.command_center_retained_previews import retained_commercial_preview
@@ -546,6 +547,16 @@ def make_server(
                     after=int(query.get("after", ["0"])[0]),
                     anchor=query.get("anchor", [None])[0],
                     evidence_id=query.get("id", [None])[0],
+                )
+                body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
+            elif path == "/api/source-reconciliation-audit":
+                if (
+                    directory is None or set(query) != {"job"}
+                    or len(query["job"]) != 1
+                ):
+                    raise ValueError("select one existing original replay job")
+                value = original_source_replay_audit(
+                    directory, job_id=query["job"][0]
                 )
                 body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
             elif path == "/api/source-reconciliation":
