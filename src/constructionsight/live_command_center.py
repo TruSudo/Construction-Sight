@@ -355,7 +355,9 @@ def make_server(
                     archive_stream.seek(0)
                     self.send_response(200)
                     self.send_header("Content-Type", "application/zip")
-                    self.send_header("Content-Disposition", "attachment; filename=ceqanet-operator-export.zip")
+                    self.send_header(
+                        "Content-Disposition", "attachment; filename=ceqanet-operator-export.zip"
+                    )
                     self.send_header("Content-Length", str(size))
                     self.send_header("Cache-Control", "no-store")
                     self.send_header("X-Content-Type-Options", "nosniff")
