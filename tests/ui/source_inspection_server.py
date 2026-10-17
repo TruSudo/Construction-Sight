@@ -13,6 +13,11 @@ from sqlalchemy.orm import Session
 from constructionsight.ceqa_models import CeqaRecord
 from constructionsight.entity_models import Entity
 from constructionsight.lead_workflow_service import create_lead_workflow
+from constructionsight.result_ledger_models import ResultLedgerStatus
+from constructionsight.result_ledger_service import (
+    build_result_ledger_record,
+    supersede_result_ledger_record,
+)
 from constructionsight.live_command_center import make_server
 from constructionsight.provenance import Provenance
 from constructionsight.site_models import Site
@@ -21,6 +26,7 @@ from constructionsight.storage.domain_store import CeqaStore
 from constructionsight.storage.lead_workflow_store import (
     store_lead_review_package,
     store_lead_workflow_record,
+    store_result_ledger_record,
 )
 from tests.test_bid_proposal_service import _package
 from tests.test_ceqanet_operator_export import _chain_report
@@ -47,6 +53,17 @@ with Session(engine) as session, session.begin():
     workflow = create_lead_workflow(package=package)
     store_lead_review_package(session, package)
     store_lead_workflow_record(session, workflow)
+    root_result = build_result_ledger_record(
+        workflow=workflow, status=ResultLedgerStatus.UNKNOWN,
+        reasons=["Synthetic fixture result not established"],
+    )
+    revised_result = supersede_result_ledger_record(
+        current=root_result, status=ResultLedgerStatus.WON,
+        correction_reason="Fixture illustrates correction, not actual award",
+        gross_value=1234.56, share_rate=0.1,
+    )
+    store_result_ledger_record(session, root_result)
+    store_result_ledger_record(session, revised_result)
     evidence = Provenance(
         source_name="Synthetic Phase 8 retained fixture",
         evidence_text="Not an actual jurisdictional observation",
