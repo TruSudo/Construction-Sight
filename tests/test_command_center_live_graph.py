@@ -180,6 +180,9 @@ def test_native_graph_http_and_uncommitted_state(tmp_path: Path) -> None:
             assert client.get("/api/investigation-graph?depth=0").status_code == 409
             assert client.get("/api/investigation-graph/events?after=-1").status_code == 409
             assert client.get("/api/investigation-graph?root=a&root=b").status_code == 409
+            assert (
+                client.get("/api/investigation-graph/events?after=" + "9" * 100).status_code == 409
+            )
             assert client.post("/api/investigation-graph").status_code == 501
             artifact_id = next(n["id"] for n in graph["nodes"] if n["kind"] == "evidence")
             artifact = client.get("/api/investigation-graph/evidence", params={"id": artifact_id})

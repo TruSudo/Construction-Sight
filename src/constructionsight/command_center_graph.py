@@ -196,8 +196,8 @@ def graph_view(
         raise ValueError("unknown graph operation")
     if type(depth) is not int or not 1 <= depth <= 3:
         raise ValueError("graph depth must be between one and three")
-    if type(after) is not int or after < 0:
-        raise ValueError("event cursor must be nonnegative")
+    if type(after) is not int or not 0 <= after <= 2**63 - 1:
+        raise ValueError("event cursor must fit a nonnegative SQLite sequence")
     if any(
         value is not None and (not value or len(value) > 255)
         for value in (root, anchor, evidence_id)
