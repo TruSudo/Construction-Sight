@@ -64,12 +64,22 @@ async function renderInvestigationInventory(box,onPage=()=>{}){
     esc((r.source_records||[]).map(x=>x.source_family).join(', ')||'—'),
     'Identity '+(r.assessment?.identity_independently_verified?'reviewed':'unverified')+
      (r.points?.length?' · source point claimed':' · unmapped')+' · readiness '+esc(r.assessment?.commercial_readiness||'unassessed'),
-    '<button data-investigation-network-id="'+esc(r.investigation_id)+'">Entity relationships</button>'
+    '<button data-investigation-network-id="'+esc(r.investigation_id)+'">Entity relationships</button> '+
+     '<button data-investigation-live-graph-id="'+esc(r.investigation_id)+'">Open live graph</button>'
    ]))+(rows.length?'':'<p>No matches on this scan page.'+(snapshot.has_more?' More records remain to search.':'')+'</p>')+
    (nextAfter?'<button data-investigation-first>First records</button> ':'')+
    (snapshot.has_more?'<button id="next-investigation-page" data-investigation-next>Next records</button>':'');
    results.querySelectorAll('[data-investigation-id]').forEach(b=>b.onclick=()=>perform(()=>openInvestigationDossier(b.dataset.investigationId)));
    results.querySelectorAll('[data-investigation-network-id]').forEach(b=>b.onclick=()=>showNetwork(b.dataset.investigationNetworkId));
+   results.querySelectorAll('[data-investigation-live-graph-id]').forEach(b=>b.onclick=()=>perform(async()=>{
+    const investigationId=b.dataset.investigationLiveGraphId;
+    await openWorkspace('Entity Network');
+    const section=$('section-content');
+    await openLiveRelationshipGraph(section);
+    const graph=section.querySelector('[data-live-graph]');
+    if(graph){graph.querySelector('[data-graph-root]').value=investigationId;
+     graph.querySelector('[data-graph-load]').click();}
+   }));
    const next=results.querySelector('[data-investigation-next]');if(next)next.onclick=()=>page(snapshot.next_cursor);
    const first=results.querySelector('[data-investigation-first]');if(first)first.onclick=()=>page(null);
    if(networkId&&rows.some(r=>r.investigation_id===networkId))await showNetwork(networkId);
