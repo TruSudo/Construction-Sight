@@ -47,6 +47,9 @@ def test_unconfigured_legacy_source_does_not_create_or_fake_zero_results(tmp_pat
                 "/api/source-footprint",
                 "/api/source-capture-queue",
                 "/api/source-ingestion-inbox",
+                "/api/source-smarts-status",
+                "/api/source-smarts-changes",
+                "/api/source-smarts-parcel-candidates?snapshot_id=1&source_key=smarts%3Afacility%3ARiverside%3Awdid%3A8+33C101",
             ):
                 response = client.get(endpoint)
                 assert response.status_code == 200
@@ -164,6 +167,13 @@ def test_existing_legacy_source_db_is_reused_by_native_without_mutation(tmp_path
             assert inbox.json()["network_executed"] is False
             assert client.get("/api/source-capture-queue?other=1").status_code == 409
             assert client.get("/api/source-ingestion-inbox?kind=ceqa").status_code == 409
+            smarts_status = client.get("/api/source-smarts-status")
+            changes = client.get("/api/source-smarts-changes")
+            assert smarts_status.status_code == 200
+            assert changes.status_code == 200
+            assert smarts_status.json()["csv_snapshot_history_configured"] is False
+            assert changes.json()["available"] is False
+            assert client.post("/api/source-smarts-changes", json={}).status_code == 501
             assert client.post("/api/source-entity-index", json={}).status_code == 501
             assert client.post("/api/source-registry", json={}).status_code == 501
     finally:
@@ -222,6 +232,77 @@ def test_original_ceqa_artifacts_are_inspected_without_ingesting_or_mutating(
         server.server_close()
         worker.join()
     assert [hashlib.sha256(path.read_bytes()).hexdigest() for path in paths] == original
+
+
+
+
+def test_private_smarts_history_and_exact_parcel_review_reuse_original_safeguards(
+    tmp_path: Path,
+) -> None:
+    from tests.test_smarts_parcel_review import _KEY, _change, _environment, _parcel
+
+    private, history, database = _environment(tmp_path)
+    snapshot_id = _change(private, history)
+    _parcel(database, "parcel:phase8:exact")
+    original = {
+        path: hashlib.sha256(path.read_bytes()).hexdigest()
+        for path in (history, database)
+    }
+    server = make_server(
+        snapshot(), 0, tmp_path / "native", operator_database=database,
+        operator_smarts_history=history,
+    )
+    worker = threading.Thread(target=server.serve_forever, daemon=True)
+    worker.start()
+    try:
+        with httpx.Client(
+            base_url=f"http://127.0.0.1:{server.server_port}", trust_env=False
+        ) as client:
+            status = client.get("/api/source-smarts-status")
+            assert status.status_code == 200, status.text
+            assert status.json()["available"] is True
+            assert status.json()["csv_snapshot_history_integrity_verified"] is True
+            changes = client.get("/api/source-smarts-changes?county=Riverside&limit=10")
+            assert changes.status_code == 200, changes.text
+            assert changes.json()["verified_private_history"] is True
+            selected = [
+                item for item in changes.json()["items"]
+                if item["snapshot_id"] == snapshot_id and item["source_key"] == _KEY
+            ]
+            assert len(selected) == 1
+            response = client.get(
+                "/api/source-smarts-parcel-candidates",
+                params={"snapshot_id": str(snapshot_id), "source_key": _KEY},
+            )
+            assert response.status_code == 200, response.text
+            payload = response.json()
+            assert payload["read_only"] is True
+            assert payload["candidate_total"] == 1
+            assert payload["candidates"][0]["parcel_record_id"] == "parcel:phase8:exact"
+            assert payload["parcel_identity_verified"] is False
+            assert payload["project_identity_verified"] is False
+            assert payload["outreach_authorized"] is False
+            assert payload["bid_authorized"] is False
+            assert "secret@example.test" not in json.dumps(payload)
+            for query in (
+                "", "snapshot_id=2",
+                "snapshot_id=1&source_key=not-smarts",
+                "snapshot_id=1&source_key=x&county=Riverside",
+                "snapshot_id=1&snapshot_id=1&source_key=x",
+            ):
+                assert client.get("/api/source-smarts-parcel-candidates?" + query).status_code == 409
+            assert client.get("/api/source-smarts-changes?kind=ceqa").status_code == 409
+            assert client.get("/api/source-smarts-changes?limit=100").status_code == 409
+            assert client.get("/api/source-smarts-status?other=1").status_code == 409
+            assert client.post("/api/source-smarts-parcel-candidates", json={}).status_code == 501
+    finally:
+        server.shutdown()
+        server.server_close()
+        worker.join()
+    assert {
+        path: hashlib.sha256(path.read_bytes()).hexdigest()
+        for path in (history, database)
+    } == original
 
 
 
