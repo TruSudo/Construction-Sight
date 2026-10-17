@@ -7,7 +7,7 @@ Relationship Graph remain the goal. Full unification and functional parity are n
 
 ## Exact recovery checkpoint
 
-- Development branch: `agent/unification-implementation-2026-10-16`, draft PR #234. Latest accepted Phase 8 first-slice application/test source: `54d56d3014dd1056ead08f7e9332c5c1705a6a20` (tree `0d6de027718b8ff0873cbae62631e5262f55ccb3`). Phase 7 remains accepted at `3429b14f847163083dfdf32b181bc231d17605c6`.
+- Development branch: `agent/unification-implementation-2026-10-16`, draft PR #234. Latest fully verified Phase 8 application/test source: `68c4017a9af6a6b0081294a93f66d06fb0bc97d4` (full quality gates and browser workflow passed). Phase 7 remains accepted at `3429b14f847163083dfdf32b181bc231d17605c6`.
 - Latest source accepted for Phase 6: `5c03cd80cde497b2dfc0e3533a913000db280812` (anchored historical snapshots, retained-history timeline/comparison, saved layouts, source/date/confidence controls, source grouping, activity highlighting, and bidirectional graph/map navigation). Phase 5 remains pinned to `44e80090219a0ad0938dbec44848233d089bcf2d`.
 - **Phase 7 implementation and regression acceptance is complete** for the controlling directive and currently integrated runtime. The final reconciliation and exact-source results below supersede the older continuation checkpoints. Phase 8 is now in progress; preserve the original interface and all historical assets.
 - Phase 5 native integration is implemented. Exact-source acceptance results are recorded below.
@@ -16,47 +16,72 @@ Relationship Graph remain the goal. Full unification and functional parity are n
 - Operational checks still open: owner-Zorin/systemd deployment, permissioned live-source background acquisition, and real live cooperating-source acceptance from Phases 3–4.
 - Preserve all original interfaces, historical branches and assurance evidence through Phase 8 acceptance.
 
-## Phase 8 — IN PROGRESS: native association review
+## Phase 8 — IN PROGRESS: native preservation and original-workflow parity
 
-Initial parity comparison uses the preserved operator routes/services and Phase 1
-capability baseline. Passing regression tests does not establish native feature parity.
-The original operator interface and historical assets remain intact.
+**Verified application/test source:** `68c4017a9af6a6b0081294a93f66d06fb0bc97d4`.
+Original operator assets, historical branches, the previous native association-review
+acceptance, and the shared investigation graph remain preserved. The legacy database
+is an explicitly selected, separate source; displaying its records does **not**
+automatically reconcile them into the canonical native site investigation.
 
-| Capability | Native integration / parity finding | Remaining work |
-| --- | --- | --- |
-| Shared investigation inventory, dossiers, evidence, map and live/historical graph | Existing native views query the governed investigation state; prior Phase 5/6 acceptance is retained | Compare all original footprint, timeline and entity-query controls/exports against native equivalents |
-| Human review of uncertain source associations | This slice connects the existing evidence-bound review service to native dossiers: inspect both source records/evidence, explicitly associate/reject, download receipt and reassess changed evidence | Browser acceptance passed below; broader parcel/source-review workflows remain separate |
-| Source registry and source revision inspection | Original `/api/source-registry` and `/api/source-revision` remain preserved; native Sources & Collection has SMARTS collection/scheduling and separate reviewed CEQA background controls | Integrate the existing governed registry/revision projection into the native source workspace; prove equivalent inspection |
-| Parcel and source-review queues | Original SMARTS parcel candidates, parcel candidates, candidate preview and source-review queue services remain available | Native equivalents are not yet demonstrated; reuse existing resolution/review boundaries |
-| Capture queue, ingestion inbox and operator exports | Original capture queue/inbox/package capabilities remain; shared retained-input processing and native dossier JSON export cover part of the workflow | Compare queue inspection, retained capture handling and report/archive exports; implement missing native actions |
-| Watchlists and monitoring | Native lead watchlist and original CEQA/permit source watchlist use distinct existing boundaries | Preserve source-specific watch/archive behavior and prove investigation monitoring parity |
-| Commercial workflows/results | Native versioned bid/royalty operations and legacy authoritative workflow/result services retain their safeguards | Native commercial screens are not yet proven equivalent to legacy workflow/result, request-evidence and preview/draft capabilities |
-| Approved visual design | New controls are confined to existing dossier dialogs, with scoped review styles; overview structure is retained | Exact pixel parity remains unaccepted; retain calibrated structure/font/pixel reporting |
+**Implemented and tested in the approved native Command Center:**
 
-Implementation: preview and write reuse `InvestigationReviewService` over the existing
-private investigation store. Preview is read-only and binds both displayed source
-contexts to current state. Writes require strict input, explicit confirmation and a
-reason, and retain the service's stale-state, immutable audit and protected-effect
-checks. Local Host/Origin checks and the maintenance lock still apply. Association
-changes shared canonical inventory/graph context; rejection restores separate views.
-Neither decision verifies project identity or grants commercial authority. Retained
-source bytes remain unchanged. A failed/disconnected submission requires a fresh
-preview and new confirmation, with no automatic retry. Late preview responses cannot
-replace another open dialog. Multiline validation errors are flattened before entering
-HTTP status headers, repairing a failure exposed by negative endpoint tests.
+- The existing evidence-bound association preview, explicit associate/reject review,
+  stale-evidence rejection and canonical map/graph reassessment remain intact.
+- Sources & Collection now reuses the original read-only CEQA/permit registry,
+  source-revision digest, bounded source review queue, exact candidate/evidence
+  previews, parcel candidates, original entity-key index and neighborhood, dated
+  historical milestones and source-scoped geographic footprint, with JSON exports.
+  Missing source databases are explicitly unconfigured, not fabricated zero results.
+- Configured original immutable CEQAnet exact-SCH capture and listing/review
+  ingestion artifacts can be inspected without acquiring, importing or qualifying
+  any source claims. Their original validation and no-follow artifact readers remain.
+- Configured original SMARTS journals/snapshot history can be integrity-checked and
+  paged; selecting a recorded change invokes the original exact current-snapshot
+  parcel candidate review. Ambiguous or stale matches remain candidates, and
+  private original CSV contents are not exposed.
+- Original CEQA/permit source-specific watches can be added and archived through
+  an exact-origin, local, existing watchlist-table-only database boundary.
+  They remain separate from native commercial lead watches and start no polling,
+  notification or commercial effects.
+- Original persisted workflow/result records remain inspectable in native Bid Studio
+  and Royalty Ledger with their limits explicit. Native Bid Studio additionally
+  reuses the original four guarded **manual preview** services: unsent outreach,
+  explicit request-evidence validation, human-entered exact-money pricing, and
+  an internal proposal draft. Each requires current persisted workflow authority.
+  No contact, pricing terms, bid or external send is authorized by those previews.
+- All additions remain confined to the existing Command Center workspaces; the
+  approved overview/sidebar structure was not replaced or redesigned.
 
-Exact accepted application/test source: `54d56d3014dd1056ead08f7e9332c5c1705a6a20`;
-tree `0d6de027718b8ff0873cbae62631e5262f55ccb3`. This acceptance-record update
-changes STATUS.md only.
+**Accepted exact-source tests:**
 
-- [Full CI 39019756687](https://github.com/TruSudo/Construction-Sight/actions/runs/39019756687): **2,734 passed on Python 3.11 and 2,734 passed on Python 3.12**, two non-failing upstream Typer/Click warnings per leg. Ruff, strict Mypy (**347 source files**), JavaScript syntax, dependency integrity and vulnerability audits passed; no known dependency vulnerabilities reported.
-- [Browser/USGS 39019756683](https://github.com/TruSudo/Construction-Sight/actions/runs/39019756683): both jobs passed. The new journey requires both retained claims and hashed evidence payloads in review details, and passes explicit confirmation, stale-source rejection, reassessment, late-dialog safety and canonical graph agreement. Existing shared investigation/live graph, commercial, backup/restore and **33/33 actions plus 33/33 complete contracts** passed. Review dialog bounds passed at **1672×941**; the initial slice's matching dialog layout was also visually inspected from its captured screenshot. Structure/fonts and the reported visual ratchet passed; **exact pixel parity did not pass and is not claimed**.
-- Local Python 3.12: **2,734 passed**, two upstream warnings, **327.59s** on initial slice `3eab8e397187cac30ea6cd2a3cf20de1e212f1b9`. After the final evidence-display binding and stronger assertions, all **nine focused native review tests passed again in 13.33s**; no Python application behavior changed after the full local run. Focused tests cover unchanged preview bytes, strict/overbroad payload rejection, cross-origin rejection, missing-store noncreation, source preservation, replay rejection and worker-revision invalidation. Their overlapping count is not added to the full regression total.
+- [CI 39026838373](https://github.com/TruSudo/Construction-Sight/actions/runs/39026838373):
+  **2,741 passed on Python 3.11; 2,741 passed on Python 3.12**, with two
+  non-failing warnings each. Ruff, strict Mypy and the other configured quality
+  and dependency checks passed.
+- [Browser/USGS 39026838378](https://github.com/TruSudo/Construction-Sight/actions/runs/39026838378):
+  both jobs passed. The original SMARTS/CEQA/source-watch and no-send
+  request/pricing/proposal native browser journey passed, as did preserved
+  investigations, graph, map, backups, and **33/33 functional actions and
+  33/33 complete workflow contracts**. Structural/font acceptance and recorded
+  visual-ratchet checks passed. **Exact pixel parity failed** and is not claimed.
 
-**Phase 8 is not complete.** Next integrate governed source registry/revision inspection,
-then resolve the remaining native parity gaps above. Earlier source/device operational
-checks remain open. No main merge, original-interface retirement, live-source activation,
-owner-device deployment, outreach or bid submission has occurred.
+**Still open before Phase 8 acceptance / merge proposal:**
+
+1. Demonstrate full semantic reconciliation of original source, identity,
+   historical workflow and outcome records with the canonical site investigation
+   across views; a read-only bridge and simultaneous display alone are not parity.
+2. Complete the original operator report/archive/package/export workflows and
+   any remaining original source and investigation controls with tested native
+   equivalents; keep the original interface until accepted.
+3. Close actual approved 1672 × 941 pixel discrepancies without redesigning the UI.
+4. Reconfirm the owner-device Zorin deployment and permissioned real-source
+   end-to-end field acceptance left open from Phases 3–4.
+
+**Phase 8 is not complete.** No main merge, original-operator retirement,
+live-source authorization, outreach transmission, binding bid or verified
+sales outcome is claimed. Continue on draft PR #234 and do not merge without
+the owner's explicit approval.
 
 ## Phase 7 — IMPLEMENTATION AND REGRESSION ACCEPTED
 
