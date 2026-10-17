@@ -9,6 +9,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
+from constructionsight.command_center_graph_history import replay_graph_history
 from constructionsight.intelligence.relationship_query_service import canonical_investigation_id
 from constructionsight.storage.database import (
     ensure_database_transaction,
@@ -77,7 +78,13 @@ def _node(store: IntelligenceStore, identity: str) -> dict[str, Any] | None:
     return None
 
 
-def _snapshot(store: IntelligenceStore, root: str | None, depth: int) -> dict[str, Any]:
+def _snapshot(
+    store: IntelligenceStore,
+    root: str | None,
+    depth: int,
+    *,
+    historical_roots: list[str] | None = None,
+) -> dict[str, Any]:
     cursor = store.runtime_event_cursor()
     roots_truncated = False
     if root:
@@ -85,11 +92,15 @@ def _snapshot(store: IntelligenceStore, root: str | None, depth: int) -> dict[st
             raise ValueError("unknown graph root")
         roots = [root]
     else:
-        ids = list(
-            store.session.scalars(
-                select(IntelligenceProjectClusterRecord.project_cluster_id)
-                .order_by(IntelligenceProjectClusterRecord.project_cluster_id)
-                .limit(26)
+        ids = (
+            historical_roots[:26]
+            if historical_roots is not None
+            else list(
+                store.session.scalars(
+                    select(IntelligenceProjectClusterRecord.project_cluster_id)
+                    .order_by(IntelligenceProjectClusterRecord.project_cluster_id)
+                    .limit(26)
+                )
             )
         )
         roots_truncated = len(ids) > 25
@@ -206,7 +217,7 @@ def graph_view(
     evidence_id: str | None = None,
 ) -> dict[str, Any]:
     """Read committed snapshots/events with bounded work and restart-safe sequence anchors."""
-    if mode not in {"snapshot", "events", "evidence"}:
+    if mode not in {"snapshot", "events", "evidence", "history", "history_index"}:
         raise ValueError("unknown graph operation")
     if type(depth) is not int or not 1 <= depth <= 3:
         raise ValueError("graph depth must be between one and three")
@@ -228,6 +239,65 @@ def graph_view(
             store = IntelligenceStore(session)
             if mode == "snapshot":
                 return _snapshot(store, root, depth)
+            if mode == "history":
+                if anchor is None:
+                    raise ValueError("historical graph requires a retained event anchor")
+                from typing import cast
+
+                history = replay_graph_history(store, at=after, anchor=anchor)
+                prior = _snapshot(
+                    cast(IntelligenceStore, history),
+                    root,
+                    depth,
+                    historical_roots=history.historical_roots(),
+                )
+                return {
+                    **prior,
+                    "historical": True,
+                    "as_of_sequence": after,
+                    "as_of_event_id": anchor,
+                    "replayed_events": history.processed_events,
+                    "replayed_revisions": history.revisions,
+                    "historical_basis": "intact_retained_revisions_only",
+                    "history_limitations": (
+                        "Records with no complete retained revision lineage are not "
+                        "invented; this view does not establish historical construction."
+                    ),
+                }
+            if mode == "history_index":
+                if root is not None or evidence_id is not None:
+                    raise ValueError("history index cannot select a root or evidence")
+                before = after or store.runtime_event_cursor() + 1
+                entries = list(
+                    session.scalars(
+                        select(IntelligenceRuntimeEventRecord)
+                        .where(
+                            IntelligenceRuntimeEventRecord.id < before,
+                            IntelligenceRuntimeEventRecord.source_service
+                            == "intelligence_store_revision",
+                        )
+                        .order_by(IntelligenceRuntimeEventRecord.id.desc())
+                        .limit(101)
+                    )
+                )
+                visible = entries[:100]
+                return {
+                    "available": True,
+                    "historical": True,
+                    "tip": store.runtime_event_cursor(),
+                    "has_more": len(entries) > 100,
+                    "next_before": visible[-1].id if len(entries) > 100 else None,
+                    "events": [
+                        {
+                            "sequence": item.id,
+                            "event_id": item.event_id,
+                            "created_at": item.created_at.isoformat(),
+                            "event_type": item.event_type,
+                            "message": item.message[:250],
+                        }
+                        for item in visible
+                    ],
+                }
             if mode == "evidence":
                 if evidence_id is None:
                     raise ValueError("evidence ID required")
