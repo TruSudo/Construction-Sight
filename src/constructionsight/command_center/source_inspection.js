@@ -642,7 +642,10 @@ async function renderLegacyCommercial(box, category) {
         records.map((r, i) => [
           esc(r.workflow_id || r.ledger_id || r.candidate_key || 'Retained outcome'),
           esc(r.status || r.current_status || r.summary || 'Stored historical fact'),
-          '<button data-original-record="' + i + '">Inspect history</button>'
+          '<button data-original-record="' + i + '">Inspect history</button> ' +
+          (typeof r.workflow_id === 'string' ?
+            '<button data-original-attribution="' + i +
+            '">Trace exact source</button>' : '')
         ])) +
       '<p>' + esc((page.limitations || summary.limitations || []).join(' ')) + '</p>' +
       '<button id="legacy-record-export">Export displayed retained JSON</button>';
@@ -654,6 +657,72 @@ async function renderLegacyCommercial(box, category) {
         '<p>Historical retained data, not a new commercial authorization.</p><pre>' +
         esc(JSON.stringify(records[Number(button.dataset.originalRecord)], null, 2)) +
         '</pre>');
+    });
+    root.querySelectorAll('[data-original-attribution]').forEach(button => {
+      button.onclick = () => perform(async () => {
+        const record = records[Number(button.dataset.originalAttribution)];
+        const workflowId = record.workflow_id;
+        if (typeof workflowId !== 'string' || !workflowId) {
+          throw Error('This original record has no exact persisted workflow identity.');
+        }
+        modal('Trace original workflow to an exact source',
+          '<p>Provide the original CEQA or permit record identity. The persisted ' +
+          'workflow candidate key must exactly equal that source key. No address, ' +
+          'project name, parcel or approximate matching is performed. This is ' +
+          'read-only and does not verify payments or authorize sales.</p>' +
+          '<p>Exact original workflow: <code>' + esc(workflowId) + '</code></p>' +
+          '<form id="original-workflow-attribution-form" class="form-grid">' +
+          '<label>Source family <select name="kind" required>' +
+          '<option value="ceqa">CEQA</option><option value="permit">Permit</option>' +
+          '</select></label>' +
+          '<label>Exact original source record ID ' +
+          '<input name="record_id" maxlength="255" required></label>' +
+          '<button type="submit">Verify exact source lineage</button></form>' +
+          '<div id="original-workflow-attribution-result" role="status"></div>');
+        const form = document.querySelector('#original-workflow-attribution-form');
+        const epoch = modalTicket;
+        form.onsubmit = event => {
+          event.preventDefault();
+          perform(async () => {
+            const submit = form.querySelector('[type=submit]');
+            submit.disabled = true;
+            const values = new FormData(form);
+            try {
+              const attribution = await api('/api/original-workflow-attribution?' +
+                new URLSearchParams({
+                  workflow: workflowId, kind: values.get('kind'),
+                  record_id: String(values.get('record_id')).trim()
+                }));
+              if (epoch !== modalTicket || !form.isConnected) return;
+              const linked = attribution.current_native_observation_matches_original &&
+                typeof attribution.canonical_investigation_id === 'string';
+              document.querySelector('#original-workflow-attribution-result').innerHTML =
+                '<p>Exact original source candidate matched. The historical workflow, ' +
+                'result revisions and calculated shares remain unverified commercial ' +
+                'claims; there is no proof of entitlement or payment.</p>' +
+                '<pre>' + esc(JSON.stringify(attribution, null, 2)) + '</pre>' +
+                (linked ? '<button id="original-attribution-open-native">' +
+                  'Open exact canonical investigation</button>' :
+                  '<p>No current exact native source evidence is present. A ' +
+                  'cross-investigation identity link has not been asserted.</p>') +
+                '<button id="original-attribution-export">Export validated lineage</button>';
+              document.querySelector('#original-attribution-export').onclick = () =>
+                download('original-exact-workflow-source-attribution.json', attribution);
+              const open = document.querySelector('#original-attribution-open-native');
+              if (open) open.onclick = () => perform(() =>
+                openInvestigationDossier(attribution.canonical_investigation_id));
+            } catch (error) {
+              if (epoch === modalTicket && form.isConnected) {
+                document.querySelector('#original-workflow-attribution-result')
+                  .textContent = 'Exact attribution rejected: ' + error.message +
+                    '. No source identity or commercial authority was inferred.';
+              }
+            } finally {
+              if (submit.isConnected) submit.disabled = false;
+            }
+          });
+        };
+      });
     });
     if (category === 'Bid Studio') renderRetainedCommercialPreviewTools(root, records);
   } catch (error) {
