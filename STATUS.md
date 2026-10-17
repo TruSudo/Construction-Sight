@@ -7,7 +7,7 @@ Relationship Graph remain the goal. Full unification and functional parity are n
 
 ## Exact recovery checkpoint
 
-- Development branch: `agent/unification-implementation-2026-10-16`, draft PR #234. Latest fully verified Phase 8 application/test source: `00b67e30b19cd892a4f717072a7b65c0c1589a0a` (full quality gates and browser workflow passed). Phase 7 remains accepted at `3429b14f847163083dfdf32b181bc231d17605c6`.
+- Development branch: `agent/unification-implementation-2026-10-16`, draft PR #234. Latest fully verified Phase 8 application/test source: `5da35fcf94a1167cc0390ae562868e600fe6d406` (full quality gates and browser workflow passed). Phase 7 remains accepted at `3429b14f847163083dfdf32b181bc231d17605c6`.
 - Latest source accepted for Phase 6: `5c03cd80cde497b2dfc0e3533a913000db280812` (anchored historical snapshots, retained-history timeline/comparison, saved layouts, source/date/confidence controls, source grouping, activity highlighting, and bidirectional graph/map navigation). Phase 5 remains pinned to `44e80090219a0ad0938dbec44848233d089bcf2d`.
 - **Phase 7 implementation and regression acceptance is complete** for the controlling directive and currently integrated runtime. The final reconciliation and exact-source results below supersede the older continuation checkpoints. Phase 8 is now in progress; preserve the original interface and all historical assets.
 - Phase 5 native integration is implemented. Exact-source acceptance results are recorded below.
@@ -18,7 +18,7 @@ Relationship Graph remain the goal. Full unification and functional parity are n
 
 ## Phase 8 — IN PROGRESS: native preservation and original-workflow parity
 
-**Verified application/test source:** `00b67e30b19cd892a4f717072a7b65c0c1589a0a`.
+**Verified application/test source:** `5da35fcf94a1167cc0390ae562868e600fe6d406`.
 Original operator assets, historical branches, the previous native association-review
 acceptance, and the shared investigation graph remain preserved. The legacy database
 is an explicitly selected, separate source; displaying its records does **not**
@@ -69,6 +69,30 @@ automatically reconcile them into the canonical native site investigation.
   commercial action is performed.
 - All additions remain confined to existing Command Center workspaces; the
   approved overview/sidebar structure was not replaced or redesigned.
+
+**Latest historical outcome and calculated-share integrity parity:**
+
+- The native source-candidate lineage now binds its original workflow to the
+  **same bounded revision-aware validator used by the legacy result ledger**.
+  The complete exact workflow/package/ledger identity and linear supersession
+  chain are checked before displaying each original result. Only the latest
+  revision is current. Earlier revisions are retained as corrections, not
+  independently additive business or royalty outcomes.
+- The latest and preceding historical revisions expose SHA-256 content digests,
+  decision status, gross amounts in **integer cents**, share rates in exact
+  millionths, and calculated share amounts in **integer cents**, without
+  converting an estimate into authorization, entitlement, receivable or
+  payment. The original ledger validator additionally checks every historical
+  share receipt and exact stored monetary index, including *superseded* shares.
+  Tampering with an older calculated share is rejected even if the current
+  corrected result no longer contains a share.
+- [CI 39035341740](https://github.com/TruSudo/Construction-Sight/actions/runs/39035341740):
+  **2,747 tests passed on Python 3.11 and 2,747 on Python 3.12**, with two
+  non-failing warnings on each; Ruff and strict Mypy passed.
+- [Visual/USGS 39035341739](https://github.com/TruSudo/Construction-Sight/actions/runs/39035341739):
+  both jobs passed, including the native original-financial-history browser
+  journey, maps, investigation, and retained functional-contract checks.
+  Exact approved-mockup pixel parity remains open.
 
 **Latest exact-source approval audit and historical commercial candidate lineage:**
 
