@@ -30,3 +30,11 @@
 .graph-saved-controls select{max-width:220px}
 .graph-investigation-controls label,.graph-saved-controls label{font-size:12px}
 [data-graph-filter-summary]{margin:3px 0 8px}
+
+/* Phase 6: read-only retained-history navigation stays inside the graph workspace. */
+.graph-history-controls{padding:8px 0;border-top:1px solid #394046}
+.graph-history-controls select{max-width:390px}
+.graph-history-controls [data-graph-history-status]{font-size:12px;color:#b6aca0}
+[data-graph-history-diff]{max-width:1080px;white-space:normal}
+.graph-expanded{width:100vw;height:100vh;max-width:none}
+@media(max-width:1100px){.graph-body{grid-template-columns:minmax(0,1fr)}.graph-inspector{max-height:300px}.graph-expanded [data-graph-canvas]{height:58vh}}
