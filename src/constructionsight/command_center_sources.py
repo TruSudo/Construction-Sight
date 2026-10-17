@@ -20,6 +20,10 @@ from constructionsight.operator_dashboard import (
     build_workflow_snapshot,
     build_workflow_status_summary,
 )
+from constructionsight.operator_capture_queue import (
+    empty_operator_capture_queue,
+    load_operator_capture_queue,
+)
 from constructionsight.operator_entity_index import build_entity_index
 from constructionsight.operator_parcel_candidates import inspect_parcel_candidates
 from constructionsight.operator_results import build_result_ledger_snapshot
@@ -31,7 +35,7 @@ from constructionsight.operator_source_registry import build_operator_source_reg
 from constructionsight.operator_source_review_queue import build_source_review_queue
 from constructionsight.operator_source_revision import build_source_revision_snapshot
 from constructionsight.operator_watchlist import build_operator_watchlist_snapshot
-from constructionsight.operator_web import _parameters
+from constructionsight.operator_web import _build_ceqanet_ingestion_payload, _parameters
 from constructionsight.storage.operator_read_store import create_operator_read_engine
 
 SOURCE_INSPECTION_ROUTES = frozenset(
@@ -49,12 +53,20 @@ SOURCE_INSPECTION_ROUTES = frozenset(
         "/api/source-entity-neighborhood",
         "/api/source-timeline",
         "/api/source-footprint",
+        "/api/source-capture-queue",
+        "/api/source-ingestion-inbox",
     }
 )
 
 
 def source_inspection(
-    database: Path | None, *, route: str, query: str = ""
+    database: Path | None,
+    *,
+    route: str,
+    query: str = "",
+    capture_queue: Path | None = None,
+    ceqanet_listing: Path | None = None,
+    ceqanet_review_queue: Path | None = None,
 ) -> dict[str, Any]:
     """Return existing governed operator projections without writing or acquiring data."""
 
@@ -63,6 +75,8 @@ def source_inspection(
     if route in {
         "/api/source-registry", "/api/source-revision", "/api/source-watchlist",
         "/api/workflow-summary",
+        "/api/source-capture-queue",
+        "/api/source-ingestion-inbox",
     }:
         if query:
             raise ValueError("source status inspection rejects query parameters")
@@ -117,6 +131,16 @@ def source_inspection(
                 assert params is not None
                 result = build_result_ledger_snapshot(
                     session, limit=params.limit, offset=params.offset
+                )
+            elif route == "/api/source-capture-queue":
+                result = (
+                    empty_operator_capture_queue()
+                    if capture_queue is None else load_operator_capture_queue(capture_queue)
+                )
+            elif route == "/api/source-ingestion-inbox":
+                result = _build_ceqanet_ingestion_payload(
+                    session, listing_evidence=ceqanet_listing,
+                    queue_evidence=ceqanet_review_queue,
                 )
             elif route == "/api/source-entity-index":
                 assert params is not None
