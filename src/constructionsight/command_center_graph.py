@@ -40,6 +40,9 @@ def _node(store: IntelligenceStore, identity: str) -> dict[str, Any] | None:
             "evidence_truncated": len(project.evidence_record_ids) > 50,
             "canonical_id": canonical_investigation_id(store, identity),
             "identity_verified": False,
+            "last_seen": project.last_seen.isoformat(),
+            "date_basis": "project_last_seen",
+            "confidence": project.cluster_confidence,
         }
     entity = store.get_entity(identity)
     if entity is not None:
@@ -52,6 +55,9 @@ def _node(store: IntelligenceStore, identity: str) -> dict[str, Any] | None:
             "evidence_truncated": len(entity.evidence_record_ids) > 50,
             "source_names": entity.source_names,
             "identity_verified": False,
+            "last_seen": entity.last_seen.isoformat(),
+            "date_basis": "entity_last_seen",
+            "confidence": entity.confidence_score,
         }
     evidence = store.get_evidence(identity)
     if evidence is not None:
@@ -65,6 +71,8 @@ def _node(store: IntelligenceStore, identity: str) -> dict[str, Any] | None:
             "source_family": evidence.source_family,
             "limitations": evidence.limitations,
             "identity_verified": False,
+            "last_seen": (evidence.observed_at or evidence.retrieved_at).isoformat(),
+            "date_basis": "evidence_observed_or_retrieved",
         }
     return None
 
@@ -131,6 +139,9 @@ def _snapshot(store: IntelligenceStore, root: str | None, depth: int) -> dict[st
                     "predicate": relation.predicate,
                     "status": relation.relationship_status.value,
                     "confidence": relation.confidence_score,
+                    "source_family": relation.source_family,
+                    "last_seen": relation.last_seen.isoformat(),
+                    "date_basis": "assertion_last_seen",
                     "supporting_evidence_ids": relation.supporting_evidence_ids[:50],
                     "evidence_truncated": len(relation.supporting_evidence_ids) > 50
                     or len(relation.contradictory_evidence_ids) > 50,
@@ -162,6 +173,9 @@ def _snapshot(store: IntelligenceStore, root: str | None, depth: int) -> dict[st
                 "kind": "retained_reference",
                 "predicate": "retained_evidence_reference",
                 "status": "retained_reference",
+                "source_family": evidence_node["source_family"],
+                "last_seen": evidence_node["last_seen"],
+                "date_basis": evidence_node["date_basis"],
                 "supporting_evidence_ids": [evidence_id],
                 "contradictory_evidence_ids": [],
                 "identity_verified": False,

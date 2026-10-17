@@ -155,6 +155,33 @@ def test_graph_event_pages_and_rejected_edges(tmp_path: Path) -> None:
     )
 
 
+def test_graph_filter_metadata_is_retained_and_read_only(tmp_path: Path) -> None:
+    """Source/date/confidence display attributes are not independent verification."""
+    directory = tmp_path / "private"
+    directory.mkdir(mode=0o700)
+    _ingest(directory)
+    before = (directory / "investigations.sqlite3").read_bytes()
+    graph = graph_view(directory)
+    project = next(node for node in graph["nodes"] if node["kind"] == "investigation")
+    developer = next(node for node in graph["nodes"] if node["label"] == "Synthetic graph developer")
+    evidence = next(node for node in graph["nodes"] if node["kind"] == "evidence")
+    assert project["date_basis"] == "project_last_seen"
+    assert developer["date_basis"] == "entity_last_seen"
+    assert evidence["date_basis"] == "evidence_observed_or_retrieved"
+    assert all(node["last_seen"] for node in (project, developer, evidence))
+    assertions = [edge for edge in graph["edges"] if edge["kind"] == "relationship"]
+    assert any(edge["last_seen"] and isinstance(edge["confidence"], int)
+               and "source_family" in edge for edge in assertions)
+    references = [edge for edge in graph["edges"] if edge["kind"] == "retained_reference"
+                  and edge["target"] == evidence["id"]]
+    assert references
+    assert all(edge["last_seen"] == evidence["last_seen"] and
+               edge["source_family"] == evidence["source_family"] for edge in references)
+    assert not graph["commercial_authority_granted"]
+    assert all(node["identity_verified"] is False for node in graph["nodes"])
+    assert (directory / "investigations.sqlite3").read_bytes() == before
+
+
 def test_native_graph_http_and_uncommitted_state(tmp_path: Path) -> None:
     directory = tmp_path / "private"
     directory.mkdir(mode=0o700)
