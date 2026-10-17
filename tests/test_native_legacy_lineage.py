@@ -8,11 +8,14 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import httpx
+import pytest
+from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from constructionsight.investigation_runtime import InvestigationRuntime
 from constructionsight.lead_workflow_service import create_lead_workflow
 from constructionsight.live_command_center import make_server
+from constructionsight.operator_results import read_validated_result_history
 from constructionsight.operator_source_candidate import build_source_candidate_preview
 from constructionsight.result_ledger_models import ResultLedgerStatus
 from constructionsight.result_ledger_service import (
@@ -21,6 +24,7 @@ from constructionsight.result_ledger_service import (
 )
 from constructionsight.storage.database import create_database_engine, initialize_database
 from constructionsight.storage.domain_store import CeqaStore
+from constructionsight.storage.lead_workflow_orm import ResultShareRecordRow
 from constructionsight.storage.lead_workflow_store import (
     store_lead_review_package,
     store_lead_workflow_record,
@@ -171,3 +175,43 @@ def test_exact_original_candidate_lineage_requires_evidence_not_auto_merges(
         server.server_close()
         thread.join()
     assert hashlib.sha256(database.read_bytes()).hexdigest() == original_digest
+
+
+def test_superseded_original_share_cannot_hide_corrupt_minor_unit_receipt(
+    tmp_path: Path,
+) -> None:
+    """An outcome correction must not erase the prior share's audit integrity."""
+
+    engine = create_database_engine(f"sqlite:///{tmp_path / 'original.sqlite3'}")
+    initialize_database(engine)
+    package = _package()
+    workflow = create_lead_workflow(package=package)
+    first = build_result_ledger_record(
+        workflow=workflow, status=ResultLedgerStatus.WON,
+        gross_value=1500.0, share_rate=0.1,
+    )
+    corrected = supersede_result_ledger_record(
+        current=first, status=ResultLedgerStatus.LOST,
+        correction_reason="Historical correction to an unsuccessful result",
+    )
+    with Session(engine) as session, session.begin():
+        store_lead_review_package(session, package)
+        store_lead_workflow_record(session, workflow)
+        store_result_ledger_record(session, first)
+        store_result_ledger_record(session, corrected)
+    with Session(engine) as session:
+        result = read_validated_result_history(session, workflow.workflow_id)
+        assert result is not None
+        assert result["current"]["status"] == "lost"
+        assert result["revision_count"] == 2
+    assert first.share is not None
+    with Session(engine) as session, session.begin():
+        session.execute(
+            update(ResultShareRecordRow)
+            .where(ResultShareRecordRow.share_record_id == first.share.share_record_id)
+            .values(share_value_minor=99999)
+        )
+    with Session(engine) as session:
+        with pytest.raises(ValueError, match="exact money index disagree"):
+            read_validated_result_history(session, workflow.workflow_id)
+    engine.dispose()
