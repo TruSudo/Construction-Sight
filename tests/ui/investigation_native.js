@@ -76,7 +76,21 @@ const {chromium}=require('../visual/node_modules/playwright');
   const afterRevisionIds=await page.locator('section[data-shared-investigations] [data-investigation-id]').evaluateAll(nodes=>nodes.map(n=>n.dataset.investigationId).sort());
   if(JSON.stringify(ids)!==JSON.stringify(afterRevisionIds))throw Error('Source revision duplicated investigations');
   await page.click('nav button[data-page="Command Center"]');
-  if(await page.locator('#points [data-investigation-id]').count())throw Error('Investigation markers leaked into approved overview');
+  await page.waitForSelector('#points [data-investigation-id]',{timeout:20000});
+  const overviewIds=await page.locator('#points [data-investigation-id]').evaluateAll(nodes=>nodes.map(n=>n.dataset.investigationId));
+  if(overviewIds.length!==1||overviewIds[0]!==markerId)
+   throw Error('Approved native overview map disagrees with persisted Site Map investigation identity: '+overviewIds);
+  const overviewMarkerLabel=await page.locator('#points [data-investigation-id]').first().getAttribute('aria-label');
+  if(!overviewMarkerLabel.includes('Source-claimed investigation'))
+   throw Error('Overview silently promoted an unverified source claim into a commercial lead');
+  const overviewCoverage=await page.locator('#map-coverage').textContent();
+  if(!overviewCoverage.includes('1 visible source-claimed investigation points')||!overviewCoverage.includes('mapped investigation scan complete'))
+   throw Error('Overview did not disclose source-claimed investigation coverage: '+overviewCoverage);
+  await page.locator('#points [data-investigation-id]').first().click();
+  await page.waitForSelector('#export-investigation');
+  if(!(await page.locator('#action-content').textContent()).includes(markerId))
+   throw Error('Overview investigation marker did not navigate into the shared canonical dossier');
+  await page.click('#action-close');
   if(errors.length)throw Error(errors.join('; '));
   console.log('Native shared investigation inventory, dossier, provenance and cross-view IDs: PASS');
  }finally{await browser.close();}
