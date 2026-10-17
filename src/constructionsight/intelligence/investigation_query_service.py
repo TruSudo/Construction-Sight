@@ -174,6 +174,7 @@ class InvestigationQueryService:
         return {
             "schema_version": "constructionsight.investigation-inventory/v1",
             "event_cursor": self.store.runtime_event_cursor(),
+            "event_anchor": self.store.latest_runtime_event_id(),
             "total": total,
             "scanned_on_page": min(len(identities), limit),
             "filtered_on_page": len(rows),
@@ -572,6 +573,7 @@ class InvestigationQueryService:
             "requested_investigation_id": requested_id,
             "investigation": cluster.model_dump(mode="json"),
             "event_cursor": self.store.runtime_event_cursor(),
+            "event_anchor": self.store.latest_runtime_event_id(),
             "evidence": [item.model_dump(mode="json") for item in evidence if item is not None],
             "evidence_context": {
                 identity: (

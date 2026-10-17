@@ -17,6 +17,7 @@ from constructionsight.intelligence.investigation_query_service import Investiga
 from constructionsight.intelligence.investigation_review_service import InvestigationReviewService
 from constructionsight.storage.database import (
     create_private_database_engine,
+    ensure_database_transaction,
     managed_session,
     prepare_private_database,
     session_factory,
@@ -110,7 +111,12 @@ def investigation_view(
         with managed_session(session_factory(engine)) as session:
             store = IntelligenceStore(session)
             if revision_only:
-                return {"available": True, "event_cursor": store.runtime_event_cursor()}
+                ensure_database_transaction(session)
+                return {
+                    "available": True,
+                    "event_cursor": store.runtime_event_cursor(),
+                    "event_anchor": store.latest_runtime_event_id(),
+                }
             service = InvestigationQueryService(store)
             if investigation_id is not None:
                 return service.dossier(investigation_id, evidence_limit=100)

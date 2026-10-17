@@ -16,7 +16,7 @@ const ICON_PATHS={
  dollar:'<path d="M12 2v20m5-15c0-5-10-5-10 0s10 3 10 9-10 5-10 0"/>',
  star:'<path fill="currentColor" fill-opacity=".2" d="m12 2 3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1Z"/>',
  layers:'<path d="m12 2 10 6-10 6L2 8Zm-10 11 10 6 10-6M2 18l10 6 10-6"/>',
- source_layers:'<path d="m12 3 9 5-9 5-9-5Z" fill="currentColor"/><path d="m3 13 9 5 9-5M3 18l9 5 9-5"/><ellipse cx="12" cy="8" rx="3" ry="1.8" fill="#efa923" stroke="#efa923"/>',
+ source_layers:'<path d="m12 3 9 5-9 5-9-5Z" fill="#eeeae1" stroke="#eeeae1"/><path d="m3 13 9 5 9-5M3 18l9 5 9-5" stroke="#eeeae1"/><path d="m12 5.5 4.5 2.5-4.5 2.5L7.5 8Z" fill="#efa923" stroke="#efa923"/>',
  person:'<circle cx="12" cy="5" r="3"/><path d="M9 10c-1 2-1 5 1 7h4c2-2 2-5 1-7M6 12c-7 6-3 10 6 10s13-4 6-10"/>',
  calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 2v6m10-6v6M3 11h18M7 15h2m3 0h2m3 0h1M7 18h2m3 0h2"/>',
  search:'<circle cx="10" cy="10" r="7"/><path d="m15 15 6 6"/>',

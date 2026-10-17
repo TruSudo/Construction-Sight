@@ -17,7 +17,7 @@ function renderer(options={}){
  const context=vm.createContext({
   document:{getElementById:node,querySelector:node,querySelectorAll:()=>[],addEventListener(){},documentElement:new Node()},
   window:{addEventListener(){}},innerWidth:1672,innerHeight:941,URLSearchParams,
-  localStorage:{getItem:()=>options.mode||null},Image:Node,icon:()=>'',renderHighwayShields(){},
+  localStorage:{getItem:()=>options.mode||null},Image:Node,icon:()=>'',renderHighwayShields(){},refreshOpenInvestigationDossier:async()=>{},
  });
  vm.runInContext(fs.readFileSync(path.join(root,'usgs_map.js'),'utf8'),context);
  vm.runInContext(fs.readFileSync(path.join(root,'app.js'),'utf8'),context);
@@ -75,5 +75,20 @@ console.log('Actual map renderer: automatic/explicit USGS, outage fallback, offl
  vm.runInContext('drawMap()',context);
  assert.ok(!nodes.get('points').innerHTML.includes('retained:river'),'A previous-region investigation leaked into the selected map');
  assert.ok(!nodes.get('map-coverage').textContent.includes('scan complete'),'An unqueried region asserted complete coverage');
+ nodes.get('county').value='Riverside';
+ const restored={...row,title:'Different restored history at the same sequence'};
+ let dossierRevision=null;
+ context.refreshOpenInvestigationDossier=async revision=>{dossierRevision=revision;};
+ context.api=url=>Promise.resolve(url.includes('revision=1')?{available:true,event_cursor:'current',event_anchor:'restored-tip'}:
+  {available:true,event_cursor:'current',event_anchor:'restored-tip',rows:[restored],has_more:false});
+ await vm.runInContext('refreshOverviewInvestigationMap()',context);
+ assert.equal(vm.runInContext('overviewInvestigationMap.rows[0].title',context),restored.title,'Equal event counts hid a restored history');
+ assert.equal(dossierRevision.event_anchor,'restored-tip','The open overview dossier was left at its old revision');
+ context.api=url=>Promise.resolve(url.includes('revision=1')?{available:true,event_cursor:'current',event_anchor:'new-tip'}:
+  {available:true,event_cursor:'current',event_anchor:'other-tip',rows:[row],has_more:false});
+ await vm.runInContext('refreshOverviewInvestigationMap()',context);
+ assert.equal(vm.runInContext('overviewInvestigationMap.anchor',context),'restored-tip','A mixed-lineage snapshot replaced the last committed projection');
+ assert.ok(nodes.get('map-coverage').textContent.includes('refresh failed'),'Mixed-lineage projection was not marked stale');
  console.log('Actual overview projection: absent store, in-flight region change, shared region options and stale-region exclusion PASS');
+ console.log('Restored-history anchors: equal-count refresh, open dossier revision and mixed-snapshot rejection PASS');
 })().catch(error=>{console.error(error);process.exitCode=1;});

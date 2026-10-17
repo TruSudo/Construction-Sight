@@ -90,7 +90,6 @@ const {chromium}=require('../visual/node_modules/playwright');
   await page.waitForSelector('#export-investigation');
   if(!(await page.locator('#action-content').textContent()).includes(markerId))
    throw Error('Overview investigation marker did not navigate into the shared canonical dossier');
-  await page.click('#action-close');
   // A new worker commit must update the overview without navigating away or
   // requiring the operator to restart the dashboard.
   const overviewRevision=await page.evaluate(()=>overviewInvestigationMap.cursor);
@@ -101,6 +100,8 @@ const {chromium}=require('../visual/node_modules/playwright');
    overviewRevision,{timeout:25000});
   if(await page.locator('#points [data-investigation-id]').count()!==1)
    throw Error('Background source revision duplicated or removed the canonical overview marker');
+  await page.waitForFunction(()=>document.querySelector('#action-title').textContent.includes('dashboard-refresh'),{},{timeout:20000});
+  await page.click('#action-close');
   if(errors.length)throw Error(errors.join('; '));
   console.log('Native shared investigation inventory, dossier, provenance and cross-view IDs: PASS');
  }finally{await browser.close();}

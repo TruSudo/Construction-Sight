@@ -105,3 +105,9 @@ header{font-family:'CS Inter';padding-top:9px;padding-bottom:9px;background:line
 .association-review-preview select{width:100%;min-width:0;max-width:100%}
 .association-review-preview .form-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .association-review-preview pre{white-space:pre-wrap;overflow-wrap:anywhere}
+
+/* Measured legend rhythm and existing sidebar/header icon details from the native reference. */
+.legend{left:11px;height:85px;padding:7px 8px}
+.legend-line{height:23.3px;padding:0;gap:8px}
+.legend .dot{width:13px;height:13px;border:1px solid #ffffff66;box-shadow:0 0 2px #000}
+.right>.card:last-child .card-head i .icon path{fill-opacity:1}

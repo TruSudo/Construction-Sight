@@ -2,6 +2,10 @@
 // Read-only projections of the worker-owned investigation state. No local matching.
 const investigationFilters={text:'',source:'',location:''};
 let investigationSearchTicket=0,currentInvestigationIdentity=null,investigationDossierRevision=null;
+async function refreshOpenInvestigationDossier(revision){
+ if(currentInvestigationIdentity&&$('action-dialog').open&&investigationRevision(revision)!==investigationDossierRevision)
+  await openInvestigationDossier(currentInvestigationIdentity,true);
+}
 function investigationParams(after,extra={}){
  const region=$('county').value,p=new URLSearchParams();
  if(after)p.set('after',after);
@@ -30,7 +34,7 @@ async function renderInvestigationInventory(box,onPage=()=>{}){
   '<p data-investigation-status role="status"></p><div data-investigation-rows></div>'+
   '<div data-investigation-network></div>';
  const status=host.querySelector('[data-investigation-status]'),results=host.querySelector('[data-investigation-rows]');
- let after=null,cursor=null,request=0,busy=false,networkId=null,networkTicket=0,pollTimer=null,disposed=false;
+ let after=null,cursor=null,revisionKey=null,request=0,busy=false,networkId=null,networkTicket=0,pollTimer=null,disposed=false;
  const network=host.querySelector('[data-investigation-network]');
  const input=host.querySelector('[data-investigation-search]'),source=host.querySelector('[data-investigation-source]'),location=host.querySelector('[data-investigation-location]');
  input.value=investigationFilters.text;source.value=investigationFilters.source;location.value=investigationFilters.location;
@@ -48,7 +52,7 @@ async function renderInvestigationInventory(box,onPage=()=>{}){
   try{
    const snapshot=await api(investigationParams(nextAfter));
    if(!(host.isConnected&&!disposed)||ticket!==request)return;
-   after=nextAfter;cursor=snapshot.event_cursor;
+   after=nextAfter;cursor=snapshot.event_cursor;revisionKey=investigationRevision(snapshot);
    if(!snapshot.available){onPage([]);results.replaceChildren();network.replaceChildren();status.textContent='Investigation store unavailable: the local worker has not initialized it. No count is asserted.';return;}
    const rows=snapshot.rows||[];investigationRegionOptions(rows);
    for(const r of rows)for(const record of r.source_records||[])if(record.source_family&&![...source.options].some(o=>o.value===record.source_family)){
@@ -104,7 +108,7 @@ async function renderInvestigationInventory(box,onPage=()=>{}){
     const revision=await api('/api/investigations?revision=1');
     if(!(host.isConnected&&!disposed))return;
     if(!revision.available)status.textContent='Live refresh unavailable; investigation store is absent. Previously displayed records may be stale.';
-    if(revision.available&&revision.event_cursor!==cursor){
+    if(revision.available&&investigationRevision(revision)!==revisionKey){
      await page(after,true);
      if(currentInvestigationIdentity&&$('action-dialog').open)await openInvestigationDossier(currentInvestigationIdentity,true);
     }

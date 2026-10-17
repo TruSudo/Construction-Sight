@@ -3,6 +3,7 @@ const $=id=>document.getElementById(id), esc=s=>String(s==null||['NA','N/A','UNK
 const nav=[['grid','Command Center'],['chart','Project Intelligence'],['pin','Site Map'],['network','Entity Network'],['file','Evidence Chains'],['','COMMERCIAL'],['target','Lead Console'],['send','Outreach'],['database','Bid Studio'],['dollar','Royalty Ledger'],['','INTELLIGENCE'],['star','Watchlist'],['source_layers','Sources & Collection']];
 let activeInvestigationMapRows=[];
 const overviewInvestigationMap={rows:[],cursor:null,scope:null,available:null,incomplete:false,error:null,loading:false};
+function investigationRevision(value){return JSON.stringify([value.event_cursor,value.event_anchor??null]);}
 let data,filtered=[],selected=null,readinessFilter='',zoom=8,center=[34.05,-117.25],online=false,activePage='Command Center',watches=[],mapLayers={ready:true,review:true,not_ready:true,county:false,heat:false,investigations:true},includeExcluded=false,analyticFilter=null;
 let basemapMode=safeMapMode(localStorage.getItem('cs:basemap')),basemapFailed=false,mapGeneration=0,tileSource=null;
 const tileElements=new Map();
@@ -130,7 +131,9 @@ async function refreshOverviewInvestigationMap(force=false){
    Object.assign(state,{rows:[],cursor:null,scope:region,available:false,incomplete:false,error:null});
    return;
   }
-  if(!force&&state.available&&state.cursor===revision.event_cursor&&state.scope===region)return;
+  if(!force&&state.available&&state.cursor===revision.event_cursor&&state.anchor===(revision.event_anchor??null)&&state.scope===region){
+   await refreshOpenInvestigationDossier(revision);return;
+  }
   const params=new URLSearchParams({location:'mapped'});
   if(region.startsWith('city:'))params.set('city',region.slice(5));
   else if(region)params.set('county',region);
@@ -139,7 +142,7 @@ async function refreshOverviewInvestigationMap(force=false){
    const query=new URLSearchParams(params);
    if(after)query.set('after',after);
    const snapshot=await api('/api/investigations?'+query);
-   if(!snapshot.available||snapshot.event_cursor!==revision.event_cursor)
+   if(!snapshot.available||investigationRevision(snapshot)!==investigationRevision(revision))
     throw Error('Investigation revision changed during map projection');
    rows.push(...(snapshot.rows||[]));
    more=Boolean(snapshot.has_more);
@@ -150,7 +153,8 @@ async function refreshOverviewInvestigationMap(force=false){
   }
   if(activePage!=='Command Center'||region!==$('county').value)return;
   investigationRegionOptions(rows);
-  Object.assign(state,{rows,cursor:revision.event_cursor,scope:region,available:true,incomplete:more,error:null});
+  Object.assign(state,{rows,cursor:revision.event_cursor,anchor:revision.event_anchor??null,scope:region,available:true,incomplete:more,error:null});
+  await refreshOpenInvestigationDossier(revision);
  }catch(error){
   if(activePage==='Command Center'&&region===$('county').value)
    state.error=String(error.message||error);

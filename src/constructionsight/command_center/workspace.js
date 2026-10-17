@@ -42,7 +42,7 @@ async function openInvestigationDossier(identity,refresh=false){
  const ticket=++modalTicket;
  const dossier=await api('/api/investigations/'+encodeURIComponent(identity));
  if(ticket!==modalTicket||refresh&&(!$('action-dialog').open||currentInvestigationIdentity!==identity))return;
- currentInvestigationIdentity=identity;investigationDossierRevision=dossier.event_cursor;
+ currentInvestigationIdentity=identity;investigationDossierRevision=investigationRevision(dossier);
  const scroll=refresh?$('action-content').scrollTop:0;
  const sources=dossier.source_membership||[],chronology=dossier.chronology||[];
  const info=dossier.investigation||{},assessment=dossier.assessment||{};
