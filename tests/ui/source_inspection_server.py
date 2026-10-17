@@ -22,6 +22,7 @@ from constructionsight.storage.lead_workflow_store import (
     store_lead_workflow_record,
 )
 from tests.test_bid_proposal_service import _package
+from tests.test_ceqanet_operator_export import _chain_report
 from tests.test_operator_capture_queue import _payload as capture_fixture
 from tests.test_operator_ingestion_inbox import _write_artifacts
 from tests.test_smarts_parcel_review import _change, _environment, _parcel
@@ -75,6 +76,8 @@ _parcel(database, "parcel:browser:smarts")
 listing, review = _write_artifacts(args.data_dir)
 capture = args.data_dir / "capture.json"
 capture.write_text(json.dumps(capture_fixture()), encoding="utf-8")
+chain = args.data_dir / "ceqanet-chain-report.json"
+chain.write_text(json.dumps(_chain_report()), encoding="utf-8")
 snapshot = {
     "rows": [],
     "captured_at": "2026-10-17T09:00:00+00:00",
@@ -88,6 +91,7 @@ server = make_server(
     operator_capture_queue=capture, operator_ceqanet_listing=listing,
     operator_ceqanet_review_queue=review,
     operator_smarts_history=smarts_history,
+    operator_ceqanet_chain_report=chain,
 )
 print("Phase 8 read-only source fixture", server.server_port, flush=True)
 try:
