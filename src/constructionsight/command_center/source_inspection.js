@@ -54,14 +54,7 @@ async function renderRetainedSources(box) {
       ])) +
     '<h3>Source-specific watchlist</h3><p>Distinct from the commercial lead watchlist. ' +
     'Changes in retained source records can trigger existing watches; this display does not poll sources or notify anyone.</p>' +
-    table(['Source', 'Family', 'County', 'Watch status', 'Changed'],
-      (watches.items || []).slice(0, 100).map(w => [
-        esc(w.title || w.record_id), esc(w.record_kind), esc(w.county),
-        esc(w.status), w.change_pending ? 'Retained change pending review' : '—'
-      ])) +
-    '<p>' + esc(watches.total || 0) + ' active source watches; ' +
-    'source monitoring: ' + (watches.source_monitoring_enabled ? 'enabled' : 'not enabled') +
-    '. Existing archive/add actions remain in the preserved operator system.</p>' +
+    '<div id="retained-source-watchlist" aria-live="polite"></div>' +
     '<h3>Source observation review queue</h3>' +
     '<p>Exact retained CEQA/permit observations. Review does not merge investigations, authorize bids or send outreach.</p>' +
     '<form id="retained-source-filters" class="source-toolbar">' +
@@ -73,6 +66,34 @@ async function renderRetainedSources(box) {
     '<div id="retained-capture-inbox" aria-live="polite"></div>' +
     '<div id="retained-smarts-history" aria-live="polite"></div>' +
     '<div id="retained-history-inspection"></div>';
+  const watchPanel = root.querySelector('#retained-source-watchlist');
+  async function changeSourceWatch(action, kind, recordId) {
+    const updated = await api('/api/source-watchlist-action', {
+      action, kind, record_id: recordId
+    });
+    if (!root.isConnected || activePage !== 'Sources & Collection') return;
+    showSourceWatches(updated);
+  }
+  function showSourceWatches(state) {
+    const items = (state.items || []).slice(0, 100);
+    watchPanel.innerHTML = table(
+      ['Source', 'Family', 'County', 'Watch status', 'Changed', 'Action'],
+      items.map((w, i) => [
+        esc(w.title || w.record_id), esc(w.record_kind), esc(w.county),
+        esc(w.status), w.change_pending ? 'Retained change pending review' : '—',
+        '<button data-source-unwatch="' + i + '">Archive watch</button>'
+      ])
+    ) + '<p>' + esc(state.total) + ' active source watches; ' +
+      'remote source polling: ' + (state.remote_source_polling_enabled ? 'enabled' : 'disabled') +
+      '. Watches do not authorize contacts, bids or notifications.</p>';
+    watchPanel.querySelectorAll('[data-source-unwatch]').forEach(button => {
+      button.onclick = () => perform(async () => {
+        const w = items[Number(button.dataset.sourceUnwatch)];
+        await changeSourceWatch('archive', w.record_kind, w.record_id);
+      });
+    });
+  }
+  showSourceWatches(watches);
   root.querySelector('#retained-registry-export').onclick = () =>
     download('retained-source-registry.json', registry);
   root.querySelectorAll('[data-registry-index]').forEach(button => {
@@ -106,7 +127,8 @@ async function renderRetainedSources(box) {
           (page.items || []).map((r, i) => [
             esc(r.title), esc(r.record_kind), esc(r.county), esc(r.state),
             '<button data-source-preview="' + i + '">Source evidence</button> ' +
-            '<button data-parcel-review="' + i + '">Parcel candidates</button>'
+            '<button data-parcel-review="' + i + '">Parcel candidates</button> ' +
+            '<button data-source-watch="' + i + '">Watch source</button>'
           ])) +
         '<div class="source-toolbar"><button id="retained-source-previous"' +
         (offset === 0 ? ' disabled' : '') + '>Previous</button>' +
@@ -116,6 +138,12 @@ async function renderRetainedSources(box) {
         () => { offset = Math.max(0, offset - 10); perform(loadPage); };
       queue.querySelector('#retained-source-next').onclick =
         () => { offset += 10; perform(loadPage); };
+      queue.querySelectorAll('[data-source-watch]').forEach(button => {
+        button.onclick = () => perform(async () => {
+          const record = page.items[Number(button.dataset.sourceWatch)];
+          await changeSourceWatch('add', record.record_kind, record.record_id);
+        });
+      });
       for (const [attribute, endpoint] of [
         ['data-source-preview', '/api/candidate-preview'],
         ['data-parcel-review', '/api/parcel-candidates']
