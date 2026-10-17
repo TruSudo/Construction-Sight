@@ -38,6 +38,21 @@ const {chromium} = require('../visual/node_modules/playwright');
       throw Error('Source-specific parcel candidates were not retained');
     }
     await page.click('#action-close');
+    await page.waitForSelector('#retained-capture-inbox [data-capture-candidate]');
+    const captureText = await page.locator('#retained-capture-inbox').textContent();
+    if (!captureText.includes('2026012345') ||
+        !captureText.includes('2026030377') ||
+        !captureText.includes('Original CEQA capture & ingestion')) {
+      throw Error('Native exact capture and ingestion artifacts not retained');
+    }
+    await page.locator('#retained-capture-inbox [data-capture-candidate]').first().click();
+    await page.waitForSelector('#action-dialog[open]');
+    const captureDetail = await page.locator('#action-content').textContent();
+    if (!captureDetail.includes('candidate_only') ||
+        !captureDetail.includes('2026012345')) {
+      throw Error('Original capture candidate evidence is not inspectable');
+    }
+    await page.click('#action-close');
     await page.locator('[data-history-mode="entities"]').click();
     await page.waitForSelector('[data-historical-entity]');
     const entityText = await page.locator('#retained-history-results').textContent();
