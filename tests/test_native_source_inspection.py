@@ -184,6 +184,76 @@ def test_existing_legacy_source_db_is_reused_by_native_without_mutation(tmp_path
 
 
 
+
+def test_native_source_watch_actions_only_change_guarded_local_membership(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "original.sqlite3"
+    engine = create_database_engine(f"sqlite:///{database}")
+    initialize_database(engine)
+    with Session(engine) as session, session.begin():
+        CeqaStore(session).upsert(_record("phase8:watch"))
+    engine.dispose()
+    server, worker = _native(tmp_path / "native", operator_database=database)
+    try:
+        base = f"http://127.0.0.1:{server.server_port}"
+        with httpx.Client(base_url=base, trust_env=False) as client:
+            original = client.get("/api/source-revision").json()["revision_identity"]
+            original_sha = client.get(
+                "/api/candidate-preview",
+                params={"kind": "ceqa", "record_id": "phase8:watch"},
+            ).json()["normalized_source_sha256"]
+            body = {"action": "add", "kind": "ceqa", "record_id": "phase8:watch"}
+            assert client.post("/api/source-watchlist-action", json=body).status_code == 403
+            assert client.post(
+                "/api/source-watchlist-action", json=body,
+                headers={"Origin": "https://attacker.example"},
+            ).status_code == 403
+            assert client.get("/api/source-watchlist").json()["total"] == 0
+            headers = {"Origin": base}
+            invalid = (
+                {**body, "outreach_authorized": True},
+                {**body, "action": "send"},
+                {**body, "kind": "all"},
+                {**body, "record_id": "unknown"},
+            )
+            for attempt in invalid:
+                assert client.post(
+                    "/api/source-watchlist-action", json=attempt, headers=headers
+                ).status_code == 400
+            added = client.post(
+                "/api/source-watchlist-action", json=body, headers=headers
+            )
+            assert added.status_code == 200, added.text
+            assert added.json()["mutation"] == "add"
+            assert added.json()["total"] == 1
+            assert added.json()["items"][0]["record_id"] == "phase8:watch"
+            assert added.json()["remote_source_polling_enabled"] is False
+            assert added.json()["commercial_actions_authorized"] is False
+            assert client.get("/api/source-revision").json()["revision_identity"] == original
+            assert client.get(
+                "/api/candidate-preview",
+                params={"kind": "ceqa", "record_id": "phase8:watch"},
+            ).json()["normalized_source_sha256"] == original_sha
+            archived = client.post(
+                "/api/source-watchlist-action", json={**body, "action": "archive"},
+                headers=headers,
+            )
+            assert archived.status_code == 200, archived.text
+            assert archived.json()["mutation"] == "archive"
+            assert archived.json()["total"] == 0
+            assert client.get("/api/source-watchlist").json()["total"] == 0
+            assert client.get("/api/source-revision").json()["revision_identity"] == original
+            assert client.post(
+                "/api/source-watchlist-action?extra=1", json=body, headers=headers
+            ).status_code == 400
+    finally:
+        server.shutdown()
+        server.server_close()
+        worker.join()
+
+
+
 def test_original_ceqa_artifacts_are_inspected_without_ingesting_or_mutating(
     tmp_path: Path,
 ) -> None:
