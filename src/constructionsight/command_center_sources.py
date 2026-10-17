@@ -89,7 +89,7 @@ def source_inspection(
                 ).model_dump(mode="json")
             else:
                 assert params is not None and params.record_id is not None
-                if params.kind not in {"ceqa", "permit"}:
+                if params.kind == "all":
                     raise ValueError("exact CEQA or permit source record required")
                 if route == "/api/parcel-candidates":
                     result = inspect_parcel_candidates(
