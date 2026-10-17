@@ -15,6 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from constructionsight.lead_workflow_models import LeadWorkflowRecord, LeadWorkflowStatus
+from constructionsight.lead_workflow_rules import validate_lead_workflow_transition
 from constructionsight.storage.lead_workflow_orm import LeadWorkflowEventRecord
 
 MAX_ORIGINAL_WORKFLOW_EVENTS = 500
@@ -46,6 +47,9 @@ def verified_original_workflow_events(
                 raise ValueError("original workflow initial event has an unexpected predecessor")
         elif event.previous_status != last_status:
             raise ValueError("original workflow transition status chain is discontinuous")
+        else:
+            assert last_status is not None
+            validate_lead_workflow_transition(last_status, event.current_status)
         if last_at is not None and event.created_at < last_at:
             raise ValueError("original workflow transition timestamps are out of order")
         expected = event.model_dump(mode="json")
