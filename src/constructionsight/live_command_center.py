@@ -32,6 +32,10 @@ from constructionsight import (
 from constructionsight import command_center_commercial as commercial
 from constructionsight import command_center_state as state
 from constructionsight.command_center_graph import graph_view
+from constructionsight.command_center_sources import (
+    SOURCE_INSPECTION_ROUTES,
+    source_inspection,
+)
 from constructionsight.command_center_investigations import (
     apply_investigation_review,
     investigation_review_preview,
@@ -214,9 +218,15 @@ def make_server(
     *,
     parity: bool = False,
     startup_directory: Path | None = None,
+    operator_database: Path | None = None,
 ) -> ThreadingHTTPServer:
     if parity and (not snapshot.get("demo") or directory is not None):
         raise ValueError("Mockup parity requires an isolated Demo fixture")
+    if operator_database is not None:
+        if parity or snapshot.get("demo"):
+            raise ValueError("operator source data cannot be exposed in demo/parity mode")
+        if operator_database.is_symlink() or not operator_database.is_file():
+            raise ValueError("operator source database must be an existing regular file")
     startup_directory = startup_directory or directory
     if directory:
         directory = data_folder.resolve_folder(directory)
@@ -477,6 +487,11 @@ def make_server(
                     after=int(query.get("after", ["0"])[0]),
                     anchor=query.get("anchor", [None])[0],
                     evidence_id=query.get("id", [None])[0],
+                )
+                body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
+            elif path in SOURCE_INSPECTION_ROUTES:
+                value = source_inspection(
+                    operator_database, route=path, query=urlsplit(self.path).query
                 )
                 body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
             elif path == "/api/investigation-review":
@@ -992,6 +1007,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--mockup-parity", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--no-browser", action="store_true")
     parser.add_argument(
+        "--operator-database",
+        type=Path,
+        help="Existing legacy operator SQLite database for read-only source inspection",
+    )
+    parser.add_argument(
         "--capture-only", action="store_true", help="Scheduled capture without a server"
     )
     parser.add_argument(
@@ -1055,6 +1075,7 @@ def main(argv: list[str] | None = None) -> int:
             None if args.demo else args.data_dir,
             parity=args.mockup_parity,
             startup_directory=startup_directory,
+            operator_database=args.operator_database,
         )
     except (ValueError, OSError, httpx.HTTPError) as exc:
         print(f"Command Center unavailable: {type(exc).__name__}: {exc}", file=sys.stderr)
