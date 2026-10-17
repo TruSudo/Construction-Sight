@@ -102,9 +102,9 @@ def original_ceqanet_export(
         }
     result = build_ceqanet_operator_export(payload, output_dir=output).to_dict()
     metadata = result["metadata"]
-    if metadata.get("verification_passed") is not True:
+    if not isinstance(metadata, dict) or metadata.get("verification_passed") is not True:
         raise ValueError("original CEQAnet export bundle verification failed")
-    receipt = build_ceqanet_operator_archive(
+    archive_receipt = build_ceqanet_operator_archive(
         source_dir=output, archive_path=archive, require_verified=True
     ).to_dict()
     verified = verify_ceqanet_operator_archive(archive_path=archive)
@@ -113,7 +113,7 @@ def original_ceqanet_export(
     return {
         "schema_version": "constructionsight.original-ceqanet-export/v1",
         "retained_report_sha256": digest,
-        "archive_sha256": receipt["metadata"]["sha256"],
+        "archive_sha256": archive_receipt["metadata"]["sha256"],
         "archive_available": True,
         "verification_passed": True,
         "existing_verified_archive": False,
