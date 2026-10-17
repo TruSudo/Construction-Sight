@@ -37,6 +37,11 @@ from constructionsight.command_center_investigations import (
     investigation_review_preview,
     investigation_view,
 )
+from constructionsight.command_center_legacy_export import (
+    original_ceqanet_archive_path,
+    original_ceqanet_export,
+    original_ceqanet_export_status,
+)
 from constructionsight.command_center_legacy_reconciliation import (
     enqueue_legacy_reconciliation,
     preview_legacy_reconciliation,
@@ -72,6 +77,7 @@ from constructionsight.lead_workflow import (
 )
 from constructionsight.parcel_use_enrichment import load_claims
 from constructionsight.security_fit import WEIGHTS_PATH, load_weights, rank_leads
+from constructionsight.storage.runtime_artifacts import open_runtime_artifact
 from constructionsight.smarts_active import collect_active
 from constructionsight.smarts_api import USER_AGENT
 from constructionsight.spatial_parcel_use import load_claims as load_spatial_claims
@@ -230,6 +236,7 @@ def make_server(
     operator_ceqanet_review_queue: Path | None = None,
     operator_smarts_journal: Path | None = None,
     operator_smarts_history: Path | None = None,
+    operator_ceqanet_chain_report: Path | None = None,
 ) -> ThreadingHTTPServer:
     if parity and (not snapshot.get("demo") or directory is not None):
         raise ValueError("Mockup parity requires an isolated Demo fixture")
@@ -244,7 +251,7 @@ def make_server(
         path is not None for path in (
             operator_capture_queue, operator_ceqanet_listing,
             operator_ceqanet_review_queue, operator_smarts_journal,
-            operator_smarts_history,
+            operator_smarts_history, operator_ceqanet_chain_report,
         )
     ):
         raise ValueError("retained source artifacts require an existing operator database")
@@ -332,7 +339,36 @@ def make_server(
             path = urlsplit(self.path).path
             query = parse_qs(urlsplit(self.path).query)
             value: Any
-            if directory and path == "/api/settings":
+            if path == "/api/source-ceqanet-export-download":
+                if (
+                    directory is None or set(query) != {"sha256"}
+                    or len(query["sha256"]) != 1
+                ):
+                    raise ValueError("select one verified original report export")
+                archive_path = original_ceqanet_archive_path(
+                    directory, expected_report_sha256=query["sha256"][0]
+                )
+                with open_runtime_artifact(archive_path) as archive_stream:
+                    size = archive_stream.seek(0, 2)
+                    if not 0 < size <= 128 * 1024 * 1024:
+                        raise ValueError("original export exceeds approved ZIP limit")
+                    archive_stream.seek(0)
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/zip")
+                    self.send_header("Content-Disposition", "attachment; filename=ceqanet-operator-export.zip")
+                    self.send_header("Content-Length", str(size))
+                    self.send_header("Cache-Control", "no-store")
+                    self.send_header("X-Content-Type-Options", "nosniff")
+                    self.end_headers()
+                    while chunk := archive_stream.read(65536):
+                        self.wfile.write(chunk)
+                return
+            if path == "/api/source-ceqanet-export-status":
+                if urlsplit(self.path).query:
+                    raise ValueError("original export status rejects query parameters")
+                value = original_ceqanet_export_status(operator_ceqanet_chain_report)
+                body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
+            elif directory and path == "/api/settings":
                 body, mime = json.dumps(state.settings(directory)).encode(), "application/json"
             elif directory and path == "/api/notifications":
                 body, mime = (
@@ -764,6 +800,7 @@ def make_server(
                 "/api/source-watchlist-action",
                 "/api/source-commercial-preview",
                 "/api/source-reconciliation-queue",
+                "/api/source-ceqanet-export",
                 "/api/smarts-contacts-bulk",
                 "/api/data-folder",
                 "/api/restore-preview",
@@ -948,6 +985,23 @@ def make_server(
                             operator_database, operation=payload["operation"],
                             data=payload["data"],
                         )
+                    elif path == "/api/source-ceqanet-export":
+                        if (
+                            urlsplit(self.path).query
+                            or urlsplit(self.path).fragment
+                            or set(payload) != {"expected_report_sha256", "caller_confirmation"}
+                            or not isinstance(payload["expected_report_sha256"], str)
+                            or payload["caller_confirmation"] is not True
+                            or self.headers.get_all("Host", []) != [host]
+                            or self.headers.get_all("Origin", []) != [f"http://{host}"]
+                            or self.headers.get("Sec-Fetch-Site") == "cross-site"
+                        ):
+                            raise ValueError("exact same-origin confirmed export required")
+                        result = original_ceqanet_export(
+                            directory, operator_ceqanet_chain_report,
+                            expected_report_sha256=payload["expected_report_sha256"],
+                            caller_confirmation=True,
+                        )
                     elif path == "/api/source-reconciliation-queue":
                         if (
                             urlsplit(self.path).query
@@ -1109,6 +1163,10 @@ def main(argv: list[str] | None = None) -> int:
         help="Paired retained CEQAnet review evidence for original inbox",
     )
     parser.add_argument(
+        "--operator-ceqanet-chain-report", type=Path,
+        help="Existing exact CEQAnet chain report for locally verified operator ZIP exports",
+    )
+    parser.add_argument(
         "--operator-smarts-journal", type=Path,
         help="Existing private SMARTS evidence journal for read-only original inspection",
     )
@@ -1186,6 +1244,7 @@ def main(argv: list[str] | None = None) -> int:
             operator_ceqanet_review_queue=args.operator_ceqanet_review_queue,
             operator_smarts_journal=args.operator_smarts_journal,
             operator_smarts_history=args.operator_smarts_history,
+            operator_ceqanet_chain_report=args.operator_ceqanet_chain_report,
         )
     except (ValueError, OSError, httpx.HTTPError) as exc:
         print(f"Command Center unavailable: {type(exc).__name__}: {exc}", file=sys.stderr)
