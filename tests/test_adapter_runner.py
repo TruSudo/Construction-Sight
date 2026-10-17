@@ -17,6 +17,12 @@ class RunnerSyntheticAdapter(SourceAdapter[dict[str, str], Site]):
             profile
             or SourceAccessProfile(
                 public_url=str(self.source.public_url),
+                requires_login=False,
+                has_captcha=False,
+                robots_disallows_collection=False,
+                terms_disallow_collection=False,
+                paywalled=False,
+                access_fact_basis="review:" + "a" * 64,
                 access_facts_reviewed=True,
                 review_basis="Reviewed synthetic adapter access facts.",
             )

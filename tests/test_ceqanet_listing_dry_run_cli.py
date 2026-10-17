@@ -39,7 +39,7 @@ def test_ceqanet_listing_dry_run_cli_renders_fail_closed_request_table() -> None
     assert "Executed requests" in result.output
     assert "False" in result.output
     assert "review_required" in result.output
-    assert "Source restriction facts are not affirmatively reviewed" in result.output
+    assert "fact basis" in result.output
 
 
 def test_ceqanet_listing_dry_run_cli_rejects_unsupported_text_filter() -> None:

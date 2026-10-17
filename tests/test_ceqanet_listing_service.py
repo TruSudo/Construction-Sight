@@ -68,6 +68,12 @@ class _Executor:
 
 def _profile(**changes: object) -> SourceAccessProfile:
     values: dict[str, object] = {
+        "requires_login": False,
+        "has_captcha": False,
+        "robots_disallows_collection": False,
+        "terms_disallow_collection": False,
+        "paywalled": False,
+        "access_fact_basis": "review:" + "a" * 64,
         "access_facts_reviewed": True,
         "review_basis": "synthetic unit-test access review",
     }
@@ -186,3 +192,24 @@ def test_listing_service_rejects_retry_expansion() -> None:
             max_attempts=3,
             retry_delays_seconds=(0.25, 1.0),
         )
+
+
+@pytest.mark.parametrize("changes", [
+    {"requires_login": None}, {"has_captcha": None},
+    {"robots_disallows_collection": None}, {"terms_disallow_collection": None},
+    {"paywalled": None}, {"access_fact_basis": None},
+    {"access_fact_basis": "legacy narrative is not an immutable identity"},
+])
+def test_unestablished_access_facts_stop_authorized_execution_before_transport(changes):
+    executor = _Executor()
+    with pytest.raises(AuthorizationDeniedError):
+        _execute(executor, profile=_profile(**changes))
+    assert executor.calls == []
+
+
+def test_changed_access_evidence_cannot_reuse_an_existing_listing_plan():
+    executor = _Executor()
+    plan = _plan(_profile())
+    with pytest.raises(AuthorizationDeniedError):
+        _execute(executor, plan=plan, profile=_profile(access_fact_basis="evidence:" + "b" * 64))
+    assert executor.calls == []

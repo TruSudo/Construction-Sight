@@ -47,6 +47,12 @@ class _Executor:
 
 def _profile(**changes: object) -> SourceAccessProfile:
     values: dict[str, object] = {
+        "requires_login": False,
+        "has_captcha": False,
+        "robots_disallows_collection": False,
+        "terms_disallow_collection": False,
+        "paywalled": False,
+        "access_fact_basis": "review:" + "a" * 64,
         "access_facts_reviewed": True,
         "review_basis": "synthetic unit-test access review",
     }
@@ -169,3 +175,16 @@ def test_exact_replay_returns_detail_without_repeating_execution() -> None:
 
     assert replay["snapshots"] == first["snapshots"]
     assert executor.calls == [(_DETAIL_URL, 20.0, 50_000)]
+
+
+@pytest.mark.parametrize("changes", [
+    {"requires_login": None}, {"has_captcha": None},
+    {"robots_disallows_collection": None}, {"terms_disallow_collection": None},
+    {"paywalled": None}, {"access_fact_basis": None},
+    {"access_fact_basis": "legacy narrative is not an immutable identity"},
+])
+def test_unestablished_access_facts_stop_authorized_execution_before_transport(changes):
+    executor = _Executor()
+    with pytest.raises(AuthorizationDeniedError):
+        _execute(executor, profile=_profile(**changes))
+    assert executor.calls == []
