@@ -85,6 +85,7 @@ async function openInvestigationDossier(identity,refresh=false){
   '<p>Current source-claim variations: '+esc(String(claims.length))+' · chronology and source previews may be bounded.</p>'+
   '<button id="export-investigation">Export retained dossier JSON</button>');
  currentInvestigationIdentity=identity;
+ const displayedTicket=modalTicket;
  $('action-content').scrollTop=scroll;
  $('export-investigation').onclick=()=>download('investigation-dossier.json',dossier);
  const originalSources=sources.filter(m=>['ceqa','permit'].includes(m.source_family)).slice(0,25);
@@ -97,7 +98,7 @@ async function openInvestigationDossier(identity,refresh=false){
    try{
     const params=new URLSearchParams({kind:source.source_family,record_id:source.source_record_id,limit:'20',offset:'0'});
     const result=await api('/api/source-commercial-lineage?'+params);
-    if(ticket!==modalTicket||!$('action-dialog').open)return;
+    if(displayedTicket!==modalTicket||!$('action-dialog').open)return;
     const exact=result.original_source?.kind===source.source_family&&
      result.original_source?.record_id===source.source_record_id&&
      result.source_entity_id===source.source_id&&
@@ -115,7 +116,7 @@ async function openInvestigationDossier(identity,refresh=false){
     }
     const verification=await api('/api/source-reconciliation?'+
       new URLSearchParams({kind:source.source_family,record_id:source.source_record_id}));
-    if(ticket!==modalTicket||!$('action-dialog').open)return;
+    if(displayedTicket!==modalTicket||!$('action-dialog').open)return;
     if(verification.native_evidence_id!==source.current_evidence_id||
        verification.native_state!=='exact_observation_already_retained'||
        verification.canonical_investigation_id!==(info.project_cluster_id||identity)||
@@ -134,7 +135,7 @@ async function openInvestigationDossier(identity,refresh=false){
     $('export-native-source-lineage').onclick=()=>
      download('investigation-original-financial-lineage.json',result);
    }catch(error){
-    if(ticket===modalTicket&&$('action-dialog').open)
+    if(displayedTicket===modalTicket&&$('action-dialog').open)
      detail.innerHTML='<p role="alert">Exact original lineage unavailable: '+
       esc(error.message)+'. No financial linkage was asserted.</p>';
    }
