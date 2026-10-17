@@ -15,11 +15,16 @@ from sqlalchemy.orm import Session
 
 from constructionsight.bid_pricing_models import BidPriceLineInput, BidPricingPreview
 from constructionsight.bid_pricing_service import build_persisted_bid_pricing_preview
+from constructionsight.bid_proposal_models import BidProposalDraft
 from constructionsight.bid_proposal_service import build_persisted_bid_proposal_draft
 from constructionsight.bid_request_models import BidRequestChannel, BidRequestEvidence
 from constructionsight.bid_request_service import build_persisted_bid_request_evidence
 from constructionsight.lead_workflow_models import LeadWorkflowStatus
-from constructionsight.outreach_preview_models import OutreachChannel, OutreachContactReference
+from constructionsight.outreach_preview_models import (
+    OutreachChannel,
+    OutreachContactReference,
+    OutreachPreview,
+)
 from constructionsight.outreach_preview_service import build_persisted_outreach_preview
 from constructionsight.storage.operator_read_store import create_operator_read_engine
 
@@ -65,6 +70,7 @@ def retained_commercial_preview(
         raise ValueError("original commercial evidence store is unavailable") from exc
     try:
         with Session(engine, autoflush=False) as session:
+            preview: OutreachPreview | BidRequestEvidence | BidPricingPreview | BidProposalDraft
             if operation == "outreach":
                 contact = OutreachContactReference(
                     channel=OutreachChannel(_string(data, "channel")),
