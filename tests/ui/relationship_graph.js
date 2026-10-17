@@ -15,6 +15,43 @@ const {spawnSync}=require('child_process');
   const ids=await page.locator('[data-live-node]').evaluateAll(nodes=>nodes.map(n=>n.dataset.liveNode).sort());
   if(new Set(ids).size!==ids.length)throw Error('Duplicate graph nodes');
   if(JSON.stringify(ids)!==JSON.stringify(initial.nodes.map(n=>n.id).sort()))throw Error('Graph canvas does not reflect authoritative snapshot');
+  // Display filters must not change durable graph state or imply verification.
+  const sourceFamily=initial.edges.map(e=>e.source_family).find(Boolean);
+  if(!sourceFamily)throw Error('No retained source family available for graph filtering');
+  await page.selectOption('[data-graph-source]',sourceFamily);
+  const visibleIds=await page.locator('[data-live-edge]').evaluateAll(edges=>edges.map(e=>e.dataset.liveEdge));
+  if(visibleIds.some(id=>initial.edges.find(e=>e.id===id)?.source_family!==sourceFamily))
+   throw Error('Source family filter admitted an unrelated relationship');
+  await page.fill('[data-graph-since]','2099-01-01');
+  if(await page.locator('[data-live-node]').count())throw Error('Future retained-date filter did not exclude historical nodes');
+  await page.fill('[data-graph-since]','');
+  await page.selectOption('[data-graph-source]','');
+  await page.check('[data-graph-collapse-evidence]');
+  if(await page.locator('[data-live-node]').evaluateAll(nodes=>nodes.some(n=>n.getAttribute('aria-label')?.startsWith('evidence:'))))
+   throw Error('Collapse-evidence display control left evidence nodes visible');
+  await page.uncheck('[data-graph-collapse-evidence]');
+  await page.fill('[data-graph-view-name]','Saved browser graph test');
+  await page.selectOption('[data-graph-depth]','2');
+  await page.click('[data-graph-load]');
+  await page.waitForFunction(()=>document.querySelector('[data-graph-connection]').textContent.includes('committed revision'));
+  await page.fill('[data-graph-confidence]','50');
+  await page.click('[data-graph-save]');
+  const local=await page.evaluate(()=>JSON.parse(localStorage.getItem('constructionsight.graph-layouts.v1')||'[]'));
+  if(local.length!==1||local[0].name!=='Saved browser graph test'||local[0].depth!==2||!local[0].points.length)
+   throw Error('Named view did not persist browser-only coordinates and filters');
+  await page.click('[data-graph-clear-filters]');
+  await page.fill('[data-graph-confidence]','0');
+  await page.click('[data-graph-restore]');
+  await page.waitForFunction(()=>document.querySelector('[data-graph-confidence]').value==='50');
+  if(await page.locator('[data-graph-depth]').inputValue()!=='2')
+   throw Error('Restored local graph layout lost neighborhood depth');
+  await page.click('[data-graph-clear-filters]');
+  await page.selectOption('[data-graph-depth]','1');
+  await page.click('[data-graph-load]');
+  await page.waitForSelector('[data-live-node="'+root.id+'"]');
+  const retainedAgain=await page.evaluate(async()=>fetch('/api/investigation-graph').then(r=>r.json()));
+  if(JSON.stringify(retainedAgain.nodes)!==JSON.stringify(initial.nodes))
+   throw Error('Saving or filtering a browser layout modified authoritative graph nodes');
   await page.locator('[data-graph-canvas]').evaluate(node=>node.dataset.canvasIdentity='same-canvas');
   await page.click('[data-graph-full]');
   if(!(await page.locator('[data-live-graph]').getAttribute('class')).includes('graph-expanded'))throw Error('Full-screen graph did not expand');
