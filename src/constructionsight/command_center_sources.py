@@ -130,7 +130,10 @@ def source_inspection(
                 "--operator-database to inspect retained source records."
             ),
         }
-    if route in {"/api/source-smarts-changes", "/api/source-smarts-parcel-candidates"} and smarts_history is None:
+    if (
+        route in {"/api/source-smarts-changes", "/api/source-smarts-parcel-candidates"}
+        and smarts_history is None
+    ):
         return {
             "available": False, "configured": False, "read_only": True,
             "network_collection_enabled": False,
