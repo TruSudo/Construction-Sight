@@ -13,6 +13,8 @@ from sqlalchemy.orm import Session
 from constructionsight.ceqa_models import CeqaRecord
 from constructionsight.entity_models import Entity
 from constructionsight.investigation_runtime import InvestigationRuntime
+from constructionsight.lead_operator_service import transition_persisted_lead_workflow
+from constructionsight.lead_workflow_models import LeadWorkflowStatus
 from constructionsight.lead_workflow_service import create_lead_workflow
 from constructionsight.live_command_center import make_server
 from constructionsight.provenance import Provenance
@@ -129,6 +131,13 @@ with Session(engine) as session, session.begin():
         gross_value=2500.0, share_rate=0.08,
     )
     store_result_ledger_record(session, dossier_result)
+with Session(engine) as session, session.begin():
+    transition_persisted_lead_workflow(
+        session, workflow_id=dossier_workflow.workflow_id,
+        expected_current_status=LeadWorkflowStatus.READY,
+        next_status=LeadWorkflowStatus.ACTIVE,
+        reason="Synthetic history: original operator moved from ready to active",
+    )
 engine.dispose()
 native = InvestigationRuntime(args.data_dir / "native")
 try:
