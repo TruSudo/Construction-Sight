@@ -182,6 +182,31 @@ const {chromium} = require('../visual/node_modules/playwright');
       throw Error('Native workflow comparison is absent');
     }
     await page.waitForSelector('#original-outreach-form');
+    const originalBidHistory = page.locator('.retained-source-inspection').first();
+    const firstWorkflow = await originalBidHistory.locator('[data-original-record]').first()
+      .locator('xpath=ancestor::tr').textContent();
+    await originalBidHistory.locator('[data-original-next]').click();
+    await page.waitForFunction(() =>
+      document.querySelector('.retained-source-inspection')?.textContent.includes('page offset 25'));
+    if (await originalBidHistory.locator('[data-original-record]').count() !== 3 ||
+        await originalBidHistory.locator('[data-original-next]').isEnabled()) {
+      throw Error('Original workflow pagination did not expose all retained records');
+    }
+    await originalBidHistory.locator('[data-original-record]').first().click();
+    await page.waitForSelector('#action-dialog[open]');
+    if (!(await page.locator('#action-content').textContent())
+      .includes('synthetic:historical-page:23')) {
+      throw Error('Original workflow second page did not open exact retained record');
+    }
+    await page.click('#action-close');
+    await originalBidHistory.locator('[data-original-previous]').click();
+    await page.waitForFunction(() =>
+      document.querySelector('.retained-source-inspection')?.textContent.includes('page offset 0'));
+    if (!(await originalBidHistory.locator('[data-original-record]').first()
+      .locator('xpath=ancestor::tr').textContent()).includes(firstWorkflow.trim()) ||
+        !(await page.locator('#original-outreach-form').count())) {
+      throw Error('Original workflow first-page and preview binding did not recover');
+    }
     if (!(await page.locator('[name="original-workflow"]').inputValue())
       .startsWith('lead-workflow:')) {
       throw Error('Retained commercial preview did not bind a persisted workflow');
@@ -262,6 +287,24 @@ const {chromium} = require('../visual/node_modules/playwright');
       throw Error('Native result comparison is absent: ' + resultText.slice(0, 500));
     }
     await page.waitForSelector('.retained-source-inspection [data-original-attribution]');
+    const originalResultHistory = page.locator('.retained-source-inspection').first();
+    await originalResultHistory.locator('[data-original-next]').click();
+    await page.waitForFunction(() =>
+      document.querySelector('.retained-source-inspection')?.textContent.includes('page offset 25'));
+    if (await originalResultHistory.locator('[data-original-record]').count() !== 3 ||
+        await originalResultHistory.locator('[data-original-next]').isEnabled()) {
+      throw Error('Original corrected result ledger pagination is incomplete');
+    }
+    await originalResultHistory.locator('[data-original-record]').first().click();
+    await page.waitForSelector('#action-dialog[open]');
+    if (!(await page.locator('#action-content').textContent())
+      .includes('synthetic:historical-page:23')) {
+      throw Error('Original result second page did not open retained history');
+    }
+    await page.click('#action-close');
+    await originalResultHistory.locator('[data-original-previous]').click();
+    await page.waitForFunction(() =>
+      document.querySelector('.retained-source-inspection')?.textContent.includes('page offset 0'));
     await page.locator('.retained-source-inspection [data-original-attribution]')
       .first().click();
     await page.waitForSelector('#original-workflow-attribution-form');
