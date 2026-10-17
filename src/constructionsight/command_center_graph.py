@@ -280,13 +280,13 @@ def graph_view(
                         .limit(101)
                     )
                 )
-                visible = entries[:100]
+                history_visible = entries[:100]
                 return {
                     "available": True,
                     "historical": True,
                     "tip": store.runtime_event_cursor(),
                     "has_more": len(entries) > 100,
-                    "next_before": visible[-1].id if len(entries) > 100 else None,
+                    "next_before": history_visible[-1].id if len(entries) > 100 else None,
                     "events": [
                         {
                             "sequence": item.id,
@@ -295,7 +295,7 @@ def graph_view(
                             "event_type": item.event_type,
                             "message": item.message[:250],
                         }
-                        for item in visible
+                        for item in history_visible
                     ],
                 }
             if mode == "evidence":
