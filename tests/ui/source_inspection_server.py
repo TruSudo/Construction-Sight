@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import argparse
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 from sqlalchemy.orm import Session
 
 from constructionsight.ceqa_models import CeqaRecord
+from constructionsight.entity_models import Entity
 from constructionsight.live_command_center import make_server
 from constructionsight.provenance import Provenance
 from constructionsight.site_models import Site
@@ -36,10 +37,18 @@ with Session(engine) as session, session.begin():
             county="Riverside",
             lead_agency="Synthetic Planning Department",
             state_clearinghouse_number="2099012345",
+            received_date=date(2026, 10, 12),
+            posted_date=date(2026, 10, 13),
+            entities=[Entity(
+                entity_key="phase8:browser:entity", name="Synthetic Contractor",
+                role="contractor", provenance=[evidence],
+            )],
             site=Site(
                 site_key="phase8:browser:site",
                 county="Riverside",
                 apn="000-111-222",
+                latitude=33.95,
+                longitude=-117.36,
                 provenance=[evidence],
             ),
             provenance=[evidence],
