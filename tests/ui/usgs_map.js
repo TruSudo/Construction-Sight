@@ -16,6 +16,14 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42
    else await route.fulfill({status:200,contentType:'image/png',body:png});
   });
   await page.goto(base);await page.waitForFunction(()=>document.documentElement.dataset.ready==='true');
+  await page.waitForFunction(() => Array.from(document.querySelectorAll('#tiles img.usgs-tile'))
+   .some(img => img.complete && img.naturalWidth > 0));
+  assert.equal(await page.evaluate(() => basemapMode),'auto',
+   'Unconfigured live workspace must retain auto basemap selection');
+  assert.ok(urls.some(u=>u.includes('/USGSImageryTopo/MapServer/tile/')),
+   'Default live map did not request real coordinate-based free USGS imagery');
+  assert.ok((await page.locator('#attribution').textContent()).includes('USGS'),
+   'Free live basemap lacks source attribution');
   await page.click('#layers');
   await page.selectOption('#basemap-choice','usgs-imagery-topo');
   await page.waitForFunction(()=>document.querySelectorAll('#tiles img.usgs-tile').length>0);

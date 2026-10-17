@@ -6,6 +6,7 @@ import hashlib
 import io
 import json
 import os
+import re
 import shutil
 import sqlite3
 import stat
@@ -20,6 +21,15 @@ from constructionsight.smarts_evidence_ledger import verify_smarts_journal
 MANIFEST = "backup-manifest.json"
 LOCATION = ".data-location.json"
 MAX_UNCOMPRESSED = 8_000_000_000
+
+
+def _is_investigation_input(relative: Path) -> bool:
+    """Exact-byte worker inputs use content identities rather than format extensions."""
+    return (
+        len(relative.parts) == 2
+        and relative.parts[0] == "investigation-inputs"
+        and re.fullmatch(r"[0-9a-f]{64}", relative.name) is not None
+    )
 
 
 def digest(path: Path) -> str:
@@ -66,7 +76,10 @@ def snapshot_files(directory: Path, target: Path) -> dict[str, dict[str, Any]]:
             continue
         if path.is_symlink():
             raise ValueError("Data snapshots do not follow symbolic links")
-        if not path.is_file() or path.suffix not in (".json", ".sqlite3", ".pmtiles"):
+        if not path.is_file() or (
+            path.suffix not in (".json", ".sqlite3", ".pmtiles")
+            and not _is_investigation_input(relative)
+        ):
             continue
         dest = target / relative
         dest.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -80,6 +93,25 @@ def snapshot_files(directory: Path, target: Path) -> dict[str, dict[str, Any]]:
             shutil.copyfile(path, dest)
         dest.chmod(0o600)
         files[relative.as_posix()] = {"sha256": digest(dest), "size": dest.stat().st_size}
+    # A worker retains its immutable input before committing the job. Refresh the
+    # input listing after the database snapshots so a concurrently queued job
+    # cannot be backed up without bytes created after the initial rglob listing.
+    inputs = directory / "investigation-inputs"
+    if inputs.is_symlink():
+        raise ValueError("Data snapshots do not follow symbolic links")
+    for path in sorted(inputs.glob("*")):
+        relative = path.relative_to(directory)
+        if path.is_symlink():
+            raise ValueError("Data snapshots do not follow symbolic links")
+        if not _is_investigation_input(relative) or relative.as_posix() in files:
+            continue
+        if not path.is_file():
+            raise ValueError("Retained investigation input is not a regular file")
+        dest = target / relative
+        dest.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        shutil.copyfile(path, dest)
+        dest.chmod(0o600)
+        files[relative.as_posix()] = {"sha256": digest(dest), "size": dest.stat().st_size}
     return files
 
 
@@ -89,6 +121,10 @@ def validate_directory(directory: Path, files: dict[str, dict[str, Any]]) -> dic
         path = directory / name
         if path.stat().st_size != details["size"] or digest(path) != details["sha256"]:
             raise ValueError("Backup integrity mismatch: " + name)
+        if _is_investigation_input(Path(name)) and (
+            details["sha256"] != path.name or not 0 < details["size"] <= 16 * 1024 * 1024
+        ):
+            raise ValueError("Retained investigation input identity mismatch: " + name)
         if path.suffix == ".json":
             json.loads(path.read_text())
         if path.suffix == ".sqlite3":
@@ -99,6 +135,10 @@ def validate_directory(directory: Path, files: dict[str, dict[str, Any]]) -> dic
                 if db.execute("PRAGMA foreign_key_check").fetchall():
                     raise ValueError("SQLite foreign-key integrity failed: " + name)
             sqlite_results[name] = "ok"
+            if Path(name).name == "workflow.sqlite3":
+                from constructionsight.command_center_commercial import validate_workflow_finances
+
+                validate_workflow_finances(path.absolute())
     journal = directory / "evidence.sqlite3"
     journal_result = verify_smarts_journal(journal, read_only=True) if journal.exists() else None
     active = directory / "active.json"
@@ -153,7 +193,10 @@ def preview_restore(archive_path: Path, staging: Path) -> dict[str, Any]:
                 or ".." in relative.parts
                 or "\\" in info.filename
                 or any(p.startswith(".") for p in relative.parts)
-                or relative.suffix not in (".json", ".sqlite3", ".pmtiles")
+                or (
+                    relative.suffix not in (".json", ".sqlite3", ".pmtiles")
+                    and not _is_investigation_input(relative)
+                )
                 or stat.S_ISLNK(info.external_attr >> 16)
             ):
                 raise ValueError("Unsafe backup path: " + info.filename)

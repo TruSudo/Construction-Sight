@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import UTC, date, datetime
+from decimal import ROUND_HALF_EVEN, Decimal, InvalidOperation
 from enum import StrEnum
 from typing import Any
 
@@ -55,8 +56,16 @@ class ResultShareRecord(BaseModel):
     def require_share_math(self) -> ResultShareRecord:
         """Require share value to match gross value and rate."""
 
-        expected = round(self.gross_value * self.share_rate, 2)
-        if round(self.share_value, 2) != expected:
+        try:
+            expected = (Decimal(str(self.gross_value)) * Decimal(str(self.share_rate))).quantize(
+                Decimal("0.01"), rounding=ROUND_HALF_EVEN
+            )
+            observed = Decimal(str(self.share_value)).quantize(
+                Decimal("0.01"), rounding=ROUND_HALF_EVEN
+            )
+        except InvalidOperation as exc:
+            raise ValueError("share math requires finite bounded amounts") from exc
+        if observed != expected:
             raise ValueError("share_value must equal gross_value times share_rate")
         return self
 

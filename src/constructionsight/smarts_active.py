@@ -10,7 +10,7 @@ from typing import Any
 
 import httpx
 
-from constructionsight.smarts_api import COUNTIES, SmartsApiError, fetch_page
+from constructionsight.smarts_api import COUNTIES, SmartsAccessDenied, SmartsApiError, fetch_page
 from constructionsight.smarts_evidence_ledger import record_smarts_page
 from constructionsight.smarts_intake_bridge import build_smarts_intake_preview
 
@@ -41,6 +41,10 @@ def identities(rows: list[dict[str, Any]]) -> set[tuple[str, str, str]]:
 
 def collect_active(client: httpx.Client, directory: Path) -> dict[str, Any]:
     """Publish a local projection only after both county traversals finish successfully."""
+    from constructionsight import command_center_state as state
+
+    if not state.settings(directory)["source_enabled"]:
+        raise SmartsApiError("SMARTS is disabled; explicit source re-enablement is required")
     directory.mkdir(mode=0o700, parents=True, exist_ok=True)
     cache = directory / "active.json"
     previous = json.loads(cache.read_text()) if cache.exists() else None
@@ -54,7 +58,11 @@ def collect_active(client: httpx.Client, directory: Path) -> dict[str, Any]:
         county_rows: list[dict[str, Any]] = []
         seen_rows: dict[tuple[str, str, str], dict[str, Any]] = {}
         while total is None or offset < total:
-            page = fetch_page(client, county=county, active_only=True, limit=100, offset=offset)
+            try:
+                page = fetch_page(client, county=county, active_only=True, limit=100, offset=offset)
+            except SmartsAccessDenied:
+                state.save_settings(directory, {"source_enabled": False})
+                raise
             requests += 1
             if total is not None and total != page.total:
                 raise SmartsApiError(
@@ -135,6 +143,9 @@ def collect_active(client: httpx.Client, directory: Path) -> dict[str, Any]:
         "missing_identity_rows": missing_identity_rows,
         "coverage": "Both county Active filters traversed; not all construction",
     }
+    from constructionsight.investigation_runtime import enqueue_smarts_capture
+
+    result["investigation_handoff"] = enqueue_smarts_capture(directory)
     temporary = directory / "active.json.tmp"
     fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w") as stream:

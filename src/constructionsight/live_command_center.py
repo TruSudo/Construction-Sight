@@ -31,6 +31,30 @@ from constructionsight import (
 )
 from constructionsight import command_center_commercial as commercial
 from constructionsight import command_center_state as state
+from constructionsight.command_center_graph import graph_view
+from constructionsight.command_center_investigations import (
+    apply_investigation_review,
+    investigation_review_preview,
+    investigation_view,
+)
+from constructionsight.command_center_legacy_attribution import original_workflow_source_attribution
+from constructionsight.command_center_legacy_export import (
+    original_ceqanet_archive_path,
+    original_ceqanet_export,
+    original_ceqanet_export_status,
+)
+from constructionsight.command_center_legacy_lineage import original_candidate_workflow_lineage
+from constructionsight.command_center_legacy_reconciliation import (
+    enqueue_legacy_reconciliation,
+    original_source_replay_audit,
+    preview_legacy_reconciliation,
+)
+from constructionsight.command_center_retained_previews import retained_commercial_preview
+from constructionsight.command_center_sources import (
+    SOURCE_INSPECTION_ROUTES,
+    source_inspection,
+    source_watch_action,
+)
 from constructionsight.contact_call_list import (
     annotate_contacts,
     bulk_import,
@@ -59,6 +83,7 @@ from constructionsight.security_fit import WEIGHTS_PATH, load_weights, rank_lead
 from constructionsight.smarts_active import collect_active
 from constructionsight.smarts_api import USER_AGENT
 from constructionsight.spatial_parcel_use import load_claims as load_spatial_claims
+from constructionsight.storage.runtime_artifacts import open_runtime_artifact
 
 ASSETS = Path(__file__).parent / "command_center"
 
@@ -208,9 +233,31 @@ def make_server(
     *,
     parity: bool = False,
     startup_directory: Path | None = None,
+    operator_database: Path | None = None,
+    operator_capture_queue: Path | None = None,
+    operator_ceqanet_listing: Path | None = None,
+    operator_ceqanet_review_queue: Path | None = None,
+    operator_smarts_journal: Path | None = None,
+    operator_smarts_history: Path | None = None,
+    operator_ceqanet_chain_report: Path | None = None,
 ) -> ThreadingHTTPServer:
     if parity and (not snapshot.get("demo") or directory is not None):
         raise ValueError("Mockup parity requires an isolated Demo fixture")
+    if operator_database is not None:
+        if parity or snapshot.get("demo"):
+            raise ValueError("operator source data cannot be exposed in demo/parity mode")
+        if operator_database.is_symlink() or not operator_database.is_file():
+            raise ValueError("operator source database must be an existing regular file")
+    if (operator_ceqanet_listing is None) != (operator_ceqanet_review_queue is None):
+        raise ValueError("CEQAnet retained listing and review-queue evidence must be paired")
+    if operator_database is None and any(
+        path is not None for path in (
+            operator_capture_queue, operator_ceqanet_listing,
+            operator_ceqanet_review_queue, operator_smarts_journal,
+            operator_smarts_history, operator_ceqanet_chain_report,
+        )
+    ):
+        raise ValueError("retained source artifacts require an existing operator database")
     startup_directory = startup_directory or directory
     if directory:
         directory = data_folder.resolve_folder(directory)
@@ -270,6 +317,17 @@ def make_server(
         return dict(capture_status)
 
     class Handler(BaseHTTPRequestHandler):
+        def send_error(
+            self, code: int, message: str | None = None, explain: str | None = None,
+        ) -> None:
+            # Validation messages may contain newlines or user-entered Unicode;
+            # an HTTP reason phrase must never carry control characters.
+            if message is not None:
+                message = " ".join(
+                    "".join(c if 32 <= ord(c) <= 126 else " " for c in message).split()
+                )[:2000]
+            super().send_error(code, message, explain)
+
         def do_GET(self) -> None:
             try:
                 self.get_response()
@@ -284,7 +342,38 @@ def make_server(
             path = urlsplit(self.path).path
             query = parse_qs(urlsplit(self.path).query)
             value: Any
-            if directory and path == "/api/settings":
+            if path == "/api/source-ceqanet-export-download":
+                if (
+                    directory is None or set(query) != {"sha256"}
+                    or len(query["sha256"]) != 1
+                ):
+                    raise ValueError("select one verified original report export")
+                archive_path = original_ceqanet_archive_path(
+                    directory, expected_report_sha256=query["sha256"][0]
+                )
+                with open_runtime_artifact(archive_path) as archive_stream:
+                    size = archive_stream.seek(0, 2)
+                    if not 0 < size <= 128 * 1024 * 1024:
+                        raise ValueError("original export exceeds approved ZIP limit")
+                    archive_stream.seek(0)
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/zip")
+                    self.send_header(
+                        "Content-Disposition", "attachment; filename=ceqanet-operator-export.zip"
+                    )
+                    self.send_header("Content-Length", str(size))
+                    self.send_header("Cache-Control", "no-store")
+                    self.send_header("X-Content-Type-Options", "nosniff")
+                    self.end_headers()
+                    while chunk := archive_stream.read(65536):
+                        self.wfile.write(chunk)
+                return
+            if path == "/api/source-ceqanet-export-status":
+                if urlsplit(self.path).query:
+                    raise ValueError("original export status rejects query parameters")
+                value = original_ceqanet_export_status(operator_ceqanet_chain_report)
+                body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
+            elif directory and path == "/api/settings":
                 body, mime = json.dumps(state.settings(directory)).encode(), "application/json"
             elif directory and path == "/api/notifications":
                 body, mime = (
@@ -429,6 +518,152 @@ def make_server(
                     }
                 )
                 body, mime = json.dumps(value).encode(), "application/json"
+            elif path in {
+                "/api/investigation-graph",
+                "/api/investigation-graph/events",
+                "/api/investigation-graph/evidence",
+                "/api/investigation-graph/history",
+                "/api/investigation-graph/history-index",
+            }:
+                if directory is None:
+                    self.send_error(404, "Local investigation data folder is unavailable")
+                    return
+                if any(len(values) != 1 for values in query.values()):
+                    raise ValueError("one value permitted per graph parameter")
+                mode = (
+                    "events"
+                    if path.endswith("/events")
+                    else "evidence"
+                    if path.endswith("/evidence")
+                    else "history"
+                    if path.endswith("/history")
+                    else "history_index"
+                    if path.endswith("/history-index")
+                    else "snapshot"
+                )
+                value = graph_view(
+                    directory,
+                    mode=mode,
+                    root=query.get("root", [None])[0],
+                    depth=int(query.get("depth", ["1"])[0]),
+                    after=int(query.get("after", ["0"])[0]),
+                    anchor=query.get("anchor", [None])[0],
+                    evidence_id=query.get("id", [None])[0],
+                )
+                body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
+            elif path == "/api/original-workflow-attribution":
+                if (
+                    directory is None
+                    or set(query) != {"workflow", "kind", "record_id"}
+                    or len(query["workflow"]) != 1
+                    or len(query["kind"]) != 1
+                    or len(query["record_id"]) != 1
+                    or query["kind"][0] not in {"ceqa", "permit"}
+                ):
+                    raise ValueError("select one exact original workflow and source record")
+                value = original_workflow_source_attribution(
+                    directory, operator_database,
+                    workflow_id=query["workflow"][0],
+                    kind="ceqa" if query["kind"][0] == "ceqa" else "permit",
+                    record_id=query["record_id"][0],
+                )
+                body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
+            elif path == "/api/source-commercial-lineage":
+                if (
+                    directory is None
+                    or set(query) - {"kind", "record_id", "offset", "limit"}
+                    or len(query.get("kind", [])) != 1
+                    or len(query.get("record_id", [])) != 1
+                    or len(query.get("offset", ["0"])) != 1
+                    or len(query.get("limit", ["20"])) != 1
+                    or query["kind"][0] not in {"ceqa", "permit"}
+                ):
+                    raise ValueError("select one exact original source candidate")
+                value = original_candidate_workflow_lineage(
+                    directory, operator_database,
+                    kind="ceqa" if query["kind"][0] == "ceqa" else "permit",
+                    record_id=query["record_id"][0],
+                    offset=int(query.get("offset", ["0"])[0]),
+                    limit=int(query.get("limit", ["20"])[0]),
+                )
+                body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
+            elif path == "/api/source-reconciliation-audit":
+                if (
+                    directory is None or set(query) != {"job"}
+                    or len(query["job"]) != 1
+                ):
+                    raise ValueError("select one existing original replay job")
+                value = original_source_replay_audit(
+                    directory, job_id=query["job"][0]
+                )
+                body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
+            elif path == "/api/source-reconciliation":
+                from constructionsight.operator_web import _parameters
+
+                params = _parameters(urlsplit(self.path).query, candidate=True)
+                if directory is None or params.record_id is None:
+                    raise ValueError("select an exact original CEQA or permit source")
+                if params.kind == "all":
+                    raise ValueError("select a single CEQA or permit family")
+                value = preview_legacy_reconciliation(
+                    directory, operator_database, kind=params.kind,
+                    record_id=params.record_id,
+                )
+                body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
+            elif path in SOURCE_INSPECTION_ROUTES:
+                value = source_inspection(
+                    operator_database, route=path, query=urlsplit(self.path).query,
+                    capture_queue=operator_capture_queue,
+                    ceqanet_listing=operator_ceqanet_listing,
+                    ceqanet_review_queue=operator_ceqanet_review_queue,
+                    smarts_journal=operator_smarts_journal,
+                    smarts_history=operator_smarts_history,
+                )
+                body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
+            elif path == "/api/investigation-review":
+                choices = query.get("relationship", [])
+                if directory is None or set(query) != {"relationship"} or len(choices) != 1:
+                    raise ValueError("provide one existing candidate relationship")
+                value = investigation_review_preview(directory, choices[0])
+                body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
+            elif path == "/api/investigations" or path.startswith("/api/investigations/"):
+                if directory is None:
+                    self.send_error(404, "Local investigation data folder is unavailable")
+                    return
+                cursor_values = query.get("after", [])
+                if len(cursor_values) > 1:
+                    raise ValueError("one inventory cursor permitted")
+                filter_names = {
+                    "q": "text",
+                    "county": "county",
+                    "city": "city",
+                    "source": "source_family",
+                    "location": "location",
+                }
+                filters: dict[str, str] = {}
+                for parameter, argument in filter_names.items():
+                    values = query.get(parameter, [])
+                    if len(values) > 1:
+                        raise ValueError("one value permitted per investigation filter")
+                    if values:
+                        filters[argument] = values[0]
+                revision_values = query.get("revision", [])
+                if revision_values and revision_values != ["1"]:
+                    raise ValueError("invalid investigation revision query")
+                investigation_id = None
+                if path != "/api/investigations":
+                    investigation_id = unquote(path.removeprefix("/api/investigations/"))
+                    if not investigation_id or "/" in investigation_id:
+                        self.send_error(404)
+                        return
+                value = investigation_view(
+                    directory,
+                    investigation_id=investigation_id,
+                    after=cursor_values[0] if cursor_values else None,
+                    revision_only=bool(revision_values),
+                    filters=filters,
+                )
+                body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
             elif path == "/api/leads":
                 body, mime = json.dumps(current(), allow_nan=False).encode(), "application/json"
             elif path == "/api/outreach":
@@ -612,6 +847,11 @@ def make_server(
                 "/api/royalty-contract",
                 "/api/scope-template",
                 "/api/royalty-entry",
+                "/api/investigation-review",
+                "/api/source-watchlist-action",
+                "/api/source-commercial-preview",
+                "/api/source-reconciliation-queue",
+                "/api/source-ceqanet-export",
                 "/api/smarts-contacts-bulk",
                 "/api/data-folder",
                 "/api/restore-preview",
@@ -765,6 +1005,68 @@ def make_server(
                                 target = Path(result["directory"])
                                 data_folder.point_startup(startup_directory, target)
                                 directory = target
+                    elif path == "/api/source-watchlist-action":
+                        if (
+                            urlsplit(self.path).query
+                            or urlsplit(self.path).fragment
+                            or set(payload) != {"action", "kind", "record_id"}
+                            or not all(isinstance(v, str) for v in payload.values())
+                            or self.headers.get_all("Host", []) != [host]
+                            or self.headers.get_all("Origin", []) != [f"http://{host}"]
+                            or self.headers.get("Sec-Fetch-Site") == "cross-site"
+                        ):
+                            raise ValueError("exact same-origin source watch request required")
+                        result = source_watch_action(
+                            operator_database, action=payload["action"],
+                            kind=payload["kind"], record_id=payload["record_id"],
+                        )
+                    elif path == "/api/source-commercial-preview":
+                        if (
+                            urlsplit(self.path).query
+                            or urlsplit(self.path).fragment
+                            or set(payload) != {"operation", "data"}
+                            or not isinstance(payload["operation"], str)
+                            or not isinstance(payload["data"], dict)
+                            or self.headers.get_all("Host", []) != [host]
+                            or self.headers.get_all("Origin", []) != [f"http://{host}"]
+                            or self.headers.get("Sec-Fetch-Site") == "cross-site"
+                        ):
+                            raise ValueError("exact same-origin original preview request required")
+                        result = retained_commercial_preview(
+                            operator_database, operation=payload["operation"],
+                            data=payload["data"],
+                        )
+                    elif path == "/api/source-ceqanet-export":
+                        if (
+                            urlsplit(self.path).query
+                            or urlsplit(self.path).fragment
+                            or set(payload) != {"expected_report_sha256", "caller_confirmation"}
+                            or not isinstance(payload["expected_report_sha256"], str)
+                            or payload["caller_confirmation"] is not True
+                            or self.headers.get_all("Host", []) != [host]
+                            or self.headers.get_all("Origin", []) != [f"http://{host}"]
+                            or self.headers.get("Sec-Fetch-Site") == "cross-site"
+                        ):
+                            raise ValueError("exact same-origin confirmed export required")
+                        result = original_ceqanet_export(
+                            directory, operator_ceqanet_chain_report,
+                            expected_report_sha256=payload["expected_report_sha256"],
+                            caller_confirmation=True,
+                        )
+                    elif path == "/api/source-reconciliation-queue":
+                        if (
+                            urlsplit(self.path).query
+                            or urlsplit(self.path).fragment
+                            or self.headers.get_all("Host", []) != [host]
+                            or self.headers.get_all("Origin", []) != [f"http://{host}"]
+                            or self.headers.get("Sec-Fetch-Site") == "cross-site"
+                        ):
+                            raise ValueError("exact same-origin source replay is required")
+                        result = enqueue_legacy_reconciliation(
+                            directory, operator_database, payload
+                        )
+                    elif path == "/api/investigation-review":
+                        result = apply_investigation_review(directory, payload)
                     elif path == "/api/smarts-contacts-bulk":
                         if payload:
                             raise ValueError("Bulk contact import takes no options")
@@ -895,6 +1197,35 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--mockup-parity", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--no-browser", action="store_true")
     parser.add_argument(
+        "--operator-database",
+        type=Path,
+        help="Existing legacy operator SQLite database for read-only source inspection",
+    )
+    parser.add_argument(
+        "--operator-capture-queue", type=Path,
+        help="Exact locally retained CEQA capture-queue artifact, read-only",
+    )
+    parser.add_argument(
+        "--operator-ceqanet-listing", type=Path,
+        help="Retained CEQAnet listing evidence for original ingestion inbox",
+    )
+    parser.add_argument(
+        "--operator-ceqanet-review-queue", type=Path,
+        help="Paired retained CEQAnet review evidence for original inbox",
+    )
+    parser.add_argument(
+        "--operator-ceqanet-chain-report", type=Path,
+        help="Existing exact CEQAnet chain report for locally verified operator ZIP exports",
+    )
+    parser.add_argument(
+        "--operator-smarts-journal", type=Path,
+        help="Existing private SMARTS evidence journal for read-only original inspection",
+    )
+    parser.add_argument(
+        "--operator-smarts-history", type=Path,
+        help="Existing private SMARTS CSV snapshot history for original change/parcel review",
+    )
+    parser.add_argument(
         "--capture-only", action="store_true", help="Scheduled capture without a server"
     )
     parser.add_argument(
@@ -958,6 +1289,13 @@ def main(argv: list[str] | None = None) -> int:
             None if args.demo else args.data_dir,
             parity=args.mockup_parity,
             startup_directory=startup_directory,
+            operator_database=args.operator_database,
+            operator_capture_queue=args.operator_capture_queue,
+            operator_ceqanet_listing=args.operator_ceqanet_listing,
+            operator_ceqanet_review_queue=args.operator_ceqanet_review_queue,
+            operator_smarts_journal=args.operator_smarts_journal,
+            operator_smarts_history=args.operator_smarts_history,
+            operator_ceqanet_chain_report=args.operator_ceqanet_chain_report,
         )
     except (ValueError, OSError, httpx.HTTPError) as exc:
         print(f"Command Center unavailable: {type(exc).__name__}: {exc}", file=sys.stderr)

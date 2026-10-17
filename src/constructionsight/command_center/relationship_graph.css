@@ -1,0 +1,40 @@
+
+/* Live graph uses the existing native palette; expansion retains one canvas and state. */
+.live-graph{background:#171b1e;border:1px solid #4e4534;border-radius:8px;padding:14px;color:#d5d7d9}
+.graph-toolbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:10px}
+.graph-toolbar label{display:flex;align-items:center;gap:5px}
+.graph-toolbar input{max-width:240px}
+.graph-key{font-size:12px;color:#b6aca0}
+.graph-body{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:12px}
+.graph-canvas-wrap{position:relative;background:radial-gradient(ellipse,#21282d,#151a1e);border:1px solid #394046;min-width:0;border-radius:6px}
+[data-graph-canvas]{width:100%;height:540px;touch-action:none;display:block}
+[data-graph-world] text{font-size:11px;pointer-events:none}
+[data-live-node],[data-live-edge]{cursor:pointer}
+[data-live-node]:focus circle,[data-live-edge]:focus{stroke:#fff2b7;stroke-width:4;outline:none}
+.graph-inspector{padding:10px;background:#20262a;border:1px solid #40464b;overflow:auto;max-height:540px;min-width:0}
+.graph-inspector code,.graph-inspector button{overflow-wrap:anywhere;white-space:normal;max-width:100%}
+.graph-inspector pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px}
+.graph-zoom{position:absolute;bottom:12px;left:12px;display:flex;gap:6px}
+[data-graph-events]{max-height:160px;overflow:auto;font-size:12px;padding-left:24px}
+[data-graph-events] li{margin:5px 0}
+.graph-expanded{position:fixed;inset:0;z-index:1000;width:1672px;height:941px;box-sizing:border-box;overflow:auto;border-radius:0;padding:20px}
+.graph-expanded [data-graph-canvas]{height:610px}
+.graph-expanded .graph-inspector{max-height:610px}
+@media(prefers-reduced-motion:reduce){.live-graph *{animation:none!important;transition:none!important}}
+
+/* Investigation controls are confined to Phase 6 graph, never the approved dashboard shell. */
+.graph-investigation-controls,.graph-saved-controls{padding:7px 0;border-top:1px solid #394046}
+.graph-investigation-controls input[type="number"]{max-width:62px}
+.graph-investigation-controls input[type="date"]{max-width:155px}
+.graph-saved-controls input{max-width:190px}
+.graph-saved-controls select{max-width:220px}
+.graph-investigation-controls label,.graph-saved-controls label{font-size:12px}
+[data-graph-filter-summary]{margin:3px 0 8px}
+
+/* Phase 6: read-only retained-history navigation stays inside the graph workspace. */
+.graph-history-controls{padding:8px 0;border-top:1px solid #394046}
+.graph-history-controls select{max-width:390px}
+.graph-history-controls [data-graph-history-status]{font-size:12px;color:#b6aca0}
+[data-graph-history-diff]{max-width:1080px;white-space:normal}
+.graph-expanded{width:100vw;height:100vh;max-width:none}
+@media(max-width:1100px){.graph-body{grid-template-columns:minmax(0,1fr)}.graph-inspector{max-height:300px}.graph-expanded [data-graph-canvas]{height:58vh}}

@@ -66,7 +66,7 @@ def test_authority_event_must_bind_exact_ledger_content_digest() -> None:
         workflow_id="lead-workflow:event-digest",
         package_id="lead-review:event-digest",
         base_candidate_id="candidate:event-digest",
-        status=LeadWorkflowStatus.READY,
+        status=LeadWorkflowStatus.CLOSED_NO_FIT,
         lead_score=80,
     )
 

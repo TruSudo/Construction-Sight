@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from constructionsight.lead_operator_service import load_persisted_lead_workflow
+from constructionsight.lead_workflow_models import LeadWorkflowStatus
 from constructionsight.result_authority_models import (
     ResultAuthorityApplyReport,
     ResultAuthorityEvent,
@@ -39,6 +40,22 @@ from constructionsight.storage.result_authority_store import (
 
 class ResultAuthorityError(ValueError):
     """Raised when result authority is absent, stale, malformed, or contradictory."""
+
+
+def require_workflow_result_compatibility(
+    workflow_status: LeadWorkflowStatus, result_status: ResultLedgerStatus,
+) -> None:
+    """Preserve historical outcome finality without granting workflow transitions."""
+    if workflow_status is LeadWorkflowStatus.CLOSED_SUCCESS:
+        if result_status is not ResultLedgerStatus.WON:
+            raise ResultAuthorityError(
+                "closed_success workflow requires a won authoritative result"
+            )
+    elif workflow_status is LeadWorkflowStatus.CLOSED_NO_FIT:
+        if result_status not in {ResultLedgerStatus.LOST, ResultLedgerStatus.NO_FIT}:
+            raise ResultAuthorityError("closed_no_fit workflow requires a lost or no_fit result")
+    elif result_status not in {ResultLedgerStatus.OPEN, ResultLedgerStatus.UNKNOWN}:
+        raise ResultAuthorityError("non-final workflow may have only open or unknown result")
 
 
 def load_result_authority_snapshot(
@@ -221,6 +238,7 @@ def apply_authoritative_result(
         previous_content_digest = current.content_digest
         prior_revision = current.revision
 
+    require_workflow_result_compatibility(workflow.status, status)
     head = ResultAuthorityHead(
         workflow_id=workflow_id,
         current_ledger_id=ledger.ledger_id,

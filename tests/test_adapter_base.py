@@ -72,6 +72,12 @@ def test_adapter_preflight_allows_affirmatively_reviewed_public_source() -> None
     result = adapter.preflight(
         SourceAccessProfile(
             public_url="https://example.gov/records",
+            requires_login=False,
+            has_captcha=False,
+            robots_disallows_collection=False,
+            terms_disallow_collection=False,
+            paywalled=False,
+            access_fact_basis="review:" + "a" * 64,
             access_facts_reviewed=True,
             review_basis="Reviewed source access conditions.",
         )

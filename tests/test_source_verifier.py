@@ -1,3 +1,7 @@
+from dataclasses import replace
+
+import pytest
+
 from constructionsight.http_transport_models import (
     BoundedHttpObservation,
     BoundedHttpPolicy,
@@ -29,6 +33,12 @@ def _source(url: str = "https://ezop.sbcounty.gov/citizenaccess/") -> PublicSour
 def _reviewed_profile(url: str) -> SourceAccessProfile:
     return SourceAccessProfile(
         public_url=url,
+        requires_login=False,
+        has_captcha=False,
+        robots_disallows_collection=False,
+        terms_disallow_collection=False,
+        paywalled=False,
+        access_fact_basis="review:" + "a" * 64,
         access_facts_reviewed=True,
         review_basis="Reviewed synthetic public-source access facts.",
     )
@@ -82,7 +92,7 @@ def test_verifier_refuses_network_when_access_facts_are_unknown() -> None:
     assert called is False
     assert result.url_reachable is False
     assert result.raw_observations["access_decision"] == "review_required"
-    assert "not affirmatively reviewed" in (result.notes or "")
+    assert "unknown" in (result.notes or "")
 
 
 def test_verifier_detects_accela_public_search_hints() -> None:
@@ -136,3 +146,38 @@ def test_verifier_preserves_transport_failure_class() -> None:
     assert result.confidence_score == 0
     assert result.notes == "HTTP verification failed closed: transport_failure"
     assert result.raw_observations["failure_kind"] == "transport_failure"
+
+
+@pytest.mark.parametrize("review_url", [
+    "https://example.gov/other",
+    "https://ezop.sbcounty.gov/other/",
+    "http://ezop.sbcounty.gov/citizenaccess/",
+    "https://ezop.sbcounty.gov/citizenaccess/?scope=other",
+])
+def test_verifier_rejects_review_for_different_url_without_network(review_url: str) -> None:
+    def forbidden_executor(
+        url: str, method: str, policy: BoundedHttpPolicy
+    ) -> BoundedHttpObservation:
+        raise AssertionError("mismatched review must never reach transport")
+
+    result = SourceVerifier(executor=forbidden_executor).verify(
+        _source(), _reviewed_profile(review_url)
+    )
+    assert result.url_reachable is False
+    assert result.confidence_score == 0
+    assert result.raw_observations["access_decision"] == "review_required"
+    assert "exact source URL" in (result.notes or "")
+
+
+@pytest.mark.parametrize("fact", [
+    "requires_login", "has_captcha", "robots_disallows_collection",
+    "terms_disallow_collection", "paywalled",
+])
+def test_unknown_access_fact_blocks_verifier_before_transport(fact):
+    def forbidden_executor(url, method, policy):
+        raise AssertionError("unknown restriction must stop before transport")
+    source = _source()
+    profile = replace(_reviewed_profile(str(source.public_url)), **{fact: None})
+    result = SourceVerifier(executor=forbidden_executor).verify(source, profile)
+    assert result.raw_observations["access_decision"] == "review_required"
+    assert result.url_reachable is False

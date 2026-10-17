@@ -43,6 +43,92 @@ class SmartsEvidenceReceipt:
     outcome: str  # first_observation | changed | unchanged
 
 
+@dataclass(frozen=True)
+class RetainedSmartsObservation:
+    """One bounded journal read with the original response and source identity intact."""
+
+    observation_id: int
+    source_key: str
+    recorded_at: datetime
+    page: SmartsPage
+    preview: SmartsIntakePreview
+    row: dict[str, Any]
+
+
+def read_smarts_observations(
+    path: Path,
+    *,
+    after_id: int = 0,
+    limit: int = 100,
+) -> list[RetainedSmartsObservation]:
+    """Read and validate a bounded page without creating or modifying the journal.
+
+    Reuses the collection-time exact-response and row checks. This validates each
+    selected observation, not the entire journal's historical version chains.
+    """
+    if type(after_id) is not int or after_id < 0:
+        raise ValueError("after_id must be a nonnegative integer")
+    if type(limit) is not int or not 1 <= limit <= 500:
+        raise ValueError("limit must be between 1 and 500")
+    connection = _open(path, read_only=True)
+    try:
+        result: list[RetainedSmartsObservation] = []
+        for identity, source_key, at, url, response_sha, row_sha, raw in connection.execute(
+            "SELECT id,source_key,recorded_at,request_url,response_sha256,row_sha256,raw_response "
+            "FROM smarts_observations WHERE id>? ORDER BY id LIMIT ?",
+            (after_id, limit),
+        ):
+            try:
+                body = bytes(raw)
+                if not 0 < len(body) <= MAX_RESPONSE_BYTES:
+                    raise ValueError("retained response exceeds bounded source size")
+                payload = json.loads(body)["result"]
+                rows = payload["records"]
+                row = next(item for item in rows if _sha(_canonical_row(item)) == row_sha)
+                page = SmartsPage(
+                    resource="facilities",
+                    county=row["SITE_COUNTY"],
+                    offset=0,
+                    limit=len(rows),
+                    total=payload["total"],
+                    request_url=url,
+                    response_sha256=response_sha,
+                    fields=tuple(row),
+                    records=tuple(rows),
+                    raw_response_bytes=body,
+                )
+                preview = build_smarts_intake_preview(page, row)
+                _raw_record(page, preview, paginated=True)
+                timestamp = datetime.fromisoformat(at)
+                if timestamp.utcoffset() is None:
+                    raise ValueError("journal timestamp lacks timezone")
+                for kind, value in _aliases(preview):
+                    alias = connection.execute(
+                        "SELECT source_key FROM smarts_aliases "
+                        "WHERE county=? AND kind=? AND value=?",
+                        (page.county, kind, value),
+                    ).fetchone()
+                    if alias is None or alias[0] != source_key:
+                        raise ValueError("source identity and retained aliases disagree")
+            except (ValueError, TypeError, KeyError, StopIteration) as exc:
+                raise SmartsEvidenceError(
+                    "Retained observation failed exact-source validation"
+                ) from exc
+            result.append(
+                RetainedSmartsObservation(
+                    observation_id=identity,
+                    source_key=source_key,
+                    recorded_at=timestamp,
+                    page=page,
+                    preview=preview,
+                    row=row,
+                )
+            )
+        return result
+    finally:
+        connection.close()
+
+
 def _sha(payload: bytes) -> str:
     return hashlib.sha256(payload).hexdigest()
 

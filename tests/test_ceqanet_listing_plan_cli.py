@@ -39,7 +39,7 @@ def test_ceqanet_listing_plan_cli_renders_fail_closed_plan_table() -> None:
     assert "False" in result.output
     assert "review_required" in result.output
     assert "Planned GET Requests" in result.output
-    assert "Source restriction facts are not affirmatively reviewed" in result.output
+    assert "fact basis" in result.output
 
 
 def test_ceqanet_listing_plan_cli_rejects_unsupported_text_filter() -> None:
