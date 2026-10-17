@@ -13,6 +13,7 @@ from typing import Any, Literal
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from constructionsight.command_center_legacy_events import verified_original_workflow_events
 from constructionsight.command_center_legacy_reconciliation import preview_legacy_reconciliation
 from constructionsight.lead_operator_models import LeadOperatorRecordKind
 from constructionsight.lead_operator_service import (
@@ -112,6 +113,7 @@ def original_candidate_workflow_lineage(
                     ):
                         raise ValueError("original workflow review package identity disagrees")
                     review_status = review.status.value
+                transition_history = verified_original_workflow_events(session, workflow)
                 validated = read_validated_result_history(session, workflow.workflow_id)
                 if validated is not None and validated["package_id"] != workflow.package_id:
                     raise ValueError("original result and workflow package identity disagree")
@@ -126,6 +128,7 @@ def original_candidate_workflow_lineage(
                     "original_package_id": workflow.package_id,
                     "original_candidate_key": candidate_key,
                     "historical_workflow_status": workflow.status.value,
+                    "historical_workflow_transition_history": transition_history,
                     "review_package_status": review_status,
                     "original_result_revision_count_unverified": len(revisions),
                     "historical_result": {
