@@ -42,6 +42,7 @@ from constructionsight.command_center_legacy_export import (
     original_ceqanet_export,
     original_ceqanet_export_status,
 )
+from constructionsight.command_center_legacy_attribution import original_workflow_source_attribution
 from constructionsight.command_center_legacy_lineage import original_candidate_workflow_lineage
 from constructionsight.command_center_legacy_reconciliation import (
     enqueue_legacy_reconciliation,
@@ -548,6 +549,23 @@ def make_server(
                     after=int(query.get("after", ["0"])[0]),
                     anchor=query.get("anchor", [None])[0],
                     evidence_id=query.get("id", [None])[0],
+                )
+                body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
+            elif path == "/api/original-workflow-attribution":
+                if (
+                    directory is None
+                    or set(query) != {"workflow", "kind", "record_id"}
+                    or len(query["workflow"]) != 1
+                    or len(query["kind"]) != 1
+                    or len(query["record_id"]) != 1
+                    or query["kind"][0] not in {"ceqa", "permit"}
+                ):
+                    raise ValueError("select one exact original workflow and source record")
+                value = original_workflow_source_attribution(
+                    directory, operator_database,
+                    workflow_id=query["workflow"][0],
+                    kind="ceqa" if query["kind"][0] == "ceqa" else "permit",
+                    record_id=query["record_id"][0],
                 )
                 body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
             elif path == "/api/source-commercial-lineage":
