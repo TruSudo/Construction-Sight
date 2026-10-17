@@ -435,6 +435,8 @@ def make_server(
                 "/api/investigation-graph",
                 "/api/investigation-graph/events",
                 "/api/investigation-graph/evidence",
+                "/api/investigation-graph/history",
+                "/api/investigation-graph/history-index",
             }:
                 if directory is None:
                     self.send_error(404, "Local investigation data folder is unavailable")
@@ -446,6 +448,10 @@ def make_server(
                     if path.endswith("/events")
                     else "evidence"
                     if path.endswith("/evidence")
+                    else "history"
+                    if path.endswith("/history")
+                    else "history_index"
+                    if path.endswith("/history-index")
                     else "snapshot"
                 )
                 value = graph_view(
