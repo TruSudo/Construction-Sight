@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
@@ -17,16 +18,22 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
 from constructionsight.ceqa_models import CeqaRecord
-from constructionsight.intelligence.investigation_service import InvestigationService
+from constructionsight.intelligence.investigation_service import InvestigationService, _identity
 from constructionsight.intelligence.investigation_sources import from_domain
 from constructionsight.intelligence.relationship_query_service import canonical_investigation_id
-from constructionsight.investigation_runtime import InvestigationRuntime
+from constructionsight.intelligence.schemas import RuntimeEvent, RuntimeEventType
+from constructionsight.investigation_jobs import JobDefinition
+from constructionsight.investigation_runtime import (
+    InvestigationRuntime,
+    OriginalReplayApproval,
+    retain_input,
+)
 from constructionsight.operator_source_candidate import (
     SourceRecordNotFound,
     build_source_candidate_preview,
 )
 from constructionsight.permit_models import PermitRecord
-from constructionsight.storage.database import prepare_private_database
+from constructionsight.storage.database import managed_session, prepare_private_database
 from constructionsight.storage.domain_store import CeqaStore, PermitStore
 from constructionsight.storage.intelligence_store import IntelligenceStore
 from constructionsight.storage.operator_read_store import create_operator_read_engine
@@ -165,12 +172,60 @@ def enqueue_legacy_reconciliation(
         raise ValueError("source changed during replay selection")
     runtime = InvestigationRuntime(directory)
     try:
-        queued = runtime.enqueue_bytes(canonical, request.kind)
+        # A bounded, confirmed approval is included in the immutable job
+        # definition, and a dedicated audit event commits in the SAME SQLite
+        # transaction as the queued job. Neither a failed insert nor a stale
+        # source can leave a misleading accepted approval receipt.
+        observation = from_domain(
+            CeqaRecord.model_validate(raw) if request.kind == "ceqa"
+            else PermitRecord.model_validate(raw)
+        )
+        approval = OriginalReplayApproval(
+            kind=request.kind,
+            record_id=request.record_id,
+            source_sha256=request.expected_source_sha256,
+            source_entity_id=observation.source_entity_id,
+            expected_evidence_id=observation.evidence.evidence_id,
+            review_reason=request.review_reason,
+            local_user_confirmation=True,
+        )
+        reference = retain_input(runtime.directory, canonical)
+        definition = JobDefinition(
+            kind="retained_json_replay",
+            inputs={
+                "input": reference.model_dump(),
+                "source_kind": request.kind,
+                "offset": 0,
+                "row_count": 1,
+                "original_replay_approval": approval.model_dump(mode="json"),
+            },
+        )
+        with managed_session(runtime.queue.factory) as session:
+            runtime.queue.begin_write(session)
+            store = IntelligenceStore(session)
+            if store.get_entity(approval.source_entity_id) is not None:
+                raise ValueError("source changed in native investigation; re-review required")
+            queued = runtime.queue.enqueue_in_transaction(store, definition)
+            audit_id = _identity("event:original-source-replay-approval", queued.job_id)
+            store.add_runtime_event(
+                RuntimeEvent(
+                    event_id=audit_id,
+                    event_type=RuntimeEventType.BACKGROUND_JOB_QUEUED,
+                    source_service="original_source_replay_approval",
+                    correlation_id=queued.job_id,
+                    created_at=datetime.fromtimestamp(queued.created_at, UTC),
+                    source_record_refs=[approval.source_entity_id],
+                    payload=approval.model_dump(mode="json"),
+                    message="Original exact source replay reviewed and queued; no identity approval.",
+                )
+            )
     finally:
         runtime.close()
     return {
         "schema_version": "constructionsight.original-native-replay-queued/v1",
         "source_entity_id": previous["source_entity_id"],
+        "approval_audit_event_id": audit_id,
+        "approval_audit_retained": True,
         "original_source": metadata,
         "job_id": queued.job_id,
         "job_status": queued.status,
