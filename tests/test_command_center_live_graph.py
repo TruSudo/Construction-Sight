@@ -163,7 +163,9 @@ def test_graph_filter_metadata_is_retained_and_read_only(tmp_path: Path) -> None
     before = (directory / "investigations.sqlite3").read_bytes()
     graph = graph_view(directory)
     project = next(node for node in graph["nodes"] if node["kind"] == "investigation")
-    developer = next(node for node in graph["nodes"] if node["label"] == "Synthetic graph developer")
+    developer = next(
+        node for node in graph["nodes"] if node["label"] == "Synthetic graph developer"
+    )
     evidence = next(node for node in graph["nodes"] if node["kind"] == "evidence")
     assert project["date_basis"] == "project_last_seen"
     assert developer["date_basis"] == "entity_last_seen"
