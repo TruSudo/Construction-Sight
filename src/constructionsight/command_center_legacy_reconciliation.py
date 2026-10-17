@@ -22,7 +22,7 @@ from constructionsight.intelligence.investigation_service import InvestigationSe
 from constructionsight.intelligence.investigation_sources import from_domain
 from constructionsight.intelligence.relationship_query_service import canonical_investigation_id
 from constructionsight.intelligence.schemas import RuntimeEvent, RuntimeEventType
-from constructionsight.investigation_jobs import JobDefinition
+from constructionsight.investigation_jobs import InvestigationJobQueue, JobDefinition
 from constructionsight.investigation_runtime import (
     InvestigationRuntime,
     OriginalReplayApproval,
@@ -235,3 +235,50 @@ def enqueue_legacy_reconciliation(
         "outreach_authorized": False,
         "bid_authorized": False,
     }
+
+
+def original_source_replay_audit(directory: Path, *, job_id: str) -> dict[str, Any]:
+    """Read one exact immutable approval and the CURRENT durable worker state."""
+
+    if (
+        not job_id.startswith("job:investigation:")
+        or len(job_id) > 255
+        or any(ord(char) < 32 or ord(char) == 127 for char in job_id)
+    ):
+        raise ValueError("invalid original replay job identity")
+    database = prepare_private_database(directory / "investigations.sqlite3", create=False)
+    engine = create_operator_read_engine(database)
+    try:
+        with Session(engine, autoflush=False) as session:
+            store = IntelligenceStore(session)
+            audit_id = _identity("event:original-source-replay-approval", job_id)
+            audit = store.get_runtime_event(audit_id)
+            if (
+                audit is None
+                or audit.source_service != "original_source_replay_approval"
+                or audit.correlation_id != job_id
+            ):
+                raise ValueError("original replay approval receipt not found")
+            approval = OriginalReplayApproval.model_validate(audit.payload)
+            job = InvestigationJobQueue(engine).current(store, job_id)
+            if (
+                job is None or job.definition.kind != "retained_json_replay"
+                or job.definition.inputs.get("original_replay_approval")
+                != approval.model_dump(mode="json")
+            ):
+                raise ValueError("original replay approval lost its exact job lineage")
+            return {
+                "schema_version": "constructionsight.original-replay-audit/v1",
+                "audit_event_id": audit_id,
+                "approval_retained_at": audit.created_at.isoformat(),
+                "approval": approval.model_dump(mode="json"),
+                "job_id": job_id,
+                "job_status": job.status,
+                "job_error_code": job.error_code,
+                "job_result": job.result,
+                "read_only": True,
+                "project_identity_verified": False,
+                "commercial_authority_granted": False,
+            }
+    finally:
+        engine.dispose()
