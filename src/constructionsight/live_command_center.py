@@ -31,6 +31,7 @@ from constructionsight import (
 )
 from constructionsight import command_center_commercial as commercial
 from constructionsight import command_center_state as state
+from constructionsight.command_center_graph import graph_view
 from constructionsight.command_center_investigations import investigation_view
 from constructionsight.contact_call_list import (
     annotate_contacts,
@@ -430,6 +431,33 @@ def make_server(
                     }
                 )
                 body, mime = json.dumps(value).encode(), "application/json"
+            elif path in {
+                "/api/investigation-graph",
+                "/api/investigation-graph/events",
+                "/api/investigation-graph/evidence",
+            }:
+                if directory is None:
+                    self.send_error(404, "Local investigation data folder is unavailable")
+                    return
+                if any(len(values) != 1 for values in query.values()):
+                    raise ValueError("one value permitted per graph parameter")
+                mode = (
+                    "events"
+                    if path.endswith("/events")
+                    else "evidence"
+                    if path.endswith("/evidence")
+                    else "snapshot"
+                )
+                value = graph_view(
+                    directory,
+                    mode=mode,
+                    root=query.get("root", [None])[0],
+                    depth=int(query.get("depth", ["1"])[0]),
+                    after=int(query.get("after", ["0"])[0]),
+                    anchor=query.get("anchor", [None])[0],
+                    evidence_id=query.get("id", [None])[0],
+                )
+                body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
             elif path == "/api/investigations" or path.startswith("/api/investigations/"):
                 if directory is None:
                     self.send_error(404, "Local investigation data folder is unavailable")

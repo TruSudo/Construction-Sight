@@ -373,3 +373,39 @@ No main merge, source activation, owner-device changes or commercial submissions
   source authorization, automated commercial action or owner-device deployment.
 - After any interruption, check `git status` and `git rev-parse HEAD` on this branch.
 
+
+
+## Phase 6 — first live graph vertical slice (acceptance pending)
+
+The existing private read-only store now supplies a bounded graph snapshot, explicit
+retained evidence references, and cursor/anchor-validated durable event pages. Snapshot
+and high-water mark share a SQLite read transaction; graph roots, entities, relationships
+and evidence are retained identities, never browser-created matches. Rejected/stale/
+superseded edges are excluded. A changed/missing journal anchor requires snapshot reset,
+including backup/restore divergence. Events are compact and bounded; raw evidence is
+loaded only when explicitly inspected.
+
+Native Entity Network now opens a live embedded Relationship Graph with an expandable
+full-screen interface over the same canvas/state. The charcoal-and-amber graph includes
+a bounded force layout, zoom/pan/node dragging, node search, relationship-status filtering,
+depth/root expansion of indexed state, keyboard node/edge inspection, canonical dossier
+and retained-evidence inspection, pause/resume, connection status and actual persisted
+worker activity. Pausing/closing affects the display only. Event delivery is bounded
+1.5-second local read polling, chosen to reuse the localhost HTTP server and immutable
+journal without persistent network authority or a new database. Snapshot revisions and
+event delivery cursors remain separate so paged catch-up cannot skip journal events.
+
+Seven focused graph/native-bridge tests passed in 4.44s: absent/unsafe store, stable IDs,
+read-only bytes, worker revision, idle replay, anchor mismatch/reset, multi-page event
+replay, rejected-edge removal, evidence HTTP inspection and exclusion of uncommitted
+state. Ruff, changed-JavaScript syntax and strict focused Mypy passed. Exact-source full
+CI and browser acceptance are pending. Browser journey checks embedded/full-screen
+canvas identity, canonical dossier/evidence, worker progression while paused/closed,
+committed event delivery, duplicate suppression and disconnection recovery.
+
+Phase 6 remains PARTIAL. Historical graph-state replay (distinct from event-page replay),
+saved investigation layouts/views, chronology/source/confidence controls, clustering,
+node collapse, optional activity highlighting, reviewed research task submission,
+full map navigation and the complete realistic retained-data acceptance remain open.
+This slice does not certify Phase 6 or substitute for Phase 3/4 live-source/device checks.
+Main unchanged; no source acquisition/activation, outreach, bids or historical retirement.

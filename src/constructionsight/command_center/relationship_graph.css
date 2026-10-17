@@ -1,0 +1,23 @@
+
+/* Live graph uses the existing native palette; expansion retains one canvas and state. */
+.live-graph{background:#171b1e;border:1px solid #4e4534;border-radius:8px;padding:14px;color:#d5d7d9}
+.graph-toolbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:10px}
+.graph-toolbar label{display:flex;align-items:center;gap:5px}
+.graph-toolbar input{max-width:240px}
+.graph-key{font-size:12px;color:#b6aca0}
+.graph-body{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:12px}
+.graph-canvas-wrap{position:relative;background:radial-gradient(ellipse,#21282d,#151a1e);border:1px solid #394046;min-width:0;border-radius:6px}
+[data-graph-canvas]{width:100%;height:540px;touch-action:none;display:block}
+[data-graph-world] text{font-size:11px;pointer-events:none}
+[data-live-node],[data-live-edge]{cursor:pointer}
+[data-live-node]:focus circle,[data-live-edge]:focus{stroke:#fff2b7;stroke-width:4;outline:none}
+.graph-inspector{padding:10px;background:#20262a;border:1px solid #40464b;overflow:auto;max-height:540px;min-width:0}
+.graph-inspector code,.graph-inspector button{overflow-wrap:anywhere;white-space:normal;max-width:100%}
+.graph-inspector pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px}
+.graph-zoom{position:absolute;bottom:12px;left:12px;display:flex;gap:6px}
+[data-graph-events]{max-height:160px;overflow:auto;font-size:12px;padding-left:24px}
+[data-graph-events] li{margin:5px 0}
+.graph-expanded{position:fixed;inset:0;z-index:1000;width:1672px;height:941px;box-sizing:border-box;overflow:auto;border-radius:0;padding:20px}
+.graph-expanded [data-graph-canvas]{height:610px}
+.graph-expanded .graph-inspector{max-height:610px}
+@media(prefers-reduced-motion:reduce){.live-graph *{animation:none!important;transition:none!important}}

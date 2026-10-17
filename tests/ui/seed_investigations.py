@@ -23,17 +23,16 @@ def main() -> None:
             captured_at=datetime(2026, 10, 16, tzinfo=UTC),
         )
     ]
+    title = "Synthetic CEQA application"
+    if len(sys.argv) > 2:
+        title += " — revised retained evidence" if sys.argv[2] == "update" else " — " + sys.argv[2]
     site = Site(site_key="synthetic:shared-workspace-site", county="Riverside", apn="123-456-789")
     records = (
         (
             "ceqa",
             CeqaRecord(
                 ceqa_key="synthetic:browser:ceqa:1",
-                title=(
-                    "Synthetic CEQA application — revised retained evidence"
-                    if len(sys.argv) > 2
-                    else "Synthetic CEQA application"
-                ),
+                title=title,
                 entities=[
                     Entity(
                         entity_key="synthetic:browser:developer",

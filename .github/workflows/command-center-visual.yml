@@ -73,6 +73,11 @@ jobs:
         run: |
           PYTHONPATH=src python tests/ui/seed_investigations.py /tmp/cs-ui-state
           node tests/ui/investigation_native.js http://127.0.0.1:8766
+      - name: Live Relationship Graph embedded and expanded worker journey
+        if: always()
+        run: |
+          PYTHONPATH=src python tests/ui/seed_investigations.py /tmp/cs-ui-state
+          node tests/ui/relationship_graph.js http://127.0.0.1:8766 /tmp/cs-ui-state
       - name: Versioned scope and price editing
         if: always()
         run: node tests/ui/catalog.js http://127.0.0.1:8766
