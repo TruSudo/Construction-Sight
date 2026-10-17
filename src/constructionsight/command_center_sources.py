@@ -13,7 +13,12 @@ from typing import Any
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from constructionsight.operator_dashboard import (
+    build_workflow_snapshot,
+    build_workflow_status_summary,
+)
 from constructionsight.operator_parcel_candidates import inspect_parcel_candidates
+from constructionsight.operator_results import build_result_ledger_snapshot
 from constructionsight.operator_source_candidate import (
     SourceRecordNotFound,
     build_source_candidate_preview,
@@ -21,6 +26,7 @@ from constructionsight.operator_source_candidate import (
 from constructionsight.operator_source_registry import build_operator_source_registry
 from constructionsight.operator_source_review_queue import build_source_review_queue
 from constructionsight.operator_source_revision import build_source_revision_snapshot
+from constructionsight.operator_watchlist import build_operator_watchlist_snapshot
 from constructionsight.operator_web import _parameters
 from constructionsight.storage.operator_read_store import create_operator_read_engine
 
@@ -31,6 +37,10 @@ SOURCE_INSPECTION_ROUTES = frozenset(
         "/api/source-review-queue",
         "/api/parcel-candidates",
         "/api/candidate-preview",
+        "/api/source-watchlist",
+        "/api/workflow-summary",
+        "/api/workflows",
+        "/api/results",
     }
 )
 
@@ -42,7 +52,10 @@ def source_inspection(
 
     if route not in SOURCE_INSPECTION_ROUTES:
         raise ValueError("unsupported native source inspection route")
-    if route in {"/api/source-registry", "/api/source-revision"}:
+    if route in {
+        "/api/source-registry", "/api/source-revision", "/api/source-watchlist",
+        "/api/workflow-summary",
+    }:
         if query:
             raise ValueError("source status inspection rejects query parameters")
         params = None
@@ -50,6 +63,8 @@ def source_inspection(
         params = _parameters(
             query,
             source_review_queue=route == "/api/source-review-queue",
+            workflow=route in {"/api/workflows", "/api/results"},
+            results=route == "/api/results",
             candidate=route in {"/api/parcel-candidates", "/api/candidate-preview"},
         )
     if database is None:
@@ -77,6 +92,20 @@ def source_inspection(
                 )
             elif route == "/api/source-revision":
                 result = build_source_revision_snapshot(session)
+            elif route == "/api/source-watchlist":
+                result = build_operator_watchlist_snapshot(session)
+            elif route == "/api/workflow-summary":
+                result = build_workflow_status_summary(session)
+            elif route == "/api/workflows":
+                assert params is not None
+                result = build_workflow_snapshot(
+                    session, limit=params.limit, offset=params.offset
+                )
+            elif route == "/api/results":
+                assert params is not None
+                result = build_result_ledger_snapshot(
+                    session, limit=params.limit, offset=params.offset
+                )
             elif route == "/api/source-review-queue":
                 assert params is not None
                 result = build_source_review_queue(
