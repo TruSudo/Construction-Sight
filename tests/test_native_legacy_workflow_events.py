@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 from sqlalchemy import update
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from constructionsight.command_center_legacy_events import verified_original_workflow_events
@@ -14,6 +15,7 @@ from constructionsight.lead_operator_service import (
     transition_persisted_lead_workflow,
 )
 from constructionsight.lead_workflow_models import LeadWorkflowEvent, LeadWorkflowStatus
+from constructionsight.lead_workflow_service import create_lead_workflow
 from constructionsight.storage.database import create_database_engine, initialize_database
 from constructionsight.storage.lead_workflow_orm import LeadWorkflowEventRecord
 from constructionsight.storage.lead_workflow_store import (
@@ -22,10 +24,9 @@ from constructionsight.storage.lead_workflow_store import (
     store_lead_workflow_record,
 )
 from tests.test_bid_proposal_service import _package
-from constructionsight.lead_workflow_service import create_lead_workflow
 
 
-def _history(tmp_path: Path) -> tuple[object, str]:
+def _history(tmp_path: Path) -> tuple[Engine, str]:
     engine = create_database_engine(f"sqlite:///{tmp_path / 'original.sqlite3'}")
     initialize_database(engine)
     package = _package()
@@ -58,9 +59,7 @@ def test_two_original_transition_events_have_exact_verified_projection(tmp_path:
         assert verified["transitions"][1]["reason"] == (
             "Original historical operator activated review"
         )
-        assert verified["commercial_authority_granted"] is False if (
-            "commercial_authority_granted" in verified
-        ) else verified["bid_authorized"] is False
+        assert verified["bid_authorized"] is False
         assert verified["outreach_authorized"] is False
     engine.dispose()
 
@@ -91,8 +90,7 @@ def test_original_history_rejects_forged_or_orphan_transition_event_rows(
                 ),
                 workflow_id=workflow_id,
             )
-    with Session(engine) as session:
+    with Session(engine) as session, pytest.raises(ValueError, match="transition"):
         workflow = load_persisted_lead_workflow(session, workflow_id)
-        with pytest.raises(ValueError, match="transition"):
-            verified_original_workflow_events(session, workflow)
+        verified_original_workflow_events(session, workflow)
     engine.dispose()
