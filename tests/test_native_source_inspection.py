@@ -172,6 +172,58 @@ def test_existing_legacy_source_db_is_reused_by_native_without_mutation(tmp_path
     assert hashlib.sha256(database.read_bytes()).hexdigest() == original
 
 
+
+def test_original_ceqa_artifacts_are_inspected_without_ingesting_or_mutating(
+    tmp_path: Path,
+) -> None:
+    from tests.test_operator_capture_queue import _payload
+    from tests.test_operator_ingestion_inbox import _write_artifacts
+
+    database = tmp_path / "operator.sqlite3"
+    engine = create_database_engine(f"sqlite:///{database}")
+    initialize_database(engine)
+    engine.dispose()
+    listing, review = _write_artifacts(tmp_path)
+    capture = tmp_path / "capture.json"
+    capture.write_text(__import__("json").dumps(_payload()), encoding="utf-8")
+    paths = (database, listing, review, capture)
+    original = [hashlib.sha256(path.read_bytes()).hexdigest() for path in paths]
+    server = make_server(
+        snapshot(), 0, tmp_path / "native",
+        operator_database=database,
+        operator_capture_queue=capture,
+        operator_ceqanet_listing=listing,
+        operator_ceqanet_review_queue=review,
+    )
+    worker = threading.Thread(target=server.serve_forever, daemon=True)
+    worker.start()
+    try:
+        with httpx.Client(
+            base_url=f"http://127.0.0.1:{server.server_port}", trust_env=False
+        ) as client:
+            capture_response = client.get("/api/source-capture-queue")
+            assert capture_response.status_code == 200, capture_response.text
+            assert capture_response.json()["available"] is True
+            assert capture_response.json()["candidate_count"] == 1
+            assert capture_response.json()["candidates"][0]["sch_number"] == "2026012345"
+            inbox = client.get("/api/source-ingestion-inbox")
+            assert inbox.status_code == 200, inbox.text
+            assert inbox.json()["available"] is True
+            assert inbox.json()["pending_capture_count"] == 1
+            assert inbox.json()["next_pending_sch"] == "2026030377"
+            for result in (capture_response.json(), inbox.json()):
+                assert result["read_only"] is True
+                assert result["network_executed"] is False
+                assert result["persistence_mutated"] is False
+                assert result["commercial_leads_created"] is False
+    finally:
+        server.shutdown()
+        server.server_close()
+        worker.join()
+    assert [hashlib.sha256(path.read_bytes()).hexdigest() for path in paths] == original
+
+
+
 def test_native_refuses_symlinked_or_missing_operator_source_db(tmp_path: Path) -> None:
     target = tmp_path / "real.sqlite3"
     target.write_bytes(b"not a database")
