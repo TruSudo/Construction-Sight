@@ -69,7 +69,8 @@ async function renderRetainedSources(box) {
     '<label>County <select name="county"><option value="">Both counties</option><option>San Bernardino</option><option>Riverside</option></select></label>' +
     '<label>Search <input name="q" maxlength="200" aria-label="Search retained source records"></label>' +
     '<button type="submit">Inspect</button></form>' +
-    '<div id="retained-source-queue" aria-live="polite"></div>';
+    '<div id="retained-source-queue" aria-live="polite"></div>' +
+    '<div id="retained-history-inspection"></div>';
   root.querySelector('#retained-registry-export').onclick = () =>
     download('retained-source-registry.json', registry);
   root.querySelectorAll('[data-registry-index]').forEach(button => {
@@ -142,9 +143,122 @@ async function renderRetainedSources(box) {
     perform(loadPage);
   };
   await loadPage();
+  await renderRetainedHistory(root.querySelector('#retained-history-inspection'));
 }
 
  
+
+// Original source-scoped investigation projections. Keys here are NOT native verified identities.
+async function renderRetainedHistory(box) {
+  if (!box || !box.isConnected || activePage !== 'Sources & Collection') return;
+  box.innerHTML = '<h3>Historical source intelligence</h3>' +
+    '<p>Inspect bounded original entity keys, dated source milestones, and geocoded ' +
+    'source coverage. These are retained source claims, not canonical investigation ' +
+    'membership or live construction evidence.</p>' +
+    '<form id="retained-history-filters" class="source-toolbar">' +
+    '<label>Family <select name="kind"><option value="all">All</option>' +
+    '<option value="ceqa">CEQA</option><option value="permit">Permit</option></select></label>' +
+    '<label>County <select name="county"><option value="">Both counties</option>' +
+    '<option>San Bernardino</option><option>Riverside</option></select></label>' +
+    '<label>Source search <input name="q" maxlength="200"></label>' +
+    '<button type="button" data-history-mode="entities">Entity index</button>' +
+    '<button type="button" data-history-mode="timeline">Dated events</button>' +
+    '<button type="button" data-history-mode="footprint">Geo coverage</button></form>' +
+    '<div id="retained-history-results" aria-live="polite"></div>';
+  const form = box.querySelector('#retained-history-filters');
+  const view = box.querySelector('#retained-history-results');
+  let requestSerial = 0;
+  async function inspectRecord(record) {
+    const detail = await api('/api/candidate-preview?' + new URLSearchParams({
+      kind: record.record_kind, record_id: record.record_id
+    }));
+    if (!box.isConnected || activePage !== 'Sources & Collection') return;
+    modal('Original exact source observation',
+      '<p>Preserved source details only; no inferred project identity.</p><pre>' +
+      esc(JSON.stringify(detail, null, 2)) + '</pre>');
+  }
+  async function load(mode) {
+    const serial = ++requestSerial;
+    const params = new URLSearchParams({
+      kind: form.elements.kind.value, county: form.elements.county.value
+    });
+    if (mode !== 'entities') params.set('q', form.elements.q.value);
+    const routes = {entities: '/api/source-entity-index',
+      timeline: '/api/source-timeline', footprint: '/api/source-footprint'};
+    view.textContent = 'Inspecting retained original source data…';
+    try {
+      const result = await api(routes[mode] + '?' + params);
+      if (serial !== requestSerial || !box.isConnected ||
+          activePage !== 'Sources & Collection') return;
+      if (!result.available) {
+        view.textContent = 'Original operator database is not connected.';
+        return;
+      }
+      const items = mode === 'entities' ? result.entries || [] :
+        mode === 'timeline' ? result.events || [] : result.points || [];
+      const headers = mode === 'entities' ?
+        ['Exact source key', 'Claimed names', 'Claimed roles', 'Records', 'Investigation'] :
+        mode === 'timeline' ?
+          ['Recorded date', 'Source event', 'Source', 'Conflict', 'Evidence'] :
+          ['Source record', 'County', 'Coordinates', 'Evidence'];
+      const rows = items.slice(0, 100).map((item, i) => {
+        if (mode === 'entities') return [
+          esc(item.entity_key), esc((item.source_claimed_names || []).join(', ')),
+          esc((item.source_claimed_roles || []).join(', ')),
+          esc(item.matching_records_in_scan),
+          '<button data-historical-entity="' + i + '">Inspect exact-key records</button>'
+        ];
+        if (mode === 'timeline') return [
+          esc(item.recorded_date), esc(item.event_kind), esc(item.title),
+          item.source_date_order_conflict ? 'Conflicting dates' : '—',
+          '<button data-historical-record="' + i + '">Evidence</button>'
+        ];
+        return [
+          esc(item.title), esc(item.county),
+          esc(item.point?.latitude) + ', ' + esc(item.point?.longitude),
+          '<button data-historical-record="' + i + '">Evidence</button>'
+        ];
+      });
+      const total = mode === 'entities' ? result.distinct_keys_in_scan :
+        mode === 'timeline' ? result.milestones_in_scan : result.mapped_in_scan;
+      view.innerHTML = '<p>' + esc(total) + ' original ' +
+        esc(mode === 'entities' ? 'keys' : mode === 'timeline' ? 'milestones' : 'mapped observations') +
+        ' found in a bounded scan; showing ' + esc(Math.min(items.length, 100)) +
+        '. Source scan truncated: ' + esc(Boolean(result.source_scan_truncated || result.truncated)) +
+        '; result list truncated: ' + esc(Boolean(result.result_truncated ||
+          result.event_result_truncated || items.length > 100)) +
+        '. An exact location does not prove a current active project.</p>' +
+        table(headers, rows) +
+        '<button id="retained-history-export">Export original projection JSON</button>';
+      view.querySelector('#retained-history-export').onclick = () =>
+        download('original-source-' + mode + '.json', result);
+      view.querySelectorAll('[data-historical-record]').forEach(button => {
+        button.onclick = () => perform(() =>
+          inspectRecord(items[Number(button.dataset.historicalRecord)]));
+      });
+      view.querySelectorAll('[data-historical-entity]').forEach(button => {
+        button.onclick = () => perform(async () => {
+          const entity = items[Number(button.dataset.historicalEntity)];
+          const detail = await api('/api/source-entity-neighborhood?' +
+            new URLSearchParams({kind: form.elements.kind.value,
+              county: form.elements.county.value, entity_key: entity.entity_key}));
+          if (!box.isConnected || activePage !== 'Sources & Collection') return;
+          modal('Original source entity co-occurrences',
+            '<p>Matching a retained source key does not verify common ownership, ' +
+            'identity or active construction.</p><pre>' +
+            esc(JSON.stringify(detail, null, 2)) + '</pre>');
+        });
+      });
+    } catch (error) {
+      if (serial === requestSerial && view.isConnected) view.innerHTML =
+        '<p role="alert">' + esc(error.message) + '</p>';
+    }
+  }
+  form.querySelectorAll('[data-history-mode]').forEach(button => {
+    button.onclick = () => perform(() => load(button.dataset.historyMode));
+  });
+}
+
 // A separate historical commercial read model, never a substitute for native bid authority.
 async function renderLegacyCommercial(box, category) {
   if (!box.isConnected || activePage !== category) return;
