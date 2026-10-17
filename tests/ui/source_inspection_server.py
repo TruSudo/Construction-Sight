@@ -131,6 +131,22 @@ with Session(engine) as session, session.begin():
         gross_value=2500.0, share_rate=0.08,
     )
     store_result_ledger_record(session, dossier_result)
+    # Exactly twenty-six additional historical workflows and outcomes:
+    # enough to demonstrate a second bounded page in both views.
+    # They are deliberately unlinked synthetic history, never new native leads.
+    for index in range(26):
+        extra_package = _package().model_copy(update={
+            "package_id": f"lead-review:phase8:pagination:{index:02d}",
+            "base_candidate_id": f"synthetic:historical-page:{index:02d}",
+        })
+        extra_workflow = create_lead_workflow(package=extra_package)
+        store_lead_review_package(session, extra_package)
+        store_lead_workflow_record(session, extra_workflow)
+        store_result_ledger_record(session, build_result_ledger_record(
+            workflow=extra_workflow,
+            status=ResultLedgerStatus.UNKNOWN,
+            reasons=["Synthetic historical pagination record; no award or payment"],
+        ))
 with Session(engine) as session, session.begin():
     transition_persisted_lead_workflow(
         session, workflow_id=dossier_workflow.workflow_id,
