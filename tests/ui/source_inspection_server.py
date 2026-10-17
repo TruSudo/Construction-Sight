@@ -18,6 +18,7 @@ from constructionsight.storage.database import create_database_engine, initializ
 from constructionsight.storage.domain_store import CeqaStore
 from tests.test_operator_capture_queue import _payload as capture_fixture
 from tests.test_operator_ingestion_inbox import _write_artifacts
+from tests.test_smarts_parcel_review import _change, _environment, _parcel
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--data-dir", type=Path, required=True)
@@ -58,6 +59,9 @@ with Session(engine) as session, session.begin():
         )
     )
 engine.dispose()
+smarts_root, smarts_history, _unused_smarts_database = _environment(args.data_dir / "smarts")
+_change(smarts_root, smarts_history)
+_parcel(database, "parcel:browser:smarts")
 listing, review = _write_artifacts(args.data_dir)
 capture = args.data_dir / "capture.json"
 capture.write_text(json.dumps(capture_fixture()), encoding="utf-8")
@@ -73,6 +77,7 @@ server = make_server(
     snapshot, args.port, args.data_dir / "native", operator_database=database,
     operator_capture_queue=capture, operator_ceqanet_listing=listing,
     operator_ceqanet_review_queue=review,
+    operator_smarts_history=smarts_history,
 )
 print("Phase 8 read-only source fixture", server.server_port, flush=True)
 try:
