@@ -37,6 +37,10 @@ from constructionsight.command_center_investigations import (
     investigation_review_preview,
     investigation_view,
 )
+from constructionsight.command_center_legacy_reconciliation import (
+    enqueue_legacy_reconciliation,
+    preview_legacy_reconciliation,
+)
 from constructionsight.command_center_retained_previews import retained_commercial_preview
 from constructionsight.command_center_sources import (
     SOURCE_INSPECTION_ROUTES,
@@ -506,6 +510,20 @@ def make_server(
                     evidence_id=query.get("id", [None])[0],
                 )
                 body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
+            elif path == "/api/source-reconciliation":
+                from constructionsight.operator_web import _parameters
+
+                params = _parameters(urlsplit(self.path).query, candidate=True)
+                if (
+                    directory is None or params.record_id is None
+                    or params.kind not in ("ceqa", "permit")
+                ):
+                    raise ValueError("select an exact original CEQA or permit source")
+                value = preview_legacy_reconciliation(
+                    directory, operator_database, kind=params.kind,
+                    record_id=params.record_id,
+                )
+                body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
             elif path in SOURCE_INSPECTION_ROUTES:
                 value = source_inspection(
                     operator_database, route=path, query=urlsplit(self.path).query,
@@ -746,6 +764,7 @@ def make_server(
                 "/api/investigation-review",
                 "/api/source-watchlist-action",
                 "/api/source-commercial-preview",
+                "/api/source-reconciliation-queue",
                 "/api/smarts-contacts-bulk",
                 "/api/data-folder",
                 "/api/restore-preview",
@@ -929,6 +948,18 @@ def make_server(
                         result = retained_commercial_preview(
                             operator_database, operation=payload["operation"],
                             data=payload["data"],
+                        )
+                    elif path == "/api/source-reconciliation-queue":
+                        if (
+                            urlsplit(self.path).query
+                            or urlsplit(self.path).fragment
+                            or self.headers.get_all("Host", []) != [host]
+                            or self.headers.get_all("Origin", []) != [f"http://{host}"]
+                            or self.headers.get("Sec-Fetch-Site") == "cross-site"
+                        ):
+                            raise ValueError("exact same-origin source replay is required")
+                        result = enqueue_legacy_reconciliation(
+                            directory, operator_database, payload
                         )
                     elif path == "/api/investigation-review":
                         result = apply_investigation_review(directory, payload)
