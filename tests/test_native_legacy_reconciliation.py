@@ -49,7 +49,9 @@ def test_exact_original_source_replay_is_confirmed_idempotent_and_noncommercial(
                 "expected_source_sha256": preview["original_source"]["source_sha256"],
                 "expected_native_evidence_id": None,
                 "caller_confirmation": True,
-                "review_reason": "Review exact retained CEQA source, without a project identity claim.",
+                "review_reason": (
+                    "Review exact retained CEQA source, without a project identity claim."
+                ),
             }
             assert client.post(
                 "/api/source-reconciliation-queue", json=body
