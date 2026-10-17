@@ -79,7 +79,11 @@ const {spawnSync}=require('child_process');
    const result=spawnSync('python',['tests/ui/seed_investigations.py',process.argv[3]||'/tmp/cs-ui-state',revision],{encoding:'utf8',env:{...process.env,PYTHONPATH:'src'}});
    if(result.status!==0)throw Error('Independent worker failed: '+result.stderr);
   }
+  await page.locator('[data-live-node="'+root.id+'"]').focus();await page.keyboard.press('Enter');
+  await page.click('[data-graph-dossier]');await page.waitForSelector('#export-investigation');
   worker('phase6-background-revision');
+  await page.waitForFunction(()=>document.querySelector('#action-title').textContent.includes('phase6-background-revision'),{},{timeout:20000});
+  await page.click('#action-close');
   const current=await page.evaluate(async()=>fetch('/api/investigation-graph').then(r=>r.json()));
   if(current.cursor<=cursor)throw Error('Pausing graph stopped background investigation');
   if(Number(await page.locator('[data-live-graph]').getAttribute('data-graph-cursor'))!==cursor)throw Error('Paused display silently advanced its snapshot');

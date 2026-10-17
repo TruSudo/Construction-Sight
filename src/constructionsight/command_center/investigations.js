@@ -6,6 +6,29 @@ async function refreshOpenInvestigationDossier(revision){
  if(currentInvestigationIdentity&&$('action-dialog').open&&investigationRevision(revision)!==investigationDossierRevision)
   await openInvestigationDossier(currentInvestigationIdentity,true);
 }
+let investigationDossierPollBusy=false,investigationDossierPollWarning=null;
+async function refreshUnhostedInvestigationDossier(){
+ // The expanded graph replaces the inventory panel. Its display can be paused,
+ // but a separately opened current dossier must still follow the worker.
+ if(investigationDossierPollBusy||!currentInvestigationIdentity||!$('action-dialog').open||
+    document.querySelector('[data-shared-investigations]'))return;
+ const identity=currentInvestigationIdentity;investigationDossierPollBusy=true;
+ try{
+  const revision=await api('/api/investigations?revision=1');
+  if(currentInvestigationIdentity!==identity||!$('action-dialog').open)return;
+  if(!revision.available)throw Error('Investigation store unavailable');
+  await refreshOpenInvestigationDossier(revision);
+  if(investigationDossierPollWarning&&$('warning').textContent===investigationDossierPollWarning){
+   $('warning').hidden=true;$('warning').textContent='';
+  }
+  investigationDossierPollWarning=null;
+ }catch(error){
+  if(currentInvestigationIdentity===identity&&$('action-dialog').open){
+   investigationDossierPollWarning='Investigation dossier refresh disconnected; retained details may be stale. '+String(error.message||error);
+   showError(investigationDossierPollWarning);
+  }
+ }finally{investigationDossierPollBusy=false;}
+}
 function investigationParams(after,extra={}){
  const region=$('county').value,p=new URLSearchParams();
  if(after)p.set('after',after);

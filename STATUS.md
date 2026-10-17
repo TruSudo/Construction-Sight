@@ -9,8 +9,11 @@ Relationship Graph remain the goal. Full unification and functional parity are n
 
 - Latest Phase 8 continuation: published `efc8ba9d703c0ae3d23cdecc7f007b97e502d569`;
   full browser/USGS checks and both complete Python quality gates passed. Local
-  `2131fa1` restores the prior source icon after its replacement measured worse;
-  that subsequent visual-only correction must receive its own comparison check.
+  `2131fa1` restores the prior source icon after its replacement measured worse.
+  Published `f405fd86fe99120215fafba3e1a4134f7bfe72de` passed its full browser,
+  live USGS, structure/font and visual-ratchet checks (`39057067897`); exact
+  pixel parity remains open. Local `f911da1` also closes the graph-hosted current
+  dossier refresh gap, with actual-helper checks passed and browser CI pending.
 - Development branch: `agent/unification-implementation-2026-10-16`, draft PR #234. Latest fully verified Phase 8 application/test source: `efc8ba9d703c0ae3d23cdecc7f007b97e502d569` (full quality gates and browser workflow passed). Phase 7 remains accepted at `3429b14f847163083dfdf32b181bc231d17605c6`.
 - Latest source accepted for Phase 6: `5c03cd80cde497b2dfc0e3533a913000db280812` (anchored historical snapshots, retained-history timeline/comparison, saved layouts, source/date/confidence controls, source grouping, activity highlighting, and bidirectional graph/map navigation). Phase 5 remains pinned to `44e80090219a0ad0938dbec44848233d089bcf2d`.
 - **Phase 7 implementation and regression acceptance is complete** for the controlling directive and currently integrated runtime. The final reconciliation and exact-source results below supersede the older continuation checkpoints. Phase 8 is now in progress; preserve the original interface and all historical assets.
@@ -46,6 +49,14 @@ automatically reconcile them into the canonical native site investigation.
   Native legend spacing improved measured map error; watchlist star fill was
   corrected. Exact approved-reference pixel parity remains open; comparison
   thresholds, masks and the reference asset are unchanged.
+- A current dossier opened from the expanded/paused graph or another workspace
+  without an inventory now follows the same worker revision through the existing
+  five-second UI timer. Display pause does not freeze that current dossier.
+  Closed dialogs stop polling; active inventories retain their existing refresh
+  ownership. Slow polls do not overlap, changed/closed modals reject late replies,
+  and recovery clears only this poll's own stale warning. Actual helper checks
+  pass; the expanded graph/paused-worker browser journey now covers this handoff.
+  Exact-source full browser acceptance of this last change remains pending.
 - Exact-source [Python CI 39056429072](https://github.com/TruSudo/Construction-Sight/actions/runs/39056429072):
   **2,757 passed on Python 3.11 and 2,757 on Python 3.12**, two non-failing upstream
   warnings each; Ruff, strict Mypy, JS syntax and dependency audit passed.
