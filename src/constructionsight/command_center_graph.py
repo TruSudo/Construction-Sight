@@ -304,6 +304,11 @@ def graph_view(
                 evidence = store.get_evidence(evidence_id)
                 if evidence is None:
                     raise ValueError("unknown retained evidence")
+                if evidence.source_family == "retained_input":
+                    from constructionsight.investigation_runtime import InputRef, read_input
+
+                    reference = InputRef.model_validate(evidence.raw_observations)
+                    read_input(directory, reference)
                 return {"available": True, "evidence": evidence.model_dump(mode="json")}
             tip = store.runtime_event_cursor()
             recorded_anchor = (

@@ -16,6 +16,45 @@ Relationship Graph remain the goal. Full unification and functional parity are n
 - Operational checks still open: owner-Zorin/systemd deployment, permissioned live-source background acquisition, and real live cooperating-source acceptance from Phases 3–4.
 - Preserve all original interfaces, historical branches and assurance evidence through Phase 8 acceptance.
 
+## Phase 7 final reconciliation — acceptance candidate, gates pending
+
+The following reconciles the controlling directive's assurance obligations for the
+**currently integrated workflows**. It does not retire historical capabilities,
+reuse an old certificate as current authority, accept the owner's deployment, or
+substitute for Phase 8 feature parity.
+
+Concrete repairs in this candidate:
+- Native bid/royalty operations now reuse private-file database preparation and enable/verify SQLite foreign keys. Symlinked or nonprivate workflow stores fail closed without changing the target file.
+- Native royalty contracts are immutable at the database boundary. Ledger inserts require an existing contract; reads verify exact pinned bid versions, indexed identities, contract values, rates, calculations, entry kinds and original/reversal relationships. Backup/restore applies the same financial read validation without modifying the snapshot.
+- Legacy share-model validation now uses decimal half-even math, matching existing scaled-integer calculation at half-cent boundaries. Legacy fractional inputs remain readable where previously supported; new-write precision guards remain unchanged.
+- Restored the historical final-workflow/result compatibility rule in both the core result service and the authorized apply path. Final outcomes require the corresponding closed workflow, without implicitly granting a workflow transition. Positive correction tests now perform the actual recorded workflow transitions before recording final results.
+- Retained evidence reads/references require the original content hash and agreement between indexed metadata and validated payload. A missing hash is never silently regenerated. New writes revalidate model copies. Inspecting a retained-input evidence record verifies its original bytes through the existing content-addressed input reader.
+
+| Preserved guarantee | Enforced current path | Executable evidence |
+| --- | --- | --- |
+| Native/silent-risk assurance scope and historical defect evidence | Existing exact-tree/source/preflight certification retains its scope; historical certificates and branch evidence remain preserved, not treated as current runtime permission | `test_assurance_certification.py`, `test_assurance_preflight_certification.py`, `test_assurance_source_certification.py`, `test_assurance_reviewed_tree_binding.py` |
+| Source access, source revisions, authorization and terminal access failures | Shared explicit-fact policy, exact review identity, immutable current checklist/registry binding, finite CEQA plan/effect scope, SMARTS failure stops | `test_access_policy.py`, `test_source_verifier.py`, `test_ceqanet_recurring_run.py`, `test_ceqanet_background.py`, acquisition/runtime regressions |
+| Evidence provenance and source authority | Canonical evidence hash, indexed/payload agreement, exact retained input bytes; generic provenance and source claims do not self-verify | `test_provenance_authority.py`, `test_intelligence_store.py`, `test_phase7_assurance_acceptance.py`, `test_unified_assurance_reconciliation.py` |
+| Identity resolution and uncertain cross-source membership | Existing artifact/parcel resolution; candidate-only common location; scoped human association; no automatic identity/commercial authority | `test_artifact_identity_resolution.py`, `test_derived_identity_integrity.py`, `test_investigation_multisource_acceptance.py`, `test_parcel_assurance.py` |
+| Database integrity and transaction boundaries | Governed investigation schema/private connection, native private connection/FK enablement, atomic worker result/follow-up/completion, atomic outcome/head/event and native bid/feedback | `test_schema_governance.py`, `test_database_integrity.py`, `test_investigation_jobs.py`, `test_adversarial_semantic_witnesses.py`, Phase 7 acceptance |
+| Immutable history, duplicate suppression, contradictions and temporal integrity | Existing evidence/event collision guards, immutable bid/contract/ledger rows, durable idempotent jobs, explicit review gaps and retained source-revision journal replay | `test_intelligence_store.py`, `test_investigation_runtime.py`, `test_investigation_assessment.py`, `test_command_center_live_graph.py`, browser graph journey |
+| Recovery and rollback | Retained-input backup identity checks, read-only restore preview, independent worker restart/leases, protected request reservations and revocations outside rollback scope | `test_data_folder.py`, `test_investigation_runtime.py`, `test_investigation_jobs.py`, `test_ceqanet_background.py`, Phase 7 acceptance |
+| Supply-chain and dependency integrity | Existing source-tree/supply-chain checks, pinned packages, strict dependency integrity and vulnerability CI gates; no dependency added | `test_supply_chain.py`, `test_supply_chain_source_tree.py`, complete CI |
+| Financial integrity and authoritative results | Shared exact cents/rate units, decimal half-even model validation, stale-state and finality checks, immutable outcome revisions/head/event, pinned native contract terms and corrective reversals | `test_result_ledger_precision.py`, `test_result_ledger_supersession.py`, `test_result_authority_operator.py`, `test_result_authority_event_integrity.py`, `test_result_authority_apply_authorization.py`, Phase 7 acceptance |
+| Outreach/bid authorization and investigation isolation | Loopback/origin-checked native local writes, separate user-entered commercial records, scope-bound legacy effects/request evidence; no sending or bid submission introduced | `test_bid_request_service.py`, `test_outreach_preview_service.py`, `test_unified_assurance_reconciliation.py`, native browser commercial journeys |
+
+Historical test/evidence reconciliation (all original blobs/branches preserved):
+
+| Missing historical test at the Phase 1 baseline | Disposition |
+| --- | --- |
+| `test_database_integrity.py` (`51eb5a80`) | Restored, extended to actual private investigation connections and native workflow private-file/FK boundary |
+| `test_ceqanet_csv_export.py` (`59978b3c`) | Current `test_ceqanet_csv_contract.py` and `test_ceqanet_csv_live.py` cover exact project/document URLs, scope mismatch, parser/header limits, explicit execution, response/body/URL tampering and offline CLI; operator service tests add exact effect binding |
+| `test_ceqanet_ingestion_inbox.py` (`fd04d786`) | Existing `test_operator_ingestion_inbox.py` retains the original read-only workflow; shared inbox/source/runtime and public-filing regressions prove automatic retained ingestion, canonical state and unchanged source bytes |
+| `test_ceqanet_verified_source_maturity.py` (`a0bbe286`) | Historical dated registry/checklist/plan/audit evidence remains an archival certificate. Current maturity/access-policy/recurring-run/background tests enforce digest identity, reviewed evidence scope, expiry/current-state drift and blocked access; no historical verified label activates a current source |
+| `test_result_ledger_authority.py` (`618b7116`) | Current immutable content-digest/revision/head/event services replace obsolete duplicate authority tables. Existing operator/event/supersession/CAS/rollback tests preserve history and stale-state rejection; this candidate restores the previously missing workflow-finality rule and proves rejection before authority/ledger writes |
+
+Focused acceptance passed: 60 native financial/data-folder/workflow tests, 52 financial/result/public-source regression tests and 48 final evidence/authority tests (overlapping suites, not additive). Ruff, strict Mypy and current full regression/browser/dual-Python CI must pass before changing Phase 7 to implementation complete. Phase 8 parity and the unchanged Phase 3/4 owner-device/live-source acceptance remain open.
+
 ## Phase 7 continuation — explicit facts and immutable access-review identity
 
 - Restored the historical PR #155 access-fact guarantee in the current shared evaluator. All five restriction facts now default to unknown; each must be an actual Boolean. Unknown, numeric and text lookalikes require review. Known login/CAPTCHA/robots/terms/paywall restrictions remain blocking or review-required.
@@ -202,8 +241,7 @@ reachability. File ancestry/imports are not functional proof. No historical asse
   `money.py`, three result-ledger-authority modules and the preliminary bridge.
   Current counterparts and exact gaps are indexed. Five test paths, one patch script,
   25 assurance evidence paths and one closure proof remain branch-retained.
-- Access-basis gap: main accepts nonempty review text; PR #155 binds tri-state facts
-  to immutable review/evidence digests. Unified enforcement remains to be reconciled.
+- Historical access-basis gap is reconciled in the development runtime: explicit restriction facts and immutable review/evidence identities are required; current scope/state checks remain enforced. Main is unchanged.
 - Native money uses Decimal/integer cents; older ledger models retain float fields.
   Complete financial/workflow equivalence remains unproven.
 - Current SQLite connections enforce foreign keys; Phase 7 restored the historical test path and added private-engine reconnection/orphan-insert acceptance.

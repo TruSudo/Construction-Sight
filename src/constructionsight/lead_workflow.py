@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from constructionsight.security_fit import parse_date
+from constructionsight.storage.database import prepare_private_database
 
 STATUSES = (
     "New",
@@ -44,10 +45,20 @@ def now() -> str:
 
 
 def connect(directory: Path) -> sqlite3.Connection:
-    directory.mkdir(mode=0o700, parents=True, exist_ok=True)
-    path = directory / "workflow.sqlite3"
+    path = prepare_private_database(directory / "workflow.sqlite3")
+    before = path.stat()
     db = sqlite3.connect(path, timeout=15)
-    path.chmod(0o600)
+    try:
+        prepare_private_database(path, create=False)
+        after = path.stat()
+        if (before.st_dev, before.st_ino) != (after.st_dev, after.st_ino):
+            raise ValueError("workflow database identity changed while opening")
+        db.execute("PRAGMA foreign_keys=ON")
+        if db.execute("PRAGMA foreign_keys").fetchone() != (1,):
+            raise ValueError("workflow database foreign keys could not be enabled")
+    except BaseException:
+        db.close()
+        raise
     db.row_factory = sqlite3.Row
     db.executescript("""
       CREATE TABLE IF NOT EXISTS runs (

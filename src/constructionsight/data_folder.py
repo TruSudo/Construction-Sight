@@ -135,6 +135,10 @@ def validate_directory(directory: Path, files: dict[str, dict[str, Any]]) -> dic
                 if db.execute("PRAGMA foreign_key_check").fetchall():
                     raise ValueError("SQLite foreign-key integrity failed: " + name)
             sqlite_results[name] = "ok"
+            if Path(name).name == "workflow.sqlite3":
+                from constructionsight.command_center_commercial import validate_workflow_finances
+
+                validate_workflow_finances(path.absolute())
     journal = directory / "evidence.sqlite3"
     journal_result = verify_smarts_journal(journal, read_only=True) if journal.exists() else None
     active = directory / "active.json"

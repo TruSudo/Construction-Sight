@@ -47,6 +47,22 @@ def _json_to_model(payload_json: str, model_type: type[ModelT]) -> ModelT:
     return model_type.model_validate(json.loads(payload_json))
 
 
+def _evidence_from_record(record: IntelligenceEvidenceRecord) -> EvidenceRecord:
+    """Validate retained evidence without regenerating a lost integrity receipt."""
+    payload = json.loads(record.payload_json)
+    if not isinstance(payload, dict) or not payload.get("content_hash"):
+        raise ValueError("retained evidence is missing its content hash")
+    evidence = EvidenceRecord.model_validate(payload)
+    if (
+        evidence.evidence_id != record.evidence_id
+        or evidence.source_name != record.source_name
+        or evidence.record_type != record.record_type
+        or evidence.confidence_contribution != record.confidence_contribution
+    ):
+        raise ValueError("retained evidence indexed fields disagree with payload")
+    return evidence
+
+
 class IntelligenceStore:
     """Persistence repository for intelligence-domain schema objects."""
 
@@ -80,13 +96,14 @@ class IntelligenceStore:
             raise ValueError(f"{label} requires retained evidence references")
         self._flush()
         required = set(evidence_ids)
-        observed = set(
+        records = list(
             self.session.scalars(
-                select(IntelligenceEvidenceRecord.evidence_id).where(
+                select(IntelligenceEvidenceRecord).where(
                     IntelligenceEvidenceRecord.evidence_id.in_(sorted(required))
                 )
             ).all()
         )
+        observed = {_evidence_from_record(record).evidence_id for record in records}
         missing = sorted(required - observed)
         if missing:
             raise ValueError(f"{label} references missing evidence: {missing}")
@@ -189,6 +206,7 @@ class IntelligenceStore:
                     f"evidence ID collision changed retained content: {evidence.evidence_id}"
                 )
             return record
+        EvidenceRecord.model_validate_json(current_payload_json)
         record = IntelligenceEvidenceRecord(
             evidence_id=evidence.evidence_id,
             source_name=evidence.source_name,
@@ -216,7 +234,7 @@ class IntelligenceStore:
             )
         )
         return (
-            _json_to_model(record.payload_json, EvidenceRecord)
+            _evidence_from_record(record)
             if record is not None
             else None
         )
@@ -228,7 +246,7 @@ class IntelligenceStore:
             IntelligenceEvidenceRecord.id.desc()
         )
         records = self.session.scalars(self._apply_limit(statement, limit)).all()
-        return [_json_to_model(record.payload_json, EvidenceRecord) for record in records]
+        return [_evidence_from_record(record) for record in records]
 
     def upsert_entity(self, entity: EntityIdentity) -> IntelligenceEntityRecord:
         """Insert or update an intelligence entity identity."""
