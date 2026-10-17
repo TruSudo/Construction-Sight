@@ -3,7 +3,7 @@ async function openLiveRelationshipGraph(box){
  box.querySelectorAll('[data-shared-investigations]').forEach(h=>h.dispatchEvent(new Event('investigation-dispose')));
  const host=document.createElement('section');host.className='live-graph';host.dataset.liveGraph='true';box.replaceChildren(host);
  host.innerHTML='<div class="graph-toolbar"><strong>Relationship Graph</strong><button data-graph-full>Expand full screen</button><button data-graph-pause>Pause display</button><button data-graph-refresh>Reconnect / refresh</button><button data-graph-back>Entity inventory</button></div>'+
- '<div class="graph-toolbar"><label>Root ID <input data-graph-root aria-label="Graph root ID" placeholder="All retained roots (bounded)" maxlength="255"></label><label>Depth <select data-graph-depth aria-label="Graph relationship depth"><option>1</option><option>2</option><option>3</option></select></label><button data-graph-load>Load retained neighborhood</button><input data-graph-search aria-label="Find graph node" placeholder="Find in this snapshot"><label>Relationships <select data-graph-status-filter aria-label="Graph relationship status"><option value="">All current</option><option value="confirmed">Confirmed assertion</option><option value="possible">Possible</option><option value="conflicting">Conflicting</option><option value="retained_reference">Retained evidence references</option></select></label><button data-graph-fit>Reset view</button></div>'+
+ '<div class="graph-toolbar"><label>Root ID <input data-graph-root aria-label="Graph root ID" placeholder="All retained roots (bounded)" maxlength="255"></label><label>Depth <select data-graph-depth aria-label="Graph relationship depth"><option>1</option><option>2</option><option>3</option></select></label><button data-graph-load>Load retained neighborhood</button><input data-graph-search aria-label="Find graph node" placeholder="Find in this snapshot"><label>Relationships <select data-graph-status-filter aria-label="Graph relationship status"><option value="">All current</option><option value="confirmed">Confirmed assertion</option><option value="possible">Possible</option><option value="conflicting">Conflicting</option><option value="retained_reference">Retained evidence references</option></select></label><button data-graph-fit>Reset view</button><button data-graph-group>Arrange by node type</button></div>'+
  '<div class="graph-toolbar graph-investigation-controls"><label>Source family <select data-graph-source aria-label="Filter graph by retained source family"><option value="">All retained families</option></select></label><label>Record updated since <input type="date" data-graph-since aria-label="Filter graph by retained record date"></label><label>Minimum assertion confidence <input data-graph-confidence type="number" min="0" max="100" step="10" value="0" aria-label="Minimum assertion confidence"></label><label><input type="checkbox" data-graph-collapse-evidence> Collapse evidence nodes</label><button data-graph-clear-filters>Clear filters</button></div>'+
  '<div class="graph-toolbar graph-saved-controls"><label>View name <input data-graph-view-name maxlength="60" aria-label="Name this local graph layout" placeholder="e.g. Riverside permits"></label><button data-graph-save>Save local view</button><label>Saved local views <select data-graph-view-list aria-label="Select saved graph view"><option value="">Select view…</option></select></label><button data-graph-restore>Restore view</button><button data-graph-delete>Delete view</button><span data-graph-storage-status role="status" class="graph-key"></span></div>'+
  '<p class="graph-key">Filters affect display only. Date means retained observation/retrieval or last update, not physical construction. Confidence is a source-backed assertion score, not identity verification. Layouts/filters are stored only in this browser, never as evidence.</p><p data-graph-filter-summary class="graph-key" aria-live="polite"></p>'+
@@ -151,16 +151,53 @@ async function openLiveRelationshipGraph(box){
   const node=snapshot.nodes.find(n=>n.id===id);if(!node)return;selection={id,kind:'node'};
   inspector.innerHTML='<h3>'+esc(node.label)+'</h3><p>'+esc(node.kind)+' · '+esc(node.status)+'</p><code>'+esc(node.id)+'</code><p>Identity independently verified: No. Commercial authority is not granted by this view.</p>'+
    '<button data-graph-expand-node>Expand retained neighborhood</button>'+
-   (node.kind==='investigation'?'<button data-graph-dossier>Open canonical dossier</button>':'')+
+   (node.kind==='investigation'?'<button data-graph-dossier>Open canonical dossier</button><button data-graph-map>Locate source-claimed point on Site Map</button>':'')+
    '<h4>Retained evidence</h4>'+(node.evidence_ids||[]).map((e,i)=>'<button data-graph-evidence="'+i+'">'+esc(e)+'</button>').join('')+'<div data-graph-artifact></div>';
   inspector.querySelector('[data-graph-expand-node]').onclick=()=>{host.querySelector('[data-graph-root]').value=node.id;loadSnapshot();};
   const dossier=inspector.querySelector('[data-graph-dossier]');if(dossier)dossier.onclick=()=>perform(()=>openInvestigationDossier(node.canonical_id||node.id));
+  const mapButton=inspector.querySelector('[data-graph-map]');
+  if(mapButton)mapButton.onclick=()=>perform(async()=>{
+   const id=node.canonical_id||node.id;
+   const investigation=await api('/api/investigations/'+encodeURIComponent(id));
+   if(disposed||!host.isConnected||selection?.id!==node.id)return;
+   const points=(investigation.source_claimed_points||[]).filter(p=>
+    typeof p.latitude==='number'&&typeof p.longitude==='number'&&Number.isFinite(p.latitude)&&
+    Number.isFinite(p.longitude)&&Math.abs(p.latitude)<=85&&Math.abs(p.longitude)<=180);
+   if(!points.length){
+    mapButton.insertAdjacentHTML('afterend','<p role="status">Unmapped investigation: no complete retained source-claimed coordinates. No map location is inferred.</p>');
+    return;
+   }
+   await openWorkspace('Site Map');
+   if(activePage!=='Site Map')return;
+   if(!activeInvestigationMapRows.some(row=>row.investigation_id===id))
+    activeInvestigationMapRows.push({investigation_id:id,
+     title:investigation.investigation?.project_name||id,points});
+   center=[points[0].latitude,points[0].longitude];zoom=14;drawMap();
+  });
   inspector.querySelectorAll('[data-graph-evidence]').forEach(b=>b.onclick=()=>perform(async()=>{
    const evidenceId=node.evidence_ids[Number(b.dataset.graphEvidence)],value=await api('/api/investigation-graph/evidence?id='+encodeURIComponent(evidenceId));
    if(disposed||selection?.id!==node.id)return;
    const artifact=inspector.querySelector('[data-graph-artifact]');if(artifact)artifact.innerHTML='<pre>'+esc(JSON.stringify(value.evidence,null,2))+'</pre>';
   }));
   render();
+ }
+ function arrangeByKind(){
+  if(!snapshot)return;
+  const groups=[...new Set(snapshot.nodes.map(n=>n.kind))].sort();
+  const columns=Math.min(4,Math.max(1,Math.ceil(Math.sqrt(groups.length))));
+  const tileWidth=1000/columns,tileRows=Math.ceil(groups.length/columns),tileHeight=550/tileRows;
+  positions.clear();
+  for(const [index,kind] of groups.entries()){
+   const members=snapshot.nodes.filter(n=>n.kind===kind).sort((a,b)=>a.id.localeCompare(b.id));
+   const countColumns=Math.min(8,Math.max(1,Math.ceil(Math.sqrt(members.length))));
+   const horizontal=Math.max(35,Math.min(110,(tileWidth-20)/countColumns));
+   const vertical=Math.max(20,Math.min(70,(tileHeight-20)/Math.ceil(members.length/countColumns)));
+   const startX=55+(index%columns)*tileWidth,startY=55+Math.floor(index/columns)*tileHeight;
+   members.forEach((n,i)=>positions.set(n.id,{x:startX+(i%countColumns)*horizontal,
+    y:startY+Math.floor(i/countColumns)*vertical}));
+  }
+  pinnedLayout=true;transform={x:0,y:0,k:1};render();
+  viewMessage('Arranged exact retained nodes by recorded kind; no new relationships or inferred clusters.');
  }
  function stateLabel(extra=''){
   connection.textContent=(paused?'Display paused':'Connected')+' · committed revision '+cursor+' · '+(snapshot?.nodes.length||0)+' nodes / '+(snapshot?.edges.length||0)+' edges'+
@@ -234,6 +271,7 @@ async function openLiveRelationshipGraph(box){
  host.querySelector('[data-graph-restore]').onclick=()=>perform(restoreLocalView);
  host.querySelector('[data-graph-delete]').onclick=deleteLocalView;
  host.querySelector('[data-graph-fit]').onclick=()=>{transform={x:0,y:0,k:1};applyTransform();};
+ host.querySelector('[data-graph-group]').onclick=arrangeByKind;
  host.querySelectorAll('[data-graph-zoom]').forEach(b=>b.onclick=()=>{transform.k=Math.max(.2,Math.min(5,transform.k*Number(b.dataset.graphZoom)));applyTransform();});
  canvas.onwheel=e=>{e.preventDefault();transform.k=Math.max(.2,Math.min(5,transform.k*(e.deltaY<0?1.1:1/1.1)));applyTransform();};
  function coords(e){const matrix=canvas.getScreenCTM();if(!matrix)return {x:0,y:0};const p=new DOMPoint(e.clientX,e.clientY).matrixTransform(matrix.inverse());return {x:p.x,y:p.y};}
