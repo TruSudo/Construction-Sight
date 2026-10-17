@@ -18,13 +18,8 @@ from constructionsight.command_center_legacy_lineage import _outcome_revision
 from constructionsight.command_center_legacy_reconciliation import (
     preview_legacy_reconciliation,
 )
-from constructionsight.lead_operator_models import LeadOperatorRecordKind
-from constructionsight.lead_operator_service import (
-    LeadOperatorError,
-    get_lead_operator_record,
-    load_persisted_lead_workflow,
-)
-from constructionsight.lead_review_models import LeadReviewPackage
+from constructionsight.command_center_legacy_review import verified_original_review_package
+from constructionsight.lead_operator_service import LeadOperatorError, load_persisted_lead_workflow
 from constructionsight.operator_results import read_validated_result_history
 from constructionsight.storage.operator_read_store import create_operator_read_engine
 
@@ -63,17 +58,9 @@ def original_workflow_source_attribution(
                 raise ValueError(
                     "original workflow is not bound to this exact source candidate"
                 )
-            review_record = get_lead_operator_record(
-                session, LeadOperatorRecordKind.REVIEW, workflow.package_id
+            review = verified_original_review_package(
+                session, package_id=workflow.package_id, candidate_key=candidate_key
             )
-            if review_record is None:
-                raise ValueError("exact original workflow review evidence is missing")
-            review = LeadReviewPackage.model_validate(review_record.payload)
-            if (
-                review.package_id != workflow.package_id
-                or review.base_candidate_id != candidate_key
-            ):
-                raise ValueError("original review package disagrees with exact source identity")
             transition_history = verified_original_workflow_events(session, workflow)
             validated = read_validated_result_history(session, workflow_id)
             if validated is not None and validated["package_id"] != workflow.package_id:
