@@ -7,12 +7,13 @@ Relationship Graph remain the goal. Full unification and functional parity are n
 
 ## Exact recovery checkpoint
 
-- Latest Phase 8 continuation: published `397adfc6aec1176566410d2c4d420b78ba6c0b95`;
-  full browser/USGS checks and both complete Python quality gates passed. Exact
-  tree of preserved local `918dc9d`: `1762e9547248152ce950d8b7fed95c7d55eb28e1`.
-  The paused-graph/current-dossier handoff is now accepted. Structure/fonts and
-  the unchanged visual ratchet pass; exact pixel parity remains open.
-- Development branch: `agent/unification-implementation-2026-10-16`, draft PR #234. Latest fully verified Phase 8 application/test source: `397adfc6aec1176566410d2c4d420b78ba6c0b95` (full quality gates and browser workflow passed). Phase 7 remains accepted at `3429b14f847163083dfdf32b181bc231d17605c6`.
+- Latest Phase 8 continuation: published `825a7174c402dd7fc2a8aaca539092d41dcda5ea`;
+  exact tree of preserved local `11df9be`:
+  `0c6fa8d2d9ea9b8b814d501474b7fabe37204fa6`. Source-scoped replay, overlap
+  rejection and original attribution-alias parity are implemented. Exact-head
+  browser/USGS and both full Python quality gates pass (2,770 tests each). Structure,
+  fonts and the unchanged visual ratchet pass; exact pixel parity remains open.
+- Development branch: `agent/unification-implementation-2026-10-16`, draft PR #234. Latest fully verified Phase 8 application/test source: `825a7174c402dd7fc2a8aaca539092d41dcda5ea` (full quality gates and browser workflow passed). Phase 7 remains accepted at `3429b14f847163083dfdf32b181bc231d17605c6`.
 - Latest source accepted for Phase 6: `5c03cd80cde497b2dfc0e3533a913000db280812` (anchored historical snapshots, retained-history timeline/comparison, saved layouts, source/date/confidence controls, source grouping, activity highlighting, and bidirectional graph/map navigation). Phase 5 remains pinned to `44e80090219a0ad0938dbec44848233d089bcf2d`.
 - **Phase 7 implementation and regression acceptance is complete** for the controlling directive and currently integrated runtime. The final reconciliation and exact-source results below supersede the older continuation checkpoints. Phase 8 is now in progress; preserve the original interface and all historical assets.
 - Phase 5 native integration is implemented. Exact-source acceptance results are recorded below.
@@ -23,7 +24,7 @@ Relationship Graph remain the goal. Full unification and functional parity are n
 
 ## Phase 8 — IN PROGRESS: native preservation and original-workflow parity
 
-**Current continuation (2026-10-18, acceptance pending):** Sources & Collection
+**Verified continuation (2026-10-18):** Sources & Collection
 now reviews the current filtered CEQA/permit page for shared-investigation replay.
 The bounded plan binds source digests and native evidence state; missing snapshots
 queue with their individual and batch approval audits in one transaction through
@@ -32,27 +33,41 @@ Subsequent pages require review and a final rescan; one page is not a complete
 migration claim. Original records, financial authority and the approved layout
 remain preserved. Nine new tests cover full filtered-scope traversal, strict
 confirmation, stale evidence, concurrent arrival, atomic rollback, restart,
-idempotency, HTTP guards and database separation. Focused tests, Ruff and strict
-Mypy pass locally. The first complete browser run reached independent worker
-completion but exposed a relative-URL error in the new test's audit request;
-the test now uses the explicit fixture origin. Full acceptance of that correction
-is pending.
+idempotency, HTTP guards and database separation. Exact retries retain the
+original approval. An overlapping individual/page approval with a different
+reason fails under the existing queue writer reservation before any batch jobs
+or audits commit; after processing, a fresh review can queue remaining sources.
 
 The original retained source-attribution alias artifact is now passed through
 the native launcher to the same validated registry projection. Its digest and
 application status remain visible; it grants no source access or project identity.
 Sixteen original/native HTTP read contracts compare identically with mixed
 CEQA/permit records. Four new tests also cover retained startup configuration,
-invalid authority, no-follow artifact reads and exact CLI forwarding. All sixteen
-focused alias/source regression tests pass locally; complete gates are pending.
-An overlapping individual/page approval with a different reason now fails under
-the existing queue writer reservation before any batch job/audit commits. Exact
-retries retain the original approval; processing the pending job then permits a
-fresh review of the remaining missing sources. Eleven focused replay tests pass.
-The first local complete suite passed 2,765 tests with two upstream warnings;
-the later alias/overlap changes require their own complete exact-head gates.
+invalid authority, no-follow artifact reads and exact CLI forwarding.
 
-**Verified application/test source:** `397adfc6aec1176566410d2c4d420b78ba6c0b95`.
+- Local checks: eleven replay/HTTP tests, sixteen alias/source tests and sixteen
+  original worker/job tests passed; Ruff over all src/tests, strict Mypy (355
+  modules), JavaScript syntax and diff hygiene passed. The earlier local full
+  suite passed 2,765 tests before the later alias/overlap additions.
+- [Exact-head Python CI 39090275881](https://github.com/TruSudo/Construction-Sight/actions/runs/39090275881):
+  **2,770 passed on Python 3.11** in 317.73s and **2,770 on Python 3.12** in
+  373.93s; two non-failing upstream Typer/Click warnings each. Ruff, strict Mypy
+  (355 source files), JavaScript syntax and dependency integrity/vulnerability
+  audits passed. No known dependency vulnerabilities were reported.
+- [Exact-head browser/USGS 39090275804](https://github.com/TruSudo/Construction-Sight/actions/runs/39090275804)
+  passed, including mixed CEQA/permit page review, independent worker processing,
+  per-job audits, rescan, idle restart, shared dossier/evidence identities and
+  original attribution aliases. Existing graph/map, commercial, backup/restore,
+  **33/33 actions and 33/33 complete contracts** remain passing. Structure/fonts
+  and the visual ratchet pass; exact pixel parity fails and remains open.
+- An additional offline acceptance used the genuine retained July 12 CEQAnet
+  CSV execution (source body SHA-256 `5b1bc503c81d12ed0f00e52539edb437b42ae4c3a539a25e1c82a02b84273163`).
+  Both original filings reached two distinct unmapped/unverified investigations;
+  rescan found zero missing sources, a fresh worker processed zero duplicate
+  jobs, and original database/execution bytes remained unchanged. No source was
+  fetched and no current construction activity or independent identity is proved.
+
+**Verified application/test source:** `825a7174c402dd7fc2a8aaca539092d41dcda5ea`.
 Original operator assets, historical branches, the previous native association-review
 acceptance, and the shared investigation graph remain preserved. The legacy database
 is an explicitly selected, separate source; displaying its records does **not**
@@ -280,18 +295,21 @@ automatically reconcile them into the canonical native site investigation.
 
 **Still open before Phase 8 acceptance / merge proposal:**
 
-1. Verify the current bounded, filtered CEQA/permit replay through all complete
-   gates and the native browser/worker journey, then establish complete retained
-   scope migration/reassessment where authorized. The exact candidate
+1. Establish complete retained scope migration/reassessment on the intended
+   original records, using the now-tested bounded review/worker/rescan handoff.
+   Native acceptance covers mixed-source scope traversal and genuine retained
+   CEQA bytes; no owner-data migration or countywide completeness is claimed.
+   The exact candidate
    lineage and durable replay reason are now accepted, but financial outcome,
    royalty and historical workflow transitions remain **separate original
    records**, not migrated canonical commercial state. Establish those links
    with independent source evidence and explicit review without fabricating
    same-project identity, payment or commercial authority.
-2. Compare the remaining historical original source/report/archive workflows
-   and any original investigation controls against their native equivalents;
-   the original CEQAnet chain-report ZIP pathway is now retained and proven,
-   but no general original-system retirement is authorized.
+2. Complete remaining historical original source/report/archive and investigation
+   control equivalence. The CEQAnet chain-report ZIP pathway is retained and
+   proven; original source-attribution aliases now reach the native registry,
+   with sixteen original/native HTTP read contracts compared directly. This
+   does not certify every historical CLI or authorize original-system retirement.
 3. Close actual approved 1672 × 941 pixel discrepancies without redesigning the UI.
 4. Reconfirm the owner-device Zorin deployment and permissioned real-source
    end-to-end field acceptance left open from Phases 3–4.
