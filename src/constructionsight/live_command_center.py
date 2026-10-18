@@ -407,6 +407,11 @@ def make_server(
                 body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
             elif directory and path == "/api/settings":
                 body, mime = json.dumps(state.settings(directory)).encode(), "application/json"
+            elif directory and path == "/api/investigation-watches":
+                if urlsplit(self.path).query:
+                    raise ValueError("canonical watch list accepts no query parameters")
+                value = investigation_watch.watchlist(directory)
+                body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
             elif directory and path == "/api/investigation-watch":
                 if set(query) != {"investigation_id"} or len(query["investigation_id"]) != 1:
                     raise ValueError("one exact watched investigation selection required")

@@ -186,3 +186,33 @@ def notifications(directory: Path) -> list[dict[str, Any]]:
             "source_claim_only": True,
         })
     return notices
+
+
+def watchlist(directory: Path) -> list[dict[str, Any]]:
+    """Read bounded canonical watches for the existing native Watchlist view."""
+    records = _rows(directory)
+    if len(records) > 100:
+        raise ValueError("canonical investigation watch limit exceeded")
+    output = []
+    for saved in records:
+        identity = saved["investigation_id"]
+        try:
+            current = observation(directory, identity)
+        except (ValueError, OSError, RuntimeError) as exc:
+            output.append({
+                "investigation_id": identity,
+                "available": False,
+                "changed": True,
+                "reason": str(exc)[:200],
+            })
+            continue
+        output.append({
+            "investigation_id": current["investigation_id"],
+            "watched_investigation_id": identity,
+            "available": True,
+            "changed": current["current_digest"] != saved["acknowledged_digest"],
+            "source_claim_only": True,
+            "commercial_authority_granted": False,
+            "county": current["county"],
+        })
+    return output

@@ -55,6 +55,12 @@ def test_watched_investigation_change_notifies_only_own_record_and_survives_rest
                     assert watched.status_code == 200, watched.text
                     assert watched.json()["watched"] is True
                     assert watched.json()["changed"] is False
+                    listing = client.get("/api/investigation-watches")
+                    assert listing.status_code == 200, listing.text
+                    assert len(listing.json()) == 1
+                    assert listing.json()[0]["investigation_id"] == identity
+                    assert listing.json()[0]["changed"] is False
+                    assert client.get("/api/investigation-watches?extra=1").status_code == 409
                     assert client.post(
                         "/api/investigation-watch", json=payload, headers={"Origin": base}
                     ).status_code == 400
@@ -67,6 +73,7 @@ def test_watched_investigation_change_notifies_only_own_record_and_survives_rest
                     assert len(notice) == 1
                     assert notice[0]["source_claim_only"] is True
                     assert notice[0]["read"] is False
+                    assert client.get("/api/investigation-watches").json()[0]["changed"] is True
                     notification_id = notice[0]["id"]
                     assert client.post(
                         "/api/investigation-watch",
@@ -115,6 +122,7 @@ def test_watched_investigation_change_notifies_only_own_record_and_survives_rest
                                 if n.get("investigation_id") == identity]
                     assert not client.get("/api/investigation-watch", params=selected
                                          ).json()["watched"]
+                    assert client.get("/api/investigation-watches").json() == []
         finally:
             server.shutdown()
             server.server_close()
