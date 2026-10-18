@@ -74,6 +74,19 @@ const {chromium}=require('../visual/node_modules/playwright');
    throw Error('Canonical lead handoff bypassed commercial authority');
   await page.click('#preview-canonical-lead');
   await page.waitForFunction(()=>document.querySelector('#canonical-lead-review-result')?.textContent.includes('Already retained for review'),{},{timeout:20000});
+  // A retained workflow must appear in the real Lead Console with a link back
+  // to the same canonical investigation, not a separate SMARTS lead identity.
+  await page.click('#action-close');
+  await page.click('nav button[data-page="Lead Console"]');
+  await page.waitForSelector('[data-canonical-lead-dossier]',{timeout:20000});
+  const consoleText=await page.locator('[data-canonical-lead-workflows]').textContent();
+  if(!consoleText.includes('current source observation')||
+     !consoleText.includes('1–1 of 1 retained canonical lead records'))
+   throw Error('Native lead console lost persisted workflow provenance: '+consoleText);
+  await page.locator('[data-canonical-lead-dossier]').first().click();
+  await page.waitForSelector('#export-investigation');
+  if(!(await page.locator('#action-content').textContent()).includes('Canonical investigation ID:'))
+   throw Error('Original retained lead did not reopen the shared investigation dossier');
   // The native canonical watcher must bind the current committed dossier, not
   // the unrelated commercial lead watchlist or a browser-only state object.
   await page.locator('[data-investigation-watch-action="watch"]').click();

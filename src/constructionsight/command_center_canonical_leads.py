@@ -25,11 +25,11 @@ from constructionsight.intake_models import (
     UniversalIntakeRecord,
 )
 from constructionsight.lead_dedupe_models import LeadFingerprint
-from constructionsight.lead_operator_service import load_persisted_lead_workflow
 from constructionsight.lead_dedupe_service import (
     build_lead_fingerprint,
     check_lead_duplicate,
 )
+from constructionsight.lead_operator_service import load_persisted_lead_workflow
 from constructionsight.lead_workflow_service import create_lead_workflow
 from constructionsight.product_integration_models import ProductIntegrationReport
 from constructionsight.product_integration_service import (
@@ -39,6 +39,7 @@ from constructionsight.product_integration_service import (
 from constructionsight.storage.database import (
     create_private_database_engine,
     managed_session,
+    prepare_private_database,
     session_factory,
 )
 from constructionsight.storage.lead_workflow_orm import (
@@ -180,7 +181,10 @@ def existing_canonical_handoff(
     directory: Path, investigation_id: str,
 ) -> dict[str, Any] | None:
     """Read the original persisted workflow link; canonical identity never guesses by title."""
-    engine = create_operator_read_engine(directory / "investigations.sqlite3")
+    database = prepare_private_database(
+        directory / "investigations.sqlite3", create=False,
+    )
+    engine = create_operator_read_engine(database)
     try:
         with Session(engine, autoflush=False) as session:
             fingerprints = session.scalars(
@@ -327,7 +331,10 @@ def retained_canonical_lead_workflows(
         raise ValueError("canonical lead page limit must be between 1 and 50")
     if type(offset) is not int or not 0 <= offset <= 10000:
         raise ValueError("canonical lead page offset is invalid")
-    engine = create_operator_read_engine(directory / "investigations.sqlite3")
+    database = prepare_private_database(
+        directory / "investigations.sqlite3", create=False,
+    )
+    engine = create_operator_read_engine(database)
     try:
         with Session(engine, autoflush=False) as session:
             predicate = LeadFingerprintRecord.source_key == "canonical_investigation"

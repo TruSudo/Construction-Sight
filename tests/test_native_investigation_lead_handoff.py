@@ -286,3 +286,34 @@ def test_native_lead_console_reads_original_workflow_history_and_source_drift(
         server.shutdown()
         server.server_close()
         thread.join()
+
+
+def test_native_lead_workflow_listing_rejects_substituted_database(
+    tmp_path: Path,
+) -> None:
+    folder = tmp_path / "private"
+    folder.mkdir(mode=0o700)
+    runtime = InvestigationRuntime(folder)
+    try:
+        runtime.enqueue_bytes(_record().model_dump_json(round_trip=True).encode(), "ceqa")
+        assert runtime.process(max_jobs=100)["failed_jobs"] == 0
+    finally:
+        runtime.close()
+    original = folder / "investigations.sqlite3"
+    outside = tmp_path / "outside.sqlite3"
+    original.replace(outside)
+    original.symlink_to(outside)
+    server = make_server(snapshot(), 0, directory=folder)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        with httpx.Client(
+            base_url=f"http://127.0.0.1:{server.server_port}", trust_env=False
+        ) as client:
+            before = outside.read_bytes()
+            assert client.get("/api/investigation-lead-workflows").status_code == 409
+            assert outside.read_bytes() == before
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join()
