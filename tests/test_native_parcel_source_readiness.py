@@ -41,8 +41,14 @@ def test_native_parcel_registry_schema_and_verified_source_evidence_are_exact_an
         ) as client:
             result = client.get("/api/parcel-source-readiness")
             assert result.status_code == 200, result.text
-            assert result.json() == expected
-            assert json.loads(result.content) == expected
+            actual = result.json()
+            # The original coverage service timestamps each fresh assessment.
+            # All evidence, gaps and IDs must match, but generated_at is not
+            # a fixed historical source-observation timestamp.
+            assert actual["county_coverage"].pop("generated_at")
+            expected["county_coverage"].pop("generated_at")
+            assert actual == expected
+            assert json.loads(result.content)["county_coverage"]["generated_at"]
             assert client.get("/api/parcel-source-readiness?source_key=not-allowed"
                               ).status_code == 409
             assert client.get("/api/parcel-source-readiness?source_key="
