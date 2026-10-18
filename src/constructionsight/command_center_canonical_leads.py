@@ -42,18 +42,18 @@ from constructionsight.operator_results import (
     MAX_REVISIONS_PER_WORKFLOW,
     read_validated_result_history,
 )
-from constructionsight.operator_services.result_authority_apply_service import (
-    apply_authorized_authoritative_result,
-)
-from constructionsight.result_ledger_models import ResultLedgerStatus
 from constructionsight.operator_services.lead_workflow_transition_service import (
     apply_authorized_lead_workflow_transition,
+)
+from constructionsight.operator_services.result_authority_apply_service import (
+    apply_authorized_authoritative_result,
 )
 from constructionsight.product_integration_models import ProductIntegrationReport
 from constructionsight.product_integration_service import (
     build_product_integration,
     persist_product_integration,
 )
+from constructionsight.result_ledger_models import ResultLedgerStatus
 from constructionsight.storage.database import (
     create_private_database_engine,
     managed_session,
