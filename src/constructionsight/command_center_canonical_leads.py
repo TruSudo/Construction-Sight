@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -59,7 +59,10 @@ _ARTIFACT_FACTS = {
 }
 
 
-def canonical_lead_preview(directory: Path, investigation_id: str) -> dict[str, Any]:
+def canonical_lead_preview(
+    directory: Path, investigation_id: str, *,
+    original_database: Path | None = None,
+) -> dict[str, Any]:
     """Review one current source anchor, never guessed cross-source project facts."""
     if not isinstance(investigation_id, str) or not 1 <= len(investigation_id) <= 255:
         raise ValueError("one exact canonical investigation required")
@@ -156,9 +159,19 @@ def canonical_lead_preview(directory: Path, investigation_id: str) -> dict[str, 
     if report.workflow.status.value not in {"hold", "monitor", "review"}:
         raise ValueError("source claims cannot enter an actionable workflow")
     existing = existing_canonical_handoff(directory, investigation_id)
+    resolved_site_key = report.site_resolution.primary_site_key
+    collisions = canonical_lead_collisions(
+        directory, source_family=evidence["source_family"],
+        source_record_id=anchor["source_record_id"],
+        resolved_site_key=resolved_site_key,
+        canonical_investigation_id=investigation_id,
+        original_database=original_database,
+    )
     return {
         "schema_version": "constructionsight.canonical-lead-review/v1",
         "existing_native_handoff": existing,
+        "existing_source_or_site_matches": collisions,
+        "can_retain_review_candidate": existing is None and not collisions["matches"],
         "canonical_investigation_id": investigation_id,
         "source_entity_id": anchor["source_id"],
         "current_evidence_id": evidence["evidence_id"],
@@ -220,7 +233,8 @@ def existing_canonical_handoff(
 
 
 def retain_reviewed_canonical_candidate(
-    directory: Path, payload: dict[str, Any],
+    directory: Path, payload: dict[str, Any], *,
+    original_database: Path | None = None,
 ) -> dict[str, Any]:
     """Persist the original governed lead stages atomically after explicit review.
 
@@ -252,7 +266,9 @@ def retain_reviewed_canonical_candidate(
             # The worker and every duplicate reviewer share this single private
             # DB, so lock it before inspecting the current retained evidence.
             session.connection().exec_driver_sql("BEGIN IMMEDIATE")
-            reviewed = canonical_lead_preview(directory, identity)
+            reviewed = canonical_lead_preview(
+                directory, identity, original_database=original_database,
+            )
             if (
                 reviewed["current_evidence_id"] != payload["expected_evidence_id"]
                 or reviewed["current_evidence_sha256"]
@@ -262,6 +278,28 @@ def retain_reviewed_canonical_candidate(
                 raise ValueError("evidence changed; repeat canonical lead review")
             if reviewed["existing_native_handoff"] is not None:
                 raise ValueError("canonical investigation already has a retained lead handoff")
+            # Query in the same locked writer transaction so another local
+            # candidate cannot race the exact source/site comparison.
+            source_identity = investigation_view(
+                directory, investigation_id=identity,
+            )["source_membership"]
+            anchors = [m for m in source_identity if m["membership_basis"] == "source_anchor"]
+            if len(anchors) != 1:
+                raise ValueError("canonical source anchor changed; repeat lead review")
+            current_product = ProductIntegrationReport.model_validate(
+                reviewed["original_product_integration"]
+            )
+            local_matches = _fingerprint_matches(
+                session, source_family=anchors[0]["source_family"],
+                source_record_id=anchors[0]["source_record_id"],
+                resolved_site_key=current_product.site_resolution.primary_site_key,
+                exclude_canonical=identity, store_name="native",
+            )
+            if local_matches or reviewed["existing_source_or_site_matches"]["matches"]:
+                raise ValueError(
+                    "existing original or canonical lead matches exact source/site; "
+                    "review and reconcile before creating another commercial candidate"
+                )
             rows = session.scalars(select(LeadFingerprintRecord).limit(5001)).all()
             if len(rows) > 5000:
                 raise ValueError("persisted duplicate scan exceeds review bound")
@@ -454,3 +492,115 @@ def retained_canonical_lead_workflows(
             }
     finally:
         engine.dispose()
+
+
+def _fingerprint_matches(
+    session: Session, *, source_family: str, source_record_id: str,
+    resolved_site_key: str | None, exclude_canonical: str,
+    store_name: str,
+) -> list[dict[str, str]]:
+    """Compare original indexed identities, not names, scores or fuzzy titles."""
+    same_source = (
+        (LeadFingerprintRecord.source_key == source_family)
+        & (LeadFingerprintRecord.source_record_id == source_record_id)
+    )
+    predicate = (
+        or_(same_source, LeadFingerprintRecord.site_key == resolved_site_key)
+        if resolved_site_key else same_source
+    )
+    rows = session.scalars(
+        select(LeadFingerprintRecord).where(predicate)
+        .order_by(LeadFingerprintRecord.id).limit(101)
+    ).all()
+    if len(rows) > 100:
+        raise ValueError("existing source/site lead matches exceed bounded review limit")
+    results: list[dict[str, str]] = []
+    for row in rows:
+        # Validate the stored fingerprint; forged index fields cannot certify
+        # a missing/false match, and must not silently allow another lead.
+        fingerprint = LeadFingerprint.model_validate(json.loads(row.payload_json))
+        if (
+            fingerprint.fingerprint_key != row.fingerprint_key
+            or fingerprint.source_key != row.source_key
+            or fingerprint.source_record_id != row.source_record_id
+            or fingerprint.site_key != row.site_key
+        ):
+            raise ValueError("persisted lead fingerprint index and payload disagree")
+        if (
+            store_name == "native"
+            and fingerprint.source_key == "canonical_investigation"
+            and fingerprint.source_record_id == exclude_canonical
+        ):
+            continue
+        exact_source = (
+            fingerprint.source_key == source_family
+            and fingerprint.source_record_id == source_record_id
+        )
+        same_site = (
+            resolved_site_key is not None
+            and fingerprint.site_key == resolved_site_key
+        )
+        if not exact_source and not same_site:
+            raise ValueError("source/site match index disagrees with payload")
+        results.append({
+            "store": store_name,
+            "fingerprint_key": fingerprint.fingerprint_key,
+            "match_basis": (
+                "exact_source_family_and_record" if exact_source
+                else "same_resolved_site_requires_identity_review"
+            ),
+            "existing_base_candidate_id": fingerprint.base_candidate_id,
+        })
+    return results
+
+
+def canonical_lead_collisions(
+    directory: Path, *, source_family: str, source_record_id: str,
+    resolved_site_key: str | None, canonical_investigation_id: str,
+    original_database: Path | None,
+) -> dict[str, Any]:
+    """Inspect original and native lead identity indexes, never infer title matches.
+
+    An unconfigured original DB cannot be declared duplicate-free. A configured
+    original DB is inspected read-only and must be physically separate.
+    """
+    canonical_db = prepare_private_database(
+        directory / "investigations.sqlite3", create=False,
+    )
+    engine = create_operator_read_engine(canonical_db)
+    try:
+        with Session(engine, autoflush=False) as session:
+            local = _fingerprint_matches(
+                session, source_family=source_family,
+                source_record_id=source_record_id,
+                resolved_site_key=resolved_site_key,
+                exclude_canonical=canonical_investigation_id, store_name="native",
+            )
+    finally:
+        engine.dispose()
+    external: list[dict[str, str]] = []
+    if original_database is not None:
+        if original_database.is_symlink() or not original_database.is_file():
+            raise ValueError("original lead workflow database must be an existing regular file")
+        if original_database.samefile(canonical_db):
+            raise ValueError("original lead database must remain separate from canonical store")
+        engine = create_operator_read_engine(original_database)
+        try:
+            with Session(engine, autoflush=False) as session:
+                external = _fingerprint_matches(
+                    session, source_family=source_family,
+                    source_record_id=source_record_id,
+                    resolved_site_key=resolved_site_key,
+                    exclude_canonical=canonical_investigation_id,
+                    store_name="original",
+                )
+        finally:
+            engine.dispose()
+    return {
+        "original_store_scanned": original_database is not None,
+        "native_store_scanned": True,
+        "matches": [*local, *external],
+        "review_required": bool(local or external),
+        "identity_independently_verified": False,
+        "commercial_authority_granted": False,
+    }

@@ -165,6 +165,10 @@ async function openInvestigationDossier(identity,refresh=false){
      '<p>Already retained for review: workflow '+esc(result.existing_native_handoff.workflow_id)+
      ', status '+esc(result.existing_native_handoff.workflow_status)+
      '. No second candidate will be created.</p>':
+     !result.can_retain_review_candidate?
+     '<p role="alert">Existing retained lead with matching exact source or reviewed site.'+
+     ' No duplicate candidate will be created. Review its original history first.</p>'+
+     '<pre>'+esc(JSON.stringify(result.existing_source_or_site_matches,null,2))+'</pre>':
      '<label>Reason for keeping this candidate under human review '+
      '<textarea id="canonical-lead-review-reason" maxlength="2000"></textarea></label>'+
      '<label><input type="checkbox" id="canonical-lead-review-confirm"> '+

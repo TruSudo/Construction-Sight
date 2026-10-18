@@ -708,7 +708,10 @@ def make_server(
                     or len(query["investigation_id"]) != 1
                 ):
                     raise ValueError("select one canonical investigation for lead review")
-                value = canonical_lead_preview(directory, query["investigation_id"][0])
+                value = canonical_lead_preview(
+                    directory, query["investigation_id"][0],
+                    original_database=operator_database,
+                )
                 body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
             elif path == "/api/investigation-review":
                 choices = query.get("relationship", [])
@@ -1107,7 +1110,9 @@ def make_server(
                             or self.headers.get("Sec-Fetch-Site") == "cross-site"
                         ):
                             raise ValueError("exact same-origin lead review handoff required")
-                        result = retain_reviewed_canonical_candidate(directory, payload)
+                        result = retain_reviewed_canonical_candidate(
+                            directory, payload, original_database=operator_database,
+                        )
                     elif path == "/api/investigation-watch":
                         if (
                             urlsplit(self.path).query

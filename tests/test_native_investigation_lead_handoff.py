@@ -351,3 +351,106 @@ def test_native_console_uninitialized_store_reports_unavailable_without_creating
         server.shutdown()
         server.server_close()
         thread.join()
+
+
+def test_canonical_handoff_rejects_same_source_original_fingerprint(
+    tmp_path: Path,
+) -> None:
+    """Exact original source identity blocks parallel commercial candidate creation."""
+    from sqlalchemy import func, select
+
+    from constructionsight.lead_dedupe_service import build_lead_fingerprint
+    from constructionsight.product_integration_models import ProductIntegrationReport
+    from constructionsight.storage.database import (
+        create_private_database_engine,
+        managed_session,
+        session_factory,
+    )
+    from constructionsight.storage.lead_workflow_orm import (
+        LeadFingerprintRecord, LeadWorkflowRecordRow,
+    )
+    from constructionsight.storage.lead_workflow_store import store_lead_fingerprint
+
+    folder = tmp_path / "private"
+    folder.mkdir(mode=0o700)
+    runtime = InvestigationRuntime(folder)
+    try:
+        runtime.enqueue_bytes(_record().model_dump_json(round_trip=True).encode(), "ceqa")
+        assert runtime.process(max_jobs=100)["failed_jobs"] == 0
+    finally:
+        runtime.close()
+    server = make_server(snapshot(), 0, directory=folder)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        base = f"http://127.0.0.1:{server.server_port}"
+        with httpx.Client(base_url=base, trust_env=False) as client:
+            identity = client.get("/api/investigations").json()["rows"][0]["investigation_id"]
+            preview = client.get(
+                "/api/investigation-lead-preview", params={"investigation_id": identity}
+            ).json()
+            assert preview["can_retain_review_candidate"] is True
+            dossier = client.get("/api/investigations/" + identity).json()
+            anchor = next(
+                m for m in dossier["source_membership"]
+                if m["membership_basis"] == "source_anchor"
+            )
+            report = ProductIntegrationReport.model_validate(
+                preview["original_product_integration"]
+            )
+            original = build_lead_fingerprint(
+                package=report.review_package,
+                site_key=None,
+                source_key=anchor["source_family"],
+                source_record_id=anchor["source_record_id"],
+            )
+            engine = create_private_database_engine(
+                folder / "investigations.sqlite3", create=False,
+            )
+            try:
+                with managed_session(session_factory(engine)) as session:
+                    store_lead_fingerprint(session, original)
+            finally:
+                engine.dispose()
+            collision = client.get(
+                "/api/investigation-lead-preview", params={"investigation_id": identity}
+            )
+            assert collision.status_code == 200
+            found = collision.json()
+            assert found["can_retain_review_candidate"] is False
+            assert found["existing_source_or_site_matches"]["review_required"] is True
+            assert found["existing_source_or_site_matches"]["matches"][0]["match_basis"] == (
+                "exact_source_family_and_record"
+            )
+            attempt = client.post(
+                "/api/investigation-lead-handoff",
+                json={
+                    "investigation_id": identity,
+                    "expected_evidence_id": found["current_evidence_id"],
+                    "expected_evidence_sha256": found["current_evidence_sha256"],
+                    "expected_event_anchor": found["event_anchor"],
+                    "reason": "Should not create a second lead",
+                    "caller_confirmation": True,
+                },
+                headers={"Origin": base},
+            )
+            assert attempt.status_code == 400
+            assert client.get("/api/investigation-lead-workflows").json()["total"] == 0
+            engine = create_private_database_engine(
+                folder / "investigations.sqlite3", create=False,
+            )
+            try:
+                with managed_session(session_factory(engine)) as session:
+                    assert session.scalar(
+                        select(func.count()).select_from(LeadFingerprintRecord)
+                    ) == 1
+                    assert session.scalar(
+                        select(func.count()).select_from(LeadWorkflowRecordRow)
+                    ) == 0
+            finally:
+                engine.dispose()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join()
+
