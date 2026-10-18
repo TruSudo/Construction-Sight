@@ -35,10 +35,10 @@ from constructionsight.lead_dedupe_service import (
 from constructionsight.lead_operator_service import load_persisted_lead_workflow
 from constructionsight.lead_workflow_models import LeadWorkflowStatus
 from constructionsight.lead_workflow_rules import LEAD_WORKFLOW_TRANSITION_RULES
+from constructionsight.lead_workflow_service import create_lead_workflow
 from constructionsight.operator_services.lead_workflow_transition_service import (
     apply_authorized_lead_workflow_transition,
 )
-from constructionsight.lead_workflow_service import create_lead_workflow
 from constructionsight.product_integration_models import ProductIntegrationReport
 from constructionsight.product_integration_service import (
     build_product_integration,
