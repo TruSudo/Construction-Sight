@@ -51,7 +51,7 @@ def parcel_source_readiness_snapshot() -> dict[str, Any]:
         ],
         "schemas": {
             source.source_key: preview_schema_for_source_key(source.source_key).model_dump(
-                mode="json"
+                mode="json", exclude={"created_at"}
             )
             for source in sources
         },
