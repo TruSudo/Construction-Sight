@@ -27,6 +27,7 @@ from constructionsight.operator_dashboard import (
 from constructionsight.operator_entity_index import build_entity_index
 from constructionsight.operator_parcel_candidates import inspect_parcel_candidates
 from constructionsight.operator_results import build_result_ledger_snapshot
+from constructionsight.operator_source_aliases import LoadedSourceAttributionAliases
 from constructionsight.operator_source_candidate import (
     SourceRecordNotFound,
     build_source_candidate_preview,
@@ -86,6 +87,7 @@ def source_inspection(
     ceqanet_review_queue: Path | None = None,
     smarts_journal: Path | None = None,
     smarts_history: Path | None = None,
+    source_aliases: LoadedSourceAttributionAliases | None = None,
 ) -> dict[str, Any]:
     """Return existing governed operator projections without writing or acquiring data."""
 
@@ -148,7 +150,9 @@ def source_inspection(
     try:
         with Session(engine, autoflush=False) as session:
             if route == "/api/source-registry":
-                result: dict[str, Any] = build_operator_source_registry(session).model_dump(
+                result: dict[str, Any] = build_operator_source_registry(
+                    session, source_aliases=source_aliases,
+                ).model_dump(
                     mode="json"
                 )
             elif route == "/api/source-revision":

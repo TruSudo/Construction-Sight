@@ -23,6 +23,8 @@ const {resolve} = require('node:path');
     const initial = await area.textContent();
     if (!initial.includes('Local source revisions') ||
         !initial.includes('Source-specific watchlist') ||
+        !initial.includes('Original source attribution aliases: 1 retained mappings · applied: yes') ||
+        !initial.includes('Synthetic retained portal') ||
         !initial.includes('Synthetic retained source observation')) {
       throw Error('Native source registry/revision/queue parity did not render');
     }
@@ -471,8 +473,8 @@ const {resolve} = require('node:path');
       throw Error('Worker restart duplicated work or changed original source data');
     }
     for (const job of batchReceipt.jobs) {
-      const completed = await page.request.get('/api/source-reconciliation-audit?' +
-        new URLSearchParams({job: job.job_id}));
+      const completed = await page.request.get(new URL('/api/source-reconciliation-audit?' +
+        new URLSearchParams({job: job.job_id}), process.argv[2]).href);
       const completedAudit = await completed.json();
       if (completedAudit.job_status !== 'completed' ||
           completedAudit.commercial_authority_granted !== false) {

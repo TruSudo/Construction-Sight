@@ -32,10 +32,12 @@ from constructionsight.storage.lead_workflow_store import (
     store_lead_workflow_record,
     store_result_ledger_record,
 )
+from constructionsight.storage.source_registry import SourceRegistryStore
 from tests.test_bid_proposal_service import _package
 from tests.test_ceqanet_operator_export import _chain_report
 from tests.test_operator_capture_queue import _payload as capture_fixture
 from tests.test_operator_ingestion_inbox import _write_artifacts
+from tests.test_operator_source_registry import _source
 from tests.test_smarts_parcel_review import _change, _environment, _parcel
 
 parser = argparse.ArgumentParser()
@@ -47,6 +49,9 @@ database = args.data_dir / "operator-source.sqlite3"
 engine = create_database_engine(f"sqlite:///{database}")
 initialize_database(engine)
 with Session(engine) as session, session.begin():
+    SourceRegistryStore(session).upsert_source(_source(
+        "Synthetic retained portal", county="Riverside",
+    ))
     source_candidate_id = "source-candidate:" + hashlib.sha256(
         json.dumps(
             ["ceqa", "phase8:browser:source"],
@@ -182,6 +187,17 @@ capture = args.data_dir / "capture.json"
 capture.write_text(json.dumps(capture_fixture()), encoding="utf-8")
 chain = args.data_dir / "ceqanet-chain-report.json"
 chain.write_text(json.dumps(_chain_report()), encoding="utf-8")
+aliases = args.data_dir / "source-attribution-aliases.json"
+aliases.write_text(json.dumps({
+    "schema_version": "constructionsight.source_attribution_aliases.v1",
+    "mapping_count": 1, "network_executed": False, "persistence_mutated": False,
+    "mappings": [{
+        "alias_source_name": "Synthetic Phase 8 retained fixture",
+        "canonical_source_name": "Synthetic retained portal",
+        "reason": "Exact synthetic source-name attribution for native parity acceptance.",
+        "evidence_refs": ["synthetic:phase8:registry-attribution"],
+    }],
+}), encoding="utf-8")
 snapshot = {
     "rows": [],
     "captured_at": "2026-10-17T09:00:00+00:00",
@@ -196,6 +212,7 @@ server = make_server(
     operator_ceqanet_review_queue=review,
     operator_smarts_history=smarts_history,
     operator_ceqanet_chain_report=chain,
+    operator_source_attribution_aliases=aliases,
 )
 print("Phase 8 read-only source fixture", server.server_port, flush=True)
 try:

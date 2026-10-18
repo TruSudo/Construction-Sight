@@ -45,6 +45,11 @@ async function renderRetainedSources(box) {
         esc(r.adapter_status),
         esc(r.attributed_records_in_scan)
       ])) +
+    '<p>Original source attribution aliases: ' +
+    (registry.source_aliases_configured ? esc(registry.source_alias_mapping_count) +
+      ' retained mappings · applied: ' + (registry.source_aliases_applied ? 'yes' : 'no') +
+      ' · artifact SHA-256: <code>' + esc(registry.source_alias_artifact_sha256) + '</code>' :
+      'not configured') + '. Source-name attribution does not verify project identity or access authority.</p>' +
     '<p class="source-caution">' + esc((registry.limitations || []).join(' ')) + '</p>' +
     '<h3>Local source revisions</h3><p>' + esc(revision.meaning) +
     ' · Digest: <code>' + esc(revision.revision_identity) + '</code></p>' +

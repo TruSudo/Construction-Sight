@@ -80,6 +80,7 @@ from constructionsight.lead_workflow import (
     run_history,
     save_feedback,
 )
+from constructionsight.operator_source_aliases import load_source_attribution_aliases
 from constructionsight.parcel_use_enrichment import load_claims
 from constructionsight.security_fit import WEIGHTS_PATH, load_weights, rank_leads
 from constructionsight.smarts_active import collect_active
@@ -242,6 +243,7 @@ def make_server(
     operator_smarts_journal: Path | None = None,
     operator_smarts_history: Path | None = None,
     operator_ceqanet_chain_report: Path | None = None,
+    operator_source_attribution_aliases: Path | None = None,
 ) -> ThreadingHTTPServer:
     if parity and (not snapshot.get("demo") or directory is not None):
         raise ValueError("Mockup parity requires an isolated Demo fixture")
@@ -257,9 +259,14 @@ def make_server(
             operator_capture_queue, operator_ceqanet_listing,
             operator_ceqanet_review_queue, operator_smarts_journal,
             operator_smarts_history, operator_ceqanet_chain_report,
+            operator_source_attribution_aliases,
         )
     ):
         raise ValueError("retained source artifacts require an existing operator database")
+    source_aliases = (
+        load_source_attribution_aliases(operator_source_attribution_aliases)
+        if operator_source_attribution_aliases is not None else None
+    )
     startup_directory = startup_directory or directory
     if directory:
         directory = data_folder.resolve_folder(directory)
@@ -631,6 +638,7 @@ def make_server(
                     ceqanet_review_queue=operator_ceqanet_review_queue,
                     smarts_journal=operator_smarts_journal,
                     smarts_history=operator_smarts_history,
+                    source_aliases=source_aliases,
                 )
                 body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
             elif path == "/api/investigation-review":
@@ -1222,6 +1230,10 @@ def main(argv: list[str] | None = None) -> int:
         help="Existing legacy operator SQLite database for read-only source inspection",
     )
     parser.add_argument(
+        "--operator-source-attribution-aliases", type=Path,
+        help="Existing validated original source-name attribution aliases, read-only",
+    )
+    parser.add_argument(
         "--operator-capture-queue", type=Path,
         help="Exact locally retained CEQA capture-queue artifact, read-only",
     )
@@ -1310,6 +1322,7 @@ def main(argv: list[str] | None = None) -> int:
             parity=args.mockup_parity,
             startup_directory=startup_directory,
             operator_database=args.operator_database,
+            operator_source_attribution_aliases=args.operator_source_attribution_aliases,
             operator_capture_queue=args.operator_capture_queue,
             operator_ceqanet_listing=args.operator_ceqanet_listing,
             operator_ceqanet_review_queue=args.operator_ceqanet_review_queue,

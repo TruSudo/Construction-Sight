@@ -33,7 +33,18 @@ migration claim. Original records, financial authority and the approved layout
 remain preserved. Eight new tests cover full filtered-scope traversal, strict
 confirmation, stale evidence, concurrent arrival, atomic rollback, restart,
 idempotency, HTTP guards and database separation. Focused tests, Ruff and strict
-Mypy pass locally; complete gates and the extended browser journey are pending.
+Mypy pass locally. The first complete browser run reached independent worker
+completion but exposed a relative-URL error in the new test's audit request;
+the test now uses the explicit fixture origin. Full acceptance of that correction
+is pending.
+
+The original retained source-attribution alias artifact is now passed through
+the native launcher to the same validated registry projection. Its digest and
+application status remain visible; it grants no source access or project identity.
+Sixteen original/native HTTP read contracts compare identically with mixed
+CEQA/permit records. Four new tests also cover retained startup configuration,
+invalid authority, no-follow artifact reads and exact CLI forwarding. All sixteen
+focused alias/source regression tests pass locally; complete gates are pending.
 
 **Verified application/test source:** `397adfc6aec1176566410d2c4d420b78ba6c0b95`.
 Original operator assets, historical branches, the previous native association-review
