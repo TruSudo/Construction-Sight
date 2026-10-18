@@ -77,6 +77,8 @@ def initialize(directory: Path) -> None:
           CREATE TABLE IF NOT EXISTS cc_events(
             id INTEGER PRIMARY KEY,key TEXT NOT NULL,at TEXT NOT NULL,kind TEXT NOT NULL,data TEXT);
           CREATE TABLE IF NOT EXISTS cc_reads(id TEXT PRIMARY KEY);
+          CREATE TABLE IF NOT EXISTS cc_investigation_watches(
+            investigation_id TEXT PRIMARY KEY, acknowledged_digest TEXT NOT NULL);
           CREATE TABLE IF NOT EXISTS cc_photos(
             key TEXT PRIMARY KEY,data BLOB,mime TEXT,source TEXT,at TEXT);
           CREATE TABLE IF NOT EXISTS outreach_queue(source_key TEXT PRIMARY KEY,added_at TEXT);

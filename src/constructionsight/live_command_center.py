@@ -32,6 +32,11 @@ from constructionsight import (
 from constructionsight import command_center_commercial as commercial
 from constructionsight import command_center_state as state
 from constructionsight.command_center_graph import graph_view
+from constructionsight.command_center_investigation_watch import (
+    action as investigation_watch_action,
+    inspect as investigation_watch_inspection,
+    notifications as investigation_watch_notifications,
+)
 from constructionsight.command_center_investigations import (
     apply_investigation_review,
     investigation_review_preview,
@@ -406,6 +411,11 @@ def make_server(
                 body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
             elif directory and path == "/api/settings":
                 body, mime = json.dumps(state.settings(directory)).encode(), "application/json"
+            elif directory and path == "/api/investigation-watch":
+                if set(query) != {"investigation_id"} or len(query["investigation_id"]) != 1:
+                    raise ValueError("one exact watched investigation selection required")
+                value = investigation_watch_inspection(directory, query["investigation_id"][0])
+                body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
             elif directory and path == "/api/notifications":
                 try:
                     source_notices = retained_watch_notifications(operator_database)
@@ -415,6 +425,7 @@ def make_server(
                         "message": "Retained source watches are unavailable; "
                         "open Sources & Collection to review the configured source store.",
                     }]
+                source_notices += investigation_watch_notifications(directory)
                 body, mime = (
                     json.dumps(state.notifications(
                         directory, current()["rows"], source_notices=source_notices,
@@ -902,6 +913,7 @@ def make_server(
                 "/api/royalty-entry",
                 "/api/investigation-review",
                 "/api/source-watchlist-action",
+                "/api/investigation-watch",
                 "/api/source-commercial-preview",
                 "/api/source-reconciliation-queue",
                 "/api/source-reconciliation-scope-queue",
@@ -1059,6 +1071,17 @@ def make_server(
                                 target = Path(result["directory"])
                                 data_folder.point_startup(startup_directory, target)
                                 directory = target
+                    elif path == "/api/investigation-watch":
+                        if (
+                            urlsplit(self.path).query
+                            or urlsplit(self.path).fragment
+                            or set(payload) != {"action", "investigation_id", "expected_digest"}
+                            or self.headers.get_all("Host", []) != [host]
+                            or self.headers.get_all("Origin", []) != [f"http://{host}"]
+                            or self.headers.get("Sec-Fetch-Site") == "cross-site"
+                        ):
+                            raise ValueError("exact same-origin canonical watch request required")
+                        result = investigation_watch_action(directory, payload)
                     elif path == "/api/source-watchlist-action":
                         if (
                             urlsplit(self.path).query

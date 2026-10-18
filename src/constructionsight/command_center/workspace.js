@@ -36,8 +36,12 @@ async function openNotifications(){
  const openingTicket=modalTicket;
  const items=data.read_only?[]:(await api('/api/notifications')).filter(noticeScope);
  if(openingTicket!==modalTicket)return;
- modal('Notifications',`<button id="mark-read" ${data.read_only?'disabled':''}>Mark all as read</button>`+items.map((n,i)=>`<p class="notice ${n.read?'read':''}">${n.record_kind?`<button data-source-notice="${i}">${esc(n.message)}</button>`:n.source_key?`<button data-open="${esc(n.source_key)}">${esc(n.message)}</button>`:esc(n.message)} <small>${n.read?'Read':'Unread'}</small></p>`).join('')+(!items.length?'<p>No new leads, due reminders, failed runs or unreviewed source changes.</p>':''));
+ modal('Notifications',`<button id="mark-read" ${data.read_only?'disabled':''}>Mark all as read</button>`+items.map((n,i)=>`<p class="notice ${n.read?'read':''}">${n.investigation_id?`<button data-investigation-notice="${i}">${esc(n.message)}</button>`:n.record_kind?`<button data-source-notice="${i}">${esc(n.message)}</button>`:n.source_key?`<button data-open="${esc(n.source_key)}">${esc(n.message)}</button>`:esc(n.message)} <small>${n.read?'Read':'Unread'}</small></p>`).join('')+(!items.length?'<p>No new leads, due reminders, failed runs or unreviewed source changes.</p>':''));
  const ticket=modalTicket;
+ document.querySelectorAll('[data-investigation-notice]').forEach(button=>{
+  button.onclick=()=>perform(()=>openInvestigationDossier(
+   items[Number(button.dataset.investigationNotice)].investigation_id));
+ });
  document.querySelectorAll('[data-source-notice]').forEach(button=>{
   button.onclick=()=>perform(()=>openRetainedSourceNotice(items[Number(button.dataset.sourceNotice)]));
  });
@@ -70,7 +74,11 @@ function openLayers(){modal('Map layers',`<div class="action-list"><label>Basema
 const filterHome=$('lead-filters').parentNode,mapHome=$('map').parentNode;
 async function openInvestigationDossier(identity,refresh=false){
  const ticket=++modalTicket;
- const dossier=await api('/api/investigations/'+encodeURIComponent(identity));
+ const [dossier,watch]=await Promise.all([
+  api('/api/investigations/'+encodeURIComponent(identity)),
+  api('/api/investigation-watch?'+new URLSearchParams({investigation_id:identity}))
+   .catch(error=>({error:error.message}))
+ ]);
  if(ticket!==modalTicket||refresh&&(!$('action-dialog').open||currentInvestigationIdentity!==identity))return;
  currentInvestigationIdentity=identity;investigationDossierRevision=investigationRevision(dossier);
  const scroll=refresh?$('action-content').scrollTop:0;
@@ -84,6 +92,14 @@ async function openInvestigationDossier(identity,refresh=false){
   ' · commercial authority: '+(assessment.commercial_authority_granted?'Yes':'No')+
   '. Context association does not establish same-project identity or construction activity.</p>'+
   '<p>Canonical investigation ID: <code>'+esc(identity)+'</code></p>'+
+  '<div id="native-investigation-watch" role="status">'+
+  (watch.error?'<p role="alert">Investigation watch status unavailable: '+esc(watch.error)+'</p>':
+   '<p>Canonical evidence watch · '+(watch.watched?(watch.changed?'Changed; review needed':'Watching committed evidence'):'Not watched')+
+   '. Source claims are not commercial authorization.</p>'+
+   (watch.watched&&watch.changed?'<button data-investigation-watch-action="acknowledge">Acknowledge reviewed change</button> ':'')+
+   (!watch.watched?'<button data-investigation-watch-action="watch">Watch this investigation</button>':
+    '<button data-investigation-watch-action="remove">Remove investigation watch</button>'))+
+  '</div>'+
   '<h3>Source membership and provenance</h3>'+
   table(['Family','Original record','Membership basis','Current evidence ID'],sources.map(m=>[
     esc(m.source_family||'—'),esc(m.source_record_id||'—'),esc(m.membership_basis||'—'),esc(m.current_evidence_id||'—')
@@ -118,6 +134,21 @@ async function openInvestigationDossier(identity,refresh=false){
  const displayedTicket=modalTicket;
  $('action-content').scrollTop=scroll;
  $('export-investigation').onclick=()=>download('investigation-dossier.json',dossier);
+ document.querySelectorAll('[data-investigation-watch-action]').forEach(button=>{
+  button.onclick=()=>perform(async()=>{
+   button.disabled=true;
+   try{
+    await api('/api/investigation-watch',{
+     action:button.dataset.investigationWatchAction,
+     investigation_id:identity,expected_digest:watch.current_digest
+    });
+    if(displayedTicket===modalTicket&&$('action-dialog').open){
+     await openInvestigationDossier(identity,true);
+     await refreshNotificationIndicator();
+    }
+   }finally{if(button.isConnected)button.disabled=false;}
+  });
+ });
  const originalSources=sources.filter(m=>['ceqa','permit'].includes(m.source_family)).slice(0,25);
  document.querySelectorAll('[data-dossier-original-source]').forEach(button=>{
   button.onclick=()=>perform(async()=>{
