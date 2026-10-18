@@ -233,6 +233,30 @@ class InvestigationJobQueue:
                 for row in session.scalars(self._latest_rows(session, due_at=None, limit=limit))
             ]
 
+    def pending_original_replay(
+        self, store: IntelligenceStore, source_entity_id: str,
+    ) -> JobState | None:
+        """Find pending reviewed work for one exact source under the caller's write lock."""
+
+        rows = list(store.session.scalars(
+            self._latest_rows(store.session, due_at=None, limit=2).where(
+                func.json_extract(
+                    IntelligenceRuntimeEventRecord.payload_json,
+                    "$.payload.definition.inputs.original_replay_approval.source_entity_id",
+                ) == source_entity_id,
+                func.json_extract(
+                    IntelligenceRuntimeEventRecord.payload_json, "$.payload.status",
+                ).in_(["queued", "running", "retry_wait"]),
+            )
+        ))
+        if len(rows) > 1:
+            raise ValueError(
+                "source has multiple pending reviewed replays; individual review required"
+            )
+        if not rows:
+            return None
+        return self._decode(RuntimeEvent.model_validate_json(rows[0].payload_json))
+
     def claim(self, worker_id: str) -> JobState | None:
         if not worker_id.strip() or len(worker_id) > 200:
             raise ValueError("worker identity must be nonblank and bounded")

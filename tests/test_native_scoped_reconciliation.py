@@ -215,6 +215,38 @@ def test_scoped_approval_and_all_jobs_rollback_together(
         runtime.close()
 
 
+def test_overlapping_review_reasons_do_not_duplicate_pending_source_work(tmp_path: Path) -> None:
+    original, directory, _ = _sources(tmp_path)
+    selected = replay.preview_legacy_reconciliation(
+        directory, original, kind="ceqa", record_id="scoped:ceqa:1",
+    )
+    first = replay.enqueue_legacy_reconciliation(directory, original, {
+        "kind": "ceqa", "record_id": "scoped:ceqa:1",
+        "expected_source_sha256": selected["original_source"]["source_sha256"],
+        "caller_confirmation": True,
+        "review_reason": "Initial individual source review, worker processing pending.",
+    })
+    plan = replay.preview_legacy_reconciliation_batch(directory, original, {"limit": 3})
+    with pytest.raises(ValueError, match="pending reviewed replay"):
+        replay.enqueue_legacy_reconciliation_batch(directory, original, _body(plan))
+    runtime = InvestigationRuntime(directory)
+    try:
+        jobs = runtime.queue.list_jobs()
+        assert len(jobs) == 1 and jobs[0].job_id == first["job_id"]
+        assert runtime.process(max_jobs=100)["failed_jobs"] == 0
+    finally:
+        runtime.close()
+    audit = replay.original_source_replay_audit(directory, job_id=first["job_id"])
+    assert audit["approval"]["review_reason"] == (
+        "Initial individual source review, worker processing pending."
+    )
+    checked = replay.preview_legacy_reconciliation_batch(directory, original, {"limit": 3})
+    assert checked["already_retained_count"] == 1 and checked["eligible_count"] == 2
+    assert replay.enqueue_legacy_reconciliation_batch(
+        directory, original, _body(checked)
+    )["queued_count"] == 2
+
+
 def test_scoped_replay_is_bounded_and_read_only(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:

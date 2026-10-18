@@ -30,7 +30,7 @@ queue with their individual and batch approval audits in one transaction through
 the existing worker. Exact retained observations are skipped; conflicts stay held.
 Subsequent pages require review and a final rescan; one page is not a complete
 migration claim. Original records, financial authority and the approved layout
-remain preserved. Eight new tests cover full filtered-scope traversal, strict
+remain preserved. Nine new tests cover full filtered-scope traversal, strict
 confirmation, stale evidence, concurrent arrival, atomic rollback, restart,
 idempotency, HTTP guards and database separation. Focused tests, Ruff and strict
 Mypy pass locally. The first complete browser run reached independent worker
@@ -45,6 +45,12 @@ Sixteen original/native HTTP read contracts compare identically with mixed
 CEQA/permit records. Four new tests also cover retained startup configuration,
 invalid authority, no-follow artifact reads and exact CLI forwarding. All sixteen
 focused alias/source regression tests pass locally; complete gates are pending.
+An overlapping individual/page approval with a different reason now fails under
+the existing queue writer reservation before any batch job/audit commits. Exact
+retries retain the original approval; processing the pending job then permits a
+fresh review of the remaining missing sources. Eleven focused replay tests pass.
+The first local complete suite passed 2,765 tests with two upstream warnings;
+the later alias/overlap changes require their own complete exact-head gates.
 
 **Verified application/test source:** `397adfc6aec1176566410d2c4d420b78ba6c0b95`.
 Original operator assets, historical branches, the previous native association-review

@@ -288,6 +288,11 @@ def _queue_sources(
             for metadata, approval, definition in prepared:
                 if store.get_entity(approval.source_entity_id) is not None:
                     raise ValueError("source changed in native investigation; re-review required")
+                pending = runtime.queue.pending_original_replay(store, approval.source_entity_id)
+                if pending is not None and pending.definition != definition:
+                    raise ValueError(
+                        "source already has a pending reviewed replay; inspect its approval first"
+                    )
                 queued = runtime.queue.enqueue_in_transaction(store, definition)
                 audit_id = _identity("event:original-source-replay-approval", queued.job_id)
                 store.add_runtime_event(RuntimeEvent(
