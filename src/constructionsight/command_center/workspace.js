@@ -347,7 +347,9 @@ async function renderCanonicalLeadWorkflows(box){
       '<details><summary>'+esc(entry.transition_count)+' events</summary>'+
        '<pre>'+esc(JSON.stringify(entry.recent_transitions,null,2))+'</pre>'+
        (entry.transitions_truncated?'<p>Earlier events retained in the original workflow store.</p>':'')+
-       '</details>'+canonicalResultHistory(entry),
+       '<button data-canonical-workflow-export="'+esc(entry.workflow_id)+
+       '">Export complete verified workflow history</button></details>'+
+       canonicalResultHistory(entry),
       '<button data-canonical-lead-dossier="'+esc(entry.canonical_investigation_id)+
        '">Open shared dossier</button>'+
        (entry.source_evidence_state==='current_source_observation'&&
@@ -366,6 +368,24 @@ async function renderCanonicalLeadWorkflows(box){
     (!page.total?'<p>No retained canonical lead candidates. Review an investigation dossier first.</p>':'');
    section.querySelectorAll('[data-canonical-lead-dossier]').forEach(button=>{
     button.onclick=()=>perform(()=>openInvestigationDossier(button.dataset.canonicalLeadDossier));
+   });
+   section.querySelectorAll('[data-canonical-workflow-export]').forEach(button=>{
+    button.onclick=()=>perform(async()=>{
+     const row=rows.find(r=>r.workflow_id===button.dataset.canonicalWorkflowExport);
+     if(!row)return;
+     const report=await api('/api/investigation-lead-history?'+
+      new URLSearchParams({
+       investigation_id:row.canonical_investigation_id,
+       workflow_id:row.workflow_id
+      }));
+     if(report.workflow_id!==row.workflow_id||
+        report.canonical_investigation_id!==row.canonical_investigation_id||
+        report.original_source_evidence_id!==row.original_source_evidence_id||
+        report.event_count!==row.transition_count||
+        !report.history_integrity_validated||!report.history_complete)
+      throw Error('Original workflow changed or complete integrity was not established.');
+     download('canonical-lead-workflow-history.json',report);
+    });
    });
    section.querySelectorAll('[data-canonical-result-export]').forEach(button=>{
     button.onclick=()=>{

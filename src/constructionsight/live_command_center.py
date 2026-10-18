@@ -36,6 +36,7 @@ from constructionsight.command_center_canonical_leads import (
     apply_retained_canonical_result_review,
     canonical_lead_preview,
     retain_reviewed_canonical_candidate,
+    retained_canonical_lead_transition_history,
     retained_canonical_lead_workflows,
     transition_retained_canonical_review,
 )
@@ -702,6 +703,19 @@ def make_server(
                     directory,
                     limit=int(query["limit"][0]) if "limit" in query else 25,
                     offset=int(query["offset"][0]) if "offset" in query else 0,
+                )
+                body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
+            elif path == "/api/investigation-lead-history":
+                if (
+                    directory is None
+                    or set(query) != {"investigation_id", "workflow_id"}
+                    or any(len(query[key]) != 1 for key in query)
+                ):
+                    raise ValueError("select exact canonical investigation and workflow history")
+                value = retained_canonical_lead_transition_history(
+                    directory,
+                    investigation_id=query["investigation_id"][0],
+                    workflow_id=query["workflow_id"][0],
                 )
                 body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
             elif path == "/api/investigation-lead-preview":

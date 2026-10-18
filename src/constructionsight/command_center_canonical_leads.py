@@ -565,6 +565,104 @@ def retained_canonical_lead_workflows(
         engine.dispose()
 
 
+
+def retained_canonical_lead_transition_history(
+    directory: Path, *, investigation_id: str, workflow_id: str,
+) -> dict[str, Any]:
+    """Export the entire original validated event chain for one canonical handoff.
+
+    This is read-only. The index, fingerprint, review package and immutable
+    original event rows must agree in a single consistent database snapshot.
+    """
+    if (
+        not isinstance(investigation_id, str)
+        or not 1 <= len(investigation_id) <= 255
+        or not isinstance(workflow_id, str)
+        or not 1 <= len(workflow_id) <= 255
+    ):
+        raise ValueError("select one exact retained investigation and workflow")
+    database = prepare_private_database(
+        directory / "investigations.sqlite3", create=False,
+    )
+    engine = create_operator_read_engine(database)
+    try:
+        with Session(engine, autoflush=False) as session:
+            session.connection().exec_driver_sql("BEGIN")
+            fingerprints = session.scalars(
+                select(LeadFingerprintRecord).where(
+                    LeadFingerprintRecord.source_key == "canonical_investigation",
+                    LeadFingerprintRecord.source_record_id == investigation_id,
+                ).limit(2)
+            ).all()
+            if len(fingerprints) != 1:
+                raise ValueError("canonical investigation has no unique retained lead")
+            row = fingerprints[0]
+            fingerprint = LeadFingerprint.model_validate_json(row.payload_json)
+            if (
+                fingerprint.fingerprint_key != row.fingerprint_key
+                or fingerprint.base_candidate_id != row.base_candidate_id
+                or fingerprint.source_key != row.source_key
+                or fingerprint.source_record_id != row.source_record_id
+                or fingerprint.site_key != row.site_key
+                or fingerprint.normalized_title != row.normalized_title
+                or fingerprint.lead_score != row.lead_score
+                or fingerprint.created_at.isoformat() != row.observed_created_at
+            ):
+                raise ValueError("retained canonical fingerprint and index disagree")
+            linked = session.scalars(
+                select(LeadWorkflowRecordRow.workflow_id).where(
+                    LeadWorkflowRecordRow.fingerprint_key == row.fingerprint_key
+                ).limit(2)
+            ).all()
+            if linked != [workflow_id]:
+                raise ValueError("workflow does not belong to the exact canonical handoff")
+            workflow = load_persisted_lead_workflow(session, workflow_id)
+            verified_original_review_package(
+                session, package_id=workflow.package_id,
+                candidate_key=workflow.base_candidate_id,
+            )
+            retained_evidence = [
+                note.removeprefix("Original source evidence: ")
+                for note in workflow.notes
+                if note.startswith("Original source evidence: ")
+            ]
+            if (
+                workflow.fingerprint_key != row.fingerprint_key
+                or workflow.base_candidate_id != fingerprint.base_candidate_id
+                or len(retained_evidence) != 1
+                or not retained_evidence[0]
+                or "Canonical investigation: " + investigation_id not in workflow.notes
+            ):
+                raise ValueError("canonical workflow handoff provenance disagrees")
+            events = verified_original_workflow_events(session, workflow)
+            results = read_validated_result_history(session, workflow_id)
+            if results is not None and results["package_id"] != workflow.package_id:
+                raise ValueError("original result package and workflow disagree")
+            return {
+                "schema_version": "constructionsight.canonical-workflow-history/v1",
+                "canonical_investigation_id": investigation_id,
+                "workflow_id": workflow_id,
+                "original_package_id": workflow.package_id,
+                "original_candidate_key": workflow.base_candidate_id,
+                "original_source_evidence_id": retained_evidence[0],
+                "current_status": events["current_status"],
+                "event_count": events["event_count"],
+                "transitions": events["transitions"],
+                "history_integrity_validated": True,
+                "result_revision_count": (
+                    results["revision_count"] if results is not None else 0
+                ),
+                "history_complete": True,
+                "source_claim_only": True,
+                "historical_only": True,
+                "read_only": True,
+                "outreach_authorized": False,
+                "bid_authorized": False,
+                "commercial_authority_granted": False,
+            }
+    finally:
+        engine.dispose()
+
 def _fingerprint_matches(
     session: Session, *, source_family: str, source_record_id: str,
     resolved_site_key: str | None, exclude_canonical: str,

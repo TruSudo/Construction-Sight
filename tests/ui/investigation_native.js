@@ -102,6 +102,18 @@ const {resolve}=require('node:path');
   const reviewedConsole=await page.locator('[data-canonical-lead-workflows]').textContent();
   if(!reviewedConsole.includes('2 events')||!reviewedConsole.includes('current source observation'))
    throw Error('Original review state transition did not persist safely in native console');
+  await page.locator('[data-canonical-lead-workflows] details').first().locator('summary').click();
+  const workflowDownload=page.waitForEvent('download');
+  await page.locator('[data-canonical-workflow-export]').first().click();
+  const workflowExport=await workflowDownload;
+  if(workflowExport.suggestedFilename()!=='canonical-lead-workflow-history.json')
+   throw Error('Complete original workflow history export is unavailable');
+  const workflowReport=JSON.parse(readFileSync(await workflowExport.path(),'utf8'));
+  if(!workflowReport.history_integrity_validated||!workflowReport.history_complete||
+     workflowReport.event_count!==2||workflowReport.transitions.length!==2||
+     workflowReport.current_status!==workflowReport.transitions[1].current_status||
+     workflowReport.outreach_authorized||workflowReport.bid_authorized)
+   throw Error('Native lead export omitted original events or granted unauthorized commerce');
   const leadPage=await (await page.request.get(
    new URL('/api/investigation-lead-workflows',process.argv[2]).href)).json();
   if(leadPage.rows.length!==1)throw Error('Canonical result fixture requires one exact retained lead');

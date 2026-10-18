@@ -492,3 +492,85 @@ def test_native_result_review_rejects_unreviewed_commercial_authority_and_wrong_
         assert no_origin.status_code == 403
         assert native_lead.database.read_bytes() == original_bytes
         assert _only_row(client)["historical_result"]["revision_count"] == 0
+
+
+def test_full_original_workflow_events_export_from_native_console(
+    native_lead: NativeLead,
+) -> None:
+    with _client(native_lead.directory) as client:
+        original = _only_row(client)
+        params = {
+            "investigation_id": original["canonical_investigation_id"],
+            "workflow_id": original["workflow_id"],
+        }
+        before = native_lead.database.read_bytes()
+        first = client.get("/api/investigation-lead-history", params=params)
+        assert first.status_code == 200, first.text
+        history = first.json()
+        assert history["history_complete"] is True
+        assert history["read_only"] is True
+        assert history["commercial_authority_granted"] is False
+        assert history["event_count"] == original["transition_count"]
+        assert history["transitions"] == original["recent_transitions"]
+        assert history["original_source_evidence_id"] == original["original_source_evidence_id"]
+        assert native_lead.database.read_bytes() == before
+
+        for invalid in (
+            {"investigation_id": "investigation:other"},
+            {"workflow_id": "lead-workflow:other"},
+        ):
+            response = client.get(
+                "/api/investigation-lead-history", params={**params, **invalid},
+            )
+            assert response.status_code == 400
+        assert client.get(
+            "/api/investigation-lead-history", params={**params, "limit": "2"},
+        ).status_code == 400
+        assert native_lead.database.read_bytes() == before
+
+        origin = {"Origin": str(client.base_url).rstrip("/")}
+        next_status = {
+            "hold": "review", "monitor": "review", "review": "monitor",
+        }[original["workflow_status"]]
+        moved = client.post(
+            "/api/investigation-lead-review-transition",
+            json={
+                "investigation_id": original["canonical_investigation_id"],
+                "workflow_id": original["workflow_id"],
+                "expected_status": original["workflow_status"],
+                "next_status": next_status,
+                "expected_evidence_id": original["current_source_evidence_id"],
+                "reason": "Document complete original event export after operator review.",
+                "caller_confirmation": True,
+            },
+            headers=origin,
+        )
+        assert moved.status_code == 200, moved.text
+        changed = client.get("/api/investigation-lead-history", params=params)
+        assert changed.status_code == 200, changed.text
+        exported = changed.json()
+        assert exported["event_count"] == 2
+        assert len(exported["transitions"]) == 2
+        assert exported["transitions"][0] == history["transitions"][0]
+        assert exported["transitions"][1]["current_status"] == next_status
+        assert exported["current_status"] == next_status
+
+
+def test_full_original_workflow_export_detects_tampered_immutable_event(
+    native_lead: NativeLead,
+) -> None:
+    from constructionsight.storage.lead_workflow_orm import LeadWorkflowEventRecord
+
+    with _session(native_lead) as session, session.begin():
+        event = session.scalar(select(LeadWorkflowEventRecord).where(
+            LeadWorkflowEventRecord.workflow_id == native_lead.workflow.workflow_id
+        ))
+        assert event is not None
+        event.reason = "altered after retention"
+    with _client(native_lead.directory) as client:
+        result = client.get("/api/investigation-lead-history", params={
+            "investigation_id": native_lead.investigation_id,
+            "workflow_id": native_lead.workflow.workflow_id,
+        })
+        assert result.status_code == 400
+        assert "changed or reordered" in result.text
