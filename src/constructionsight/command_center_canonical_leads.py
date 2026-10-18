@@ -12,25 +12,6 @@ from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from constructionsight.lead_dedupe_models import LeadFingerprint
-from constructionsight.lead_dedupe_service import (
-    build_lead_fingerprint,
-    check_lead_duplicate,
-)
-from constructionsight.lead_workflow_service import create_lead_workflow
-from constructionsight.product_integration_models import ProductIntegrationReport
-from constructionsight.product_integration_service import persist_product_integration
-from constructionsight.storage.database import (
-    create_private_database_engine,
-    managed_session,
-    session_factory,
-)
-from constructionsight.storage.lead_workflow_orm import (
-    LeadFingerprintRecord,
-    LeadWorkflowRecordRow,
-)
-from constructionsight.storage.operator_read_store import create_operator_read_engine
-
 from constructionsight.command_center_investigations import investigation_view
 from constructionsight.intake_models import (
     DigitalFormatFamily,
@@ -43,7 +24,27 @@ from constructionsight.intake_models import (
     MaterialFactKind,
     UniversalIntakeRecord,
 )
-from constructionsight.product_integration_service import build_product_integration
+from constructionsight.lead_dedupe_models import LeadFingerprint
+from constructionsight.lead_dedupe_service import (
+    build_lead_fingerprint,
+    check_lead_duplicate,
+)
+from constructionsight.lead_workflow_service import create_lead_workflow
+from constructionsight.product_integration_models import ProductIntegrationReport
+from constructionsight.product_integration_service import (
+    build_product_integration,
+    persist_product_integration,
+)
+from constructionsight.storage.database import (
+    create_private_database_engine,
+    managed_session,
+    session_factory,
+)
+from constructionsight.storage.lead_workflow_orm import (
+    LeadFingerprintRecord,
+    LeadWorkflowRecordRow,
+)
+from constructionsight.storage.operator_read_store import create_operator_read_engine
 
 _ARTIFACT_FACTS = {
     "apn": MaterialFactKind.APN,
