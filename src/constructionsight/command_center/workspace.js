@@ -277,7 +277,7 @@ function canonicalResultHistory(entry){
  const units=value=>value===null?'not recorded':esc(value);
  return '<details data-canonical-result-history="'+esc(entry.workflow_id)+'">'+
   '<summary>'+(current?'Historical result · current revision '+esc(current.revision)+
-   ': '+esc(current.status)+' · '+esc(result.revision_count)+' revisions':
+   esc(': '+current.status)+' · '+esc(result.revision_count)+' revisions':
    'No retained outcome')+'</summary>'+
   '<p>Immutable original result history. Integrity validation does not verify an award,'+
    ' contract, royalty entitlement or payment and grants no commercial authority.'+
@@ -288,7 +288,7 @@ function canonicalResultHistory(entry){
    esc(entry.original_source_evidence_id)+'</code></p>'+
   (current?'<ol>'+result.revision_history.map(revision=>'<li><strong>'+
    (revision.ledger_id===current.ledger_id?'Current':'Superseded')+' revision '+
-   esc(revision.revision)+' · '+esc(revision.status)+'</strong>'+
+   esc(revision.revision)+esc(' · '+revision.status)+'</strong>'+
    '<p>Gross: '+units(revision.gross_value_minor)+' minor units · Rate: '+
    units(revision.share_rate_ppm)+' millionths · Calculated share: '+
    units(revision.calculated_share_minor)+' minor units</p><pre>'+

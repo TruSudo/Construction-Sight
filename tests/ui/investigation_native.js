@@ -130,6 +130,7 @@ const {resolve}=require('node:path');
   const currentRevisionText=await resultHistory.locator('li').last().textContent();
   if(!historyText.includes('Never sum superseded shares')||
      !historyText.includes('grants no commercial authority')||
+     !historyText.includes('Superseded revision 1 · unknown')||
      !currentRevisionText.includes('Current revision 3 · lost')||
      !currentRevisionText.includes('Calculated share: not recorded')||
      currentRevisionText.includes('12346'))
