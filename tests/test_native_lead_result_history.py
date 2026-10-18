@@ -574,3 +574,51 @@ def test_full_original_workflow_export_detects_tampered_immutable_event(
         })
         assert result.status_code == 400
         assert "changed or reordered" in result.text
+
+
+def test_full_original_history_does_not_drop_events_hidden_by_native_list_limit(
+    native_lead: NativeLead,
+) -> None:
+    with _client(native_lead.directory) as client:
+        origin = {"Origin": str(client.base_url).rstrip("/")}
+        for revision in range(11):
+            row = _only_row(client)
+            target = {
+                "hold": "monitor", "monitor": "review", "review": "hold",
+            }[row["workflow_status"]]
+            changed = client.post(
+                "/api/investigation-lead-review-transition",
+                json={
+                    "investigation_id": row["canonical_investigation_id"],
+                    "workflow_id": row["workflow_id"],
+                    "expected_status": row["workflow_status"],
+                    "next_status": target,
+                    "expected_evidence_id": row["current_source_evidence_id"],
+                    "reason": (
+                        "Document synthetic review continuity for complete retained "
+                        f"history revision {revision}."
+                    ),
+                    "caller_confirmation": True,
+                },
+                headers=origin,
+            )
+            assert changed.status_code == 200, changed.text
+        indexed = _only_row(client)
+        assert indexed["transition_count"] == 12
+        assert indexed["transitions_truncated"] is True
+        assert len(indexed["recent_transitions"]) == 10
+        before = native_lead.database.read_bytes()
+        response = client.get("/api/investigation-lead-history", params={
+            "investigation_id": indexed["canonical_investigation_id"],
+            "workflow_id": indexed["workflow_id"],
+        })
+        assert response.status_code == 200, response.text
+        complete = response.json()
+        assert complete["event_count"] == 12
+        assert len(complete["transitions"]) == 12
+        assert complete["history_complete"] is True
+        assert complete["transitions"][-10:] == indexed["recent_transitions"]
+        assert complete["transitions"][0]["event_id"] not in {
+            e["event_id"] for e in indexed["recent_transitions"]
+        }
+        assert native_lead.database.read_bytes() == before
