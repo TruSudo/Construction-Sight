@@ -331,9 +331,23 @@ def retained_canonical_lead_workflows(
         raise ValueError("canonical lead page limit must be between 1 and 50")
     if type(offset) is not int or not 0 <= offset <= 10000:
         raise ValueError("canonical lead page offset is invalid")
-    database = prepare_private_database(
-        directory / "investigations.sqlite3", create=False,
-    )
+    database_path = directory / "investigations.sqlite3"
+    if not database_path.exists() and not database_path.is_symlink():
+        # No worker run has established this store. Never initialize or claim
+        # that zero leads were scanned; do not emit an expected HTTP 409 either.
+        return {
+            "schema_version": "constructionsight.canonical-lead-console/v1",
+            "available": False,
+            "rows": [],
+            "total": None,
+            "limit": limit,
+            "offset": offset,
+            "has_more": False,
+            "read_only": True,
+            "source_claim_only": True,
+            "commercial_authority_granted": False,
+        }
+    database = prepare_private_database(database_path, create=False)
     engine = create_operator_read_engine(database)
     try:
         with Session(engine, autoflush=False) as session:
@@ -425,6 +439,7 @@ def retained_canonical_lead_workflows(
                 })
             return {
                 "schema_version": "constructionsight.canonical-lead-console/v1",
+                "available": True,
                 "rows": rows,
                 "total": total,
                 "limit": limit,

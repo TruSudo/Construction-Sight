@@ -283,6 +283,11 @@ async function renderCanonicalLeadWorkflows(box){
    const page=await api('/api/investigation-lead-workflows?'+
     new URLSearchParams({limit:'25',offset:String(offset)}));
    if(!section.isConnected||activePage!=='Lead Console')return;
+   if(page.available===false){
+    section.innerHTML='<h3>Retained investigation lead workflows</h3>'+
+     '<p>Shared investigation store not initialized. No retained lead count is asserted.</p>';
+    return;
+   }
    const rows=page.rows||[];
    section.innerHTML='<h3>Retained investigation lead workflows</h3>'+
     '<p>Original persisted lead candidates from shared investigations. Statuses are'+

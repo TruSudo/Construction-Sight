@@ -223,6 +223,7 @@ def test_native_lead_console_reads_original_workflow_history_and_source_drift(
             empty = client.get("/api/investigation-lead-workflows")
             assert empty.status_code == 200
             assert empty.json()["total"] == 0
+            assert empty.json()["available"] is True
             identity = client.get("/api/investigations").json()["rows"][0]["investigation_id"]
             preview = client.get(
                 "/api/investigation-lead-preview", params={"investigation_id": identity}
@@ -313,6 +314,32 @@ def test_native_lead_workflow_listing_rejects_substituted_database(
             before = outside.read_bytes()
             assert client.get("/api/investigation-lead-workflows").status_code == 409
             assert outside.read_bytes() == before
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join()
+
+
+def test_native_console_uninitialized_store_reports_unavailable_without_creating(
+    tmp_path: Path,
+) -> None:
+    folder = tmp_path / "private"
+    folder.mkdir(mode=0o700)
+    server = make_server(snapshot(), 0, directory=folder)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        with httpx.Client(
+            base_url=f"http://127.0.0.1:{server.server_port}", trust_env=False
+        ) as client:
+            response = client.get("/api/investigation-lead-workflows")
+            assert response.status_code == 200, response.text
+            result = response.json()
+            assert result["available"] is False
+            assert result["rows"] == []
+            assert result["total"] is None
+            assert not (folder / "investigations.sqlite3").exists()
+            assert not (folder / "workflow.sqlite3").exists()
     finally:
         server.shutdown()
         server.server_close()
