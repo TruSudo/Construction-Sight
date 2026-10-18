@@ -84,6 +84,8 @@ const {resolve}=require('node:path');
   await page.click('nav button[data-page="Lead Console"]');
   await page.waitForSelector('[data-canonical-lead-dossier]',{timeout:20000});
   const consoleText=await page.locator('[data-canonical-lead-workflows]').textContent();
+  if(!(await page.locator('[data-canonical-watch-state]').first().textContent()).includes('Not watched'))
+   throw Error('Original retained lead unexpectedly borrowed a watch from another source');
   if(!consoleText.includes('current source observation')||
      !consoleText.includes('1–1 of 1 retained canonical lead records'))
    throw Error('Native lead console lost persisted workflow provenance: '+consoleText);
@@ -197,6 +199,9 @@ const {resolve}=require('node:path');
   if(!(await staleResultRow.textContent()).includes('source revision requires review')||
      await staleResultRow.locator('[data-canonical-review-transition]').count())
    throw Error('Historical outcomes bypassed the changed-source review boundary');
+  if(!(await staleResultRow.locator('[data-canonical-watch-state]').textContent())
+      .includes('Watched · committed evidence changed'))
+   throw Error('Original lead projection failed to share the dossier and Watchlist watch state');
   await staleResultRow.locator('[data-canonical-result-history] summary').click();
   const staleHistory=await staleResultRow.locator('[data-canonical-result-history]').textContent();
   if(!staleHistory.includes(seeded.history[2].content_digest)||

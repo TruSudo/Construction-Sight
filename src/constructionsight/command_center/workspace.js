@@ -310,8 +310,12 @@ async function renderCanonicalLeadWorkflows(box){
   section.innerHTML='<h3>Retained investigation lead workflows</h3>'+
    '<p role="status">Reading original workflow history…</p>';
   try{
-   const page=await api('/api/investigation-lead-workflows?'+
-    new URLSearchParams({limit:'25',offset:String(offset)}));
+   const [page,watchInfo]=await Promise.all([
+    api('/api/investigation-lead-workflows?'+
+     new URLSearchParams({limit:'25',offset:String(offset)})),
+    api('/api/investigation-watches').then(rows=>({rows}))
+     .catch(error=>({error:error.message}))
+   ]);
    if(!section.isConnected||activePage!=='Lead Console')return;
    if(page.available===false){
     section.innerHTML='<h3>Retained investigation lead workflows</h3>'+
@@ -319,15 +323,27 @@ async function renderCanonicalLeadWorkflows(box){
     return;
    }
    const rows=page.rows||[];
+   const watchById=new Map(Array.isArray(watchInfo.rows)?watchInfo.rows.map(w=>[
+    w.watched_investigation_id||w.investigation_id,w
+   ]):[]);
+   const watchStatus=entry=>{
+    if(!Array.isArray(watchInfo.rows))return 'Watch state unavailable; inspect Watchlist';
+    const watch=watchById.get(entry.canonical_investigation_id);
+    if(!watch)return 'Not watched';
+    if(!watch.available)return 'Watch evidence unavailable; review required';
+    return watch.changed?'Watched · committed evidence changed':'Watched · no committed change';
+   };
    section.innerHTML='<h3>Retained investigation lead workflows</h3>'+
     '<p>Original persisted lead candidates from shared investigations. Statuses are'+
     ' historical workflow states, not contact permission or bid readiness. '+
     'Current evidence is compared with the exact evidence retained at handoff.</p>'+
-    table(['Investigation','Preserved status','Source continuity','Workflow / result history','Inspect'],
+    table(['Investigation','Preserved status','Source continuity','Shared investigation watch','Workflow / result history','Inspect'],
      rows.map(entry=>[
       esc(entry.title||entry.canonical_investigation_id),
       esc(entry.workflow_status)+' · '+esc(entry.workflow_id),
       esc(entry.source_evidence_state.replaceAll('_',' ')),
+      '<span data-canonical-watch-state="'+esc(entry.workflow_id)+'">'+
+       esc(watchStatus(entry))+'</span>',
       '<details><summary>'+esc(entry.transition_count)+' events</summary>'+
        '<pre>'+esc(JSON.stringify(entry.recent_transitions,null,2))+'</pre>'+
        (entry.transitions_truncated?'<p>Earlier events retained in the original workflow store.</p>':'')+
