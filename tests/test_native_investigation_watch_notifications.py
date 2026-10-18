@@ -24,7 +24,7 @@ def test_watched_investigation_change_notifies_only_own_record_and_survives_rest
     tmp_path: Path,
 ) -> None:
     directory = tmp_path / "private"
-    directory.mkdir()
+    directory.mkdir(mode=0o700)
     _ingest(directory)
     original = (directory / "investigations.sqlite3").read_bytes()
     identity = None
@@ -134,7 +134,7 @@ def test_watched_investigation_change_notifies_only_own_record_and_survives_rest
 
 def test_unavailable_investigation_watch_keeps_existing_inbox(tmp_path: Path) -> None:
     directory = tmp_path / "private"
-    directory.mkdir()
+    directory.mkdir(mode=0o700)
     _ingest(directory)
     server, thread = _server(directory)
     base = f"http://127.0.0.1:{server.server_port}"
