@@ -87,3 +87,117 @@ def test_uninitialized_investigation_cannot_create_lead(tmp_path: Path) -> None:
     with pytest.raises(ValueError):
         canonical_lead_preview(folder, "not-a-retained-investigation")
     assert not (folder / "investigations.sqlite3").exists()
+
+
+def test_explicit_canonical_lead_handoff_persists_existing_original_workflow(
+    tmp_path: Path,
+) -> None:
+    from sqlalchemy import func, select
+    from sqlalchemy.orm import Session
+
+    from constructionsight.storage.lead_workflow_orm import (
+        LeadFingerprintRecord,
+        LeadWorkflowRecordRow,
+    )
+    from constructionsight.storage.operator_read_store import create_operator_read_engine
+
+    folder = tmp_path / "private"
+    folder.mkdir(mode=0o700)
+    runtime = InvestigationRuntime(folder)
+    try:
+        runtime.enqueue_bytes(_record().model_dump_json(round_trip=True).encode(), "ceqa")
+        assert runtime.process(max_jobs=100)["failed_jobs"] == 0
+    finally:
+        runtime.close()
+    server = make_server(snapshot(), 0, directory=folder)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        base = f"http://127.0.0.1:{server.server_port}"
+        with httpx.Client(base_url=base, trust_env=False) as client:
+            identity = client.get("/api/investigations").json()["rows"][0]["investigation_id"]
+            original = client.get("/api/investigations/" + identity).json()
+            preview = client.get(
+                "/api/investigation-lead-preview", params={"investigation_id": identity}
+            ).json()
+            body = {
+                "investigation_id": identity,
+                "expected_evidence_id": preview["current_evidence_id"],
+                "expected_evidence_sha256": preview["current_evidence_sha256"],
+                "expected_event_anchor": preview["event_anchor"],
+                "reason": "Retain source-claimed project for independent operator review.",
+                "caller_confirmation": True,
+            }
+            assert client.post(
+                "/api/investigation-lead-handoff", json=body
+            ).status_code == 403
+            assert client.post(
+                "/api/investigation-lead-handoff", json=body,
+                headers={"Origin": "https://untrusted.example"},
+            ).status_code == 403
+            assert client.post(
+                "/api/investigation-lead-handoff",
+                json={**body, "caller_confirmation": False},
+                headers={"Origin": base},
+            ).status_code == 400
+            assert client.post(
+                "/api/investigation-lead-handoff",
+                json={**body, "expected_evidence_sha256": "0" * 64},
+                headers={"Origin": base},
+            ).status_code == 400
+            saved = client.post(
+                "/api/investigation-lead-handoff", json=body,
+                headers={"Origin": base},
+            )
+            assert saved.status_code == 200, saved.text
+            receipt = saved.json()
+            assert receipt["workflow_status"] in {"hold", "monitor", "review"}
+            assert receipt["source_evidence_id"] == preview["current_evidence_id"]
+            assert receipt["outreach_authorized"] is False
+            assert receipt["human_review_required"] is True
+            assert client.post(
+                "/api/investigation-lead-handoff", json=body,
+                headers={"Origin": base},
+            ).status_code == 400
+            latest = client.get(
+                "/api/investigation-lead-preview", params={"investigation_id": identity}
+            ).json()
+            assert latest["existing_native_handoff"]["workflow_id"] == receipt["workflow_id"]
+            assert client.get("/api/investigations/" + identity).json() == original
+            engine = create_operator_read_engine(folder / "investigations.sqlite3")
+            try:
+                with Session(engine) as session:
+                    assert session.scalar(
+                        select(func.count()).select_from(LeadFingerprintRecord)
+                    ) == 1
+                    assert session.scalar(
+                        select(func.count()).select_from(LeadWorkflowRecordRow)
+                    ) == 1
+            finally:
+                engine.dispose()
+            runtime = InvestigationRuntime(folder)
+            try:
+                runtime.enqueue_bytes(
+                    _record("New revision after retained lead").model_dump_json(
+                        round_trip=True
+                    ).encode(), "ceqa"
+                )
+                assert runtime.process(max_jobs=100)["failed_jobs"] == 0
+            finally:
+                runtime.close()
+            updated = client.get(
+                "/api/investigation-lead-preview", params={"investigation_id": identity}
+            ).json()
+            assert updated["existing_native_handoff"]["workflow_id"] == receipt["workflow_id"]
+            assert client.post(
+                "/api/investigation-lead-handoff", json={
+                    **body,
+                    "expected_evidence_id": updated["current_evidence_id"],
+                    "expected_evidence_sha256": updated["current_evidence_sha256"],
+                    "expected_event_anchor": updated["event_anchor"],
+                }, headers={"Origin": base},
+            ).status_code == 400
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join()

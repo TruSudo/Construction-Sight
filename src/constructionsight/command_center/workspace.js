@@ -161,7 +161,36 @@ async function openInvestigationDossier(identity,refresh=false){
     '<p>Original pipeline limitations: '+
     esc((result.original_product_integration.review_package.limitations||[]).join(' · ')||'—')+
     '</p><p>Persisted duplicate/authority review remains required.</p>'+
+    (result.existing_native_handoff?
+     '<p>Already retained for review: workflow '+esc(result.existing_native_handoff.workflow_id)+
+     ', status '+esc(result.existing_native_handoff.workflow_status)+
+     '. No second candidate will be created.</p>':
+     '<label>Reason for keeping this candidate under human review '+
+     '<textarea id="canonical-lead-review-reason" maxlength="2000"></textarea></label>'+
+     '<label><input type="checkbox" id="canonical-lead-review-confirm"> '+
+     'I reviewed the current evidence and only authorize retaining a nonactionable candidate.</label>'+
+     '<button id="retain-canonical-lead">Retain candidate for manual review</button>')+
     '<button id="export-canonical-lead-review">Export original pipeline assessment</button>';
+   const retain=$('retain-canonical-lead');
+   if(retain)retain.onclick=()=>perform(async()=>{
+    const reason=$('canonical-lead-review-reason')?.value.trim();
+    if(!$('canonical-lead-review-confirm')?.checked||!reason){
+     throw Error('Explicit confirmation and review reason are required.');
+    }
+    retain.disabled=true;
+    try{
+     const receipt=await api('/api/investigation-lead-handoff',{
+      investigation_id:identity,expected_evidence_id:result.current_evidence_id,
+      expected_evidence_sha256:result.current_evidence_sha256,
+      expected_event_anchor:result.event_anchor,reason,caller_confirmation:true
+     });
+     if(displayedTicket!==modalTicket||!$('action-dialog').open)return;
+     host.innerHTML='<p>Retained under existing lead workflow '+
+      esc(receipt.workflow_id)+', status '+esc(receipt.workflow_status)+
+      '. Human review still required. No contact or bid authorized.</p>'+
+      '<pre>'+esc(JSON.stringify(receipt,null,2))+'</pre>';
+    }finally{if(retain.isConnected)retain.disabled=false;}
+   });
    $('export-canonical-lead-review').onclick=()=>
     download('canonical-lead-review.json',result);
   }catch(error){if(displayedTicket===modalTicket&&host.isConnected)
