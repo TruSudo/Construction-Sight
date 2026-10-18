@@ -83,6 +83,19 @@ const {chromium}=require('../visual/node_modules/playwright');
   if(!consoleText.includes('current source observation')||
      !consoleText.includes('1–1 of 1 retained canonical lead records'))
    throw Error('Native lead console lost persisted workflow provenance: '+consoleText);
+  // Exercise original one-shot authority and durable review history from the
+  // existing native Lead Console, without ever authorizing ready/outreach/bids.
+  await page.locator('[data-canonical-review-transition]').first().click();
+  await page.waitForSelector('#canonical-review-transition-form');
+  await page.locator('#canonical-review-transition-form [name="reason"]')
+   .fill('Retained source is under independent operator review.');
+  await page.locator('#canonical-review-transition-form [name="confirm"]').check();
+  await page.locator('#canonical-review-transition-form button[type="submit"]').click();
+  await page.waitForFunction(()=>!document.getElementById('action-dialog').open,{},{timeout:20000});
+  await page.waitForFunction(()=>document.querySelector('[data-canonical-lead-workflows]')?.textContent.includes('2 events'),{},{timeout:20000});
+  const reviewedConsole=await page.locator('[data-canonical-lead-workflows]').textContent();
+  if(!reviewedConsole.includes('2 events')||!reviewedConsole.includes('current source observation'))
+   throw Error('Original review state transition did not persist safely in native console');
   await page.locator('[data-canonical-lead-dossier]').first().click();
   await page.waitForSelector('#export-investigation');
   if(!(await page.locator('#action-content').textContent()).includes('Canonical investigation ID:'))
