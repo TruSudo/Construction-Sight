@@ -60,12 +60,30 @@ const {chromium}=require('../visual/node_modules/playwright');
   await page.locator('#search-results [data-search-index]').filter({hasText:'Synthetic CEQA'}).click();
   await page.waitForSelector('#export-investigation');
   if(!(await page.locator('#action-content').textContent()).includes('Retained evidence artifacts'))throw Error('Source evidence inspection missing');
+  // The native canonical watcher must bind the current committed dossier, not
+  // the unrelated commercial lead watchlist or a browser-only state object.
+  await page.locator('[data-investigation-watch-action="watch"]').click();
+  await page.waitForFunction(()=>document.querySelector('#native-investigation-watch')?.textContent.includes('Watching committed evidence'));
   const {spawnSync}=require('child_process');
   const update=spawnSync('python',['tests/ui/seed_investigations.py',process.argv[3]||'/tmp/cs-ui-state','update'],{encoding:'utf8',env:{...process.env,PYTHONPATH:'src'}});
   if(update.status!==0)throw Error('Independent retained worker failed: '+update.stderr);
   await page.waitForFunction(()=>document.querySelector('#action-title').textContent.includes('revised retained evidence'),{},{timeout:20000});
   if(!(await page.locator('section[data-shared-investigations]').textContent()).includes('revised retained evidence'))throw Error('Worker revision did not reach shared inventory');
+  await page.waitForSelector('[data-investigation-watch-action="acknowledge"]');
   await page.click('#action-close');
+  await page.click('nav button[data-page="Watchlist"]');
+  await page.waitForSelector('[data-investigation-watch-open]');
+  if(!(await page.locator('[data-investigation-watch-open]').first().locator('xpath=..').textContent()).includes('changed'))
+   throw Error('Committed investigation change not visible in existing Watchlist');
+  await page.click('#notifications');
+  await page.waitForSelector('[data-investigation-notice]');
+  await page.locator('[data-investigation-notice]').first().click();
+  await page.waitForSelector('[data-investigation-watch-action="acknowledge"]');
+  await page.locator('[data-investigation-watch-action="acknowledge"]').click();
+  await page.waitForFunction(()=>!document.querySelector('[data-investigation-watch-action="acknowledge"]'));
+  await page.click('#action-close');
+  await page.click('nav button[data-page="Entity Network"]');
+  await page.waitForSelector('section[data-shared-investigations] [data-investigation-id]');
   await page.route('**/api/investigations?revision=1',route=>route.fulfill({status:503,body:'offline refresh fixture'}));
   await page.waitForFunction(()=>document.querySelector('[data-investigation-status]').textContent.includes('Live refresh disconnected'),{},{timeout:15000});
   await page.unroute('**/api/investigations?revision=1');
