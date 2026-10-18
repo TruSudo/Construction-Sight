@@ -60,6 +60,20 @@ const {chromium}=require('../visual/node_modules/playwright');
   await page.locator('#search-results [data-search-index]').filter({hasText:'Synthetic CEQA'}).click();
   await page.waitForSelector('#export-investigation');
   if(!(await page.locator('#action-content').textContent()).includes('Retained evidence artifacts'))throw Error('Source evidence inspection missing');
+  // The existing lead engine must accept only explicitly reviewed, nonactionable
+  // canonical source evidence, then suppress repeat handoffs across reloads.
+  await page.click('#preview-canonical-lead');
+  await page.waitForFunction(()=>document.querySelector('#canonical-lead-review-result')?.textContent.includes('Original review:'),{},{timeout:20000});
+  if(!(await page.locator('#canonical-lead-review-result').textContent()).includes('Human review required'))
+   throw Error('Original lead preview promoted unverified source evidence');
+  await page.fill('#canonical-lead-review-reason','Retain this source claim for independent human review.');
+  await page.check('#canonical-lead-review-confirm');
+  await page.click('#retain-canonical-lead');
+  await page.waitForFunction(()=>document.querySelector('#canonical-lead-review-result')?.textContent.includes('Retained under existing lead workflow'),{},{timeout:20000});
+  if(!(await page.locator('#canonical-lead-review-result').textContent()).includes('No contact or bid authorized'))
+   throw Error('Canonical lead handoff bypassed commercial authority');
+  await page.click('#preview-canonical-lead');
+  await page.waitForFunction(()=>document.querySelector('#canonical-lead-review-result')?.textContent.includes('Already retained for review'),{},{timeout:20000});
   // The native canonical watcher must bind the current committed dossier, not
   // the unrelated commercial lead watchlist or a browser-only state object.
   await page.locator('[data-investigation-watch-action="watch"]').click();
