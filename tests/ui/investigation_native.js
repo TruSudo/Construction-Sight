@@ -277,7 +277,17 @@ const {resolve}=require('node:path');
   await page.click('#action-close');
   // Parcel/GIS original operator source evidence must be reachable inside the
   // single approved native interface, independent of an original operator DB.
+  const parcelResponse = await page.request.get(new URL('/api/parcel-source-readiness',
+    process.argv[2]).href);
+  if (!parcelResponse.ok())
+    throw Error('Original parcel source API unavailable: '+parcelResponse.status()+
+      ' '+(await parcelResponse.text()).slice(0,350));
   await page.click('nav button[data-page="Sources & Collection"]');
+  await page.waitForSelector('[data-parcel-source-readiness]',{timeout:20000});
+  const parcelProblem = await page.locator(
+    '[data-parcel-source-readiness] [role="alert"]').allTextContents();
+  if (parcelProblem.length)
+    throw Error('Original parcel readiness could not render: '+parcelProblem.join(' | '));
   await page.waitForSelector('[data-parcel-source-readiness] [data-parcel-source-inspect]',
     {timeout:20000});
   const parcelRows = page.locator('[data-parcel-source-inspect]');
