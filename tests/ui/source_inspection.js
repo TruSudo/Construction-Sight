@@ -514,6 +514,114 @@ const {resolve} = require('node:path');
     if (JSON.stringify(migratedIds) !== JSON.stringify(evidenceIds)) {
       throw Error('Scoped source replay disagrees across shared investigation views');
     }
+    // An existing original record changes independently of the native engine.
+    // This mutation belongs only to the isolated source fixture, not the worker.
+    const revise = spawnSync('python', ['-c', `
+import sys
+from datetime import timedelta
+from sqlalchemy.orm import Session
+from constructionsight.storage.database import create_database_engine
+from constructionsight.storage.domain_store import CeqaStore
+engine = create_database_engine('sqlite:///' + sys.argv[1])
+with Session(engine) as session, session.begin():
+    record = CeqaStore(session).get('phase8:browser:batch:ceqa')
+    assert record is not None
+    CeqaStore(session).upsert(record.model_copy(update={
+        'title': 'Revised scoped migration source',
+        'provenance': [item.model_copy(update={
+            'captured_at': item.captured_at + timedelta(days=1)
+        }) for item in record.provenance]
+    }))
+engine.dispose()
+`, originalDatabase], {env: {...process.env, PYTHONPATH: 'src'}, encoding: 'utf8'});
+    if (revise.status !== 0) throw Error('Isolated original source revision failed: ' + revise.stderr);
+    const beforeRevisionWorker = originalDigest();
+    await page.click('nav button[data-page="Sources & Collection"]');
+    await page.waitForSelector('#retained-source-filters');
+    await page.locator('#retained-source-filters input[name="q"]')
+      .fill('Revised scoped migration source');
+    await page.locator('#retained-source-filters button[type="submit"]').click();
+    await page.waitForFunction(() =>
+      document.querySelector('#retained-source-queue')?.textContent
+        .includes('1 retained source observations match'));
+    const revisedRow = page.locator('#retained-source-queue tr')
+      .filter({hasText: 'Revised scoped migration source'});
+    const revisionResponse = page.waitForResponse(response =>
+      new URL(response.url()).pathname === '/api/source-reconciliation');
+    await revisedRow.locator('[data-source-reconcile]').click();
+    const revisionPreview = await (await revisionResponse).json();
+    await page.waitForSelector('#source-reconcile-queue');
+    if (!revisionPreview.revision_replay_eligible || revisionPreview.replay_eligible ||
+        !(await page.locator('#source-reconcile-queue').textContent()).includes('reviewed source revision')) {
+      throw Error('Changed original source did not require an explicit revision handoff');
+    }
+    const revisionIdentity = revisionPreview.canonical_investigation_id;
+    await page.locator('#source-reconcile-open-current').click();
+    await page.waitForSelector('#export-investigation');
+    if (!(await page.locator('#action-title').textContent()).includes('Synthetic scoped migration source')) {
+      throw Error('Original update changed the native dossier before reviewed worker processing');
+    }
+    await page.click('#action-close');
+    await revisedRow.locator('[data-source-reconcile]').click();
+    await page.waitForSelector('#source-reconcile-queue');
+    await page.locator('#source-reconcile-reason')
+      .fill('Reviewed the exact original revision against current retained native evidence.');
+    await page.locator('#source-reconcile-confirm').check();
+    let releaseRevision, markRevisionQueued;
+    const deliverRevision = new Promise(resolve => { releaseRevision = resolve; });
+    const originalRevisionQueued = new Promise(resolve => { markRevisionQueued = resolve; });
+    await page.route('**/api/source-reconciliation-queue', async route => {
+      const response = await route.fetch();
+      markRevisionQueued();
+      await deliverRevision;
+      await route.fulfill({response});
+    });
+    const revisionQueued = page.waitForResponse(response =>
+      new URL(response.url()).pathname === '/api/source-reconciliation-queue' &&
+      response.request().method() === 'POST');
+    await page.locator('#source-reconcile-queue').click();
+    await originalRevisionQueued;
+    await page.locator('#source-reconcile-open-current').click();
+    await page.waitForSelector('#export-investigation');
+    releaseRevision();
+    const revisionReceipt = await (await revisionQueued).json();
+    await page.unroute('**/api/source-reconciliation-queue');
+    if (revisionReceipt.reconciliation_action !== 'retain_revision' ||
+        revisionReceipt.previous_native_evidence_id !== revisionPreview.native_evidence_id) {
+      throw Error('Original revision approval lost its exact previous evidence binding');
+    }
+    if (!(await page.locator('#action-title').textContent()).includes('Synthetic scoped migration source') ||
+        !(await page.locator('#action-content').textContent()).includes(revisionIdentity)) {
+      throw Error('A delayed queue receipt replaced the newly opened current dossier');
+    }
+    runWorker();
+    await page.waitForFunction(() =>
+      document.querySelector('#action-title')?.textContent
+        .includes('Revised scoped migration source'), {}, {timeout: 25000});
+    const revisedDossier = await page.locator('#action-content').textContent();
+    if (!revisedDossier.includes(revisionPreview.native_evidence_id) ||
+        !revisedDossier.includes(revisionPreview.expected_evidence_id) ||
+        !revisedDossier.includes('commercial authority: No')) {
+      throw Error('Live original-source revision lost previous evidence or promoted authority');
+    }
+    const revisionAudit = await (await page.request.get(new URL(
+      '/api/source-reconciliation-audit?' + new URLSearchParams({job: revisionReceipt.job_id}),
+      process.argv[2]).href)).json();
+    if (revisionAudit.job_status !== 'completed' ||
+        revisionAudit.approval.previous_evidence_id !== revisionPreview.native_evidence_id) {
+      throw Error('Original revision worker lost its immutable prior-evidence approval');
+    }
+    await page.click('#action-close');
+    await page.click('nav button[data-page="Evidence Chains"]');
+    await page.waitForFunction(() =>
+      document.querySelector('[data-shared-investigations]')?.textContent
+        .includes('Revised scoped migration source'));
+    const revisedIds = await page.locator('[data-shared-investigations] [data-investigation-id]')
+      .evaluateAll(nodes => nodes.map(node => node.dataset.investigationId).sort());
+    if (JSON.stringify(revisedIds) !== JSON.stringify(migratedIds) ||
+        originalDigest() !== beforeRevisionWorker || runWorker().processed_jobs !== 0) {
+      throw Error('Original revision duplicated investigations, changed source data, or repeated work');
+    }
     if (errors.length) throw Error(errors.join('; '));
     console.log('Phase 8 native retained-source and historical-commercial read parity: PASS');
   } finally {

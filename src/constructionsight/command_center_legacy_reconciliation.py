@@ -55,6 +55,7 @@ class LegacyReplayRequest(BaseModel):
     record_id: str = Field(min_length=1, max_length=255)
     expected_source_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     expected_native_evidence_id: str | None = Field(default=None, max_length=255)
+    action: Literal["retain_missing", "retain_revision"] = "retain_missing"
     caller_confirmation: Literal[True]
     review_reason: str = Field(min_length=10, max_length=2000)
 
@@ -165,6 +166,9 @@ def _native_state(
         "native_evidence_id": None, "canonical_investigation_id": None,
         "worker_event_cursor": store.runtime_event_cursor() if store else None,
         "native_state": "not_in_native_store",
+        "source_effective_at": observation.effective_at.isoformat(),
+        "native_effective_at": None,
+        "revision_replay_eligible": False,
         "independent_project_identity_verified": False,
         "commercial_authority_granted": False,
     }
@@ -172,12 +176,18 @@ def _native_state(
         return base
     current = InvestigationService(store).current_observation(observation.source_entity_id)
     base.update(
+        native_effective_at=current.effective_at.isoformat(),
         native_evidence_id=current.evidence.evidence_id,
         canonical_investigation_id=canonical_investigation_id(store, observation.investigation_id),
         native_state=(
             "exact_observation_already_retained"
             if current.evidence.evidence_id == observation.evidence.evidence_id
             else "current_observation_disagrees_requires_review"
+        ),
+        revision_replay_eligible=(
+            current.evidence.evidence_id != observation.evidence.evidence_id
+            and observation.effective_at >= current.effective_at
+            and store.get_runtime_event(observation.receipt_id) is None
         ),
     )
     return base
@@ -222,7 +232,7 @@ def preview_legacy_reconciliation(
 def enqueue_legacy_reconciliation(
     directory: Path, operator_database: Path | None, payload: dict[str, Any],
 ) -> dict[str, Any]:
-    """Queue only an exactly reviewed missing source, never overwrite existing knowledge."""
+    """Queue an exact reviewed snapshot against absent or explicitly reviewed prior evidence."""
 
     request = LegacyReplayRequest.model_validate(payload)
     previous = preview_legacy_reconciliation(
@@ -232,7 +242,12 @@ def enqueue_legacy_reconciliation(
         raise ValueError("original source changed; inspect the current evidence again")
     if previous["native_evidence_id"] != request.expected_native_evidence_id:
         raise ValueError("canonical source evidence changed; inspect again")
-    if not previous["replay_eligible"]:
+    revision = request.action == "retain_revision"
+    if revision and not previous["revision_replay_eligible"]:
+        raise ValueError(
+            "source revision is unchanged, historical or requires fresh evidence review"
+        )
+    if not revision and not previous["replay_eligible"]:
         raise ValueError("source already present or contradictory; review native evidence first")
     metadata, raw = _source(
         operator_database, kind=request.kind, record_id=request.record_id
@@ -242,7 +257,8 @@ def enqueue_legacy_reconciliation(
     if hashlib.sha256(canonical).hexdigest() != request.expected_source_sha256:
         raise ValueError("source changed during replay selection")
     jobs: list[dict[str, Any]] = _queue_sources(
-        directory, [(metadata, raw)], request.review_reason
+        directory, [(metadata, raw)], request.review_reason,
+        previous_evidence_id=previous["native_evidence_id"] if revision else None,
     )["jobs"]
     return jobs[0]
 
@@ -250,10 +266,13 @@ def enqueue_legacy_reconciliation(
 def _queue_sources(
     directory: Path, sources: list[tuple[dict[str, Any], dict[str, Any]]], reason: str,
     *, batch_plan: dict[str, Any] | None = None,
+    previous_evidence_id: str | None = None,
 ) -> dict[str, Any]:
     """The single-source and scoped paths share one atomic job/approval boundary."""
     if not 1 <= len(sources) <= 25:
         raise ValueError("reviewed replay must contain between 1 and 25 source observations")
+    if previous_evidence_id is not None and len(sources) != 1:
+        raise ValueError("original revisions require individual source review")
     canonical_sources = [(metadata, raw, _canonical(raw)) for metadata, raw in sources]
     if sum(len(content) for _, _, content in canonical_sources) > MAX_INPUT_BYTES:
         raise ValueError("reviewed source page exceeds the total retained input size limit")
@@ -273,21 +292,31 @@ def _queue_sources(
                 source_sha256=metadata["source_sha256"],
                 source_entity_id=observation.source_entity_id,
                 expected_evidence_id=observation.evidence.evidence_id,
+                previous_evidence_id=previous_evidence_id,
                 review_reason=reason, local_user_confirmation=True,
             )
             reference = retain_input(runtime.directory, content)
             definition = JobDefinition(kind="retained_json_replay", inputs={
                 "input": reference.model_dump(), "source_kind": metadata["kind"],
                 "offset": 0, "row_count": 1,
-                "original_replay_approval": approval.model_dump(mode="json"),
+                "original_replay_approval": approval.retained_payload(),
             })
-            prepared.append((metadata, approval, definition))
+            prepared.append((metadata, approval, definition, raw))
         with managed_session(runtime.queue.factory) as session:
             runtime.queue.begin_write(session)
             store = IntelligenceStore(session)
-            for metadata, approval, definition in prepared:
-                if store.get_entity(approval.source_entity_id) is not None:
-                    raise ValueError("source changed in native investigation; re-review required")
+            for metadata, approval, definition, raw in prepared:
+                state = _native_state(kind=metadata["kind"], raw=raw, store=store)
+                if previous_evidence_id is None:
+                    if state["native_evidence_id"] is not None:
+                        raise ValueError(
+                            "source changed in native investigation; re-review required"
+                        )
+                elif (
+                    state["native_evidence_id"] != previous_evidence_id
+                    or not state["revision_replay_eligible"]
+                ):
+                    raise ValueError("native evidence changed; re-review the original revision")
                 pending = runtime.queue.pending_original_replay(store, approval.source_entity_id)
                 if pending is not None and pending.definition != definition:
                     raise ValueError(
@@ -300,7 +329,7 @@ def _queue_sources(
                     source_service="original_source_replay_approval", correlation_id=queued.job_id,
                     created_at=datetime.fromtimestamp(queued.created_at, UTC),
                     source_record_refs=[approval.source_entity_id],
-                    payload=approval.model_dump(mode="json"),
+                    payload=approval.retained_payload(),
                     message=("Original exact source replay reviewed and queued; "
                              "no identity approval."),
                 ))
@@ -312,6 +341,9 @@ def _queue_sources(
                     "job_status": queued.status, "worker_required": True,
                     "source_identity_verified": False, "project_identity_verified": False,
                     "outreach_authorized": False, "bid_authorized": False,
+                    **({"reconciliation_action": "retain_revision",
+                        "previous_native_evidence_id": previous_evidence_id}
+                       if previous_evidence_id is not None else {}),
                 })
             batch_id = None
             if batch_plan is not None:
@@ -466,14 +498,14 @@ def original_source_replay_audit(directory: Path, *, job_id: str) -> dict[str, A
             if (
                 job is None or job.definition.kind != "retained_json_replay"
                 or job.definition.inputs.get("original_replay_approval")
-                != approval.model_dump(mode="json")
+                != approval.retained_payload()
             ):
                 raise ValueError("original replay approval lost its exact job lineage")
             return {
                 "schema_version": "constructionsight.original-replay-audit/v1",
                 "audit_event_id": audit_id,
                 "approval_retained_at": audit.created_at.isoformat(),
-                "approval": approval.model_dump(mode="json"),
+                "approval": approval.retained_payload(),
                 "job_id": job_id,
                 "job_status": job.status,
                 "job_error_code": job.error_code,

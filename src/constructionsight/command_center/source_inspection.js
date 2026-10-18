@@ -191,25 +191,39 @@ async function renderRetainedSources(box) {
             }));
           if (!root.isConnected || activePage !== 'Sources & Collection') return;
           const needsReplay = inspection.replay_eligible === true;
-          modal('Exact original → native investigation reconciliation',
+          const needsRevision = inspection.revision_replay_eligible === true;
+          const reconciliationTicket = modal('Exact original → native investigation reconciliation',
             '<p>Exact original source evidence compared with the existing canonical ' +
             'investigation store. An unmatched source is NOT an independently ' +
             'verified project. Queuing retained evidence does not merge or authorize ' +
             'outreach, a bid, or a commercial lead.</p><pre>' +
             esc(JSON.stringify(inspection, null, 2)) + '</pre>' +
-            (needsReplay ?
+            (needsReplay || needsRevision ?
               '<p>To hand off only this exact snapshot to the common investigation ' +
-              'worker, provide a human review reason and explicitly confirm.</p>' +
+              'worker, provide a human review reason and explicitly confirm. ' +
+              (needsRevision ? 'This retains a revision of this same source. Earlier evidence ' +
+                'remains preserved; existing relationship decisions may require reassessment. ' +
+                'The worker rejects this review if the current evidence changes.' : '') + '</p>' +
               '<label>Review reason <textarea id="source-reconcile-reason" ' +
               'maxlength="2000" rows="3" required></textarea></label>' +
               '<label><input id="source-reconcile-confirm" type="checkbox"> ' +
-              'I reviewed this specific retained source evidence; replay only.</label>' +
-              '<button id="source-reconcile-queue">Queue verified retained snapshot</button>' :
-              '<p>No replay allowed. Existing or conflicting native evidence ' +
-              'must be inspected through the canonical dossier and review workflow.</p>'));
+              (needsRevision ? 'I reviewed the original revision and the current native evidence; ' +
+                'retain this source revision only.' :
+                'I reviewed this specific retained source evidence; replay only.') + '</label>' +
+              '<button id="source-reconcile-queue">' +
+              (needsRevision ? 'Queue reviewed source revision' : 'Queue verified retained snapshot') +
+              '</button>' :
+              '<p>No replay allowed. Exact retained or older historical evidence cannot replace ' +
+              'the current observation.</p>') +
+            (inspection.canonical_investigation_id ?
+              '<button id="source-reconcile-open-current">Inspect current shared investigation</button>' : ''));
+          const currentButton = document.querySelector('#source-reconcile-open-current');
+          if (currentButton) currentButton.onclick = () => perform(() =>
+            openInvestigationDossier(inspection.canonical_investigation_id));
           const queueButton = document.querySelector('#source-reconcile-queue');
           if (!queueButton) return;
           queueButton.onclick = () => perform(async () => {
+            if (reconciliationTicket !== modalTicket || !$('action-dialog').open) return;
             const reason = document.querySelector('#source-reconcile-reason')?.value.trim();
             const confirmed = document.querySelector('#source-reconcile-confirm')?.checked;
             if (!confirmed || !reason || reason.length < 10) {
@@ -222,10 +236,12 @@ async function renderRetainedSources(box) {
                 record_id: record.record_id,
                 expected_source_sha256: inspection.original_source.source_sha256,
                 expected_native_evidence_id: inspection.native_evidence_id,
+                action: needsRevision ? 'retain_revision' : 'retain_missing',
                 caller_confirmation: true, review_reason: reason
               });
-              if (!root.isConnected || activePage !== 'Sources & Collection') return;
-              modal('Retained source accepted by investigation worker queue',
+              if (!root.isConnected || activePage !== 'Sources & Collection' ||
+                  reconciliationTicket !== modalTicket || !$('action-dialog').open) return;
+              const receiptTicket = modal('Retained source accepted by investigation worker queue',
                 '<p>Queued, not necessarily processed. The confirmed human review ' +
                 'reason and exact source identity were durably committed as an ' +
                 'approval audit alongside the worker job. No project identity or ' +
@@ -237,7 +253,8 @@ async function renderRetainedSources(box) {
               auditButton.onclick = () => perform(async () => {
                 const audit = await api('/api/source-reconciliation-audit?' +
                   new URLSearchParams({ job: receipt.job_id }));
-                if (!root.isConnected || activePage !== 'Sources & Collection') return;
+                if (!root.isConnected || activePage !== 'Sources & Collection' ||
+                    receiptTicket !== modalTicket || !$('action-dialog').open) return;
                 modal('Retained exact-source replay approval audit',
                   '<p>Verified record of review and present worker status. Neither ' +
                   'completion nor approval establishes a verified construction ' +

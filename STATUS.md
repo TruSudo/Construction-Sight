@@ -24,6 +24,25 @@ Relationship Graph remain the goal. Full unification and functional parity are n
 
 ## Phase 8 — IN PROGRESS: native preservation and original-workflow parity
 
+**Current integration (2026-10-18, full gates pending):** A changed original
+CEQA/permit observation can now be explicitly reviewed against its exact current
+native evidence and handed to the existing worker as a retained source revision.
+The worker rechecks the previous evidence under its knowledge/completion
+transaction, retains earlier evidence and runs the existing relationship
+reassessment. It rejects stale, older or already-retained historical snapshots.
+Page approvals still queue only missing observations and hold differences for
+individual review. Existing missing-source approval/job payloads retain their
+original shape and identity; no database migration or parallel engine is added.
+The existing reconciliation dialog opens the current shared dossier, binds
+revision consent to both evidence identities and rejects late queue/audit
+responses after the operator opens another view. Seven new tests pass for both
+families, prior audit preservation, stale-worker rejection, chronology, existing
+association reassessment and HTTP guards. Twenty-seven original runtime,
+lineage, commercial and registry regression tests plus eleven existing replay
+tests passed locally; Ruff, strict Mypy (355 modules), JS syntax and diff hygiene
+pass. Full Python/browser gates, including an independent worker updating an
+open dossier while its source revision review response is delayed, are pending.
+
 **Verified continuation (2026-10-18):** Sources & Collection
 now reviews the current filtered CEQA/permit page for shared-investigation replay.
 The bounded plan binds source digests and native evidence state; missing snapshots

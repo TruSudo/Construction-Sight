@@ -87,8 +87,13 @@ class OriginalReplayApproval(BaseModel):
     source_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     source_entity_id: str = Field(min_length=1, max_length=255)
     expected_evidence_id: str = Field(min_length=1, max_length=255)
+    previous_evidence_id: str | None = Field(default=None, min_length=1, max_length=255)
     review_reason: str = Field(min_length=10, max_length=2000)
     local_user_confirmation: Literal[True]
+
+    def retained_payload(self) -> dict[str, Any]:
+        # Preserve the exact approval shape of already queued missing-source jobs.
+        return self.model_dump(mode="json", exclude_none=True)
 
 
 class InputRef(BaseModel):
@@ -376,10 +381,24 @@ class InvestigationRuntime:
                         or items[0].evidence.evidence_id != approval.expected_evidence_id
                     ):
                         raise ValueError("reviewed replay does not match exact retained source")
-                    if store.get_entity(approval.source_entity_id) is not None:
-                        raise ValueError(
-                            "original replay became stale; existing source requires review"
-                        )
+                    existing = store.get_entity(approval.source_entity_id)
+                    if approval.previous_evidence_id is None:
+                        if existing is not None:
+                            raise ValueError(
+                                "original replay became stale; existing source requires review"
+                            )
+                    else:
+                        if existing is None:
+                            raise ValueError("reviewed original revision lost its previous source")
+                        reviewed_current = service.current_observation(approval.source_entity_id)
+                        if (
+                            reviewed_current.evidence.evidence_id != approval.previous_evidence_id
+                            or items[0].effective_at < reviewed_current.effective_at
+                            or store.get_runtime_event(items[0].receipt_id) is not None
+                        ):
+                            raise ValueError(
+                                "reviewed original revision became stale or historical"
+                            )
                     audit = store.get_runtime_event(
                         _identity("event:original-source-replay-approval", claim.job_id)
                     )
@@ -387,7 +406,7 @@ class InvestigationRuntime:
                         audit is None
                         or audit.source_service != "original_source_replay_approval"
                         or audit.correlation_id != claim.job_id
-                        or audit.payload != approval.model_dump(mode="json")
+                        or audit.payload != approval.retained_payload()
                     ):
                         raise ValueError("original source replay approval audit is missing")
                 for item in items:
