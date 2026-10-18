@@ -73,7 +73,8 @@ def test_native_ceqanet_retained_chain_report_builds_verified_zip_only_on_confir
                 "/api/source-ceqanet-report-download", params={"sha256": "0" * 64}
             ).status_code == 409
             assert client.get(
-                "/api/source-ceqanet-report-download", params={"sha256": original_hash, "extra": "1"}
+                "/api/source-ceqanet-report-download",
+                params={"sha256": original_hash, "extra": "1"},
             ).status_code == 409
             created = client.post(
                 "/api/source-ceqanet-export", json=request, headers={"Origin": base}

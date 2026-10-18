@@ -156,11 +156,13 @@ def original_ceqanet_report_bytes(
         directory, expected_report_sha256=expected_report_sha256,
     )
     try:
-        with open_runtime_artifact(path) as archive_stream:
-            with zipfile.ZipFile(archive_stream) as archive:
-                member = archive.getinfo("operator-report.md")
-                if not 0 < member.file_size <= 2 * 1024 * 1024:
-                    raise ValueError("verified operator report exceeds Markdown limit")
-                return archive.read(member)
+        with (
+            open_runtime_artifact(path) as archive_stream,
+            zipfile.ZipFile(archive_stream) as archive,
+        ):
+            member = archive.getinfo("operator-report.md")
+            if not 0 < member.file_size <= 2 * 1024 * 1024:
+                raise ValueError("verified operator report exceeds Markdown limit")
+            return archive.read(member)
     except (KeyError, zipfile.BadZipFile, RuntimeError) as exc:
         raise ValueError("verified operator Markdown report is unavailable") from exc
