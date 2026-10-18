@@ -366,12 +366,7 @@ def make_server(
             path = urlsplit(self.path).path
             query = parse_qs(urlsplit(self.path).query)
             value: Any
-            if path == "/api/parcel-source-readiness":
-                if urlsplit(self.path).query or urlsplit(self.path).fragment:
-                    raise ValueError("parcel source readiness accepts no query parameters")
-                value = parcel_source_readiness_snapshot()
-                body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
-            elif path == "/api/source-ceqanet-report-download":
+            if path == "/api/source-ceqanet-report-download":
                 if (
                     directory is None or set(query) != {"sha256"}
                     or len(query["sha256"]) != 1
@@ -417,7 +412,12 @@ def make_server(
                     while chunk := archive_stream.read(65536):
                         self.wfile.write(chunk)
                 return
-            if path == "/api/source-ceqanet-export-status":
+            if path == "/api/parcel-source-readiness":
+                if urlsplit(self.path).query or urlsplit(self.path).fragment:
+                    raise ValueError("parcel source readiness accepts no query parameters")
+                value = parcel_source_readiness_snapshot()
+                body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
+            elif path == "/api/source-ceqanet-export-status":
                 if urlsplit(self.path).query:
                     raise ValueError("original export status rejects query parameters")
                 value = original_ceqanet_export_status(operator_ceqanet_chain_report)
