@@ -13,6 +13,9 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from constructionsight.command_center_investigations import investigation_view
+from constructionsight.command_center_legacy_events import (
+    verified_original_workflow_events,
+)
 from constructionsight.intake_models import (
     DigitalFormatFamily,
     ExtractedMaterialFact,
@@ -384,6 +387,7 @@ def retained_canonical_lead_workflows(
                 if len(persisted) != 1:
                     raise ValueError("canonical lead workflow linkage is incomplete")
                 workflow = load_persisted_lead_workflow(session, persisted[0])
+                history = verified_original_workflow_events(session, workflow)
                 notes = [
                     note.removeprefix("Original source evidence: ")
                     for note in workflow.notes
@@ -430,11 +434,10 @@ def retained_canonical_lead_workflows(
                     "commercial_authority_granted": False,
                     "outreach_authorized": False,
                     "bid_authorized": False,
-                    "transition_count": len(workflow.events),
-                    "recent_transitions": [
-                        event.model_dump(mode="json") for event in workflow.events[-10:]
-                    ],
-                    "transitions_truncated": len(workflow.events) > 10,
+                    "transition_count": history["event_count"],
+                    "recent_transitions": history["transitions"][-10:],
+                    "transitions_truncated": history["event_count"] > 10,
+                    "history_integrity_validated": history["history_integrity_validated"],
                     "limitations": workflow.limitations,
                 })
             return {

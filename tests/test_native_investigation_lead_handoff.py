@@ -254,6 +254,9 @@ def test_native_lead_console_reads_original_workflow_history_and_source_drift(
             assert row["original_source_evidence_id"] == preview["current_evidence_id"]
             assert row["workflow_status"] in {"hold", "monitor", "review"}
             assert row["transition_count"] == len(row["recent_transitions"])
+            assert row["history_integrity_validated"] is True
+            assert row["recent_transitions"][0]["historical_only"] is True
+            assert row["recent_transitions"][0]["commercial_authority_granted"] is False
             assert row["outreach_authorized"] is False
             assert row["commercial_authority_granted"] is False
             assert client.get(
