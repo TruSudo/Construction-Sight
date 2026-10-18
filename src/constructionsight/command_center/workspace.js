@@ -307,7 +307,11 @@ async function renderCanonicalLeadWorkflows(box){
        (entry.transitions_truncated?'<p>Earlier events retained in the original workflow store.</p>':'')+
        '</details>',
       '<button data-canonical-lead-dossier="'+esc(entry.canonical_investigation_id)+
-       '">Open shared dossier</button>'
+       '">Open shared dossier</button>'+
+       (entry.source_evidence_state==='current_source_observation'&&
+        ['hold','monitor','review'].includes(entry.workflow_status)?
+        ' <button data-canonical-review-transition="'+esc(entry.workflow_id)+
+        '">Update review status</button>':'')
      ]))+
     '<p>Showing '+(rows.length?offset+1:0)+'–'+(offset+rows.length)+
     ' of '+page.total+' retained canonical lead records.</p>'+
@@ -316,6 +320,44 @@ async function renderCanonicalLeadWorkflows(box){
     (!page.total?'<p>No retained canonical lead candidates. Review an investigation dossier first.</p>':'');
    section.querySelectorAll('[data-canonical-lead-dossier]').forEach(button=>{
     button.onclick=()=>perform(()=>openInvestigationDossier(button.dataset.canonicalLeadDossier));
+   });
+   section.querySelectorAll('[data-canonical-review-transition]').forEach(button=>{
+    button.onclick=()=>perform(async()=>{
+     const row=rows.find(r=>r.workflow_id===button.dataset.canonicalReviewTransition);
+     if(!row)return;
+     const options={hold:['monitor','review'],monitor:['hold','review'],
+      review:['hold','monitor']}[row.workflow_status]||[];
+     if(!options.length)return;
+     modal('Review-only original workflow transition',
+      '<p>Only hold, monitor and review are available. This does not verify a site,'+
+      ' authorize outreach or enable bidding.</p>'+
+      '<form id="canonical-review-transition-form">'+
+      '<label>Next review status <select name="next_status">'+
+      options.map(status=>'<option value="'+esc(status)+'">'+esc(status)+'</option>').join('')+
+      '</select></label>'+
+      '<label>Operator review reason <textarea name="reason" minlength="10" maxlength="2000" required></textarea></label>'+
+      '<label><input name="confirm" type="checkbox" required>'+
+      ' I authorize this exact review-only status transition.</label>'+
+      '<button type="submit">Record original workflow transition</button></form>');
+     $('canonical-review-transition-form').onsubmit=event=>{
+      event.preventDefault();
+      perform(async()=>{
+       const form=$('canonical-review-transition-form');
+       const reason=form.elements.namedItem('reason').value.trim();
+       if(reason.length<10||!form.elements.namedItem('confirm').checked)
+        throw Error('An explicit review reason and confirmation are required.');
+       await api('/api/investigation-lead-review-transition',{
+        investigation_id:row.canonical_investigation_id,
+        workflow_id:row.workflow_id,expected_status:row.workflow_status,
+        next_status:form.elements.namedItem('next_status').value,
+        expected_evidence_id:row.current_source_evidence_id,
+        reason,caller_confirmation:true
+       });
+       if($('action-dialog').open)$('action-dialog').close();
+       await load();
+      });
+     };
+    });
    });
    const back=section.querySelector('[data-canonical-lead-previous]');
    if(back)back.onclick=()=>perform(async()=>{offset-=25;await load();});

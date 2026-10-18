@@ -33,6 +33,11 @@ from constructionsight.lead_dedupe_service import (
     check_lead_duplicate,
 )
 from constructionsight.lead_operator_service import load_persisted_lead_workflow
+from constructionsight.lead_workflow_models import LeadWorkflowStatus
+from constructionsight.lead_workflow_rules import LEAD_WORKFLOW_TRANSITION_RULES
+from constructionsight.operator_services.lead_workflow_transition_service import (
+    apply_authorized_lead_workflow_transition,
+)
 from constructionsight.lead_workflow_service import create_lead_workflow
 from constructionsight.product_integration_models import ProductIntegrationReport
 from constructionsight.product_integration_service import (
@@ -604,3 +609,117 @@ def canonical_lead_collisions(
         "identity_independently_verified": False,
         "commercial_authority_granted": False,
     }
+
+
+_REVIEW_ONLY_STATUSES = frozenset({
+    LeadWorkflowStatus.HOLD,
+    LeadWorkflowStatus.MONITOR,
+    LeadWorkflowStatus.REVIEW,
+})
+
+
+def transition_retained_canonical_review(
+    directory: Path, payload: dict[str, Any], *,
+    original_database: Path | None = None,
+) -> dict[str, Any]:
+    """Reuse original authorized append-only transitions, never qualify commerce.
+
+    This entry point is deliberately narrower than the underlying original
+    service. READY/ACTIVE/outcomes require independent verified lead, contact
+    and commercial authority and are not exposed by the canonical UI.
+    """
+    if set(payload) != {
+        "investigation_id", "workflow_id", "expected_status", "next_status",
+        "expected_evidence_id", "reason", "caller_confirmation",
+    }:
+        raise ValueError("exact canonical workflow review transition fields required")
+    identity, workflow_id = payload["investigation_id"], payload["workflow_id"]
+    reason = payload["reason"]
+    if (
+        not isinstance(identity, str) or not 1 <= len(identity) <= 255
+        or not isinstance(workflow_id, str) or not 1 <= len(workflow_id) <= 255
+        or not isinstance(reason, str) or not 10 <= len(reason.strip()) <= 2000
+        or not isinstance(payload["expected_evidence_id"], str)
+        or not payload["expected_evidence_id"]
+        or payload["caller_confirmation"] is not True
+    ):
+        raise ValueError("explicit exact-source operator review confirmation required")
+    try:
+        expected_status = LeadWorkflowStatus(payload["expected_status"])
+        next_status = LeadWorkflowStatus(payload["next_status"])
+    except (ValueError, TypeError) as exc:
+        raise ValueError("unknown original workflow review status") from exc
+    if (
+        expected_status not in _REVIEW_ONLY_STATUSES
+        or next_status not in _REVIEW_ONLY_STATUSES
+        or next_status not in LEAD_WORKFLOW_TRANSITION_RULES[expected_status]
+    ):
+        raise ValueError(
+            "only original matrix-valid hold/monitor/review transitions are permitted"
+        )
+    engine = create_private_database_engine(
+        directory / "investigations.sqlite3", create=False,
+    )
+    try:
+        with managed_session(session_factory(engine)) as session:
+            session.connection().exec_driver_sql("BEGIN IMMEDIATE")
+            preview = canonical_lead_preview(
+                directory, identity, original_database=original_database,
+            )
+            current = preview["existing_native_handoff"]
+            if current is None or current["workflow_id"] != workflow_id:
+                raise ValueError("workflow is not the existing canonical investigation handoff")
+            if preview["existing_source_or_site_matches"]["review_required"]:
+                raise ValueError("existing source/site collision requires reconciliation")
+            if preview["current_evidence_id"] != payload["expected_evidence_id"]:
+                raise ValueError("retained source changed; re-review before transition")
+            workflow = load_persisted_lead_workflow(session, workflow_id)
+            verified_original_workflow_events(session, workflow)
+            evidence_notes = [
+                note.removeprefix("Original source evidence: ")
+                for note in workflow.notes
+                if note.startswith("Original source evidence: ")
+            ]
+            if (
+                len(evidence_notes) != 1
+                or evidence_notes[0] != preview["current_evidence_id"]
+                or "Canonical investigation: " + identity not in workflow.notes
+            ):
+                raise ValueError("retained workflow source evidence is stale or inconsistent")
+            if workflow.status != expected_status:
+                raise ValueError("workflow status changed; re-open the native lead console")
+            authorized = apply_authorized_lead_workflow_transition(
+                session, workflow_id=workflow_id,
+                expected_current_status=expected_status,
+                next_status=next_status, reason=reason.strip(),
+                caller_confirmation=True,
+            )
+            updated = load_persisted_lead_workflow(session, workflow_id)
+            checked = verified_original_workflow_events(session, updated)
+            if (
+                checked["current_status"] != next_status.value
+                or checked["event_count"] != len(workflow.events) + 1
+            ):
+                raise ValueError("durable original event history transition mismatch")
+            return {
+                "schema_version": "constructionsight.canonical-review-transition/v1",
+                "canonical_investigation_id": identity,
+                "workflow_id": workflow_id,
+                "previous_status": expected_status.value,
+                "current_status": next_status.value,
+                "event_id": authorized.report.event_id,
+                "history_integrity_validated": True,
+                "event_count": checked["event_count"],
+                "authorization_audit_identity": (
+                    authorized.authorization.decision.audit_identity
+                ),
+                "source_evidence_id": preview["current_evidence_id"],
+                "review_only": True,
+                "outreach_authorized": False,
+                "bid_authorized": False,
+                "commercial_authority_granted": False,
+            }
+    except SQLAlchemyError as exc:
+        raise ValueError("canonical workflow review transition could not be committed") from exc
+    finally:
+        engine.dispose()

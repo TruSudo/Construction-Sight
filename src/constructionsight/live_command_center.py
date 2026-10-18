@@ -36,6 +36,7 @@ from constructionsight.command_center_canonical_leads import (
     canonical_lead_preview,
     retain_reviewed_canonical_candidate,
     retained_canonical_lead_workflows,
+    transition_retained_canonical_review,
 )
 from constructionsight.command_center_graph import graph_view
 from constructionsight.command_center_investigations import (
@@ -942,6 +943,7 @@ def make_server(
                 "/api/royalty-entry",
                 "/api/investigation-review",
                 "/api/investigation-lead-handoff",
+                "/api/investigation-lead-review-transition",
                 "/api/source-watchlist-action",
                 "/api/investigation-watch",
                 "/api/source-commercial-preview",
@@ -1101,6 +1103,18 @@ def make_server(
                                 target = Path(result["directory"])
                                 data_folder.point_startup(startup_directory, target)
                                 directory = target
+                    elif path == "/api/investigation-lead-review-transition":
+                        if (
+                            urlsplit(self.path).query
+                            or urlsplit(self.path).fragment
+                            or self.headers.get_all("Host", []) != [host]
+                            or self.headers.get_all("Origin", []) != [f"http://{host}"]
+                            or self.headers.get("Sec-Fetch-Site") == "cross-site"
+                        ):
+                            raise ValueError("exact same-origin canonical workflow review required")
+                        result = transition_retained_canonical_review(
+                            directory, payload, original_database=operator_database,
+                        )
                     elif path == "/api/investigation-lead-handoff":
                         if (
                             urlsplit(self.path).query

@@ -577,3 +577,104 @@ def test_canonical_handoff_checks_separate_original_operator_database(
             ) == 0
     finally:
         engine.dispose()
+
+
+def test_canonical_review_transition_reuses_authorized_original_event_history(
+    tmp_path: Path,
+) -> None:
+    """Only governed non-actionable state changes are allowed from native console."""
+    from constructionsight.lead_workflow_rules import LEAD_WORKFLOW_TRANSITION_RULES
+
+    folder = tmp_path / "private"
+    folder.mkdir(mode=0o700)
+    runtime = InvestigationRuntime(folder)
+    try:
+        runtime.enqueue_bytes(_record().model_dump_json(round_trip=True).encode(), "ceqa")
+        assert runtime.process(max_jobs=100)["failed_jobs"] == 0
+    finally:
+        runtime.close()
+    server = make_server(snapshot(), 0, directory=folder)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        base = f"http://127.0.0.1:{server.server_port}"
+        with httpx.Client(base_url=base, trust_env=False) as client:
+            identity = client.get("/api/investigations").json()["rows"][0]["investigation_id"]
+            preview = client.get(
+                "/api/investigation-lead-preview", params={"investigation_id": identity}
+            ).json()
+            save = client.post(
+                "/api/investigation-lead-handoff", json={
+                    "investigation_id": identity,
+                    "expected_evidence_id": preview["current_evidence_id"],
+                    "expected_evidence_sha256": preview["current_evidence_sha256"],
+                    "expected_event_anchor": preview["event_anchor"],
+                    "reason": "Retain exact source for manual review.",
+                    "caller_confirmation": True,
+                }, headers={"Origin": base},
+            )
+            assert save.status_code == 200, save.text
+            old = save.json()
+            from constructionsight.lead_workflow_models import LeadWorkflowStatus
+            next_status = next(
+                state.value for state in sorted(
+                    LEAD_WORKFLOW_TRANSITION_RULES[LeadWorkflowStatus(
+                        old["workflow_status"]
+                    )], key=lambda value: value.value,
+                ) if state.value in {"hold", "monitor", "review"}
+            )
+            payload = {
+                "investigation_id": identity,
+                "workflow_id": old["workflow_id"],
+                "expected_status": old["workflow_status"],
+                "next_status": next_status,
+                "expected_evidence_id": preview["current_evidence_id"],
+                "reason": "Move this exact source through operator review.",
+                "caller_confirmation": True,
+            }
+            assert client.post(
+                "/api/investigation-lead-review-transition", json=payload
+            ).status_code == 403
+            assert client.post(
+                "/api/investigation-lead-review-transition", json=payload,
+                headers={"Origin": "https://untrusted.example"},
+            ).status_code == 403
+            for bad in (
+                {**payload, "next_status": "ready"},
+                {**payload, "caller_confirmation": False},
+                {**payload, "expected_status": "active"},
+                {**payload, "expected_evidence_id": "stale-evidence"},
+            ):
+                denied = client.post(
+                    "/api/investigation-lead-review-transition",
+                    json=bad, headers={"Origin": base},
+                )
+                assert denied.status_code == 400, denied.text
+            changed = client.post(
+                "/api/investigation-lead-review-transition",
+                json=payload, headers={"Origin": base},
+            )
+            assert changed.status_code == 200, changed.text
+            receipt = changed.json()
+            assert receipt["current_status"] == next_status
+            assert receipt["event_count"] == 2
+            assert receipt["history_integrity_validated"] is True
+            assert receipt["outreach_authorized"] is False
+            assert receipt["commercial_authority_granted"] is False
+            assert client.post(
+                "/api/investigation-lead-review-transition",
+                json=payload, headers={"Origin": base},
+            ).status_code == 400
+            listing = client.get("/api/investigation-lead-workflows")
+            assert listing.status_code == 200, listing.text
+            row = listing.json()["rows"][0]
+            assert row["workflow_id"] == old["workflow_id"]
+            assert row["workflow_status"] == next_status
+            assert row["transition_count"] == 2
+            assert row["history_integrity_validated"] is True
+            assert row["recent_transitions"][-1]["current_status"] == next_status
+            assert row["recent_transitions"][-1]["historical_only"] is True
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join()
