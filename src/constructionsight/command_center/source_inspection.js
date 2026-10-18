@@ -600,7 +600,10 @@ async function renderRetainedCeqanetExport(box) {
         output.innerHTML = '<p>Verified original operator ZIP is ready. ' +
           'No commercial action was authorized.</p><a id="original-export-download" ' +
           'href="' + esc(receipt.archive_url) +
-          '" download="ceqanet-operator-export.zip">Download verified ZIP</a>' +
+          '" download="ceqanet-operator-export.zip">Download verified ZIP</a> · ' +
+          '<a href="/api/source-ceqanet-report-download?sha256=' +
+          encodeURIComponent(sha) +
+          '" download="ceqanet-operator-report.md">Read verified report (.md)</a>' +
           '<details><summary>Verification receipt</summary><pre>' +
           esc(JSON.stringify(receipt, null, 2)) + '</pre></details>';
       } finally {

@@ -42,6 +42,7 @@ from constructionsight.command_center_legacy_export import (
     original_ceqanet_archive_path,
     original_ceqanet_export,
     original_ceqanet_export_status,
+    original_ceqanet_report_bytes,
 )
 from constructionsight.command_center_legacy_lineage import original_candidate_workflow_lineage
 from constructionsight.command_center_legacy_reconciliation import (
@@ -352,6 +353,26 @@ def make_server(
             path = urlsplit(self.path).path
             query = parse_qs(urlsplit(self.path).query)
             value: Any
+            if path == "/api/source-ceqanet-report-download":
+                if (
+                    directory is None or set(query) != {"sha256"}
+                    or len(query["sha256"]) != 1
+                ):
+                    raise ValueError("select one verified original Markdown report")
+                report_bytes = original_ceqanet_report_bytes(
+                    directory, expected_report_sha256=query["sha256"][0],
+                )
+                self.send_response(200)
+                self.send_header("Content-Type", "text/markdown; charset=utf-8")
+                self.send_header(
+                    "Content-Disposition", "attachment; filename=ceqanet-operator-report.md"
+                )
+                self.send_header("Content-Length", str(len(report_bytes)))
+                self.send_header("Cache-Control", "no-store")
+                self.send_header("X-Content-Type-Options", "nosniff")
+                self.end_headers()
+                self.wfile.write(report_bytes)
+                return
             if path == "/api/source-ceqanet-export-download":
                 if (
                     directory is None or set(query) != {"sha256"}

@@ -19,7 +19,7 @@ from constructionsight.ceqanet_operator_archive import build_ceqanet_operator_ar
 from constructionsight.ceqanet_operator_archive_verify import verify_ceqanet_operator_archive
 from constructionsight.ceqanet_operator_export import build_ceqanet_operator_export
 from constructionsight.ceqanet_operator_package import build_ceqanet_operator_package
-from constructionsight.storage.runtime_artifacts import read_runtime_artifact
+from constructionsight.storage.runtime_artifacts import open_runtime_artifact, read_runtime_artifact
 
 _SHA = re.compile(r"[0-9a-f]{64}")
 _MAX_INPUT = 16 * 1024 * 1024
@@ -142,3 +142,25 @@ def original_ceqanet_archive_path(
     if not verification.passed:
         raise ValueError("original CEQAnet archive integrity check failed")
     return path
+
+
+
+def original_ceqanet_report_bytes(
+    directory: Path, *, expected_report_sha256: str,
+) -> bytes:
+    """Return the original Markdown report from an already verified operator ZIP.
+
+    Creation still requires the existing manually confirmed, exact-source export.
+    """
+    path = original_ceqanet_archive_path(
+        directory, expected_report_sha256=expected_report_sha256,
+    )
+    try:
+        with open_runtime_artifact(path) as archive_stream:
+            with zipfile.ZipFile(archive_stream) as archive:
+                member = archive.getinfo("operator-report.md")
+                if not 0 < member.file_size <= 2 * 1024 * 1024:
+                    raise ValueError("verified operator report exceeds Markdown limit")
+                return archive.read(member)
+    except (KeyError, zipfile.BadZipFile, RuntimeError) as exc:
+        raise ValueError("verified operator Markdown report is unavailable") from exc

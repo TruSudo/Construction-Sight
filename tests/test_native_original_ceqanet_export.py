@@ -66,6 +66,15 @@ def test_native_ceqanet_retained_chain_report_builds_verified_zip_only_on_confir
             assert client.get(
                 "/api/source-ceqanet-export-download", params={"sha256": "0" * 64}
             ).status_code == 409
+            assert client.get(
+                "/api/source-ceqanet-report-download", params={"sha256": original_hash}
+            ).status_code == 409
+            assert client.get(
+                "/api/source-ceqanet-report-download", params={"sha256": "0" * 64}
+            ).status_code == 409
+            assert client.get(
+                "/api/source-ceqanet-report-download", params={"sha256": original_hash, "extra": "1"}
+            ).status_code == 409
             created = client.post(
                 "/api/source-ceqanet-export", json=request, headers={"Origin": base}
             )
@@ -85,6 +94,13 @@ def test_native_ceqanet_retained_chain_report_builds_verified_zip_only_on_confir
                 assert "manifest.json" in archive.namelist()
                 assert "operator-report.md" in archive.namelist()
                 assert "operator-package.json" in archive.namelist()
+                expected_markdown = archive.read("operator-report.md")
+            markdown = client.get(
+                "/api/source-ceqanet-report-download", params={"sha256": original_hash}
+            )
+            assert markdown.status_code == 200, markdown.text[:500]
+            assert markdown.headers["content-type"] == "text/markdown; charset=utf-8"
+            assert markdown.content == expected_markdown
             again = client.post(
                 "/api/source-ceqanet-export", json=request, headers={"Origin": base}
             )
