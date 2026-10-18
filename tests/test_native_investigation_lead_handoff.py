@@ -367,7 +367,8 @@ def test_canonical_handoff_rejects_same_source_original_fingerprint(
         session_factory,
     )
     from constructionsight.storage.lead_workflow_orm import (
-        LeadFingerprintRecord, LeadWorkflowRecordRow,
+        LeadFingerprintRecord,
+        LeadWorkflowRecordRow,
     )
     from constructionsight.storage.lead_workflow_store import store_lead_fingerprint
 
@@ -454,3 +455,125 @@ def test_canonical_handoff_rejects_same_source_original_fingerprint(
         server.server_close()
         thread.join()
 
+
+
+def test_canonical_handoff_checks_separate_original_operator_database(
+    tmp_path: Path,
+) -> None:
+    """Original lead identity matching is read-only and blocks parallel native leads."""
+    from sqlalchemy import func, select
+
+    from constructionsight.lead_dedupe_service import build_lead_fingerprint
+    from constructionsight.product_integration_models import ProductIntegrationReport
+    from constructionsight.storage.database import (
+        create_private_database_engine,
+        initialize_database,
+        managed_session,
+        session_factory,
+    )
+    from constructionsight.storage.lead_workflow_orm import LeadWorkflowRecordRow
+    from constructionsight.storage.lead_workflow_store import store_lead_fingerprint
+
+    native = tmp_path / "native"
+    native.mkdir(mode=0o700)
+    runtime = InvestigationRuntime(native)
+    try:
+        runtime.enqueue_bytes(_record().model_dump_json(round_trip=True).encode(), "ceqa")
+        assert runtime.process(max_jobs=100)["failed_jobs"] == 0
+    finally:
+        runtime.close()
+
+    # Original operator database is a separate existing private governed store,
+    # with an exact source fingerprint but no invented same-project approval.
+    original_dir = tmp_path / "original"
+    original_dir.mkdir(mode=0o700)
+    original_path = original_dir / "source.sqlite3"
+    original_engine = create_private_database_engine(original_path)
+    try:
+        initialize_database(original_engine)
+    finally:
+        original_engine.dispose()
+    server = make_server(snapshot(), 0, directory=native)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        with httpx.Client(
+            base_url=f"http://127.0.0.1:{server.server_port}", trust_env=False
+        ) as client:
+            identity = client.get("/api/investigations").json()["rows"][0]["investigation_id"]
+            before = client.get(
+                "/api/investigation-lead-preview", params={"investigation_id": identity}
+            ).json()
+            anchor = next(
+                m for m in client.get("/api/investigations/" + identity).json()[
+                    "source_membership"
+                ] if m["membership_basis"] == "source_anchor"
+            )
+            report = ProductIntegrationReport.model_validate(
+                before["original_product_integration"]
+            )
+            original_fingerprint = build_lead_fingerprint(
+                package=report.review_package,
+                source_key=anchor["source_family"],
+                source_record_id=anchor["source_record_id"],
+            )
+            original_engine = create_private_database_engine(original_path, create=False)
+            try:
+                with managed_session(session_factory(original_engine)) as session:
+                    store_lead_fingerprint(session, original_fingerprint)
+            finally:
+                original_engine.dispose()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join()
+
+    original_bytes = original_path.read_bytes()
+    server = make_server(
+        snapshot(), 0, directory=native, operator_database=original_path,
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        base = f"http://127.0.0.1:{server.server_port}"
+        with httpx.Client(base_url=base, trust_env=False) as client:
+            review = client.get(
+                "/api/investigation-lead-preview", params={"investigation_id": identity}
+            )
+            assert review.status_code == 200, review.text
+            result = review.json()
+            matches = result["existing_source_or_site_matches"]
+            assert matches["original_store_scanned"] is True
+            assert matches["review_required"] is True
+            assert matches["matches"][0]["store"] == "original"
+            assert matches["matches"][0]["fingerprint_key"] == (
+                original_fingerprint.fingerprint_key
+            )
+            assert result["can_retain_review_candidate"] is False
+            response = client.post(
+                "/api/investigation-lead-handoff",
+                json={
+                    "investigation_id": identity,
+                    "expected_evidence_id": result["current_evidence_id"],
+                    "expected_evidence_sha256": result["current_evidence_sha256"],
+                    "expected_event_anchor": result["event_anchor"],
+                    "reason": "Retain only if independent original source is absent",
+                    "caller_confirmation": True,
+                },
+                headers={"Origin": base},
+            )
+            assert response.status_code == 400, response.text
+            assert client.get("/api/investigation-lead-workflows").json()["total"] == 0
+            assert original_path.read_bytes() == original_bytes
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join()
+    engine = create_private_database_engine(native / "investigations.sqlite3", create=False)
+    try:
+        with managed_session(session_factory(engine)) as session:
+            assert session.scalar(
+                select(func.count()).select_from(LeadWorkflowRecordRow)
+            ) == 0
+    finally:
+        engine.dispose()
