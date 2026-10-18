@@ -136,7 +136,10 @@ async function renderRetainedSources(box) {
         '<div class="source-toolbar"><button id="retained-source-previous"' +
         (offset === 0 ? ' disabled' : '') + '>Previous</button>' +
         '<button id="retained-source-next"' +
-        (page.has_more ? '' : ' disabled') + '>Next</button></div>';
+        (page.has_more ? '' : ' disabled') + '>Next</button>' +
+        '<button id="retained-source-scope-review">Review page for shared investigations</button></div>';
+      queue.querySelector('#retained-source-scope-review').onclick = () =>
+        perform(() => reviewRetainedSourcePage(params.toString(), root));
       queue.querySelector('#retained-source-previous').onclick =
         () => { offset = Math.max(0, offset - 10); perform(loadPage); };
       queue.querySelector('#retained-source-next').onclick =
@@ -283,6 +286,67 @@ async function renderRetainedSources(box) {
     renderRetainedSmartsHistory(root.querySelector('#retained-smarts-history')),
     renderRetainedHistory(root.querySelector('#retained-history-inspection'))
   ]);
+}
+
+async function reviewRetainedSourcePage(query, root) {
+  const openingTicket = modalTicket;
+  const plan = await api('/api/source-reconciliation-scope?' + query);
+  if (!root.isConnected || activePage !== 'Sources & Collection' || openingTicket !== modalTicket) return;
+  const ticket = modal('Review retained source page → shared investigations',
+    '<p>Review every source and digest below. This approves only missing retained ' +
+    'snapshots on this bounded page for the existing worker. It does not verify ' +
+    'project identity, overwrite conflicting evidence, or authorize commercial activity.</p>' +
+    '<p>Scope: ' + esc(JSON.stringify(plan.scope)) + ' · total matching originals: ' +
+    esc(plan.total_source_records) + ' · missing: ' + esc(plan.eligible_count) +
+    ' · already retained: ' + esc(plan.already_retained_count) + ' · held for individual review: ' +
+    esc(plan.requires_review_count) + '. ' + esc(plan.meaning) + '</p>' +
+    table(['Source', 'Family / record', 'Original SHA-256', 'Native state'], plan.items.map(item => [
+      esc(item.title), esc(item.original_source.kind + ' / ' + item.original_source.record_id),
+      '<code>' + esc(item.original_source.source_sha256) + '</code>', esc(item.native_state)
+    ])) + '<p>Exact page digest: <code>' + esc(plan.plan_sha256) + '</code></p>' +
+    '<button id="source-scope-export">Export reviewed page JSON</button>' +
+    (plan.eligible_count ? '<label>Review reason <textarea id="source-scope-reason" ' +
+      'maxlength="2000" rows="3"></textarea></label><label><input type="checkbox" ' +
+      'id="source-scope-confirm"> I reviewed this exact page and its source digests; ' +
+      'queue missing snapshots only.</label><button id="source-scope-queue">Queue ' +
+      esc(plan.eligible_count) + ' missing snapshots</button>' :
+      '<p>No missing snapshots can be queued from this page. Conflicts require individual review.</p>'));
+  $('source-scope-export').onclick = () => download('reviewed-original-source-page.json', plan);
+  const button = $('source-scope-queue');
+  if (!button) return;
+  button.onclick = () => perform(async () => {
+    if (ticket !== modalTicket || !$('action-dialog').open) return;
+    const reason = $('source-scope-reason').value.trim();
+    if (!$('source-scope-confirm').checked || reason.length < 10)
+      throw Error('Review the exact page, confirm it, and enter a reason of at least 10 characters.');
+    button.disabled = true;
+    try {
+      const receipt = await api('/api/source-reconciliation-scope-queue', {
+        scope: plan.scope, expected_plan_sha256: plan.plan_sha256,
+        caller_confirmation: true, review_reason: reason
+      });
+      if (ticket !== modalTicket || !$('action-dialog').open) return;
+      const receiptTicket = modal('Retained source page queued for shared investigation',
+        '<p>' + esc(receipt.queued_count) + ' exact snapshots queued atomically with ' +
+        'their approval audits. Processing is pending until the existing worker commits. ' +
+        'Original data and held conflicts remain unchanged. No identity or commercial authority.</p>' +
+        '<p>Batch approval: <code>' + esc(receipt.batch_approval_audit_event_id) + '</code>. ' +
+        (receipt.has_more ? 'More original records remain; review the next source page.' :
+          'End of this source scan; rescan to verify worker results and any source changes.') + '</p>' +
+        table(['Original source', 'Job', 'Current status'], receipt.jobs.map((job, index) => [
+          esc(job.original_source.kind + ' / ' + job.original_source.record_id),
+          esc(job.job_id), '<button data-scoped-replay-audit="' + index + '">Inspect worker status</button>'
+        ])));
+      document.querySelectorAll('[data-scoped-replay-audit]').forEach(auditButton => {
+        auditButton.onclick = () => perform(async () => {
+          const job = receipt.jobs[Number(auditButton.dataset.scopedReplayAudit)];
+          const audit = await api('/api/source-reconciliation-audit?' + new URLSearchParams({job: job.job_id}));
+          if (receiptTicket !== modalTicket || !$('action-dialog').open) return;
+          modal('Original source approval and current worker state', '<pre>' + esc(JSON.stringify(audit, null, 2)) + '</pre>');
+        });
+      });
+    } finally { if (button.isConnected) button.disabled = false; }
+  });
 }
 
  

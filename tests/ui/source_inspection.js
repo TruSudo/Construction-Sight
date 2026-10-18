@@ -1,5 +1,9 @@
 'use strict';
 const {chromium} = require('../visual/node_modules/playwright');
+const {spawnSync} = require('node:child_process');
+const {createHash} = require('node:crypto');
+const {readFileSync} = require('node:fs');
+const {resolve} = require('node:path');
 
 (async () => {
   const browser = await chromium.launch({
@@ -393,6 +397,121 @@ const {chromium} = require('../visual/node_modules/playwright');
     }
     await page.locator('#export-native-source-lineage').click();
     await page.click('#action-close');
+    // Complete a separate mixed-source page through the unchanged worker in a
+    // fresh process. The earlier single-source review remains independently tested.
+    await page.click('nav button[data-page="Sources & Collection"]');
+    await page.waitForSelector('#retained-source-filters');
+    await page.locator('#retained-source-filters input[name="q"]').fill('scoped migration');
+    await page.locator('#retained-source-filters button[type="submit"]').click();
+    await page.waitForFunction(() =>
+      document.querySelector('#retained-source-queue')?.textContent
+        .includes('2 retained source observations match'));
+    await page.locator('#retained-source-scope-review').click();
+    await page.waitForSelector('#source-scope-queue');
+    const scopedPlan = await page.locator('#action-content').textContent();
+    if (!scopedPlan.includes('missing: 2') ||
+        !scopedPlan.includes('phase8:browser:batch:ceqa') ||
+        !scopedPlan.includes('phase8:browser:batch:permit') ||
+        !scopedPlan.includes('Exact page digest')) {
+      throw Error('Scoped mixed-source review does not bind the exact filtered page');
+    }
+    let scopePosts = 0;
+    page.on('request', request => {
+      if (request.method() === 'POST' &&
+          new URL(request.url()).pathname === '/api/source-reconciliation-scope-queue') {
+        scopePosts += 1;
+      }
+    });
+    await page.locator('#source-scope-queue').click();
+    // The reason/confirmation guard is synchronous; the review must stay open.
+    if (scopePosts || !await page.locator('#source-scope-queue').isVisible()) {
+      throw Error('Unconfirmed source page was submitted');
+    }
+    const reviewReason = 'Reviewed the exact mixed-source page for retained worker replay only.';
+    await page.locator('#source-scope-reason').fill(reviewReason);
+    await page.locator('#source-scope-confirm').check();
+    const queueResponse = page.waitForResponse(response =>
+      new URL(response.url()).pathname === '/api/source-reconciliation-scope-queue' &&
+      response.request().method() === 'POST');
+    await page.locator('#source-scope-queue').click();
+    const batchReceipt = await (await queueResponse).json();
+    await page.waitForSelector('[data-scoped-replay-audit]');
+    if (scopePosts !== 1 || batchReceipt.queued_count !== 2 ||
+        await page.locator('[data-scoped-replay-audit]').count() !== 2 ||
+        !batchReceipt.batch_approval_audit_event_id) {
+      throw Error('Exact source page did not produce one atomic, auditable approval');
+    }
+    await page.locator('[data-scoped-replay-audit]').first().click();
+    await page.waitForFunction(() =>
+      document.querySelector('#action-content')?.textContent
+        .includes('original-replay-audit/v1'));
+    const pendingAudit = await page.locator('#action-content').textContent();
+    if (!pendingAudit.includes(reviewReason) || !pendingAudit.includes('"job_status": "queued"')) {
+      throw Error('Scoped approval lost the operator reason or pending worker state');
+    }
+    await page.click('#action-close');
+    const nativeDirectory = process.argv[3];
+    if (!nativeDirectory) throw Error('Scoped browser test requires the isolated native data folder');
+    const originalDatabase = resolve(nativeDirectory, '../operator-source.sqlite3');
+    const originalDigest = () => createHash('sha256')
+      .update(readFileSync(originalDatabase)).digest('hex');
+    const beforeWorker = originalDigest();
+    function runWorker() {
+      const worker = spawnSync('python', ['-m', 'constructionsight.investigation_runtime',
+        '--data-dir', nativeDirectory, 'run', '--max-jobs', '100'], {
+        env: {...process.env, PYTHONPATH: 'src'}, encoding: 'utf8'
+      });
+      if (worker.status !== 0) throw Error('Retained worker failed: ' + worker.stderr);
+      const result = JSON.parse(worker.stdout);
+      if (result.failed_jobs) throw Error('Retained worker reported failed jobs');
+      return result;
+    }
+    runWorker();
+    if (runWorker().processed_jobs !== 0 || originalDigest() !== beforeWorker) {
+      throw Error('Worker restart duplicated work or changed original source data');
+    }
+    for (const job of batchReceipt.jobs) {
+      const completed = await page.request.get('/api/source-reconciliation-audit?' +
+        new URLSearchParams({job: job.job_id}));
+      const completedAudit = await completed.json();
+      if (completedAudit.job_status !== 'completed' ||
+          completedAudit.commercial_authority_granted !== false) {
+        throw Error('Scoped source did not complete with preserved authority safeguards');
+      }
+    }
+    await page.locator('#retained-source-scope-review').click();
+    await page.waitForSelector('#source-scope-export');
+    const completedPlan = await page.locator('#action-content').textContent();
+    if (!completedPlan.includes('missing: 0') ||
+        !completedPlan.includes('already retained: 2') ||
+        await page.locator('#source-scope-queue').count()) {
+      throw Error('Source-page rescan did not converge after independent worker processing');
+    }
+    await page.click('#action-close');
+    await page.click('nav button[data-page="Project Intelligence"]');
+    await page.waitForSelector('[data-investigation-search]');
+    await page.locator('[data-investigation-search]').fill('scoped migration');
+    await page.waitForFunction(() =>
+      document.querySelectorAll('[data-shared-investigations] [data-investigation-id]').length === 2);
+    const migratedIds = await page.locator('[data-shared-investigations] [data-investigation-id]')
+      .evaluateAll(nodes => nodes.map(node => node.dataset.investigationId).sort());
+    if (migratedIds[0] === migratedIds[1]) throw Error('Scoped replay merged distinct source identities');
+    await page.locator('[data-shared-investigations] [data-investigation-id]').first().click();
+    await page.waitForSelector('#export-investigation');
+    const migratedDossier = await page.locator('#action-content').textContent();
+    if (!migratedDossier.includes('phase8:browser:batch:') ||
+        !migratedDossier.includes('commercial authority: No')) {
+      throw Error('Migrated source is disconnected from the shared, unverified dossier');
+    }
+    await page.click('#action-close');
+    await page.click('nav button[data-page="Evidence Chains"]');
+    await page.waitForFunction(() =>
+      document.querySelectorAll('[data-shared-investigations] [data-investigation-id]').length === 2);
+    const evidenceIds = await page.locator('[data-shared-investigations] [data-investigation-id]')
+      .evaluateAll(nodes => nodes.map(node => node.dataset.investigationId).sort());
+    if (JSON.stringify(migratedIds) !== JSON.stringify(evidenceIds)) {
+      throw Error('Scoped source replay disagrees across shared investigation views');
+    }
     if (errors.length) throw Error(errors.join('; '));
     console.log('Phase 8 native retained-source and historical-commercial read parity: PASS');
   } finally {

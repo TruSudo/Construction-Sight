@@ -46,8 +46,10 @@ from constructionsight.command_center_legacy_export import (
 from constructionsight.command_center_legacy_lineage import original_candidate_workflow_lineage
 from constructionsight.command_center_legacy_reconciliation import (
     enqueue_legacy_reconciliation,
+    enqueue_legacy_reconciliation_batch,
     original_source_replay_audit,
     preview_legacy_reconciliation,
+    preview_legacy_reconciliation_batch,
 )
 from constructionsight.command_center_retained_previews import retained_commercial_preview
 from constructionsight.command_center_sources import (
@@ -597,6 +599,17 @@ def make_server(
                     directory, job_id=query["job"][0]
                 )
                 body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
+            elif path == "/api/source-reconciliation-scope":
+                from constructionsight.operator_web import _parameters
+
+                params = _parameters(urlsplit(self.path).query, source_review_queue=True)
+                if directory is None:
+                    raise ValueError("select an existing native data directory")
+                value = preview_legacy_reconciliation_batch(directory, operator_database, {
+                    "kind": params.kind, "county": params.county, "query": params.query,
+                    "offset": params.offset, "limit": params.limit,
+                })
+                body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
             elif path == "/api/source-reconciliation":
                 from constructionsight.operator_web import _parameters
 
@@ -851,6 +864,7 @@ def make_server(
                 "/api/source-watchlist-action",
                 "/api/source-commercial-preview",
                 "/api/source-reconciliation-queue",
+                "/api/source-reconciliation-scope-queue",
                 "/api/source-ceqanet-export",
                 "/api/smarts-contacts-bulk",
                 "/api/data-folder",
@@ -1053,7 +1067,10 @@ def make_server(
                             expected_report_sha256=payload["expected_report_sha256"],
                             caller_confirmation=True,
                         )
-                    elif path == "/api/source-reconciliation-queue":
+                    elif path in (
+                        "/api/source-reconciliation-queue",
+                        "/api/source-reconciliation-scope-queue",
+                    ):
                         if (
                             urlsplit(self.path).query
                             or urlsplit(self.path).fragment
@@ -1062,9 +1079,12 @@ def make_server(
                             or self.headers.get("Sec-Fetch-Site") == "cross-site"
                         ):
                             raise ValueError("exact same-origin source replay is required")
-                        result = enqueue_legacy_reconciliation(
-                            directory, operator_database, payload
+                        queue_source = (
+                            enqueue_legacy_reconciliation_batch
+                            if path == "/api/source-reconciliation-scope-queue"
+                            else enqueue_legacy_reconciliation
                         )
+                        result = queue_source(directory, operator_database, payload)
                     elif path == "/api/investigation-review":
                         result = apply_investigation_review(directory, payload)
                     elif path == "/api/smarts-contacts-bulk":

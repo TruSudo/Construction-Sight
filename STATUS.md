@@ -23,6 +23,18 @@ Relationship Graph remain the goal. Full unification and functional parity are n
 
 ## Phase 8 — IN PROGRESS: native preservation and original-workflow parity
 
+**Current continuation (2026-10-18, acceptance pending):** Sources & Collection
+now reviews the current filtered CEQA/permit page for shared-investigation replay.
+The bounded plan binds source digests and native evidence state; missing snapshots
+queue with their individual and batch approval audits in one transaction through
+the existing worker. Exact retained observations are skipped; conflicts stay held.
+Subsequent pages require review and a final rescan; one page is not a complete
+migration claim. Original records, financial authority and the approved layout
+remain preserved. Eight new tests cover full filtered-scope traversal, strict
+confirmation, stale evidence, concurrent arrival, atomic rollback, restart,
+idempotency, HTTP guards and database separation. Focused tests, Ruff and strict
+Mypy pass locally; complete gates and the extended browser journey are pending.
+
 **Verified application/test source:** `397adfc6aec1176566410d2c4d420b78ba6c0b95`.
 Original operator assets, historical branches, the previous native association-review
 acceptance, and the shared investigation graph remain preserved. The legacy database
@@ -251,8 +263,9 @@ automatically reconcile them into the canonical native site investigation.
 
 **Still open before Phase 8 acceptance / merge proposal:**
 
-1. Expand the verified one-at-a-time CEQA/permit source replay into complete,
-   source-scoped migration/reassessment where authorized. The exact candidate
+1. Verify the current bounded, filtered CEQA/permit replay through all complete
+   gates and the native browser/worker journey, then establish complete retained
+   scope migration/reassessment where authorized. The exact candidate
    lineage and durable replay reason are now accepted, but financial outcome,
    royalty and historical workflow transitions remain **separate original
    records**, not migrated canonical commercial state. Establish those links

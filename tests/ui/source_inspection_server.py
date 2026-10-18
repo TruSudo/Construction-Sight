@@ -17,6 +17,7 @@ from constructionsight.lead_operator_service import transition_persisted_lead_wo
 from constructionsight.lead_workflow_models import LeadWorkflowStatus
 from constructionsight.lead_workflow_service import create_lead_workflow
 from constructionsight.live_command_center import make_server
+from constructionsight.permit_models import PermitRecord
 from constructionsight.provenance import Provenance
 from constructionsight.result_ledger_models import ResultLedgerStatus
 from constructionsight.result_ledger_service import (
@@ -25,7 +26,7 @@ from constructionsight.result_ledger_service import (
 )
 from constructionsight.site_models import Site
 from constructionsight.storage.database import create_database_engine, initialize_database
-from constructionsight.storage.domain_store import CeqaStore
+from constructionsight.storage.domain_store import CeqaStore, PermitStore
 from constructionsight.storage.lead_workflow_store import (
     store_lead_review_package,
     store_lead_workflow_record,
@@ -113,6 +114,17 @@ with Session(engine) as session, session.begin():
         provenance=[evidence],
     )
     CeqaStore(session).upsert(dossier_record)
+    CeqaStore(session).upsert(CeqaRecord(
+        ceqa_key="phase8:browser:batch:ceqa",
+        title="Synthetic scoped migration source",
+        county="Riverside", provenance=[evidence],
+    ))
+    PermitStore(session).upsert(PermitRecord(
+        permit_key="phase8:browser:batch:permit",
+        permit_number="Synthetic scoped migration permit",
+        jurisdiction="Synthetic Planning Department",
+        county="Riverside", provenance=[evidence],
+    ))
     dossier_candidate_id = "source-candidate:" + hashlib.sha256(
         json.dumps(
             ["ceqa", dossier_record.ceqa_key], separators=(",", ":"),
