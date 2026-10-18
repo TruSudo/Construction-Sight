@@ -92,6 +92,7 @@ from constructionsight.lead_workflow import (
     save_feedback,
 )
 from constructionsight.operator_source_aliases import load_source_attribution_aliases
+from constructionsight.command_center_parcel_readiness import parcel_source_readiness_snapshot
 from constructionsight.parcel_use_enrichment import load_claims
 from constructionsight.security_fit import WEIGHTS_PATH, load_weights, rank_leads
 from constructionsight.smarts_active import collect_active
@@ -362,7 +363,12 @@ def make_server(
             path = urlsplit(self.path).path
             query = parse_qs(urlsplit(self.path).query)
             value: Any
-            if path == "/api/source-ceqanet-report-download":
+            if path == "/api/parcel-source-readiness":
+                if urlsplit(self.path).query or urlsplit(self.path).fragment:
+                    raise ValueError("parcel source readiness accepts no query parameters")
+                value = parcel_source_readiness_snapshot()
+                body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
+            elif path == "/api/source-ceqanet-report-download":
                 if (
                     directory is None or set(query) != {"sha256"}
                     or len(query["sha256"]) != 1

@@ -28,6 +28,67 @@ async function openRetainedSourceNotice(notice) {
     openInvestigationDossier(reconciliation.canonical_investigation_id));
 }
 
+// Retained parcel/GIS source profiles are registered evidence, not live permits,
+// surveyed parcel boundaries or authorized ArcGIS acquisition.
+async function renderParcelSourceReadiness(box) {
+  if (!box.isConnected || activePage !== 'Sources & Collection') return;
+  const root = document.createElement('section');
+  root.className = 'feature-card';
+  root.dataset.parcelSourceReadiness = 'true';
+  root.innerHTML = '<h3>Parcel source verification & mapping</h3>' +
+    '<p role="status">Reading existing county source evidence locally…</p>';
+  box.append(root);
+  try {
+    const data = await api('/api/parcel-source-readiness');
+    if (!root.isConnected || activePage !== 'Sources & Collection') return;
+    const sources = data.sources || [];
+    root.innerHTML = '<h3>Parcel source verification & mapping</h3>' +
+      '<p>Existing registered parcel/GIS sources, official retained evidence and ' +
+      'expected field mappings. These are historical observations, not live data ' +
+      'or permission to collect; no parcel or project has been verified. ' +
+      'No requests, imports, identity merges or commercial actions run here. ' +
+      '<button data-parcel-source-export>Export original parcel readiness evidence</button></p>' +
+      table(['Registered source','County','Access boundary','Coverage','Expected schema','Inspect'],
+        sources.map((r,i) => [
+          esc(r.source_name), esc(r.county), esc(r.access_boundary),
+          esc(r.coverage_status),
+          esc(data.schemas[r.source_key]?.status || 'Unavailable'),
+          '<button data-parcel-source-inspect="'+i+'">Review existing source evidence</button>'
+        ])) +
+      '<p>Original countywide coverage and ArcGIS acquisition readiness remain ' +
+      'subject to recorded evidence gaps. A prepared schema is not an imported ' +
+      'parcel, verified address, complete county coverage or authorized probe.</p>';
+    root.querySelector('[data-parcel-source-export]').onclick = () =>
+      download('parcel-source-readiness.json', data);
+    root.querySelectorAll('[data-parcel-source-inspect]').forEach(button => {
+      button.onclick = () => {
+        const r = sources[Number(button.dataset.parcelSourceInspect)];
+        const profile = data.profiles.filter(x => x.source_key === r.source_key);
+        const evidence = data.evidence.filter(x => x.source_key === r.source_key);
+        const acquisition = data.acquisition_assessments.filter(x =>
+          x.source_key === r.source_key);
+        modal('Existing parcel/GIS evidence: '+r.source_name,
+          '<p>Read-only original operator services. Historical field/schema ' +
+          'observations are not current live verification, land title, permission ' +
+          'to use licensed data, surveyed boundaries or construction evidence.</p>' +
+          '<h3>Original expected-field schema preview</h3><pre>' +
+          esc(JSON.stringify(data.schemas[r.source_key], null, 2)) + '</pre>' +
+          '<h3>Evidence-bound source profile</h3><pre>' +
+          esc(JSON.stringify(profile, null, 2)) + '</pre>' +
+          '<h3>Retained official evidence</h3><pre>' +
+          esc(JSON.stringify(evidence, null, 2)) + '</pre>' +
+          '<h3>Bounded ArcGIS acquisition readiness (not execution)</h3><pre>' +
+          esc(JSON.stringify(acquisition, null, 2)) + '</pre>');
+      };
+    });
+  } catch (error) {
+    if (root.isConnected && activePage === 'Sources & Collection') {
+      root.innerHTML = '<h3>Parcel source verification & mapping</h3>' +
+        '<p role="alert">'+esc(error.message)+'</p>';
+    }
+  }
+}
+
 // Existing source/parcel projections only; never converts an observation into a lead.
 async function renderRetainedSources(box) {
   if (!box.isConnected || activePage !== 'Sources & Collection') return;

@@ -275,6 +275,25 @@ const {resolve}=require('node:path');
    throw Error('Background source revision duplicated or removed the canonical overview marker');
   await page.waitForFunction(()=>document.querySelector('#action-title').textContent.includes('dashboard-refresh'),{},{timeout:20000});
   await page.click('#action-close');
+  // Parcel/GIS original operator source evidence must be reachable inside the
+  // single approved native interface, independent of an original operator DB.
+  await page.click('nav button[data-page="Sources & Collection"]');
+  await page.waitForSelector('[data-parcel-source-readiness] [data-parcel-source-inspect]',
+    {timeout:20000});
+  const parcelRows = page.locator('[data-parcel-source-inspect]');
+  if (await parcelRows.count()!==3) throw Error('Original parcel source registry was lost');
+  const parcelText = await page.locator('[data-parcel-source-readiness]').textContent();
+  if (!parcelText.includes('San Bernardino') || !parcelText.includes('Riverside') ||
+      !parcelText.includes('licensed') || !parcelText.includes('not live data'))
+    throw Error('Native parcel source status omitted county, license or assurance limits');
+  await parcelRows.first().click();
+  await page.waitForSelector('#action-content pre');
+  const parcelEvidence = await page.locator('#action-content').textContent();
+  if (!parcelEvidence.includes('Original expected-field schema preview') ||
+      !parcelEvidence.includes('Retained official evidence') ||
+      !parcelEvidence.includes('not execution'))
+    throw Error('Original parcel schema/verification/acquisition reports disconnected');
+  await page.click('#action-close');
   if(errors.length)throw Error(errors.join('; '));
   console.log('Native shared investigation inventory, exact immutable outcome history, dossier and cross-view IDs: PASS');
  }finally{await browser.close();}
