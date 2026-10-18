@@ -33,7 +33,9 @@ def test_native_parcel_registry_schema_and_verified_source_evidence_are_exact_an
         source.to_dict() for source in get_parcel_source_evidence()
     ]
     assert expected["schemas"][sources[0].source_key] == (
-        preview_schema_for_source_key(sources[0].source_key).model_dump(mode="json")
+        preview_schema_for_source_key(sources[0].source_key).model_dump(
+            mode="json", exclude={"created_at"}
+        )
     )
     server, worker = _native(directory)
     try:
