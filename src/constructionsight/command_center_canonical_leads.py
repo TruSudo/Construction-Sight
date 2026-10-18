@@ -38,7 +38,14 @@ from constructionsight.lead_operator_service import load_persisted_lead_workflow
 from constructionsight.lead_workflow_models import LeadWorkflowStatus
 from constructionsight.lead_workflow_rules import LEAD_WORKFLOW_TRANSITION_RULES
 from constructionsight.lead_workflow_service import create_lead_workflow
-from constructionsight.operator_results import read_validated_result_history
+from constructionsight.operator_results import (
+    MAX_REVISIONS_PER_WORKFLOW,
+    read_validated_result_history,
+)
+from constructionsight.operator_services.result_authority_apply_service import (
+    apply_authorized_authoritative_result,
+)
+from constructionsight.result_ledger_models import ResultLedgerStatus
 from constructionsight.operator_services.lead_workflow_transition_service import (
     apply_authorized_lead_workflow_transition,
 )
@@ -780,5 +787,148 @@ def transition_retained_canonical_review(
             }
     except SQLAlchemyError as exc:
         raise ValueError("canonical workflow review transition could not be committed") from exc
+    finally:
+        engine.dispose()
+
+
+_RESULT_REVIEW_STATUSES = frozenset({
+    ResultLedgerStatus.OPEN,
+    ResultLedgerStatus.UNKNOWN,
+})
+
+
+def apply_retained_canonical_result_review(
+    directory: Path, payload: dict[str, Any], *,
+    original_database: Path | None = None,
+) -> dict[str, Any]:
+    """Record an original open/unknown result for one retained canonical workflow.
+
+    This deliberately does not qualify commercial outcomes, shares or payments.
+    The original authorized result service owns every immutable ledger write.
+    """
+    required = {
+        "investigation_id", "workflow_id", "expected_workflow_status",
+        "expected_evidence_id", "expected_current_ledger_id", "result_status",
+        "reason", "caller_confirmation",
+    }
+    if set(payload) != required:
+        raise ValueError("exact canonical result review fields required")
+    identity = payload["investigation_id"]
+    workflow_id = payload["workflow_id"]
+    reason = payload["reason"]
+    expected_ledger_id = payload["expected_current_ledger_id"]
+    if (
+        not isinstance(identity, str) or not 1 <= len(identity) <= 255
+        or not isinstance(workflow_id, str) or not 1 <= len(workflow_id) <= 255
+        or not isinstance(reason, str) or not 10 <= len(reason.strip()) <= 2000
+        or not isinstance(payload["expected_evidence_id"], str)
+        or not payload["expected_evidence_id"]
+        or (
+            expected_ledger_id is not None
+            and (not isinstance(expected_ledger_id, str)
+                 or not 1 <= len(expected_ledger_id) <= 255)
+        )
+        or payload["caller_confirmation"] is not True
+    ):
+        raise ValueError("explicit exact-source result review confirmation required")
+    try:
+        expected_status = LeadWorkflowStatus(payload["expected_workflow_status"])
+        result_status = ResultLedgerStatus(payload["result_status"])
+    except (TypeError, ValueError) as exc:
+        raise ValueError("unknown retained workflow/result status") from exc
+    if (
+        expected_status not in _REVIEW_ONLY_STATUSES
+        or result_status not in _RESULT_REVIEW_STATUSES
+    ):
+        raise ValueError("unverified review workflows allow only open/unknown results")
+    engine = create_private_database_engine(
+        directory / "investigations.sqlite3", create=False,
+    )
+    try:
+        with managed_session(session_factory(engine)) as session:
+            session.connection().exec_driver_sql("BEGIN IMMEDIATE")
+            preview = canonical_lead_preview(
+                directory, identity, original_database=original_database,
+            )
+            handoff = preview["existing_native_handoff"]
+            if handoff is None or handoff["workflow_id"] != workflow_id:
+                raise ValueError("result workflow is not the exact canonical handoff")
+            if preview["existing_source_or_site_matches"]["review_required"]:
+                raise ValueError("original source/site collision requires reconciliation")
+            if preview["current_evidence_id"] != payload["expected_evidence_id"]:
+                raise ValueError("source evidence changed; repeat original result review")
+            workflow = load_persisted_lead_workflow(session, workflow_id)
+            verified_original_workflow_events(session, workflow)
+            verified_original_review_package(
+                session, package_id=workflow.package_id,
+                candidate_key=workflow.base_candidate_id,
+            )
+            evidence_notes = [
+                note.removeprefix("Original source evidence: ")
+                for note in workflow.notes
+                if note.startswith("Original source evidence: ")
+            ]
+            if (
+                workflow.status != expected_status
+                or workflow.fingerprint_key != handoff["fingerprint_key"]
+                or len(evidence_notes) != 1
+                or evidence_notes[0] != preview["current_evidence_id"]
+                or "Canonical investigation: " + identity not in workflow.notes
+            ):
+                raise ValueError("canonical workflow status or source lineage is stale")
+            validated = read_validated_result_history(session, workflow_id)
+            current_id = (
+                validated["current"]["ledger_id"] if validated is not None else None
+            )
+            if current_id != expected_ledger_id:
+                raise ValueError("result revision changed; reload the native lead console")
+            if (
+                validated is not None
+                and validated["revision_count"] >= MAX_REVISIONS_PER_WORKFLOW
+            ):
+                raise ValueError("result correction exceeds retained inspection limit")
+            previous_count = validated["revision_count"] if validated else 0
+            authorized = apply_authorized_authoritative_result(
+                session,
+                workflow_id=workflow_id,
+                expected_current_ledger_id=expected_ledger_id,
+                status=result_status,
+                authorization_reason=reason.strip(),
+                caller_confirmation=True,
+                outcome_reasons=[reason.strip()],
+            )
+            checked = read_validated_result_history(session, workflow_id)
+            if (
+                checked is None
+                or checked["revision_count"] != previous_count + 1
+                or checked["current"]["ledger_id"] != authorized.report.current.ledger_id
+                or checked["current"]["status"] != result_status.value
+                or checked["current"]["gross_value"] is not None
+            ):
+                raise ValueError("authorized result write/history integrity disagreement")
+            return {
+                "schema_version": "constructionsight.canonical-result-review/v1",
+                "canonical_investigation_id": identity,
+                "workflow_id": workflow_id,
+                "source_evidence_id": preview["current_evidence_id"],
+                "previous_ledger_id": current_id,
+                "current_ledger_id": authorized.report.current.ledger_id,
+                "result_status": result_status.value,
+                "revision_count": checked["revision_count"],
+                "authorization_audit_identity": (
+                    authorized.authorization.decision.audit_identity
+                ),
+                "history_integrity_validated": True,
+                "review_only": True,
+                "commercial_authority_granted": False,
+                "award_verified": False,
+                "contract_verified": False,
+                "share_entitlement_verified": False,
+                "payment_received_verified": False,
+                "outreach_authorized": False,
+                "bid_authorized": False,
+            }
+    except SQLAlchemyError as exc:
+        raise ValueError("canonical result review could not be committed") from exc
     finally:
         engine.dispose()

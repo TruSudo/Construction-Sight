@@ -385,3 +385,110 @@ def test_native_lead_history_limit_never_silently_selects_a_partial_current_resu
         assert "inspection limit" in response.text
         assert "historical_result" not in response.text
     assert native_lead.database.read_bytes() == before
+
+
+def _review_result_payload(row: dict[str, Any], **changes: Any) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "investigation_id": row["canonical_investigation_id"],
+        "workflow_id": row["workflow_id"],
+        "expected_workflow_status": row["workflow_status"],
+        "expected_evidence_id": row["current_source_evidence_id"],
+        "expected_current_ledger_id": (
+            row["historical_result"]["current_revision"] or {}
+        ).get("ledger_id"),
+        "result_status": "unknown",
+        "reason": "The source filing alone does not establish a commercial outcome.",
+        "caller_confirmation": True,
+    }
+    return {**payload, **changes}
+
+
+def test_native_result_review_appends_immutable_open_unknown_history(
+    native_lead: NativeLead,
+) -> None:
+    with _client(native_lead.directory) as client:
+        original = _only_row(client)
+        origin = {"Origin": str(client.base_url).rstrip("/")}
+        request = _review_result_payload(original)
+        first = client.post(
+            "/api/investigation-lead-result-review", json=request, headers=origin
+        )
+        assert first.status_code == 200, first.text
+        receipt = first.json()
+        assert receipt["revision_count"] == 1
+        assert receipt["result_status"] == "unknown"
+        assert receipt["commercial_authority_granted"] is False
+        assert receipt["share_entitlement_verified"] is False
+
+        updated = _only_row(client)
+        assert updated["historical_result"]["revision_count"] == 1
+        assert updated["historical_result"]["current_revision"]["ledger_id"] == (
+            receipt["current_ledger_id"]
+        )
+        assert updated["historical_result"]["current_revision"]["gross_value_minor"] is None
+
+        second = client.post(
+            "/api/investigation-lead-result-review",
+            json=_review_result_payload(
+                updated, result_status="open",
+                reason="Later review confirms only that the investigation remains open.",
+            ),
+            headers=origin,
+        )
+        assert second.status_code == 200, second.text
+        latest = _only_row(client)
+        result = latest["historical_result"]
+        assert result["revision_count"] == 2
+        assert [record["status"] for record in result["revision_history"]] == [
+            "unknown", "open",
+        ]
+        assert result["current_revision"]["ledger_id"] == (
+            second.json()["current_ledger_id"]
+        )
+        assert result["revision_history"][0]["ledger_id"] == (
+            receipt["current_ledger_id"]
+        )
+        assert all(
+            revision["calculated_share_minor"] is None
+            for revision in result["revision_history"]
+        )
+        assert latest["outreach_authorized"] is False
+        assert latest["bid_authorized"] is False
+
+        stale = client.post(
+            "/api/investigation-lead-result-review", json=request, headers=origin
+        )
+        assert stale.status_code == 400
+        assert _only_row(client)["historical_result"]["revision_count"] == 2
+
+
+def test_native_result_review_rejects_unreviewed_commercial_authority_and_wrong_identity(
+    native_lead: NativeLead,
+) -> None:
+    with _client(native_lead.directory) as client:
+        row = _only_row(client)
+        origin = {"Origin": str(client.base_url).rstrip("/")}
+        original_bytes = native_lead.database.read_bytes()
+        for change in (
+            {"result_status": "won"},
+            {"result_status": "lost"},
+            {"expected_workflow_status": "closed_success"},
+            {"workflow_id": "lead-workflow:unrelated"},
+            {"expected_evidence_id": "unrelated-source-evidence"},
+            {"caller_confirmation": False},
+            {"reason": "short"},
+            {"gross_value": "1000000"},
+        ):
+            result = client.post(
+                "/api/investigation-lead-result-review",
+                json=_review_result_payload(row, **change),
+                headers=origin,
+            )
+            assert result.status_code == 400, (change, result.text)
+        no_origin = client.post(
+            "/api/investigation-lead-result-review",
+            json=_review_result_payload(row),
+        )
+        assert no_origin.status_code == 403
+        assert native_lead.database.read_bytes() == original_bytes
+        assert _only_row(client)["historical_result"]["revision_count"] == 0

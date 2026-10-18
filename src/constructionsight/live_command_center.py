@@ -33,6 +33,7 @@ from constructionsight import command_center_commercial as commercial
 from constructionsight import command_center_investigation_watch as investigation_watch
 from constructionsight import command_center_state as state
 from constructionsight.command_center_canonical_leads import (
+    apply_retained_canonical_result_review,
     canonical_lead_preview,
     retain_reviewed_canonical_candidate,
     retained_canonical_lead_workflows,
@@ -944,6 +945,7 @@ def make_server(
                 "/api/investigation-review",
                 "/api/investigation-lead-handoff",
                 "/api/investigation-lead-review-transition",
+                "/api/investigation-lead-result-review",
                 "/api/source-watchlist-action",
                 "/api/investigation-watch",
                 "/api/source-commercial-preview",
@@ -1113,6 +1115,18 @@ def make_server(
                         ):
                             raise ValueError("exact same-origin canonical workflow review required")
                         result = transition_retained_canonical_review(
+                            directory, payload, original_database=operator_database,
+                        )
+                    elif path == "/api/investigation-lead-result-review":
+                        if (
+                            urlsplit(self.path).query
+                            or urlsplit(self.path).fragment
+                            or self.headers.get_all("Host", []) != [host]
+                            or self.headers.get_all("Origin", []) != [f"http://{host}"]
+                            or self.headers.get("Sec-Fetch-Site") == "cross-site"
+                        ):
+                            raise ValueError("exact same-origin canonical result review required")
+                        result = apply_retained_canonical_result_review(
                             directory, payload, original_database=operator_database,
                         )
                     elif path == "/api/investigation-lead-handoff":

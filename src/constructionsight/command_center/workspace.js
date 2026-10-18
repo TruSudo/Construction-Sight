@@ -337,7 +337,11 @@ async function renderCanonicalLeadWorkflows(box){
        (entry.source_evidence_state==='current_source_observation'&&
         ['hold','monitor','review'].includes(entry.workflow_status)?
         ' <button data-canonical-review-transition="'+esc(entry.workflow_id)+
-        '">Update review status</button>':'')
+        '">Update review status</button>':'')+
+       (entry.source_evidence_state==='current_source_observation'&&
+        ['hold','monitor','review'].includes(entry.workflow_status)?
+        ' <button data-canonical-result-review="'+esc(entry.workflow_id)+
+        '">Record open/unknown result</button>':'')
      ]))+
     '<p>Showing '+(rows.length?offset+1:0)+'–'+(offset+rows.length)+
     ' of '+page.total+' retained canonical lead records.</p>'+
@@ -383,6 +387,43 @@ async function renderCanonicalLeadWorkflows(box){
         workflow_id:row.workflow_id,expected_status:row.workflow_status,
         next_status:form.elements.namedItem('next_status').value,
         expected_evidence_id:row.current_source_evidence_id,
+        reason,caller_confirmation:true
+       });
+       if($('action-dialog').open)$('action-dialog').close();
+       await load();
+      });
+     };
+    });
+   });
+   section.querySelectorAll('[data-canonical-result-review]').forEach(button=>{
+    button.onclick=()=>perform(async()=>{
+     const row=rows.find(r=>r.workflow_id===button.dataset.canonicalResultReview);
+     if(!row)return;
+     modal('Record original result · review only',
+      '<p>Records an open or unknown original result only. No award, contract,'+
+      ' payment, royalty entitlement, contact authorization or bid permission is verified.'+
+      ' A prior correction remains permanently available in the original history.</p>'+
+      '<form id="canonical-result-review-form">'+
+      '<label>Result <select name="result_status">'+
+      '<option value="unknown">Unknown</option><option value="open">Open</option>'+
+      '</select></label>'+
+      '<label>Evidence-based reason <textarea name="reason" minlength="10" maxlength="2000" required></textarea></label>'+
+      '<label><input name="confirm" type="checkbox" required>'+
+      ' I authorize this exact review-only original result record.</label>'+
+      '<button type="submit">Record original result revision</button></form>');
+     $('canonical-result-review-form').onsubmit=event=>{
+      event.preventDefault();
+      perform(async()=>{
+       const form=$('canonical-result-review-form');
+       const reason=form.elements.namedItem('reason').value.trim();
+       if(reason.length<10||!form.elements.namedItem('confirm').checked)
+        throw Error('A documented reason and explicit confirmation are required.');
+       await api('/api/investigation-lead-result-review',{
+        investigation_id:row.canonical_investigation_id,
+        workflow_id:row.workflow_id,expected_workflow_status:row.workflow_status,
+        expected_evidence_id:row.current_source_evidence_id,
+        expected_current_ledger_id:row.historical_result.current_revision?.ledger_id||null,
+        result_status:form.elements.namedItem('result_status').value,
         reason,caller_confirmation:true
        });
        if($('action-dialog').open)$('action-dialog').close();
