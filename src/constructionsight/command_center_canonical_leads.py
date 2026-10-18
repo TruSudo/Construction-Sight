@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -25,6 +25,7 @@ from constructionsight.intake_models import (
     UniversalIntakeRecord,
 )
 from constructionsight.lead_dedupe_models import LeadFingerprint
+from constructionsight.lead_operator_service import load_persisted_lead_workflow
 from constructionsight.lead_dedupe_service import (
     build_lead_fingerprint,
     check_lead_duplicate,
@@ -309,5 +310,122 @@ def retain_reviewed_canonical_candidate(
         return result
     except SQLAlchemyError as exc:
         raise ValueError("canonical review workflow could not be committed") from exc
+    finally:
+        engine.dispose()
+
+
+def retained_canonical_lead_workflows(
+    directory: Path, *, limit: int = 25, offset: int = 0,
+) -> dict[str, Any]:
+    """Read existing governed lead records into the native console, without copying them.
+
+    Pagination is over durable canonical-source fingerprints, not a second lead
+    inventory. Current source evidence is rechecked separately; stale or missing
+    sources cannot silently look ready to the operator.
+    """
+    if type(limit) is not int or not 1 <= limit <= 50:
+        raise ValueError("canonical lead page limit must be between 1 and 50")
+    if type(offset) is not int or not 0 <= offset <= 10000:
+        raise ValueError("canonical lead page offset is invalid")
+    engine = create_operator_read_engine(directory / "investigations.sqlite3")
+    try:
+        with Session(engine, autoflush=False) as session:
+            predicate = LeadFingerprintRecord.source_key == "canonical_investigation"
+            total = session.scalar(
+                select(func.count()).select_from(LeadFingerprintRecord).where(predicate)
+            ) or 0
+            fingerprints = session.scalars(
+                select(LeadFingerprintRecord)
+                .where(predicate)
+                .order_by(LeadFingerprintRecord.id)
+                .offset(offset).limit(limit)
+            ).all()
+            rows: list[dict[str, Any]] = []
+            for fingerprint in fingerprints:
+                identity = fingerprint.source_record_id
+                if not identity:
+                    raise ValueError("canonical lead fingerprint has no investigation ID")
+                # Detect ambiguous duplicate canonical handoffs, including on other pages.
+                repeated = session.scalars(
+                    select(LeadFingerprintRecord.fingerprint_key).where(
+                        predicate,
+                        LeadFingerprintRecord.source_record_id == identity,
+                    ).limit(2)
+                ).all()
+                if len(repeated) != 1:
+                    raise ValueError("multiple workflows claim the same canonical investigation")
+                persisted = session.scalars(
+                    select(LeadWorkflowRecordRow.workflow_id).where(
+                        LeadWorkflowRecordRow.fingerprint_key
+                        == fingerprint.fingerprint_key
+                    ).limit(2)
+                ).all()
+                if len(persisted) != 1:
+                    raise ValueError("canonical lead workflow linkage is incomplete")
+                workflow = load_persisted_lead_workflow(session, persisted[0])
+                notes = [
+                    note.removeprefix("Original source evidence: ")
+                    for note in workflow.notes
+                    if note.startswith("Original source evidence: ")
+                ]
+                if (
+                    workflow.fingerprint_key != fingerprint.fingerprint_key
+                    or len(notes) != 1 or not notes[0]
+                    or "Canonical investigation: " + identity not in workflow.notes
+                ):
+                    raise ValueError("retained lead source provenance is inconsistent")
+                current_evidence_id: str | None = None
+                current_state = "unavailable_needs_source_review"
+                title: str | None = None
+                try:
+                    dossier = investigation_view(directory, investigation_id=identity)
+                    project = dossier["investigation"]
+                    if project["project_cluster_id"] != identity:
+                        raise ValueError("canonical investigation identity moved")
+                    title = project["project_name"]
+                    anchors = [
+                        m for m in dossier["source_membership"]
+                        if m["membership_basis"] == "source_anchor"
+                    ]
+                    if not dossier["sources_truncated"] and len(anchors) == 1:
+                        current_evidence_id = anchors[0]["current_evidence_id"]
+                        current_state = (
+                            "current_source_observation"
+                            if current_evidence_id == notes[0]
+                            else "source_revision_requires_review"
+                        )
+                except (ValueError, OSError, RuntimeError):
+                    pass  # Failure stays visibly unreviewed; no commercial readiness inferred.
+                rows.append({
+                    "canonical_investigation_id": identity,
+                    "title": title,
+                    "workflow_id": workflow.workflow_id,
+                    "workflow_status": workflow.status.value,
+                    "lead_score": workflow.lead_score,
+                    "original_source_evidence_id": notes[0],
+                    "current_source_evidence_id": current_evidence_id,
+                    "source_evidence_state": current_state,
+                    "source_claim_only": True,
+                    "commercial_authority_granted": False,
+                    "outreach_authorized": False,
+                    "bid_authorized": False,
+                    "transition_count": len(workflow.events),
+                    "recent_transitions": [
+                        event.model_dump(mode="json") for event in workflow.events[-10:]
+                    ],
+                    "transitions_truncated": len(workflow.events) > 10,
+                    "limitations": workflow.limitations,
+                })
+            return {
+                "schema_version": "constructionsight.canonical-lead-console/v1",
+                "rows": rows,
+                "total": total,
+                "limit": limit,
+                "offset": offset,
+                "has_more": offset + len(rows) < total,
+                "read_only": True,
+                "source_claim_only": True,
+                "commercial_authority_granted": False,
+            }
     finally:
         engine.dispose()

@@ -35,6 +35,7 @@ from constructionsight import command_center_state as state
 from constructionsight.command_center_canonical_leads import (
     canonical_lead_preview,
     retain_reviewed_canonical_candidate,
+    retained_canonical_lead_workflows,
 )
 from constructionsight.command_center_graph import graph_view
 from constructionsight.command_center_investigations import (
@@ -687,6 +688,18 @@ def make_server(
                     smarts_journal=operator_smarts_journal,
                     smarts_history=operator_smarts_history,
                     source_aliases=source_aliases,
+                )
+                body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
+            elif path == "/api/investigation-lead-workflows":
+                if directory is None or set(query) - {"limit", "offset"} or any(
+                    len(values) != 1 or not values[0].isdigit()
+                    for values in query.values()
+                ):
+                    raise ValueError("invalid canonical lead workflow page")
+                value = retained_canonical_lead_workflows(
+                    directory,
+                    limit=int(query["limit"][0]) if "limit" in query else 25,
+                    offset=int(query["offset"][0]) if "offset" in query else 0,
                 )
                 body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
             elif path == "/api/investigation-lead-preview":

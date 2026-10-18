@@ -201,3 +201,88 @@ def test_explicit_canonical_lead_handoff_persists_existing_original_workflow(
         server.shutdown()
         server.server_close()
         thread.join()
+
+
+def test_native_lead_console_reads_original_workflow_history_and_source_drift(
+    tmp_path: Path,
+) -> None:
+    folder = tmp_path / "private"
+    folder.mkdir(mode=0o700)
+    runtime = InvestigationRuntime(folder)
+    try:
+        runtime.enqueue_bytes(_record().model_dump_json(round_trip=True).encode(), "ceqa")
+        assert runtime.process(max_jobs=100)["failed_jobs"] == 0
+    finally:
+        runtime.close()
+    server = make_server(snapshot(), 0, directory=folder)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        base = f"http://127.0.0.1:{server.server_port}"
+        with httpx.Client(base_url=base, trust_env=False) as client:
+            empty = client.get("/api/investigation-lead-workflows")
+            assert empty.status_code == 200
+            assert empty.json()["total"] == 0
+            identity = client.get("/api/investigations").json()["rows"][0]["investigation_id"]
+            preview = client.get(
+                "/api/investigation-lead-preview", params={"investigation_id": identity}
+            ).json()
+            payload = {
+                "investigation_id": identity,
+                "expected_evidence_id": preview["current_evidence_id"],
+                "expected_evidence_sha256": preview["current_evidence_sha256"],
+                "expected_event_anchor": preview["event_anchor"],
+                "reason": "Keep this candidate for manual verification.",
+                "caller_confirmation": True,
+            }
+            saved = client.post(
+                "/api/investigation-lead-handoff", json=payload,
+                headers={"Origin": base},
+            )
+            assert saved.status_code == 200, saved.text
+            original = (folder / "investigations.sqlite3").read_bytes()
+            listing = client.get("/api/investigation-lead-workflows")
+            assert listing.status_code == 200, listing.text
+            listing_value = listing.json()
+            assert listing_value["total"] == 1
+            assert listing_value["has_more"] is False
+            row = listing_value["rows"][0]
+            assert row["canonical_investigation_id"] == identity
+            assert row["workflow_id"] == saved.json()["workflow_id"]
+            assert row["source_evidence_state"] == "current_source_observation"
+            assert row["original_source_evidence_id"] == preview["current_evidence_id"]
+            assert row["workflow_status"] in {"hold", "monitor", "review"}
+            assert row["transition_count"] == len(row["recent_transitions"])
+            assert row["outreach_authorized"] is False
+            assert row["commercial_authority_granted"] is False
+            assert client.get(
+                "/api/investigation-lead-workflows", params={"offset": 1}
+            ).json()["rows"] == []
+            for parameters in (
+                {"limit": "0"}, {"limit": "51"}, {"offset": "-1"},
+                {"limit": "1", "extra": "yes"},
+            ):
+                assert client.get(
+                    "/api/investigation-lead-workflows", params=parameters
+                ).status_code == 409
+            assert (folder / "investigations.sqlite3").read_bytes() == original
+            runtime = InvestigationRuntime(folder)
+            try:
+                runtime.enqueue_bytes(
+                    _record("New source claim after lead retention")
+                    .model_dump_json(round_trip=True).encode(), "ceqa"
+                )
+                assert runtime.process(max_jobs=100)["failed_jobs"] == 0
+            finally:
+                runtime.close()
+            after = client.get("/api/investigation-lead-workflows").json()
+            assert after["total"] == 1
+            assert after["rows"][0]["workflow_id"] == saved.json()["workflow_id"]
+            assert after["rows"][0]["source_evidence_state"] == (
+                "source_revision_requires_review"
+            )
+            assert after["rows"][0]["outreach_authorized"] is False
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join()
