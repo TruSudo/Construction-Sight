@@ -53,13 +53,43 @@ async function renderParcelSourceReadiness(box) {
           esc(r.source_name), esc(r.county), esc(r.access_boundary),
           esc(r.coverage_status),
           esc(data.schemas[r.source_key]?.status || 'Unavailable'),
-          '<button data-parcel-source-inspect="'+i+'">Review existing source evidence</button>'
+          '<button data-parcel-source-inspect="'+i+'">Review existing source evidence</button>' +
+          (data.profiles.some(p => p.source_key === r.source_key) ?
+            ' <button data-parcel-sample-preview="'+i+'">Preview sample rows</button>' :
+            ' Preview requires a verified county source')
         ])) +
       '<p>Original countywide coverage and ArcGIS acquisition readiness remain ' +
       'subject to recorded evidence gaps. A prepared schema is not an imported ' +
       'parcel, verified address, complete county coverage or authorized probe.</p>';
     root.querySelector('[data-parcel-source-export]').onclick = () =>
       download('parcel-source-readiness.json', data);
+    root.querySelectorAll('[data-parcel-sample-preview]').forEach(button => {
+      button.onclick = () => {
+        const source = sources[Number(button.dataset.parcelSamplePreview)];
+        modal('Original parcel row preview · '+source.source_name,
+          '<p>Paste 1–20 JSON objects keyed by fields in the registered expected ' +
+          'schema. This is a manual, unverified sample only. The original row ' +
+          'preview does not collect remote data, retain a parcel, verify an address, ' +
+          'create an investigation or authorize outreach.</p>' +
+          '<label>JSON array of source sample rows ' +
+          '<textarea id="parcel-row-json" rows="7" ' +
+          'placeholder=\'[{"ParcelNumber":"123-456-789"}]\'></textarea></label>' +
+          '<button id="parcel-run-row-preview">Preview without saving</button>');
+        document.querySelector('#parcel-run-row-preview').onclick = () => perform(async () => {
+          const rows = JSON.parse(document.querySelector('#parcel-row-json').value);
+          const result = await api('/api/parcel-source-row-preview', {
+            source_key: source.source_key, rows
+          });
+          modal('Original parcel row preview result · '+source.source_name,
+            '<p>Unretained manual sample. Even a usable row is not source-proof, ' +
+            'an associated construction project or a mapped site.</p>' +
+            '<button id="parcel-row-export">Export exact row preview</button>' +
+            '<pre>'+esc(JSON.stringify(result,null,2))+'</pre>');
+          document.querySelector('#parcel-row-export').onclick = () =>
+            download('parcel-row-preview.json', result);
+        });
+      };
+    });
     root.querySelectorAll('[data-parcel-source-inspect]').forEach(button => {
       button.onclick = () => {
         const r = sources[Number(button.dataset.parcelSourceInspect)];

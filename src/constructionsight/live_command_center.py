@@ -61,7 +61,10 @@ from constructionsight.command_center_legacy_reconciliation import (
     preview_legacy_reconciliation,
     preview_legacy_reconciliation_batch,
 )
-from constructionsight.command_center_parcel_readiness import parcel_source_readiness_snapshot
+from constructionsight.command_center_parcel_readiness import (
+    parcel_source_readiness_snapshot,
+    preview_retained_parcel_sample,
+)
 from constructionsight.command_center_retained_previews import retained_commercial_preview
 from constructionsight.command_center_sources import (
     SOURCE_INSPECTION_ROUTES,
@@ -967,6 +970,7 @@ def make_server(
                 "/api/investigation-lead-review-transition",
                 "/api/investigation-lead-result-review",
                 "/api/source-watchlist-action",
+                "/api/parcel-source-row-preview",
                 "/api/investigation-watch",
                 "/api/source-commercial-preview",
                 "/api/source-reconciliation-queue",
@@ -1161,6 +1165,16 @@ def make_server(
                         result = retain_reviewed_canonical_candidate(
                             directory, payload, original_database=operator_database,
                         )
+                    elif path == "/api/parcel-source-row-preview":
+                        if (
+                            urlsplit(self.path).query
+                            or urlsplit(self.path).fragment
+                            or self.headers.get_all("Host", []) != [host]
+                            or self.headers.get_all("Origin", []) != [f"http://{host}"]
+                            or self.headers.get("Sec-Fetch-Site") == "cross-site"
+                        ):
+                            raise ValueError("exact same-origin parcel row review required")
+                        result = preview_retained_parcel_sample(payload)
                     elif path == "/api/investigation-watch":
                         if (
                             urlsplit(self.path).query

@@ -294,6 +294,17 @@ const {resolve}=require('node:path');
       !parcelEvidence.includes('not execution'))
     throw Error('Original parcel schema/verification/acquisition reports disconnected');
   await page.click('#action-close');
+  await page.locator('[data-parcel-sample-preview]').first().click();
+  await page.waitForSelector('#parcel-row-json');
+  await page.fill('#parcel-row-json',JSON.stringify([{ParcelNumber:'123-456-789'}]));
+  await page.click('#parcel-run-row-preview');
+  await page.waitForSelector('#parcel-row-export');
+  const parcelRowText = await page.locator('#action-content').textContent();
+  if (!parcelRowText.includes('manual_unverified_sample') ||
+      !parcelRowText.includes('normalized_apn') ||
+      !parcelRowText.includes('rows_retained'))
+    throw Error('Original parcel row preview missing from native source workflow');
+  await page.click('#action-close');
   if(errors.length)throw Error(errors.join('; '));
   console.log('Native shared investigation inventory, exact immutable outcome history, dossier and cross-view IDs: PASS');
  }finally{await browser.close();}
