@@ -8,7 +8,6 @@ from pathlib import Path
 
 import httpx
 
-from constructionsight.investigation_runtime import InvestigationRuntime
 from constructionsight.live_command_center import make_server
 from tests.test_command_center_investigation_bridge import snapshot
 from tests.test_command_center_live_graph import _ingest

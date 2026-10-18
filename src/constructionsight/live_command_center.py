@@ -30,13 +30,9 @@ from constructionsight import (
     offline_map,
 )
 from constructionsight import command_center_commercial as commercial
+from constructionsight import command_center_investigation_watch as investigation_watch
 from constructionsight import command_center_state as state
 from constructionsight.command_center_graph import graph_view
-from constructionsight.command_center_investigation_watch import (
-    action as investigation_watch_action,
-    inspect as investigation_watch_inspection,
-    notifications as investigation_watch_notifications,
-)
 from constructionsight.command_center_investigations import (
     apply_investigation_review,
     investigation_review_preview,
@@ -414,7 +410,7 @@ def make_server(
             elif directory and path == "/api/investigation-watch":
                 if set(query) != {"investigation_id"} or len(query["investigation_id"]) != 1:
                     raise ValueError("one exact watched investigation selection required")
-                value = investigation_watch_inspection(directory, query["investigation_id"][0])
+                value = investigation_watch.inspect(directory, query["investigation_id"][0])
                 body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
             elif directory and path == "/api/notifications":
                 try:
@@ -425,7 +421,7 @@ def make_server(
                         "message": "Retained source watches are unavailable; "
                         "open Sources & Collection to review the configured source store.",
                     }]
-                source_notices += investigation_watch_notifications(directory)
+                source_notices += investigation_watch.notifications(directory)
                 body, mime = (
                     json.dumps(state.notifications(
                         directory, current()["rows"], source_notices=source_notices,
@@ -1081,7 +1077,7 @@ def make_server(
                             or self.headers.get("Sec-Fetch-Site") == "cross-site"
                         ):
                             raise ValueError("exact same-origin canonical watch request required")
-                        result = investigation_watch_action(directory, payload)
+                        result = investigation_watch.action(directory, payload)
                     elif path == "/api/source-watchlist-action":
                         if (
                             urlsplit(self.path).query
