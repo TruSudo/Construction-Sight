@@ -16,6 +16,8 @@ from constructionsight.command_center_investigations import investigation_view
 from constructionsight.command_center_legacy_events import (
     verified_original_workflow_events,
 )
+from constructionsight.command_center_legacy_lineage import _outcome_revision
+from constructionsight.command_center_legacy_review import verified_original_review_package
 from constructionsight.intake_models import (
     DigitalFormatFamily,
     ExtractedMaterialFact,
@@ -36,6 +38,7 @@ from constructionsight.lead_operator_service import load_persisted_lead_workflow
 from constructionsight.lead_workflow_models import LeadWorkflowStatus
 from constructionsight.lead_workflow_rules import LEAD_WORKFLOW_TRANSITION_RULES
 from constructionsight.lead_workflow_service import create_lead_workflow
+from constructionsight.operator_results import read_validated_result_history
 from constructionsight.operator_services.lead_workflow_transition_service import (
     apply_authorized_lead_workflow_transition,
 )
@@ -398,6 +401,9 @@ def retained_canonical_lead_workflows(
     try:
         with Session(engine, autoflush=False) as session:
             predicate = LeadFingerprintRecord.source_key == "canonical_investigation"
+            # SQLite's legacy driver does not begin a snapshot for SELECTs.
+            # Keep workflow, review and every result/share revision in one read.
+            session.connection().exec_driver_sql("BEGIN")
             total = session.scalar(
                 select(func.count()).select_from(LeadFingerprintRecord).where(predicate)
             ) or 0
@@ -409,6 +415,21 @@ def retained_canonical_lead_workflows(
             ).all()
             rows: list[dict[str, Any]] = []
             for fingerprint in fingerprints:
+                retained_fingerprint = LeadFingerprint.model_validate_json(
+                    fingerprint.payload_json
+                )
+                if (
+                    retained_fingerprint.fingerprint_key != fingerprint.fingerprint_key
+                    or retained_fingerprint.base_candidate_id != fingerprint.base_candidate_id
+                    or retained_fingerprint.source_key != fingerprint.source_key
+                    or retained_fingerprint.source_record_id != fingerprint.source_record_id
+                    or retained_fingerprint.site_key != fingerprint.site_key
+                    or retained_fingerprint.normalized_title != fingerprint.normalized_title
+                    or retained_fingerprint.lead_score != fingerprint.lead_score
+                    or retained_fingerprint.created_at.isoformat()
+                    != fingerprint.observed_created_at
+                ):
+                    raise ValueError("canonical lead fingerprint index and payload disagree")
                 identity = fingerprint.source_record_id
                 if not identity:
                     raise ValueError("canonical lead fingerprint has no investigation ID")
@@ -430,6 +451,12 @@ def retained_canonical_lead_workflows(
                 if len(persisted) != 1:
                     raise ValueError("canonical lead workflow linkage is incomplete")
                 workflow = load_persisted_lead_workflow(session, persisted[0])
+                if workflow.base_candidate_id != retained_fingerprint.base_candidate_id:
+                    raise ValueError("canonical lead fingerprint and workflow candidate disagree")
+                verified_original_review_package(
+                    session, package_id=workflow.package_id,
+                    candidate_key=workflow.base_candidate_id,
+                )
                 history = verified_original_workflow_events(session, workflow)
                 notes = [
                     note.removeprefix("Original source evidence: ")
@@ -442,6 +469,20 @@ def retained_canonical_lead_workflows(
                     or "Canonical investigation: " + identity not in workflow.notes
                 ):
                     raise ValueError("retained lead source provenance is inconsistent")
+                validated = read_validated_result_history(session, workflow.workflow_id)
+                if validated is not None and validated["package_id"] != workflow.package_id:
+                    raise ValueError("canonical result and workflow package disagree")
+                revisions = [
+                    _outcome_revision(record)
+                    for record in validated["history"]
+                ] if validated is not None else []
+                revisions.sort(key=lambda record: record["revision"])
+                for revision in revisions:
+                    # Browser JSON numbers cannot retain all SQLite integer cents.
+                    # Preserve the original helper's exact units as decimal strings.
+                    for field in ("gross_value_minor", "calculated_share_minor"):
+                        if revision[field] is not None:
+                            revision[field] = str(revision[field])
                 current_evidence_id: str | None = None
                 current_state = "unavailable_needs_source_review"
                 title: str | None = None
@@ -468,6 +509,8 @@ def retained_canonical_lead_workflows(
                     "canonical_investigation_id": identity,
                     "title": title,
                     "workflow_id": workflow.workflow_id,
+                    "original_package_id": workflow.package_id,
+                    "original_candidate_key": workflow.base_candidate_id,
                     "workflow_status": workflow.status.value,
                     "lead_score": workflow.lead_score,
                     "original_source_evidence_id": notes[0],
@@ -481,6 +524,22 @@ def retained_canonical_lead_workflows(
                     "recent_transitions": history["transitions"][-10:],
                     "transitions_truncated": history["event_count"] > 10,
                     "history_integrity_validated": history["history_integrity_validated"],
+                    "historical_result": {
+                        "workflow_id": workflow.workflow_id,
+                        "package_id": workflow.package_id,
+                        "has_retained_outcome": validated is not None,
+                        "history_integrity_validated": validated is not None,
+                        "revision_count": len(revisions),
+                        "current_revision": revisions[-1] if revisions else None,
+                        "revision_history": revisions,
+                        "money_unit_encoding": "decimal_integer_string",
+                        "latest_revision_only_is_current": True,
+                        "past_revisions_must_not_be_summed": True,
+                        "award_verified": False,
+                        "contract_verified": False,
+                        "share_entitlement_verified": False,
+                        "payment_received_verified": False,
+                    },
                     "limitations": workflow.limitations,
                 })
             return {

@@ -5,6 +5,39 @@ Follow Phases 1–8 in order. Preserve mandatory historical functionality and sa
 One shared investigation engine, the approved native Command Center and a live
 Relationship Graph remain the goal. Full unification and functional parity are not complete.
 
+## P8-09 result-history continuation — 2026-10-18
+
+The existing native Lead Console now inspects immutable original result/correction
+history for its exact retained canonical workflow. It reuses
+`read_validated_result_history` and `_outcome_revision`, including validation of
+superseded share receipts, revision digests, package/candidate lineage and exact
+money units. Fingerprint, review, workflow and result records share one read
+snapshot. Unrelated original workflows are not joined by title, site or status.
+
+Expandable history in the existing workflow table identifies the current revision,
+preserves each superseded correction/reason/digest and exports the same validated
+workflow/source snapshot. Minor-unit amounts use decimal integer strings so browser
+JSON cannot round large retained amounts. A newer source revision leaves the original
+history attached to its handoff evidence and keeps source review visibly required.
+No history implies no inferred outcome. Historical wins or calculated shares do not
+verify awards, contracts, royalty entitlements, payments or commercial authority.
+
+Local acceptance: 12 new HTTP/history regressions passed, with final targeted reruns
+for odd cents beyond JavaScript's safe-integer boundary and the accepted 100/rejected
+101 revision limit; 24 existing native handoff, original lineage and result-integrity
+regressions passed. The expanded real-browser native investigation journey passed
+inspection/export, unchanged database bytes, source revision/reload and preserved
+dossier/review controls. Ruff, strict Mypy (357 modules), JavaScript syntax, dependency
+integrity and existing map/dossier runtime checks passed. Published exact-head Python
+3.11/3.12 and complete browser/visual gates are tracked by draft PR #234; local
+acceptance alone does not claim their completion.
+
+This is read-only result-history continuity, not closure of all P8-09 operations or
+Phase 8. Native result-apply/correction operations and broader historical workflow
+equivalence still require their own governed integration/acceptance. The approved
+dashboard layout/reference, source activation and commercial action controls are
+unchanged. Main merge still requires explicit owner authorization.
+
 ## Phase 8 finish line — owner-requested scope reconciliation (2026-10-18 UTC)
 
 **Scope:** Finish the mandatory functionality already specified in the controlling

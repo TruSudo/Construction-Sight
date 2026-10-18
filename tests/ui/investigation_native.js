@@ -1,5 +1,9 @@
 'use strict';
 const {chromium}=require('../visual/node_modules/playwright');
+const {spawnSync}=require('node:child_process');
+const {createHash}=require('node:crypto');
+const {readFileSync}=require('node:fs');
+const {resolve}=require('node:path');
 (async()=>{
  const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_PATH,args:['--no-sandbox','--disable-dev-shm-usage']});
  try{
@@ -96,6 +100,80 @@ const {chromium}=require('../visual/node_modules/playwright');
   const reviewedConsole=await page.locator('[data-canonical-lead-workflows]').textContent();
   if(!reviewedConsole.includes('2 events')||!reviewedConsole.includes('current source observation'))
    throw Error('Original review state transition did not persist safely in native console');
+  const leadPage=await (await page.request.get(
+   new URL('/api/investigation-lead-workflows',process.argv[2]).href)).json();
+  if(leadPage.rows.length!==1)throw Error('Canonical result fixture requires one exact retained lead');
+  const retainedLead=leadPage.rows[0],workflowId=retainedLead.workflow_id;
+  const emptyHistory=page.locator('[data-canonical-result-history]').first();
+  if(!await emptyHistory.count()||
+     !(await emptyHistory.locator('summary').textContent()).includes('No retained outcome'))
+   throw Error('Absent original result history was represented as an outcome');
+  const resultSeed=spawnSync('python',['tests/ui/seed_canonical_results.py',
+   process.argv[3]||'/tmp/cs-ui-state',workflowId],
+   {encoding:'utf8',env:{...process.env,PYTHONPATH:'src'}});
+  if(resultSeed.status!==0)throw Error('Original immutable result fixture failed: '+resultSeed.stderr);
+  const seeded=JSON.parse(resultSeed.stdout);
+  const database=resolve(process.argv[3]||'/tmp/cs-ui-state','investigations.sqlite3');
+  const databaseDigest=()=>createHash('sha256').update(readFileSync(database)).digest('hex');
+  const seededDatabaseDigest=databaseDigest();
+  await page.reload();
+  await page.waitForFunction(()=>document.documentElement.dataset.ready==='true');
+  await page.click('nav button[data-page="Lead Console"]');
+  await page.waitForSelector('[data-canonical-result-history]');
+  const resultRow=page.locator('[data-canonical-lead-workflows] tr').filter({hasText:workflowId});
+  const resultHistory=resultRow.locator('[data-canonical-result-history]');
+  const summary=await resultHistory.locator('summary').textContent();
+  if(!summary.includes('lost')||!summary.includes('3'))
+   throw Error('Superseded calculated share was resurrected as the current outcome: '+summary);
+  await resultHistory.locator('summary').click();
+  const historyText=await resultHistory.textContent();
+  const currentRevisionText=await resultHistory.locator('li').last().textContent();
+  if(!historyText.includes('Never sum superseded shares')||
+     !historyText.includes('grants no commercial authority')||
+     !currentRevisionText.includes('Current revision 3 · lost')||
+     !currentRevisionText.includes('Calculated share: not recorded')||
+     currentRevisionText.includes('12346'))
+   throw Error('Native result details lost current-only or non-authority cautions');
+  for(const expected of ['123456','100000','12346',
+   retainedLead.canonical_investigation_id,retainedLead.original_source_evidence_id,
+   ...seeded.history.flatMap(r=>[r.ledger_id,r.content_digest]),
+   'Synthetic correction removes the current calculated share']){
+   if(!historyText.includes(expected))
+    throw Error('Native original result history lost exact money, revision or source provenance: '+expected);
+  }
+  const historyPayload=await (await page.request.get(
+   new URL('/api/investigation-lead-workflows',process.argv[2]).href)).json();
+  const exactRow=historyPayload.rows.find(r=>r.workflow_id===workflowId);
+  const outcome=exactRow.historical_result;
+  if(historyPayload.read_only!==true||outcome.revision_count!==3||
+     outcome.current_revision.status!=='lost'||
+     outcome.current_revision.gross_value_minor!==null||
+     outcome.current_revision.calculated_share_minor!==null||
+     outcome.money_unit_encoding!=='decimal_integer_string'||
+     outcome.revision_history[1].gross_value_minor!=='123456'||
+     outcome.revision_history[1].share_rate_ppm!==100000||
+     outcome.revision_history[1].calculated_share_minor!=='12346'||
+     outcome.revision_history.map(r=>r.revision).join(',')!=='1,2,3'||
+     outcome.revision_history[2].supersedes_ledger_id!==seeded.history[1].ledger_id||
+     !outcome.latest_revision_only_is_current||!outcome.past_revisions_must_not_be_summed)
+   throw Error('Native result payload lost original immutable correction or exact-money semantics');
+  for(const flag of ['award_verified','contract_verified',
+   'share_entitlement_verified','payment_received_verified']){
+   if(outcome[flag]!==false)throw Error('Historical outcome inferred commercial authority: '+flag);
+  }
+  for(const flag of ['commercial_authority_granted','outreach_authorized','bid_authorized']){
+   if(exactRow[flag]!==false)throw Error('Result inspection enabled a commercial action: '+flag);
+  }
+  const exportEvent=page.waitForEvent('download');
+  await resultHistory.locator('[data-canonical-result-export]').click();
+  const exported=await exportEvent;
+  if(exported.suggestedFilename()!=='canonical-lead-result-history.json')
+   throw Error('Canonical result export did not use the exact history artifact');
+  const exportedRow=JSON.parse(readFileSync(await exported.path(),'utf8'));
+  if(JSON.stringify(exportedRow)!==JSON.stringify(exactRow))
+   throw Error('Canonical result export lost exact workflow/source/correction lineage');
+  if(databaseDigest()!==seededDatabaseDigest)
+   throw Error('Read-only Lead Console result inspection or export altered retained state');
   await page.locator('[data-canonical-lead-dossier]').first().click();
   await page.waitForSelector('#export-investigation');
   if(!(await page.locator('#action-content').textContent()).includes('Canonical investigation ID:'))
@@ -104,13 +182,32 @@ const {chromium}=require('../visual/node_modules/playwright');
   // the unrelated commercial lead watchlist or a browser-only state object.
   await page.locator('[data-investigation-watch-action="watch"]').click();
   await page.waitForFunction(()=>document.querySelector('#native-investigation-watch')?.textContent.includes('Watching committed evidence'));
-  const {spawnSync}=require('child_process');
   const update=spawnSync('python',['tests/ui/seed_investigations.py',process.argv[3]||'/tmp/cs-ui-state','update'],{encoding:'utf8',env:{...process.env,PYTHONPATH:'src'}});
   if(update.status!==0)throw Error('Independent retained worker failed: '+update.stderr);
   await page.waitForFunction(()=>document.querySelector('#action-title').textContent.includes('revised retained evidence'),{},{timeout:20000});
   if(!(await page.locator('section[data-shared-investigations]').textContent()).includes('revised retained evidence'))throw Error('Worker revision did not reach shared inventory');
   await page.waitForSelector('[data-investigation-watch-action="acknowledge"]');
   await page.click('#action-close');
+  await page.reload();
+  await page.waitForFunction(()=>document.documentElement.dataset.ready==='true');
+  await page.click('nav button[data-page="Lead Console"]');
+  await page.waitForSelector('[data-canonical-result-history]');
+  const staleResultRow=page.locator('[data-canonical-lead-workflows] tr').filter({hasText:workflowId});
+  if(!(await staleResultRow.textContent()).includes('source revision requires review')||
+     await staleResultRow.locator('[data-canonical-review-transition]').count())
+   throw Error('Historical outcomes bypassed the changed-source review boundary');
+  await staleResultRow.locator('[data-canonical-result-history] summary').click();
+  const staleHistory=await staleResultRow.locator('[data-canonical-result-history]').textContent();
+  if(!staleHistory.includes(seeded.history[2].content_digest)||
+     !staleHistory.includes(retainedLead.original_source_evidence_id))
+   throw Error('Source revision or reload replaced the immutable original result history');
+  const stalePayload=await (await page.request.get(
+   new URL('/api/investigation-lead-workflows',process.argv[2]).href)).json();
+  const stale=stalePayload.rows.find(r=>r.workflow_id===workflowId);
+  if(stale.canonical_investigation_id!==retainedLead.canonical_investigation_id||
+     stale.current_source_evidence_id===stale.original_source_evidence_id||
+     JSON.stringify(stale.historical_result)!==JSON.stringify(outcome))
+   throw Error('Changed-source lead history lost exact investigation or original result lineage');
   await page.click('nav button[data-page="Watchlist"]');
   await page.waitForSelector('[data-investigation-watch-open]');
   if(!(await page.locator('[data-investigation-watch-open]').first().locator('xpath=../..').textContent()).includes('changed'))
@@ -161,6 +258,6 @@ const {chromium}=require('../visual/node_modules/playwright');
   await page.waitForFunction(()=>document.querySelector('#action-title').textContent.includes('dashboard-refresh'),{},{timeout:20000});
   await page.click('#action-close');
   if(errors.length)throw Error(errors.join('; '));
-  console.log('Native shared investigation inventory, dossier, provenance and cross-view IDs: PASS');
+  console.log('Native shared investigation inventory, exact immutable outcome history, dossier and cross-view IDs: PASS');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

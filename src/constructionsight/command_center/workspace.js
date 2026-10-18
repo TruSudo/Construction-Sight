@@ -271,6 +271,32 @@ async function openInvestigationDossier(identity,refresh=false){
  });
  bindAssociationReviews(identity);
 }
+function canonicalResultHistory(entry){
+ const result=entry.historical_result;
+ const current=result.current_revision;
+ const units=value=>value===null?'not recorded':esc(value);
+ return '<details data-canonical-result-history="'+esc(entry.workflow_id)+'">'+
+  '<summary>'+(current?'Historical result · current revision '+esc(current.revision)+
+   ': '+esc(current.status)+' · '+esc(result.revision_count)+' revisions':
+   'No retained outcome')+'</summary>'+
+  '<p>Immutable original result history. Integrity validation does not verify an award,'+
+   ' contract, royalty entitlement or payment and grants no commercial authority.'+
+   ' Only the latest revision is current. Never sum superseded shares.</p>'+
+  '<p>Canonical investigation: <code>'+esc(entry.canonical_investigation_id)+
+   '</code><br>Exact workflow: <code>'+esc(entry.workflow_id)+'</code><br>Review package: <code>'+
+   esc(entry.original_package_id)+'</code><br>Retained handoff evidence: <code>'+
+   esc(entry.original_source_evidence_id)+'</code></p>'+
+  (current?'<ol>'+result.revision_history.map(revision=>'<li><strong>'+
+   (revision.ledger_id===current.ledger_id?'Current':'Superseded')+' revision '+
+   esc(revision.revision)+' · '+esc(revision.status)+'</strong>'+
+   '<p>Gross: '+units(revision.gross_value_minor)+' minor units · Rate: '+
+   units(revision.share_rate_ppm)+' millionths · Calculated share: '+
+   units(revision.calculated_share_minor)+' minor units</p><pre>'+
+   esc(JSON.stringify(revision,null,2))+'</pre></li>').join('')+'</ol>':
+   '<p>No result ledger is retained for this exact workflow. No outcome is inferred.</p>')+
+  '<button data-canonical-result-export="'+esc(entry.workflow_id)+
+   '">Export validated result history</button></details>';
+}
 async function renderCanonicalLeadWorkflows(box){
  const section=document.createElement('section');
  section.className='feature-card';
@@ -297,7 +323,7 @@ async function renderCanonicalLeadWorkflows(box){
     '<p>Original persisted lead candidates from shared investigations. Statuses are'+
     ' historical workflow states, not contact permission or bid readiness. '+
     'Current evidence is compared with the exact evidence retained at handoff.</p>'+
-    table(['Investigation','Preserved status','Source continuity','Workflow history','Inspect'],
+    table(['Investigation','Preserved status','Source continuity','Workflow / result history','Inspect'],
      rows.map(entry=>[
       esc(entry.title||entry.canonical_investigation_id),
       esc(entry.workflow_status)+' · '+esc(entry.workflow_id),
@@ -305,7 +331,7 @@ async function renderCanonicalLeadWorkflows(box){
       '<details><summary>'+esc(entry.transition_count)+' events</summary>'+
        '<pre>'+esc(JSON.stringify(entry.recent_transitions,null,2))+'</pre>'+
        (entry.transitions_truncated?'<p>Earlier events retained in the original workflow store.</p>':'')+
-       '</details>',
+       '</details>'+canonicalResultHistory(entry),
       '<button data-canonical-lead-dossier="'+esc(entry.canonical_investigation_id)+
        '">Open shared dossier</button>'+
        (entry.source_evidence_state==='current_source_observation'&&
@@ -320,6 +346,12 @@ async function renderCanonicalLeadWorkflows(box){
     (!page.total?'<p>No retained canonical lead candidates. Review an investigation dossier first.</p>':'');
    section.querySelectorAll('[data-canonical-lead-dossier]').forEach(button=>{
     button.onclick=()=>perform(()=>openInvestigationDossier(button.dataset.canonicalLeadDossier));
+   });
+   section.querySelectorAll('[data-canonical-result-export]').forEach(button=>{
+    button.onclick=()=>{
+     const row=rows.find(r=>r.workflow_id===button.dataset.canonicalResultExport);
+     if(row)download('canonical-lead-result-history.json',row);
+    };
    });
    section.querySelectorAll('[data-canonical-review-transition]').forEach(button=>{
     button.onclick=()=>perform(async()=>{
