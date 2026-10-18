@@ -331,6 +331,8 @@ def test_native_console_uninitialized_store_reports_unavailable_without_creating
     server = make_server(snapshot(), 0, directory=folder)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
+    workflow_file = folder / "workflow.sqlite3"
+    workflow_before = workflow_file.read_bytes() if workflow_file.exists() else None
     try:
         with httpx.Client(
             base_url=f"http://127.0.0.1:{server.server_port}", trust_env=False
@@ -342,7 +344,9 @@ def test_native_console_uninitialized_store_reports_unavailable_without_creating
             assert result["rows"] == []
             assert result["total"] is None
             assert not (folder / "investigations.sqlite3").exists()
-            assert not (folder / "workflow.sqlite3").exists()
+            assert (
+                workflow_file.read_bytes() if workflow_file.exists() else None
+            ) == workflow_before
     finally:
         server.shutdown()
         server.server_close()
