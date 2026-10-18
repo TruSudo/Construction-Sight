@@ -100,6 +100,10 @@ async function openInvestigationDossier(identity,refresh=false){
    (!watch.watched?'<button data-investigation-watch-action="watch">Watch this investigation</button>':
     '<button data-investigation-watch-action="remove">Remove investigation watch</button>'))+
   '</div>'+
+  '<h3>Governed lead handoff review</h3>'+
+  '<p>Assess current exact source evidence using the original opportunity and lead workflow rules. This is not commercial approval.</p>'+
+  '<button id="preview-canonical-lead">Preview original governed lead assessment</button>'+
+  '<div id="canonical-lead-review-result" role="status"></div>'+
   '<h3>Source membership and provenance</h3>'+
   table(['Family','Original record','Membership basis','Current evidence ID'],sources.map(m=>[
     esc(m.source_family||'—'),esc(m.source_record_id||'—'),esc(m.membership_basis||'—'),esc(m.current_evidence_id||'—')
@@ -134,6 +138,36 @@ async function openInvestigationDossier(identity,refresh=false){
  const displayedTicket=modalTicket;
  $('action-content').scrollTop=scroll;
  $('export-investigation').onclick=()=>download('investigation-dossier.json',dossier);
+ $('preview-canonical-lead').onclick=()=>perform(async()=>{
+  const button=$('preview-canonical-lead'),host=$('canonical-lead-review-result');
+  if(!host||!button)return;
+  button.disabled=true;
+  host.textContent='Reviewing current source using original workflow rules…';
+  try{
+   const result=await api('/api/investigation-lead-preview?'+
+    new URLSearchParams({investigation_id:identity}));
+   if(displayedTicket!==modalTicket||!$('action-dialog').open)return;
+   if(result.canonical_investigation_id!==(info.project_cluster_id||identity)||
+      result.event_anchor!==dossier.event_anchor||
+      !sources.some(s=>s.source_id===result.source_entity_id&&
+       s.current_evidence_id===result.current_evidence_id)){
+    host.textContent='Retained evidence changed; reopen the dossier before lead assessment.';
+    return;
+   }
+   host.innerHTML='<p>Original review: '+esc(result.lead_review_status)+
+    ' · provisional workflow: '+esc(result.provisional_workflow_status)+
+    '. Human review required. Not qualified to contact or bid.</p>'+
+    '<p>Exact evidence: '+esc(result.current_evidence_id)+'</p>'+
+    '<p>Original pipeline limitations: '+
+    esc((result.original_product_integration.review_package.limitations||[]).join(' · ')||'—')+
+    '</p><p>Persisted duplicate/authority review remains required.</p>'+
+    '<button id="export-canonical-lead-review">Export original pipeline assessment</button>';
+   $('export-canonical-lead-review').onclick=()=>
+    download('canonical-lead-review.json',result);
+  }catch(error){if(displayedTicket===modalTicket&&host.isConnected)
+   host.textContent='Lead assessment unavailable: '+error.message;}
+  finally{if(button.isConnected)button.disabled=false;}
+ });
  document.querySelectorAll('[data-investigation-watch-action]').forEach(button=>{
   button.onclick=()=>perform(async()=>{
    button.disabled=true;

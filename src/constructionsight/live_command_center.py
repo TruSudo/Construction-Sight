@@ -32,6 +32,7 @@ from constructionsight import (
 from constructionsight import command_center_commercial as commercial
 from constructionsight import command_center_investigation_watch as investigation_watch
 from constructionsight import command_center_state as state
+from constructionsight.command_center_canonical_leads import canonical_lead_preview
 from constructionsight.command_center_graph import graph_view
 from constructionsight.command_center_investigations import (
     apply_investigation_review,
@@ -684,6 +685,14 @@ def make_server(
                     smarts_history=operator_smarts_history,
                     source_aliases=source_aliases,
                 )
+                body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
+            elif path == "/api/investigation-lead-preview":
+                if (
+                    directory is None or set(query) != {"investigation_id"}
+                    or len(query["investigation_id"]) != 1
+                ):
+                    raise ValueError("select one canonical investigation for lead review")
+                value = canonical_lead_preview(directory, query["investigation_id"][0])
                 body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
             elif path == "/api/investigation-review":
                 choices = query.get("relationship", [])
