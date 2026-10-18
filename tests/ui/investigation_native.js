@@ -291,7 +291,7 @@ const {resolve}=require('node:path');
   await page.waitForSelector('[data-parcel-source-readiness] [data-parcel-source-inspect]',
     {timeout:20000});
   const parcelRows = page.locator('[data-parcel-source-inspect]');
-  if (await parcelRows.count()!==3) throw Error('Original parcel source registry was lost');
+  if (await parcelRows.count()!==4) throw Error('Original four-provider parcel source registry was lost');
   const parcelText = await page.locator('[data-parcel-source-readiness]').textContent();
   if (!parcelText.includes('San Bernardino') || !parcelText.includes('Riverside') ||
       !parcelText.includes('licensed') || !parcelText.includes('not live data'))

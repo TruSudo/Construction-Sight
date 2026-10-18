@@ -23,7 +23,7 @@ def test_native_parcel_registry_schema_and_verified_source_evidence_are_exact_an
     directory = tmp_path / "private"
     expected = parcel_source_readiness_snapshot()
     sources = get_parcel_sources()
-    assert len(sources) == 3
+    assert len(sources) == 4
     assert set(expected["schemas"]) == {source.source_key for source in sources}
     assert expected["network_executed"] is False
     assert expected["parcel_source_persisted"] is False
