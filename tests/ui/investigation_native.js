@@ -73,7 +73,7 @@ const {chromium}=require('../visual/node_modules/playwright');
   await page.click('#action-close');
   await page.click('nav button[data-page="Watchlist"]');
   await page.waitForSelector('[data-investigation-watch-open]');
-  if(!(await page.locator('[data-investigation-watch-open]').first().locator('xpath=..').textContent()).includes('changed'))
+  if(!(await page.locator('[data-investigation-watch-open]').first().locator('xpath=../..').textContent()).includes('changed'))
    throw Error('Committed investigation change not visible in existing Watchlist');
   await page.click('#notifications');
   await page.waitForSelector('[data-investigation-notice]');
