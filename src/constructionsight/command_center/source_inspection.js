@@ -1,5 +1,33 @@
 'use strict';
 
+async function openRetainedSourceNotice(notice) {
+  const openingTicket = modalTicket;
+  const selection = {kind: notice.record_kind, record_id: notice.record_id};
+  const [source, reconciliation] = await Promise.all([
+    api('/api/candidate-preview?' + new URLSearchParams(selection)),
+    api('/api/source-reconciliation?' + new URLSearchParams(selection))
+  ]);
+  if (openingTicket !== modalTicket) return;
+  modal('Watched retained source change',
+    '<p>This is a retained source change requiring review. It does not establish ' +
+    'current construction, verified project identity or commercial readiness. ' +
+    'Reading this notice does not approve a source revision.</p>' +
+    '<button id="source-notice-sources">Review in Sources & Collection</button>' +
+    (reconciliation.canonical_investigation_id ?
+      '<button id="source-notice-dossier">Open current shared investigation</button>' : '') +
+    '<h3>Exact retained source</h3><pre>' + esc(JSON.stringify(source, null, 2)) +
+    '</pre><h3>Current shared-engine comparison</h3><pre>' +
+    esc(JSON.stringify(reconciliation, null, 2)) + '</pre>');
+  $('source-notice-sources').onclick = () => {
+    $('action-dialog').close();
+    modalTicket++;
+    perform(() => openWorkspace('Sources & Collection'));
+  };
+  const dossier = $('source-notice-dossier');
+  if (dossier) dossier.onclick = () => perform(() =>
+    openInvestigationDossier(reconciliation.canonical_investigation_id));
+}
+
 // Existing source/parcel projections only; never converts an observation into a lead.
 async function renderRetainedSources(box) {
   if (!box.isConnected || activePage !== 'Sources & Collection') return;
@@ -58,7 +86,7 @@ async function renderRetainedSources(box) {
         esc(name), esc(r.record_count), esc(r.latest_updated_at), esc(r.highest_row_id)
       ])) +
     '<h3>Source-specific watchlist</h3><p>Distinct from the commercial lead watchlist. ' +
-    'Changes in retained source records can trigger existing watches; this display does not poll sources or notify anyone.</p>' +
+    'Changes in retained source records can trigger existing watches; material changes appear in local Notifications. No external messages are sent.</p>' +
     '<div id="retained-source-watchlist" aria-live="polite"></div>' +
     '<h3>Source observation review queue</h3>' +
     '<p>Exact retained CEQA/permit observations. Review does not merge investigations, authorize bids or send outreach.</p>' +
@@ -91,7 +119,7 @@ async function renderRetainedSources(box) {
       ])
     ) + '<p>' + esc(state.total) + ' active source watches; ' +
       'remote source polling: ' + (state.remote_source_polling_enabled ? 'enabled' : 'disabled') +
-      '. Watches do not authorize contacts, bids or notifications.</p>';
+      '. Local change notices do not authorize contacts, bids or external delivery.</p>';
     watchPanel.querySelectorAll('[data-source-unwatch]').forEach(button => {
       button.onclick = () => perform(async () => {
         const w = items[Number(button.dataset.sourceUnwatch)];

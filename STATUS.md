@@ -5,6 +5,171 @@ Follow Phases 1–8 in order. Preserve mandatory historical functionality and sa
 One shared investigation engine, the approved native Command Center and a live
 Relationship Graph remain the goal. Full unification and functional parity are not complete.
 
+## Phase 8 finish line — owner-requested scope reconciliation (2026-10-18 UTC)
+
+**Scope:** Finish the mandatory functionality already specified in the controlling
+directive and preserved original/newer implementations inside the approved native
+Command Center. Account for historical work; connect or prove equivalent behavior.
+No new product features, redesign, unrelated refactor, universal jurisdiction
+coverage, future imagery service, hosted multiuser product or new governance
+program. A historical item marked planned is not an implemented capability to
+restore. AI must remain optional. Separate stores are permitted; competing
+investigative realities and permanent dependence on a second dashboard are not.
+
+**Assessment baseline:** application/test HEAD `2bc29ba` (reviewed original-source
+revisions); prior accepted source `825a717`. This is a documentation/source
+reconciliation, not a new runtime certification. Existing exact-source CI results
+below are retained. The subsequent continuation independently retrieved the latest
+revision's completed CI/browser results and verified its published tree against
+local `2bc29ba`; P8-06 is now accepted. Later changes need their own final gates.
+
+**Evidence checked:** original directive sections II, IV–XI, XII Phase 8, XIII and
+XVI; Phase 1 preservation JSON; current original/native HTTP handlers; native source,
+replay, lineage, preview and export bridges; original guarded operator services;
+watch-change and product-integration services; native commercial handlers; existing
+parity tests and the calibrated visual comparator. The preservation baseline contains
+193 branch records and 83 non-ancestor contribution inventories covering 302 unique
+paths, including 141 Python source paths. Those are historical inventory sizes,
+not counts of unfinished features. Its own scope explicitly does not establish
+functional equivalence. Static import absence likewise is not proof that no
+equivalent implementation exists.
+
+**Acceptance register (20 obligations):** V = verified within the cited earlier
+acceptance scope; O = open implementation/equivalence obligation; P = implemented
+or assembled but final verification outstanding; B = owner-data/device/current
+source access needed. V is retained evidence, not a fresh execution on `2bc29ba`.
+Counts: **8 V, 8 O, 1 P, 3 B**. These obligations differ greatly in size; do not
+convert 8/20 into a completion percentage or call the 12 remaining obligations
+13 bugs. This fixes the acceptance denominator, not the number of code changes.
+
+| ID | Required behavior | State and existing evidence | Exact closure condition |
+| --- | --- | --- | --- |
+| P8-01 | Complete historical capability accounting | O — preservation JSON inventories history; Phase 7 reconciles safeguards, not all operator capabilities | Give every mandatory historical behavior an implemented native path or a tested equivalent; explicitly classify recovery-only/development assets and superseded implementations. No unidentified mandatory remainder. |
+| P8-02 | Original source inspection and attribution | V — `test_native_original_registry_parity.py` compares 16 original/native HTTP read contracts; source/SMARTS tests cover additional views | Retain exact attribution, filters, pagination, evidence limits and original-byte preservation through final regression. |
+| P8-03 | Source acquisition, verification and registry controls | O — native inspection is read-only; finite CEQA background lane exists, but original discovery/detail/CSV, verification, registry update/promotion and persistence controls lack a complete native equivalence account | Reconcile each existing operational control with its native/worker equivalent and expose missing routine operator controls with the original approval/access safeguards. Setup-only CLI tools may remain documented deployment tools; a CLI alone does not replace a required native operator workflow. |
+| P8-04 | Parcel/GIS investigation operations | O — parcel candidates are exposed; original schema/row review, authorized ArcGIS acquisition, proof persistence and parcel/site resolution are not all demonstrated as one native workflow | Demonstrate authorized retained GIS/parcel evidence through review, governed persistence/resolution and the same dossier/map/graph; preserve ambiguity and exact source/proof identities. No invented coordinates or automatic same-project inference. |
+| P8-05 | Missing original-source replay | V — scoped replay tests, independent-worker browser journey and genuine retained CEQA acceptance at `825a717` | Preserve bounded page review, atomic approvals, overlap rejection, full-scope rescan and restart without duplicates. Owner-data execution is P8-07. |
+| P8-06 | Reviewed changed-source handoff | V — published `3035fb9` has exact tree `dc93cd89d831522067a420d1ce6481c74c80d8ba` of local `2bc29ba`; full CI/browser accepted | Preserve exact-source acceptance: 2,777 tests on each Python version, full quality gates and independent-worker browser revision/delayed-dialog journey; earlier evidence and reassessment remain intact. |
+| P8-07 | Intended owner's retained-data reconciliation | B — fixture/genuine offline capture acceptance exists; owner's complete selected data has not been reconciled | Identify actual original/native stores and retained artifacts; process all reviewed pages, resolve/hold conflicts, rescan and account for every selected record without modifying originals or duplicating work. Explicitly bounded scope, never countywide completeness. |
+| P8-08 | Investigation-to-qualified-lead handoff | O — investigations remain unassessed; native commercial writes resolve `current()["rows"]`; original `product_integration_service` provides review/dedupe/workflow behavior not proven equivalent for canonical investigations | An explicitly reviewed eligible investigation reaches the existing lead/commercial workflow with stable lineage, dedupe, evidence-backed readiness/reasons and contact/authority gates. Unqualified investigations remain visible and blocked from unauthorized commerce. |
+| P8-09 | Historical commercial workflow continuity | O — validated history, finance lineage and no-send previews exist; original transition/result-apply services are not exposed by the native handlers inspected | Continue an eligible retained workflow through authorized transitions and outcome/correction operations from the native UI, or prove an equivalent preserving its exact history, money and source/investigation attribution. Historical shares never automatically become native entitlements/payments. Physical database merging is not required. |
+| P8-10 | Source/investigation watches and material alerts | O — original source watches and native lead watches remain distinct; original change-trigger storage exists, but no complete shared-source-to-native-alert journey is established | A watched canonical/original source change produces the correct persistent, deduplicated native notification with exact lineage, including worker restart and read/archive behavior. External delivery only if already implemented and separately authorized. |
+| P8-11 | Complete retained report/export equivalence | O — native retained-chain-report ZIP reuses original package/archive validators; broader report/control equivalence is still unaccounted | Enumerate original chain/report/evidence/bundle/package/archive/verify outputs and audit exports; prove each required native output is equivalent and usable without the old dashboard. Do not duplicate a proven exporter or treat packaging an existing report as proof of creating that report. |
+| P8-12 | One investigation across views | V — Phase 5/8 inventory, map, dossier, evidence, lineage/recovery browser evidence | Preserve common IDs and committed revisions across overview, Lead Console, Project Intelligence, map, network, evidence and dossiers; filters, unmapped queue, restored histories and open-dossier refresh stay consistent. Commercial eligibility is separately P8-08. |
+| P8-13 | Embedded/expanded live and historical graph | V — Phase 6 acceptance and later paused/closed graph worker journeys | Preserve shared graph state, actual committed events, review propagation, replay, reconnect, saved views, filters, evidence and map/dossier navigation. Display pause must not stop engine or current-dossier updates. |
+| P8-14 | Integrated safeguards | V — Phase 7 acceptance table and repaired historical tests below | Preserve those guarantees on every newly connected path; no weakened source access, provenance, identity, transaction, recovery, financial or commercial approval boundary. New paths need applicable checks, not blanket recertification of unrelated code. |
+| P8-15 | Existing native commercial functions | V — native bid/royalty, outreach preparation/tracking, commercial browser and Phase 7 financial acceptance | Preserve explicit manual controls, exact money, request evidence, immutable versions/contracts and corrective entries. Existing source-row functionality does not close P8-08/09. No real sale or paid royalty is required to prove software behavior. |
+| P8-16 | Durable background retained-data operation | V — Phase 3/4 worker, inbox, bounded processing, idempotency/restart and later independent-worker acceptance | Preserve automatic authorized intake-to-investigation progression, dependencies, change reassessment and failure visibility without requiring an open browser or ChatGPT session. Device/live operation is P8-19/20. |
+| P8-17 | Approved visual parity | O — structure/fonts and regression ratchet pass; calibrated pixel comparison fails | Approved 1672 × 941 reference, fonts and structure pass the existing calibrated regional comparison. Preserve reference/hash, masks, calibration and thresholds; ratchet success alone does not close this item. Any irreducible reference discrepancy requires explicit owner disposition, not silent threshold relaxation. |
+| P8-18 | Final integrated regression acceptance | P — full gates exist for `825a717`; later source acceptance remains pending | After remaining code changes, freeze the actual final application/test revision and pass applicable Python 3.11/3.12, Ruff, strict Mypy, JS, dependency, browser, identity/evidence, cross-source, recovery and visual gates. Prove realistic retained-data journeys plus meaningful failure cases. Do not rerun unchanged full suites merely for documentation edits. |
+| P8-19 | Owner-device deployment | B — Zorin/systemd installation and real startup acceptance open | Clean/reproducible install on intended laptop, reviewed local paths/configuration, independent worker/timer, restart, backup/restore and visible failure/disable/rollback behavior. No automatic source authorization from installation. |
+| P8-20 | Permitted live cooperating-source acceptance | B — live source operation left open from Phases 3–4 | With current source-specific permission and separately reviewed activation, demonstrate actual bounded source acquisition through retained evidence, investigation, reassessment and synchronized UI. Record coverage/identity limits and stop blocked sources; do not infer authority from a historical capture or reachable URL. |
+
+**Evidence locations for the open implementation obligations:**
+- P8-01: `docs/audits/unification-preservation-baseline-2026-10-16.json`,
+  `governance/capability_contract.toml`, original directive section II.
+- P8-03/04: `operator_services/`, `parcel_source_cli.py`, `upstream_operator_service.py`,
+  `command_center_sources.py`, `ceqanet_background.py`, `investigation_runtime.py`.
+- P8-08: `product_integration_service.py`, `lead_review_service.py`,
+  `lead_dedupe_service.py`, native `live_command_center.py` commercial POST handlers.
+- P8-09: `operator_services/lead_workflow_transition_service.py`,
+  `operator_services/result_authority_apply_service.py`, `command_center_legacy_*.py`,
+  `command_center_retained_previews.py`, `command_center_commercial.py`.
+- P8-10: `operator_watchlist.py`, `watch_change_monitor.py`,
+  `storage/domain_store.py`, `storage/watch_change_store.py`, native notification routes.
+- P8-11: `ceqanet_operator_*.py`, `ceqanet_chain_cli.py`, `audit_package_cli.py`,
+  `command_center_legacy_export.py`.
+- P8-17: `tests/visual/compare_mockup.py`, recorded reference/calibration and existing
+  browser acceptance. This pass did not generate a new screenshot or pixel score.
+
+**Execution order:** P8-06 is now accepted; finish P8-01's behavioral
+mapping using the bounded existing inventory, assigning each discovered gap to
+P8-03/04/08/09/10/11 rather than opening new feature work. Close those integrations
+in dependency order (source/parcel -> reviewed lead -> commercial continuity;
+watches and exports alongside their dependencies), then P8-17 and final P8-18.
+Prepare owner-data/device/live acceptance in parallel where configuration permits;
+execute P8-07/19/20 when the required data, device and source authority are available.
+
+**Stop rule:** Implementation is complete when P8-01–06 and P8-08–18 are closed
+with evidence on the final tree. Full Phase 8 acceptance also requires P8-07/19/20.
+There must be no mandatory operator task requiring the original dashboard.
+Keep the original implementation and history preserved; retirement and merge into
+main remain separate owner decisions. Optional future capabilities, obtaining
+contracts, sending outreach and expanding access are not additional finish criteria.
+Any newly found missing behavior must cite the original requirement/historical
+implementation and fit this register; genuinely new scope requires an owner decision.
+
+**Honest limitation:** The endpoint/service review establishes concrete gaps and
+fixed closure criteria, not exhaustive semantic equivalence across 83 historical
+contribution inventories. P8-01 remains explicitly open until that mapping is
+complete. Do not claim a complete atomic task count, percentage or finish date
+from this register. The scope is fixed; the remaining implementation size is not
+yet fully measured.
+
+### Bounded command-family reconciliation
+
+All **63 current executable entry points** in `pyproject.toml` are assigned below.
+Names are suffixes after `constructionsight` (`(base)` means the unsuffixed command).
+This is complete entry-point accounting, not proof of every historical branch behavior.
+Historical non-CLI modules and different branch versions remain subject to P8-01.
+
+| Behavior family | Existing command suffixes | Remaining obligation / disposition |
+| --- | --- | --- |
+| Launch/compatibility | `(base)`, `-command-center`, `-operator`, `-desktop` | P8-12; original launchers preserved for comparison, native launcher is the sole target experience. |
+| Shared investigations/intake | `-investigations`, `-intake`, `-opportunity-intake` | P8-08/12/16 |
+| Candidate docket/external intelligence | `-candidate-docket`, `-external-intelligence`, `-shovels-regrid-gaps` | P8-03/08; staging, gap detection and bounded enrichment/review must be accounted for; no new external vendor subscription is implied. |
+| Parcel/site operations | `-site-resolution`, `-parcel-sources`, `-upstream`, `-parcel-use` | P8-04 |
+| Source authority/registry | `-source-status`, `-source-readiness`, `-source-checklist`, `-source-promotion`, `-source-plan` | P8-03 |
+| Commercial workflow/results | `-leads`, `-results` | P8-08/09 |
+| Contact operations | `-cslb-contacts`, `-contact-call-list` | P8-08/15; native SMARTS import/call-list exists; CSLB retained-source and canonical-investigation handoff equivalence remains open. |
+| SMARTS retained review | `-smarts-preview`, `-smarts-review`, `-smarts-snapshot-diff`, `-smarts-snapshot-history`, `-smarts-inspections`, `-smarts-compliance`, `-smarts-source-review`, `-smarts-catalog` | P8-02/03; status/change/parcel views exist, inspection/compliance/catalog/source-review operations still require explicit equivalence. |
+| SMARTS acquisition/scheduling | `-smarts-collect`, `-daily-collection` | P8-03/16/19/20 |
+| CEQA acquisition/access evidence | `-ceqanet-listing-plan`, `-ceqanet-listing-execute`, `-ceqanet-recurring-run`, `-ceqanet-csv`, `-ceqanet-detail-execute`, `-ceqanet-maturity`, `-ceqanet-access-policy`, `-ceqanet-evidence-series` | P8-03 |
+| CEQA offline transformation/retention | `-ceqanet-fixtures`, `-ceqanet-vocabulary`, `-ceqanet-results`, `-ceqanet-detail`, `-ceqanet-enrichment`, `-ceqanet-chain`, `-ceqanet-persistence-preview`, `-ceqanet-write-plan`, `-ceqanet-persistence-apply`, `-ceqanet-reviewed-import` | P8-03/11 |
+| CEQA operator reports/archives | `-ceqanet-operator-package`, `-ceqanet-operator-report`, `-ceqanet-operator-bundle`, `-ceqanet-operator-bundle-verify`, `-ceqanet-operator-export`, `-ceqanet-operator-archive`, `-ceqanet-operator-archive-verify` | P8-11 |
+| Engineering/deployment/audit utilities | `-storage-summary`, `-audit-package`, `-certify`, `-supply-chain`, `-build-basemap` | P8-11/14/19; certification, map building and storage inspection may remain engineering/setup tools; required audit outputs still need native equivalence. |
+
+The preserved capability contract has eight implemented/guarded capability families
+and two explicitly planned families (outreach sending and hosted multiuser access).
+Neither planned family authorizes enabling transport or introducing a hosted product.
+Preserve the current manual outreach/bid workflow; no new email delivery integration
+is required merely because an older plan mentions one.
+
+For historical non-ancestor contributions, the 141 Python paths group into source
+acquisition/access/retention, parcel/GIS, intake/opportunity/workflow/result, existing
+native projections, and assurance/storage. Missing/superseded paths remain pinned in
+the preservation JSON and the Phase 7 historical-disposition table. Assign their
+behavioral differences to the obligations above; file/blob identity alone cannot
+close them. No source, commercial, parcel or report family is excluded by calling
+its existing operational command an engineering utility.
+
+## Current continuation — retained source-watch notifications (gates pending)
+
+The original validated source-watch projection now feeds native Notifications.
+A triggered CEQA/permit watch yields one stable local attention item; native read
+receipts survive restart without changing the original source or watch. Rearming
+acknowledges the previous trigger, archiving removes current attention, and a later
+change after rearming creates a new unread identity. The normal five-second UI
+refresh updates the unread indicator with overlap suppression and visible stale
+status on request failure. Exact source inspection and shared-engine comparison
+open from a notice; the same current dossier is available without approving the
+incoming revision. Closed/replaced dialogs reject delayed inspection replies.
+A damaged original watch yields a visible source-store warning while preserving
+native notifications. No network acquisition, external notification delivery,
+commercial qualification, source mutation or source-revision approval is added.
+
+Local acceptance: **28 focused notification/source/watch/state tests** and **51
+revision/registry/notification/lineage/commercial/Phase 7 regressions** pass (overlap
+between runs is not summed). Ruff over src/tests, strict Mypy over 355 source files,
+changed JavaScript syntax and diff hygiene pass. Browser acceptance now includes an
+independent original-source change, automatic unread indication, exact source/current
+dossier navigation, later reviewed worker revision and read state after reload.
+Current-source full CI/browser acceptance remains pending publication.
+
+P8-10 remains open for canonical investigation-only watches and complete shared
+watch/notification equivalence. The existing original-source-to-native-inbox path
+is implemented; do not call all watch integration complete from this slice.
+
 ## Exact recovery checkpoint
 
 - Latest Phase 8 continuation: published `825a7174c402dd7fc2a8aaca539092d41dcda5ea`;
@@ -24,7 +189,7 @@ Relationship Graph remain the goal. Full unification and functional parity are n
 
 ## Phase 8 — IN PROGRESS: native preservation and original-workflow parity
 
-**Current integration (2026-10-18, full gates pending):** A changed original
+**Source revision integration (2026-10-18, full gates accepted at `3035fb9`):** A changed original
 CEQA/permit observation can now be explicitly reviewed against its exact current
 native evidence and handed to the existing worker as a retained source revision.
 The worker rechecks the previous evidence under its knowledge/completion
@@ -41,7 +206,13 @@ association reassessment and HTTP guards. Twenty-seven original runtime,
 lineage, commercial and registry regression tests plus eleven existing replay
 tests passed locally; Ruff, strict Mypy (355 modules), JS syntax and diff hygiene
 pass. Full Python/browser gates, including an independent worker updating an
-open dossier while its source revision review response is delayed, are pending.
+open dossier while its source revision review response is delayed, now pass.
+[CI 39091426185](https://github.com/TruSudo/Construction-Sight/actions/runs/39091426185):
+Python 3.11 **2,777 passed**, two warnings, 318.90s; Python 3.12 **2,777 passed**,
+two warnings, 309.59s. Quality/dependency gates pass.
+[Browser/USGS 39091426183](https://github.com/TruSudo/Construction-Sight/actions/runs/39091426183)
+passes, including 33/33 actions/contracts. Structure/fonts/ratchet pass; all eight
+calibrated pixel regions still fail. These results close P8-06, not P8-17/18.
 
 **Verified continuation (2026-10-18):** Sources & Collection
 now reviews the current filtered CEQA/permit page for shared-investigation replay.

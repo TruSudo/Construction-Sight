@@ -54,6 +54,7 @@ from constructionsight.command_center_legacy_reconciliation import (
 from constructionsight.command_center_retained_previews import retained_commercial_preview
 from constructionsight.command_center_sources import (
     SOURCE_INSPECTION_ROUTES,
+    retained_watch_notifications,
     source_inspection,
     source_watch_action,
 )
@@ -385,8 +386,18 @@ def make_server(
             elif directory and path == "/api/settings":
                 body, mime = json.dumps(state.settings(directory)).encode(), "application/json"
             elif directory and path == "/api/notifications":
+                try:
+                    source_notices = retained_watch_notifications(operator_database)
+                except (ValueError, OSError, RuntimeError):
+                    source_notices = [{
+                        "id": "source-watch:unavailable",
+                        "message": "Retained source watches are unavailable; "
+                        "open Sources & Collection to review the configured source store.",
+                    }]
                 body, mime = (
-                    json.dumps(state.notifications(directory, current()["rows"])).encode(),
+                    json.dumps(state.notifications(
+                        directory, current()["rows"], source_notices=source_notices,
+                    )).encode(),
                     "application/json",
                 )
             elif directory and path.startswith("/api/offline-map/"):

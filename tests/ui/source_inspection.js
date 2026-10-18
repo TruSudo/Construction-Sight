@@ -516,6 +516,19 @@ const {resolve} = require('node:path');
     }
     // An existing original record changes independently of the native engine.
     // This mutation belongs only to the isolated source fixture, not the worker.
+    const watchedSource = {kind: 'ceqa', record_id: 'phase8:browser:batch:ceqa'};
+    const watchCreated = await page.request.post(new URL(
+      '/api/source-watchlist-action', process.argv[2]).href, {
+      data: {action: 'add', ...watchedSource}, headers: {Origin: process.argv[2]}
+    });
+    if (!watchCreated.ok()) throw Error('Source notification watch setup failed');
+    const priorNotices = await (await page.request.get(new URL(
+      '/api/notifications', process.argv[2]).href)).json();
+    await page.request.post(new URL('/api/notifications/read', process.argv[2]).href, {
+      data: {ids: priorNotices.map(n => n.id)}, headers: {Origin: process.argv[2]}
+    });
+    await page.evaluate(() => refreshNotificationIndicator());
+    await page.waitForFunction(() => document.querySelector('#unread-dot').hidden);
     const revise = spawnSync('python', ['-c', `
 import sys
 from datetime import timedelta
@@ -536,6 +549,27 @@ engine.dispose()
 `, originalDatabase], {env: {...process.env, PYTHONPATH: 'src'}, encoding: 'utf8'});
     if (revise.status !== 0) throw Error('Isolated original source revision failed: ' + revise.stderr);
     const beforeRevisionWorker = originalDigest();
+    // The normal background UI timer must discover the change without reload.
+    await page.waitForFunction(() => !document.querySelector('#unread-dot').hidden,
+      {timeout: 15000});
+    await page.click('#notifications');
+    await page.waitForSelector('[data-source-notice]');
+    await page.locator('[data-source-notice]').filter({hasText: 'Revised scoped migration source'})
+      .click();
+    await page.waitForSelector('#source-notice-dossier');
+    const sourceNotice = await page.locator('#action-content').textContent();
+    if (!sourceNotice.includes('phase8:browser:batch:ceqa') ||
+        !sourceNotice.includes('current_observation_disagrees_requires_review') ||
+        originalDigest() !== beforeRevisionWorker) {
+      throw Error('Source notice lost exact evidence/revision boundary or mutated originals');
+    }
+    await page.click('#source-notice-dossier');
+    await page.waitForSelector('#export-investigation');
+    if (!(await page.locator('#action-title').textContent()).includes(
+      'Synthetic scoped migration source')) {
+      throw Error('Source notice incorrectly approved the original revision');
+    }
+    await page.click('#action-close');
     await page.click('nav button[data-page="Sources & Collection"]');
     await page.waitForSelector('#retained-source-filters');
     await page.locator('#retained-source-filters input[name="q"]')
@@ -621,6 +655,20 @@ engine.dispose()
     if (JSON.stringify(revisedIds) !== JSON.stringify(migratedIds) ||
         originalDigest() !== beforeRevisionWorker || runWorker().processed_jobs !== 0) {
       throw Error('Original revision duplicated investigations, changed source data, or repeated work');
+    }
+    await page.click('#notifications');
+    await page.waitForSelector('[data-source-notice]');
+    await page.click('#mark-read');
+    await page.waitForFunction(() =>
+      [...document.querySelectorAll('[data-source-notice]')].every(n =>
+        n.closest('.notice').classList.contains('read')));
+    await page.reload();
+    await page.waitForFunction(() => document.documentElement.dataset.ready === 'true');
+    await page.click('#notifications');
+    await page.waitForSelector('[data-source-notice]');
+    if (!(await page.locator('[data-source-notice]').first()
+      .evaluate(n => n.closest('.notice').classList.contains('read')))) {
+      throw Error('Source notification read receipt did not survive browser restart');
     }
     if (errors.length) throw Error(errors.join('; '));
     console.log('Phase 8 native retained-source and historical-commercial read parity: PASS');

@@ -7,6 +7,8 @@ investigations or commercial leads merely because they are displayed.
 
 from __future__ import annotations
 
+import hashlib
+import json
 from pathlib import Path
 from typing import Any
 
@@ -75,6 +77,39 @@ SOURCE_INSPECTION_ROUTES = frozenset(
         "/api/source-smarts-parcel-candidates",
     }
 )
+
+
+def retained_watch_notifications(database: Path | None) -> list[dict[str, Any]]:
+    """Project existing triggered source watches into the local notification inbox.
+
+    The original validated watch snapshot owns trigger/rearm/archive semantics.
+    Reading it starts no polling and mutates neither the source nor the watch.
+    Native read receipts are kept separately by command_center_state.
+    """
+    snapshot = source_inspection(database, route="/api/source-watchlist")
+    if not snapshot["available"]:
+        return []
+    notices = []
+    for watch in snapshot["items"]:
+        if not watch["change_pending"]:
+            continue
+        identity = json.dumps(
+            [watch["watchlist_item_id"], watch["updated_at"]],
+            separators=(",", ":"), ensure_ascii=False,
+        ).encode()
+        notices.append({
+            "id": "source-watch:" + hashlib.sha256(identity).hexdigest(),
+            "record_kind": watch["record_kind"],
+            "record_id": watch["record_id"],
+            "watchlist_item_id": watch["watchlist_item_id"],
+            "message": "Watched retained source changed: " + str(
+                watch["title"] or watch["record_id"]
+            ),
+            "county": watch["county"],
+            "city": None,
+            "source_claim_only": True,
+        })
+    return notices
 
 
 def source_inspection(

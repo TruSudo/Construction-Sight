@@ -431,7 +431,10 @@ def activity(directory: Path, key: str) -> list[dict[str, Any]]:
     return sorted(result, key=lambda r: r["at"], reverse=True)
 
 
-def notifications(directory: Path, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def notifications(
+    directory: Path, rows: list[dict[str, Any]],
+    *, source_notices: list[dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
     initialize(directory)
     with connect(directory) as db:
         read = {r["id"] for r in db.execute("SELECT * FROM cc_reads")}
@@ -464,6 +467,7 @@ def notifications(directory: Path, rows: list[dict[str, Any]]) -> list[dict[str,
         for r in run_history(directory)
         if r["outcome"] == "error"
     ]
+    result.extend(source_notices or [])
     return [{**item, "read": item["id"] in read} for item in result]
 
 
