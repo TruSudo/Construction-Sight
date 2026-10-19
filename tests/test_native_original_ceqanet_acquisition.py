@@ -195,3 +195,57 @@ def test_original_acquisition_refuses_unbounded_filters_and_invalid_identity() -
         request = _request("csv", True)
         with pytest.raises(ValueError):
             preview_original_ceqanet_csv({**request, "export": export})
+
+@pytest.mark.parametrize("kind", ("listing", "csv"))
+@pytest.mark.parametrize(
+    "basis",
+    (
+        "operator said allowed",
+        "review:123",
+        "review:" + "A" * 64,
+        "evidence:" + "c" * 63 + "!",
+        "review:" + "c" * 64 + "extra",
+        "review:" + "c" * 64 + "\\n",
+        "",
+        7,
+        True,
+    ),
+)
+def test_native_ceqanet_refuses_unbound_access_basis(
+    kind: str, basis: object,
+) -> None:
+    from constructionsight.command_center_ceqanet_acquisition import (
+        preview_original_ceqanet_csv,
+        preview_original_ceqanet_listing,
+    )
+
+    payload = _request(kind, True)
+    payload["access_review"] = {
+        **payload["access_review"],
+        "access_fact_basis": basis,
+    }
+    with pytest.raises(ValueError, match="access evidence"):
+        if kind == "csv":
+            preview_original_ceqanet_csv(payload)
+        else:
+            preview_original_ceqanet_listing(payload)
+
+
+@pytest.mark.parametrize("kind", ("listing", "csv"))
+def test_native_ceqanet_accepts_original_evidence_digest_format(kind: str) -> None:
+    from constructionsight.command_center_ceqanet_acquisition import (
+        preview_original_ceqanet_csv,
+        preview_original_ceqanet_listing,
+    )
+
+    payload = _request(kind, True)
+    payload["access_review"] = {
+        **payload["access_review"],
+        "access_fact_basis": "evidence:" + "a" * 64,
+    }
+    preview = (
+        preview_original_ceqanet_csv(payload)
+        if kind == "csv" else preview_original_ceqanet_listing(payload)
+    )
+    assert preview["may_request_approval"] is True
+    assert preview["network_executed"] is False
