@@ -29,12 +29,12 @@ from constructionsight.site_models import Site
 from constructionsight.site_resolution_service import normalize_address, normalize_apn
 from constructionsight.storage.database import create_database_engine, initialize_database
 from constructionsight.storage.domain_store import CeqaStore, PermitStore
-from constructionsight.storage.parcel_site_store import store_parcel_core_record
 from constructionsight.storage.lead_workflow_store import (
     store_lead_review_package,
     store_lead_workflow_record,
     store_result_ledger_record,
 )
+from constructionsight.storage.parcel_site_store import store_parcel_core_record
 from constructionsight.storage.source_registry import SourceRegistryStore
 from tests.test_bid_proposal_service import _package
 from tests.test_ceqanet_operator_export import _chain_report
