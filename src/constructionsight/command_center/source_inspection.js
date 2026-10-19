@@ -413,11 +413,65 @@ async function renderRetainedSources(box) {
       () => download('original-source-offline-audit.json',audit);
   });
   root.querySelectorAll('[data-registry-index]').forEach(button => {
-    button.onclick = () => modal(
-      'Registered source: ' + entries[Number(button.dataset.registryIndex)].source_name,
-      '<p>Retained source metadata only; not current network authorization.</p><pre>' +
-      esc(JSON.stringify(entries[Number(button.dataset.registryIndex)], null, 2)) + '</pre>'
-    );
+    button.onclick = () => {
+      const entry = entries[Number(button.dataset.registryIndex)];
+      modal('Registered source: ' + entry.source_name,
+        '<p>Retained original source metadata only. No current reachability or ' +
+        'access authority has been inferred.</p><pre>' +
+        esc(JSON.stringify(entry, null, 2)) + '</pre>' +
+        '<button id="review-exact-original-source-http">Review original manual ' +
+        'HTTP readiness check</button>');
+      document.querySelector('#review-exact-original-source-http').onclick =
+        () => perform(async () => {
+          const reviewed = await api('/api/source-http-check-preview?' +
+            new URLSearchParams({
+              source_name: entry.source_name, public_url: entry.public_url
+            }));
+          const ticket = modal('Exact original source · authorized reachability review',
+            '<p>Runs the ORIGINAL authorized source readiness service only after ' +
+            'your explicit confirmation. One bounded public HEAD request with GET ' +
+            'only after HTTP 405. No redirects, documents, credentials, source ' +
+            'registry promotion, recurring collection or commercial authorization. ' +
+            'Source permissions must have been independently reviewed.</p>' +
+            '<pre>'+esc(JSON.stringify(reviewed,null,2))+'</pre>' +
+            '<label>Reason this exact public check is authorized ' +
+            '<textarea id="exact-http-check-reason" maxlength="2000" rows="3" ' +
+            'required></textarea></label>' +
+            '<label><input type="checkbox" id="exact-http-check-confirm">' +
+            ' I reviewed this exact source and have authority to perform this ' +
+            'bounded public request.</label>' +
+            '<button id="exact-http-check-run">Execute reviewed original ' +
+            'reachability check</button>');
+          document.querySelector('#exact-http-check-run').onclick = () =>
+            perform(async () => {
+              if (ticket !== modalTicket || !$('action-dialog').open) return;
+              const reason = document.querySelector(
+                '#exact-http-check-reason').value.trim();
+              if (reason.length < 10 ||
+                  !document.querySelector('#exact-http-check-confirm').checked)
+                throw Error('Confirm source access authority and give a review reason.');
+              const action = document.querySelector('#exact-http-check-run');
+              action.disabled = true;
+              try {
+                const result = await api('/api/source-http-check', {
+                  source_name: reviewed.source_name,
+                  public_url: reviewed.public_url,
+                  expected_source_sha256: reviewed.expected_source_sha256,
+                  review_reason: reason,
+                  caller_confirmation: true
+                });
+                modal('Original bounded HTTP reachability evidence',
+                  '<p>Original public-source evidence only. No source registry ' +
+                  'status, permission or commercial authority has changed.</p>' +
+                  '<button id="export-original-http-result">Export retained ' +
+                  'source check report</button><pre>' +
+                  esc(JSON.stringify(result,null,2)) + '</pre>');
+                document.querySelector('#export-original-http-result').onclick =
+                  () => download('original-source-http-review.json',result);
+              } finally {if (action.isConnected) action.disabled = false;}
+            });
+        });
+    };
   });
   let offset = 0;
   const filters = root.querySelector('#retained-source-filters');
