@@ -1102,7 +1102,8 @@ async function renderRetainedCaptureInbox(box) {
       'reviewed before separately authorizing a bounded read. No automatic ' +
       'collection, registry mutation or commercial activity.</p>' +
       '<button id="review-ceqanet-listing">Review bounded listing</button> ' +
-      '<button id="review-ceqanet-csv">Review exact CSV evidence</button>';
+      '<button id="review-ceqanet-csv">Review exact CSV evidence</button> ' +
+      '<button id="review-ceqanet-maturity">Audit retained CSV maturity</button>';
     box.append(acquisition);
     const accessMarkup = () => [
       ['requires_login', 'Source requires login'],
@@ -1240,6 +1241,22 @@ async function renderRetainedCaptureInbox(box) {
         }
       });
     };
+    acquisition.querySelector('#review-ceqanet-maturity').onclick = () =>
+      perform(async () => {
+        const result = await api('/api/source-ceqanet-maturity-audit');
+        const available = result.available === true;
+        modal('Original CEQAnet CSV · offline source maturity',
+          '<p>Independent original replay and keep-partial maturity verification ' +
+          'of one retained source response. No network, registry promotion, ' +
+          'new recurring collection authority or commercial action.</p>' +
+          '<pre>'+esc(JSON.stringify(result,null,2))+'</pre>' +
+          (available ? '<button id="export-original-ceqanet-maturity">' +
+            'Export verified maturity evidence JSON</button>' : ''));
+        if (available) {
+          document.querySelector('#export-original-ceqanet-maturity').onclick =
+            () => download('original-ceqanet-maturity-audit.json', result);
+        }
+      });
     acquisition.querySelector('#review-ceqanet-listing').onclick = () =>
       perform(async () => {
         const ticket = modal('Original CEQAnet listing · filters and access',

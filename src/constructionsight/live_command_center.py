@@ -63,6 +63,9 @@ from constructionsight.command_center_ceqanet_retained_import import (
     apply_reviewed_retained_ceqanet_import,
     preview_retained_ceqanet_import,
 )
+from constructionsight.command_center_ceqanet_maturity import (
+    original_retained_ceqanet_maturity,
+)
 from constructionsight.command_center_external_source_intelligence import (
     original_external_source_intelligence,
 )
@@ -815,6 +818,13 @@ def make_server(
                     record_id=params.record_id,
                 )
                 body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
+            elif path == "/api/source-ceqanet-maturity-audit":
+                if urlsplit(self.path).query or urlsplit(self.path).fragment:
+                    raise ValueError("original CSV maturity audit takes no URL parameters")
+                result = original_retained_ceqanet_maturity(
+                    operator_database, operator_ceqanet_csv_evidence,
+                )
+                body, mime = json.dumps(result, allow_nan=False).encode(), "application/json"
             elif path == "/api/source-ceqanet-retained-import":
                 if urlsplit(self.path).query or urlsplit(self.path).fragment:
                     raise ValueError("original retained CSV review takes no URL parameters")
