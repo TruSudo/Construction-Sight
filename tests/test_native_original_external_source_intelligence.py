@@ -27,18 +27,36 @@ from constructionsight.live_command_center import make_server
 from tests.test_command_center_investigation_bridge import snapshot
 
 
+def _without_ephemeral_creation_time(payload: dict[str, object]) -> dict[str, object]:
+    """Compare original report contents without requiring two clock reads to agree."""
+    stable = json.loads(json.dumps(payload))
+    for key in ("original_capability_gap_report", "original_alignment_report"):
+        stable[key].pop("created_at", None)
+    return stable
+
+
 def test_original_external_research_native_equivalence_without_vendor_access() -> None:
     report = original_external_source_intelligence()
     capability = get_external_capabilities()
     gaps = get_knowledge_gaps()
     assert report["original_capability_matrix"] == capability_matrix_rows(capability)
-    assert report["original_capability_gap_report"] == (
-        build_capability_gap_report(capability).model_dump(mode="json")
+    original_capability_report = build_capability_gap_report(
+        capability
+    ).model_dump(mode="json")
+    assert report["original_capability_gap_report"]["capabilities_reviewed"] == (
+        original_capability_report["capabilities_reviewed"]
     )
+    assert _without_ephemeral_creation_time({
+        "original_capability_gap_report": report["original_capability_gap_report"],
+    }) == _without_ephemeral_creation_time({
+        "original_capability_gap_report": original_capability_report,
+    })
     assert report["original_research_gap_matrix"] == gap_matrix_rows(gaps)
-    assert report["original_alignment_report"] == (
-        build_gap_alignment_report().model_dump(mode="json")
-    )
+    assert _without_ephemeral_creation_time({
+        "original_alignment_report": report["original_alignment_report"],
+    }) == _without_ephemeral_creation_time({
+        "original_alignment_report": build_gap_alignment_report().model_dump(mode="json"),
+    })
     assert report["original_implementation_roadmap"] == roadmap_rows(
         get_implementation_steps()
     )
@@ -64,7 +82,11 @@ def test_native_original_gap_research_endpoint_has_no_write_or_query(
         with httpx.Client(base_url=host, trust_env=False) as client:
             response = client.get("/api/source-external-intelligence")
             assert response.status_code == 200, response.text
-            assert response.json() == original_external_source_intelligence()
+            assert _without_ephemeral_creation_time(
+                response.json()
+            ) == _without_ephemeral_creation_time(
+                original_external_source_intelligence()
+            )
             assert client.get(
                 "/api/source-external-intelligence?enable-vendor=true"
             ).status_code == 409
