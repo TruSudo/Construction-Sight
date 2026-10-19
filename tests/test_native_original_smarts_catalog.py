@@ -50,26 +50,17 @@ def test_smarts_catalog_native_preview_fails_closed_and_cannot_grant_collection(
     for invalid in (
         {**_access(True), "other": "unreviewed"},
         {"access_review": {"requires_login": False}},
+        {"access_review": {**_access(True)["access_review"], "access_fact_basis": "foo"}},
+    ):
+        with pytest.raises(ValueError):
+            catalog.preview_original_smarts_catalog(invalid)
+    for blocked in (
         {"access_review": {**_access(True)["access_review"], "has_captcha": True}},
         {"access_review": {**_access(True)["access_review"], "paywalled": None}},
         {"access_review": {**_access(True)["access_review"], "access_fact_basis": None}},
-        {"access_review": {**_access(True)["access_review"], "access_fact_basis": "foo"}},
     ):
-        if invalid["access_review"].get("access_fact_basis") in (None, "foo"):
-            if invalid["access_review"].get("access_fact_basis") == "foo":
-                with pytest.raises(ValueError):
-                    catalog.preview_original_smarts_catalog(invalid)
-            else:
-                reviewed = catalog.preview_original_smarts_catalog(invalid)
-                assert reviewed["may_request_approval"] is False
-        elif set(invalid) != {"access_review"} or set(invalid["access_review"]) != (
-            set(_FACTS) | {"access_fact_basis"}
-        ):
-            with pytest.raises(ValueError):
-                catalog.preview_original_smarts_catalog(invalid)
-        else:
-            assert catalog.preview_original_smarts_catalog(invalid)["may_request_approval"] is False
-
+        preview = catalog.preview_original_smarts_catalog(blocked)
+        assert preview["may_request_approval"] is False
 
 def test_smarts_catalog_native_http_enforces_exact_operator_approval(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
