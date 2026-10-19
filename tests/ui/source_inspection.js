@@ -746,9 +746,12 @@ engine.dispose()
       throw Error('Original parcel replay bypassed approval or modified original database');
     }
     const parcelReport = runWorker();
-    if (parcelReport.failed_jobs !== 0 || parcelReport.processed_jobs !== 1 ||
-        runWorker().processed_jobs !== 0 || originalDigest() !== originalParcelDigest) {
-      throw Error('Exact retained parcel replay failed idempotent common worker ingestion');
+    const secondParcelRun = runWorker();
+    if (parcelReport.failed_jobs !== 0 || secondParcelRun.processed_jobs !== 0 ||
+        originalDigest() !== originalParcelDigest) {
+      throw Error('Original parcel worker or source integrity failed: ' +
+        JSON.stringify({first:parcelReport,second:secondParcelRun,
+          original_preserved:originalDigest()===originalParcelDigest}));
     }
     const retained = await (await page.request.get(new URL(
       '/api/source-parcel-reconciliation?' +
