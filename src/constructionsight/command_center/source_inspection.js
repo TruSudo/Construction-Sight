@@ -1165,6 +1165,72 @@ async function renderRetainedCaptureInbox(box) {
           });
         });
       });
+    const retainedCsv = document.createElement('section');
+    retainedCsv.className = 'original-ceqanet-retained-import';
+    retainedCsv.innerHTML = '<h3>Original retained CSV · governed database import</h3>' +
+      '<p>Independently replay one configured original CSV evidence artifact and ' +
+      'review its exact write plan before a separately approved atomic import. ' +
+      'The source database is never created or migrated by this action. ' +
+      'Imported source claims remain unassessed.</p>' +
+      '<button id="review-original-retained-csv">Review retained CSV write plan</button>';
+    box.append(retainedCsv);
+    retainedCsv.querySelector('#review-original-retained-csv').onclick =
+      () => perform(async () => {
+        const preview = await api('/api/source-ceqanet-retained-import');
+        if (!preview.available) {
+          modal('Original retained CSV import · not configured',
+            '<p>No original evidence import is configured. Select one existing ' +
+            'private CSV execution artifact using the ' +
+            '<code>--operator-ceqanet-csv-evidence</code> launch option and ' +
+            'the existing operator database. No database or source was changed.</p>' +
+            '<pre>'+esc(JSON.stringify(preview,null,2))+'</pre>');
+          return;
+        }
+        const ticket = modal('Original retained CSV · exact write plan',
+          '<p>No database write has occurred. All observed rows remain unassessed. ' +
+          'Compare each original operation, source digest, bound discovery ' +
+          'lineage, and destination identity before authorization.</p>' +
+          '<pre>'+esc(JSON.stringify(preview,null,2))+'</pre>' +
+          '<label>Specific reason for this exact approved original import ' +
+          '<textarea id="retained-csv-import-reason" maxlength="2000" rows="3"></textarea></label>' +
+          '<label><input id="retained-csv-import-confirm" type="checkbox" />' +
+          ' I reviewed every original write-plan operation and source evidence, ' +
+          'and approve one atomic import into this exact existing database.</label>' +
+          '<button id="apply-reviewed-retained-csv">Apply reviewed original import</button> ' +
+          '<button id="export-reviewed-retained-csv">Export original write plan</button>');
+        document.querySelector('#export-reviewed-retained-csv').onclick =
+          () => download('original-ceqanet-retained-write-plan.json', preview);
+        document.querySelector('#apply-reviewed-retained-csv').onclick =
+          () => perform(async () => {
+            if (ticket !== modalTicket || !$('action-dialog').open) return;
+            const reason = $('retained-csv-import-reason').value.trim();
+            if (reason.length < 10 || !$('retained-csv-import-confirm').checked)
+              throw Error('Enter a specific reason and approve this exact import.');
+            const button = $('apply-reviewed-retained-csv');
+            button.disabled = true;
+            try {
+              const applied = await api('/api/source-ceqanet-retained-apply', {
+                retained_artifact_sha256: preview.retained_artifact_sha256,
+                source_sha256: preview.source_sha256,
+                expected_write_plan_digest: preview.expected_write_plan_digest,
+                expected_destination_identity: preview.expected_destination_identity,
+                review_reason: reason,
+                caller_confirmation: true
+              });
+              modal('Original retained CSV · verified database handoff',
+                '<p>The imported observations remain unassessed. ' +
+                'No contact, outreach, bid, source promotion or recurring ' +
+                'collection was authorized.</p><pre>' +
+                esc(JSON.stringify(applied,null,2))+'</pre>' +
+                '<button id="export-retained-csv-import-receipt">Export import receipt</button>');
+              $('export-retained-csv-import-receipt').onclick =
+                () => download('original-ceqanet-retained-import-receipt.json',applied);
+              await renderRetainedCaptureInbox(box);
+            } finally {
+              if (button.isConnected) button.disabled = false;
+            }
+          });
+      });
     discovery.querySelector('#preview-ceqanet-discovery').onclick = () =>
       perform(async () => {
         const preview = await api('/api/source-ceqanet-discovery-preview');

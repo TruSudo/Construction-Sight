@@ -162,6 +162,17 @@ const {resolve} = require('node:path');
       document.querySelector('#retained-source-watchlist')?.textContent
         .includes('0 active source watches'));
     await page.waitForSelector('#retained-capture-inbox #preview-ceqanet-discovery');
+    await page.locator('#review-original-retained-csv').click();
+    await page.waitForFunction(() =>
+      document.querySelector('#action-content')?.textContent
+        .includes('No original evidence import is configured'));
+    const offlineImport = await page.locator('#action-content').textContent();
+    if (!offlineImport.includes('--operator-ceqanet-csv-evidence') ||
+        !offlineImport.includes('"available": false') ||
+        offlineImport.includes('Apply reviewed original import')) {
+      throw Error('Unconfigured original retained CSV import did not fail closed');
+    }
+    await page.click('#action-close');
     await page.locator('#review-ceqanet-listing').click();
     await page.waitForSelector('#preview-ceqanet-listing');
     await page.locator('#preview-ceqanet-listing').click();

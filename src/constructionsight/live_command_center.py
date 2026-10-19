@@ -51,6 +51,10 @@ from constructionsight.command_center_ceqanet_acquisition import (
     preview_original_ceqanet_csv,
     preview_original_ceqanet_listing,
 )
+from constructionsight.command_center_ceqanet_retained_import import (
+    apply_reviewed_retained_ceqanet_import,
+    preview_retained_ceqanet_import,
+)
 from constructionsight.command_center_ceqanet_detail import (
     execute_reviewed_original_ceqanet_detail,
     preview_original_ceqanet_detail,
@@ -288,6 +292,7 @@ def make_server(
     operator_capture_queue: Path | None = None,
     operator_ceqanet_listing: Path | None = None,
     operator_ceqanet_review_queue: Path | None = None,
+    operator_ceqanet_csv_evidence: Path | None = None,
     operator_smarts_journal: Path | None = None,
     operator_smarts_history: Path | None = None,
     operator_ceqanet_chain_report: Path | None = None,
@@ -305,6 +310,15 @@ def make_server(
         parity or snapshot.get("demo") or directory is None
     ):
         raise ValueError("retained ArcGIS proof cannot be used in demo/parity mode")
+    if operator_ceqanet_csv_evidence is not None and (
+        parity or snapshot.get("demo") or directory is None or operator_database is None
+    ):
+        raise ValueError("original CSV evidence requires real operator data and database")
+    if operator_ceqanet_csv_evidence is not None and (
+        operator_ceqanet_csv_evidence.is_symlink()
+        or not operator_ceqanet_csv_evidence.is_file()
+    ):
+        raise ValueError("configured original CSV evidence must be an existing regular file")
     if (operator_ceqanet_listing is None) != (operator_ceqanet_review_queue is None):
         raise ValueError("CEQAnet retained listing and review-queue evidence must be paired")
     if operator_database is None and any(
@@ -777,6 +791,16 @@ def make_server(
                     record_id=params.record_id,
                 )
                 body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
+            elif path == "/api/source-ceqanet-retained-import":
+                if urlsplit(self.path).query or urlsplit(self.path).fragment:
+                    raise ValueError("original retained CSV review takes no URL parameters")
+                result = preview_retained_ceqanet_import(
+                    operator_database,
+                    operator_ceqanet_csv_evidence,
+                    operator_ceqanet_listing,
+                    operator_ceqanet_review_queue,
+                )
+                body, mime = json.dumps(result, allow_nan=False).encode(), "application/json"
             elif path == "/api/source-ceqanet-discovery-preview":
                 if urlsplit(self.path).query or urlsplit(self.path).fragment:
                     raise ValueError("offline CEQAnet discovery preview takes no parameters")
@@ -1096,6 +1120,7 @@ def make_server(
                 "/api/source-ceqanet-listing",
                 "/api/source-ceqanet-csv-preview",
                 "/api/source-ceqanet-csv",
+                "/api/source-ceqanet-retained-apply",
                 "/api/source-registry-reviewed-apply",
                 "/api/parcel-source-row-preview",
                 "/api/parcel-arcgis-proof-persist",
@@ -1389,6 +1414,22 @@ def make_server(
                         result = review_original_manual_checklist(
                             operator_database, payload,
                         )
+                    elif path == "/api/source-ceqanet-retained-apply":
+                        if (
+                            urlsplit(self.path).query
+                            or urlsplit(self.path).fragment
+                            or self.headers.get_all("Host", []) != [host]
+                            or self.headers.get_all("Origin", []) != [f"http://{host}"]
+                            or self.headers.get("Sec-Fetch-Site") == "cross-site"
+                        ):
+                            raise ValueError("exact same-origin retained CSV approval required")
+                        result = apply_reviewed_retained_ceqanet_import(
+                            operator_database,
+                            operator_ceqanet_csv_evidence,
+                            operator_ceqanet_listing,
+                            operator_ceqanet_review_queue,
+                            payload,
+                        )
                     elif path == "/api/source-registry-reviewed-apply":
                         if (
                             urlsplit(self.path).query
@@ -1635,6 +1676,10 @@ def main(argv: list[str] | None = None) -> int:
         help="Paired retained CEQAnet review evidence for original inbox",
     )
     parser.add_argument(
+        "--operator-ceqanet-csv-evidence", type=Path,
+        help="One exact retained CEQAnet CSV execution artifact for governed import review",
+    )
+    parser.add_argument(
         "--operator-arcgis-proof-bundle", type=Path,
         help="One retained, verified ArcGIS proof JSON; offline review only",
     )
@@ -1719,6 +1764,7 @@ def main(argv: list[str] | None = None) -> int:
             operator_capture_queue=args.operator_capture_queue,
             operator_ceqanet_listing=args.operator_ceqanet_listing,
             operator_ceqanet_review_queue=args.operator_ceqanet_review_queue,
+            operator_ceqanet_csv_evidence=args.operator_ceqanet_csv_evidence,
             operator_smarts_journal=args.operator_smarts_journal,
             operator_smarts_history=args.operator_smarts_history,
             operator_ceqanet_chain_report=args.operator_ceqanet_chain_report,
