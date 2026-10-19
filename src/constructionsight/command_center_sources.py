@@ -231,7 +231,7 @@ def source_inspection(
                     ],
                 }
             elif route == "/api/source-registry":
-                result: dict[str, Any] = build_operator_source_registry(
+                result = build_operator_source_registry(
                     session, source_aliases=source_aliases,
                 ).model_dump(
                     mode="json"
