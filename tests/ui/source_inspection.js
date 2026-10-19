@@ -173,7 +173,8 @@ const {resolve} = require('node:path');
     await page.locator('#original-ceqanet-detail-url').fill(
       'https://ceqanet.lci.ca.gov/Project/Example');
     await page.locator('#preview-reviewed-ceqanet-detail').click();
-    await page.waitForSelector('#action-content');
+    await page.waitForFunction(() => document.querySelector('#action-content')
+      ?.textContent.includes('review_required'));
     const deniedDetail = await page.locator('#action-content').textContent();
     if (!deniedDetail.includes('review_required') ||
         deniedDetail.includes('Execute reviewed detail read')) {
