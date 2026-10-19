@@ -88,7 +88,10 @@ def review_original_manual_checklist(
         raise ValueError("complete exact original manual observation fields required")
     if data["source_key"] != template.source_key or data["source_name"] != source.source_name:
         raise ValueError("manual observation does not belong to this original source")
-    if any(data[field] is not None and type(data[field]) is not bool for field in _OBSERVATION_FLAGS):
+    if any(
+        data[field] is not None and type(data[field]) is not bool
+        for field in _OBSERVATION_FLAGS
+    ):
         raise ValueError("manual observation flags must be true, false or unknown")
     notes = data["notes"]
     if notes is not None and (

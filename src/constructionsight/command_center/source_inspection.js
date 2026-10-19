@@ -478,7 +478,7 @@ async function renderRetainedSources(box) {
                 source_key: reviewed.source_key, source_name: reviewed.source_name,
                 notes: document.querySelector('#manual-source-notes').value.trim() || null,
                 evidence_refs: document.querySelector('#manual-source-refs').value
-                  .split('\\n').map(value => value.trim()).filter(Boolean)
+                  .split('\n').map(value => value.trim()).filter(Boolean)
               };
               document.querySelectorAll('[data-manual-source-flag]').forEach(item => {
                 observation[item.dataset.manualSourceFlag] =

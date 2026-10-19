@@ -49,7 +49,7 @@ const {resolve} = require('node:path');
     await page.click('#review-original-manual-checklist');
     await page.waitForSelector('#manual-source-run');
     await page.locator('[data-manual-source-flag="detail_page_observed"]').selectOption('true');
-    await page.fill('#manual-source-refs', 'manual:browser:retained-source-review');
+    await page.fill('#manual-source-refs', 'manual:browser:retained-source-review\nmanual:browser:second-source-proof');
     await page.fill('#manual-source-notes', 'Operator-observed test fixture only');
     await page.fill('#manual-source-reason', 'Confirm manually observed retained fixture.');
     await page.check('#manual-source-confirm');
