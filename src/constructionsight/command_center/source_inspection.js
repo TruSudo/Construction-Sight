@@ -110,11 +110,31 @@ async function renderParcelSourceReadiness(box) {
       '<p>Original countywide coverage and ArcGIS acquisition readiness remain ' +
       'subject to recorded evidence gaps. A prepared schema is not an imported ' +
       'parcel, verified address, complete county coverage or authorized probe.</p>' +
+      '<form id="original-parcel-exact-review" class="form-grid">' +
+      '<h3>Review an existing retained parcel by exact record ID</h3>' +
+      '<p>Uses the original operator database when configured. This is not a ' +
+      'parcel search, live GIS request, construction-site verification or ' +
+      'commercial lead qualification.</p>' +
+      '<label>Original parcel record ID <input name="parcel_record_id" ' +
+      'maxlength="255" required autocomplete="off"></label>' +
+      '<button type="submit">Compare with current investigation evidence</button>' +
+      '</form>' +
       '<h3>Persisted original ArcGIS bounded-proof history</h3>' +
       '<div data-retained-parcel-proofs role="status">Checking explicitly configured ' +
       'original source database for validated retained proof bundles…</div>';
     root.querySelector('[data-parcel-source-export]').onclick = () =>
       download('parcel-source-readiness.json', data);
+    const exactReview = root.querySelector('#original-parcel-exact-review');
+    exactReview.onsubmit = event => {
+      event.preventDefault();
+      const parcelId = exactReview.elements.namedItem('parcel_record_id').value.trim();
+      if (!parcelId) { showError(Error('Enter an exact original parcel record ID')); return; }
+      const button = exactReview.querySelector('button[type="submit"]');
+      button.disabled = true;
+      perform(() => reviewRetainedParcelInEngine(parcelId)).finally(() => {
+        if (button.isConnected) button.disabled = false;
+      });
+    };
     const proofBox = root.querySelector('[data-retained-parcel-proofs]');
     try {
       const proofState = await api('/api/source-parcel-proofs');

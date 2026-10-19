@@ -714,8 +714,62 @@ engine.dispose()
           .evaluate(n => n.closest('.notice').classList.contains('read')))) {
       throw Error('Joint source/canonical watch read receipts did not survive browser restart');
     }
+    // Exact previously retained parcel becomes inspectable from the same
+    // Sources & Collection UI, with reviewed source-to-worker handoff only.
+    await page.click('#action-close');
+    await page.click('nav button[data-page="Sources & Collection"]');
+    await page.waitForSelector('#original-parcel-exact-review');
+    await page.fill('#original-parcel-exact-review input[name="parcel_record_id"]',
+      'phase8:browser:original-parcel');
+    await page.click('#original-parcel-exact-review button[type="submit"]');
+    await page.waitForSelector('#parcel-replay-queue',{timeout:20000});
+    const parcelPreview = await page.locator('#action-content').textContent();
+    if (!parcelPreview.includes('FEATURE-721') ||
+        !parcelPreview.includes('phase8:browser:original-parcel') ||
+        !parcelPreview.includes('not_in_native_store') ||
+        !parcelPreview.includes('parcel_to_project_identity_verified') ||
+        !parcelPreview.includes('"replay_eligible": true')) {
+      throw Error('Exact retained original parcel did not reach governed native review');
+    }
+    const originalParcelDigest = originalDigest();
+    await page.fill('#parcel-replay-reason',
+      'Reviewed exact preexisting synthetic parcel source for native evidence continuity.');
+    await page.check('#parcel-replay-confirm');
+    await page.click('#parcel-replay-queue');
+    await page.waitForSelector('#parcel-replay-audit');
+    const parcelQueue = await page.locator('#action-content').textContent();
+    if (!parcelQueue.includes('approval_audit_retained') ||
+        !parcelQueue.includes('source_claim_only') ||
+        !parcelQueue.includes('job_id') ||
+        !parcelQueue.includes('phase8:browser:original-parcel') ||
+        originalDigest() !== originalParcelDigest) {
+      throw Error('Original parcel replay bypassed approval or modified original database');
+    }
+    const parcelReport = runWorker();
+    if (parcelReport.failed_jobs !== 0 || parcelReport.processed_jobs !== 1 ||
+        runWorker().processed_jobs !== 0 || originalDigest() !== originalParcelDigest) {
+      throw Error('Exact retained parcel replay failed idempotent common worker ingestion');
+    }
+    await page.click('#action-close');
+    await page.click('nav button[data-page="Evidence Chains"]');
+    await page.waitForFunction(() => document.querySelector('[data-shared-investigations]')
+      ?.textContent.includes('998-777-666'), {}, {timeout:20000});
+    const parcelInvestigation = page.locator(
+      '[data-shared-investigations] tr').filter({hasText:'998-777-666'});
+    if (await parcelInvestigation.count() !== 1 ||
+        !(await parcelInvestigation.textContent()).includes('unmapped')) {
+      throw Error('Retained original parcel was duplicated or granted an invented map point');
+    }
+    await parcelInvestigation.locator('[data-investigation-id]').click();
+    await page.waitForSelector('#export-investigation');
+    const parcelDossier = await page.locator('#action-content').textContent();
+    if (!parcelDossier.includes('FEATURE-721') ||
+        !parcelDossier.includes('commercial authority: No') ||
+        !parcelDossier.includes('identity independently verified: No')) {
+      throw Error('Original parcel did not reach the same evidence-bound dossier');
+    }
     if (errors.length) throw Error(errors.join('; '));
-    console.log('Phase 8 native retained-source and historical-commercial read parity: PASS');
+    console.log('Phase 8 original parcel-to-common-investigation browser journey: PASS');
   } finally {
     await browser.close();
   }

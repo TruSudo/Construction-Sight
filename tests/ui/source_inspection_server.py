@@ -17,6 +17,7 @@ from constructionsight.lead_operator_service import transition_persisted_lead_wo
 from constructionsight.lead_workflow_models import LeadWorkflowStatus
 from constructionsight.lead_workflow_service import create_lead_workflow
 from constructionsight.live_command_center import make_server
+from constructionsight.parcel_core_models import ParcelCoreRecord
 from constructionsight.permit_models import PermitRecord
 from constructionsight.provenance import Provenance
 from constructionsight.result_ledger_models import ResultLedgerStatus
@@ -25,8 +26,10 @@ from constructionsight.result_ledger_service import (
     supersede_result_ledger_record,
 )
 from constructionsight.site_models import Site
+from constructionsight.site_resolution_service import normalize_address, normalize_apn
 from constructionsight.storage.database import create_database_engine, initialize_database
 from constructionsight.storage.domain_store import CeqaStore, PermitStore
+from constructionsight.storage.parcel_site_store import store_parcel_core_record
 from constructionsight.storage.lead_workflow_store import (
     store_lead_review_package,
     store_lead_workflow_record,
@@ -49,6 +52,19 @@ database = args.data_dir / "operator-source.sqlite3"
 engine = create_database_engine(f"sqlite:///{database}")
 initialize_database(engine)
 with Session(engine) as session, session.begin():
+    store_parcel_core_record(session, ParcelCoreRecord(
+        parcel_record_id="phase8:browser:original-parcel",
+        source_key="san-bernardino:county-gis-parcels",
+        source_record_id="FEATURE-721",
+        apn="998-777-666",
+        normalized_apn=normalize_apn("998-777-666"),
+        county="San Bernardino",
+        state="CA",
+        address="721 Synthetic Parcel Avenue",
+        normalized_address=normalize_address("721 Synthetic Parcel Avenue"),
+        zoning="Industrial",
+        created_at=datetime(2026, 10, 17, tzinfo=UTC),
+    ))
     SourceRegistryStore(session).upsert_source(_source(
         "Synthetic retained portal", county="Riverside",
     ))
