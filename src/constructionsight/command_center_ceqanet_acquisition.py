@@ -38,11 +38,13 @@ def _profile(url: str, review: Any) -> SourceAccessProfile:
     if any(review[key] is not None and type(review[key]) is not bool for key in _FLAGS):
         raise ValueError("source restriction facts must be true, false, or unknown")
     basis = review["access_fact_basis"]
+    # Share the immutable access-review identity contract used by the original
+    # detail and SMARTS review paths. Arbitrary operator prose is not evidence.
     if basis is not None and (
-        not isinstance(basis, str) or len(basis) > 80
-        or any(ord(c) < 32 or ord(c) == 127 for c in basis)
+        not isinstance(basis, str)
+        or re.fullmatch(r"(?:review|evidence):[0-9a-f]{64}", basis) is None
     ):
-        raise ValueError("invalid immutable access evidence identity")
+        raise ValueError("access evidence must be a review/evidence SHA-256 identity")
     return SourceAccessProfile(
         public_url=url, access_fact_basis=basis,
         requires_login=review["requires_login"],
