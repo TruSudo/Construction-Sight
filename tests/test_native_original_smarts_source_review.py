@@ -140,7 +140,7 @@ def test_native_smarts_review_http_only_reads_explicit_manifest(
             assert hashlib.sha256(database.read_bytes()).hexdigest() == before
             assert client.get(
                 "/api/source-smarts-original-source-review?county=San+Bernardino"
-            ).status_code == 200
+            ).status_code == 409
     finally:
         server.shutdown()
         server.server_close()

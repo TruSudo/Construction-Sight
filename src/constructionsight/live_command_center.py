@@ -102,6 +102,10 @@ from constructionsight.command_center_parcel_reconciliation import (
     preview_original_parcel_reconciliation,
 )
 from constructionsight.command_center_retained_previews import retained_commercial_preview
+from constructionsight.command_center_smarts_catalog import (
+    execute_reviewed_original_smarts_catalog,
+    preview_original_smarts_catalog,
+)
 from constructionsight.command_center_smarts_source_review import (
     native_original_smarts_source_review,
 )
@@ -1144,6 +1148,8 @@ def make_server(
                 "/api/source-ceqanet-discovery",
                 "/api/source-ceqanet-detail-preview",
                 "/api/source-ceqanet-detail",
+                "/api/source-smarts-catalog-preview",
+                "/api/source-smarts-catalog",
                 "/api/source-ceqanet-listing-preview",
                 "/api/source-ceqanet-listing",
                 "/api/source-ceqanet-csv-preview",
@@ -1380,6 +1386,23 @@ def make_server(
                         ):
                             raise ValueError("exact same-origin canonical watch request required")
                         result = investigation_watch.action(directory, payload)
+                    elif path in (
+                        "/api/source-smarts-catalog-preview",
+                        "/api/source-smarts-catalog",
+                    ):
+                        if (
+                            urlsplit(self.path).query
+                            or urlsplit(self.path).fragment
+                            or self.headers.get_all("Host", []) != [host]
+                            or self.headers.get_all("Origin", []) != [f"http://{host}"]
+                            or self.headers.get("Sec-Fetch-Site") == "cross-site"
+                        ):
+                            raise ValueError("exact same-origin SMARTS catalog review required")
+                        result = (
+                            preview_original_smarts_catalog(payload)
+                            if path.endswith("-preview")
+                            else execute_reviewed_original_smarts_catalog(payload)
+                        )
                     elif path in (
                         "/api/source-ceqanet-listing-preview",
                         "/api/source-ceqanet-listing",

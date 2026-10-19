@@ -31,7 +31,8 @@ def _without_ephemeral_creation_time(payload: dict[str, object]) -> dict[str, ob
     """Compare original report contents without requiring two clock reads to agree."""
     stable = json.loads(json.dumps(payload))
     for key in ("original_capability_gap_report", "original_alignment_report"):
-        stable[key].pop("created_at", None)
+        if key in stable:
+            stable[key].pop("created_at", None)
     return stable
 
 

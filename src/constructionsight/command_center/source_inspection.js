@@ -1076,6 +1076,68 @@ async function renderRetainedCaptureInbox(box) {
       });
       return review;
     };
+    const smartsCatalog = document.createElement('section');
+    smartsCatalog.className = 'original-smarts-catalog-review';
+    smartsCatalog.innerHTML = '<h3>Original SMARTS public resource catalog</h3>' +
+      '<p>One fixed public CKAN package metadata request, after a complete ' +
+      'independent lawful-access review. Not a dataset download, automated ' +
+      'collection, schedule, source promotion or commercial action.</p>' +
+      '<button id="review-original-smarts-catalog">Review exact catalog request</button>';
+    box.append(smartsCatalog);
+    smartsCatalog.querySelector('#review-original-smarts-catalog').onclick =
+      () => perform(async () => {
+        const ticket = modal('Original SMARTS catalog · public access evidence',
+          '<p>Review all restrictions for the fixed official CKAN metadata path. ' +
+          'Unknown means no request is authorized. Provide the hash of actual ' +
+          'retained access-policy review evidence.</p>' +
+          accessMarkup() +
+          '<button id="preview-original-smarts-catalog">Preview one metadata GET</button>');
+        $('preview-original-smarts-catalog').onclick = () => perform(async () => {
+          if (ticket !== modalTicket || !$('action-dialog').open) return;
+          const accessReview = accessValues();
+          const preview = await api('/api/source-smarts-catalog-preview', {
+            access_review: accessReview
+          });
+          const approvedTicket = modal('Original SMARTS catalog · exact metadata plan',
+            '<p>No network request has occurred. Catalog observations cannot ' +
+            'verify active construction or authorize regulator data collection.</p>' +
+            '<pre>' + esc(JSON.stringify(preview,null,2)) + '</pre>' +
+            (preview.may_request_approval ?
+              '<label>Reason for this exact single public metadata read ' +
+              '<textarea id="smarts-catalog-reason" rows="3" maxlength="1000"></textarea></label>' +
+              '<label><input id="smarts-catalog-confirm" type="checkbox" />' +
+              ' I reviewed the exact metadata endpoint, source restrictions and ' +
+              'evidence and approve one bounded request.</label>' +
+              '<button id="execute-original-smarts-catalog">Execute reviewed catalog read</button>' :
+              '<p>Access facts are blocked or incomplete. No live request permitted.</p>'));
+          const execute = $('execute-original-smarts-catalog');
+          if (!execute) return;
+          execute.onclick = () => perform(async () => {
+            if (approvedTicket !== modalTicket || !$('action-dialog').open) return;
+            const reason = $('smarts-catalog-reason').value.trim();
+            if (reason.length < 10 || !$('smarts-catalog-confirm').checked)
+              throw Error('Confirm the exact source evidence and enter a specific reason.');
+            execute.disabled = true;
+            try {
+              const result = await api('/api/source-smarts-catalog', {
+                access_review: accessReview,
+                expected_review_digest: preview.expected_review_digest,
+                review_reason: reason,
+                caller_confirmation: true
+              });
+              modal('Original SMARTS catalog · metadata evidence',
+                '<p>One source metadata observation only. No facility CSV, inspection ' +
+                'or enforcement data downloaded; no source verification or lead action.</p>' +
+                '<pre>'+esc(JSON.stringify(result,null,2))+'</pre>' +
+                '<button id="export-original-smarts-catalog">Export metadata evidence JSON</button>');
+              $('export-original-smarts-catalog').onclick =
+                () => download('original-smarts-catalog-observation.json',result);
+            } finally {
+              if (execute.isConnected) execute.disabled = false;
+            }
+          });
+        });
+      });
     const confirmAcquisition = async (kind, request) => {
       const preview = await api('/api/source-ceqanet-'+kind+'-preview', request);
       const ticket = modal('Original CEQAnet '+kind+' · exact authority review',

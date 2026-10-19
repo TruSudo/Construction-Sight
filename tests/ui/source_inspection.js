@@ -186,6 +186,20 @@ const {resolve} = require('node:path');
       throw Error('Unconfigured original retained CSV import did not fail closed');
     }
     await page.click('#action-close');
+    await page.locator('#review-original-smarts-catalog').click();
+    await page.waitForSelector('#preview-original-smarts-catalog');
+    await page.locator('#preview-original-smarts-catalog').click();
+    await page.waitForFunction(() =>
+      document.querySelector('#action-content')?.textContent
+        .includes('native-smarts-catalog-preview/v1'));
+    const smartsCatalog = await page.locator('#action-content').textContent();
+    if (!smartsCatalog.includes('CS-NET-SMARTS-CATALOG') ||
+        !smartsCatalog.includes('review_required') ||
+        !smartsCatalog.includes('512000') ||
+        smartsCatalog.includes('Execute reviewed catalog read')) {
+      throw Error('Original SMARTS metadata catalog did not deny unknown access facts');
+    }
+    await page.click('#action-close');
     await page.locator('#review-ceqanet-listing').click();
     await page.waitForSelector('#preview-ceqanet-listing');
     await page.locator('#preview-ceqanet-listing').click();
