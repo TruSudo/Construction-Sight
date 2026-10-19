@@ -503,12 +503,30 @@ async function renderRetainedSources(box) {
                 expected_source_sha256: reviewed.expected_source_sha256,
                 review_reason: reason, caller_confirmation: true, observation
               });
-              modal('Original manual source checklist · review-only result',
-                '<p>Manual observations remain unverified source claims. ' +
-                'No original source status, network access or commercial ' +
-                'authority changed.</p><pre>'+esc(JSON.stringify(result,null,2))+'</pre>' +
+              const proposed = result.original_registry_update_plan;
+              const applyTicket = modal('Original manual source checklist · reviewed result',
+                '<p>Manual observations are not independent source verification. ' +
+                'Reviewing this report has not changed source status or granted ' +
+                'network, collection, or commercial authority.</p><pre>' +
+                esc(JSON.stringify(result,null,2))+'</pre>' +
                 '<button id="export-reviewed-original-checklist">Export reviewed checklist JSON</button> ' +
-                '<button id="export-reviewed-original-source-plans">Export original dry-run plans</button>');
+                '<button id="export-reviewed-original-source-plans">Export original dry-run plans</button>' +
+                (proposed.update_count === 1 ?
+                  '<h3>Apply one reviewed registry status change</h3>' +
+                  '<p>Changes only verification_status for this exact source. ' +
+                  'A second authorization is required and the source is rechecked under ' +
+                  'the database writer lock. The original source database must have ' +
+                  'owner-only permissions. This does not authorize collecting data or ' +
+                  'contacting anyone.</p><p>Proposed status: <strong>' +
+                  esc(proposed.rows[0].proposed_verification_status) +
+                  '</strong>. Approved plan: <code>'+esc(proposed.plan_digest)+'</code></p>' +
+                  '<label>Reason for applying this exact source status ' +
+                  '<textarea id="source-registry-apply-reason" maxlength="2000" rows="3"></textarea></label>' +
+                  '<label><input type="checkbox" id="source-registry-apply-confirm">' +
+                  ' I reviewed this exact plan, source and evidence and approve ' +
+                  'the original registry status change.</label>' +
+                  '<button id="source-registry-apply-run">Apply reviewed source status</button>' :
+                  '<p>No original registry status change is proposed.</p>'));
               document.querySelector('#export-reviewed-original-checklist').onclick =
                 () => download('original-manual-checklist-review.json', result);
               document.querySelector('#export-reviewed-original-source-plans').onclick =
@@ -519,6 +537,38 @@ async function renderRetainedSources(box) {
                   original_registry_update_plan: result.original_registry_update_plan,
                   original_registry_mutated: false, source_promoted: false
                 });
+              const approveButton = document.querySelector('#source-registry-apply-run');
+              if (approveButton) approveButton.onclick = () => perform(async () => {
+                if (applyTicket !== modalTicket || !$('action-dialog').open) return;
+                const applyReason = $('source-registry-apply-reason').value.trim();
+                if (applyReason.length < 10 || !$('source-registry-apply-confirm').checked)
+                  throw Error('Enter a reason and explicitly approve the exact registry change.');
+                approveButton.disabled = true;
+                try {
+                  const applied = await api('/api/source-registry-reviewed-apply', {
+                    source_name: reviewed.source_name,
+                    public_url: reviewed.public_url,
+                    expected_source_sha256: reviewed.expected_source_sha256,
+                    review_reason: reason,
+                    caller_confirmation: true,
+                    observation,
+                    expected_plan_digest: proposed.plan_digest,
+                    apply_reason: applyReason,
+                    apply_confirmation: true
+                  });
+                  modal('Original source registry · approved status receipt',
+                    '<p>Only the approved source verification status was changed. ' +
+                    'No source acquisition, outreach or commercial action was authorized.</p>' +
+                    '<pre>'+esc(JSON.stringify(applied,null,2))+'</pre>' +
+                    '<button id="export-applied-original-registry">Export authorization receipt</button>');
+                  document.querySelector('#export-applied-original-registry').onclick =
+                    () => download('original-source-registry-status-receipt.json', applied);
+                  root.remove();
+                  await renderRetainedSources(box);
+                } finally {
+                  if (approveButton.isConnected) approveButton.disabled = false;
+                }
+              });
             });
         });
       document.querySelector('#review-exact-original-source-http').onclick =
