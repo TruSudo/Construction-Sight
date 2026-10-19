@@ -444,8 +444,9 @@ async function renderRetainedSources(box) {
             (reviewed.can_execute_manual_check ? '' : 'disabled ') +
             '>Execute reviewed original reachability check</button>' +
             (!reviewed.can_execute_manual_check ?
-              '<p role="alert">Source is outside the separately governed URL ' +
-              'allowlist. This application cannot execute a check for it.</p>' : ''));
+              '<p role="alert">This source is blocked by the original governed ' +
+              'URL allowlist or its retained source-blocked status. No HTTP ' +
+              'request is permitted from this action.</p>' : ''));
           document.querySelector('#exact-http-check-run').onclick = () =>
             perform(async () => {
               if (ticket !== modalTicket || !$('action-dialog').open) return;
