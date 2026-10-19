@@ -17,7 +17,6 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from constructionsight.adapters import default_adapter_family_specs
-
 from constructionsight.operator_capture_queue import (
     empty_operator_capture_queue,
     load_operator_capture_queue,
