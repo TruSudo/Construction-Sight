@@ -18,7 +18,11 @@ from constructionsight.intelligence.investigation_sources import (
 )
 from constructionsight.intelligence.schemas import LifecyclePhase, RelationshipStatus
 from constructionsight.investigation_cli import main
-from constructionsight.parcel_core_models import ParcelCoreRecord
+from constructionsight.parcel_core_models import (
+    ParcelCoreRecord,
+    ParcelGeometry,
+    ParcelGeometryKind,
+)
 from constructionsight.permit_models import PermitRecord
 from constructionsight.provenance import Provenance
 from constructionsight.site_models import Site
@@ -247,3 +251,35 @@ def test_cli_replays_into_shared_store_idempotently_and_keeps_source_bytes(tmp_p
             connection.execute("SELECT COUNT(*) FROM intelligence_project_clusters").fetchone()[0]
             == 1
         )
+
+
+def test_parcel_source_centroid_must_be_explicitly_safe_geodetic_claim() -> None:
+    """A projected or unverified CRS never becomes a site-map point."""
+    baseline = ParcelCoreRecord(
+        parcel_record_id="parcel:crs:one",
+        source_key="san-bernardino:county-gis-parcels",
+        source_record_id="271",
+        apn="001-234-567",
+        normalized_apn="001234567",
+        county="San Bernardino",
+    )
+    for crs, lat, lon, limits, expected in (
+        ("EPSG:4326", 34.12, -117.21, (), (34.12, -117.21)),
+        ("OGC:CRS84", 34.12, -117.21, (), (34.12, -117.21)),
+        ("EPSG:3857", 34.12, -117.21, (), (None, None)),
+        (None, 34.12, -117.21, (), (None, None)),
+        ("EPSG:4326", 34.12, -117.21, ("CRS conflict",), (None, None)),
+    ):
+        record = baseline.model_copy(update={
+            "geometry": ParcelGeometry(
+                geometry_kind=ParcelGeometryKind.POINT,
+                centroid_latitude=lat,
+                centroid_longitude=lon,
+                spatial_reference=crs,
+                limitations=limits,
+            )
+        })
+        item = from_parcel(record)
+        assert (item.latitude, item.longitude) == expected
+        assert item.evidence.raw_observations["parcel_record"]["apn"] == baseline.apn
+        assert item.evidence.source_family == "parcel"

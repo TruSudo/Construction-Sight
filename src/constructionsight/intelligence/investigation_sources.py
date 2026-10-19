@@ -315,12 +315,27 @@ def normalize_retained_record(kind: str, payload: Any) -> InvestigationObservati
 
 
 def from_parcel(record: ParcelCoreRecord) -> InvestigationObservation:
-    """Preserve parcel identity and geometry as parcel evidence, not project identity."""
+    """Preserve parcel evidence; map only safe, explicitly geodetic source centroids."""
     latitude = longitude = None
     if record.geometry is not None:
-        latitude, longitude = record.geometry.centroid_latitude, record.geometry.centroid_longitude
-        if latitude is None or longitude is None:
-            latitude = longitude = None
+        geometry = record.geometry
+        crs = (geometry.spatial_reference or "").strip().upper().replace(" ", "")
+        geodetic = crs in {
+            "EPSG:4326", "CRS84", "OGC:CRS84", "URN:OGC:DEF:CRS:OGC::CRS84",
+        }
+        conflicts = any(
+            marker in note.lower()
+            for note in geometry.limitations
+            for marker in ("conflict", "unparsed", "outside")
+        )
+        lat, lon = geometry.centroid_latitude, geometry.centroid_longitude
+        if (
+            geodetic and not conflicts and lat is not None and lon is not None
+            and -85.05112878 <= lat <= 85.05112878 and -180 <= lon <= 180
+        ):
+            # Retained coordinates are still source claims, never verified
+            # boundary geometry or a parcel-to-construction-site relationship.
+            latitude, longitude = lat, lon
     return InvestigationObservation(
         evidence=_evidence(
             family="parcel",
