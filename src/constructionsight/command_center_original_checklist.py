@@ -9,12 +9,21 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from sqlalchemy.orm import Session
+
 from constructionsight.adapters import default_adapter_family_specs
+from constructionsight.operator_services.source_registry_persistence_service import (
+    persist_authorized_source_registry_records,
+)
+from constructionsight.operator_services.source_registry_service import (
+    apply_authorized_source_registry_update_plan,
+)
 from constructionsight.command_center_source_plans import original_offline_source_plans
 from constructionsight.command_center_source_reachability import (
     _selected_original_source,
     _source_digest,
 )
+from constructionsight.source_registry_update_plan_models import SourceRegistryUpdatePlanReport
 from constructionsight.source_verification_checklist_models import (
     SourceVerificationObservation,
 )
@@ -22,6 +31,8 @@ from constructionsight.source_verification_checklist_service import (
     build_source_observation_templates,
     build_source_verification_checklist_report,
 )
+
+from constructionsight.storage.database import create_private_database_engine
 
 _OBSERVATION_FLAGS = frozenset({
     "public_entry_observed",
@@ -137,5 +148,94 @@ def review_original_manual_checklist(
         "meaning": (
             "Original manual checklist report for operator-supplied observations. "
             "No independent corroboration, registry update or authority is implied."
+        ),
+    }
+
+
+def apply_reviewed_original_source_registry_update(
+    database: Path | None, payload: dict[str, Any],
+) -> dict[str, Any]:
+    """Apply one exact manually reviewed original status through both original guards.
+
+    Rebuild the original plan; never accept a caller-supplied source row or status.
+    The persistence guard rechecks the complete source under its SQLite writer lock.
+    """
+    review_fields = {
+        "source_name", "public_url", "expected_source_sha256",
+        "review_reason", "caller_confirmation", "observation",
+    }
+    if set(payload) != review_fields | {
+        "expected_plan_digest", "apply_reason", "apply_confirmation",
+    }:
+        raise ValueError("exact original registry approval fields required")
+    reason = payload["apply_reason"]
+    if (
+        payload["apply_confirmation"] is not True
+        or not isinstance(reason, str) or not 10 <= len(reason.strip()) <= 2000
+        or not isinstance(payload["expected_plan_digest"], str)
+        or len(payload["expected_plan_digest"]) != 64
+        or any(c not in "0123456789abcdef" for c in payload["expected_plan_digest"])
+    ):
+        raise ValueError("explicit exact-plan registry approval required")
+    reviewed = review_original_manual_checklist(
+        database, {field: payload[field] for field in review_fields},
+    )
+    plan = SourceRegistryUpdatePlanReport.model_validate(
+        reviewed["original_registry_update_plan"]
+    )
+    if (
+        plan.update_count != 1
+        or len(plan.rows) != 1
+        or plan.plan_digest != payload["expected_plan_digest"]
+    ):
+        raise ValueError("approved original source update plan is absent or stale")
+    source = _selected_original_source(
+        database, payload["source_name"], payload["public_url"],
+    )
+    if _source_digest(source) != payload["expected_source_sha256"]:
+        raise ValueError("original source changed after review; review again")
+    if database is None:
+        raise ValueError("original operator database is not configured")
+    approved = apply_authorized_source_registry_update_plan(
+        [source],
+        plan,
+        expected_plan_digest=plan.plan_digest,
+        expected_registry_digest=plan.registry_digest,
+        target_path_identity=str(database.absolute()),
+        caller_confirmation=True,
+        authorization_reason=reason.strip(),
+    )
+    engine = create_private_database_engine(database, create=False)
+    try:
+        with Session(engine, autoflush=False) as session:
+            persisted = persist_authorized_source_registry_records(
+                session, list(approved.sources),
+                caller_confirmation=True,
+                authorization_reason=reason.strip(),
+                expected_current_source=source,
+            )
+    finally:
+        engine.dispose()
+    resulting_status = approved.sources[0].verification_status.value
+    return {
+        "schema_version": "constructionsight.original-source-registry-reviewed-apply/v1",
+        "source_name": source.source_name,
+        "public_url": str(source.public_url),
+        "reviewed_source_sha256": payload["expected_source_sha256"],
+        "approved_plan_digest": plan.plan_digest,
+        "original_registry_apply_report": approved.report.to_dict(),
+        "original_registry_persistence_report": persisted.report.model_dump(mode="json"),
+        "apply_authorization": approved.authorization.to_dict(),
+        "persistence_authorization": persisted.authorization.to_dict(),
+        "resulting_verification_status": resulting_status,
+        "original_registry_mutated": True,
+        "network_executed": False,
+        "live_collection_authorized": False,
+        "commercial_authority_granted": False,
+        "independent_source_verification_established": False,
+        "meaning": (
+            "One reviewed original verification-status change was persisted. "
+            "Manual evidence is not independent corroboration, and this does not "
+            "authorize recurring collection, contact, outreach, or bidding."
         ),
     }

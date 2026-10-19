@@ -68,6 +68,7 @@ from constructionsight.command_center_legacy_reconciliation import (
     preview_legacy_reconciliation_batch,
 )
 from constructionsight.command_center_original_checklist import (
+    apply_reviewed_original_source_registry_update,
     preview_original_manual_checklist,
     review_original_manual_checklist,
 )
@@ -1069,6 +1070,7 @@ def make_server(
                 "/api/source-watchlist-action",
                 "/api/source-http-check",
                 "/api/source-checklist-review",
+                "/api/source-registry-reviewed-apply",
                 "/api/parcel-source-row-preview",
                 "/api/parcel-arcgis-proof-persist",
                 "/api/investigation-watch",
@@ -1309,6 +1311,18 @@ def make_server(
                         ):
                             raise ValueError("exact same-origin manual source checklist required")
                         result = review_original_manual_checklist(
+                            operator_database, payload,
+                        )
+                    elif path == "/api/source-registry-reviewed-apply":
+                        if (
+                            urlsplit(self.path).query
+                            or urlsplit(self.path).fragment
+                            or self.headers.get_all("Host", []) != [host]
+                            or self.headers.get_all("Origin", []) != [f"http://{host}"]
+                            or self.headers.get("Sec-Fetch-Site") == "cross-site"
+                        ):
+                            raise ValueError("exact same-origin source registry approval required")
+                        result = apply_reviewed_original_source_registry_update(
                             operator_database, payload,
                         )
                     elif path == "/api/source-http-check":
