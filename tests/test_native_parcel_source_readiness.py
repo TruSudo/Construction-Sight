@@ -60,7 +60,7 @@ def test_native_parcel_registry_schema_and_verified_source_evidence_are_exact_an
             assert client.get("/api/parcel-source-readiness?source_key="
                               ).status_code == 409
             assert client.post("/api/parcel-source-readiness", json={}
-                               ).status_code in {403, 404}
+                               ).status_code == 501
             assert not (directory / "investigations.sqlite3").exists()
             assert not (directory / "constructionsight.sqlite3").exists()
     finally:
