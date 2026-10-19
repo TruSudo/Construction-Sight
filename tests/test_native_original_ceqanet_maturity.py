@@ -80,6 +80,8 @@ def test_original_native_maturity_matches_independent_original_builders(tmp_path
         PublicSource.model_validate(x)
         for x in json.loads((_ROOT / "data/source_registry.seed.json").read_text())
     ]
+    # Original SQLite registry order is county then jurisdiction, not seed-file order.
+    sources.sort(key=lambda source: (source.jurisdiction.county, source.jurisdiction.name))
     expected = build_ceqanet_source_maturity_proposal(sources, execution, replay, verify)
     assert result["original_replay_digest"] == replay.replay_digest
     assert result["original_maturity_proposal"]["proposal_digest"] == expected.proposal_digest
