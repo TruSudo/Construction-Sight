@@ -522,10 +522,12 @@ def test_full_original_workflow_events_export_from_native_console(
             response = client.get(
                 "/api/investigation-lead-history", params={**params, **invalid},
             )
-            assert response.status_code == 400
+            # The existing GET handler signals a rejected stale/foreign selection
+            # with 409; no canonical workflow may be disclosed or changed.
+            assert response.status_code == 409
         assert client.get(
             "/api/investigation-lead-history", params={**params, "limit": "2"},
-        ).status_code == 400
+        ).status_code == 409
         assert native_lead.database.read_bytes() == before
 
         origin = {"Origin": str(client.base_url).rstrip("/")}
@@ -572,7 +574,8 @@ def test_full_original_workflow_export_detects_tampered_immutable_event(
             "investigation_id": native_lead.investigation_id,
             "workflow_id": native_lead.workflow.workflow_id,
         })
-        assert result.status_code == 400
+        # Fail closed with the Command Center's GET conflict status.
+        assert result.status_code == 409
         assert "changed or reordered" in result.text
 
 

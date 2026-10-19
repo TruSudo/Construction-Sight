@@ -50,6 +50,9 @@ def test_native_parcel_registry_schema_and_verified_source_evidence_are_exact_an
             # a fixed historical source-observation timestamp.
             assert actual["county_coverage"].pop("generated_at")
             expected["county_coverage"].pop("generated_at")
+            # Registry readiness is also recalculated with a fresh report time.
+            assert actual["registry_report"].pop("generated_at")
+            expected["registry_report"].pop("generated_at")
             assert actual == expected
             assert json.loads(result.content)["county_coverage"]["generated_at"]
             assert client.get("/api/parcel-source-readiness?source_key=not-allowed"
