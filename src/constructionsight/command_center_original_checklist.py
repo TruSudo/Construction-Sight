@@ -12,16 +12,16 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from constructionsight.adapters import default_adapter_family_specs
+from constructionsight.command_center_source_plans import original_offline_source_plans
+from constructionsight.command_center_source_reachability import (
+    _selected_original_source,
+    _source_digest,
+)
 from constructionsight.operator_services.source_registry_persistence_service import (
     persist_authorized_source_registry_records,
 )
 from constructionsight.operator_services.source_registry_service import (
     apply_authorized_source_registry_update_plan,
-)
-from constructionsight.command_center_source_plans import original_offline_source_plans
-from constructionsight.command_center_source_reachability import (
-    _selected_original_source,
-    _source_digest,
 )
 from constructionsight.source_registry_update_plan_models import SourceRegistryUpdatePlanReport
 from constructionsight.source_verification_checklist_models import (
@@ -31,7 +31,6 @@ from constructionsight.source_verification_checklist_service import (
     build_source_observation_templates,
     build_source_verification_checklist_report,
 )
-
 from constructionsight.storage.database import create_private_database_engine
 
 _OBSERVATION_FLAGS = frozenset({
