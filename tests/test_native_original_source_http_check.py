@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import threading
+from copy import deepcopy
 from pathlib import Path
 
 import httpx
@@ -16,6 +17,15 @@ from constructionsight.storage.database import create_database_engine, initializ
 from constructionsight.storage.source_registry import SourceRegistryStore
 from tests.test_command_center_investigation_bridge import snapshot
 from tests.test_operator_source_registry import _source
+
+
+def _without_build_timestamps(evidence: dict) -> dict:
+    """Original evidence packaging gets fresh report/row times on each projection."""
+    body = deepcopy(evidence)
+    assert body.pop("generated_at")
+    for row in body["rows"]:
+        assert row.pop("generated_at")
+    return body
 
 
 def test_native_exact_original_http_readiness_reuses_original_authorization(
@@ -111,7 +121,9 @@ def test_native_exact_original_http_readiness_reuses_original_authorization(
                 "/api/source-http-check", json=payload, headers={"Origin": base},
             )
             assert repeated.status_code == 200, repeated.text
-            assert repeated.json()["original_verification_evidence"] == evidence
+            assert _without_build_timestamps(
+                repeated.json()["original_verification_evidence"]
+            ) == _without_build_timestamps(evidence)
             assert checks == [str(source.public_url)]
             # Unauthorized URL cannot consume an allowance or reach the transport
             # even if a caller supplies an exact original source digest.
