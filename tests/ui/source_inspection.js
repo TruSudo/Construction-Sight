@@ -165,7 +165,7 @@ const {resolve} = require('node:path');
     await page.locator('#review-ceqanet-detail').click();
     await page.waitForSelector('#preview-reviewed-ceqanet-detail');
     const detailForm = await page.locator('#action-content').textContent();
-    if (!detailForm.includes('lawful-access') ||
+    if (!detailForm.includes('independently reviewed evidence') ||
         !detailForm.includes('Unknown (deny)') ||
         !detailForm.includes('Immutable reviewed access evidence identity')) {
       throw Error('Native original CEQAnet lawful-access review missing');
