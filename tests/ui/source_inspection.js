@@ -28,6 +28,18 @@ const {resolve} = require('node:path');
         !initial.includes('Synthetic retained source observation')) {
       throw Error('Native source registry/revision/queue parity did not render');
     }
+    // Original audit CLI builders are usable without opening the old dashboard
+    // and without HTTP reachability checks or changing source verification.
+    await page.locator('#retained-original-source-audit').click();
+    await page.waitForSelector('#export-original-source-audit');
+    const originalAudit = await page.locator('#action-content').textContent();
+    if (!originalAudit.includes('Synthetic retained portal') ||
+        !originalAudit.includes('source_status') && !originalAudit.includes('readiness_status') ||
+        !originalAudit.includes('Original source verification-evidence package') ||
+        !originalAudit.includes('Previously reported source status is not new verification')) {
+      throw Error('Native offline audit did not expose original status/evidence builders');
+    }
+    await page.click('#action-close');
     const sourceRow = page.locator('.retained-source-inspection tr')
       .filter({hasText: 'Synthetic retained source observation'}).first();
     await sourceRow.locator('[data-source-preview]').click();
