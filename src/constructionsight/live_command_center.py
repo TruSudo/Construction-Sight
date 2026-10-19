@@ -62,6 +62,11 @@ from constructionsight.command_center_legacy_reconciliation import (
     preview_legacy_reconciliation,
     preview_legacy_reconciliation_batch,
 )
+from constructionsight.command_center_arcgis_proofs import (
+    native_arcgis_proof_inventory,
+    persist_reviewed_arcgis_proof,
+    retained_arcgis_proof_preview,
+)
 from constructionsight.command_center_parcel_readiness import (
     parcel_source_readiness_snapshot,
     preview_retained_parcel_sample,
@@ -264,6 +269,7 @@ def make_server(
     operator_smarts_history: Path | None = None,
     operator_ceqanet_chain_report: Path | None = None,
     operator_source_attribution_aliases: Path | None = None,
+    operator_arcgis_proof_bundle: Path | None = None,
 ) -> ThreadingHTTPServer:
     if parity and (not snapshot.get("demo") or directory is not None):
         raise ValueError("Mockup parity requires an isolated Demo fixture")
@@ -272,6 +278,8 @@ def make_server(
             raise ValueError("operator source data cannot be exposed in demo/parity mode")
         if operator_database.is_symlink() or not operator_database.is_file():
             raise ValueError("operator source database must be an existing regular file")
+    if operator_arcgis_proof_bundle is not None and (parity or snapshot.get("demo") or directory is None):
+        raise ValueError("retained ArcGIS proof cannot be used in demo/parity mode")
     if (operator_ceqanet_listing is None) != (operator_ceqanet_review_queue is None):
         raise ValueError("CEQAnet retained listing and review-queue evidence must be paired")
     if operator_database is None and any(
@@ -448,6 +456,16 @@ def make_server(
                 if urlsplit(self.path).query or urlsplit(self.path).fragment:
                     raise ValueError("parcel source readiness accepts no query parameters")
                 value = parcel_source_readiness_snapshot()
+                body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
+            elif path == "/api/parcel-arcgis-proof":
+                if urlsplit(self.path).query or urlsplit(self.path).fragment:
+                    raise ValueError("retained ArcGIS proof inspection takes no query")
+                value = retained_arcgis_proof_preview(operator_arcgis_proof_bundle)
+                body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
+            elif directory and path == "/api/native-parcel-proofs":
+                if urlsplit(self.path).query or urlsplit(self.path).fragment:
+                    raise ValueError("native ArcGIS proof inventory takes no query")
+                value = native_arcgis_proof_inventory(directory)
                 body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
             elif path == "/api/source-ceqanet-export-status":
                 if urlsplit(self.path).query:
@@ -1014,6 +1032,7 @@ def make_server(
                 "/api/investigation-lead-result-review",
                 "/api/source-watchlist-action",
                 "/api/parcel-source-row-preview",
+                "/api/parcel-arcgis-proof-persist",
                 "/api/investigation-watch",
                 "/api/source-commercial-preview",
                 "/api/source-reconciliation-queue",
@@ -1208,6 +1227,18 @@ def make_server(
                             raise ValueError("exact same-origin lead review handoff required")
                         result = retain_reviewed_canonical_candidate(
                             directory, payload, original_database=operator_database,
+                        )
+                    elif path == "/api/parcel-arcgis-proof-persist":
+                        if (
+                            urlsplit(self.path).query or urlsplit(self.path).fragment
+                            or self.headers.get_all("Host", []) != [host]
+                            or self.headers.get_all("Origin", []) != [f"http://{host}"]
+                            or self.headers.get("Sec-Fetch-Site") == "cross-site"
+                        ):
+                            raise ValueError("exact same-origin offline proof approval required")
+                        result = persist_reviewed_arcgis_proof(
+                            directory, operator_arcgis_proof_bundle, payload,
+                            original_database=operator_database,
                         )
                     elif path == "/api/parcel-source-row-preview":
                         if (
@@ -1452,6 +1483,10 @@ def main(argv: list[str] | None = None) -> int:
         help="Paired retained CEQAnet review evidence for original inbox",
     )
     parser.add_argument(
+        "--operator-arcgis-proof-bundle", type=Path,
+        help="One retained, verified ArcGIS proof JSON; offline review only",
+    )
+    parser.add_argument(
         "--operator-ceqanet-chain-report", type=Path,
         help="Existing exact CEQAnet chain report for locally verified operator ZIP exports",
     )
@@ -1535,6 +1570,7 @@ def main(argv: list[str] | None = None) -> int:
             operator_smarts_journal=args.operator_smarts_journal,
             operator_smarts_history=args.operator_smarts_history,
             operator_ceqanet_chain_report=args.operator_ceqanet_chain_report,
+            operator_arcgis_proof_bundle=args.operator_arcgis_proof_bundle,
         )
     except (ValueError, OSError, httpx.HTTPError) as exc:
         print(f"Command Center unavailable: {type(exc).__name__}: {exc}", file=sys.stderr)

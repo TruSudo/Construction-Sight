@@ -119,6 +119,8 @@ async function renderParcelSourceReadiness(box) {
       'maxlength="255" required autocomplete="off"></label>' +
       '<button type="submit">Compare with current investigation evidence</button>' +
       '</form>' +
+      '<h3>Offline ArcGIS proof handoff to the shared investigation store</h3>' +
+      '<div data-native-arcgis-proof role="status">Checking configured proof…</div>' +
       '<h3>Persisted original ArcGIS bounded-proof history</h3>' +
       '<div data-retained-parcel-proofs role="status">Checking explicitly configured ' +
       'original source database for validated retained proof bundles…</div>';
@@ -135,6 +137,65 @@ async function renderParcelSourceReadiness(box) {
         if (button.isConnected) button.disabled = false;
       });
     };
+    const nativeProofBox = root.querySelector('[data-native-arcgis-proof]');
+    try {
+      const [review, inventory] = await Promise.all([
+        api('/api/parcel-arcgis-proof'), api('/api/native-parcel-proofs')
+      ]);
+      if (!root.isConnected || activePage !== 'Sources & Collection') return;
+      const retained = inventory.available ? inventory.total + ' validated bundle(s)' :
+        'No existing native investigation store';
+      nativeProofBox.innerHTML =
+        '<p>Native retained ArcGIS proofs: '+esc(retained)+
+        '. Offline evidence audit only: no parcel import, project match, '+
+        'live GIS acquisition, map point or commercial approval.</p>'+
+        (review.configured ?
+          '<p>Verified bundle: '+esc(review.source_key)+' · '+esc(review.county)+
+          ' · '+esc(review.assessment_status)+' · SHA-256 <code>'+
+          esc(review.bundle_sha256)+'</code></p>'+
+          '<button data-native-proof-review>Inspect and retain exact verified proof</button>' :
+          '<p>No offline proof configured. Launch with an existing '+
+          '<code>--operator-arcgis-proof-bundle</code> JSON file to review it.</p>');
+      const inspect = nativeProofBox.querySelector('[data-native-proof-review]');
+      if (inspect) inspect.onclick = () => {
+        const ticket = modal('Original ArcGIS bounded proof · offline review',
+          '<p>The original verifier recomputed this proof. Retention writes its '+
+          'evidence chain to the existing private investigation store, not a '+
+          'parcel/project identity. No network, outreach, bids or bulk acquisition.</p>'+
+          '<pre>'+esc(JSON.stringify(review.verification,null,2))+'</pre>'+
+          '<label>Reason for retaining this exact proof '+
+          '<textarea id="native-proof-reason" maxlength="2000" rows="3"></textarea></label>'+
+          '<label><input type="checkbox" id="native-proof-confirm"> '+
+          'I reviewed this SHA-256-bound proof and authorize local retention only.</label>'+
+          '<button id="native-proof-commit">Retain verified proof</button>');
+        const commit = document.querySelector('#native-proof-commit');
+        commit.onclick = () => perform(async () => {
+          if (ticket !== modalTicket || !$('action-dialog').open) return;
+          const reason = document.querySelector('#native-proof-reason').value.trim();
+          if (reason.length < 10 ||
+              !document.querySelector('#native-proof-confirm').checked)
+            throw Error('Enter at least ten characters and confirm offline retention.');
+          commit.disabled = true;
+          try {
+            const receipt = await api('/api/parcel-arcgis-proof-persist', {
+              expected_bundle_id:review.bundle_id,
+              expected_bundle_sha256:review.bundle_sha256,
+              review_reason:reason, caller_confirmation:true
+            });
+            if (ticket !== modalTicket || !$('action-dialog').open) return;
+            modal('Verified ArcGIS proof retained locally',
+              '<p>The original proof chain was verified in the native store. '+
+              'Parcel import, project association and commercial readiness '+
+              'still require independent evidence and review.</p>'+
+              '<pre>'+esc(JSON.stringify(receipt,null,2))+'</pre>');
+          } finally {if (commit.isConnected) commit.disabled = false;}
+        });
+      };
+    } catch (error) {
+      if (nativeProofBox.isConnected && activePage === 'Sources & Collection')
+        nativeProofBox.innerHTML = '<p role="alert">Offline ArcGIS proof review '+
+          'unavailable: '+esc(error.message)+'</p>';
+    }
     const proofBox = root.querySelector('[data-retained-parcel-proofs]');
     try {
       const proofState = await api('/api/source-parcel-proofs');
