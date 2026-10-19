@@ -15,9 +15,9 @@ from constructionsight.command_center_smarts_catalog import (
 from constructionsight.live_command_center import make_server
 from constructionsight.smarts_catalog_probe import (
     CATALOG_ENDPOINT,
+    CatalogObservation,
     PACKAGE_ID,
     REQUIRED_RESOURCES,
-    CatalogObservation,
 )
 from tests.test_command_center_investigation_bridge import snapshot
 
