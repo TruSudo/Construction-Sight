@@ -38,9 +38,12 @@ def preview_original_source_docket(
 ) -> dict[str, Any]:
     """Return exact original candidate preview and integrity-checked existing stages."""
     database, source_kind = _target(database, kind, record_id)
-    preview = preview_source_for_docket(
-        database, kind=source_kind, record_id=record_id,
-    )
+    try:
+        preview = preview_source_for_docket(
+            database, kind=source_kind, record_id=record_id,
+        )
+    except LookupError as exc:
+        raise ValueError("exact original source record not found") from exc
     try:
         entries = list_staged_source_candidates(
             database, kind=source_kind, record_id=record_id, limit=50,
