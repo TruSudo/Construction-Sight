@@ -32,6 +32,11 @@ from constructionsight import (
 from constructionsight import command_center_commercial as commercial
 from constructionsight import command_center_investigation_watch as investigation_watch
 from constructionsight import command_center_state as state
+from constructionsight.command_center_arcgis_proofs import (
+    native_arcgis_proof_inventory,
+    persist_reviewed_arcgis_proof,
+    retained_arcgis_proof_preview,
+)
 from constructionsight.command_center_canonical_leads import (
     apply_retained_canonical_result_review,
     canonical_lead_preview,
@@ -61,11 +66,6 @@ from constructionsight.command_center_legacy_reconciliation import (
     original_source_replay_audit,
     preview_legacy_reconciliation,
     preview_legacy_reconciliation_batch,
-)
-from constructionsight.command_center_arcgis_proofs import (
-    native_arcgis_proof_inventory,
-    persist_reviewed_arcgis_proof,
-    retained_arcgis_proof_preview,
 )
 from constructionsight.command_center_parcel_readiness import (
     parcel_source_readiness_snapshot,
@@ -278,7 +278,9 @@ def make_server(
             raise ValueError("operator source data cannot be exposed in demo/parity mode")
         if operator_database.is_symlink() or not operator_database.is_file():
             raise ValueError("operator source database must be an existing regular file")
-    if operator_arcgis_proof_bundle is not None and (parity or snapshot.get("demo") or directory is None):
+    if operator_arcgis_proof_bundle is not None and (
+        parity or snapshot.get("demo") or directory is None
+    ):
         raise ValueError("retained ArcGIS proof cannot be used in demo/parity mode")
     if (operator_ceqanet_listing is None) != (operator_ceqanet_review_queue is None):
         raise ValueError("CEQAnet retained listing and review-queue evidence must be paired")

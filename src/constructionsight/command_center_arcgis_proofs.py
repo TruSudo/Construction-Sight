@@ -12,7 +12,6 @@ from typing import Any
 
 from pydantic import ValidationError
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
 
 from constructionsight.authorization_decision import AuthorizationDeniedError
 from constructionsight.command_center_sources import source_inspection
@@ -29,10 +28,6 @@ from constructionsight.parcel_source_acquisition_bundle_models import (
 from constructionsight.storage.database import (
     database_url_from_path,
     prepare_private_database,
-)
-from constructionsight.storage.operator_read_store import create_operator_read_engine
-from constructionsight.storage.parcel_source_acquisition_bundle_store import (
-    load_arcgis_bounded_proof_bundles,
 )
 from constructionsight.storage.runtime_artifacts import read_runtime_artifact
 
@@ -135,6 +130,11 @@ def persist_reviewed_arcgis_proof(
     )
     if original_database is not None and original_database.samefile(database):
         raise ValueError("original operator source database must remain separate")
+    existing = native_arcgis_proof_inventory(directory)
+    if existing["total"] >= 50 and not any(
+        item["bundle_id"] == bundle.bundle_id for item in existing["bundles"]
+    ):
+        raise ValueError("native ArcGIS proof inventory exceeds 50-item limit")
     try:
         result = persist_authorized_arcgis_bundle(
             bundle=bundle,
@@ -143,18 +143,9 @@ def persist_reviewed_arcgis_proof(
             authorization_reason=reason.strip(),
             caller_confirmation=True,
         )
-        # A replayed effect receipt is not evidence of a current database row
-        # after a restore. Re-read the exact original validated persisted chain.
-        engine = create_operator_read_engine(database)
-        try:
-            with Session(engine, autoflush=False) as session:
-                persisted = load_arcgis_bounded_proof_bundles(
-                    session, source_key=bundle.source_key, county=bundle.county,
-                )
-                if sum(item.bundle_id == bundle.bundle_id for item in persisted) != 1:
-                    raise ValueError("authorized ArcGIS proof is absent from current native store")
-        finally:
-            engine.dispose()
+        current = native_arcgis_proof_inventory(directory)
+        if sum(item["bundle_id"] == bundle.bundle_id for item in current["bundles"]) != 1:
+            raise ValueError("verified ArcGIS proof absent from current native store")
     except (
         AuthorizationDeniedError, ParcelArcGISOperatorServiceError, SQLAlchemyError,
     ) as exc:
