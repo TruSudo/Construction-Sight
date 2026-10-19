@@ -440,8 +440,12 @@ async function renderRetainedSources(box) {
             '<label><input type="checkbox" id="exact-http-check-confirm">' +
             ' I reviewed this exact source and have authority to perform this ' +
             'bounded public request.</label>' +
-            '<button id="exact-http-check-run">Execute reviewed original ' +
-            'reachability check</button>');
+            '<button id="exact-http-check-run" ' +
+            (reviewed.can_execute_manual_check ? '' : 'disabled ') +
+            '>Execute reviewed original reachability check</button>' +
+            (!reviewed.can_execute_manual_check ?
+              '<p role="alert">Source is outside the separately governed URL ' +
+              'allowlist. This application cannot execute a check for it.</p>' : ''));
           document.querySelector('#exact-http-check-run').onclick = () =>
             perform(async () => {
               if (ticket !== modalTicket || !$('action-dialog').open) return;
