@@ -76,6 +76,10 @@ from constructionsight.command_center_parcel_reconciliation import (
     preview_original_parcel_reconciliation,
 )
 from constructionsight.command_center_retained_previews import retained_commercial_preview
+from constructionsight.command_center_source_reachability import (
+    check_reviewed_original_source_readiness,
+    preview_exact_original_source_readiness,
+)
 from constructionsight.command_center_sources import (
     SOURCE_INSPECTION_ROUTES,
     retained_watch_notifications,
@@ -754,6 +758,19 @@ def make_server(
                     record_id=params.record_id,
                 )
                 body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
+            elif path == "/api/source-http-check-preview":
+                if (
+                    set(query) != {"source_name", "public_url"}
+                    or len(query["source_name"]) != 1
+                    or len(query["public_url"]) != 1
+                ):
+                    raise ValueError("select one exact original public source")
+                value = preview_exact_original_source_readiness(
+                    operator_database,
+                    source_name=query["source_name"][0],
+                    public_url=query["public_url"][0],
+                )
+                body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
             elif path in SOURCE_INSPECTION_ROUTES:
                 value = source_inspection(
                     operator_database, route=path, query=urlsplit(self.path).query,
@@ -1033,6 +1050,7 @@ def make_server(
                 "/api/investigation-lead-review-transition",
                 "/api/investigation-lead-result-review",
                 "/api/source-watchlist-action",
+                "/api/source-http-check",
                 "/api/parcel-source-row-preview",
                 "/api/parcel-arcgis-proof-persist",
                 "/api/investigation-watch",
@@ -1263,6 +1281,18 @@ def make_server(
                         ):
                             raise ValueError("exact same-origin canonical watch request required")
                         result = investigation_watch.action(directory, payload)
+                    elif path == "/api/source-http-check":
+                        if (
+                            urlsplit(self.path).query
+                            or urlsplit(self.path).fragment
+                            or self.headers.get_all("Host", []) != [host]
+                            or self.headers.get_all("Origin", []) != [f"http://{host}"]
+                            or self.headers.get("Sec-Fetch-Site") == "cross-site"
+                        ):
+                            raise ValueError("exact same-origin manual source HTTP check required")
+                        result = check_reviewed_original_source_readiness(
+                            operator_database, payload,
+                        )
                     elif path == "/api/source-watchlist-action":
                         if (
                             urlsplit(self.path).query
