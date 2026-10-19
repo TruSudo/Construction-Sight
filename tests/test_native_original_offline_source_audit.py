@@ -16,6 +16,10 @@ from sqlalchemy.orm import Session
 from constructionsight.adapters import default_adapter_family_specs
 from constructionsight.live_command_center import make_server
 from constructionsight.source_status_report import build_source_status_report
+from constructionsight.source_verification_checklist_service import (
+    build_source_observation_templates,
+    build_source_verification_checklist_report,
+)
 from constructionsight.source_verification_evidence_service import (
     build_source_verification_evidence_package,
 )
@@ -69,6 +73,23 @@ def test_native_original_audit_exact_offline_services_without_touching_source(
                     [source], adapters, check_http=False,
                 ).to_dict()
             )
+            assert _without_original_generated_at(
+                report["original_manual_checklist"]
+            ) == _without_original_generated_at(
+                build_source_verification_checklist_report(
+                    [source], adapters, check_http=False,
+                ).to_dict()
+            )
+            assert report["original_manual_checklist"]["rows"][0][
+                "detail_page"
+            ] == "not_checked"
+            assert report["original_observation_templates"] == [
+                template.model_dump(mode="json")
+                for template in build_source_observation_templates([source])
+            ]
+            assert report["original_observation_templates"][0][
+                "query_behavior_observed"
+            ] is None
             assert report["network_executed"] is False
             assert report["http_checked"] is False
             assert report["source_database_mutated"] is False
@@ -77,6 +98,12 @@ def test_native_original_audit_exact_offline_services_without_touching_source(
             assert report["read_only"] is True
             repeated = client.get("/api/source-offline-audit").json()
             assert repeated["original_status_report"] == report["original_status_report"]
+            assert _without_original_generated_at(
+                repeated["original_manual_checklist"]
+            ) == _without_original_generated_at(report["original_manual_checklist"])
+            assert repeated["original_observation_templates"] == report[
+                "original_observation_templates"
+            ]
             assert _without_original_generated_at(
                 repeated["original_evidence_package"]
             ) == _without_original_generated_at(report["original_evidence_package"])

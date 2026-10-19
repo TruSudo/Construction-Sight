@@ -56,6 +56,10 @@ from constructionsight.smarts_operator_status import build_smarts_operator_statu
 from constructionsight.smarts_parcel_review import inspect_smarts_parcel_candidates
 from constructionsight.smarts_snapshot_history import review_snapshot_changes
 from constructionsight.source_status_report import build_source_status_report
+from constructionsight.source_verification_checklist_service import (
+    build_source_observation_templates,
+    build_source_verification_checklist_report,
+)
 from constructionsight.source_verification_evidence_service import (
     build_source_verification_evidence_package,
 )
@@ -213,11 +217,19 @@ def source_inspection(
                 evidence = build_source_verification_evidence_package(
                     sources, adapters, check_http=False,
                 )
+                checklist = build_source_verification_checklist_report(
+                    sources, adapters, check_http=False,
+                )
+                templates = build_source_observation_templates(sources)
                 result = {
                     "schema_version": "constructionsight.original-offline-source-audit/v1",
                     "source_count": count,
                     "original_status_report": status.to_dict(),
                     "original_evidence_package": evidence.to_dict(),
+                    "original_manual_checklist": checklist.to_dict(),
+                    "original_observation_templates": [
+                        item.model_dump(mode="json") for item in templates
+                    ],
                     "network_executed": False,
                     "http_checked": False,
                     "source_database_mutated": False,

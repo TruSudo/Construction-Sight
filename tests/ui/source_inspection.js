@@ -36,6 +36,8 @@ const {resolve} = require('node:path');
     if (!originalAudit.includes('Synthetic retained portal') ||
         !originalAudit.includes('source_status') && !originalAudit.includes('readiness_status') ||
         !originalAudit.includes('Original source verification-evidence package') ||
+        !originalAudit.includes('Original manual source verification checklist') ||
+        !originalAudit.includes('Export blank original source observation templates') ||
         !originalAudit.includes('Previously reported source status is not new verification')) {
       throw Error('Native offline audit did not expose original status/evidence builders');
     }

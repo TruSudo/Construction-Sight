@@ -408,9 +408,20 @@ async function renderRetainedSources(box) {
       '<h3>Original source and adapter status report</h3><pre>' +
       esc(JSON.stringify(audit.original_status_report,null,2))+'</pre>' +
       '<h3>Original source verification-evidence package</h3><pre>' +
-      esc(JSON.stringify(audit.original_evidence_package,null,2))+'</pre>');
+      esc(JSON.stringify(audit.original_evidence_package,null,2))+'</pre>' +
+      '<h3>Original manual source verification checklist</h3>' +
+      '<p>Original offline checklist only. Query, results, detail, access barriers ' +
+      'and terms require independent lawful operator observations. ' +
+      'No verification is inferred from retained registry labels.</p><pre>' +
+      esc(JSON.stringify(audit.original_manual_checklist,null,2))+'</pre>' +
+      '<p><button id="export-original-observation-templates">' +
+      'Export blank original source observation templates</button> ' +
+      'Templates are not completed observations or source promotion.</p>');
     document.querySelector('#export-original-source-audit').onclick =
       () => download('original-source-offline-audit.json',audit);
+    document.querySelector('#export-original-observation-templates').onclick =
+      () => download('original-source-observation-templates.json',
+        audit.original_observation_templates);
   });
   root.querySelectorAll('[data-registry-index]').forEach(button => {
     button.onclick = () => {
