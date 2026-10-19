@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import hashlib
 import threading
+from copy import deepcopy
 from pathlib import Path
 
 import httpx
@@ -22,6 +23,15 @@ from constructionsight.storage.database import create_database_engine, initializ
 from constructionsight.storage.source_registry import SourceRegistryStore
 from tests.test_command_center_investigation_bridge import snapshot
 from tests.test_operator_source_registry import _source
+
+
+def _without_original_generated_at(payload: dict) -> dict:
+    """Both original evidence rows and their package have fresh build timestamps."""
+    copy = deepcopy(payload)
+    assert copy.pop("generated_at")
+    for row in copy["rows"]:
+        assert row.pop("generated_at")
+    return copy
 
 
 def test_native_original_audit_exact_offline_services_without_touching_source(
@@ -52,7 +62,9 @@ def test_native_original_audit_exact_offline_services_without_touching_source(
             assert report["original_status_report"] == build_source_status_report(
                 [source], adapters,
             ).to_dict()
-            assert report["original_evidence_package"] == (
+            assert _without_original_generated_at(
+                report["original_evidence_package"]
+            ) == _without_original_generated_at(
                 build_source_verification_evidence_package(
                     [source], adapters, check_http=False,
                 ).to_dict()
@@ -63,7 +75,11 @@ def test_native_original_audit_exact_offline_services_without_touching_source(
             assert report["source_promotion_authorized"] is False
             assert report["source_claim_only"] is True
             assert report["read_only"] is True
-            assert client.get("/api/source-offline-audit").json() == report
+            repeated = client.get("/api/source-offline-audit").json()
+            assert repeated["original_status_report"] == report["original_status_report"]
+            assert _without_original_generated_at(
+                repeated["original_evidence_package"]
+            ) == _without_original_generated_at(report["original_evidence_package"])
             for query in ("?check_http=true", "?promote=true", "?extra=1"):
                 assert client.get("/api/source-offline-audit" + query).status_code == 409
             assert hashlib.sha256(original_db.read_bytes()).hexdigest() == source_before
