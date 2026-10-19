@@ -45,6 +45,19 @@ const {resolve} = require('node:path');
       throw Error('Native offline audit did not expose original status/evidence builders');
     }
     await page.click('#action-close');
+    // Preserved original external-intelligence CLI matrices are read-only research,
+    // never a live Shovels/Regrid subscription or source collection.
+    await page.locator('#retained-original-external-intelligence').click();
+    await page.waitForSelector('#export-original-external-intelligence');
+    const externalSources = await page.locator('#action-content').textContent();
+    if (!externalSources.includes('Original capability matrix') ||
+        !externalSources.includes('Original capability-gap summary') ||
+        !externalSources.includes('Shovels/Regrid') ||
+        !externalSources.includes('subscription') ||
+        !externalSources.includes('permit-data-feed')) {
+      throw Error('Original Shovels/Regrid gap evidence missing in native source review');
+    }
+    await page.click('#action-close');
     // Manual source authority is presented inside the original registry detail.
     // The browser acceptance must NOT initiate the actual network check.
     await page.locator('[data-registry-index]').first().click();

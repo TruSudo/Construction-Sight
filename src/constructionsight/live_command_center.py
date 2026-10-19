@@ -63,6 +63,9 @@ from constructionsight.command_center_ceqanet_retained_import import (
     apply_reviewed_retained_ceqanet_import,
     preview_retained_ceqanet_import,
 )
+from constructionsight.command_center_external_source_intelligence import (
+    original_external_source_intelligence,
+)
 from constructionsight.command_center_graph import graph_view
 from constructionsight.command_center_investigations import (
     apply_investigation_review,
@@ -851,6 +854,11 @@ def make_server(
                 value = native_original_smarts_source_review(
                     manifest=operator_smarts_review_manifest, county=query["county"][0],
                 )
+                body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
+            elif path == "/api/source-external-intelligence":
+                if query or urlsplit(self.path).fragment:
+                    raise ValueError("original external intelligence is exact read-only")
+                value = original_external_source_intelligence()
                 body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
             elif path in SOURCE_INSPECTION_ROUTES:
                 value = source_inspection(

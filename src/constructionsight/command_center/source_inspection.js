@@ -328,7 +328,9 @@ async function renderRetainedSources(box) {
     'Configured sources: ' + esc(registry.total) + '; displayed: ' + esc(Math.min(50, entries.length)) +
     (registry.truncated || entries.length > 50 ? ' (bounded)' : '') +
     '. <button id="retained-registry-export">Export full returned registry JSON</button> ' +
-    '<button id="retained-original-source-audit">Original offline source audit</button></p>' +
+    '<button id="retained-original-source-audit">Original offline source audit</button> ' +
+    '<button id="retained-original-external-intelligence">' +
+    'Original Shovels/Regrid capability audit</button></p>' +
     table(['Registered source', 'County', 'Verification', 'Last checked', 'Adapter', 'Attributed records'],
       entries.slice(0, 50).map((r, i) => [
         '<button data-registry-index="' + i + '">' + esc(r.source_name) + '</button>',
@@ -396,6 +398,27 @@ async function renderRetainedSources(box) {
   showSourceWatches(watches);
   root.querySelector('#retained-registry-export').onclick = () =>
     download('retained-source-registry.json', registry);
+  root.querySelector('#retained-original-external-intelligence').onclick =
+    () => perform(async () => {
+      const report = await api('/api/source-external-intelligence');
+      if (!root.isConnected || activePage !== 'Sources & Collection') return;
+      modal('Original external source capability and gap evidence',
+        '<p>Historical Shovels/Regrid reference research only. It does not ' +
+        'claim current vendor access, subscription, data coverage or live ' +
+        'permission, and does not create an ingestion task or commercial action.</p>' +
+        '<h3>Original capability matrix</h3><pre>' +
+        esc(JSON.stringify(report.original_capability_matrix,null,2))+'</pre>' +
+        '<h3>Original capability-gap summary</h3><pre>' +
+        esc(JSON.stringify(report.original_capability_gap_report,null,2))+'</pre>' +
+        '<h3>Original research gaps and alignment roadmap</h3><pre>' +
+        esc(JSON.stringify(report.original_research_gap_matrix,null,2))+'\n' +
+        esc(JSON.stringify(report.original_alignment_report,null,2))+'\n' +
+        esc(JSON.stringify(report.original_implementation_roadmap,null,2))+'</pre>' +
+        '<button id="export-original-external-intelligence">' +
+        'Export original capability evidence JSON</button>');
+      document.querySelector('#export-original-external-intelligence').onclick =
+        () => download('original-source-capability-gap-report.json',report);
+    });
   root.querySelector('#retained-original-source-audit').onclick = () => perform(async () => {
     const audit = await api('/api/source-offline-audit');
     if (!audit.available) throw Error('Original source registry has not been configured');
