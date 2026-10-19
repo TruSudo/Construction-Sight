@@ -739,7 +739,7 @@ engine.dispose()
     await page.waitForSelector('#parcel-replay-audit');
     const parcelQueue = await page.locator('#action-content').textContent();
     if (!parcelQueue.includes('approval_audit_retained') ||
-        !parcelQueue.includes('source_claim_only') ||
+        !parcelQueue.includes('unverified_parcel_claim_only') ||
         !parcelQueue.includes('job_id') ||
         !parcelQueue.includes('phase8:browser:original-parcel') ||
         originalDigest() !== originalParcelDigest) {
