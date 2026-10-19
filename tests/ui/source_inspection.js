@@ -40,6 +40,21 @@ const {resolve} = require('node:path');
       throw Error('Native offline audit did not expose original status/evidence builders');
     }
     await page.click('#action-close');
+    // Manual source authority is presented inside the original registry detail.
+    // The browser acceptance must NOT initiate the actual network check.
+    await page.locator('[data-registry-index]').first().click();
+    await page.waitForSelector('#review-exact-original-source-http');
+    await page.click('#review-exact-original-source-http');
+    await page.waitForSelector('#exact-http-check-run');
+    const reviewedSource = await page.locator('#action-content').textContent();
+    if (!reviewedSource.includes('source-http-review/v1') ||
+        !reviewedSource.includes('expected_source_sha256') ||
+        !reviewedSource.includes('HEAD') ||
+        !reviewedSource.includes('source_promoted') ||
+        !reviewedSource.includes('No redirects, documents, credentials')) {
+      throw Error('Original one-source authorization preview is missing or unsafe');
+    }
+    await page.click('#action-close');
     const sourceRow = page.locator('.retained-source-inspection tr')
       .filter({hasText: 'Synthetic retained source observation'}).first();
     await sourceRow.locator('[data-source-preview]').click();
