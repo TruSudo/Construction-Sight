@@ -262,6 +262,18 @@ const {resolve} = require('node:path');
     if (operatorArchive.suggestedFilename() !== 'ceqanet-operator-export.zip') {
       throw Error('Original CEQAnet ZIP download filename differs from validated export');
     }
+    await page.waitForSelector('#inspect-original-smarts-combined');
+    await page.locator('#inspect-original-smarts-combined').click();
+    await page.waitForFunction(() =>
+      document.querySelector('#action-content')?.textContent
+        .includes('No original facility/inspection/compliance review manifest'));
+    const originalCombined = await page.locator('#action-content').textContent();
+    if (!originalCombined.includes('--operator-smarts-review-manifest') ||
+        !originalCombined.includes('"available": false') ||
+        originalCombined.includes('source_claims_verified": true')) {
+      throw Error('Native original SMARTS inspection/compliance review failed closed');
+    }
+    await page.click('#action-close');
     await page.waitForSelector('#source-smarts-change-results [data-smarts-parcel]');
     const originalSmarts = await page.locator('#retained-smarts-history').textContent();
     if (!originalSmarts.includes('smarts:facility:Riverside:wdid:8 33C101') ||

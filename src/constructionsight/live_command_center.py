@@ -103,6 +103,9 @@ from constructionsight.command_center_source_reachability import (
     check_reviewed_original_source_readiness,
     preview_exact_original_source_readiness,
 )
+from constructionsight.command_center_smarts_source_review import (
+    native_original_smarts_source_review,
+)
 from constructionsight.command_center_sources import (
     SOURCE_INSPECTION_ROUTES,
     retained_watch_notifications,
@@ -295,6 +298,7 @@ def make_server(
     operator_ceqanet_csv_evidence: Path | None = None,
     operator_smarts_journal: Path | None = None,
     operator_smarts_history: Path | None = None,
+    operator_smarts_review_manifest: Path | None = None,
     operator_ceqanet_chain_report: Path | None = None,
     operator_source_attribution_aliases: Path | None = None,
     operator_arcgis_proof_bundle: Path | None = None,
@@ -306,6 +310,15 @@ def make_server(
             raise ValueError("operator source data cannot be exposed in demo/parity mode")
         if operator_database.is_symlink() or not operator_database.is_file():
             raise ValueError("operator source database must be an existing regular file")
+    if operator_smarts_review_manifest is not None and (
+        parity or snapshot.get("demo") or directory is None or operator_database is None
+    ):
+        raise ValueError("SMARTS original source review requires real operator data")
+    if operator_smarts_review_manifest is not None and (
+        operator_smarts_review_manifest.is_symlink()
+        or not operator_smarts_review_manifest.is_file()
+    ):
+        raise ValueError("configured original SMARTS manifest must be a regular file")
     if operator_arcgis_proof_bundle is not None and (
         parity or snapshot.get("demo") or directory is None
     ):
@@ -830,6 +843,13 @@ def make_server(
                     operator_database,
                     source_name=query["source_name"][0],
                     public_url=query["public_url"][0],
+                )
+                body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
+            elif path == "/api/source-smarts-original-source-review":
+                if set(query) != {"county"} or len(query["county"]) != 1:
+                    raise ValueError("select one exact county for original SMARTS review")
+                value = native_original_smarts_source_review(
+                    manifest=operator_smarts_review_manifest, county=query["county"][0],
                 )
                 body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
             elif path in SOURCE_INSPECTION_ROUTES:
@@ -1696,6 +1716,10 @@ def main(argv: list[str] | None = None) -> int:
         help="Existing private SMARTS CSV snapshot history for original change/parcel review",
     )
     parser.add_argument(
+        "--operator-smarts-review-manifest", type=Path,
+        help="Private retained SMARTS facility/inspection/compliance CSV manifest, offline",
+    )
+    parser.add_argument(
         "--capture-only", action="store_true", help="Scheduled capture without a server"
     )
     parser.add_argument(
@@ -1767,6 +1791,7 @@ def main(argv: list[str] | None = None) -> int:
             operator_ceqanet_csv_evidence=args.operator_ceqanet_csv_evidence,
             operator_smarts_journal=args.operator_smarts_journal,
             operator_smarts_history=args.operator_smarts_history,
+            operator_smarts_review_manifest=args.operator_smarts_review_manifest,
             operator_ceqanet_chain_report=args.operator_ceqanet_chain_report,
             operator_arcgis_proof_bundle=args.operator_arcgis_proof_bundle,
         )

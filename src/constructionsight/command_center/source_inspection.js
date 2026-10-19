@@ -363,6 +363,7 @@ async function renderRetainedSources(box) {
     '<div id="retained-source-queue" aria-live="polite"></div>' +
     '<div id="retained-capture-inbox" aria-live="polite"></div>' +
     '<div id="retained-ceqanet-export" aria-live="polite"></div>' +
+    '<div id="retained-smarts-source-review" aria-live="polite"></div>' +
     '<div id="retained-smarts-history" aria-live="polite"></div>' +
     '<div id="retained-history-inspection"></div>';
   const watchPanel = root.querySelector('#retained-source-watchlist');
@@ -841,6 +842,7 @@ async function renderRetainedSources(box) {
     renderRetainedCaptureInbox(root.querySelector('#retained-capture-inbox')),
     renderRetainedCeqanetExport(root.querySelector('#retained-ceqanet-export')),
     renderRetainedSmartsHistory(root.querySelector('#retained-smarts-history')),
+    renderRetainedSmartsSourceReview(root.querySelector('#retained-smarts-source-review')),
     renderRetainedHistory(root.querySelector('#retained-history-inspection'))
   ]);
 }
@@ -1316,6 +1318,44 @@ async function renderRetainedCaptureInbox(box) {
   }
 }
 
+
+// Preserved original combined SMARTS facility/inspection/compliance corroboration review.
+// The operator selects only the county; exact CSV file locations are startup-controlled.
+async function renderRetainedSmartsSourceReview(box) {
+  if (!box || !box.isConnected || activePage !== 'Sources & Collection') return;
+  box.innerHTML = '<h3>Original SMARTS inspection and compliance source review</h3>' +
+    '<p>Read only. Compares two retained facility CSV versions and, when provided, ' +
+    'separately sourced inspections, violations and enforcement. ' +
+    'No fresh download, verified construction claim, identity promotion or outreach.</p>' +
+    '<label>County <select id="original-smarts-review-county">' +
+    '<option>Riverside</option><option>San Bernardino</option></select></label> ' +
+    '<button id="inspect-original-smarts-combined">Review exact retained SMARTS evidence</button>';
+  box.querySelector('#inspect-original-smarts-combined').onclick = () =>
+    perform(async () => {
+      const county = box.querySelector('#original-smarts-review-county').value;
+      const reviewed = await api('/api/source-smarts-original-source-review?' +
+        new URLSearchParams({county}));
+      if (!box.isConnected || activePage !== 'Sources & Collection') return;
+      if (!reviewed.available) {
+        modal('Original SMARTS offline review · no retained input configured',
+          '<p>No original facility/inspection/compliance review manifest was ' +
+          'selected. Use <code>--operator-smarts-review-manifest</code> with an ' +
+          'existing private, exact-source input manifest at launch. ' +
+          'An absent capture does not mean no regulatory changes exist.</p>' +
+          '<pre>'+esc(JSON.stringify(reviewed,null,2))+'</pre>');
+        return;
+      }
+      modal('Original SMARTS facility and regulatory source review',
+        '<p>Every original retained-source SHA-256 is reported. Inspection, ' +
+        'violation and enforcement records are source-scoped corroboration ' +
+        'candidates only. No automatic database write, physical construction ' +
+        'confirmation, contact authorization or sales readiness.</p>' +
+        '<pre>'+esc(JSON.stringify(reviewed,null,2))+'</pre>' +
+        '<button id="export-original-smarts-source-review">Export original review JSON</button>');
+      document.querySelector('#export-original-smarts-source-review').onclick =
+        () => download('original-smarts-combined-source-review.json',reviewed);
+    });
+}
 
 // Original SMARTS snapshot ledger, not current bid readiness or an identity join.
 async function renderRetainedSmartsHistory(box) {
