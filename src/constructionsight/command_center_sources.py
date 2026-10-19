@@ -18,12 +18,6 @@ from sqlalchemy.orm import Session
 
 from constructionsight.adapters import default_adapter_family_specs
 
-from constructionsight.source_status_report import build_source_status_report
-from constructionsight.source_verification_evidence_service import (
-    build_source_verification_evidence_package,
-)
-from constructionsight.storage.orm import SourceRecord
-from constructionsight.storage.source_registry import SourceRegistryStore
 from constructionsight.operator_capture_queue import (
     empty_operator_capture_queue,
     load_operator_capture_queue,
@@ -62,11 +56,17 @@ from constructionsight.operator_web import (
 from constructionsight.smarts_operator_status import build_smarts_operator_status
 from constructionsight.smarts_parcel_review import inspect_smarts_parcel_candidates
 from constructionsight.smarts_snapshot_history import review_snapshot_changes
+from constructionsight.source_status_report import build_source_status_report
+from constructionsight.source_verification_evidence_service import (
+    build_source_verification_evidence_package,
+)
 from constructionsight.storage.operator_read_store import create_operator_read_engine
+from constructionsight.storage.orm import SourceRecord
 from constructionsight.storage.parcel_site_orm import ParcelArcGISBoundedProofBundleRow
 from constructionsight.storage.parcel_source_acquisition_bundle_store import (
     load_arcgis_bounded_proof_bundles,
 )
+from constructionsight.storage.source_registry import SourceRegistryStore
 
 SOURCE_INSPECTION_ROUTES = frozenset(
     {
