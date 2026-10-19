@@ -133,6 +133,29 @@ def test_native_exact_original_http_readiness_reuses_original_authorization(
             }, headers={"Origin": base})
             assert rejected.status_code == 400
             assert checks == [str(source.public_url)]
+            blocked_source = _source(
+                "Blocked synthetic retained source",
+                public_url="https://ezop.sbcounty.gov/citizenaccess/",
+                verification_status="blocked",
+            )
+            with Session(source_engine) as session, session.begin():
+                SourceRegistryStore(session).upsert_source(blocked_source)
+            denied_preview = client.get("/api/source-http-check-preview", params={
+                "source_name": blocked_source.source_name,
+                "public_url": str(blocked_source.public_url),
+            })
+            assert denied_preview.status_code == 200, denied_preview.text
+            assert denied_preview.json()["source_registry_blocked"] is True
+            assert denied_preview.json()["can_execute_manual_check"] is False
+            blocked_post = client.post("/api/source-http-check", json={
+                "source_name": blocked_source.source_name,
+                "public_url": str(blocked_source.public_url),
+                "expected_source_sha256": _source_digest(blocked_source),
+                "review_reason": "Blocked source cannot be checked by this interface.",
+                "caller_confirmation": True,
+            }, headers={"Origin": base})
+            assert blocked_post.status_code == 400
+            assert checks == [str(source.public_url)]
     finally:
         server.shutdown()
         server.server_close()
