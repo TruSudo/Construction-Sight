@@ -26,7 +26,7 @@ def test_native_exact_original_http_readiness_reuses_original_authorization(
     initialize_database(engine)
     source = _source(
         "Synthetic reviewed HTTP readiness source",
-        county="Riverside", public_url="https://example.invalid/native-reviewed-check/",
+        county="Riverside", public_url="https://ezop.sbcounty.gov/citizenaccess/",
     )
     with Session(engine) as session, session.begin():
         SourceRegistryStore(session).upsert_source(source)
@@ -57,6 +57,8 @@ def test_native_exact_original_http_readiness_reuses_original_authorization(
             assert received["network_executed"] is False
             assert received["review_required"] is True
             assert received["source_promoted"] is False
+            assert received["source_url_separately_governed"] is True
+            assert received["can_execute_manual_check"] is True
             assert checks == []
             assert client.get("/api/source-http-check-preview", params={
                 **params, "extra": "1",
@@ -110,6 +112,25 @@ def test_native_exact_original_http_readiness_reuses_original_authorization(
             )
             assert repeated.status_code == 200, repeated.text
             assert repeated.json()["original_verification_evidence"] == evidence
+            assert checks == [str(source.public_url)]
+            # Unauthorized URL cannot consume an allowance or reach the transport
+            # even if a caller supplies an exact original source digest.
+            from constructionsight.command_center_source_reachability import (
+                _source_digest,
+            )
+            ungoverned = _source("Non-governed synthetic endpoint")
+            with Session(create_database_engine(f"sqlite:///{original}")) as source_session:
+                # Explicit database write is fixture setup only, NOT application behavior.
+                with source_session.begin():
+                    SourceRegistryStore(source_session).upsert_source(ungoverned)
+            rejected = client.post("/api/source-http-check", json={
+                "source_name": ungoverned.source_name,
+                "public_url": str(ungoverned.public_url),
+                "expected_source_sha256": _source_digest(ungoverned),
+                "review_reason": "No network authority granted for this source.",
+                "caller_confirmation": True,
+            }, headers={"Origin": base})
+            assert rejected.status_code == 400
             assert checks == [str(source.public_url)]
     finally:
         server.shutdown()
