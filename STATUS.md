@@ -40,6 +40,32 @@ be accepted, including the five excluded owner/visual/final conditions. Because
 the bar is displayed in chat, it refreshes on each response, not continuously
 while a chat is idle.
 
+## P8-03/P8-11 original offline source verification reports — native path verified
+
+The exact original source registry, original `build_source_status_report` and
+`build_source_verification_evidence_package(check_http=False)` are exposed by
+the existing **Sources & Collection** interface as a read-only, downloadable
+audit, without creating a second source store, starting remote probes or
+promoting source status. Original source access remains selected by the owner
+through the existing `--operator-database` boundary. The audit refuses query
+flags that would imply remote checks, requires a complete bounded original
+registry, and returns an explicit unavailable state if no original database
+is selected.
+
+**Evidence:** native route `/api/source-offline-audit`, browser action
+`#retained-original-source-audit`, semantic parity and source immutability in
+`tests/test_native_original_offline_source_audit.py`, and actual original
+source browser workflow in `tests/ui/source_inspection.js`. Application
+head `1f42f7a0a4f0629a0f23bd4e16ab3dad20c8d894`: full
+Python 3.11/3.12 CI run `39194526497` **success** with **2,825 passed** on
+each version, and Command Center browser/visual run `39194526576`
+**success**.
+
+**Acceptance remains open:** P8-03 still requires the original authorized
+collection/verification/registry-update controls and their native equivalence,
+and P8-11 still requires complete original output family accounting. This
+checkpoint does not award either gate or change the 9/15 (60%) integration meter.
+
 ## P8-10 shared original/canonical watch notifications — verified 2026-10-18
 
 The existing original CEQA/permit source watch, persisted canonical-investigation
