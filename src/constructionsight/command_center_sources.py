@@ -17,6 +17,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from constructionsight.adapters import default_adapter_family_specs
+from constructionsight.command_center_source_plans import original_offline_source_plans
 from constructionsight.operator_capture_queue import (
     empty_operator_capture_queue,
     load_operator_capture_queue,
@@ -221,12 +222,15 @@ def source_inspection(
                     sources, adapters, check_http=False,
                 )
                 templates = build_source_observation_templates(sources)
+                plans = original_offline_source_plans(sources)
                 result = {
                     "schema_version": "constructionsight.original-offline-source-audit/v1",
                     "source_count": count,
                     "original_status_report": status.to_dict(),
                     "original_evidence_package": evidence.to_dict(),
                     "original_manual_checklist": checklist.to_dict(),
+                    "original_promotion_plan": plans["original_promotion_plan"],
+                    "original_registry_update_plan": plans["original_registry_update_plan"],
                     "original_observation_templates": [
                         item.model_dump(mode="json") for item in templates
                     ],

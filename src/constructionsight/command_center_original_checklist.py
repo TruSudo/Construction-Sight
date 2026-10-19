@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from constructionsight.adapters import default_adapter_family_specs
+from constructionsight.command_center_source_plans import original_offline_source_plans
 from constructionsight.command_center_source_reachability import (
     _selected_original_source,
     _source_digest,
@@ -117,6 +118,7 @@ def review_original_manual_checklist(
         [source], default_adapter_family_specs(),
         check_http=False, observations=[observation],
     )
+    plans = original_offline_source_plans([source], observations=[observation])
     return {
         "schema_version": "constructionsight.original-manual-checklist-review/v1",
         "source_name": source.source_name,
@@ -124,6 +126,8 @@ def review_original_manual_checklist(
         "reviewed_source_sha256": expected,
         "review_reason": reason.strip(),
         "original_manual_checklist": checklist.to_dict(),
+        "original_promotion_plan": plans["original_promotion_plan"],
+        "original_registry_update_plan": plans["original_registry_update_plan"],
         "original_operator_observation": observation.model_dump(mode="json"),
         "network_executed": False,
         "original_registry_mutated": False,
