@@ -766,9 +766,7 @@ engine.dispose()
       document.querySelector('[data-shared-investigations] [data-investigation-id="' +
         CSS.escape(identity) + '"]')), parcelCanonicalId, {timeout:20000});
     const parcelInvestigation = page.locator('[data-shared-investigations] tr')
-      .filter({has:page.locator('[data-investigation-id]').filter({
-        hasText: parcelCanonicalId
-      })});
+      .filter({has:page.locator('[data-investigation-id="' + parcelCanonicalId + '"]')});
     if (await parcelInvestigation.count() !== 1 ||
         !(await parcelInvestigation.textContent()).includes('unmapped')) {
       throw Error('Retained original parcel was duplicated or granted an invented map point');
