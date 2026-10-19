@@ -161,6 +161,18 @@ const {resolve} = require('node:path');
     await page.waitForFunction(() =>
       document.querySelector('#retained-source-watchlist')?.textContent
         .includes('0 active source watches'));
+    await page.waitForSelector('#retained-capture-inbox #preview-ceqanet-discovery');
+    await page.locator('#preview-ceqanet-discovery').click();
+    await page.waitForSelector('#ceqanet-discovery-run');
+    const discoveryPreview = await page.locator('#action-content').textContent();
+    if (!discoveryPreview.includes('CS-NET-001') ||
+        !discoveryPreview.includes('ceqanet.lci.ca.gov/Search/Advanced') ||
+        !discoveryPreview.includes('expected_state_digest') ||
+        !discoveryPreview.includes('No redirects') ||
+        !discoveryPreview.includes('one bounded GET')) {
+      throw Error('Original CEQAnet discovery preview/confirmation missing');
+    }
+    await page.click('#action-close');
     await page.waitForSelector('#retained-capture-inbox [data-capture-candidate]');
     const captureText = await page.locator('#retained-capture-inbox').textContent();
     if (!captureText.includes('2026012345') ||

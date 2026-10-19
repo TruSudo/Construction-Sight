@@ -45,6 +45,10 @@ from constructionsight.command_center_canonical_leads import (
     retained_canonical_lead_workflows,
     transition_retained_canonical_review,
 )
+from constructionsight.command_center_ceqanet_discovery import (
+    execute_reviewed_original_ceqanet_discovery,
+    preview_original_ceqanet_discovery,
+)
 from constructionsight.command_center_graph import graph_view
 from constructionsight.command_center_investigations import (
     apply_investigation_review,
@@ -763,6 +767,11 @@ def make_server(
                     record_id=params.record_id,
                 )
                 body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
+            elif path == "/api/source-ceqanet-discovery-preview":
+                if urlsplit(self.path).query or urlsplit(self.path).fragment:
+                    raise ValueError("offline CEQAnet discovery preview takes no parameters")
+                value = preview_original_ceqanet_discovery()
+                body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
             elif path == "/api/source-checklist-preview":
                 if (
                     set(query) != {"source_name", "public_url"}
@@ -1070,6 +1079,7 @@ def make_server(
                 "/api/source-watchlist-action",
                 "/api/source-http-check",
                 "/api/source-checklist-review",
+                "/api/source-ceqanet-discovery",
                 "/api/source-registry-reviewed-apply",
                 "/api/parcel-source-row-preview",
                 "/api/parcel-arcgis-proof-persist",
@@ -1301,6 +1311,16 @@ def make_server(
                         ):
                             raise ValueError("exact same-origin canonical watch request required")
                         result = investigation_watch.action(directory, payload)
+                    elif path == "/api/source-ceqanet-discovery":
+                        if (
+                            urlsplit(self.path).query
+                            or urlsplit(self.path).fragment
+                            or self.headers.get_all("Host", []) != [host]
+                            or self.headers.get_all("Origin", []) != [f"http://{host}"]
+                            or self.headers.get("Sec-Fetch-Site") == "cross-site"
+                        ):
+                            raise ValueError("exact same-origin CEQAnet discovery consent required")
+                        result = execute_reviewed_original_ceqanet_discovery(payload)
                     elif path == "/api/source-checklist-review":
                         if (
                             urlsplit(self.path).query

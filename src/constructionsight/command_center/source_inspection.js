@@ -923,6 +923,57 @@ async function renderRetainedCaptureInbox(box) {
     box.innerHTML = '<h3>Original CEQA capture & ingestion</h3>' +
       '<p>Original read-only capture planning and inbox reconciliation. No source ' +
       'is fetched and no CEQA record is persisted, verified or promoted into a lead.</p>';
+    const discovery = document.createElement('section');
+    discovery.className = 'original-ceqanet-discovery';
+    discovery.innerHTML = '<h3>Original CEQAnet public-search discovery</h3>' +
+      '<p>One-shot original CS-NET-001 public search-surface check only; ' +
+      'no automatic request, ingestion, source activation or commercial authority.</p>' +
+      '<button id="preview-ceqanet-discovery">Review bounded discovery</button>';
+    box.append(discovery);
+    discovery.querySelector('#preview-ceqanet-discovery').onclick = () =>
+      perform(async () => {
+        const preview = await api('/api/source-ceqanet-discovery-preview');
+        const ticket = modal('Original CEQAnet discovery · explicit authorization',
+          '<p>Only after separate confirmation, this executes the original ' +
+          'single bounded public GET for the exact URL below. No redirects, ' +
+          'credentials, recurrence, registry changes or commercial actions. ' +
+          'Review applicable access terms independently before authorizing.</p>' +
+          '<pre>'+esc(JSON.stringify(preview,null,2))+'</pre>' +
+          '<label>Reason this exact public discovery is authorized ' +
+          '<textarea id="ceqanet-discovery-reason" maxlength="2000" rows="3"></textarea></label>' +
+          '<label><input type="checkbox" id="ceqanet-discovery-confirm">' +
+          ' I reviewed this exact public URL and authorize one bounded GET.</label>' +
+          '<button id="ceqanet-discovery-run">Execute exact reviewed discovery</button>');
+        document.querySelector('#ceqanet-discovery-run').onclick = () =>
+          perform(async () => {
+            if (ticket !== modalTicket || !$('action-dialog').open) return;
+            const button = document.querySelector('#ceqanet-discovery-run');
+            const reason = document.querySelector('#ceqanet-discovery-reason').value.trim();
+            if (reason.length < 10 ||
+                !document.querySelector('#ceqanet-discovery-confirm').checked)
+              throw Error('Enter an authorization reason and explicitly approve this one GET.');
+            button.disabled = true;
+            try {
+              const result = await api('/api/source-ceqanet-discovery', {
+                policy_id: preview.policy_id,
+                request_url: preview.request_url,
+                expected_state_digest: preview.expected_state_digest,
+                utc_date: preview.utc_date,
+                review_reason: reason,
+                caller_confirmation: true
+              });
+              modal('Original CEQAnet public-search discovery · bounded result',
+                '<p>One-shot source-surface observation only. No CEQA records ' +
+                'ingested, source verified, registry changed or contact authorized.</p>' +
+                '<pre>'+esc(JSON.stringify(result,null,2))+'</pre>' +
+                '<button id="export-original-ceqanet-discovery">Export result JSON</button>');
+              document.querySelector('#export-original-ceqanet-discovery').onclick =
+                () => download('original-ceqanet-discovery.json',result);
+            } finally {
+              if (button.isConnected) button.disabled = false;
+            }
+          });
+      });
     projections.forEach((projection, index) => {
       const container = document.createElement('div');
       box.append(container);
