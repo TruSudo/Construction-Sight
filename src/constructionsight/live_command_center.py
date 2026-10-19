@@ -59,12 +59,12 @@ from constructionsight.command_center_ceqanet_discovery import (
     execute_reviewed_original_ceqanet_discovery,
     preview_original_ceqanet_discovery,
 )
+from constructionsight.command_center_ceqanet_maturity import (
+    original_retained_ceqanet_maturity,
+)
 from constructionsight.command_center_ceqanet_retained_import import (
     apply_reviewed_retained_ceqanet_import,
     preview_retained_ceqanet_import,
-)
-from constructionsight.command_center_ceqanet_maturity import (
-    original_retained_ceqanet_maturity,
 )
 from constructionsight.command_center_external_source_intelligence import (
     original_external_source_intelligence,
