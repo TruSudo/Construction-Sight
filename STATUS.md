@@ -5,6 +5,41 @@ Follow Phases 1–8 in order. Preserve mandatory historical functionality and sa
 One shared investigation engine, the approved native Command Center and a live
 Relationship Graph remain the goal. Full unification and functional parity are not complete.
 
+## Phase 8 integration progress meter — owner-visible in integration chats, not the dashboard
+
+**Permanent measurement:** derive this indicator from the existing P8 acceptance
+register below, without a second status store, subjective weights, estimated hours,
+commit counts or a new development phase. The *integration gate set* is the 15
+requirements P8-01 through P8-06 and P8-08 through P8-16. P8-07 (owner data) and
+P8-17 through P8-20 (pixel parity, final regression, deployment and permissioned
+live-source acceptance) are tracked separately and must still pass before calling
+the product complete.
+
+**Checkpoint count at this register:** 8 of 15 integration gates have state **V**
+(verified); 7 remain open: P8-01, P8-03, P8-04, P8-08, P8-09, P8-10 and P8-11.
+Display **53% verified integration gates (8/15)** using a 20-cell filled/unfilled
+progress bar. Calculation: round(100 * verified integration gates / 15) to the
+nearest whole percent. This number describes *equal-count acceptance checkpoints*,
+not the percentage of engineering work finished, time elapsed, or functionality
+implemented. Gate sizes differ; no continuous download-like percentage or finish
+date can be inferred. A partially connected gate remains open rather than receiving
+invented fractional credit.
+
+**Carry-forward instruction for Phase 8 conversations:** Whenever an answer concerns
+integration work, show the latest **"Integration acceptance: [bar] NN% (V/15 gates)"**
+near the beginning, with open-gate count. First read the current branch's P8 register
+and latest CI/visual status; derive V directly from the 15 specified register rows.
+Never display this marker in the ConstructionSight product interface. Do not
+increment for an unverified commit, passing syntax check, partial feature, or
+time spent. Promote a gate to V only when its exact acceptance condition is proven
+by focused integration evidence and applicable final-head gates; record evidence
+beside that row, so future chats automatically inherit the same factual number.
+If a previously verified gate regresses, lower the count until repaired. Do not
+mistake this progress bar for full completion: all 20 P8 requirements must also
+be accepted, including the five excluded owner/visual/final conditions. Because
+the bar is displayed in chat, it refreshes on each response, not continuously
+while a chat is idle.
+
 ## P8-09 result-history continuation — 2026-10-18
 
 The existing native Lead Console now inspects immutable original result/correction
