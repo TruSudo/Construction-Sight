@@ -1343,7 +1343,9 @@ def make_server(
                             raise ValueError("exact same-origin CEQAnet acquisition required")
                         operations = {
                             "/api/source-ceqanet-listing-preview": preview_original_ceqanet_listing,
-                            "/api/source-ceqanet-listing": execute_reviewed_original_ceqanet_listing,
+                            "/api/source-ceqanet-listing": (
+                                execute_reviewed_original_ceqanet_listing
+                            ),
                             "/api/source-ceqanet-csv-preview": preview_original_ceqanet_csv,
                             "/api/source-ceqanet-csv": execute_reviewed_original_ceqanet_csv,
                         }

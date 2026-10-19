@@ -111,7 +111,9 @@ def test_native_exact_original_acquisition_does_not_bypass_access(
             approved = {
                 **request,
                 "expected_preview_digest": preview["expected_preview_digest"],
-                "review_reason": "Authorize exactly this reviewed bounded synthetic public request.",
+                "review_reason": (
+                    "Authorize exactly this reviewed bounded synthetic public request."
+                ),
                 "caller_confirmation": True,
             }
             assert client.post(route, json=approved).status_code == 403
