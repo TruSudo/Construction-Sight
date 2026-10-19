@@ -15,9 +15,9 @@ from sqlalchemy.orm import Session
 
 from constructionsight.adapters import default_adapter_family_specs
 from constructionsight.live_command_center import make_server
-from constructionsight.source_status_report import build_source_status_report
 from constructionsight.source_promotion_plan_service import build_source_promotion_plan
 from constructionsight.source_registry_update_plan_service import build_source_registry_update_plan
+from constructionsight.source_status_report import build_source_status_report
 from constructionsight.source_verification_checklist_service import (
     build_source_observation_templates,
     build_source_verification_checklist_report,
