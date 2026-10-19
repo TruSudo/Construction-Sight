@@ -28,6 +28,55 @@ async function openRetainedSourceNotice(notice) {
     openInvestigationDossier(reconciliation.canonical_investigation_id));
 }
 
+async function reviewRetainedParcelInEngine(parcelId) {
+  const state = await api('/api/source-parcel-reconciliation?' +
+    new URLSearchParams({parcel_record_id: parcelId}));
+  const canRetain = state.replay_eligible || state.revision_replay_eligible;
+  const ticket = modal('Original parcel · exact shared investigation review',
+    '<p>This is an unverified retained parcel observation. A matching APN or ' +
+    'centroid does not establish a construction project, site ownership, parcel ' +
+    'boundary or commercial authority. An approved handoff uses the existing ' +
+    'audited investigation worker; no network collection is started.</p>' +
+    '<pre>' + esc(JSON.stringify(state,null,2)) + '</pre>' +
+    (canRetain ? '<label>Original parcel evidence review reason ' +
+      '<textarea id="parcel-replay-reason" rows="3" maxlength="2000" required></textarea>' +
+      '</label><label><input type="checkbox" id="parcel-replay-confirm">' +
+      ' I reviewed this exact retained parcel source and current shared ' +
+      'evidence.</label><button id="parcel-replay-queue">Queue exact reviewed ' +
+      (state.revision_replay_eligible ? 'revision' : 'observation') + '</button>' :
+      '<p>No missing or current revised evidence can be queued. No action taken.</p>'));
+  const queue = document.querySelector('#parcel-replay-queue');
+  if (!queue) return;
+  queue.onclick = () => perform(async () => {
+    if (ticket !== modalTicket || !$('action-dialog').open) return;
+    const reason = document.querySelector('#parcel-replay-reason').value.trim();
+    if (reason.length < 10 || !document.querySelector('#parcel-replay-confirm').checked)
+      throw Error('Review this exact parcel, enter at least ten characters and confirm.');
+    queue.disabled = true;
+    try {
+      const receipt = await api('/api/source-parcel-reconciliation-queue', {
+        parcel_record_id: parcelId,
+        expected_source_sha256: state.original_source.source_sha256,
+        expected_native_evidence_id: state.native_evidence_id,
+        action: state.revision_replay_eligible ? 'retain_revision' : 'retain_missing',
+        caller_confirmation: true, review_reason: reason
+      });
+      modal('Exact original parcel queued for common investigation worker',
+        '<p>The existing worker must still process this immutable audited source ' +
+        'observation. No parcel-to-project relationship, contact or bid authority ' +
+        'has been granted.</p><button id="parcel-replay-audit">Inspect approval ' +
+        'and worker job</button><pre>' +
+        esc(JSON.stringify(receipt,null,2)) + '</pre>');
+      document.querySelector('#parcel-replay-audit').onclick = () => perform(async () => {
+        const audit = await api('/api/source-reconciliation-audit?' +
+          new URLSearchParams({job: receipt.job_id}));
+        modal('Original parcel approval and worker audit',
+          '<pre>'+esc(JSON.stringify(audit,null,2))+'</pre>');
+      });
+    } finally {if (queue.isConnected) queue.disabled = false;}
+  });
+}
+
 // Retained parcel/GIS source profiles are registered evidence, not live permits,
 // surveyed parcel boundaries or authorized ArcGIS acquisition.
 async function renderParcelSourceReadiness(box) {
@@ -446,10 +495,26 @@ async function renderRetainedSources(box) {
               kind: record.record_kind, record_id: record.record_id
             }));
             if (!root.isConnected || activePage !== 'Sources & Collection') return;
-            modal(endpoint.endsWith('parcel-candidates') ? 'Retained parcel candidates' :
-              'Exact source observation', '<p>Read-only source claims. Independent ' +
-              'verification and operator approval are still required.</p><pre>' +
-              esc(JSON.stringify(details, null, 2)) + '</pre>');
+            const isParcel = endpoint.endsWith('parcel-candidates');
+            modal(isParcel ? 'Retained parcel candidates' : 'Exact source observation',
+              '<p>Read-only source claims. An exact APN and county co-occurrence ' +
+              'does not establish a common construction project; independent ' +
+              'verification and explicit approval are still required.</p><pre>' +
+              esc(JSON.stringify(details, null, 2)) + '</pre>' +
+              (isParcel ? '<h3>Reviewed handoff to shared investigation evidence</h3>' +
+                table(['Retained parcel','Existing worker review'],
+                  (details.matches || []).map((item,i) => [
+                    esc(item.parcel_record_id)+' · '+esc(item.source_key),
+                    '<button data-retained-parcel-review="'+i+'">Compare exact source</button>'
+                  ])) : ''));
+            if (isParcel) {
+              document.querySelectorAll('[data-retained-parcel-review]').forEach(button => {
+                button.onclick = () => perform(() => {
+                  const item = details.matches[Number(button.dataset.retainedParcelReview)];
+                  return reviewRetainedParcelInEngine(item.parcel_record_id);
+                });
+              });
+            }
           });
         });
       }
