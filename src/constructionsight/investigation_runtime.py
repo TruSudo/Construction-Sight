@@ -82,7 +82,7 @@ class OriginalReplayApproval(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
 
-    kind: Literal["ceqa", "permit"]
+    kind: Literal["ceqa", "permit", "parcel"]
     record_id: str = Field(min_length=1, max_length=255)
     source_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     source_entity_id: str = Field(min_length=1, max_length=255)

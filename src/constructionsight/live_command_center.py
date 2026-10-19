@@ -65,6 +65,10 @@ from constructionsight.command_center_parcel_readiness import (
     parcel_source_readiness_snapshot,
     preview_retained_parcel_sample,
 )
+from constructionsight.command_center_parcel_reconciliation import (
+    enqueue_original_parcel_reconciliation,
+    preview_original_parcel_reconciliation,
+)
 from constructionsight.command_center_retained_previews import retained_commercial_preview
 from constructionsight.command_center_sources import (
     SOURCE_INSPECTION_ROUTES,
@@ -678,6 +682,17 @@ def make_server(
                     "offset": params.offset, "limit": params.limit,
                 })
                 body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
+            elif path == "/api/source-parcel-reconciliation":
+                if (
+                    directory is None
+                    or set(query) != {"parcel_record_id"}
+                    or len(query["parcel_record_id"]) != 1
+                ):
+                    raise ValueError("exact original parcel selection required")
+                value = preview_original_parcel_reconciliation(
+                    directory, operator_database, query["parcel_record_id"][0],
+                )
+                body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
             elif path == "/api/source-reconciliation":
                 from constructionsight.operator_web import _parameters
 
@@ -975,6 +990,7 @@ def make_server(
                 "/api/source-commercial-preview",
                 "/api/source-reconciliation-queue",
                 "/api/source-reconciliation-scope-queue",
+                "/api/source-parcel-reconciliation-queue",
                 "/api/source-ceqanet-export",
                 "/api/smarts-contacts-bulk",
                 "/api/data-folder",
@@ -1237,6 +1253,7 @@ def make_server(
                     elif path in (
                         "/api/source-reconciliation-queue",
                         "/api/source-reconciliation-scope-queue",
+                        "/api/source-parcel-reconciliation-queue",
                     ):
                         if (
                             urlsplit(self.path).query
@@ -1247,7 +1264,9 @@ def make_server(
                         ):
                             raise ValueError("exact same-origin source replay is required")
                         queue_source = (
-                            enqueue_legacy_reconciliation_batch
+                            enqueue_original_parcel_reconciliation
+                            if path == "/api/source-parcel-reconciliation-queue"
+                            else enqueue_legacy_reconciliation_batch
                             if path == "/api/source-reconciliation-scope-queue"
                             else enqueue_legacy_reconciliation
                         )
