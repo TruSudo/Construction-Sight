@@ -96,6 +96,40 @@ def test_native_ceqanet_retained_chain_report_builds_verified_zip_only_on_confir
                 assert "operator-report.md" in archive.namelist()
                 assert "operator-package.json" in archive.namelist()
                 expected_markdown = archive.read("operator-report.md")
+                artifacts = {
+                    name: archive.read(name)
+                    for name in (
+                        "operator-package.json", "persistence-preview.json",
+                        "write-plan.json", "operator-report.json", "manifest.json",
+                    )
+                }
+            for name, expected_bytes in artifacts.items():
+                individual = client.get(
+                    "/api/source-ceqanet-artifact-download",
+                    params={"sha256": original_hash, "artifact": name},
+                )
+                assert individual.status_code == 200, individual.text[:500]
+                assert individual.content == expected_bytes
+                assert individual.headers["content-type"] == "application/json"
+                assert individual.headers["cache-control"] == "no-store"
+                assert individual.headers["x-content-type-options"] == "nosniff"
+                assert individual.headers["content-disposition"] == (
+                    f"attachment; filename={name}"
+                )
+            for invalid in ("../operator-package.json", "not-present.json", ""):
+                assert client.get(
+                    "/api/source-ceqanet-artifact-download",
+                    params={"sha256": original_hash, "artifact": invalid},
+                ).status_code == 409
+            assert client.get(
+                "/api/source-ceqanet-artifact-download",
+                params={"sha256": original_hash, "artifact": "operator-package.json",
+                        "extra": "1"},
+            ).status_code == 409
+            assert client.get(
+                "/api/source-ceqanet-artifact-download",
+                params={"sha256": "0" * 64, "artifact": "operator-package.json"},
+            ).status_code == 409
             markdown = client.get(
                 "/api/source-ceqanet-report-download", params={"sha256": original_hash}
             )

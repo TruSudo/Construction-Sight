@@ -51,6 +51,7 @@ from constructionsight.command_center_legacy_export import (
     original_ceqanet_archive_path,
     original_ceqanet_export,
     original_ceqanet_export_status,
+    original_ceqanet_artifact_bytes,
     original_ceqanet_report_bytes,
 )
 from constructionsight.command_center_legacy_lineage import original_candidate_workflow_lineage
@@ -370,6 +371,33 @@ def make_server(
             path = urlsplit(self.path).path
             query = parse_qs(urlsplit(self.path).query)
             value: Any
+            if path == "/api/source-ceqanet-artifact-download":
+                if (
+                    directory is None or set(query) != {"sha256", "artifact"}
+                    or len(query["sha256"]) != 1
+                    or len(query["artifact"]) != 1
+                ):
+                    raise ValueError("select one exact verified original operator artifact")
+                artifact = query["artifact"][0]
+                artifact_bytes = original_ceqanet_artifact_bytes(
+                    directory, expected_report_sha256=query["sha256"][0],
+                    artifact=artifact,
+                )
+                self.send_response(200)
+                self.send_header(
+                    "Content-Type",
+                    "text/markdown; charset=utf-8" if artifact.endswith(".md")
+                    else "application/json",
+                )
+                self.send_header(
+                    "Content-Disposition", f"attachment; filename={artifact}"
+                )
+                self.send_header("Content-Length", str(len(artifact_bytes)))
+                self.send_header("Cache-Control", "no-store")
+                self.send_header("X-Content-Type-Options", "nosniff")
+                self.end_headers()
+                self.wfile.write(artifact_bytes)
+                return
             if path == "/api/source-ceqanet-report-download":
                 if (
                     directory is None or set(query) != {"sha256"}

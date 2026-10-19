@@ -145,13 +145,18 @@ def original_ceqanet_archive_path(
 
 
 
-def original_ceqanet_report_bytes(
-    directory: Path, *, expected_report_sha256: str,
-) -> bytes:
-    """Return the original Markdown report from an already verified operator ZIP.
+_OPERATOR_ARTIFACTS = frozenset({
+    "operator-package.json", "persistence-preview.json", "write-plan.json",
+    "operator-report.json", "operator-report.md", "manifest.json",
+})
 
-    Creation still requires the existing manually confirmed, exact-source export.
-    """
+
+def original_ceqanet_artifact_bytes(
+    directory: Path, *, expected_report_sha256: str, artifact: str,
+) -> bytes:
+    """Read an original verified artifact from a previously approved ZIP."""
+    if artifact not in _OPERATOR_ARTIFACTS:
+        raise ValueError("unsupported original operator artifact")
     path = original_ceqanet_archive_path(
         directory, expected_report_sha256=expected_report_sha256,
     )
@@ -160,9 +165,19 @@ def original_ceqanet_report_bytes(
             open_runtime_artifact(path) as archive_stream,
             zipfile.ZipFile(archive_stream) as archive,
         ):
-            member = archive.getinfo("operator-report.md")
-            if not 0 < member.file_size <= 2 * 1024 * 1024:
-                raise ValueError("verified operator report exceeds Markdown limit")
+            member = archive.getinfo(artifact)
+            if not 0 < member.file_size <= 16 * 1024 * 1024:
+                raise ValueError("original artifact exceeds byte limit")
             return archive.read(member)
     except (KeyError, zipfile.BadZipFile, RuntimeError) as exc:
-        raise ValueError("verified operator Markdown report is unavailable") from exc
+        raise ValueError("verified original artifact is unavailable") from exc
+
+
+def original_ceqanet_report_bytes(
+    directory: Path, *, expected_report_sha256: str,
+) -> bytes:
+    """Return original Markdown from an already verified operator ZIP."""
+    return original_ceqanet_artifact_bytes(
+        directory, expected_report_sha256=expected_report_sha256,
+        artifact="operator-report.md",
+    )

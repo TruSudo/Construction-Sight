@@ -823,6 +823,13 @@ async function renderRetainedCeqanetExport(box) {
           '<a href="/api/source-ceqanet-report-download?sha256=' +
           encodeURIComponent(sha) +
           '" download="ceqanet-operator-report.md">Read verified report (.md)</a>' +
+          '<p>Individual original verified artifacts: ' +
+          ['operator-package.json', 'persistence-preview.json', 'write-plan.json',
+           'operator-report.json', 'manifest.json'].map(name =>
+            '<a href="/api/source-ceqanet-artifact-download?sha256=' +
+            encodeURIComponent(sha) + '&artifact=' + encodeURIComponent(name) +
+            '" download="' + name + '">' + esc(name) + '</a>'
+          ).join(' · ') + '</p>' +
           '<details><summary>Verification receipt</summary><pre>' +
           esc(JSON.stringify(receipt, null, 2)) + '</pre></details>';
       } finally {
