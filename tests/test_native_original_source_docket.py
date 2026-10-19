@@ -26,7 +26,7 @@ from tests.test_command_center_investigation_bridge import snapshot
 @pytest.fixture
 def docket_source(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, Path]:
     folder = tmp_path / "private"
-    folder.mkdir()
+    folder.mkdir(mode=0o700)
     database = folder / "operator.sqlite3"
     engine = create_database_engine(f"sqlite+pysqlite:///{database}")
     initialize_database(engine)
@@ -39,6 +39,7 @@ def docket_source(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path
             ],
         ))
     engine.dispose()
+    database.chmod(0o600)
     monkeypatch.setattr(
         effects, "_owned_store",
         lambda: EffectConsumptionStore(tmp_path / "docket-allowances.sqlite3"),
