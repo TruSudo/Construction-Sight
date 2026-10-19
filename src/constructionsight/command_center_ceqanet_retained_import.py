@@ -204,6 +204,8 @@ def apply_reviewed_retained_ceqanet_import(
             if len(sch_set) != 1 or None in sch_set:
                 raise ValueError("original CSV reviewed project has no single SCH identity")
             source_sch = next(iter(sch_set))
+            if source_sch is None:
+                raise ValueError("reviewed original CSV source has no exact SCH")
             dashboard = build_dashboard_snapshot(
                 session, kind="ceqa", query=source_sch, limit=500,
             )
