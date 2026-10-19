@@ -930,6 +930,93 @@ async function renderRetainedCaptureInbox(box) {
       'no automatic request, ingestion, source activation or commercial authority.</p>' +
       '<button id="preview-ceqanet-discovery">Review bounded discovery</button>';
     box.append(discovery);
+    const detail = document.createElement('section');
+    detail.className = 'original-ceqanet-detail';
+    detail.innerHTML = '<h3>Original CEQAnet detail-page read</h3>' +
+      '<p>Original CS-NET-006 one-shot bounded public GET. All lawful-access ' +
+      'restriction facts must be reviewed with an immutable evidence/review SHA-256. ' +
+      'Unknown restrictions block execution. No automatic network request.</p>' +
+      '<button id="review-ceqanet-detail">Review exact detail and access facts</button>';
+    box.append(detail);
+    detail.querySelector('#review-ceqanet-detail').onclick = () => perform(async () => {
+      const fields = [
+        ['requires_login', 'Source requires login'],
+        ['has_captcha', 'Source presents CAPTCHA'],
+        ['robots_disallows_collection', 'Robots disallow intended request'],
+        ['terms_disallow_collection', 'Terms disallow intended request'],
+        ['paywalled', 'Source is paywalled']
+      ];
+      const ticket = modal('Original CEQAnet detail · lawful-access preflight',
+        '<p>Fill every restriction from independently reviewed evidence. ' +
+        'Unknown or restricted facts prevent authorization. Do not guess.</p>' +
+        '<label>Exact official CEQAnet detail URL ' +
+        '<input id="original-ceqanet-detail-url" type="url" maxlength="2048" ' +
+        'placeholder="https://ceqanet.lci.ca.gov/Project/..." /></label>' +
+        fields.map(([key, label]) =>
+          '<label>'+esc(label)+'<select data-ceqanet-detail-fact="'+esc(key)+'">' +
+          '<option value="">Unknown (deny)</option>' +
+          '<option value="false">No — reviewed evidence</option>' +
+          '<option value="true">Yes — restriction present</option>' +
+          '</select></label>').join('') +
+        '<label>Immutable reviewed access evidence identity ' +
+        '<input id="original-ceqanet-detail-basis" maxlength="80" ' +
+        'placeholder="review:64-hex-sha256 or evidence:64-hex-sha256" /></label>' +
+        '<button id="preview-reviewed-ceqanet-detail">Review exact bounded plan</button>');
+      document.querySelector('#preview-reviewed-ceqanet-detail').onclick = () =>
+        perform(async () => {
+          if (ticket !== modalTicket || !$('action-dialog').open) return;
+          const accessReview = {
+            access_fact_basis:
+              document.querySelector('#original-ceqanet-detail-basis').value.trim() || null
+          };
+          document.querySelectorAll('[data-ceqanet-detail-fact]').forEach(field => {
+            accessReview[field.dataset.ceqanetDetailFact] =
+              field.value === '' ? null : field.value === 'true';
+          });
+          const request = {
+            detail_url: document.querySelector('#original-ceqanet-detail-url').value.trim(),
+            access_review: accessReview
+          };
+          const preview = await api('/api/source-ceqanet-detail-preview', request);
+          const reviewTicket = modal('Original CEQAnet detail · exact preview',
+            '<p>No live request has been made. Access policy: <strong>' +
+            esc(preview.access_decision)+'</strong>. '+esc(preview.access_reason)+'</p>' +
+            '<pre>'+esc(JSON.stringify(preview,null,2))+'</pre>' +
+            (preview.may_request_approval ?
+              '<label>Reason for this exact bounded read ' +
+              '<textarea id="original-ceqanet-detail-reason" maxlength="2000" rows="3"></textarea></label>' +
+              '<label><input type="checkbox" id="original-ceqanet-detail-confirm">' +
+              ' I reviewed this exact URL, the access evidence, and authorize one GET.</label>' +
+              '<button id="execute-reviewed-ceqanet-detail">Execute reviewed detail read</button>' :
+              '<p>Execution blocked until lawful-access facts are established.</p>'));
+          const executeButton = document.querySelector('#execute-reviewed-ceqanet-detail');
+          if (!executeButton) return;
+          executeButton.onclick = () => perform(async () => {
+            if (reviewTicket !== modalTicket || !$('action-dialog').open) return;
+            const reason = document.querySelector('#original-ceqanet-detail-reason').value.trim();
+            if (reason.length < 10 ||
+                !document.querySelector('#original-ceqanet-detail-confirm').checked)
+              throw Error('Enter a reason and explicitly confirm this one bounded read.');
+            executeButton.disabled = true;
+            try {
+              const result = await api('/api/source-ceqanet-detail', {
+                ...request,
+                expected_preview_digest: preview.expected_preview_digest,
+                review_reason: reason,
+                caller_confirmation: true
+              });
+              modal('Original CEQAnet detail · governed result',
+                '<p>Only one bounded detail-page request was authorized. ' +
+                'No verification, registry mutation, recurrence, or commercial ' +
+                'action was authorized.</p>' +
+                '<pre>'+esc(JSON.stringify(result,null,2))+'</pre>' +
+                '<button id="export-original-ceqanet-detail">Export result JSON</button>');
+              document.querySelector('#export-original-ceqanet-detail').onclick =
+                () => download('original-ceqanet-detail-result.json',result);
+            } finally { if (executeButton.isConnected) executeButton.disabled = false; }
+          });
+        });
+    });
     discovery.querySelector('#preview-ceqanet-discovery').onclick = () =>
       perform(async () => {
         const preview = await api('/api/source-ceqanet-discovery-preview');

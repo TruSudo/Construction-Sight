@@ -162,6 +162,24 @@ const {resolve} = require('node:path');
       document.querySelector('#retained-source-watchlist')?.textContent
         .includes('0 active source watches'));
     await page.waitForSelector('#retained-capture-inbox #preview-ceqanet-discovery');
+    await page.locator('#review-ceqanet-detail').click();
+    await page.waitForSelector('#preview-reviewed-ceqanet-detail');
+    const detailForm = await page.locator('#action-content').textContent();
+    if (!detailForm.includes('lawful-access') ||
+        !detailForm.includes('Unknown (deny)') ||
+        !detailForm.includes('Immutable reviewed access evidence identity')) {
+      throw Error('Native original CEQAnet lawful-access review missing');
+    }
+    await page.locator('#original-ceqanet-detail-url').fill(
+      'https://ceqanet.lci.ca.gov/Project/Example');
+    await page.locator('#preview-reviewed-ceqanet-detail').click();
+    await page.waitForSelector('#action-content');
+    const deniedDetail = await page.locator('#action-content').textContent();
+    if (!deniedDetail.includes('review_required') ||
+        deniedDetail.includes('Execute reviewed detail read')) {
+      throw Error('Unknown CEQAnet access facts did not fail closed');
+    }
+    await page.click('#action-close');
     await page.locator('#preview-ceqanet-discovery').click();
     await page.waitForSelector('#ceqanet-discovery-run');
     const discoveryPreview = await page.locator('#action-content').textContent();
