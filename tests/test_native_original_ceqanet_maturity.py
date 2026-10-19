@@ -114,7 +114,7 @@ def test_native_original_maturity_route_is_read_only_and_exact(tmp_path: Path) -
             assert result["network_executed"] is False
             assert client.get(
                 "/api/source-ceqanet-maturity-audit?execute=true"
-            ).status_code == 400
+            ).status_code == 409
             assert client.post(
                 "/api/source-ceqanet-maturity-audit", json={"apply": True},
                 headers={"Origin": host},
