@@ -162,6 +162,35 @@ const {resolve} = require('node:path');
       document.querySelector('#retained-source-watchlist')?.textContent
         .includes('0 active source watches'));
     await page.waitForSelector('#retained-capture-inbox #preview-ceqanet-discovery');
+    await page.locator('#review-ceqanet-listing').click();
+    await page.waitForSelector('#preview-ceqanet-listing');
+    await page.locator('#preview-ceqanet-listing').click();
+    await page.waitForFunction(() =>
+      document.querySelector('#action-content')?.textContent
+        .includes('native-ceqanet-listing-preview/v1'));
+    let acquisitionPreview = await page.locator('#action-content').textContent();
+    if (!acquisitionPreview.includes('CS-NET-002') ||
+        !acquisitionPreview.includes('review_required') ||
+        !acquisitionPreview.includes('ceqanet_listing_plan.v1') ||
+        acquisitionPreview.includes('Execute reviewed listing')) {
+      throw Error('Original native CEQAnet listing did not deny unknown access');
+    }
+    await page.click('#action-close');
+    await page.locator('#review-ceqanet-csv').click();
+    await page.waitForSelector('#preview-ceqanet-csv');
+    await page.fill('#ceqanet-csv-sch', '2026012345');
+    await page.locator('#preview-ceqanet-csv').click();
+    await page.waitForFunction(() =>
+      document.querySelector('#action-content')?.textContent
+        .includes('native-ceqanet-csv-preview/v1'));
+    acquisitionPreview = await page.locator('#action-content').textContent();
+    if (!acquisitionPreview.includes('CS-NET-003') ||
+        !acquisitionPreview.includes('OutputFormat=CSV') ||
+        !acquisitionPreview.includes('review_required') ||
+        acquisitionPreview.includes('Execute reviewed csv')) {
+      throw Error('Original native CEQAnet CSV did not deny unknown access');
+    }
+    await page.click('#action-close');
     await page.locator('#review-ceqanet-detail').click();
     await page.waitForSelector('#preview-reviewed-ceqanet-detail');
     const detailForm = await page.locator('#action-content').textContent();

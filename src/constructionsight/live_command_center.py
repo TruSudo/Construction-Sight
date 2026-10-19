@@ -45,6 +45,12 @@ from constructionsight.command_center_canonical_leads import (
     retained_canonical_lead_workflows,
     transition_retained_canonical_review,
 )
+from constructionsight.command_center_ceqanet_acquisition import (
+    execute_reviewed_original_ceqanet_csv,
+    execute_reviewed_original_ceqanet_listing,
+    preview_original_ceqanet_csv,
+    preview_original_ceqanet_listing,
+)
 from constructionsight.command_center_ceqanet_detail import (
     execute_reviewed_original_ceqanet_detail,
     preview_original_ceqanet_detail,
@@ -1086,6 +1092,10 @@ def make_server(
                 "/api/source-ceqanet-discovery",
                 "/api/source-ceqanet-detail-preview",
                 "/api/source-ceqanet-detail",
+                "/api/source-ceqanet-listing-preview",
+                "/api/source-ceqanet-listing",
+                "/api/source-ceqanet-csv-preview",
+                "/api/source-ceqanet-csv",
                 "/api/source-registry-reviewed-apply",
                 "/api/parcel-source-row-preview",
                 "/api/parcel-arcgis-proof-persist",
@@ -1317,6 +1327,27 @@ def make_server(
                         ):
                             raise ValueError("exact same-origin canonical watch request required")
                         result = investigation_watch.action(directory, payload)
+                    elif path in (
+                        "/api/source-ceqanet-listing-preview",
+                        "/api/source-ceqanet-listing",
+                        "/api/source-ceqanet-csv-preview",
+                        "/api/source-ceqanet-csv",
+                    ):
+                        if (
+                            urlsplit(self.path).query
+                            or urlsplit(self.path).fragment
+                            or self.headers.get_all("Host", []) != [host]
+                            or self.headers.get_all("Origin", []) != [f"http://{host}"]
+                            or self.headers.get("Sec-Fetch-Site") == "cross-site"
+                        ):
+                            raise ValueError("exact same-origin CEQAnet acquisition required")
+                        operations = {
+                            "/api/source-ceqanet-listing-preview": preview_original_ceqanet_listing,
+                            "/api/source-ceqanet-listing": execute_reviewed_original_ceqanet_listing,
+                            "/api/source-ceqanet-csv-preview": preview_original_ceqanet_csv,
+                            "/api/source-ceqanet-csv": execute_reviewed_original_ceqanet_csv,
+                        }
+                        result = operations[path](payload)
                     elif path in (
                         "/api/source-ceqanet-detail-preview",
                         "/api/source-ceqanet-detail",

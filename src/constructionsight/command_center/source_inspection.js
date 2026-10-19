@@ -1017,6 +1017,154 @@ async function renderRetainedCaptureInbox(box) {
           });
         });
     });
+    const acquisition = document.createElement('section');
+    acquisition.className = 'original-ceqanet-acquisition';
+    acquisition.innerHTML = '<h3>Original CEQAnet listing and CSV acquisition</h3>' +
+      '<p>Offline plans first. Exact request and lawful-access evidence must be ' +
+      'reviewed before separately authorizing a bounded read. No automatic ' +
+      'collection, registry mutation or commercial activity.</p>' +
+      '<button id="review-ceqanet-listing">Review bounded listing</button> ' +
+      '<button id="review-ceqanet-csv">Review exact CSV evidence</button>';
+    box.append(acquisition);
+    const accessMarkup = () => [
+      ['requires_login', 'Source requires login'],
+      ['has_captcha', 'Source presents CAPTCHA'],
+      ['robots_disallows_collection', 'Robots disallow the request'],
+      ['terms_disallow_collection', 'Source terms disallow collection'],
+      ['paywalled', 'Source is paywalled']
+    ].map(([key, label]) =>
+      '<label>'+esc(label)+'<select data-ceqanet-acq-fact="'+key+'">' +
+      '<option value="">Unknown (deny)</option>' +
+      '<option value="false">No — independently reviewed</option>' +
+      '<option value="true">Yes — restriction present</option>' +
+      '</select></label>').join('') +
+      '<label>Immutable access evidence / review identity ' +
+      '<input id="ceqanet-acq-basis" maxlength="80" ' +
+      'placeholder="review:64-hex-sha256 or evidence:64-hex-sha256" /></label>';
+    const accessValues = () => {
+      const review = {
+        access_fact_basis: $('ceqanet-acq-basis').value.trim() || null
+      };
+      document.querySelectorAll('[data-ceqanet-acq-fact]').forEach(element => {
+        review[element.dataset.ceqanetAcqFact] =
+          element.value === '' ? null : element.value === 'true';
+      });
+      return review;
+    };
+    const confirmAcquisition = async (kind, request) => {
+      const preview = await api('/api/source-ceqanet-'+kind+'-preview', request);
+      const ticket = modal('Original CEQAnet '+kind+' · exact authority review',
+        '<p>No live source request has been made. The original access policy ' +
+        'denies unknown restriction facts and unreviewed evidence.</p>' +
+        '<pre>'+esc(JSON.stringify(preview,null,2))+'</pre>' +
+        (preview.may_request_approval ?
+          '<label>Specific reason for this exact approved request ' +
+          '<textarea id="ceqanet-acq-reason" rows="3" maxlength="2000"></textarea></label>' +
+          '<label><input type="checkbox" id="ceqanet-acq-confirm" />' +
+          ' I reviewed the complete source restrictions, evidence and bounded ' +
+          'request and authorize one operation.</label>' +
+          '<button id="execute-reviewed-acquisition">Execute reviewed '+esc(kind)+'</button>'
+          : '<p>This access review cannot authorize execution.</p>'));
+      const button = document.querySelector('#execute-reviewed-acquisition');
+      if (!button) return;
+      button.onclick = () => perform(async () => {
+        if (ticket !== modalTicket || !$('action-dialog').open) return;
+        const reason = $('ceqanet-acq-reason').value.trim();
+        if (reason.length < 10 || !$('ceqanet-acq-confirm').checked)
+          throw Error('Enter a reason and approve this exact source request.');
+        button.disabled = true;
+        try {
+          const result = await api('/api/source-ceqanet-'+kind, {
+            ...request, expected_preview_digest: preview.expected_preview_digest,
+            review_reason: reason, caller_confirmation: true
+          });
+          const summary = kind === 'csv' ? {
+            schema_version: result.schema_version,
+            request: result.original_execution.request,
+            status_code: result.original_execution.status_code,
+            execution_digest: result.original_execution.execution_digest,
+            reviewed_preview_digest: result.reviewed_preview_digest,
+            original_verification: result.original_verification,
+            original_authorization: result.original_authorization,
+            persistence_mutated: result.persistence_mutated
+          } : result;
+          modal('Original CEQAnet '+kind+' · source-evidence result',
+            '<p>Original bounded request or durable replay only. No source ' +
+            'promotion, ongoing collection, outreach or commercial action.</p>' +
+            '<pre>'+esc(JSON.stringify(summary,null,2))+'</pre>' +
+            '<button id="export-original-ceqanet-acq">Export original evidence JSON</button>');
+          $('export-original-ceqanet-acq').onclick =
+            () => download('original-ceqanet-'+kind+'-evidence.json',result);
+        } finally {
+          if (button.isConnected) button.disabled = false;
+        }
+      });
+    };
+    acquisition.querySelector('#review-ceqanet-listing').onclick = () =>
+      perform(async () => {
+        const ticket = modal('Original CEQAnet listing · filters and access',
+          '<p>At least one bounded filter is required. Text search is not ' +
+          'supported by the original verified request contract.</p>' +
+          '<label>Counties, comma-separated ' +
+          '<input id="ceqanet-list-counties" value="Riverside, San Bernardino" /></label>' +
+          '<label>Document types <input id="ceqanet-list-types" /></label>' +
+          '<label>Lead agencies <input id="ceqanet-list-agencies" /></label>' +
+          '<label>Received from <input id="ceqanet-list-received-from" type="date" /></label>' +
+          '<label>Received to <input id="ceqanet-list-received-to" type="date" /></label>' +
+          '<label>Posted from <input id="ceqanet-list-posted-from" type="date" /></label>' +
+          '<label>Posted to <input id="ceqanet-list-posted-to" type="date" /></label>' +
+          '<label><input type="checkbox" id="ceqanet-list-signal" /> High signal only</label>' +
+          '<label>Page size (1–100) <input id="ceqanet-list-size" type="number" ' +
+          'min="1" max="100" value="25" /></label>' +
+          '<label>Maximum pages (1–10) <input id="ceqanet-list-pages" type="number" ' +
+          'min="1" max="10" value="1" /></label>' +
+          accessMarkup() +
+          '<button id="preview-ceqanet-listing">Preview original bounded listing</button>');
+        $('preview-ceqanet-listing').onclick = () => perform(async () => {
+          if (ticket !== modalTicket || !$('action-dialog').open) return;
+          const value = key => $(key).value;
+          const names = key => value(key).split(',').map(s => s.trim()).filter(Boolean);
+          const day = key => value(key) || null;
+          await confirmAcquisition('listing', {
+            query: {
+              counties: names('ceqanet-list-counties'),
+              document_types: names('ceqanet-list-types'),
+              lead_agencies: names('ceqanet-list-agencies'),
+              received_from: day('ceqanet-list-received-from'),
+              received_to: day('ceqanet-list-received-to'),
+              posted_from: day('ceqanet-list-posted-from'),
+              posted_to: day('ceqanet-list-posted-to'),
+              high_signal_only: $('ceqanet-list-signal').checked,
+              page_size: Number(value('ceqanet-list-size')),
+              max_pages: Number(value('ceqanet-list-pages'))
+            },
+            access_review: accessValues()
+          });
+        });
+      });
+    acquisition.querySelector('#review-ceqanet-csv').onclick = () =>
+      perform(async () => {
+        const ticket = modal('Original CEQAnet CSV · source evidence',
+          '<p>One official CSV evidence request only. This does not persist ' +
+          'the source or authorize automatic document ingestion.</p>' +
+          '<label>Exact ten-digit SCH number ' +
+          '<input id="ceqanet-csv-sch" maxlength="10" /></label>' +
+          '<label>Optional document ID (blank means project CSV) ' +
+          '<input id="ceqanet-csv-doc" type="number" min="1" /></label>' +
+          accessMarkup() +
+          '<button id="preview-ceqanet-csv">Preview official CSV request</button>');
+        $('preview-ceqanet-csv').onclick = () => perform(async () => {
+          if (ticket !== modalTicket || !$('action-dialog').open) return;
+          const doc = $('ceqanet-csv-doc').value.trim();
+          await confirmAcquisition('csv', {
+            export: {
+              sch_number: $('ceqanet-csv-sch').value.trim(),
+              document_id: doc ? Number(doc) : null
+            },
+            access_review: accessValues()
+          });
+        });
+      });
     discovery.querySelector('#preview-ceqanet-discovery').onclick = () =>
       perform(async () => {
         const preview = await api('/api/source-ceqanet-discovery-preview');
