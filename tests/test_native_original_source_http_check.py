@@ -119,10 +119,11 @@ def test_native_exact_original_http_readiness_reuses_original_authorization(
                 _source_digest,
             )
             ungoverned = _source("Non-governed synthetic endpoint")
-            with Session(create_database_engine(f"sqlite:///{original}")) as source_session:
-                # Explicit database write is fixture setup only, NOT application behavior.
-                with source_session.begin():
-                    SourceRegistryStore(source_session).upsert_source(ungoverned)
+            source_engine = create_database_engine(f"sqlite:///{original}")
+            # Explicit database write is fixture setup only, NOT application behavior.
+            with Session(source_engine) as source_session, source_session.begin():
+                SourceRegistryStore(source_session).upsert_source(ungoverned)
+            source_engine.dispose()
             rejected = client.post("/api/source-http-check", json={
                 "source_name": ungoverned.source_name,
                 "public_url": str(ungoverned.public_url),
