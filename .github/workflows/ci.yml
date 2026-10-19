@@ -41,9 +41,7 @@ jobs:
       - name: Dependency integrity
         run: python -m pip check
       - name: Ruff
-        run: |
-          python -m ruff check --diff src tests || true
-          python -m ruff check src tests
+        run: python -m ruff check src tests
       - name: Strict Mypy
         run: python -m mypy src/constructionsight
       - name: JavaScript syntax
