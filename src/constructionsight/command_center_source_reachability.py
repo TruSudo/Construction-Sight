@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from constructionsight.adapters import default_adapter_family_specs
 from constructionsight.models import PublicSource
+from constructionsight.source_authority_rules import governed_source_url
 from constructionsight.source_verification_evidence_service import (
     build_authorized_source_verification_evidence_package,
 )
@@ -59,6 +60,11 @@ def preview_exact_original_source_readiness(
 ) -> dict[str, Any]:
     """Bind one reviewed check to an unchanged exact original source snapshot."""
     source = _selected_original_source(original_database, source_name, public_url)
+    try:
+        governed_source_url(source)
+        governed = True
+    except ValueError:
+        governed = False
     return {
         "schema_version": "constructionsight.original-source-http-review/v1",
         "source_name": source.source_name,
@@ -68,6 +74,8 @@ def preview_exact_original_source_readiness(
         "network_executed": False,
         "review_required": True,
         "caller_confirmation_required": True,
+        "source_url_separately_governed": governed,
+        "can_execute_manual_check": governed,
         "method_sequence": ["HEAD", "GET only on 405"],
         "max_response_bytes": 4096,
         "redirects_followed": False,
@@ -104,6 +112,9 @@ def check_reviewed_original_source_readiness(
     source = _selected_original_source(original_database, source_name, public_url)
     if _source_digest(source) != expected:
         raise ValueError("original source registry changed; review the exact source again")
+    # The original transport performs this check too; apply it before
+    # creating the high-impact operation's allowance/audit record.
+    governed_source_url(source)
     package = build_authorized_source_verification_evidence_package(
         [source], default_adapter_family_specs(),
         caller_confirmation=True, authorization_reason=reason.strip(),
