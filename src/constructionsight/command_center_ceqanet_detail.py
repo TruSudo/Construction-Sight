@@ -140,14 +140,15 @@ def execute_reviewed_original_ceqanet_detail(payload: dict[str, Any]) -> dict[st
         "schema_version": "constructionsight.native-ceqanet-detail-result/v1",
         "original_execution": result,
         "reviewed_preview_digest": preview["expected_preview_digest"],
-        "network_executed": True,
+        "new_network_attempt_in_this_call": None,
+        "authorized_result_or_exact_durable_replay": True,
         "source_registry_mutated": False,
         "source_promoted": False,
         "recurring_collection_enabled": False,
         "commercial_authority_granted": False,
         "operator_supplied_access_facts_not_independently_verified": True,
         "meaning": (
-            "One bounded original CEQAnet detail read only; no source verification, "
+            "Retained original bounded CEQAnet detail read or exact replay; no source verification, "
             "registry update, persistence, recurring collection or outreach."
         ),
     }
