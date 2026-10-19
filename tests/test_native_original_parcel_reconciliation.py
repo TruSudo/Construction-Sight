@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from constructionsight.investigation_runtime import InvestigationRuntime
 from constructionsight.parcel_core_models import ParcelCoreRecord
-from constructionsight.site_resolution_service import normalize_apn
+from constructionsight.site_resolution_service import normalize_address, normalize_apn
 from constructionsight.storage.database import create_database_engine, initialize_database
 from constructionsight.storage.parcel_site_store import store_parcel_core_record
 from tests.test_native_source_inspection import _native
@@ -29,7 +29,7 @@ def _parcel_database(tmp_path: Path) -> tuple[Path, ParcelCoreRecord]:
         county="San Bernardino",
         state="CA",
         address="123 Synthetic Street",
-        normalized_address="123 synthetic street",
+        normalized_address=normalize_address("123 Synthetic Street"),
         zoning="Industrial",
         created_at=datetime(2026, 7, 14, 18, tzinfo=UTC),
     )
