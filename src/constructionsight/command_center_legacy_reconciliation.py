@@ -20,10 +20,7 @@ from sqlalchemy.orm import Session
 
 from constructionsight.ceqa_models import CeqaRecord
 from constructionsight.intelligence.investigation_service import InvestigationService, _identity
-from constructionsight.intelligence.investigation_sources import (
-    from_domain,
-    normalize_retained_record,
-)
+from constructionsight.intelligence.investigation_sources import normalize_retained_record
 from constructionsight.intelligence.relationship_query_service import canonical_investigation_id
 from constructionsight.intelligence.schemas import RuntimeEvent, RuntimeEventType
 from constructionsight.investigation_jobs import InvestigationJobQueue, JobDefinition
