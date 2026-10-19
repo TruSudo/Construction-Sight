@@ -46,6 +46,24 @@ const {resolve} = require('node:path');
     // The browser acceptance must NOT initiate the actual network check.
     await page.locator('[data-registry-index]').first().click();
     await page.waitForSelector('#review-exact-original-source-http');
+    await page.click('#review-original-manual-checklist');
+    await page.waitForSelector('#manual-source-run');
+    await page.locator('[data-manual-source-flag="detail_page_observed"]').selectOption('true');
+    await page.fill('#manual-source-refs', 'manual:browser:retained-source-review');
+    await page.fill('#manual-source-notes', 'Operator-observed test fixture only');
+    await page.fill('#manual-source-reason', 'Confirm manually observed retained fixture.');
+    await page.check('#manual-source-confirm');
+    await page.click('#manual-source-run');
+    await page.waitForSelector('#export-reviewed-original-checklist');
+    const originalChecklist = await page.locator('#action-content').textContent();
+    if (!originalChecklist.includes('detail_behavior_observed') ||
+        !originalChecklist.includes('operator_observations_not_independent_verification') ||
+        !originalChecklist.includes('original_registry_mutated')) {
+      throw Error('Original native manually reviewed checklist failed read-only parity');
+    }
+    await page.click('#action-close');
+    await page.locator('[data-registry-index]').first().click();
+    await page.waitForSelector('#review-exact-original-source-http');
     await page.click('#review-exact-original-source-http');
     await page.waitForSelector('#exact-http-check-run');
     const reviewedSource = await page.locator('#action-content').textContent();

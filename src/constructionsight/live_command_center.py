@@ -67,6 +67,10 @@ from constructionsight.command_center_legacy_reconciliation import (
     preview_legacy_reconciliation,
     preview_legacy_reconciliation_batch,
 )
+from constructionsight.command_center_original_checklist import (
+    preview_original_manual_checklist,
+    review_original_manual_checklist,
+)
 from constructionsight.command_center_parcel_readiness import (
     parcel_source_readiness_snapshot,
     preview_retained_parcel_sample,
@@ -758,6 +762,19 @@ def make_server(
                     record_id=params.record_id,
                 )
                 body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
+            elif path == "/api/source-checklist-preview":
+                if (
+                    set(query) != {"source_name", "public_url"}
+                    or len(query["source_name"]) != 1
+                    or len(query["public_url"]) != 1
+                ):
+                    raise ValueError("select one exact original source for manual review")
+                value = preview_original_manual_checklist(
+                    operator_database,
+                    source_name=query["source_name"][0],
+                    public_url=query["public_url"][0],
+                )
+                body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
             elif path == "/api/source-http-check-preview":
                 if (
                     set(query) != {"source_name", "public_url"}
@@ -1051,6 +1068,7 @@ def make_server(
                 "/api/investigation-lead-result-review",
                 "/api/source-watchlist-action",
                 "/api/source-http-check",
+                "/api/source-checklist-review",
                 "/api/parcel-source-row-preview",
                 "/api/parcel-arcgis-proof-persist",
                 "/api/investigation-watch",
@@ -1281,6 +1299,18 @@ def make_server(
                         ):
                             raise ValueError("exact same-origin canonical watch request required")
                         result = investigation_watch.action(directory, payload)
+                    elif path == "/api/source-checklist-review":
+                        if (
+                            urlsplit(self.path).query
+                            or urlsplit(self.path).fragment
+                            or self.headers.get_all("Host", []) != [host]
+                            or self.headers.get_all("Origin", []) != [f"http://{host}"]
+                            or self.headers.get("Sec-Fetch-Site") == "cross-site"
+                        ):
+                            raise ValueError("exact same-origin manual source checklist required")
+                        result = review_original_manual_checklist(
+                            operator_database, payload,
+                        )
                     elif path == "/api/source-http-check":
                         if (
                             urlsplit(self.path).query

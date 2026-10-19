@@ -431,7 +431,73 @@ async function renderRetainedSources(box) {
         'access authority has been inferred.</p><pre>' +
         esc(JSON.stringify(entry, null, 2)) + '</pre>' +
         '<button id="review-exact-original-source-http">Review original manual ' +
-        'HTTP readiness check</button>');
+        'HTTP readiness check</button> ' +
+        '<button id="review-original-manual-checklist">Review original ' +
+        'manual source checklist</button>');
+      document.querySelector('#review-original-manual-checklist').onclick =
+        () => perform(async () => {
+          const reviewed = await api('/api/source-checklist-preview?' +
+            new URLSearchParams({
+              source_name: entry.source_name, public_url: entry.public_url
+            }));
+          const flags = [
+            ['public_entry_observed', 'Public entry page'],
+            ['query_behavior_observed', 'Search/query behavior'],
+            ['result_list_observed', 'Result list'],
+            ['detail_page_observed', 'Detail page'],
+            ['access_barrier_observed', 'Access barrier present'],
+            ['terms_review_observed', 'Terms reviewed']
+          ];
+          const ticket = modal('Exact original source · manual verification checklist',
+            '<p>Operator-supplied observations only, not independent source ' +
+            'verification. No network access, status changes or promotion. ' +
+            'Use Unknown for anything not personally checked and provide ' +
+            'evidence references for positive observations.</p>' +
+            '<pre>'+esc(JSON.stringify(reviewed.original_observation_template,null,2))+'</pre>' +
+            flags.map(([key, title]) =>
+              '<label>'+esc(title)+' <select data-manual-source-flag="'+key+'">' +
+              '<option value="">Unknown</option><option value="true">Yes</option>' +
+              '<option value="false">No</option></select></label>').join('') +
+            '<label>Evidence references (one per line) ' +
+            '<textarea id="manual-source-refs" rows="3"></textarea></label>' +
+            '<label>Observation notes ' +
+            '<textarea id="manual-source-notes" maxlength="2000" rows="3"></textarea></label>' +
+            '<label>Reason for this exact manual review ' +
+            '<textarea id="manual-source-reason" maxlength="2000" rows="3"></textarea></label>' +
+            '<label><input type="checkbox" id="manual-source-confirm">' +
+            ' I confirm these observations represent my actual manual review.</label>' +
+            '<button id="manual-source-run">Build original manual checklist</button>');
+          document.querySelector('#manual-source-run').onclick = () =>
+            perform(async () => {
+              if (ticket !== modalTicket || !$('action-dialog').open) return;
+              const reason = document.querySelector('#manual-source-reason').value.trim();
+              if (reason.length < 10 ||
+                  !document.querySelector('#manual-source-confirm').checked)
+                throw Error('A review reason and explicit confirmation are required.');
+              const observation = {
+                source_key: reviewed.source_key, source_name: reviewed.source_name,
+                notes: document.querySelector('#manual-source-notes').value.trim() || null,
+                evidence_refs: document.querySelector('#manual-source-refs').value
+                  .split('\\n').map(value => value.trim()).filter(Boolean)
+              };
+              document.querySelectorAll('[data-manual-source-flag]').forEach(item => {
+                observation[item.dataset.manualSourceFlag] =
+                  item.value === '' ? null : item.value === 'true';
+              });
+              const result = await api('/api/source-checklist-review', {
+                source_name: reviewed.source_name, public_url: reviewed.public_url,
+                expected_source_sha256: reviewed.expected_source_sha256,
+                review_reason: reason, caller_confirmation: true, observation
+              });
+              modal('Original manual source checklist · review-only result',
+                '<p>Manual observations remain unverified source claims. ' +
+                'No original source status, network access or commercial ' +
+                'authority changed.</p><pre>'+esc(JSON.stringify(result,null,2))+'</pre>' +
+                '<button id="export-reviewed-original-checklist">Export reviewed checklist JSON</button>');
+              document.querySelector('#export-reviewed-original-checklist').onclick =
+                () => download('original-manual-checklist-review.json', result);
+            });
+        });
       document.querySelector('#review-exact-original-source-http').onclick =
         () => perform(async () => {
           const reviewed = await api('/api/source-http-check-preview?' +
