@@ -112,3 +112,107 @@ def test_original_parcel_row_sample_preview_requires_exact_verified_source_and_d
         server.shutdown()
         server.server_close()
         worker.join()
+
+
+
+def test_original_arcgis_persisted_proof_chain_is_visible_and_unchanged_from_native(
+    tmp_path: Path,
+) -> None:
+    from sqlalchemy.orm import Session
+
+    from constructionsight.storage.database import create_database_engine, initialize_database
+    from constructionsight.storage.parcel_source_acquisition_bundle_store import (
+        store_arcgis_bounded_proof_bundle_chain,
+    )
+    from tests.test_parcel_source_acquisition_bundle_storage import _bounded_bundle
+
+    database = tmp_path / "original.sqlite3"
+    engine = create_database_engine(f"sqlite:///{database}")
+    initialize_database(engine)
+    bundle = _bounded_bundle()
+    with Session(engine) as session, session.begin():
+        store_arcgis_bounded_proof_bundle_chain(session, bundle)
+    engine.dispose()
+    before = database.read_bytes()
+    directory = tmp_path / "private"
+    server, worker = _native(directory, operator_database=database)
+    try:
+        with httpx.Client(
+            base_url=f"http://127.0.0.1:{server.server_port}", trust_env=False
+        ) as client:
+            response = client.get("/api/source-parcel-proofs")
+            assert response.status_code == 200, response.text
+            report = response.json()
+            assert report["available"] is True
+            assert report["total"] == 1
+            assert report["proof_chain_validated"] is True
+            assert report["network_collection_enabled"] is False
+            assert report["bulk_acquisition_authorized"] is False
+            assert report["identity_independently_verified"] is False
+            assert report["commercial_actions_authorized"] is False
+            assert report["bundles"] == [bundle.to_dict()]
+            assert client.get("/api/source-parcel-proofs?kind=parcel").status_code == 409
+            assert client.get("/api/source-parcel-proofs").json() == report
+            assert database.read_bytes() == before
+            assert not (directory / "investigations.sqlite3").exists()
+    finally:
+        server.shutdown()
+        server.server_close()
+        worker.join()
+
+
+def test_native_arcgis_proof_listing_rejects_corrupt_original_index_without_writing(
+    tmp_path: Path,
+) -> None:
+    from sqlalchemy import text
+    from sqlalchemy.orm import Session
+
+    from constructionsight.storage.database import create_database_engine, initialize_database
+    from constructionsight.storage.parcel_source_acquisition_bundle_store import (
+        store_arcgis_bounded_proof_bundle_chain,
+    )
+    from tests.test_parcel_source_acquisition_bundle_storage import _bounded_bundle
+
+    database = tmp_path / "original.sqlite3"
+    engine = create_database_engine(f"sqlite:///{database}")
+    initialize_database(engine)
+    with Session(engine) as session, session.begin():
+        store_arcgis_bounded_proof_bundle_chain(session, _bounded_bundle())
+    with Session(engine) as session, session.begin():
+        session.execute(text(
+            "UPDATE parcel_arcgis_bounded_proof_bundles SET county='Altered County'"
+        ))
+    engine.dispose()
+    before = database.read_bytes()
+    directory = tmp_path / "private"
+    server, worker = _native(directory, operator_database=database)
+    try:
+        with httpx.Client(
+            base_url=f"http://127.0.0.1:{server.server_port}", trust_env=False
+        ) as client:
+            response = client.get("/api/source-parcel-proofs")
+            assert response.status_code == 409
+            assert "indexed fields disagree" in response.text
+            assert database.read_bytes() == before
+    finally:
+        server.shutdown()
+        server.server_close()
+        worker.join()
+
+
+def test_native_arcgis_proof_listing_never_invents_unconfigured_history(
+    tmp_path: Path,
+) -> None:
+    server, worker = _native(tmp_path / "private")
+    try:
+        with httpx.Client(
+            base_url=f"http://127.0.0.1:{server.server_port}", trust_env=False
+        ) as client:
+            response = client.get("/api/source-parcel-proofs")
+            assert response.status_code == 200
+            assert response.json()["available"] is False
+            assert "total" not in response.json()
+    finally:
+        server.shutdown()
+        server.server_close()
+        worker.join()

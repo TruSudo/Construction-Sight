@@ -60,9 +60,52 @@ async function renderParcelSourceReadiness(box) {
         ])) +
       '<p>Original countywide coverage and ArcGIS acquisition readiness remain ' +
       'subject to recorded evidence gaps. A prepared schema is not an imported ' +
-      'parcel, verified address, complete county coverage or authorized probe.</p>';
+      'parcel, verified address, complete county coverage or authorized probe.</p>' +
+      '<h3>Persisted original ArcGIS bounded-proof history</h3>' +
+      '<div data-retained-parcel-proofs role="status">Checking explicitly configured ' +
+      'original source database for validated retained proof bundles…</div>';
     root.querySelector('[data-parcel-source-export]').onclick = () =>
       download('parcel-source-readiness.json', data);
+    const proofBox = root.querySelector('[data-retained-parcel-proofs]');
+    try {
+      const proofState = await api('/api/source-parcel-proofs');
+      if (!root.isConnected || activePage !== 'Sources & Collection') return;
+      if (!proofState.available) {
+        proofBox.textContent = 'Original source database not configured. Supply an ' +
+          'existing --operator-database at launch; no proof inventory was assumed.';
+      } else {
+        const bundles = proofState.bundles || [];
+        proofBox.innerHTML = '<p>' + esc(proofState.total) +
+          ' original persisted bundles were verified against their complete source ' +
+          'chain; no source requests or parcel imports run here. ' +
+          '<button data-retained-proofs-export>Export validated proof inventory</button></p>' +
+          table(['County','Source','Bounded proof status','Proof'],
+            bundles.map((item,i) => [
+              esc(item.county), esc(item.source_key), esc(item.assessment?.status),
+              '<button data-original-parcel-proof="'+i+'">Inspect original bundle</button>'
+            ]));
+        proofBox.querySelector('[data-retained-proofs-export]').onclick = () =>
+          download('original-arcgis-proof-inventory.json', proofState);
+        proofBox.querySelectorAll('[data-original-parcel-proof]').forEach(button => {
+          button.onclick = () => {
+            const item = bundles[Number(button.dataset.originalParcelProof)];
+            modal('Validated retained ArcGIS proof · '+item.source_key,
+              '<p>Original stored, integrity-checked bounded proof, not a parcel ' +
+              'import or construction-site verification. No bulk collection, ' +
+              'project relationship, map point or commercial action is authorized.</p>' +
+              '<button id="export-original-parcel-proof">Export original proof JSON</button>' +
+              '<pre>'+esc(JSON.stringify(item,null,2))+'</pre>');
+            document.querySelector('#export-original-parcel-proof').onclick = () =>
+              download('original-arcgis-proof.json',item);
+          };
+        });
+      }
+    } catch(error) {
+      if (proofBox.isConnected && activePage === 'Sources & Collection') {
+        proofBox.innerHTML = '<p role="alert">Original ArcGIS proof verification ' +
+          'unavailable: '+esc(error.message)+'</p>';
+      }
+    }
     root.querySelectorAll('[data-parcel-sample-preview]').forEach(button => {
       button.onclick = () => {
         const source = sources[Number(button.dataset.parcelSamplePreview)];

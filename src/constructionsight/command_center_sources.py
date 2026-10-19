@@ -12,6 +12,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -54,6 +55,10 @@ from constructionsight.smarts_operator_status import build_smarts_operator_statu
 from constructionsight.smarts_parcel_review import inspect_smarts_parcel_candidates
 from constructionsight.smarts_snapshot_history import review_snapshot_changes
 from constructionsight.storage.operator_read_store import create_operator_read_engine
+from constructionsight.storage.parcel_site_orm import ParcelArcGISBoundedProofBundleRow
+from constructionsight.storage.parcel_source_acquisition_bundle_store import (
+    load_arcgis_bounded_proof_bundles,
+)
 
 SOURCE_INSPECTION_ROUTES = frozenset(
     {
@@ -63,6 +68,7 @@ SOURCE_INSPECTION_ROUTES = frozenset(
         "/api/parcel-candidates",
         "/api/candidate-preview",
         "/api/source-watchlist",
+        "/api/source-parcel-proofs",
         "/api/workflow-summary",
         "/api/workflows",
         "/api/results",
@@ -130,7 +136,7 @@ def source_inspection(
         raise ValueError("unsupported native source inspection route")
     if route in {
         "/api/source-registry", "/api/source-revision", "/api/source-watchlist",
-        "/api/workflow-summary",
+        "/api/source-parcel-proofs", "/api/workflow-summary",
         "/api/source-capture-queue",
         "/api/source-ingestion-inbox",
         "/api/source-smarts-status",
@@ -194,6 +200,34 @@ def source_inspection(
                 result = build_source_revision_snapshot(session)
             elif route == "/api/source-watchlist":
                 result = build_operator_watchlist_snapshot(session)
+            elif route == "/api/source-parcel-proofs":
+                # The original persisted proof chain validates every indexed bundle
+                # against its payload and all retained source dependencies. Avoid an
+                # unbounded decode and refuse to hide any surplus records.
+                total = session.scalar(
+                    select(func.count()).select_from(ParcelArcGISBoundedProofBundleRow)
+                ) or 0
+                if total > 50:
+                    raise ValueError("original ArcGIS bounded proof inventory exceeds 50 items")
+                bundles = load_arcgis_bounded_proof_bundles(session)
+                if len(bundles) != total:
+                    raise ValueError("original ArcGIS proof inventory changed during read")
+                result = {
+                    "schema_version": "constructionsight.retained-arcgis-proofs/v1",
+                    "total": total,
+                    "bundles": [bundle.to_dict() for bundle in bundles],
+                    "read_only": True,
+                    "proof_chain_validated": True,
+                    "network_collection_enabled": False,
+                    "identity_independently_verified": False,
+                    "bulk_acquisition_authorized": False,
+                    "commercial_actions_authorized": False,
+                    "meaning": (
+                        "Original bounded ArcGIS proof chain only; a proof does not "
+                        "establish countywide acquisition, parcel import, a common "
+                        "construction project, mapped location, or commercial authority."
+                    ),
+                }
             elif route == "/api/workflow-summary":
                 result = build_workflow_status_summary(session)
             elif route == "/api/workflows":

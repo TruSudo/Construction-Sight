@@ -290,6 +290,13 @@ const {resolve}=require('node:path');
     throw Error('Original parcel readiness could not render: '+parcelProblem.join(' | '));
   await page.waitForSelector('[data-parcel-source-readiness] [data-parcel-source-inspect]',
     {timeout:20000});
+  await page.waitForFunction(() => {
+    const box=document.querySelector('[data-retained-parcel-proofs]');
+    return Boolean(box && !box.textContent.includes('Checking explicitly configured'));
+  }, {}, {timeout:15000});
+  if (!(await page.locator('[data-retained-parcel-proofs]').textContent())
+       .match(/original source database|original persisted bundles|verification unavailable/i))
+    throw Error('Original ArcGIS proof inventory not connected to Sources & Collection');
   const parcelRows = page.locator('[data-parcel-source-inspect]');
   if (await parcelRows.count()!==4) throw Error('Original four-provider parcel source registry was lost');
   const parcelText = await page.locator('[data-parcel-source-readiness]').textContent();
