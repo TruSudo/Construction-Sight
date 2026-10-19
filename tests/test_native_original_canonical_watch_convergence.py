@@ -98,9 +98,8 @@ def test_reviewed_original_revision_converges_both_durable_watches_after_restart
                     receipt = enqueue_legacy_reconciliation(
                         directory, original, _body(updated, revision=True),
                     )
-                    assert receipt["commercial_authority_granted"] is False if (
-                        "commercial_authority_granted" in receipt
-                    ) else receipt["outreach_authorized"] is False
+                    assert receipt["outreach_authorized"] is False
+                    assert receipt["bid_authorized"] is False
                     runtime = InvestigationRuntime(directory)
                     try:
                         assert runtime.process(max_jobs=100)["failed_jobs"] == 0
