@@ -148,7 +148,8 @@ def execute_reviewed_original_ceqanet_detail(payload: dict[str, Any]) -> dict[st
         "commercial_authority_granted": False,
         "operator_supplied_access_facts_not_independently_verified": True,
         "meaning": (
-            "Retained original bounded CEQAnet detail read or exact replay; no source verification, "
+            "Retained original bounded CEQAnet detail read or exact replay; "
+            "no source verification, "
             "registry update, persistence, recurring collection or outreach."
         ),
     }
