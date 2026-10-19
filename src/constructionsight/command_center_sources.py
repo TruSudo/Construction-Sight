@@ -16,6 +16,14 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from constructionsight.adapters import default_adapter_family_specs
+
+from constructionsight.source_status_report import build_source_status_report
+from constructionsight.source_verification_evidence_service import (
+    build_source_verification_evidence_package,
+)
+from constructionsight.storage.orm import SourceRecord
+from constructionsight.storage.source_registry import SourceRegistryStore
 from constructionsight.operator_capture_queue import (
     empty_operator_capture_queue,
     load_operator_capture_queue,
@@ -63,6 +71,7 @@ from constructionsight.storage.parcel_source_acquisition_bundle_store import (
 SOURCE_INSPECTION_ROUTES = frozenset(
     {
         "/api/source-registry",
+        "/api/source-offline-audit",
         "/api/source-revision",
         "/api/source-review-queue",
         "/api/parcel-candidates",
@@ -135,7 +144,8 @@ def source_inspection(
     if route not in SOURCE_INSPECTION_ROUTES:
         raise ValueError("unsupported native source inspection route")
     if route in {
-        "/api/source-registry", "/api/source-revision", "/api/source-watchlist",
+        "/api/source-registry", "/api/source-offline-audit",
+        "/api/source-revision", "/api/source-watchlist",
         "/api/source-parcel-proofs", "/api/workflow-summary",
         "/api/source-capture-queue",
         "/api/source-ingestion-inbox",
@@ -190,7 +200,38 @@ def source_inspection(
         raise ValueError("operator source database is unavailable or incompatible") from exc
     try:
         with Session(engine, autoflush=False) as session:
-            if route == "/api/source-registry":
+            if route == "/api/source-offline-audit":
+                # Reuse original CLI audit builders against the actual retained
+                # registry. No HTTP probe, source promotion, acquisition or write.
+                count = session.scalar(select(func.count()).select_from(SourceRecord)) or 0
+                if count > 2000:
+                    raise ValueError("original registry exceeds 2000-item offline audit bound")
+                sources = SourceRegistryStore(session).list_sources()
+                if len(sources) != count:
+                    raise ValueError("original source registry changed during audit")
+                adapters = default_adapter_family_specs()
+                status = build_source_status_report(sources, adapters)
+                evidence = build_source_verification_evidence_package(
+                    sources, adapters, check_http=False,
+                )
+                result = {
+                    "schema_version": "constructionsight.original-offline-source-audit/v1",
+                    "source_count": count,
+                    "original_status_report": status.to_dict(),
+                    "original_evidence_package": evidence.to_dict(),
+                    "network_executed": False,
+                    "http_checked": False,
+                    "source_database_mutated": False,
+                    "read_only": True,
+                    "source_promotion_authorized": False,
+                    "source_claim_only": True,
+                    "limitations": [
+                        "Offline report does not establish current endpoint reachability.",
+                        "Original verification labels are reproduced, not revalidated.",
+                        "No source, parcel, identity or commercial authority is promoted.",
+                    ],
+                }
+            elif route == "/api/source-registry":
                 result: dict[str, Any] = build_operator_source_registry(
                     session, source_aliases=source_aliases,
                 ).model_dump(
