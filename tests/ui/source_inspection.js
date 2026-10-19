@@ -750,12 +750,25 @@ engine.dispose()
         runWorker().processed_jobs !== 0 || originalDigest() !== originalParcelDigest) {
       throw Error('Exact retained parcel replay failed idempotent common worker ingestion');
     }
+    const retained = await (await page.request.get(new URL(
+      '/api/source-parcel-reconciliation?' +
+        new URLSearchParams({parcel_record_id:'phase8:browser:original-parcel'}),
+      process.argv[2]).href)).json();
+    const parcelCanonicalId = retained.canonical_investigation_id;
+    if (!parcelCanonicalId ||
+        retained.native_state !== 'exact_observation_already_retained' ||
+        retained.parcel_to_project_identity_verified !== false) {
+      throw Error('Original parcel failed retained native identity/uncertainty review');
+    }
     await page.click('#action-close');
     await page.click('nav button[data-page="Evidence Chains"]');
-    await page.waitForFunction(() => document.querySelector('[data-shared-investigations]')
-      ?.textContent.includes('998-777-666'), {}, {timeout:20000});
-    const parcelInvestigation = page.locator(
-      '[data-shared-investigations] tr').filter({hasText:'998-777-666'});
+    await page.waitForFunction(identity => Boolean(
+      document.querySelector('[data-shared-investigations] [data-investigation-id="' +
+        CSS.escape(identity) + '"]')), parcelCanonicalId, {timeout:20000});
+    const parcelInvestigation = page.locator('[data-shared-investigations] tr')
+      .filter({has:page.locator('[data-investigation-id]').filter({
+        hasText: parcelCanonicalId
+      })});
     if (await parcelInvestigation.count() !== 1 ||
         !(await parcelInvestigation.textContent()).includes('unmapped')) {
       throw Error('Retained original parcel was duplicated or granted an invented map point');
