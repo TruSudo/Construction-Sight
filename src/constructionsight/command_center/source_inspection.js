@@ -327,7 +327,8 @@ async function renderRetainedSources(box) {
     '<p>Read-only historical source metadata; neither a verification grant nor proof of an active jobsite. ' +
     'Configured sources: ' + esc(registry.total) + '; displayed: ' + esc(Math.min(50, entries.length)) +
     (registry.truncated || entries.length > 50 ? ' (bounded)' : '') +
-    '. <button id="retained-registry-export">Export full returned registry JSON</button></p>' +
+    '. <button id="retained-registry-export">Export full returned registry JSON</button> ' +
+    '<button id="retained-original-source-audit">Original offline source audit</button></p>' +
     table(['Registered source', 'County', 'Verification', 'Last checked', 'Adapter', 'Attributed records'],
       entries.slice(0, 50).map((r, i) => [
         '<button data-registry-index="' + i + '">' + esc(r.source_name) + '</button>',
@@ -394,6 +395,23 @@ async function renderRetainedSources(box) {
   showSourceWatches(watches);
   root.querySelector('#retained-registry-export').onclick = () =>
     download('retained-source-registry.json', registry);
+  root.querySelector('#retained-original-source-audit').onclick = () => perform(async () => {
+    const audit = await api('/api/source-offline-audit');
+    if (!audit.available) throw Error('Original source registry has not been configured');
+    modal('Original source registry · offline verification evidence',
+      '<p>Reuses the original source status and evidence services against the ' +
+      'retained original registry. All HTTP checks are off. Previously reported ' +
+      'source status is not new verification, commercial authorization or ' +
+      'permission to access a portal.</p>' +
+      '<p>Audited original source records: '+esc(audit.source_count)+'. ' +
+      '<button id="export-original-source-audit">Export original audit JSON</button></p>' +
+      '<h3>Original source and adapter status report</h3><pre>' +
+      esc(JSON.stringify(audit.original_status_report,null,2))+'</pre>' +
+      '<h3>Original source verification-evidence package</h3><pre>' +
+      esc(JSON.stringify(audit.original_evidence_package,null,2))+'</pre>');
+    document.querySelector('#export-original-source-audit').onclick =
+      () => download('original-source-offline-audit.json',audit);
+  });
   root.querySelectorAll('[data-registry-index]').forEach(button => {
     button.onclick = () => modal(
       'Registered source: ' + entries[Number(button.dataset.registryIndex)].source_name,
