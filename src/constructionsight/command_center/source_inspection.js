@@ -414,11 +414,25 @@ async function renderRetainedSources(box) {
       'and terms require independent lawful operator observations. ' +
       'No verification is inferred from retained registry labels.</p><pre>' +
       esc(JSON.stringify(audit.original_manual_checklist,null,2))+'</pre>' +
+      '<h3>Original source promotion dry-run</h3><pre>' +
+      esc(JSON.stringify(audit.original_promotion_plan,null,2))+'</pre>' +
+      '<h3>Original registry update dry-run</h3><pre>' +
+      esc(JSON.stringify(audit.original_registry_update_plan,null,2))+'</pre>' +
+      '<p>Both original plans are offline previews; no registry status or ' +
+      'source authorization changes.</p>' +
+      '<p><button id="export-original-source-plans">Export original planning JSON</button></p>' +
       '<p><button id="export-original-observation-templates">' +
       'Export blank original source observation templates</button> ' +
       'Templates are not completed observations or source promotion.</p>');
     document.querySelector('#export-original-source-audit').onclick =
       () => download('original-source-offline-audit.json',audit);
+    document.querySelector('#export-original-source-plans').onclick =
+      () => download('original-source-registry-plans.json', {
+        source_count: audit.source_count,
+        original_promotion_plan: audit.original_promotion_plan,
+        original_registry_update_plan: audit.original_registry_update_plan,
+        network_executed: false, source_promotion_authorized: false
+      });
     document.querySelector('#export-original-observation-templates').onclick =
       () => download('original-source-observation-templates.json',
         audit.original_observation_templates);
@@ -493,9 +507,18 @@ async function renderRetainedSources(box) {
                 '<p>Manual observations remain unverified source claims. ' +
                 'No original source status, network access or commercial ' +
                 'authority changed.</p><pre>'+esc(JSON.stringify(result,null,2))+'</pre>' +
-                '<button id="export-reviewed-original-checklist">Export reviewed checklist JSON</button>');
+                '<button id="export-reviewed-original-checklist">Export reviewed checklist JSON</button> ' +
+                '<button id="export-reviewed-original-source-plans">Export original dry-run plans</button>');
               document.querySelector('#export-reviewed-original-checklist').onclick =
                 () => download('original-manual-checklist-review.json', result);
+              document.querySelector('#export-reviewed-original-source-plans').onclick =
+                () => download('original-reviewed-source-plans.json', {
+                  source_name: result.source_name,
+                  reviewed_source_sha256: result.reviewed_source_sha256,
+                  original_promotion_plan: result.original_promotion_plan,
+                  original_registry_update_plan: result.original_registry_update_plan,
+                  original_registry_mutated: false, source_promoted: false
+                });
             });
         });
       document.querySelector('#review-exact-original-source-http').onclick =

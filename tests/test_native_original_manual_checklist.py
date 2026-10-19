@@ -12,6 +12,8 @@ from sqlalchemy.orm import Session
 
 from constructionsight.adapters import default_adapter_family_specs
 from constructionsight.live_command_center import make_server
+from constructionsight.source_promotion_plan_service import build_source_promotion_plan
+from constructionsight.source_registry_update_plan_service import build_source_registry_update_plan
 from constructionsight.source_verification_checklist_models import SourceVerificationObservation
 from constructionsight.source_verification_checklist_service import (
     build_source_verification_checklist_report,
@@ -115,6 +117,24 @@ def test_native_review_reuses_original_checklist_without_source_mutation(
             assert _strip_build_times(result["original_manual_checklist"]) == (
                 _strip_build_times(expected)
             )
+            parsed = SourceVerificationObservation.model_validate(observation)
+            adapters = default_adapter_family_specs()
+            assert _strip_build_times(result["original_promotion_plan"]) == (
+                _strip_build_times(build_source_promotion_plan(
+                    [source], adapters, check_http=False, observations=[parsed],
+                ).to_dict())
+            )
+            assert _strip_build_times(result["original_registry_update_plan"]) == (
+                _strip_build_times(build_source_registry_update_plan(
+                    [source], adapters, check_http=False, observations=[parsed],
+                ).to_dict())
+            )
+            assert result["original_promotion_plan"]["rows"][0][
+                "planned_action"
+            ] == "mark_partial_candidate"
+            assert result["original_registry_update_plan"]["rows"][0][
+                "evidence_refs"
+            ] == observation["evidence_refs"]
             assert hashlib.sha256(original.read_bytes()).hexdigest() == before
             assert not (private / "investigations.sqlite3").exists()
     finally:

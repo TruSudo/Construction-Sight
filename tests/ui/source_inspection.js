@@ -37,6 +37,9 @@ const {resolve} = require('node:path');
         !originalAudit.includes('source_status') && !originalAudit.includes('readiness_status') ||
         !originalAudit.includes('Original source verification-evidence package') ||
         !originalAudit.includes('Original manual source verification checklist') ||
+        !originalAudit.includes('Original source promotion dry-run') ||
+        !originalAudit.includes('Original registry update dry-run') ||
+        !originalAudit.includes('Export original planning JSON') ||
         !originalAudit.includes('Export blank original source observation templates') ||
         !originalAudit.includes('Previously reported source status is not new verification')) {
       throw Error('Native offline audit did not expose original status/evidence builders');
@@ -55,10 +58,13 @@ const {resolve} = require('node:path');
     await page.check('#manual-source-confirm');
     await page.click('#manual-source-run');
     await page.waitForSelector('#export-reviewed-original-checklist');
+    await page.waitForSelector('#export-reviewed-original-source-plans');
     const originalChecklist = await page.locator('#action-content').textContent();
     if (!originalChecklist.includes('detail_behavior_observed') ||
         !originalChecklist.includes('operator_observations_not_independent_verification') ||
-        !originalChecklist.includes('original_registry_mutated')) {
+        !originalChecklist.includes('original_registry_mutated') ||
+        !originalChecklist.includes('mark_partial_candidate') ||
+        !originalChecklist.includes('original_registry_update_plan')) {
       throw Error('Original native manually reviewed checklist failed read-only parity');
     }
     await page.click('#action-close');

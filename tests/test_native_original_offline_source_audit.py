@@ -16,6 +16,8 @@ from sqlalchemy.orm import Session
 from constructionsight.adapters import default_adapter_family_specs
 from constructionsight.live_command_center import make_server
 from constructionsight.source_status_report import build_source_status_report
+from constructionsight.source_promotion_plan_service import build_source_promotion_plan
+from constructionsight.source_registry_update_plan_service import build_source_registry_update_plan
 from constructionsight.source_verification_checklist_service import (
     build_source_observation_templates,
     build_source_verification_checklist_report,
@@ -80,6 +82,17 @@ def test_native_original_audit_exact_offline_services_without_touching_source(
                     [source], adapters, check_http=False,
                 ).to_dict()
             )
+            assert _without_original_generated_at(
+                report["original_promotion_plan"]
+            ) == _without_original_generated_at(
+                build_source_promotion_plan([source], adapters, check_http=False).to_dict()
+            )
+            assert _without_original_generated_at(
+                report["original_registry_update_plan"]
+            ) == _without_original_generated_at(
+                build_source_registry_update_plan([source], adapters, check_http=False).to_dict()
+            )
+            assert report["original_registry_update_plan"]["update_count"] == 0
             assert report["original_manual_checklist"]["rows"][0][
                 "detail_page"
             ] == "not_checked"
@@ -101,6 +114,9 @@ def test_native_original_audit_exact_offline_services_without_touching_source(
             assert _without_original_generated_at(
                 repeated["original_manual_checklist"]
             ) == _without_original_generated_at(report["original_manual_checklist"])
+            assert repeated["original_registry_update_plan"]["plan_digest"] == report[
+                "original_registry_update_plan"
+            ]["plan_digest"]
             assert repeated["original_observation_templates"] == report[
                 "original_observation_templates"
             ]
