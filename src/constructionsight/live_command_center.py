@@ -109,6 +109,10 @@ from constructionsight.command_center_smarts_catalog import (
 from constructionsight.command_center_smarts_source_review import (
     native_original_smarts_source_review,
 )
+from constructionsight.command_center_source_docket import (
+    preview_original_source_docket,
+    stage_reviewed_original_source_docket,
+)
 from constructionsight.command_center_source_reachability import (
     check_reviewed_original_source_readiness,
     preview_exact_original_source_readiness,
@@ -859,6 +863,18 @@ def make_server(
                     manifest=operator_smarts_review_manifest, county=query["county"][0],
                 )
                 body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
+            elif path == "/api/source-review-docket":
+                if (
+                    set(query) != {"kind", "record_id"}
+                    or any(len(query[key]) != 1 for key in query)
+                    or urlsplit(self.path).fragment
+                ):
+                    raise ValueError("select exact original docket source family and record")
+                value = preview_original_source_docket(
+                    operator_database,
+                    kind=query["kind"][0], record_id=query["record_id"][0],
+                )
+                body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
             elif path == "/api/source-external-intelligence":
                 if query or urlsplit(self.path).fragment:
                     raise ValueError("original external intelligence is exact read-only")
@@ -1155,6 +1171,7 @@ def make_server(
                 "/api/source-ceqanet-csv-preview",
                 "/api/source-ceqanet-csv",
                 "/api/source-ceqanet-retained-apply",
+                "/api/source-review-docket-stage",
                 "/api/source-registry-reviewed-apply",
                 "/api/parcel-source-row-preview",
                 "/api/parcel-arcgis-proof-persist",
@@ -1463,6 +1480,18 @@ def make_server(
                         ):
                             raise ValueError("exact same-origin manual source checklist required")
                         result = review_original_manual_checklist(
+                            operator_database, payload,
+                        )
+                    elif path == "/api/source-review-docket-stage":
+                        if (
+                            urlsplit(self.path).query
+                            or urlsplit(self.path).fragment
+                            or self.headers.get_all("Host", []) != [host]
+                            or self.headers.get_all("Origin", []) != [f"http://{host}"]
+                            or self.headers.get("Sec-Fetch-Site") == "cross-site"
+                        ):
+                            raise ValueError("exact same-origin original docket staging required")
+                        result = stage_reviewed_original_source_docket(
                             operator_database, payload,
                         )
                     elif path == "/api/source-ceqanet-retained-apply":

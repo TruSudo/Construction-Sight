@@ -8,17 +8,12 @@ from pathlib import Path
 import httpx
 import pytest
 
+from constructionsight import smarts_catalog_probe
 from constructionsight.command_center_smarts_catalog import (
     execute_reviewed_original_smarts_catalog,
     preview_original_smarts_catalog,
 )
 from constructionsight.live_command_center import make_server
-from constructionsight.smarts_catalog_probe import (
-    CATALOG_ENDPOINT,
-    CatalogObservation,
-    PACKAGE_ID,
-    REQUIRED_RESOURCES,
-)
 from tests.test_command_center_investigation_bridge import snapshot
 
 
@@ -48,9 +43,9 @@ def test_smarts_catalog_native_preview_fails_closed_and_cannot_grant_collection(
     allowed = preview_original_smarts_catalog(_access(True))
     assert allowed["may_request_approval"] is True
     assert allowed["request_count"] == 1
-    assert allowed["exact_package_id"] == PACKAGE_ID
-    assert allowed["expected_resource_ids"] == REQUIRED_RESOURCES
-    assert allowed["official_catalog_url"] == CATALOG_ENDPOINT
+    assert allowed["exact_package_id"] == smarts_catalog_probe.PACKAGE_ID
+    assert allowed["expected_resource_ids"] == smarts_catalog_probe.REQUIRED_RESOURCES
+    assert allowed["official_catalog_url"] == smarts_catalog_probe.CATALOG_ENDPOINT
     assert allowed["maximum_response_bytes"] == 512_000
     assert allowed["collection_authorized"] is False
     assert allowed["expected_review_digest"] == (
@@ -84,12 +79,12 @@ def test_smarts_catalog_native_http_enforces_exact_operator_approval(
 ) -> None:
     calls: list[str] = []
 
-    def fake_catalog(client: httpx.Client) -> CatalogObservation:
+    def fake_catalog(client: httpx.Client) -> smarts_catalog_probe.CatalogObservation:
         calls.append("once")
         assert client.follow_redirects is False
         assert client.timeout.connect == 5.0
-        return CatalogObservation(
-            request_url=CATALOG_ENDPOINT + "?id=" + PACKAGE_ID,
+        return smarts_catalog_probe.CatalogObservation(
+            request_url=smarts_catalog_probe.CATALOG_ENDPOINT + "?id=" + smarts_catalog_probe.PACKAGE_ID,
             response_sha256="b" * 64,
             package_modified="2026-10-06T00:00:00",
             resources=tuple(
@@ -101,7 +96,7 @@ def test_smarts_catalog_native_http_enforces_exact_operator_approval(
                     "last_modified": "2026-10-02T00:00:00",
                     "resource_license_metadata": None,
                 }
-                for name, value in REQUIRED_RESOURCES.items()
+                for name, value in smarts_catalog_probe.REQUIRED_RESOURCES.items()
             ),
         )
 
@@ -154,7 +149,7 @@ def test_smarts_catalog_native_http_enforces_exact_operator_approval(
             assert result.status_code == 200, result.text
             assert len(calls) == 1
             value = result.json()
-            assert value["original_catalog_observation"]["package_id"] == PACKAGE_ID
+            assert value["original_catalog_observation"]["package_id"] == smarts_catalog_probe.PACKAGE_ID
             assert len(value["original_catalog_observation"]["resources"]) == 4
             assert value["original_catalog_observation"]["snapshot_complete"] is False
             assert value["dataset_downloaded"] is False
@@ -169,7 +164,7 @@ def test_smarts_catalog_native_http_enforces_exact_operator_approval(
 def test_catalog_execute_rejects_stale_access_review_without_network(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def forbidden(_client: httpx.Client) -> CatalogObservation:
+    def forbidden(_client: httpx.Client) -> smarts_catalog_probe.CatalogObservation:
         raise AssertionError("Denied catalog must never reach transport")
 
     monkeypatch.setattr(

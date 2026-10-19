@@ -104,6 +104,20 @@ const {resolve} = require('node:path');
       throw Error('Exact retained evidence is not inspectable');
     }
     await page.click('#action-close');
+    await sourceRow.locator('[data-source-preview]').click();
+    await page.waitForSelector('#review-original-source-docket');
+    await page.locator('#review-original-source-docket').click();
+    await page.waitForFunction(() =>
+      document.querySelector('#action-content')?.textContent
+        .includes('native-original-source-docket/v1'));
+    const docket = await page.locator('#action-content').textContent();
+    if (!docket.includes('original_source_preview') ||
+        !docket.includes('normalized_source_sha256') ||
+        !docket.includes('commercial_lead_created') ||
+        !docket.includes('false')) {
+      throw Error('Original candidate review docket is not in the native source view');
+    }
+    await page.click('#action-close');
     await sourceRow.locator('[data-source-lineage]').click();
     await page.waitForFunction(() =>
       document.querySelector('#action-content')?.textContent

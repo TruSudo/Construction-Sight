@@ -838,7 +838,60 @@ async function renderRetainedSources(box) {
                   (details.matches || []).map((item,i) => [
                     esc(item.parcel_record_id)+' · '+esc(item.source_key),
                     '<button data-retained-parcel-review="'+i+'">Compare exact source</button>'
-                  ])) : ''));
+                  ])) : '<p><button id="review-original-source-docket">' +
+                'Review original append-only source docket</button></p>'));
+            if (!isParcel) {
+              const docketButton = document.querySelector('#review-original-source-docket');
+              docketButton.onclick = () => perform(async () => {
+                const plan = await api('/api/source-review-docket?' + new URLSearchParams({
+                  kind: record.record_kind, record_id: record.record_id
+                }));
+                if (!root.isConnected || activePage !== 'Sources & Collection') return;
+                const docketTicket = modal('Original source candidate review docket',
+                  '<p>Exact normalized original record, staged-history integrity, and ' +
+                  'source SHA-256. An append-only docket is not a verified project, ' +
+                  'commercial lead, contact, outreach or bid authority.</p>' +
+                  '<pre>' + esc(JSON.stringify(plan,null,2)) + '</pre>' +
+                  (plan.may_request_staging ?
+                    '<label>Reason for staging this exact unapproved source snapshot ' +
+                    '<textarea id="docket-stage-reason" rows="3" maxlength="1000"></textarea></label>' +
+                    '<label><input id="docket-stage-confirm" type="checkbox" />' +
+                    ' I reviewed this exact normalized source record and authorize ' +
+                    'one append-only review snapshot, not lead qualification.</label>' +
+                    '<button id="docket-stage-approve">Stage reviewed source snapshot</button>' :
+                    '<p>Original source docket table is not initialized. The native ' +
+                    'interface will not create or migrate an original database.</p>'));
+                const stage = $('docket-stage-approve');
+                if (!stage) return;
+                stage.onclick = () => perform(async () => {
+                  if (docketTicket !== modalTicket || !$('action-dialog').open) return;
+                  const reason = $('docket-stage-reason').value.trim();
+                  if (reason.length < 10 || !$('docket-stage-confirm').checked)
+                    throw Error('Review the exact source and confirm a staging reason.');
+                  stage.disabled = true;
+                  try {
+                    const original = plan.original_source_preview;
+                    const receipt = await api('/api/source-review-docket-stage', {
+                      kind: record.record_kind,
+                      record_id: record.record_id,
+                      expected_preview_id: original.preview_id,
+                      expected_source_sha256: original.normalized_source_sha256,
+                      review_reason: reason,
+                      caller_confirmation: true
+                    });
+                    modal('Original source docket · append-only review receipt',
+                      '<p>Unapproved normalized source snapshot retained; no ' +
+                      'record promotion, commercial lead, outbound contact or bid.</p>' +
+                      '<pre>' + esc(JSON.stringify(receipt,null,2)) + '</pre>' +
+                      '<button id="export-original-docket-stage">Export original docket receipt</button>');
+                    $('export-original-docket-stage').onclick =
+                      () => download('original-unapproved-source-docket.json',receipt);
+                  } finally {
+                    if (stage.isConnected) stage.disabled = false;
+                  }
+                });
+              });
+            }
             if (isParcel) {
               document.querySelectorAll('[data-retained-parcel-review]').forEach(button => {
                 button.onclick = () => perform(() => {
