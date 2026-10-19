@@ -15,9 +15,9 @@ P8-17 through P8-20 (pixel parity, final regression, deployment and permissioned
 live-source acceptance) are tracked separately and must still pass before calling
 the product complete.
 
-**Checkpoint count at this register:** 8 of 15 integration gates have state **V**
-(verified); 7 remain open: P8-01, P8-03, P8-04, P8-08, P8-09, P8-10 and P8-11.
-Display **53% verified integration gates (8/15)** using a 20-cell filled/unfilled
+**Checkpoint count at this register:** 9 of 15 integration gates have state **V**
+(verified); 6 remain open: P8-01, P8-03, P8-04, P8-08, P8-09 and P8-11.
+Display **60% verified integration gates (9/15)** using a 20-cell filled/unfilled
 progress bar. Calculation: round(100 * verified integration gates / 15) to the
 nearest whole percent. This number describes *equal-count acceptance checkpoints*,
 not the percentage of engineering work finished, time elapsed, or functionality
@@ -39,6 +39,35 @@ mistake this progress bar for full completion: all 20 P8 requirements must also
 be accepted, including the five excluded owner/visual/final conditions. Because
 the bar is displayed in chat, it refreshes on each response, not continuously
 while a chat is idle.
+
+## P8-10 shared original/canonical watch notifications — verified 2026-10-18
+
+The existing original CEQA/permit source watch, persisted canonical-investigation
+watch, and original source-change trigger now have a complete jointly exercised
+native inbox acceptance path. The source notification appears when original
+retained evidence changes; the canonical notification appears only after its
+exact human-reviewed revision passes through the existing worker and commits
+new canonical evidence. Both notices retain distinct, deterministic identities,
+share the existing read-receipt inbox, avoid duplicate notices per subscription,
+and survive browser/server and independent worker restart. Canonical acknowledgment
+does not silently archive the original watch; source archive does not mutate
+the underlying original source or independent canonical watch. The original
+source alert opens the exact source-reconciliation preview and current native
+dossier, while the canonical alert opens the current revised shared dossier.
+
+**Evidence:** `tests/test_native_original_canonical_watch_convergence.py`
+(both CEQA and permit), `tests/test_native_source_watch_notifications.py`,
+`tests/test_native_investigation_watch_notifications.py`, and the genuine
+`tests/ui/source_inspection.js` browser journey (automatic in-browser notice
+indicator, original-to-canonical navigation, committed revision, joint inbox
+and durable read receipts). Published application/test HEAD `a3886baccaa3185bfca51ff09ccd1e383c079394`:
+CI workflow `39185234856` **success** with **2,818 passed** on both Python
+3.11 and 3.12; Command Center visual/browser workflow `39185234857`
+**success** (not an exact pixel-match certification). These tests close P8-10,
+not separate original-data or live-source access P8-07/19/20. No external
+notification delivery, collection authority or commercial promotion is inferred.
+The original independent watch stores and approved dashboard visual structure
+are preserved.
 
 ## P8-09 result-history continuation — 2026-10-18
 
@@ -106,7 +135,7 @@ equivalent implementation exists.
 acceptance scope; O = open implementation/equivalence obligation; P = implemented
 or assembled but final verification outstanding; B = owner-data/device/current
 source access needed. V is retained evidence, not a fresh execution on `2bc29ba`.
-Counts: **8 V, 8 O, 1 P, 3 B**. These obligations differ greatly in size; do not
+Counts: **9 V, 7 O, 1 P, 3 B**. These obligations differ greatly in size; do not
 convert 8/20 into a completion percentage or call the 12 remaining obligations
 13 bugs. This fixes the acceptance denominator, not the number of code changes.
 
@@ -121,7 +150,7 @@ convert 8/20 into a completion percentage or call the 12 remaining obligations
 | P8-07 | Intended owner's retained-data reconciliation | B — fixture/genuine offline capture acceptance exists; owner's complete selected data has not been reconciled | Identify actual original/native stores and retained artifacts; process all reviewed pages, resolve/hold conflicts, rescan and account for every selected record without modifying originals or duplicating work. Explicitly bounded scope, never countywide completeness. |
 | P8-08 | Investigation-to-qualified-lead handoff | O — investigations remain unassessed; native commercial writes resolve `current()["rows"]`; original `product_integration_service` provides review/dedupe/workflow behavior not proven equivalent for canonical investigations | An explicitly reviewed eligible investigation reaches the existing lead/commercial workflow with stable lineage, dedupe, evidence-backed readiness/reasons and contact/authority gates. Unqualified investigations remain visible and blocked from unauthorized commerce. |
 | P8-09 | Historical commercial workflow continuity | O — validated history, finance lineage and no-send previews exist; original transition/result-apply services are not exposed by the native handlers inspected | Continue an eligible retained workflow through authorized transitions and outcome/correction operations from the native UI, or prove an equivalent preserving its exact history, money and source/investigation attribution. Historical shares never automatically become native entitlements/payments. Physical database merging is not required. |
-| P8-10 | Source/investigation watches and material alerts | O — original source watches and native lead watches remain distinct; original change-trigger storage exists, but no complete shared-source-to-native-alert journey is established | A watched canonical/original source change produces the correct persistent, deduplicated native notification with exact lineage, including worker restart and read/archive behavior. External delivery only if already implemented and separately authorized. |
+| P8-10 | Source/investigation watches and material alerts | V — existing source and canonical watches both project into one native notification inbox; full cross-source worker, restart, read/archive/acknowledge, browser UI/dossier and duplicate tests passed on `a3886ba` (2,818 Python tests on 3.11 and 3.12; visual browser workflow successful). No background polling or external delivery inferred. | A watched canonical/original source change produces the correct persistent, deduplicated native notification with exact lineage, including worker restart and read/archive behavior. External delivery only if already implemented and separately authorized. |
 | P8-11 | Complete retained report/export equivalence | O — native retained-chain-report ZIP reuses original package/archive validators; broader report/control equivalence is still unaccounted | Enumerate original chain/report/evidence/bundle/package/archive/verify outputs and audit exports; prove each required native output is equivalent and usable without the old dashboard. Do not duplicate a proven exporter or treat packaging an existing report as proof of creating that report. |
 | P8-12 | One investigation across views | V — Phase 5/8 inventory, map, dossier, evidence, lineage/recovery browser evidence | Preserve common IDs and committed revisions across overview, Lead Console, Project Intelligence, map, network, evidence and dossiers; filters, unmapped queue, restored histories and open-dossier refresh stay consistent. Commercial eligibility is separately P8-08. |
 | P8-13 | Embedded/expanded live and historical graph | V — Phase 6 acceptance and later paused/closed graph worker journeys | Preserve shared graph state, actual committed events, review propagation, replay, reconnect, saved views, filters, evidence and map/dossier navigation. Display pause must not stop engine or current-dossier updates. |
