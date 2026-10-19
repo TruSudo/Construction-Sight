@@ -522,6 +522,25 @@ const {resolve} = require('node:path');
       data: {action: 'add', ...watchedSource}, headers: {Origin: process.argv[2]}
     });
     if (!watchCreated.ok()) throw Error('Source notification watch setup failed');
+    // Both subscriptions must use their original durable stores but report into
+    // the same inbox after the reviewed worker commits the matching revision.
+    const canonicalBefore = await (await page.request.get(new URL(
+      '/api/source-reconciliation?' + new URLSearchParams(watchedSource),
+      process.argv[2]).href)).json();
+    const canonicalSourceId = canonicalBefore.canonical_investigation_id;
+    if (!canonicalSourceId) throw Error('Original source has no retained canonical identity');
+    const canonicalWatch = await (await page.request.get(new URL(
+      '/api/investigation-watch?' +
+        new URLSearchParams({investigation_id: canonicalSourceId}),
+      process.argv[2]).href)).json();
+    const canonicalWatchPost = await page.request.post(new URL(
+      '/api/investigation-watch', process.argv[2]).href, {
+      data: {action: 'watch', investigation_id: canonicalSourceId,
+             expected_digest: canonicalWatch.current_digest},
+      headers: {Origin: process.argv[2]}
+    });
+    if (!canonicalWatchPost.ok() || (await canonicalWatchPost.json()).changed)
+      throw Error('Current canonical source watch failed to persist');
     const priorNotices = await (await page.request.get(new URL(
       '/api/notifications', process.argv[2]).href)).json();
     await page.request.post(new URL('/api/notifications/read', process.argv[2]).href, {
@@ -656,6 +675,28 @@ engine.dispose()
         originalDigest() !== beforeRevisionWorker || runWorker().processed_jobs !== 0) {
       throw Error('Original revision duplicated investigations, changed source data, or repeated work');
     }
+    const combinedNotices = await (await page.request.get(new URL(
+      '/api/notifications', process.argv[2]).href)).json();
+    const originalAlerts = combinedNotices.filter(n =>
+      n.record_kind === watchedSource.kind && n.record_id === watchedSource.record_id);
+    const investigationAlerts = combinedNotices.filter(n =>
+      n.investigation_id === canonicalSourceId);
+    if (originalAlerts.length !== 1 || investigationAlerts.length !== 1 ||
+        originalAlerts[0].read || investigationAlerts[0].read ||
+        investigationAlerts[0].source_claim_only !== true ||
+        originalAlerts[0].id === investigationAlerts[0].id) {
+      throw Error('Original and canonical watches did not converge on one durable inbox');
+    }
+    await page.click('#notifications');
+    await page.waitForSelector('[data-investigation-notice]');
+    await page.locator('[data-investigation-notice]')
+      .filter({hasText: 'Watched shared investigation changed'}).click();
+    await page.waitForSelector('#export-investigation');
+    if (!(await page.locator('#action-content').textContent())
+      .includes(revisionPreview.expected_evidence_id)) {
+      throw Error('Canonical watch alert did not open current exact revised evidence');
+    }
+    await page.click('#action-close');
     await page.click('#notifications');
     await page.waitForSelector('[data-source-notice]');
     await page.click('#mark-read');
@@ -666,9 +707,12 @@ engine.dispose()
     await page.waitForFunction(() => document.documentElement.dataset.ready === 'true');
     await page.click('#notifications');
     await page.waitForSelector('[data-source-notice]');
+    await page.waitForSelector('[data-investigation-notice]');
     if (!(await page.locator('[data-source-notice]').first()
-      .evaluate(n => n.closest('.notice').classList.contains('read')))) {
-      throw Error('Source notification read receipt did not survive browser restart');
+      .evaluate(n => n.closest('.notice').classList.contains('read'))) ||
+        !(await page.locator('[data-investigation-notice]').first()
+          .evaluate(n => n.closest('.notice').classList.contains('read')))) {
+      throw Error('Joint source/canonical watch read receipts did not survive browser restart');
     }
     if (errors.length) throw Error(errors.join('; '));
     console.log('Phase 8 native retained-source and historical-commercial read parity: PASS');
