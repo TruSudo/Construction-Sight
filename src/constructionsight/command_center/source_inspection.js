@@ -1101,7 +1101,6 @@ async function renderRetainedCaptureInbox(box) {
       '<p>Offline plans first. Exact request and lawful-access evidence must be ' +
       'reviewed before separately authorizing a bounded read. No automatic ' +
       'collection, registry mutation or commercial activity.</p>' +
-      '<button id="audit-original-smarts-roster">Audit exact SMARTS roster</button> ' +
       '<button id="review-ceqanet-listing">Review bounded listing</button> ' +
       '<button id="review-ceqanet-csv">Review exact CSV evidence</button> ' +
       '<button id="review-ceqanet-maturity">Audit retained CSV maturity</button> ' +
@@ -1143,7 +1142,8 @@ async function renderRetainedCaptureInbox(box) {
       '<p>One fixed public CKAN package metadata request, after a complete ' +
       'independent lawful-access review. Not a dataset download, automated ' +
       'collection, schedule, source promotion or commercial action.</p>' +
-      '<button id="review-original-smarts-catalog">Review exact catalog request</button>';
+      '<button id="review-original-smarts-catalog">Review exact catalog request</button> ' +
+      '<button id="audit-original-smarts-roster">Audit exact SMARTS roster</button>';
     box.append(smartsCatalog);
     smartsCatalog.querySelector('#review-original-smarts-catalog').onclick =
       () => perform(async () => {
@@ -1248,7 +1248,7 @@ async function renderRetainedCaptureInbox(box) {
         }
       });
     };
-    acquisition.querySelector('#audit-original-smarts-roster').onclick = () =>
+    smartsCatalog.querySelector('#audit-original-smarts-roster').onclick = () =>
       perform(async () => {
         const result = await api('/api/source-smarts-roster-audit');
         const available = result.available === true;
