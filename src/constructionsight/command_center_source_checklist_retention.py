@@ -80,7 +80,11 @@ def preview_original_manual_checklist_retention(
     digest = authorization_digest(
         "native-original-source-manual-evidence-retention/v1", material,
     )
-    filename = f"original-source-checklist-{digest}.json"
+    # authorization_digest includes a namespace separator, which is not a
+    # portable evidence filename. Hash the entire bound authorization identity
+    # into a canonical hexadecimal basename without reducing its scope.
+    filename_identity = hashlib.sha256(digest.encode("utf-8")).hexdigest()
+    filename = f"original-source-checklist-{filename_identity}.json"
     destination = private_folder / "source-verification-evidence" / filename
     blockers: list[str] = []
     if destination.exists() or destination.is_symlink():
