@@ -14,7 +14,12 @@ from constructionsight.command_center_smarts_roster import (
     original_retained_smarts_roster_audit,
 )
 from constructionsight.live_command_center import make_server
-from constructionsight.smarts_collection import _roster_digest, parse_roster
+from constructionsight.smarts_collection import (
+    _roster_digest,
+    collect_roster,
+    parse_roster,
+)
+from tests.test_smarts_collection import _page
 from tests.test_command_center_investigation_bridge import snapshot
 from tests.test_native_original_ceqanet_maturity import _retained
 
@@ -111,3 +116,33 @@ def test_original_roster_launcher_requires_real_file_and_data(tmp_path: Path) ->
             operator_database=db,
             operator_smarts_collection_roster=linked,
         )
+
+
+def test_original_roster_configured_journal_is_verified_without_write(
+    tmp_path: Path,
+) -> None:
+    _db, roster, folder = _roster(tmp_path)
+    journal = folder / "smarts-source-evidence.sqlite3"
+    checkpoint = folder / "smarts-collection-checkpoint.sqlite3"
+    targets = parse_roster(roster.read_bytes())
+    result = collect_roster(
+        run_id="roster-audit-fixture",
+        targets=targets,
+        journal_path=journal,
+        checkpoint_path=checkpoint,
+        max_requests=2,
+        fetch=lambda target: _page(
+            target.app_id or "123456",
+            wdid=target.wdid,
+            county=target.county,
+        ),
+    )
+    assert result.completed == 2
+    original_bytes = journal.read_bytes()
+    checkpoint_bytes = checkpoint.read_bytes()
+    review = original_retained_smarts_roster_audit(roster, journal)
+    assert review["original_source_journal_integrity_verified"] is True
+    assert review["source_journal_status"] == "original_integrity_verified"
+    assert review["journal_mutated"] is False
+    assert journal.read_bytes() == original_bytes
+    assert checkpoint.read_bytes() == checkpoint_bytes
