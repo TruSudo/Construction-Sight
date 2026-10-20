@@ -65,12 +65,12 @@ from constructionsight.command_center_ceqanet_maturity import (
 from constructionsight.command_center_ceqanet_policy_audit import (
     original_retained_ceqanet_policy_audit,
 )
-from constructionsight.command_center_ceqanet_recurring_audit import (
-    original_retained_ceqanet_recurring_audit,
-)
 from constructionsight.command_center_ceqanet_recurring_attempt import (
     execute_reviewed_original_ceqanet_recurring_attempt,
     preview_original_ceqanet_recurring_attempt,
+)
+from constructionsight.command_center_ceqanet_recurring_audit import (
+    original_retained_ceqanet_recurring_audit,
 )
 from constructionsight.command_center_ceqanet_retained_import import (
     apply_reviewed_retained_ceqanet_import,
