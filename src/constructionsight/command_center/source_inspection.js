@@ -522,11 +522,12 @@ async function renderRetainedSources(box) {
                 observation[item.dataset.manualSourceFlag] =
                   item.value === '' ? null : item.value === 'true';
               });
-              const result = await api('/api/source-checklist-review', {
+              const reviewPayload = {
                 source_name: reviewed.source_name, public_url: reviewed.public_url,
                 expected_source_sha256: reviewed.expected_source_sha256,
                 review_reason: reason, caller_confirmation: true, observation
-              });
+              };
+              const result = await api('/api/source-checklist-review',reviewPayload);
               const proposed = result.original_registry_update_plan;
               const applyTicket = modal('Original manual source checklist · reviewed result',
                 '<p>Manual observations are not independent source verification. ' +
@@ -534,6 +535,7 @@ async function renderRetainedSources(box) {
                 'network, collection, or commercial authority.</p><pre>' +
                 esc(JSON.stringify(result,null,2))+'</pre>' +
                 '<button id="export-reviewed-original-checklist">Export reviewed checklist JSON</button> ' +
+                '<button id="retain-reviewed-original-checklist">Retain original checklist evidence</button> ' +
                 '<button id="export-reviewed-original-source-plans">Export original dry-run plans</button>' +
                 (proposed.update_count === 1 ?
                   '<h3>Apply one reviewed registry status change</h3>' +
@@ -553,6 +555,49 @@ async function renderRetainedSources(box) {
                   '<p>No original registry status change is proposed.</p>'));
               document.querySelector('#export-reviewed-original-checklist').onclick =
                 () => download('original-manual-checklist-review.json', result);
+              $('retain-reviewed-original-checklist').onclick = () => perform(async () => {
+                if (applyTicket !== modalTicket || !$('action-dialog').open) return;
+                const preview = await api(
+                  '/api/source-checklist-retention-preview',reviewPayload
+                );
+                const retainTicket = modal('Original source · permanent evidence receipt',
+                  '<p>Review an exact private create-only evidence snapshot. It ' +
+                  'preserves the original manual checklist and dry-run plans; ' +
+                  'manual observations never establish independent verification, ' +
+                  'remote source permission, source promotion or commercial authority.</p>' +
+                  '<pre>'+esc(JSON.stringify(preview,null,2))+'</pre>' +
+                  (preview.may_request_approval ?
+                    '<label>Specific reason for retaining this evidence ' +
+                    '<textarea id="source-checklist-retain-reason" rows="3" maxlength="2000"></textarea></label>' +
+                    '<label><input type="checkbox" id="source-checklist-retain-confirm"> ' +
+                    'I approve permanent retention of this exact reviewed proof.</label>' +
+                    '<button id="source-checklist-retain-apply">Retain reviewed proof</button>' :
+                    '<p>This exact review is already retained or unavailable.</p>'));
+                const action = $('source-checklist-retain-apply');
+                if (!action) return;
+                action.onclick = () => perform(async () => {
+                  if (retainTicket !== modalTicket || !$('action-dialog').open) return;
+                  const retainReason = $('source-checklist-retain-reason').value.trim();
+                  if (retainReason.length < 10 || !$('source-checklist-retain-confirm').checked)
+                    throw Error('Specific retention reason and confirmation required.');
+                  action.disabled = true;
+                  try {
+                    const receipt = await api('/api/source-checklist-retention',{
+                      ...reviewPayload,
+                      expected_review_digest: preview.expected_review_digest,
+                      retention_reason: retainReason,
+                      retention_confirmation: true
+                    });
+                    modal('Original source · retained immutable checklist',
+                      '<p>Reviewed checklist permanently retained in private source ' +
+                      'evidence. Registry and source policy remain unchanged.</p>' +
+                      '<pre>'+esc(JSON.stringify(receipt,null,2))+'</pre>' +
+                      '<button id="export-source-checklist-retention-receipt">Export receipt</button>');
+                    $('export-source-checklist-retention-receipt').onclick =
+                      () => download('original-source-checklist-retention.json',receipt);
+                  } finally { if (action.isConnected) action.disabled = false; }
+                });
+              });
               document.querySelector('#export-reviewed-original-source-plans').onclick =
                 () => download('original-reviewed-source-plans.json', {
                   source_name: result.source_name,

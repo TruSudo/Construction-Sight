@@ -117,6 +117,10 @@ from constructionsight.command_center_original_checklist import (
     preview_original_manual_checklist,
     review_original_manual_checklist,
 )
+from constructionsight.command_center_source_checklist_retention import (
+    preview_original_manual_checklist_retention,
+    retain_reviewed_original_manual_checklist,
+)
 from constructionsight.command_center_parcel_readiness import (
     parcel_source_readiness_snapshot,
     preview_retained_parcel_sample,
@@ -1329,6 +1333,8 @@ def make_server(
                 "/api/source-watchlist-action",
                 "/api/source-http-check",
                 "/api/source-checklist-review",
+                "/api/source-checklist-retention-preview",
+                "/api/source-checklist-retention",
                 "/api/source-ceqanet-discovery",
                 "/api/source-ceqanet-detail-preview",
                 "/api/source-ceqanet-detail",
@@ -1741,6 +1747,28 @@ def make_server(
                         ):
                             raise ValueError("exact same-origin CEQAnet discovery consent required")
                         result = execute_reviewed_original_ceqanet_discovery(payload)
+                    elif path in (
+                        "/api/source-checklist-retention-preview",
+                        "/api/source-checklist-retention",
+                    ):
+                        if (
+                            urlsplit(self.path).query
+                            or urlsplit(self.path).fragment
+                            or self.headers.get_all("Host", []) != [host]
+                            or self.headers.get_all("Origin") != [f"http://{host}"]
+                            or self.headers.get("Sec-Fetch-Site") == "cross-site"
+                        ):
+                            raise ValueError(
+                                "exact same-origin source checklist retention required"
+                            )
+                        retention_operation = (
+                            preview_original_manual_checklist_retention
+                            if path.endswith("-preview")
+                            else retain_reviewed_original_manual_checklist
+                        )
+                        result = retention_operation(
+                            operator_database, directory, payload,
+                        )
                     elif path == "/api/source-checklist-review":
                         if (
                             urlsplit(self.path).query
