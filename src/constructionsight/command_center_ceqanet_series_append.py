@@ -71,7 +71,8 @@ def _proposal(
         json.loads(raw_candidate.decode("utf-8"))
     )
     candidate.assert_integrity()
-    if candidate.live_execution.executed_at.date().isoformat() != name.split("-")[3] + "-" + name.split("-")[4] + "-" + name.split("-")[5]:
+    date_in_name = "-".join(name.split("-")[3:6])
+    if candidate.live_execution.executed_at.date().isoformat() != date_in_name:
         raise ValueError("retained original execution filename has a different UTC date")
     if candidate.live_execution.request.sch_number not in name:
         raise ValueError("retained original execution filename has a different SCH")

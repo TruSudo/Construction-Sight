@@ -15,10 +15,10 @@ from constructionsight.command_center_ceqanet_series_append import (
     apply_reviewed_original_ceqanet_series_append,
     preview_original_ceqanet_series_append,
 )
-from constructionsight.command_center_ceqanet_series_execution import _context
 from constructionsight.command_center_ceqanet_series_audit import (
     original_retained_ceqanet_series_audit,
 )
+from constructionsight.command_center_ceqanet_series_execution import _context
 from tests.test_native_original_ceqanet_series_audit import _series
 
 _NAME = "ceqanet-csv-evidence-2026-07-14-2026030377-project.json"
