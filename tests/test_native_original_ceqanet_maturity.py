@@ -118,7 +118,7 @@ def test_native_original_maturity_route_is_read_only_and_exact(tmp_path: Path) -
             assert client.post(
                 "/api/source-ceqanet-maturity-audit", json={"apply": True},
                 headers={"Origin": host},
-            ).status_code in (400, 404, 405)
+            ).status_code == 501
             assert hashlib.sha256(database.read_bytes()).hexdigest() == before
     finally:
         server.shutdown()
