@@ -72,6 +72,10 @@ from constructionsight.command_center_ceqanet_retained_import import (
 from constructionsight.command_center_ceqanet_series_audit import (
     original_retained_ceqanet_series_audit,
 )
+from constructionsight.command_center_ceqanet_series_execution import (
+    execute_reviewed_original_ceqanet_series_request,
+    preview_original_ceqanet_series_request,
+)
 from constructionsight.command_center_external_source_intelligence import (
     original_external_source_intelligence,
 )
@@ -1238,6 +1242,8 @@ def make_server(
                 "/api/source-ceqanet-listing",
                 "/api/source-ceqanet-csv-preview",
                 "/api/source-ceqanet-csv",
+                "/api/source-ceqanet-series-execution-preview",
+                "/api/source-ceqanet-series-execution",
                 "/api/source-ceqanet-retained-apply",
                 "/api/source-review-docket-stage",
                 "/api/source-registry-reviewed-apply",
@@ -1493,6 +1499,8 @@ def make_server(
                         "/api/source-ceqanet-listing",
                         "/api/source-ceqanet-csv-preview",
                         "/api/source-ceqanet-csv",
+                        "/api/source-ceqanet-series-execution-preview",
+                        "/api/source-ceqanet-series-execution",
                     ):
                         if (
                             urlsplit(self.path).query
@@ -1510,7 +1518,21 @@ def make_server(
                             "/api/source-ceqanet-csv-preview": preview_original_ceqanet_csv,
                             "/api/source-ceqanet-csv": execute_reviewed_original_ceqanet_csv,
                         }
-                        result = operations[path](payload)
+                        if path.startswith("/api/source-ceqanet-series-execution"):
+                            operation = (
+                                preview_original_ceqanet_series_request
+                                if path.endswith("-preview")
+                                else execute_reviewed_original_ceqanet_series_request
+                            )
+                            result = operation(
+                                operator_database,
+                                operator_ceqanet_csv_evidence,
+                                operator_ceqanet_csv_access_policy,
+                                operator_ceqanet_csv_series_manifest,
+                                payload,
+                            )
+                        else:
+                            result = operations[path](payload)
                     elif path in (
                         "/api/source-ceqanet-detail-preview",
                         "/api/source-ceqanet-detail",

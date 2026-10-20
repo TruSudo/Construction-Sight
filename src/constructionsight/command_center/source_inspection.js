@@ -1105,7 +1105,8 @@ async function renderRetainedCaptureInbox(box) {
       '<button id="review-ceqanet-csv">Review exact CSV evidence</button> ' +
       '<button id="review-ceqanet-maturity">Audit retained CSV maturity</button> ' +
       '<button id="review-ceqanet-policy">Audit original CSV access policy</button> ' +
-      '<button id="review-ceqanet-series">Audit original CSV evidence series</button>';
+      '<button id="review-ceqanet-series">Audit original CSV evidence series</button> ' +
+      '<button id="request-ceqanet-series-evidence">Review policy-bound CSV request</button>';
     box.append(acquisition);
     const accessMarkup = () => [
       ['requires_login', 'Source requires login'],
@@ -1243,6 +1244,67 @@ async function renderRetainedCaptureInbox(box) {
         }
       });
     };
+    acquisition.querySelector('#request-ceqanet-series-evidence').onclick = () =>
+      perform(async () => {
+        const ticket = modal('CEQAnet evidence series · original policy-bound request',
+          '<p>This is a separate, explicit one-shot original evidence request. ' +
+          'The existing policy must be current, the retained series verified, ' +
+          'and present lawful source access independently reviewed. The original ' +
+          'execution consumes a durable daily allowance and retains a private ' +
+          'execution file; it never advances the ledger automatically.</p>' +
+          '<label>Exact 10-digit SCH number <input id="series-csv-sch" ' +
+          'maxlength="10" inputmode="numeric" /></label>' +
+          '<label>Document ID (empty for project CSV) <input id="series-csv-doc" ' +
+          'type="number" min="1" max="2147483647" /></label>' +
+          accessMarkup() +
+          '<button id="preview-series-csv-execution">Review original request</button>');
+        $('preview-series-csv-execution').onclick = () => perform(async () => {
+          if (ticket !== modalTicket || !$('action-dialog').open) return;
+          const sch = $('series-csv-sch').value.trim();
+          const doc = $('series-csv-doc').value.trim();
+          const review = {
+            export: {sch_number: sch, document_id: doc ? Number(doc) : null},
+            access_review: accessValues()
+          };
+          const preview = await api('/api/source-ceqanet-series-execution-preview',review);
+          const approvedTicket = modal('Original CEQAnet series · exact execution proof',
+            '<p>No source request yet. Original policy/series verification, UTC ' +
+            'allowance, retained output and current access review must all pass. ' +
+            'A recorded policy is not proof of present legal permission.</p>' +
+            '<pre>'+esc(JSON.stringify(preview,null,2))+'</pre>' +
+            (preview.may_request_approval ?
+              '<label>Specific reason for exactly one bounded request ' +
+              '<textarea id="series-csv-reason" rows="3" maxlength="2000"></textarea></label>' +
+              '<label><input type="checkbox" id="series-csv-confirm" /> ' +
+              'I confirm current lawful source access, exact request, policy ' +
+              'limits, permanent daily allowance and private retained evidence.</label>' +
+              '<button id="execute-original-series-csv">Execute approved request</button>' :
+              '<p>Original policy, evidence series, date window or source access ' +
+              'review is denied. No live request is available.</p>'));
+          const button = $('execute-original-series-csv');
+          if (!button) return;
+          button.onclick = () => perform(async () => {
+            if (approvedTicket !== modalTicket || !$('action-dialog').open) return;
+            const reason = $('series-csv-reason').value.trim();
+            if (reason.length < 10 || !$('series-csv-confirm').checked)
+              throw Error('Enter specific reasons and explicitly confirm exact scope.');
+            button.disabled = true;
+            try {
+              const result = await api('/api/source-ceqanet-series-execution', {
+                ...review, expected_preview_digest: preview.expected_preview_digest,
+                review_reason: reason, caller_confirmation: true
+              });
+              modal('Original CEQAnet series · retained execution receipt',
+                '<p>Original single-request outcome retained locally. No series ' +
+                'append, recurring schedule, source promotion, outreach or bid.</p>' +
+                '<pre>'+esc(JSON.stringify(result,null,2))+'</pre>' +
+                '<button id="export-original-series-csv-receipt">Export receipt JSON</button>');
+              $('export-original-series-csv-receipt').onclick =
+                () => download('original-series-csv-receipt.json',result);
+            } finally { if (button.isConnected) button.disabled = false; }
+          });
+        });
+      });
     acquisition.querySelector('#review-ceqanet-series').onclick = () =>
       perform(async () => {
         const result = await api('/api/source-ceqanet-series-audit');

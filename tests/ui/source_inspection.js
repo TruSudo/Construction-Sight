@@ -214,6 +214,17 @@ const {resolve} = require('node:path');
       throw Error('Original SMARTS metadata catalog did not deny unknown access facts');
     }
     await page.click('#action-close');
+    await page.locator('#request-ceqanet-series-evidence').click();
+    await page.fill('#series-csv-sch','2026030377');
+    await page.locator('#preview-series-csv-execution').click();
+    await page.waitForFunction(() =>
+      document.querySelector('#action-content')?.textContent
+        .includes('configure an original retained CEQAnet evidence series'));
+    const unavailableExecution = await page.locator('#action-content').textContent();
+    if (unavailableExecution.includes('Execute approved request')) {
+      throw Error('Unconfigured policy-bound execution offered live authority');
+    }
+    await page.click('#action-close');
     await page.locator('#review-ceqanet-series').click();
     await page.waitForFunction(() =>
       document.querySelector('#action-content')?.textContent
