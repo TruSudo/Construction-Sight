@@ -76,6 +76,10 @@ from constructionsight.command_center_ceqanet_series_execution import (
     execute_reviewed_original_ceqanet_series_request,
     preview_original_ceqanet_series_request,
 )
+from constructionsight.command_center_ceqanet_series_append import (
+    apply_reviewed_original_ceqanet_series_append,
+    preview_original_ceqanet_series_append,
+)
 from constructionsight.command_center_external_source_intelligence import (
     original_external_source_intelligence,
 )
@@ -1212,7 +1216,7 @@ def make_server(
                 self.local_post()
 
         def local_post(self) -> None:
-            nonlocal directory
+            nonlocal directory, operator_ceqanet_csv_series_manifest
             path = urlsplit(self.path).path
             is_local = path in (
                 "/api/settings",
@@ -1244,6 +1248,8 @@ def make_server(
                 "/api/source-ceqanet-csv",
                 "/api/source-ceqanet-series-execution-preview",
                 "/api/source-ceqanet-series-execution",
+                "/api/source-ceqanet-series-append-preview",
+                "/api/source-ceqanet-series-append",
                 "/api/source-ceqanet-retained-apply",
                 "/api/source-review-docket-stage",
                 "/api/source-registry-reviewed-apply",
@@ -1533,6 +1539,36 @@ def make_server(
                             )
                         else:
                             result = operations[path](payload)
+                    elif path in (
+                        "/api/source-ceqanet-series-append-preview",
+                        "/api/source-ceqanet-series-append",
+                    ):
+                        if (
+                            urlsplit(self.path).query
+                            or urlsplit(self.path).fragment
+                            or self.headers.get_all("Host", []) != [host]
+                            or self.headers.get_all("Origin") != [f"http://{host}"]
+                            or self.headers.get("Sec-Fetch-Site") == "cross-site"
+                        ):
+                            raise ValueError("exact same-origin CEQAnet ledger approval required")
+                        operation = (
+                            preview_original_ceqanet_series_append
+                            if path.endswith("-preview")
+                            else apply_reviewed_original_ceqanet_series_append
+                        )
+                        result = operation(
+                            operator_database,
+                            operator_ceqanet_csv_evidence,
+                            operator_ceqanet_csv_access_policy,
+                            operator_ceqanet_csv_series_manifest,
+                            payload,
+                        )
+                        if path == "/api/source-ceqanet-series-append":
+                            # Native reads now use the newly verified immutable
+                            # manifest; the response also supplies restart option.
+                            operator_ceqanet_csv_series_manifest = Path(
+                                result["series_manifest_path"]
+                            )
                     elif path in (
                         "/api/source-ceqanet-detail-preview",
                         "/api/source-ceqanet-detail",

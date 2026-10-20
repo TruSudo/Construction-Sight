@@ -1106,7 +1106,8 @@ async function renderRetainedCaptureInbox(box) {
       '<button id="review-ceqanet-maturity">Audit retained CSV maturity</button> ' +
       '<button id="review-ceqanet-policy">Audit original CSV access policy</button> ' +
       '<button id="review-ceqanet-series">Audit original CSV evidence series</button> ' +
-      '<button id="request-ceqanet-series-evidence">Review policy-bound CSV request</button>';
+      '<button id="request-ceqanet-series-evidence">Review policy-bound CSV request</button> ' +
+      '<button id="append-ceqanet-series-evidence">Review retained series append</button>';
     box.append(acquisition);
     const accessMarkup = () => [
       ['requires_login', 'Source requires login'],
@@ -1244,6 +1245,60 @@ async function renderRetainedCaptureInbox(box) {
         }
       });
     };
+    acquisition.querySelector('#append-ceqanet-series-evidence').onclick = () =>
+      perform(async () => {
+        const ticket = modal('Original CEQAnet · append retained series evidence',
+          '<p>Only an already-retained original evidence execution. No new ' +
+          'source request. Review a new immutable successor ledger and manifest ' +
+          'without changing the original series or source registry.</p>' +
+          '<label>Retained execution filename <input id="series-append-filename" ' +
+          'maxlength="160" autocomplete="off" ' +
+          'placeholder="ceqanet-csv-evidence-YYYY-MM-DD-SCH-project.json"></label>' +
+          '<button id="preview-original-series-append">Review ledger transition</button>');
+        $('preview-original-series-append').onclick = () => perform(async () => {
+          if (ticket !== modalTicket || !$('action-dialog').open) return;
+          const retained_execution_file = $('series-append-filename').value.trim();
+          const preview = await api('/api/source-ceqanet-series-append-preview', {
+            retained_execution_file
+          });
+          const ticket2 = modal('Original CEQAnet · exact immutable ledger append',
+            '<p>No remote request. The original builder independently checks ' +
+            'the candidate, policy and predecessor ledger before publishing ' +
+            'new immutable series/manifest artifacts. On restart the new ' +
+            'manifest path must be selected.</p>' +
+            '<pre>'+esc(JSON.stringify(preview,null,2))+'</pre>' +
+            (preview.may_request_approval ?
+              '<label>Reason to append this retained observation ' +
+              '<textarea id="series-append-reason" rows="3" maxlength="2000"></textarea></label>' +
+              '<label><input id="series-append-confirm" type="checkbox" /> ' +
+              'I approve this exact evidence-bound immutable ledger transition.</label>' +
+              '<button id="apply-original-series-append">Publish reviewed ledger</button>' :
+              '<p>Required original evidence series is not configured.</p>'));
+          const button = $('apply-original-series-append');
+          if (!button) return;
+          button.onclick = () => perform(async () => {
+            if (ticket2 !== modalTicket || !$('action-dialog').open) return;
+            const reason = $('series-append-reason').value.trim();
+            if (reason.length < 10 || !$('series-append-confirm').checked)
+              throw Error('Approve the exact retained ledger transition and reason.');
+            button.disabled = true;
+            try {
+              const result = await api('/api/source-ceqanet-series-append', {
+                retained_execution_file,
+                expected_preview_digest: preview.expected_preview_digest,
+                review_reason: reason,
+                caller_confirmation: true
+              });
+              modal('Original CEQAnet · immutable series handoff',
+                '<p>Next original ledger/manifest selected in this running ' +
+                'Command Center. The receipt identifies the exact manifest ' +
+                'to select at next startup. No live request, source promotion, ' +
+                'recurring collection, outreach or bid.</p>' +
+                '<pre>'+esc(JSON.stringify(result,null,2))+'</pre>');
+            } finally { if (button.isConnected) button.disabled = false; }
+          });
+        });
+      });
     acquisition.querySelector('#request-ceqanet-series-evidence').onclick = () =>
       perform(async () => {
         const ticket = modal('CEQAnet evidence series · original policy-bound request',
