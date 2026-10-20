@@ -1104,7 +1104,8 @@ async function renderRetainedCaptureInbox(box) {
       '<button id="review-ceqanet-listing">Review bounded listing</button> ' +
       '<button id="review-ceqanet-csv">Review exact CSV evidence</button> ' +
       '<button id="review-ceqanet-maturity">Audit retained CSV maturity</button> ' +
-      '<button id="review-ceqanet-policy">Audit original CSV access policy</button>';
+      '<button id="review-ceqanet-policy">Audit original CSV access policy</button> ' +
+      '<button id="review-ceqanet-series">Audit original CSV evidence series</button>';
     box.append(acquisition);
     const accessMarkup = () => [
       ['requires_login', 'Source requires login'],
@@ -1242,6 +1243,22 @@ async function renderRetainedCaptureInbox(box) {
         }
       });
     };
+    acquisition.querySelector('#review-ceqanet-series').onclick = () =>
+      perform(async () => {
+        const result = await api('/api/source-ceqanet-series-audit');
+        const available = result.available === true;
+        modal('Original CEQAnet CSV · governed evidence-series audit',
+          '<p>Offline independent verification of original policy-bound ' +
+          'observations only. This cannot fetch, resume or schedule a source, ' +
+          'promote status, or grant commercial authority.</p>' +
+          '<pre>'+esc(JSON.stringify(result,null,2))+'</pre>' +
+          (available ? '<button id="export-original-ceqanet-series">' +
+            'Export verified series summary</button>' : ''));
+        if (available) {
+          document.querySelector('#export-original-ceqanet-series').onclick =
+            () => download('original-ceqanet-evidence-series-audit.json',result);
+        }
+      });
     acquisition.querySelector('#review-ceqanet-policy').onclick = () =>
       perform(async () => {
         const result = await api('/api/source-ceqanet-policy-audit');
