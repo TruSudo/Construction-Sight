@@ -214,6 +214,17 @@ const {resolve} = require('node:path');
       throw Error('Original SMARTS metadata catalog did not deny unknown access facts');
     }
     await page.click('#action-close');
+    await page.locator('#audit-ceqanet-recurring').click();
+    await page.waitForFunction(() =>
+      document.querySelector('#action-content')?.textContent
+        .includes('native-original-ceqanet-recurring-audit/v1'));
+    const unavailableWindow = await page.locator('#action-content').textContent();
+    if (!unavailableWindow.includes('"available": false') ||
+        !unavailableWindow.includes('--operator-ceqanet-recurring-manifest') ||
+        unavailableWindow.includes('Export exact-window review JSON')) {
+      throw Error('Unconfigured original recurring window unexpectedly offered review');
+    }
+    await page.click('#action-close');
     await page.locator('#append-ceqanet-series-evidence').click();
     await page.locator('#preview-original-series-append').click();
     await page.waitForFunction(() =>

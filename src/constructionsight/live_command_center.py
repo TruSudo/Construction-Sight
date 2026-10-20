@@ -65,6 +65,9 @@ from constructionsight.command_center_ceqanet_maturity import (
 from constructionsight.command_center_ceqanet_policy_audit import (
     original_retained_ceqanet_policy_audit,
 )
+from constructionsight.command_center_ceqanet_recurring_audit import (
+    original_retained_ceqanet_recurring_audit,
+)
 from constructionsight.command_center_ceqanet_retained_import import (
     apply_reviewed_retained_ceqanet_import,
     preview_retained_ceqanet_import,
@@ -326,6 +329,9 @@ def make_server(
     operator_ceqanet_csv_evidence: Path | None = None,
     operator_ceqanet_csv_access_policy: Path | None = None,
     operator_ceqanet_csv_series_manifest: Path | None = None,
+    operator_ceqanet_recurring_checklist: Path | None = None,
+    operator_ceqanet_recurring_definition: Path | None = None,
+    operator_ceqanet_recurring_manifest: Path | None = None,
     operator_smarts_journal: Path | None = None,
     operator_smarts_history: Path | None = None,
     operator_smarts_review_manifest: Path | None = None,
@@ -393,6 +399,33 @@ def make_server(
         or not operator_ceqanet_csv_series_manifest.is_file()
     ):
         raise ValueError("original CEQAnet series manifest must be an existing regular file")
+    if any(x is not None for x in (
+        operator_ceqanet_recurring_checklist,
+        operator_ceqanet_recurring_definition,
+        operator_ceqanet_recurring_manifest,
+    )):
+        if (
+            parity or snapshot.get("demo") or directory is None
+            or operator_database is None
+            or any(x is None for x in (
+                operator_ceqanet_recurring_checklist,
+                operator_ceqanet_recurring_definition,
+                operator_ceqanet_recurring_manifest,
+            ))
+        ):
+            raise ValueError(
+                "original CEQAnet recurring review requires all exact retained "
+                "inputs and a real operator database"
+            )
+        for input_path in (
+            operator_ceqanet_recurring_checklist,
+            operator_ceqanet_recurring_definition,
+            operator_ceqanet_recurring_manifest,
+        ):
+            if input_path is None or input_path.is_symlink() or not input_path.is_file():
+                raise ValueError(
+                    "original recurring inputs must be existing regular files"
+                )
     if (operator_ceqanet_listing is None) != (operator_ceqanet_review_queue is None):
         raise ValueError("CEQAnet retained listing and review-queue evidence must be paired")
     if operator_database is None and any(
@@ -865,6 +898,16 @@ def make_server(
                     record_id=params.record_id,
                 )
                 body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
+            elif path == "/api/source-ceqanet-recurring-audit":
+                if urlsplit(self.path).query or urlsplit(self.path).fragment:
+                    raise ValueError("original recurring audit takes no URL parameters")
+                result = original_retained_ceqanet_recurring_audit(
+                    operator_database,
+                    operator_ceqanet_recurring_checklist,
+                    operator_ceqanet_recurring_definition,
+                    operator_ceqanet_recurring_manifest,
+                )
+                body, mime = json.dumps(result, allow_nan=False).encode(), "application/json"
             elif path == "/api/source-ceqanet-series-audit":
                 if urlsplit(self.path).query or urlsplit(self.path).fragment:
                     raise ValueError("original CSV series audit takes no URL parameters")
@@ -1894,6 +1937,18 @@ def main(argv: list[str] | None = None) -> int:
         help="Private retained CEQAnet series + execution refs, read-only audit",
     )
     parser.add_argument(
+        "--operator-ceqanet-recurring-checklist", type=Path,
+        help="Exact original manual CEQAnet source checklist, offline recurring audit",
+    )
+    parser.add_argument(
+        "--operator-ceqanet-recurring-definition", type=Path,
+        help="Immutable original CEQAnet recurring-run definition, read-only",
+    )
+    parser.add_argument(
+        "--operator-ceqanet-recurring-manifest", type=Path,
+        help="Immutable original CEQAnet exact-window run manifest, read-only",
+    )
+    parser.add_argument(
         "--operator-arcgis-proof-bundle", type=Path,
         help="One retained, verified ArcGIS proof JSON; offline review only",
     )
@@ -1985,6 +2040,9 @@ def main(argv: list[str] | None = None) -> int:
             operator_ceqanet_csv_evidence=args.operator_ceqanet_csv_evidence,
             operator_ceqanet_csv_access_policy=args.operator_ceqanet_csv_access_policy,
             operator_ceqanet_csv_series_manifest=args.operator_ceqanet_csv_series_manifest,
+            operator_ceqanet_recurring_checklist=args.operator_ceqanet_recurring_checklist,
+            operator_ceqanet_recurring_definition=args.operator_ceqanet_recurring_definition,
+            operator_ceqanet_recurring_manifest=args.operator_ceqanet_recurring_manifest,
             operator_smarts_journal=args.operator_smarts_journal,
             operator_smarts_history=args.operator_smarts_history,
             operator_smarts_review_manifest=args.operator_smarts_review_manifest,

@@ -1107,7 +1107,8 @@ async function renderRetainedCaptureInbox(box) {
       '<button id="review-ceqanet-policy">Audit original CSV access policy</button> ' +
       '<button id="review-ceqanet-series">Audit original CSV evidence series</button> ' +
       '<button id="request-ceqanet-series-evidence">Review policy-bound CSV request</button> ' +
-      '<button id="append-ceqanet-series-evidence">Review retained series append</button>';
+      '<button id="append-ceqanet-series-evidence">Review retained series append</button> ' +
+      '<button id="audit-ceqanet-recurring">Audit original recurring-run window</button>';
     box.append(acquisition);
     const accessMarkup = () => [
       ['requires_login', 'Source requires login'],
@@ -1245,6 +1246,22 @@ async function renderRetainedCaptureInbox(box) {
         }
       });
     };
+    acquisition.querySelector('#audit-ceqanet-recurring').onclick = () =>
+      perform(async () => {
+        const result = await api('/api/source-ceqanet-recurring-audit');
+        const available = result.available === true;
+        modal('Original CEQAnet · exact recurring-run audit',
+          '<p>Verifies the retained original definition, checklist, current ' +
+          'registry and exact-window manifest. A run definition is not a ' +
+          'schedule or new authorization. No background run or source request.</p>' +
+          '<pre>'+esc(JSON.stringify(result,null,2))+'</pre>' +
+          (available ? '<button id="export-original-ceqanet-recurring">' +
+          'Export exact-window review JSON</button>' : ''));
+        if (available) {
+          document.querySelector('#export-original-ceqanet-recurring').onclick =
+            () => download('original-ceqanet-recurring-window-audit.json',result);
+        }
+      });
     acquisition.querySelector('#append-ceqanet-series-evidence').onclick = () =>
       perform(async () => {
         const ticket = modal('Original CEQAnet · append retained series evidence',
