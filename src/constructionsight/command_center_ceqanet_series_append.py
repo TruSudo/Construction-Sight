@@ -16,6 +16,7 @@ from typing import Any
 from constructionsight.authorization_decision_models import authorization_digest
 from constructionsight.ceqanet_csv_evidence_series_models import (
     CeqanetCsvEvidenceExecution,
+    CeqanetCsvEvidenceSeries,
     CeqanetCsvEvidenceSeriesStatus,
 )
 from constructionsight.ceqanet_csv_evidence_series_service import (
@@ -104,10 +105,6 @@ def _proposal(
         or new_series.predecessor_series_digest != series.series_digest
     ):
         raise ValueError("original governed append failed independent sequence proof")
-    # Keep deterministic bytes for create-only, crash-replay-safe publication.
-    new_series = new_series.model_copy(
-        update={"generated_at": candidate.live_execution.executed_at},
-    )
     series_name = (
         f"ceqanet-series-{new_series.series_sequence:02d}-"
         f"{new_series.series_digest[:16]}.json"
@@ -231,9 +228,24 @@ def apply_reviewed_original_ceqanet_series_append(
             )
         except FileExistsError:
             raw = read_runtime_artifact(path, max_bytes=_OUTPUT_CEILING)
-            if raw != expected.encode("utf-8"):
+            if path == series_path:
+                # Original series digests deliberately exclude generated_at.
+                # Preserve the actual first publication time and accept only
+                # semantic replays, never a different evidence payload.
+                stored = CeqanetCsvEvidenceSeries.model_validate_json(raw)
+                proposed = CeqanetCsvEvidenceSeries.model_validate_json(expected)
+                stored.assert_integrity()
+                proposed.assert_integrity()
+                if (
+                    stored.series_digest != proposed.series_digest
+                    or stored.evidence_payload() != proposed.evidence_payload()
+                ):
+                    raise ValueError(
+                        "immutable original CEQAnet series output already differs"
+                    ) from None
+            elif raw != expected.encode("utf-8"):
                 raise ValueError(
-                    "immutable original CEQAnet series output already differs"
+                    "immutable original CEQAnet series manifest already differs"
                 ) from None
     return {
         "schema_version": "constructionsight.native-ceqanet-series-append-result/v1",
