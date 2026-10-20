@@ -117,10 +117,6 @@ from constructionsight.command_center_original_checklist import (
     preview_original_manual_checklist,
     review_original_manual_checklist,
 )
-from constructionsight.command_center_source_checklist_retention import (
-    preview_original_manual_checklist_retention,
-    retain_reviewed_original_manual_checklist,
-)
 from constructionsight.command_center_parcel_readiness import (
     parcel_source_readiness_snapshot,
     preview_retained_parcel_sample,
@@ -143,6 +139,10 @@ from constructionsight.command_center_smarts_roster_collection import (
 )
 from constructionsight.command_center_smarts_source_review import (
     native_original_smarts_source_review,
+)
+from constructionsight.command_center_source_checklist_retention import (
+    preview_original_manual_checklist_retention,
+    retain_reviewed_original_manual_checklist,
 )
 from constructionsight.command_center_source_docket import (
     preview_original_source_docket,
