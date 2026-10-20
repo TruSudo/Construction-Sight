@@ -133,6 +133,10 @@ from constructionsight.command_center_smarts_catalog import (
 from constructionsight.command_center_smarts_roster import (
     original_retained_smarts_roster_audit,
 )
+from constructionsight.command_center_smarts_roster_collection import (
+    execute_reviewed_original_smarts_roster_collection,
+    preview_original_smarts_roster_collection,
+)
 from constructionsight.command_center_smarts_source_review import (
     native_original_smarts_source_review,
 )
@@ -341,6 +345,7 @@ def make_server(
     operator_ceqanet_recurring_manifest: Path | None = None,
     operator_smarts_journal: Path | None = None,
     operator_smarts_collection_roster: Path | None = None,
+    operator_smarts_collection_checkpoint: Path | None = None,
     operator_smarts_history: Path | None = None,
     operator_smarts_review_manifest: Path | None = None,
     operator_ceqanet_chain_report: Path | None = None,
@@ -358,6 +363,25 @@ def make_server(
         parity or snapshot.get("demo") or directory is None or operator_database is None
     ):
         raise ValueError("original SMARTS collection roster requires real operator data")
+    if operator_smarts_collection_checkpoint is not None and (
+        operator_smarts_collection_roster is None
+        or operator_smarts_journal is None
+        or operator_database is None
+        or parity
+        or snapshot.get("demo")
+        or directory is None
+    ):
+        raise ValueError(
+            "original SMARTS checkpoint requires exact roster, journal and real data"
+        )
+    if operator_smarts_collection_checkpoint is not None and (
+        operator_smarts_collection_checkpoint.is_symlink()
+        or (
+            operator_smarts_collection_checkpoint.exists()
+            and not operator_smarts_collection_checkpoint.is_file()
+        )
+    ):
+        raise ValueError("original SMARTS checkpoint must be a regular file or new path")
     if operator_smarts_collection_roster is not None and (
         operator_smarts_collection_roster.is_symlink()
         or not operator_smarts_collection_roster.is_file()
@@ -1310,6 +1334,8 @@ def make_server(
                 "/api/source-ceqanet-detail",
                 "/api/source-smarts-catalog-preview",
                 "/api/source-smarts-catalog",
+                "/api/source-smarts-roster-preview",
+                "/api/source-smarts-roster-collect",
                 "/api/source-ceqanet-listing-preview",
                 "/api/source-ceqanet-listing",
                 "/api/source-ceqanet-csv-preview",
@@ -1553,6 +1579,29 @@ def make_server(
                         ):
                             raise ValueError("exact same-origin canonical watch request required")
                         result = investigation_watch.action(directory, payload)
+                    elif path in (
+                        "/api/source-smarts-roster-preview",
+                        "/api/source-smarts-roster-collect",
+                    ):
+                        if (
+                            urlsplit(self.path).query
+                            or urlsplit(self.path).fragment
+                            or self.headers.get_all("Host", []) != [host]
+                            or self.headers.get_all("Origin") != [f"http://{host}"]
+                            or self.headers.get("Sec-Fetch-Site") == "cross-site"
+                        ):
+                            raise ValueError("exact same-origin SMARTS roster approval required")
+                        original_roster_operation = (
+                            preview_original_smarts_roster_collection
+                            if path.endswith("-preview")
+                            else execute_reviewed_original_smarts_roster_collection
+                        )
+                        result = original_roster_operation(
+                            operator_smarts_collection_roster,
+                            operator_smarts_journal,
+                            operator_smarts_collection_checkpoint,
+                            payload,
+                        )
                     elif path in (
                         "/api/source-smarts-catalog-preview",
                         "/api/source-smarts-catalog",
@@ -1990,6 +2039,10 @@ def main(argv: list[str] | None = None) -> int:
         help="Private retained CEQAnet series + execution refs, read-only audit",
     )
     parser.add_argument(
+        "--operator-smarts-collection-checkpoint", type=Path,
+        help="Explicit original SMARTS resumable checkpoint path; no startup writes",
+    )
+    parser.add_argument(
         "--operator-smarts-collection-roster", type=Path,
         help="Existing original 1–25 exact SMARTS facility roster for offline audit",
     )
@@ -2102,6 +2155,7 @@ def main(argv: list[str] | None = None) -> int:
             operator_ceqanet_recurring_manifest=args.operator_ceqanet_recurring_manifest,
             operator_smarts_journal=args.operator_smarts_journal,
             operator_smarts_collection_roster=args.operator_smarts_collection_roster,
+            operator_smarts_collection_checkpoint=args.operator_smarts_collection_checkpoint,
             operator_smarts_history=args.operator_smarts_history,
             operator_smarts_review_manifest=args.operator_smarts_review_manifest,
             operator_ceqanet_chain_report=args.operator_ceqanet_chain_report,

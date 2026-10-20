@@ -1143,7 +1143,8 @@ async function renderRetainedCaptureInbox(box) {
       'independent lawful-access review. Not a dataset download, automated ' +
       'collection, schedule, source promotion or commercial action.</p>' +
       '<button id="review-original-smarts-catalog">Review exact catalog request</button> ' +
-      '<button id="audit-original-smarts-roster">Audit exact SMARTS roster</button>';
+      '<button id="audit-original-smarts-roster">Audit exact SMARTS roster</button> ' +
+      '<button id="review-original-smarts-roster-collection">Review roster collection</button>';
     box.append(smartsCatalog);
     smartsCatalog.querySelector('#review-original-smarts-catalog').onclick =
       () => perform(async () => {
@@ -1248,6 +1249,66 @@ async function renderRetainedCaptureInbox(box) {
         }
       });
     };
+    smartsCatalog.querySelector('#review-original-smarts-roster-collection').onclick =
+      () => perform(async () => {
+        const ticket = modal('Original SMARTS · exact bounded facility sweep',
+          '<p>One manually authorized, bounded source-only sweep. Uses the ' +
+          'original exact roster, immutable journal, resumable checkpoint, ' +
+          'and only 1–25 county-scoped facility requests. No background schedule, ' +
+          'lead promotion, outreach or bid.</p>' +
+          '<label>Exact run ID <input id="smarts-roster-run" maxlength="64" ' +
+          'autocomplete="off"></label>' +
+          '<label>Maximum requests (1–25) <input id="smarts-roster-budget" ' +
+          'type="number" min="1" max="25" value="1"></label>' +
+          accessMarkup() +
+          '<button id="preview-smarts-roster-source">Review exact source plan</button>');
+        $('preview-smarts-roster-source').onclick = () => perform(async () => {
+          if (ticket !== modalTicket || !$('action-dialog').open) return;
+          const selected = {
+            run_id: $('smarts-roster-run').value.trim(),
+            max_requests: Number($('smarts-roster-budget').value),
+            access_review: accessValues()
+          };
+          const preview = await api('/api/source-smarts-roster-preview',selected);
+          const approvedTicket = modal('Original SMARTS · approved facility roster',
+            '<p>No source request yet. Verify exact facilities, immutable roster ' +
+            'digest, current access facts and journal/checkpoint identities ' +
+            'before approving one bounded attempt. Failed targets may be ' +
+            'resumed only by another explicit operator action.</p>' +
+            '<pre>'+esc(JSON.stringify(preview,null,2))+'</pre>' +
+            (preview.may_request_approval ?
+              '<label>Specific reason for one original roster sweep ' +
+              '<textarea id="smarts-roster-reason" rows="3" maxlength="2000"></textarea></label>' +
+              '<label><input id="smarts-roster-confirm" type="checkbox"> ' +
+              'I reviewed exact IDs, lawful access, budget, permanent ' +
+              'evidence retention and checkpoint recovery and approve one sweep.</label>' +
+              '<button id="execute-smarts-roster-source">Execute approved sweep</button>' :
+              '<p>Unknown source access or incomplete roster/journal/checkpoint ' +
+              'configuration prevents collection.</p>'));
+          const button = $('execute-smarts-roster-source');
+          if (!button) return;
+          button.onclick = () => perform(async () => {
+            if (approvedTicket !== modalTicket || !$('action-dialog').open) return;
+            const reason = $('smarts-roster-reason').value.trim();
+            if (reason.length < 10 || !$('smarts-roster-confirm').checked)
+              throw Error('Explicitly approve this exact roster and reason.');
+            button.disabled = true;
+            try {
+              const receipt = await api('/api/source-smarts-roster-collect', {
+                ...selected, expected_preview_digest: preview.expected_preview_digest,
+                review_reason: reason, caller_confirmation: true
+              });
+              modal('Original SMARTS · retained roster result',
+                '<p>Original source journal and checkpoint were updated by ' +
+                'the original collector. No recurring timer or commercial action.</p>' +
+                '<pre>'+esc(JSON.stringify(receipt,null,2))+'</pre>' +
+                '<button id="export-smarts-roster-receipt">Export source receipt</button>');
+              $('export-smarts-roster-receipt').onclick =
+                () => download('original-smarts-roster-collection-receipt.json',receipt);
+            } finally { if (button.isConnected) button.disabled = false; }
+          });
+        });
+      });
     smartsCatalog.querySelector('#audit-original-smarts-roster').onclick = () =>
       perform(async () => {
         const result = await api('/api/source-smarts-roster-audit');

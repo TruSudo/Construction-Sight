@@ -214,6 +214,18 @@ const {resolve} = require('node:path');
       throw Error('Original SMARTS metadata catalog did not deny unknown access facts');
     }
     await page.click('#action-close');
+    await page.locator('#review-original-smarts-roster-collection').click();
+    await page.fill('#smarts-roster-run','audit-smoke');
+    await page.locator('#preview-smarts-roster-source').click();
+    await page.waitForFunction(() =>
+      document.querySelector('#action-content')?.textContent
+        .includes('native-original-smarts-collection-preview/v1'));
+    const noCollector = await page.locator('#action-content').textContent();
+    if (!noCollector.includes('"may_request_approval": false') ||
+        noCollector.includes('Execute approved sweep')) {
+      throw Error('Unconfigured original SMARTS roster offered source requests');
+    }
+    await page.click('#action-close');
     await page.locator('#audit-original-smarts-roster').click();
     await page.waitForFunction(() =>
       document.querySelector('#action-content')?.textContent
