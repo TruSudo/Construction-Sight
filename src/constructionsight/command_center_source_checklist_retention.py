@@ -29,14 +29,18 @@ _MAX_OUTPUT_BYTES = 4 * 1024 * 1024
 
 def _material(reviewed: dict[str, Any]) -> dict[str, Any]:
     """Stable original evidence content excludes only builder wall-clock times."""
-    checklist = dict(reviewed["original_manual_checklist"])
-    checklist.pop("generated_at", None)
-    rows: list[dict[str, Any]] = []
-    for row in checklist["rows"]:
-        clean_row = dict(row)
-        clean_row.pop("generated_at", None)
-        rows.append(clean_row)
-    checklist["rows"] = rows
+    def without_builder_times(report: dict[str, Any]) -> dict[str, Any]:
+        cleaned = dict(report)
+        cleaned.pop("generated_at", None)
+        rows: list[dict[str, Any]] = []
+        for row in cleaned["rows"]:
+            clean_row = dict(row)
+            clean_row.pop("generated_at", None)
+            rows.append(clean_row)
+        cleaned["rows"] = rows
+        return cleaned
+
+    checklist = without_builder_times(reviewed["original_manual_checklist"])
     return {
         "source_name": reviewed["source_name"],
         "public_url": reviewed["public_url"],
@@ -44,8 +48,8 @@ def _material(reviewed: dict[str, Any]) -> dict[str, Any]:
         "original_operator_observation": reviewed["original_operator_observation"],
         "review_reason": reviewed["review_reason"],
         "original_manual_checklist": checklist,
-        "original_promotion_plan_digest": (
-            reviewed["original_promotion_plan"]["plan_digest"]
+        "original_promotion_plan": without_builder_times(
+            reviewed["original_promotion_plan"]
         ),
         "original_registry_update_plan_digest": (
             reviewed["original_registry_update_plan"]["plan_digest"]
