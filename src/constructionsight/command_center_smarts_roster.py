@@ -43,7 +43,7 @@ def original_retained_smarts_roster_audit(
     if journal_path is not None:
         if journal_path.is_symlink() or not journal_path.is_file():
             raise ValueError("retained original SMARTS journal must be an existing file")
-        verify_smarts_journal(journal_path)
+        verify_smarts_journal(journal_path, read_only=True)
         journal_status = "original_integrity_verified"
     rows = [
         {
