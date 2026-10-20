@@ -19,9 +19,9 @@ from constructionsight.smarts_collection import (
     collect_roster,
     parse_roster,
 )
-from tests.test_smarts_collection import _page
 from tests.test_command_center_investigation_bridge import snapshot
 from tests.test_native_original_ceqanet_maturity import _retained
+from tests.test_smarts_collection import _page
 
 
 def _roster(tmp_path: Path) -> tuple[Path, Path, Path]:
