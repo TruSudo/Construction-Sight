@@ -214,6 +214,17 @@ const {resolve} = require('node:path');
       throw Error('Original SMARTS metadata catalog did not deny unknown access facts');
     }
     await page.click('#action-close');
+    await page.locator('#review-ceqanet-policy').click();
+    await page.waitForFunction(() =>
+      document.querySelector('#action-content')?.textContent
+        .includes('native-original-ceqanet-policy-audit/v1'));
+    const missingPolicy = await page.locator('#action-content').textContent();
+    if (!missingPolicy.includes('"available": false') ||
+        !missingPolicy.includes('--operator-ceqanet-csv-access-policy') ||
+        missingPolicy.includes('Export access-policy audit JSON')) {
+      throw Error('Native original CEQAnet policy audit did not fail closed');
+    }
+    await page.click('#action-close');
     await page.locator('#review-ceqanet-maturity').click();
     await page.waitForFunction(() =>
       document.querySelector('#action-content')?.textContent

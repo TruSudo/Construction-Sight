@@ -62,6 +62,9 @@ from constructionsight.command_center_ceqanet_discovery import (
 from constructionsight.command_center_ceqanet_maturity import (
     original_retained_ceqanet_maturity,
 )
+from constructionsight.command_center_ceqanet_policy_audit import (
+    original_retained_ceqanet_policy_audit,
+)
 from constructionsight.command_center_ceqanet_retained_import import (
     apply_reviewed_retained_ceqanet_import,
     preview_retained_ceqanet_import,
@@ -310,6 +313,7 @@ def make_server(
     operator_ceqanet_listing: Path | None = None,
     operator_ceqanet_review_queue: Path | None = None,
     operator_ceqanet_csv_evidence: Path | None = None,
+    operator_ceqanet_csv_access_policy: Path | None = None,
     operator_smarts_journal: Path | None = None,
     operator_smarts_history: Path | None = None,
     operator_smarts_review_manifest: Path | None = None,
@@ -346,6 +350,21 @@ def make_server(
         or not operator_ceqanet_csv_evidence.is_file()
     ):
         raise ValueError("configured original CSV evidence must be an existing regular file")
+    if operator_ceqanet_csv_access_policy is not None and (
+        operator_ceqanet_csv_evidence is None
+        or operator_database is None
+        or parity
+        or snapshot.get("demo")
+        or directory is None
+    ):
+        raise ValueError(
+            "original CEQAnet access policy requires retained CSV evidence and real data"
+        )
+    if operator_ceqanet_csv_access_policy is not None and (
+        operator_ceqanet_csv_access_policy.is_symlink()
+        or not operator_ceqanet_csv_access_policy.is_file()
+    ):
+        raise ValueError("original CEQAnet access policy must be an existing regular file")
     if (operator_ceqanet_listing is None) != (operator_ceqanet_review_queue is None):
         raise ValueError("CEQAnet retained listing and review-queue evidence must be paired")
     if operator_database is None and any(
@@ -818,6 +837,15 @@ def make_server(
                     record_id=params.record_id,
                 )
                 body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
+            elif path == "/api/source-ceqanet-policy-audit":
+                if urlsplit(self.path).query or urlsplit(self.path).fragment:
+                    raise ValueError("original CSV policy audit takes no URL parameters")
+                result = original_retained_ceqanet_policy_audit(
+                    operator_database,
+                    operator_ceqanet_csv_evidence,
+                    operator_ceqanet_csv_access_policy,
+                )
+                body, mime = json.dumps(result, allow_nan=False).encode(), "application/json"
             elif path == "/api/source-ceqanet-maturity-audit":
                 if urlsplit(self.path).query or urlsplit(self.path).fragment:
                     raise ValueError("original CSV maturity audit takes no URL parameters")
@@ -1770,6 +1798,10 @@ def main(argv: list[str] | None = None) -> int:
         help="One exact retained CEQAnet CSV execution artifact for governed import review",
     )
     parser.add_argument(
+        "--operator-ceqanet-csv-access-policy", type=Path,
+        help="One existing CEQAnet CSV evidence policy JSON for read-only audit",
+    )
+    parser.add_argument(
         "--operator-arcgis-proof-bundle", type=Path,
         help="One retained, verified ArcGIS proof JSON; offline review only",
     )
@@ -1859,6 +1891,7 @@ def main(argv: list[str] | None = None) -> int:
             operator_ceqanet_listing=args.operator_ceqanet_listing,
             operator_ceqanet_review_queue=args.operator_ceqanet_review_queue,
             operator_ceqanet_csv_evidence=args.operator_ceqanet_csv_evidence,
+            operator_ceqanet_csv_access_policy=args.operator_ceqanet_csv_access_policy,
             operator_smarts_journal=args.operator_smarts_journal,
             operator_smarts_history=args.operator_smarts_history,
             operator_smarts_review_manifest=args.operator_smarts_review_manifest,

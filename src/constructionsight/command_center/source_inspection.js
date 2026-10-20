@@ -1103,7 +1103,8 @@ async function renderRetainedCaptureInbox(box) {
       'collection, registry mutation or commercial activity.</p>' +
       '<button id="review-ceqanet-listing">Review bounded listing</button> ' +
       '<button id="review-ceqanet-csv">Review exact CSV evidence</button> ' +
-      '<button id="review-ceqanet-maturity">Audit retained CSV maturity</button>';
+      '<button id="review-ceqanet-maturity">Audit retained CSV maturity</button> ' +
+      '<button id="review-ceqanet-policy">Audit original CSV access policy</button>';
     box.append(acquisition);
     const accessMarkup = () => [
       ['requires_login', 'Source requires login'],
@@ -1241,6 +1242,22 @@ async function renderRetainedCaptureInbox(box) {
         }
       });
     };
+    acquisition.querySelector('#review-ceqanet-policy').onclick = () =>
+      perform(async () => {
+        const result = await api('/api/source-ceqanet-policy-audit');
+        const available = result.available === true;
+        modal('Original CEQAnet CSV · historical access-policy audit',
+          '<p>Original exact evidence, registry and expiry verification only. ' +
+          'Even a date-window-current policy does not grant present legal source ' +
+          'access, automate collection, promote a source or authorize outreach.</p>' +
+          '<pre>'+esc(JSON.stringify(result,null,2))+'</pre>' +
+          (available ? '<button id="export-original-ceqanet-policy">' +
+            'Export access-policy audit JSON</button>' : ''));
+        if (available) {
+          document.querySelector('#export-original-ceqanet-policy').onclick =
+            () => download('original-ceqanet-access-policy-audit.json',result);
+        }
+      });
     acquisition.querySelector('#review-ceqanet-maturity').onclick = () =>
       perform(async () => {
         const result = await api('/api/source-ceqanet-maturity-audit');
