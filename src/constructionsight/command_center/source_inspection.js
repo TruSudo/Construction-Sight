@@ -1108,7 +1108,8 @@ async function renderRetainedCaptureInbox(box) {
       '<button id="review-ceqanet-series">Audit original CSV evidence series</button> ' +
       '<button id="request-ceqanet-series-evidence">Review policy-bound CSV request</button> ' +
       '<button id="append-ceqanet-series-evidence">Review retained series append</button> ' +
-      '<button id="audit-ceqanet-recurring">Audit original recurring-run window</button>';
+      '<button id="audit-ceqanet-recurring">Audit original recurring-run window</button> ' +
+      '<button id="review-ceqanet-recurring-attempt">Review exact recurring attempt</button>';
     box.append(acquisition);
     const accessMarkup = () => [
       ['requires_login', 'Source requires login'],
@@ -1246,6 +1247,65 @@ async function renderRetainedCaptureInbox(box) {
         }
       });
     };
+    acquisition.querySelector('#review-ceqanet-recurring-attempt').onclick = () =>
+      perform(async () => {
+        const ticket = modal('Original CEQAnet · manual exact-window attempt',
+          '<p>One manual attempt only, never a schedule. Original registry, ' +
+          'checklist, definition and manifest must all match. Review current ' +
+          'source restrictions independently; the original durable per-attempt ' +
+          'allowance will be consumed if executed.</p>' +
+          '<label>Attempt sequence (1–1000) <input id="original-recurring-sequence" ' +
+          'type="number" min="1" max="1000" value="1"></label>' +
+          accessMarkup() +
+          '<button id="preview-original-recurring-attempt">Review exact attempt</button>');
+        $('preview-original-recurring-attempt').onclick = () => perform(async () => {
+          if (ticket !== modalTicket || !$('action-dialog').open) return;
+          const selected = {
+            attempt_sequence: Number($('original-recurring-sequence').value),
+            access_review: accessValues()
+          };
+          const preview = await api(
+            '/api/source-ceqanet-recurring-attempt-preview',selected
+          );
+          const approvalTicket = modal('Original CEQAnet · foreground authorization',
+            '<p>Readiness is not permission for automatic execution. Approve ' +
+            'only this fixed manifest, window, evidence and attempt number. ' +
+            'No background scheduling, retries, source promotion or outreach.</p>' +
+            '<pre>'+esc(JSON.stringify(preview,null,2))+'</pre>' +
+            (preview.may_request_approval ?
+              '<label>Specific reason for one exact attempt ' +
+              '<textarea id="original-recurring-reason" rows="3" maxlength="2000"></textarea></label>' +
+              '<label><input id="original-recurring-confirm" type="checkbox"> ' +
+              'I reviewed the current lawful source evidence and explicitly ' +
+              'authorize one foreground attempt with durable replay controls.</label>' +
+              '<button id="execute-original-recurring-attempt">Execute approved attempt</button>' :
+              '<p>Source evidence or manifest is unavailable, restricted or ' +
+              'incomplete. No live attempt is permitted.</p>'));
+          const button = $('execute-original-recurring-attempt');
+          if (!button) return;
+          button.onclick = () => perform(async () => {
+            if (approvalTicket !== modalTicket || !$('action-dialog').open) return;
+            const reason = $('original-recurring-reason').value.trim();
+            if (reason.length < 10 || !$('original-recurring-confirm').checked)
+              throw Error('Confirm this exact reviewed source evidence and reason.');
+            button.disabled = true;
+            try {
+              const receipt = await api('/api/source-ceqanet-recurring-attempt', {
+                ...selected, expected_preview_digest: preview.expected_preview_digest,
+                review_reason: reason, caller_confirmation: true
+              });
+              modal('Original CEQAnet · retained one-shot attempt',
+                '<p>Original separately authorized execution; evidence retained ' +
+                'locally, no background schedule, retry, registry promotion, ' +
+                'contact or bid.</p>' +
+                '<pre>'+esc(JSON.stringify(receipt,null,2))+'</pre>' +
+                '<button id="export-original-recurring-receipt">Export receipt JSON</button>');
+              $('export-original-recurring-receipt').onclick =
+                () => download('original-recurring-attempt-receipt.json',receipt);
+            } finally { if (button.isConnected) button.disabled = false; }
+          });
+        });
+      });
     acquisition.querySelector('#audit-ceqanet-recurring').onclick = () =>
       perform(async () => {
         const result = await api('/api/source-ceqanet-recurring-audit');

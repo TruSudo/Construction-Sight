@@ -68,6 +68,10 @@ from constructionsight.command_center_ceqanet_policy_audit import (
 from constructionsight.command_center_ceqanet_recurring_audit import (
     original_retained_ceqanet_recurring_audit,
 )
+from constructionsight.command_center_ceqanet_recurring_attempt import (
+    execute_reviewed_original_ceqanet_recurring_attempt,
+    preview_original_ceqanet_recurring_attempt,
+)
 from constructionsight.command_center_ceqanet_retained_import import (
     apply_reviewed_retained_ceqanet_import,
     preview_retained_ceqanet_import,
@@ -1293,6 +1297,8 @@ def make_server(
                 "/api/source-ceqanet-series-execution",
                 "/api/source-ceqanet-series-append-preview",
                 "/api/source-ceqanet-series-append",
+                "/api/source-ceqanet-recurring-attempt-preview",
+                "/api/source-ceqanet-recurring-attempt",
                 "/api/source-ceqanet-retained-apply",
                 "/api/source-review-docket-stage",
                 "/api/source-registry-reviewed-apply",
@@ -1582,6 +1588,32 @@ def make_server(
                             )
                         else:
                             result = operations[path](payload)
+                    elif path in (
+                        "/api/source-ceqanet-recurring-attempt-preview",
+                        "/api/source-ceqanet-recurring-attempt",
+                    ):
+                        if (
+                            urlsplit(self.path).query
+                            or urlsplit(self.path).fragment
+                            or self.headers.get_all("Host", []) != [host]
+                            or self.headers.get_all("Origin") != [f"http://{host}"]
+                            or self.headers.get("Sec-Fetch-Site") == "cross-site"
+                        ):
+                            raise ValueError(
+                                "exact same-origin recurring-run review required"
+                            )
+                        recurring_operation = (
+                            preview_original_ceqanet_recurring_attempt
+                            if path.endswith("-preview")
+                            else execute_reviewed_original_ceqanet_recurring_attempt
+                        )
+                        result = recurring_operation(
+                            operator_database,
+                            operator_ceqanet_recurring_checklist,
+                            operator_ceqanet_recurring_definition,
+                            operator_ceqanet_recurring_manifest,
+                            payload,
+                        )
                     elif path in (
                         "/api/source-ceqanet-series-append-preview",
                         "/api/source-ceqanet-series-append",
