@@ -37,6 +37,8 @@ def original_retained_smarts_roster_audit(
                 "an existing exact, bounded original SMARTS facility roster."
             ),
         }
+    if roster_file.is_symlink():
+        raise ValueError("original SMARTS roster must not be a symbolic link")
     raw = read_runtime_artifact(roster_file, max_bytes=_MAX_ROSTER_BYTES)
     targets = parse_roster(raw)
     journal_status = "not_configured"
