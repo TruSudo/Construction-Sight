@@ -97,7 +97,7 @@ def test_original_source_checklist_retention_is_create_only_and_offline(
     assert receipt["independent_verification_established"] is False
     assert receipt["commercial_authority_granted"] is False
     filename = private / receipt["retained_artifact_ref"]
-    bytes_written = read_runtime_artifact(filename)
+    bytes_written = read_runtime_artifact(filename, max_bytes=4 * 1024 * 1024)
     assert hashlib.sha256(bytes_written).hexdigest() == receipt[
         "retained_artifact_sha256"
     ]
@@ -113,7 +113,7 @@ def test_original_source_checklist_retention_is_create_only_and_offline(
     )["may_request_approval"] is False
     with pytest.raises(ValueError):
         retain_reviewed_original_manual_checklist(db, private, approval)
-    assert read_runtime_artifact(filename) == bytes_written
+    assert read_runtime_artifact(filename, max_bytes=4 * 1024 * 1024) == bytes_written
 
 
 def test_original_checklist_retention_denies_symlink_destination(
