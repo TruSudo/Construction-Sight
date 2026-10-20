@@ -1551,12 +1551,12 @@ def make_server(
                             or self.headers.get("Sec-Fetch-Site") == "cross-site"
                         ):
                             raise ValueError("exact same-origin CEQAnet ledger approval required")
-                        operation = (
+                        append_operation = (
                             preview_original_ceqanet_series_append
                             if path.endswith("-preview")
                             else apply_reviewed_original_ceqanet_series_append
                         )
-                        result = operation(
+                        result = append_operation(
                             operator_database,
                             operator_ceqanet_csv_evidence,
                             operator_ceqanet_csv_access_policy,
