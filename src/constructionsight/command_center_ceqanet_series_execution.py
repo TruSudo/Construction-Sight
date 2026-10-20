@@ -291,7 +291,14 @@ def execute_reviewed_original_ceqanet_series_request(
     # allowance, original one-shot authorization, independent live verification,
     # redirect/retry controls and effect replay protection.
     execution = execute_ceqanet_csv_evidence_request(
-        *original,
+        original[0],
+        original[1],
+        original[2],
+        original[3],
+        original[4],
+        original[5],
+        original[6],
+        original[7],
         series,
         observed,
         request,
