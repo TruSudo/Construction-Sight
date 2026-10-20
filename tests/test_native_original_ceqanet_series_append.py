@@ -8,7 +8,6 @@ from pathlib import Path
 
 import pytest
 
-from constructionsight.ceqanet_csv_evidence_series_models import CeqanetCsvEvidenceSeries
 from constructionsight.ceqanet_csv_evidence_series_service import (
     build_ceqanet_csv_evidence_series,
 )
@@ -145,7 +144,6 @@ def test_append_original_requires_explicit_review_and_rejects_duplicate(
         "artifact_ref": f"evidence/operator-ceqanet/{_NAME}",
         "file": _NAME,
     }]
-    series, _ = (folder / "series.json"), None
     # Even before the original builder runs, the selected exact physical
     # candidate cannot be attached twice under a renamed logical reference.
     manifest.write_text(json.dumps(prior))

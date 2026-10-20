@@ -69,16 +69,16 @@ from constructionsight.command_center_ceqanet_retained_import import (
     apply_reviewed_retained_ceqanet_import,
     preview_retained_ceqanet_import,
 )
+from constructionsight.command_center_ceqanet_series_append import (
+    apply_reviewed_original_ceqanet_series_append,
+    preview_original_ceqanet_series_append,
+)
 from constructionsight.command_center_ceqanet_series_audit import (
     original_retained_ceqanet_series_audit,
 )
 from constructionsight.command_center_ceqanet_series_execution import (
     execute_reviewed_original_ceqanet_series_request,
     preview_original_ceqanet_series_request,
-)
-from constructionsight.command_center_ceqanet_series_append import (
-    apply_reviewed_original_ceqanet_series_append,
-    preview_original_ceqanet_series_append,
 )
 from constructionsight.command_center_external_source_intelligence import (
     original_external_source_intelligence,

@@ -30,7 +30,8 @@ from constructionsight.storage.runtime_artifacts import (
 )
 
 _FILE_RE = re.compile(
-    r"ceqanet-csv-evidence-\d{4}-\d{2}-\d{2}-\d{10}-(?:project|document-[1-9]\d*)\.json"
+    r"ceqanet-csv-evidence-[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{10}-"
+    r"(?:project|document-[1-9][0-9]*)\.json"
 )
 _MANIFEST_SCHEMA = "constructionsight.ceqanet_csv_series_manifest.v1"
 _SCHEMA = "constructionsight.native-ceqanet-series-append-preview/v1"
@@ -86,9 +87,15 @@ def _proposal(
     if any(item[0] == ref for item in observed):
         raise ValueError("original series already contains retained artifact identity")
     new_observed = [*observed, (ref, candidate)]
-    new_series = build_ceqanet_csv_evidence_series(*context, new_observed)
+    new_series = build_ceqanet_csv_evidence_series(
+        context[0], context[1], context[2], context[3],
+        context[4], context[5], context[6], context[7],
+        new_observed,
+    )
     verification = verify_ceqanet_csv_evidence_series(
-        *context, new_observed, new_series,
+        context[0], context[1], context[2], context[3],
+        context[4], context[5], context[6], context[7],
+        new_observed, new_series,
     )
     if (
         not verification.passed
