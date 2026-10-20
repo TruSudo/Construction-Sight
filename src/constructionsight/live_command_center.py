@@ -130,6 +130,9 @@ from constructionsight.command_center_smarts_catalog import (
     execute_reviewed_original_smarts_catalog,
     preview_original_smarts_catalog,
 )
+from constructionsight.command_center_smarts_roster import (
+    original_retained_smarts_roster_audit,
+)
 from constructionsight.command_center_smarts_source_review import (
     native_original_smarts_source_review,
 )
@@ -337,6 +340,7 @@ def make_server(
     operator_ceqanet_recurring_definition: Path | None = None,
     operator_ceqanet_recurring_manifest: Path | None = None,
     operator_smarts_journal: Path | None = None,
+    operator_smarts_collection_roster: Path | None = None,
     operator_smarts_history: Path | None = None,
     operator_smarts_review_manifest: Path | None = None,
     operator_ceqanet_chain_report: Path | None = None,
@@ -350,6 +354,15 @@ def make_server(
             raise ValueError("operator source data cannot be exposed in demo/parity mode")
         if operator_database.is_symlink() or not operator_database.is_file():
             raise ValueError("operator source database must be an existing regular file")
+    if operator_smarts_collection_roster is not None and (
+        parity or snapshot.get("demo") or directory is None or operator_database is None
+    ):
+        raise ValueError("original SMARTS collection roster requires real operator data")
+    if operator_smarts_collection_roster is not None and (
+        operator_smarts_collection_roster.is_symlink()
+        or not operator_smarts_collection_roster.is_file()
+    ):
+        raise ValueError("original SMARTS roster must be an existing regular file")
     if operator_smarts_review_manifest is not None and (
         parity or snapshot.get("demo") or directory is None or operator_database is None
     ):
@@ -902,6 +915,14 @@ def make_server(
                     record_id=params.record_id,
                 )
                 body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
+            elif path == "/api/source-smarts-roster-audit":
+                if urlsplit(self.path).query or urlsplit(self.path).fragment:
+                    raise ValueError("original SMARTS roster audit takes no URL parameters")
+                result = original_retained_smarts_roster_audit(
+                    operator_smarts_collection_roster,
+                    operator_smarts_journal,
+                )
+                body, mime = json.dumps(result, allow_nan=False).encode(), "application/json"
             elif path == "/api/source-ceqanet-recurring-audit":
                 if urlsplit(self.path).query or urlsplit(self.path).fragment:
                     raise ValueError("original recurring audit takes no URL parameters")
@@ -1969,6 +1990,10 @@ def main(argv: list[str] | None = None) -> int:
         help="Private retained CEQAnet series + execution refs, read-only audit",
     )
     parser.add_argument(
+        "--operator-smarts-collection-roster", type=Path,
+        help="Existing original 1–25 exact SMARTS facility roster for offline audit",
+    )
+    parser.add_argument(
         "--operator-ceqanet-recurring-checklist", type=Path,
         help="Exact original manual CEQAnet source checklist, offline recurring audit",
     )
@@ -2076,6 +2101,7 @@ def main(argv: list[str] | None = None) -> int:
             operator_ceqanet_recurring_definition=args.operator_ceqanet_recurring_definition,
             operator_ceqanet_recurring_manifest=args.operator_ceqanet_recurring_manifest,
             operator_smarts_journal=args.operator_smarts_journal,
+            operator_smarts_collection_roster=args.operator_smarts_collection_roster,
             operator_smarts_history=args.operator_smarts_history,
             operator_smarts_review_manifest=args.operator_smarts_review_manifest,
             operator_ceqanet_chain_report=args.operator_ceqanet_chain_report,

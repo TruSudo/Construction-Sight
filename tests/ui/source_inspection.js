@@ -214,6 +214,17 @@ const {resolve} = require('node:path');
       throw Error('Original SMARTS metadata catalog did not deny unknown access facts');
     }
     await page.click('#action-close');
+    await page.locator('#audit-original-smarts-roster').click();
+    await page.waitForFunction(() =>
+      document.querySelector('#action-content')?.textContent
+        .includes('native-original-smarts-roster-audit/v1'));
+    const emptyRoster = await page.locator('#action-content').textContent();
+    if (!emptyRoster.includes('"available": false') ||
+        !emptyRoster.includes('--operator-smarts-collection-roster') ||
+        emptyRoster.includes('Export bounded roster audit')) {
+      throw Error('Original SMARTS roster allowed unconfigured source activity');
+    }
+    await page.click('#action-close');
     await page.locator('#review-ceqanet-recurring-attempt').click();
     await page.locator('#preview-original-recurring-attempt').click();
     await page.waitForFunction(() =>
