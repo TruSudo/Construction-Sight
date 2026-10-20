@@ -143,10 +143,12 @@ def test_original_evidence_preview_rejects_expired_policy_and_incomplete_config(
     assert preview_original_ceqanet_series_request(
         db, source, policy, manifest, _request(_UNKNOWN),
     )["may_request_approval"] is False
-    with pytest.raises(ValueError, match="configure an original retained"):
-        preview_original_ceqanet_series_request(
-            db, source, policy, None, _request(),
-        )
+    unconfigured = preview_original_ceqanet_series_request(
+        db, source, policy, None, _request(),
+    )
+    assert unconfigured["available"] is False
+    assert unconfigured["may_request_approval"] is False
+    assert unconfigured["network_executed"] is False
 
 
 def test_original_evidence_request_requires_exact_confirmation(

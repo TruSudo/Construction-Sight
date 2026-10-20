@@ -36,6 +36,10 @@ from constructionsight.ceqanet_csv_replay_service import (
     verify_ceqanet_csv_encoding_replay,
 )
 from constructionsight.ceqanet_csv_service import build_ceqanet_csv_export_request
+from constructionsight.ceqanet_maturity_proposal_service import (
+    build_ceqanet_source_maturity_proposal,
+    verify_ceqanet_source_maturity_proposal,
+)
 from constructionsight.command_center_ceqanet_acquisition import _profile
 from constructionsight.command_center_ceqanet_series_audit import (
     _json_artifact,
@@ -43,10 +47,6 @@ from constructionsight.command_center_ceqanet_series_audit import (
     original_retained_ceqanet_series_audit,
 )
 from constructionsight.legal import AccessDecision, evaluate_access
-from constructionsight.ceqanet_maturity_proposal_service import (
-    build_ceqanet_source_maturity_proposal,
-    verify_ceqanet_source_maturity_proposal,
-)
 from constructionsight.source_registry_integrity import source_registry_digest
 from constructionsight.storage.operator_read_store import create_operator_read_engine
 from constructionsight.storage.runtime_artifacts import write_runtime_text
@@ -158,6 +158,24 @@ def preview_original_ceqanet_series_request(
     )
     profile = _profile(request.source_url, payload["access_review"])
     access = evaluate_access(profile)
+    if any(value is None for value in (
+        database, original_execution_path, policy_path, manifest_path,
+    )):
+        return {
+            "schema_version": (
+                "constructionsight.native-ceqanet-series-execution-preview/v1"
+            ),
+            "available": False,
+            "configured": False,
+            "may_request_approval": False,
+            "blockers": [
+                "configure an original retained CEQAnet evidence series first"
+            ],
+            "network_executed": False,
+            "persistence_mutated": False,
+            "series_advanced": False,
+            "commercial_authority_granted": False,
+        }
     audit, original, series, _observed = _context(
         database, original_execution_path, policy_path, manifest_path,
     )
@@ -202,6 +220,8 @@ def preview_original_ceqanet_series_request(
     )
     return {
         "schema_version": "constructionsight.native-ceqanet-series-execution-preview/v1",
+        "available": True,
+        "configured": True,
         "original_request": request.model_dump(mode="json"),
         "original_policy_digest": policy.policy_digest,
         "original_series_digest": series.series_digest,
