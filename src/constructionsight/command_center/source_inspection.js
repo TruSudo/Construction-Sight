@@ -77,6 +77,35 @@ async function reviewRetainedParcelInEngine(parcelId) {
   });
 }
 
+// The shared exact five-flag access review predates this ArcGIS bridge. Keep
+// one implementation available to CEQAnet, SMARTS and parcel source dialogs,
+// with unknown restrictions explicitly denied rather than guessed.
+const accessMarkup = () => [
+  ['requires_login', 'Source requires login'],
+  ['has_captcha', 'Source presents CAPTCHA'],
+  ['robots_disallows_collection', 'Robots disallow the request'],
+  ['terms_disallow_collection', 'Source terms disallow collection'],
+  ['paywalled', 'Source is paywalled']
+].map(([key, label]) =>
+  '<label>'+esc(label)+'<select data-ceqanet-acq-fact="'+key+'">' +
+  '<option value="">Unknown (deny)</option>' +
+  '<option value="false">No — independently reviewed</option>' +
+  '<option value="true">Yes — restriction present</option>' +
+  '</select></label>').join('') +
+  '<label>Immutable access evidence / review identity ' +
+  '<input id="ceqanet-acq-basis" maxlength="80" ' +
+  'placeholder="review:64-hex-sha256 or evidence:64-hex-sha256" /></label>';
+const accessValues = () => {
+  const review = {
+    access_fact_basis: $('ceqanet-acq-basis').value.trim() || null
+  };
+  document.querySelectorAll('[data-ceqanet-acq-fact]').forEach(element => {
+    review[element.dataset.ceqanetAcqFact] =
+      element.value === '' ? null : element.value === 'true';
+  });
+  return review;
+};
+
 // Retained parcel/GIS source profiles are registered evidence, not live permits,
 // surveyed parcel boundaries or authorized ArcGIS acquisition.
 async function renderParcelSourceReadiness(box) {
@@ -1224,31 +1253,6 @@ async function renderRetainedCaptureInbox(box) {
       '<button id="audit-ceqanet-recurring">Audit original recurring-run window</button> ' +
       '<button id="review-ceqanet-recurring-attempt">Review exact recurring attempt</button>';
     box.append(acquisition);
-    const accessMarkup = () => [
-      ['requires_login', 'Source requires login'],
-      ['has_captcha', 'Source presents CAPTCHA'],
-      ['robots_disallows_collection', 'Robots disallow the request'],
-      ['terms_disallow_collection', 'Source terms disallow collection'],
-      ['paywalled', 'Source is paywalled']
-    ].map(([key, label]) =>
-      '<label>'+esc(label)+'<select data-ceqanet-acq-fact="'+key+'">' +
-      '<option value="">Unknown (deny)</option>' +
-      '<option value="false">No — independently reviewed</option>' +
-      '<option value="true">Yes — restriction present</option>' +
-      '</select></label>').join('') +
-      '<label>Immutable access evidence / review identity ' +
-      '<input id="ceqanet-acq-basis" maxlength="80" ' +
-      'placeholder="review:64-hex-sha256 or evidence:64-hex-sha256" /></label>';
-    const accessValues = () => {
-      const review = {
-        access_fact_basis: $('ceqanet-acq-basis').value.trim() || null
-      };
-      document.querySelectorAll('[data-ceqanet-acq-fact]').forEach(element => {
-        review[element.dataset.ceqanetAcqFact] =
-          element.value === '' ? null : element.value === 'true';
-      });
-      return review;
-    };
     const smartsCatalog = document.createElement('section');
     smartsCatalog.className = 'original-smarts-catalog-review';
     smartsCatalog.innerHTML = '<h3>Original SMARTS public resource catalog</h3>' +
