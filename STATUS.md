@@ -15,9 +15,9 @@ P8-17 through P8-20 (pixel parity, final regression, deployment and permissioned
 live-source acceptance) are tracked separately and must still pass before calling
 the product complete.
 
-**Checkpoint count at this register:** 9 of 15 integration gates have state **V**
-(verified); 6 remain open: P8-01, P8-03, P8-04, P8-08, P8-09 and P8-11.
-Display **60% verified integration gates (9/15)** using a 20-cell filled/unfilled
+**Checkpoint count at this register:** 10 of 15 integration gates have state **V**
+(verified); 5 remain open: P8-01, P8-04, P8-08, P8-09 and P8-11.
+Display **67% verified integration gates (10/15)** using a 20-cell filled/unfilled
 progress bar. Calculation: round(100 * verified integration gates / 15) to the
 nearest whole percent. This number describes *equal-count acceptance checkpoints*,
 not the percentage of engineering work finished, time elapsed, or functionality
@@ -61,10 +61,45 @@ Python 3.11/3.12 CI run `39194526497` **success** with **2,825 passed** on
 each version, and Command Center browser/visual run `39194526576`
 **success**.
 
-**Acceptance remains open:** P8-03 still requires the original authorized
-collection/verification/registry-update controls and their native equivalence,
-and P8-11 still requires complete original output family accounting. This
-checkpoint does not award either gate or change the 9/15 (60%) integration meter.
+**This early offline-only audit did not itself close P8-03.** A later
+independently verified native operator/evidence integration, recorded below,
+has now accepted P8-03. P8-11 original output/report family accounting remains
+separately open; neither gate was awarded by the early audit alone.
+
+## P8-03 original-source controls — verified at application head a4a0cd5
+
+**Original P8-03 sub-checklist: 20/20 verified (100%)** — a functional
+source-control equivalence count, not ConstructionSight overall completion.
+Original registry, checklist, evidence, status/promotion approvals and bounded
+HTTP review are connected to the native interface. Original CEQAnet discovery,
+listing, detail, project/document CSV, verified replay/maturity/access policy,
+series, immutable successor and explicitly authorized foreground exact-window
+recurring run are exposed with inherited original safeguards. Original SMARTS
+facility/inspection/compliance and catalog review, approved 1–25 exact county
+facility roster, original private SQLite evidence journal and resumable
+checkpoint are integrated, while the separate existing daily capture timer
+remains unchanged and disabled unless separately explicitly installed.
+A positive, review-bound original manual verification checklist is retained
+in a private, create-only evidence snapshot, without independent verification
+claims or source promotion. Full control-family accounting: draft PR #234.
+
+**Exact application-and-test head `a4a0cd5`:** dual-Python CI
+https://github.com/TruSudo/Construction-Sight/actions/runs/39532050943
+**success** (2,905 passed, two upstream warnings on both Python 3.11 and 3.12;
+Ruff, strict Mypy across 381 source files, JS syntax, dependency integrity
+and no known vulnerabilities in either non-exempt dependency scan).
+Native browser/USGS
+https://github.com/TruSudo/Construction-Sight/actions/runs/39532050957
+**success** with all 33 existing functional actions/contracts. Security
+remediation pins published `certifi==2026.10.19`, `Pillow==13.0.0` in
+runtime/dev and CI `pip==26.2.2` after new October 20 advisories.
+
+**Unchanged boundaries:** Source requests during testing used simulated
+transports only; actual permissioned live source checks are P8-20, owner data
+P8-07, final pixel parity P8-17, owner-device/timer activation P8-19,
+parcel/GIS P8-04, commercial lineage/financial P8-08/09, overall historic
+inventory P8-01 and retained report/archive families P8-11. No automatic
+source activation, outreach, bid, main merge or approved dashboard redesign.
 
 ## P8-10 shared original/canonical watch notifications — verified 2026-10-18
 
@@ -161,15 +196,15 @@ equivalent implementation exists.
 acceptance scope; O = open implementation/equivalence obligation; P = implemented
 or assembled but final verification outstanding; B = owner-data/device/current
 source access needed. V is retained evidence, not a fresh execution on `2bc29ba`.
-Counts: **9 V, 7 O, 1 P, 3 B**. These obligations differ greatly in size; do not
-convert 8/20 into a completion percentage or call the 12 remaining obligations
-13 bugs. This fixes the acceptance denominator, not the number of code changes.
+Counts: **10 V, 6 O, 1 P, 3 B**. These obligations differ greatly in size; do not
+convert 10/20 into full-product completion or treat outstanding obligations as
+bugs. This fixes the acceptance denominator, not the number of code changes.
 
 | ID | Required behavior | State and existing evidence | Exact closure condition |
 | --- | --- | --- | --- |
 | P8-01 | Complete historical capability accounting | O — preservation JSON inventories history; Phase 7 reconciles safeguards, not all operator capabilities | Give every mandatory historical behavior an implemented native path or a tested equivalent; explicitly classify recovery-only/development assets and superseded implementations. No unidentified mandatory remainder. |
 | P8-02 | Original source inspection and attribution | V — `test_native_original_registry_parity.py` compares 16 original/native HTTP read contracts; source/SMARTS tests cover additional views | Retain exact attribution, filters, pagination, evidence limits and original-byte preservation through final regression. |
-| P8-03 | Source acquisition, verification and registry controls | O — native inspection is read-only; finite CEQA background lane exists, but original discovery/detail/CSV, verification, registry update/promotion and persistence controls lack a complete native equivalence account | Reconcile each existing operational control with its native/worker equivalent and expose missing routine operator controls with the original approval/access safeguards. Setup-only CLI tools may remain documented deployment tools; a CLI alone does not replace a required native operator workflow. |
+| P8-03 | Source acquisition, verification and registry controls | V — twenty original-source operational subcheckpoints accepted. Native CEQA source review/discovery/detail/listing/CSV/replay/maturity/policy/series/manual recurrence, SMARTS catalog/roster/manual source-journal collection with separate unchanged daily timer, approved registry authority and durable manual evidence retention. Exact code/test `a4a0cd5`: Python 3.11 + 3.12 each 2,905 passed, no known security vulnerabilities, full browser/USGS success; owner-source permission separate. | Reconcile each existing operational control with its native/worker equivalent and expose missing routine operator controls with the original approval/access safeguards. Setup-only CLI tools may remain documented deployment tools; a CLI alone does not replace a required native operator workflow. |
 | P8-04 | Parcel/GIS investigation operations | O — parcel candidates are exposed; original schema/row review, authorized ArcGIS acquisition, proof persistence and parcel/site resolution are not all demonstrated as one native workflow | Demonstrate authorized retained GIS/parcel evidence through review, governed persistence/resolution and the same dossier/map/graph; preserve ambiguity and exact source/proof identities. No invented coordinates or automatic same-project inference. |
 | P8-05 | Missing original-source replay | V — scoped replay tests, independent-worker browser journey and genuine retained CEQA acceptance at `825a717` | Preserve bounded page review, atomic approvals, overlap rejection, full-scope rescan and restart without duplicates. Owner-data execution is P8-07. |
 | P8-06 | Reviewed changed-source handoff | V — published `3035fb9` has exact tree `dc93cd89d831522067a420d1ce6481c74c80d8ba` of local `2bc29ba`; full CI/browser accepted | Preserve exact-source acceptance: 2,777 tests on each Python version, full quality gates and independent-worker browser revision/delayed-dialog journey; earlier evidence and reassessment remain intact. |
