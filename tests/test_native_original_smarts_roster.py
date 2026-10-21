@@ -67,7 +67,7 @@ def test_native_original_roster_denies_invalid_scope_and_symlink(
     roster.write_bytes(original)
     linked = folder / "linked-roster.json"
     linked.symlink_to(roster)
-    with pytest.raises(OSError, match="symbolic links"):
+    with pytest.raises(ValueError, match="original SMARTS roster must not be a symbolic link"):
         original_retained_smarts_roster_audit(linked, None)
 
 
