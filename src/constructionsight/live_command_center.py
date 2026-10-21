@@ -32,6 +32,10 @@ from constructionsight import (
 from constructionsight import command_center_commercial as commercial
 from constructionsight import command_center_investigation_watch as investigation_watch
 from constructionsight import command_center_state as state
+from constructionsight.command_center_arcgis_probe import (
+    execute_reviewed_original_arcgis_probe,
+    preview_original_arcgis_probe,
+)
 from constructionsight.command_center_arcgis_proofs import (
     native_arcgis_proof_inventory,
     persist_reviewed_arcgis_proof,
@@ -1313,6 +1317,7 @@ def make_server(
 
         def local_post(self) -> None:
             nonlocal directory, operator_ceqanet_csv_series_manifest
+            nonlocal operator_arcgis_proof_bundle
             path = urlsplit(self.path).path
             is_local = path in (
                 "/api/settings",
@@ -1356,6 +1361,8 @@ def make_server(
                 "/api/source-review-docket-stage",
                 "/api/source-registry-reviewed-apply",
                 "/api/parcel-source-row-preview",
+                "/api/parcel-arcgis-probe-preview",
+                "/api/parcel-arcgis-probe",
                 "/api/parcel-arcgis-proof-persist",
                 "/api/investigation-watch",
                 "/api/source-commercial-preview",
@@ -1552,6 +1559,26 @@ def make_server(
                         result = retain_reviewed_canonical_candidate(
                             directory, payload, original_database=operator_database,
                         )
+                    elif path in (
+                        "/api/parcel-arcgis-probe-preview",
+                        "/api/parcel-arcgis-probe",
+                    ):
+                        if (
+                            urlsplit(self.path).query or urlsplit(self.path).fragment
+                            or self.headers.get_all("Host", []) != [host]
+                            or self.headers.get_all("Origin") != [f"http://{host}"]
+                            or self.headers.get("Sec-Fetch-Site") == "cross-site"
+                        ):
+                            raise ValueError("exact same-origin ArcGIS probe approval required")
+                        if path.endswith("-preview"):
+                            result = preview_original_arcgis_probe(directory, payload)
+                        else:
+                            result = execute_reviewed_original_arcgis_probe(
+                                directory, payload,
+                            )
+                            operator_arcgis_proof_bundle = Path(
+                                result["retained_proof_path"]
+                            )
                     elif path == "/api/parcel-arcgis-proof-persist":
                         if (
                             urlsplit(self.path).query or urlsplit(self.path).fragment
