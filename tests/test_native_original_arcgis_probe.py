@@ -168,3 +168,62 @@ def test_original_arcgis_native_http_denies_forgery_and_unapproved_execution(
         server.shutdown()
         server.server_close()
         worker.join()
+
+
+
+def test_native_original_arcgis_positive_http_selects_new_proof_without_import(
+    tmp_path: Path,
+) -> None:
+    """One same-origin consented original proof feeds the existing offline path."""
+    bundle = _original_bundle()
+    source_effect = SimpleNamespace(
+        bundle=bundle,
+        authorization=SimpleNamespace(
+            decision=SimpleNamespace(audit_identity="original:approved-arcgis"),
+        ),
+    )
+    server = make_server(snapshot(), 0, tmp_path)
+    worker = threading.Thread(target=server.serve_forever, daemon=True)
+    worker.start()
+    try:
+        host = f"http://127.0.0.1:{server.server_port}"
+        with httpx.Client(base_url=host, trust_env=False) as client:
+            original_view = client.get("/api/parcel-arcgis-proof")
+            assert original_view.status_code == 200
+            assert original_view.json()["available"] is False
+            reviewed = client.post(
+                "/api/parcel-arcgis-probe-preview",
+                json=_selection(), headers={"Origin": host},
+            )
+            assert reviewed.status_code == 200, reviewed.text
+            proof = reviewed.json()
+            assert proof["may_request_approval"] is True
+            with patch(
+                "constructionsight.command_center_arcgis_probe."
+                "execute_authorized_arcgis_probe",
+                return_value=source_effect,
+            ) as original_executor:
+                applied = client.post(
+                    "/api/parcel-arcgis-probe", json={
+                        **_selection(),
+                        "expected_preview_digest": proof["expected_preview_digest"],
+                        "review_reason": "Single independently reviewed bounded ArcGIS source",
+                        "caller_confirmation": True,
+                    },
+                    headers={"Origin": host},
+                )
+            assert applied.status_code == 200, applied.text
+            assert original_executor.call_count == 1
+            assert applied.json()["bundle_id"] == bundle.bundle_id
+            selected = client.get("/api/parcel-arcgis-proof")
+            assert selected.status_code == 200, selected.text
+            assert selected.json()["available"] is True
+            assert selected.json()["bundle_id"] == bundle.bundle_id
+            # Reviewed source proof alone must not mutate the shared parcel/
+            # site/graph identity database or create an import.
+            assert not (tmp_path / "investigations.sqlite3").exists()
+            assert applied.json()["native_proof_persisted"] is False
+    finally:
+        server.shutdown()
+        server.server_close()
+        worker.join()
