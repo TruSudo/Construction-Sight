@@ -19,6 +19,17 @@ const {resolve} = require('node:path');
     await page.waitForSelector('.retained-source-inspection [data-source-preview]', {
       timeout: 20000
     });
+    await page.locator('#review-native-arcgis-probe').click();
+    await page.locator('#arcgis-probe-review').click();
+    await page.waitForFunction(() =>
+      document.querySelector('#action-content')?.textContent
+        .includes('native-original-arcgis-probe-preview/v1'));
+    const deniedArcgis = await page.locator('#action-content').textContent();
+    if (!deniedArcgis.includes('"may_request_approval": false') ||
+        deniedArcgis.includes('Execute approved original proof')) {
+      throw Error('Historical parcel profile silently authorized live ArcGIS access');
+    }
+    await page.click('#action-close');
     const area = page.locator('.retained-source-inspection');
     const initial = await area.textContent();
     if (!initial.includes('Local source revisions') ||

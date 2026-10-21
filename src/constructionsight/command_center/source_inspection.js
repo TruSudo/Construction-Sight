@@ -119,6 +119,11 @@ async function renderParcelSourceReadiness(box) {
       'maxlength="255" required autocomplete="off"></label>' +
       '<button type="submit">Compare with current investigation evidence</button>' +
       '</form>' +
+      '<h3>Original bounded ArcGIS acquisition proof</h3>' +
+      '<p>One separately approved original five-request metadata/count/page/replay ' +
+      'source check. Historical profiles do not establish current lawful access. ' +
+      'No geometry, bulk GIS download, parcel/site match or automatic source action. ' +
+      '<button id="review-native-arcgis-probe">Review bounded source probe</button></p>' +
       '<h3>Offline ArcGIS proof handoff to the shared investigation store</h3>' +
       '<div data-native-arcgis-proof role="status">Checking configured proof…</div>' +
       '<h3>Persisted original ArcGIS bounded-proof history</h3>' +
@@ -137,6 +142,69 @@ async function renderParcelSourceReadiness(box) {
         if (button.isConnected) button.disabled = false;
       });
     };
+    root.querySelector('#review-native-arcgis-probe').onclick = () =>
+      perform(async () => {
+        const profiles = data.profiles.filter(p => p.status === 'verified_preview');
+        const ticket = modal('Original ArcGIS · one bounded source probe',
+          '<p>One manual five-request original CS-NET-004 source probe. ' +
+          'Review present restrictions independently. No retries beyond original ' +
+          'service limits, geometry, bulk acquisition, outreach or bid.</p>' +
+          '<label>Existing source <select id="arcgis-probe-source">' +
+          profiles.map(p => '<option value="' + esc(p.source_key) + '">' +
+            esc(p.county) + ' · ' + esc(p.source_key) + '</option>').join('') +
+          '</select></label>' +
+          '<label>Sample size (1–100) <input id="arcgis-probe-sample" type="number" ' +
+          'min="1" max="100" value="2"></label>' + accessMarkup() +
+          '<button id="arcgis-probe-review">Review exact original scope</button>');
+        document.querySelector('#arcgis-probe-review').onclick = () =>
+          perform(async () => {
+            if (ticket !== modalTicket || !$('action-dialog').open) return;
+            const selection = {
+              source_key: document.querySelector('#arcgis-probe-source').value,
+              sample_size: Number(document.querySelector('#arcgis-probe-sample').value),
+              access_review: accessValues()
+            };
+            const preview = await api('/api/parcel-arcgis-probe-preview',selection);
+            const consentTicket = modal('ArcGIS original source · final review',
+              '<p>Preview makes no source request. Check existing verified source ' +
+              'identity, present lawful access facts, durable allowance and ' +
+              'exact five-request ceiling before approving one original probe.</p>' +
+              '<pre>'+esc(JSON.stringify(preview,null,2))+'</pre>' +
+              (preview.may_request_approval ?
+                '<label>Specific source-probe authorization reason ' +
+                '<textarea id="arcgis-probe-reason" rows="3" maxlength="2000"></textarea></label>' +
+                '<label><input id="arcgis-probe-confirm" type="checkbox"> ' +
+                'I explicitly authorize this exact one-shot governed ArcGIS source ' +
+                'probe with current lawful source-access evidence.</label>' +
+                '<button id="arcgis-probe-execute">Execute approved original proof</button>' :
+                '<p>Current access is not independently established or this exact ' +
+                'source proof is already retained. No remote request is allowed.</p>'));
+            const execute = document.querySelector('#arcgis-probe-execute');
+            if (!execute) return;
+            execute.onclick = () => perform(async () => {
+              if (consentTicket !== modalTicket || !$('action-dialog').open) return;
+              const reason = document.querySelector('#arcgis-probe-reason').value.trim();
+              if (reason.length < 10 || !document.querySelector('#arcgis-probe-confirm').checked)
+                throw Error('Review lawful access, exact scope and specific reason.');
+              execute.disabled = true;
+              try {
+                const receipt = await api('/api/parcel-arcgis-probe', {
+                  ...selection, expected_preview_digest: preview.expected_preview_digest,
+                  review_reason: reason, caller_confirmation: true
+                });
+                modal('Original bounded ArcGIS evidence retained',
+                  '<p>Original proof is now available in the running Command ' +
+                  'Center. Reopen Sources & Collection for separate offline ' +
+                  'proof verification and governed persistence. No parcel ' +
+                  'identity or commercial authority was inferred.</p>' +
+                  '<pre>'+esc(JSON.stringify(receipt,null,2))+'</pre>' +
+                  '<button id="arcgis-probe-export">Export original proof receipt</button>');
+                document.querySelector('#arcgis-probe-export').onclick =
+                  () => download('original-arcgis-probe-receipt.json',receipt);
+              } finally { if (execute.isConnected) execute.disabled = false; }
+            });
+          });
+      });
     const nativeProofBox = root.querySelector('[data-native-arcgis-proof]');
     try {
       const [review, inventory] = await Promise.all([
