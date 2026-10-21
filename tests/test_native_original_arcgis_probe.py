@@ -132,7 +132,7 @@ def test_native_original_arcgis_uses_original_service_and_retains_verifiable_bun
     assert independently_reviewed["bundle_id"] == bundle.bundle_id
     assert independently_reviewed["available"] is True
     assert preview_original_arcgis_probe(tmp_path, selected)["may_request_approval"] is False
-    with pytest.raises(ValueError, match="already retained"):
+    with pytest.raises(ValueError, match="denied or stale"):
         execute_reviewed_original_arcgis_probe(tmp_path, approved)
 
 
