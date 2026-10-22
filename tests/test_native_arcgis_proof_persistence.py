@@ -13,6 +13,7 @@ import pytest
 
 from constructionsight.command_center_arcgis_proofs import (
     native_arcgis_proof_inventory,
+    preview_arcgis_proof_bound_rows,
     retained_arcgis_proof_preview,
 )
 from constructionsight.live_command_center import make_server
@@ -181,6 +182,91 @@ def test_verified_observed_arcgis_schema_reuses_original_preview_without_import(
     ), pytest.raises(ValueError, match="current registered parcel source"):
         retained_arcgis_proof_preview(proof)
     assert proof.read_bytes() == original
+
+
+def test_exact_arcgis_proof_bound_manual_rows_reuse_original_parser_offline(
+    tmp_path: Path,
+) -> None:
+    bundle = _bounded_bundle()
+    proof = tmp_path / "retained-arcgis.json"
+    proof.write_text(json.dumps(bundle.to_dict()), encoding="utf-8")
+    original = proof.read_bytes()
+    report = retained_arcgis_proof_preview(proof)
+    assert "geometry" not in report["observed_schema"]["unobserved_expected_fields"]
+    valid = {
+        "source_key": bundle.source_key,
+        "expected_bundle_id": bundle.bundle_id,
+        "expected_bundle_sha256": report["bundle_sha256"],
+        "expected_snapshot_id": bundle.snapshot.snapshot_id,
+        "rows": [{"ParcelNumber": "123-456-789", "OBJECTID": "101"}],
+    }
+    direct = preview_arcgis_proof_bound_rows(proof, valid)
+    assert direct["bundle_id"] == bundle.bundle_id
+    assert direct["snapshot_id"] == bundle.snapshot.snapshot_id
+    assert direct["schema_verified"] is True
+    assert direct["original_row_preview_service_reused"] is True
+    assert direct["manual_rows_independently_verified"] is False
+    assert direct["parcel_import_authorized"] is False
+    assert direct["project_identity_verified"] is False
+    assert direct["rows_persisted"] is False
+    assert direct["network_executed"] is False
+    assert direct["report"]["row_count"] == 1
+    assert direct["report"]["usable_row_count"] == 1
+    assert direct["report"]["rows"][0]["normalized_apn"] == "123456789"
+    assert direct["report"]["rows"][0]["source_record_id"] == "101"
+    assert proof.read_bytes() == original
+
+    for bad in (
+        {**valid, "expected_bundle_id": "other"},
+        {**valid, "expected_snapshot_id": "other"},
+        {**valid, "expected_bundle_sha256": "0" * 64},
+        {**valid, "source_key": "riverside:county-gis-parcels"},
+        {**valid, "extra": "commercial-import"},
+        {**valid, "rows": []},
+        {**valid, "rows": valid["rows"] * 21},
+        {**valid, "rows": [{"FictionalAttr": "1"}]},
+        {**valid, "rows": [{"geometry": "{\"x\":1}"}]},
+        {**valid, "rows": [{"ParcelNumber": 123456789}]},
+        {**valid, "rows": [{"ParcelNumber": "x" * 33000}]},
+    ):
+        with pytest.raises(ValueError):
+            preview_arcgis_proof_bound_rows(proof, bad)
+    with patch(
+        "constructionsight.command_center_arcgis_proofs.get_parcel_sources",
+        return_value=[],
+    ), pytest.raises(ValueError, match="current registered parcel source"):
+        preview_arcgis_proof_bound_rows(proof, valid)
+    assert proof.read_bytes() == original
+
+    directory = tmp_path / "native"
+    server, worker = _serve(directory, proof)
+    base = f"http://127.0.0.1:{server.server_port}"
+    try:
+        with httpx.Client(base_url=base, trust_env=False) as client:
+            endpoint = "/api/parcel-arcgis-row-preview"
+            assert client.post(endpoint, json=valid).status_code == 403
+            result = client.post(endpoint, json=valid, headers={"Origin": base})
+            assert result.status_code == 200, result.text
+            assert result.json()["report"]["rows"] == direct["report"]["rows"]
+            assert result.json()["rows_persisted"] is False
+            assert result.json()["commercial_authority_granted"] is False
+            assert client.post(
+                endpoint, json=valid,
+                headers={"Origin": base, "Sec-Fetch-Site": "cross-site"},
+            ).status_code == 400
+            assert client.post(
+                endpoint + "?allow=1", json=valid, headers={"Origin": base},
+            ).status_code == 400
+            assert client.post(
+                endpoint, json={**valid, "rows": [{"Unseen": "x"}]},
+                headers={"Origin": base},
+            ).status_code == 400
+            assert not (directory / "investigations.sqlite3").exists()
+            assert proof.read_bytes() == original
+    finally:
+        server.shutdown()
+        server.server_close()
+        worker.join()
 
 
 def test_changed_or_corrupt_proof_cannot_be_persisted(tmp_path: Path) -> None:
