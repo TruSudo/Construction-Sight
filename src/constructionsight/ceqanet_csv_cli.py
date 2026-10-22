@@ -10,6 +10,9 @@ import typer
 from rich.console import Console
 
 from constructionsight.authorization_decision import AuthorizationDeniedError
+from constructionsight.ceqanet_csv_legacy_verification import (
+    verify_archived_ceqanet_csv_execution,
+)
 from constructionsight.ceqanet_csv_live_models import CeqanetCsvLiveExecution
 from constructionsight.ceqanet_csv_replay_models import CeqanetCsvEncodingReplay
 from constructionsight.ceqanet_csv_replay_service import (
@@ -256,6 +259,31 @@ def verify_live_csv_execution(
         raise typer.BadParameter(str(exc)) from exc
     _emit_json(verification.model_dump(mode="json"), output)
     if not verification.passed:
+        raise typer.Exit(code=1)
+
+
+@app.command("verify-legacy-execution")
+def verify_archived_csv_execution(
+    execution_path: Annotated[
+        Path,
+        typer.Argument(help="Existing archived ceqanet_csv_export_execution.v1 JSON."),
+    ],
+    output: Annotated[
+        Path | None,
+        typer.Option("--output", help="Optional read-only verification report."),
+    ] = None,
+) -> None:
+    """Verify old execution evidence offline; never authorize new source access."""
+
+    try:
+        payload: Any = json.loads(read_runtime_text(execution_path))
+        if not isinstance(payload, dict):
+            raise ValueError("archived CEQAnet execution must be a JSON object")
+        verification = verify_archived_ceqanet_csv_execution(payload)
+    except (OSError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit_json(verification, output)
+    if not verification["passed"]:
         raise typer.Exit(code=1)
 
 
