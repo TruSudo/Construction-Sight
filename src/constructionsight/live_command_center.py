@@ -127,6 +127,7 @@ from constructionsight.command_center_parcel_readiness import (
 )
 from constructionsight.command_center_parcel_reconciliation import (
     enqueue_original_parcel_reconciliation,
+    list_retained_original_parcels,
     preview_original_parcel_reconciliation,
 )
 from constructionsight.command_center_retained_previews import retained_commercial_preview
@@ -922,6 +923,17 @@ def make_server(
                     "kind": params.kind, "county": params.county, "query": params.query,
                     "offset": params.offset, "limit": params.limit,
                 })
+                body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
+            elif path == "/api/source-parcel-records":
+                if directory is None or urlsplit(self.path).fragment or (
+                    set(query) not in (set(), {"cursor"})
+                    or any(len(items) != 1 for items in query.values())
+                    or (urlsplit(self.path).query and not query)
+                ):
+                    raise ValueError("one bounded original parcel browse request required")
+                value = list_retained_original_parcels(
+                    directory, operator_database, cursor=query.get("cursor", [None])[0],
+                )
                 body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
             elif path == "/api/source-parcel-reconciliation":
                 if (
