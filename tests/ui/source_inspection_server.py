@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import argparse
 import hashlib
 import json
@@ -10,6 +11,11 @@ from pathlib import Path
 
 from sqlalchemy.orm import Session
 
+from constructionsight.command_center_arcgis_proofs import (
+    preview_arcgis_proof_record_request,
+    retained_arcgis_proof_preview,
+)
+from constructionsight.command_center_arcgis_record import _verify_exact_arcgis_feature
 from constructionsight.ceqa_models import CeqaRecord
 from constructionsight.entity_models import Entity
 from constructionsight.investigation_runtime import InvestigationRuntime
@@ -18,6 +24,7 @@ from constructionsight.lead_workflow_models import LeadWorkflowStatus
 from constructionsight.lead_workflow_service import create_lead_workflow
 from constructionsight.live_command_center import make_server
 from constructionsight.parcel_core_models import ParcelCoreRecord
+from constructionsight.parcel_source_acquisition_http import _exact_request_url
 from constructionsight.permit_models import PermitRecord
 from constructionsight.provenance import Provenance
 from constructionsight.result_ledger_models import ResultLedgerStatus
@@ -35,6 +42,7 @@ from constructionsight.storage.lead_workflow_store import (
     store_result_ledger_record,
 )
 from constructionsight.storage.parcel_site_store import store_parcel_core_record
+from constructionsight.storage.runtime_artifacts import write_runtime_text
 from constructionsight.storage.source_registry import SourceRegistryStore
 from tests.test_bid_proposal_service import _package
 from tests.test_ceqanet_operator_export import _chain_report
@@ -208,6 +216,49 @@ chain.write_text(json.dumps(_chain_report()), encoding="utf-8")
 # chain. Displayed only; this browser journey never authorizes a network probe.
 arcgis_proof = args.data_dir / "original-arcgis-schema-proof.json"
 arcgis_proof.write_text(json.dumps(_bounded_bundle().to_dict()), encoding="utf-8")
+# An offline, synthetic response lets the native browser test exercise distinct
+# reviewed parcel persistence without executing any ArcGIS network request.
+historical = _bounded_bundle()
+original_proof = retained_arcgis_proof_preview(arcgis_proof)
+single_plan = preview_arcgis_proof_record_request(arcgis_proof, {
+    "source_key": historical.source_key,
+    "expected_bundle_id": historical.bundle_id,
+    "expected_bundle_sha256": original_proof["bundle_sha256"],
+    "expected_snapshot_id": historical.snapshot.snapshot_id,
+    "object_id": 3,
+})
+source_response = json.dumps({"features": [{"attributes": {
+    "OBJECTID": 3, "APN": "555-111-222",
+}}]}).encode("utf-8")
+source_sha = hashlib.sha256(source_response).hexdigest()
+synthetic_receipt = {
+    "schema_version": "constructionsight.arcgis-single-record-body/v1",
+    "plan_id": single_plan["plan_id"],
+    "source_key": single_plan["source_key"],
+    "bundle_id": single_plan["bundle_id"],
+    "bundle_sha256": single_plan["bundle_sha256"],
+    "snapshot_id": single_plan["snapshot_id"],
+    "object_id": single_plan["object_id"],
+    "request_url": _exact_request_url(
+        single_plan["query_url"], single_plan["parameters"],
+    ),
+    "response_sha256": source_sha,
+    "response_body_base64": base64.b64encode(source_response).decode("ascii"),
+    "observed_at": datetime(2026, 10, 22, tzinfo=UTC).isoformat(),
+    "report": _verify_exact_arcgis_feature(
+        arcgis_proof, single_plan, source_response,
+    ),
+    "network_executed": True,
+    "parcel_persisted": False,
+    "site_identity_verified": False,
+    "commercial_authority_granted": False,
+}
+record_file = args.data_dir / "native" / "arcgis-record-evidence" / (
+    single_plan["plan_id"].replace(":", "-") + ".json"
+)
+write_runtime_text(
+    record_file, json.dumps(synthetic_receipt), max_bytes=2_000_000,
+)
 aliases = args.data_dir / "source-attribution-aliases.json"
 aliases.write_text(json.dumps({
     "schema_version": "constructionsight.source_attribution_aliases.v1",
