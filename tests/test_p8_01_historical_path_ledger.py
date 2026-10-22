@@ -101,7 +101,9 @@ def test_p8_01_missing_history_dispositions_cover_all_43_without_false_parity() 
         assert row["baseline_classes"] == source["baseline_comparison_classes"]
         assert row["storage_observation"] == "absent"
         assert row["behavioral_equivalence_verified"] is False
-        for field in ("classification", "evidence_basis", "current_counterpart", "open_proof"):
+        for field in (
+            "classification", "evidence_basis", "current_counterpart", "open_proof",
+        ):
             assert isinstance(row[field], str) and row[field].strip()
         assert row["gate_dependencies"] and "P8-01" in row["gate_dependencies"]
         category = row["classification"]
