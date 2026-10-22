@@ -30,6 +30,21 @@ const {resolve} = require('node:path');
       throw Error('Historical parcel profile silently authorized live ArcGIS access');
     }
     await page.click('#action-close');
+    // The actual retained metadata must reach the original schema service
+    // inside the existing native offline proof review—not a manufactured row.
+    await page.waitForSelector('[data-native-proof-review]', {timeout: 20000});
+    await page.locator('[data-native-proof-review]').click();
+    await page.waitForSelector('#native-proof-commit');
+    const observedArcgis = await page.locator('#action-content').textContent();
+    if (!observedArcgis.includes('Original observed ArcGIS field-schema review') ||
+        !observedArcgis.includes('parcel-arcgis-capability:') ||
+        !observedArcgis.includes('"original_schema_preview_service_reused": true') ||
+        !observedArcgis.includes('"parcel_rows_observed": false') ||
+        !observedArcgis.includes('"project_identity_established": false') ||
+        !observedArcgis.includes('"commercial_authority_granted": false')) {
+      throw Error('Retained ArcGIS snapshot was not shown via original schema review');
+    }
+    await page.click('#action-close');
     const area = page.locator('.retained-source-inspection');
     const initial = await area.textContent();
     if (!initial.includes('Local source revisions') ||
