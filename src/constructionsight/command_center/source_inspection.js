@@ -77,6 +77,47 @@ async function reviewRetainedParcelInEngine(parcelId) {
   });
 }
 
+// Browse only original, integrity-checked parcel records. Selecting one still
+// requires the existing exact reviewed queue; no bulk replay or identity merge.
+async function browseRetainedOriginalParcels(container, cursor=null) {
+  if (!container.isConnected || activePage !== 'Sources & Collection') return;
+  container.textContent = 'Reading retained original parcel IDs without modification…';
+  try {
+    const path = '/api/source-parcel-records' +
+      (cursor ? '?' + new URLSearchParams({cursor}) : '');
+    const data = await api(path);
+    if (!container.isConnected || activePage !== 'Sources & Collection') return;
+    if (!data.available) {
+      container.textContent = 'No original parcel database configured. Supply an ' +
+        'existing --operator-database; no parcel identities are inferred.';
+      return;
+    }
+    const rows = data.rows || [];
+    container.innerHTML =
+      '<p>Verified retained original record identities (maximum 20 per page). ' +
+      'This list is historical source evidence, not a new parcel import, ' +
+      'project identity or commercial qualification.</p>' +
+      table(['Original parcel ID','County','Source APN','Review'], rows.map((r,i)=>[
+        esc(r.parcel_record_id), esc(r.county), esc(r.apn || '—'),
+        '<button data-retained-parcel-select="'+i+'">Review exact retained record</button>'
+      ])) +
+      (data.has_more && data.next_cursor ?
+        '<button data-retained-parcel-next>Next retained parcel page</button>' : '');
+    container.querySelectorAll('[data-retained-parcel-select]').forEach(button => {
+      button.onclick = () => perform(() =>
+        reviewRetainedParcelInEngine(
+          rows[Number(button.dataset.retainedParcelSelect)].parcel_record_id));
+    });
+    const next = container.querySelector('[data-retained-parcel-next]');
+    if (next) next.onclick = () =>
+      perform(() => browseRetainedOriginalParcels(container, data.next_cursor));
+  } catch(error) {
+    if (container.isConnected && activePage === 'Sources & Collection')
+      container.innerHTML = '<p role="alert">Original retained parcel browser ' +
+        'unavailable: '+esc(error.message)+'</p>';
+  }
+}
+
 // The shared exact five-flag access review predates this ArcGIS bridge. Keep
 // one implementation available to CEQAnet, SMARTS and parcel source dialogs,
 // with unknown restrictions explicitly denied rather than guessed.
@@ -148,6 +189,9 @@ async function renderParcelSourceReadiness(box) {
       'maxlength="255" required autocomplete="off"></label>' +
       '<button type="submit">Compare with current investigation evidence</button>' +
       '</form>' +
+      '<h3>Previously retained original parcel records</h3>' +
+      '<div data-retained-original-parcels role="status">Checking configured ' +
+      'original parcel store…</div>' +
       '<h3>Original bounded ArcGIS acquisition proof</h3>' +
       '<p>One separately approved original five-request metadata/count/page/replay ' +
       'source check. Historical profiles do not establish current lawful access. ' +
@@ -171,6 +215,8 @@ async function renderParcelSourceReadiness(box) {
         if (button.isConnected) button.disabled = false;
       });
     };
+    await browseRetainedOriginalParcels(
+      root.querySelector('[data-retained-original-parcels]'));
     root.querySelector('#review-native-arcgis-probe').onclick = () =>
       perform(async () => {
         const profiles = data.profiles.filter(p => p.status === 'verified_preview');
