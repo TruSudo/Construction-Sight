@@ -41,6 +41,7 @@ from tests.test_ceqanet_operator_export import _chain_report
 from tests.test_operator_capture_queue import _payload as capture_fixture
 from tests.test_operator_ingestion_inbox import _write_artifacts
 from tests.test_operator_source_registry import _source
+from tests.test_parcel_source_acquisition_bundle_storage import _bounded_bundle
 from tests.test_smarts_parcel_review import _change, _environment, _parcel
 
 parser = argparse.ArgumentParser()
@@ -203,6 +204,10 @@ capture = args.data_dir / "capture.json"
 capture.write_text(json.dumps(capture_fixture()), encoding="utf-8")
 chain = args.data_dir / "ceqanet-chain-report.json"
 chain.write_text(json.dumps(_chain_report()), encoding="utf-8")
+# Historical fixture is a self-contained, previously observed bounded ArcGIS
+# chain. Displayed only; this browser journey never authorizes a network probe.
+arcgis_proof = args.data_dir / "original-arcgis-schema-proof.json"
+arcgis_proof.write_text(json.dumps(_bounded_bundle().to_dict()), encoding="utf-8")
 aliases = args.data_dir / "source-attribution-aliases.json"
 aliases.write_text(json.dumps({
     "schema_version": "constructionsight.source_attribution_aliases.v1",
@@ -229,6 +234,7 @@ server = make_server(
     operator_smarts_history=smarts_history,
     operator_ceqanet_chain_report=chain,
     operator_source_attribution_aliases=aliases,
+    operator_arcgis_proof_bundle=arcgis_proof,
 )
 print("Phase 8 read-only source fixture", server.server_port, flush=True)
 try:
