@@ -66,7 +66,12 @@ def _persisted_exact(
             if len(matches) != 1 or matches[0].parcel_record_id != parcel.parcel_record_id:
                 raise ValueError("original parcel source identity is absent or ambiguous")
             row = matches[0]
-            stored = ParcelCoreRecord.model_validate(json.loads(row.payload_json))
+            try:
+                stored = ParcelCoreRecord.model_validate(json.loads(row.payload_json))
+            except (ValueError, TypeError) as exc:
+                raise ValueError(
+                    "stored original parcel differs from verified source response"
+                ) from exc
             if _canonical(stored.to_dict()) != _canonical(parcel.to_dict()) or (
                 row.source_key != parcel.source_key
                 or row.source_record_id != parcel.source_record_id
