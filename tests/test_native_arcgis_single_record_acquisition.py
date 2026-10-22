@@ -12,6 +12,7 @@ from unittest.mock import patch
 
 import pytest
 
+from constructionsight.authorization_decision import AuthorizationDeniedError
 from constructionsight.command_center_arcgis_proofs import (
     preview_arcgis_proof_record_request,
     retained_arcgis_proof_preview,
@@ -199,7 +200,7 @@ def test_reviewed_record_executes_exact_one_bounded_transport_and_retains_bytes(
         execute_reviewed_arcgis_record(tmp_path / "native", proof, {
             **confirmed, "commercial_authority": True,
         })
-    with pytest.raises(Exception):
+    with pytest.raises(AuthorizationDeniedError):
         execute_reviewed_arcgis_record(tmp_path / "native", proof, {
             **confirmed, "access_review": {
                 **_access(), "robots_disallows_collection": True,
