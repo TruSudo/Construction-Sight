@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
+
+import httpx
 from pathlib import Path
 from unittest.mock import patch
 
@@ -27,6 +29,7 @@ from constructionsight.http_transport_models import (
     HttpFailureKind,
 )
 from constructionsight.storage.runtime_artifacts import read_runtime_text
+from tests.test_native_arcgis_proof_persistence import _serve
 from tests.test_parcel_source_acquisition_bundle_storage import _bounded_bundle
 
 
@@ -119,6 +122,52 @@ def test_original_parcel_parser_rejects_forged_attribute_responses(
     ):
         with pytest.raises(ValueError):
             _verify_exact_arcgis_feature(proof, plan, json.dumps(fake).encode())
+
+
+def test_native_arcgis_record_endpoints_require_local_exact_origin_and_review(
+    tmp_path: Path,
+) -> None:
+    proof, payload, plan = _fixture(tmp_path)
+    request = {
+        **payload, "expected_plan_id": plan["plan_id"], "access_review": _access(),
+    }
+    private = tmp_path / "native-server"
+    server, worker = _serve(private, proof)
+    base = f"http://127.0.0.1:{server.server_port}"
+    try:
+        with httpx.Client(base_url=base, trust_env=False) as client:
+            route = "/api/parcel-arcgis-record-access-preview"
+            assert client.post(route, json=request).status_code == 403
+            authorized = client.post(route, json=request, headers={"Origin": base})
+            assert authorized.status_code == 200, authorized.text
+            assert authorized.json()["may_request_approval"] is True
+            assert authorized.json()["network_executed"] is False
+            assert client.post(
+                route + "?bypass=1", json=request, headers={"Origin": base},
+            ).status_code == 400
+            assert client.post(
+                route, json=request, headers={
+                    "Origin": base, "Sec-Fetch-Site": "cross-site",
+                },
+            ).status_code == 400
+            execution = "/api/parcel-arcgis-record-execute"
+            assert client.post(
+                execution, json={**request, "caller_confirmation": False,
+                                 "review_reason": "Unapproved request"},
+                headers={"Origin": base},
+            ).status_code == 400
+            assert client.post(
+                execution, json={**request, "caller_confirmation": True,
+                                 "review_reason": "Unapproved request",
+                                 "forged_source_url": "https://evil.invalid/"},
+                headers={"Origin": base},
+            ).status_code == 400
+            assert not (private / "arcgis-record-evidence").exists()
+            assert not (private / "investigations.sqlite3").exists()
+    finally:
+        server.shutdown()
+        server.server_close()
+        worker.join()
 
 
 def test_reviewed_record_executes_exact_one_bounded_transport_and_retains_bytes(
