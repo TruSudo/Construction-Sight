@@ -242,6 +242,106 @@ def preview_arcgis_proof_bound_rows(
     }
 
 
+def preview_arcgis_proof_record_request(
+    path: Path | None, payload: dict[str, Any],
+) -> dict[str, Any]:
+    """Prepare one official source-row request from a verified bounded ID sample.
+
+    The original four-request probe returns OBJECTIDs only. This method cannot
+    acquire parcel attributes, use a user-supplied URL, or grant access rights.
+    """
+    required = {
+        "source_key", "expected_bundle_id", "expected_bundle_sha256",
+        "expected_snapshot_id", "object_id",
+    }
+    if not isinstance(payload, dict) or set(payload) != required:
+        raise ValueError("exact retained ArcGIS scope and object ID required")
+    selected = _selected_proof(path)
+    if selected is None:
+        raise ValueError("no verified historical ArcGIS probe is configured")
+    digest, bundle, _ = selected
+    if (
+        type(payload["source_key"]) is not str
+        or payload["source_key"] != bundle.source_key
+        or payload["expected_bundle_id"] != bundle.bundle_id
+        or payload["expected_bundle_sha256"] != digest
+        or payload["expected_snapshot_id"] != bundle.snapshot.snapshot_id
+    ):
+        raise ValueError("stale, mismatched or substituted ArcGIS proof identity")
+    schema = _observed_arcgis_schema(bundle)
+    snapshot = bundle.snapshot
+    object_id = payload["object_id"]
+    if type(object_id) is not int or not 0 < object_id <= 2**53 - 1:
+        raise ValueError("one positive, exact ArcGIS integer object ID required")
+    from constructionsight.parcel_source_acquisition_models import (
+        ParcelArcGISProbeKind,
+    )
+
+    observed_ids = sorted({
+        value
+        for observation in bundle.observations
+        if observation.kind in (
+            ParcelArcGISProbeKind.INITIAL_PAGE,
+            ParcelArcGISProbeKind.NEXT_PAGE,
+        )
+        for value in observation.object_ids
+    })
+    if object_id not in observed_ids:
+        raise ValueError("selected ArcGIS object ID is absent from verified probe")
+    source = next(
+        item for item in get_parcel_sources()
+        if item.source_key == bundle.source_key
+    )
+    observed_fields = {item.name for item in snapshot.fields}
+    attribute_fields = sorted({
+        item.source_field
+        for item in source.field_mappings
+        if item.source_field in observed_fields
+        and item.source_field.casefold() != "geometry"
+    })
+    if (
+        snapshot.object_id_field not in attribute_fields
+        or not any(
+            item.field_role.value == "apn" and item.source_field in attribute_fields
+            for item in source.field_mappings
+        )
+    ):
+        raise ValueError("registered object ID and APN fields must be observed")
+    parameters = {
+        "f": "json",
+        "objectIds": str(object_id),
+        "outFields": ",".join(attribute_fields),
+        "returnGeometry": "false",
+    }
+    digest_payload = {
+        "bundle_id": bundle.bundle_id,
+        "bundle_sha256": digest,
+        "snapshot_id": snapshot.snapshot_id,
+        "source_key": bundle.source_key,
+        "object_id": object_id,
+        "query_url": snapshot.layer_url.rstrip("/") + "/query",
+        "parameters": parameters,
+    }
+    from constructionsight.parcel_source_acquisition_models import (
+        digest_identity,
+    )
+
+    return {
+        "schema_version": "constructionsight.arcgis-proof-record-plan/v1",
+        "plan_id": digest_identity("arcgis-proof-record-plan", digest_payload),
+        **digest_payload,
+        "observed_object_ids": observed_ids[:200],
+        "observed_field_schema_verified": schema["original_schema_preview_service_reused"],
+        "operator_access_review_required": True,
+        "network_executed": False,
+        "attributes_observed": False,
+        "source_row_provenance_verified": False,
+        "parcel_persisted": False,
+        "site_identity_verified": False,
+        "commercial_authority_granted": False,
+    }
+
+
 def retained_arcgis_proof_preview(path: Path | None) -> dict[str, Any]:
     """Inspect a configured local proof without starting collection or writing data."""
     selected = _selected_proof(path)
