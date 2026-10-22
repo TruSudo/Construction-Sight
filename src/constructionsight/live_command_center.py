@@ -36,6 +36,10 @@ from constructionsight.command_center_arcgis_probe import (
     execute_reviewed_original_arcgis_probe,
     preview_original_arcgis_probe,
 )
+from constructionsight.command_center_arcgis_record import (
+    execute_reviewed_arcgis_record,
+    preview_reviewed_arcgis_record_access,
+)
 from constructionsight.command_center_arcgis_proofs import (
     native_arcgis_proof_inventory,
     persist_reviewed_arcgis_proof,
@@ -1377,6 +1381,8 @@ def make_server(
                 "/api/parcel-source-row-preview",
                 "/api/parcel-arcgis-row-preview",
                 "/api/parcel-arcgis-record-plan",
+                "/api/parcel-arcgis-record-access-preview",
+                "/api/parcel-arcgis-record-execute",
                 "/api/parcel-arcgis-probe-preview",
                 "/api/parcel-arcgis-probe",
                 "/api/parcel-arcgis-proof-persist",
@@ -1621,6 +1627,28 @@ def make_server(
                         result = preview_arcgis_proof_record_request(
                             operator_arcgis_proof_bundle, payload,
                         )
+                    elif path in (
+                        "/api/parcel-arcgis-record-access-preview",
+                        "/api/parcel-arcgis-record-execute",
+                    ):
+                        if (
+                            urlsplit(self.path).query
+                            or urlsplit(self.path).fragment
+                            or self.headers.get_all("Host", []) != [host]
+                            or self.headers.get_all("Origin", []) != [f"http://{host}"]
+                            or self.headers.get("Sec-Fetch-Site") == "cross-site"
+                        ):
+                            raise ValueError(
+                                "exact same-origin reviewed ArcGIS read required"
+                            )
+                        if path.endswith("-preview"):
+                            result = preview_reviewed_arcgis_record_access(
+                                operator_arcgis_proof_bundle, payload,
+                            )
+                        else:
+                            result = execute_reviewed_arcgis_record(
+                                directory, operator_arcgis_proof_bundle, payload,
+                            )
                     elif path == "/api/parcel-arcgis-row-preview":
                         if (
                             urlsplit(self.path).query
