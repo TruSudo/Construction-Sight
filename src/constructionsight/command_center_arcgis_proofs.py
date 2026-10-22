@@ -76,7 +76,9 @@ def _observed_arcgis_schema(
         or source.source_url != bundle.snapshot.layer_url
         or source.coverage.county != bundle.county
     ):
-        raise ValueError("ArcGIS proof does not match the current registered parcel source")
+        raise ValueError(
+            "ArcGIS proof does not match the current registered parcel source"
+        )
 
     snapshot = bundle.snapshot
     original_input = ParcelSchemaPreviewInput(
@@ -100,13 +102,16 @@ def _observed_arcgis_schema(
         source_url=source.source_url,
         limitations=[
             "This report describes retained ArcGIS metadata, not imported parcel rows.",
-            "Original inferred role matches are proposals, not verified source-to-site identities.",
-            "The observed source schema can change after its recorded observation time.",
+            "Original inferred role matches are proposals, not verified "
+            "source-to-site identities.",
+            "The observed source schema may change after its recorded observation.",
         ],
     )
     report = preview_schema(original_input)
     advertised_names = {field.name.casefold() for field in snapshot.fields}
-    expected_names = {mapping.source_field.casefold() for mapping in source.field_mappings}
+    expected_names = {
+        mapping.source_field.casefold() for mapping in source.field_mappings
+    }
     return {
         "schema_version": "constructionsight.native-arcgis-observed-schema/v1",
         "original_schema_preview_service_reused": True,
