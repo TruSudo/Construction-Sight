@@ -246,6 +246,21 @@ def preview_arcgis_proof_bound_rows(
     }
 
 
+def _proof_observed_object_ids(
+    bundle: ParcelArcGISBoundedProofBundle,
+) -> list[int]:
+    """Return only original, independently bounded page object IDs."""
+    return sorted({
+        value
+        for observation in bundle.observations
+        if observation.kind in (
+            ParcelArcGISProbeKind.INITIAL_PAGE,
+            ParcelArcGISProbeKind.NEXT_PAGE,
+        )
+        for value in observation.object_ids
+    })
+
+
 def preview_arcgis_proof_record_request(
     path: Path | None, payload: dict[str, Any],
 ) -> dict[str, Any]:
@@ -277,15 +292,7 @@ def preview_arcgis_proof_record_request(
     object_id = payload["object_id"]
     if type(object_id) is not int or not 0 < object_id <= 2**53 - 1:
         raise ValueError("one positive, exact ArcGIS integer object ID required")
-    observed_ids = sorted({
-        value
-        for observation in bundle.observations
-        if observation.kind in (
-            ParcelArcGISProbeKind.INITIAL_PAGE,
-            ParcelArcGISProbeKind.NEXT_PAGE,
-        )
-        for value in observation.object_ids
-    })
+    observed_ids = _proof_observed_object_ids(bundle)
     if object_id not in observed_ids:
         raise ValueError("selected ArcGIS object ID is absent from verified probe")
     source = next(
@@ -363,6 +370,7 @@ def retained_arcgis_proof_preview(path: Path | None) -> dict[str, Any]:
         "assessment_status": bundle.assessment.status.value,
         "verification": verification,
         "observed_schema": _observed_arcgis_schema(bundle),
+        "bounded_observed_object_ids": _proof_observed_object_ids(bundle),
         "network_executed": False,
         "source_database_mutated": False,
         "parcel_imported": False,
