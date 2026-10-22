@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import base64
-import copy
 import hashlib
 import json
 import socket
@@ -108,8 +107,11 @@ def test_old_header_only_csv_is_historical_not_current_source_evidence() -> None
     [
         ("request_url", "https://example.invalid/Search?OutputFormat=CSV&Sch=2026030377",
          "request URL"),
-        ("final_url", "https://ceqanet.lci.ca.gov.evil.invalid/Search?OutputFormat=CSV&Sch=2026030377",
-         "final URL"),
+        (
+            "final_url",
+            "https://ceqanet.lci.ca.gov.evil.invalid/Search?OutputFormat=CSV&Sch=2026030377",
+            "final URL",
+        ),
         ("network_executed", False, "does not claim"),
         ("status_code", 403, "not successful"),
         ("error", "Timeout", "execution error"),
