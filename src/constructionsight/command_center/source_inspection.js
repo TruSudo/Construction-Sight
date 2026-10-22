@@ -312,11 +312,42 @@ async function renderParcelSourceReadiness(box) {
           'permission to construct an identity match. Original inferred '+
           'field roles remain review proposals.</p>'+
           '<pre>'+esc(JSON.stringify(review.observed_schema,null,2))+'</pre>'+
+          '<button id="native-arcgis-preview-rows">Preview manual rows against '+
+          'this exact historical schema</button>'+
           '<label>Reason for retaining this exact proof '+
           '<textarea id="native-proof-reason" maxlength="2000" rows="3"></textarea></label>'+
           '<label><input type="checkbox" id="native-proof-confirm"> '+
           'I reviewed this SHA-256-bound proof and authorize local retention only.</label>'+
           '<button id="native-proof-commit">Retain verified proof</button>');
+        document.querySelector('#native-arcgis-preview-rows').onclick = () => {
+          const previewTicket = modal('Manual ArcGIS rows · exact proof-bound parser',
+            '<p>The proof establishes historical metadata only. Your pasted '+
+            'values are unverified; no row, geometry, parcel identity, project, '+
+            'map point or commercial action will be retained or approved.</p>'+
+            '<label>1–20 JSON row objects with only official observed mapped '+
+            'attribute names<textarea id="native-arcgis-row-json" rows="7" '+
+            'placeholder=\'[{"ParcelNumber":"123-456-789","OBJECTID":"101"}]\''+
+            '></textarea></label>'+
+            '<button id="native-arcgis-row-check">Parse manual rows offline</button>');
+          document.querySelector('#native-arcgis-row-check').onclick =
+            () => perform(async () => {
+              if (previewTicket !== modalTicket || !$('action-dialog').open) return;
+              const rows = JSON.parse(
+                document.querySelector('#native-arcgis-row-json').value);
+              const result = await api('/api/parcel-arcgis-row-preview', {
+                source_key: review.source_key,
+                expected_bundle_id: review.bundle_id,
+                expected_bundle_sha256: review.bundle_sha256,
+                expected_snapshot_id: review.observed_schema.snapshot_id,
+                rows
+              });
+              modal('Manual parcel rows · parsed, not independently verified',
+                '<p>Original parcel parser accepted the displayed format only. '+
+                'No GIS source response or parcel/project identity is verified, '+
+                'imported or authorized by this preview.</p>'+
+                '<pre>'+esc(JSON.stringify(result,null,2))+'</pre>');
+            });
+        };
         const commit = document.querySelector('#native-proof-commit');
         commit.onclick = () => perform(async () => {
           if (ticket !== modalTicket || !$('action-dialog').open) return;
