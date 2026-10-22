@@ -12,7 +12,7 @@ import hashlib
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from constructionsight.authorization_decision import AuthorizationDeniedError
 from constructionsight.authorization_decision_models import authorization_digest
@@ -147,7 +147,7 @@ def _verify_exact_arcgis_feature(
     )["report"]
     if report["usable_row_count"] != 1:
         raise ValueError("official source row is not usable as a parcel candidate")
-    return report
+    return cast(dict[str, Any], report)
 
 
 def execute_reviewed_arcgis_record(
