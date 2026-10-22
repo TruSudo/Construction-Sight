@@ -17,7 +17,6 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from constructionsight.authorization_decision_models import authorization_digest
 from constructionsight.command_center_arcgis_proofs import (
     preview_arcgis_proof_record_request,
 )
