@@ -219,12 +219,18 @@ def test_exact_arcgis_proof_bound_manual_rows_reuse_original_parser_offline(
     assert direct["report"]["rows"][0]["normalized_apn"] == "123456789"
     assert direct["report"]["rows"][0]["source_record_id"] == "101"
     assert proof.read_bytes() == original
+    wrong_source_key = (
+        "san-bernardino:county-gis-parcels"
+        if bundle.source_key.startswith("riverside:")
+        else "riverside:county-gis-parcels"
+    )
+    assert wrong_source_key != bundle.source_key
 
     for bad in (
         {**valid, "expected_bundle_id": "other"},
         {**valid, "expected_snapshot_id": "other"},
         {**valid, "expected_bundle_sha256": "0" * 64},
-        {**valid, "source_key": "riverside:county-gis-parcels"},
+        {**valid, "source_key": wrong_source_key},
         {**valid, "extra": "commercial-import"},
         {**valid, "rows": []},
         {**valid, "rows": valid["rows"] * 21},
