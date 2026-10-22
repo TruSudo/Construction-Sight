@@ -10,6 +10,8 @@ from urllib.parse import quote
 
 import httpx
 import pytest
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from constructionsight.command_center_arcgis_investigation import (
     enqueue_arcgis_parcel_investigation,
@@ -20,6 +22,8 @@ from constructionsight.command_center_arcgis_parcel import (
     preview_reviewed_arcgis_parcel,
 )
 from constructionsight.investigation_runtime import InvestigationRuntime
+from constructionsight.storage.database import create_private_database_engine
+from constructionsight.storage.parcel_site_orm import ParcelCoreRecordRow
 from tests.test_native_arcgis_parcel_import import _local_retained_source
 from tests.test_native_arcgis_proof_persistence import _serve
 
@@ -159,11 +163,6 @@ def test_arcgis_source_worker_refuses_missing_or_tampered_original_core(
 ) -> None:
     directory, proof, request, artifact = _approved(tmp_path)
     before = artifact.read_bytes()
-    from sqlalchemy import select
-    from sqlalchemy.orm import Session
-    from constructionsight.storage.database import create_private_database_engine
-    from constructionsight.storage.parcel_site_orm import ParcelCoreRecordRow
-
     engine = create_private_database_engine(
         directory / "investigations.sqlite3", create=False,
     )
