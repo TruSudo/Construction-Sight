@@ -48,8 +48,14 @@ const {resolve} = require('node:path');
     // historical schema, without manufacturing provenance or importing data.
     await page.click('#native-arcgis-preview-rows');
     await page.waitForSelector('#native-arcgis-row-check');
+    const proofMetadata = await (await page.request.get(new URL(
+      '/api/parcel-arcgis-proof',process.argv[2]).href)).json();
+    const mappedApn = proofMetadata.observed_schema.original_schema_preview
+      .mapped_fields.find(field => field.field_role === 'apn');
+    if (!mappedApn || !mappedApn.source_field)
+      throw Error('Exact verified ArcGIS proof lacks registered APN field');
     await page.fill('#native-arcgis-row-json',
-      JSON.stringify([{ParcelNumber:'123-456-789', OBJECTID:'101'}]));
+      JSON.stringify([{[mappedApn.source_field]:'123-456-789', OBJECTID:'101'}]));
     await page.click('#native-arcgis-row-check');
     await page.waitForFunction(() =>
       document.querySelector('#action-content')?.textContent.includes(
