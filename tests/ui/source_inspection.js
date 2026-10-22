@@ -61,6 +61,68 @@ const {resolve} = require('node:path');
         !exactPlan.includes('"commercial_authority_granted": false')) {
       throw Error('Bounded source row plan wrongly acquired or authorized attributes');
     }
+    // The browser approval flow can be exercised against a synthetic, already
+    // retained source receipt, with the actual network execution route stubbed.
+    // The original proof, parser and independently reviewed durable parcel apply
+    // remain real native server code; no external ArcGIS GET is made.
+    const matchId = exactPlan.match(/"plan_id": "([^"]+)"/);
+    if (!matchId) throw Error('Official plan had no bounded identity');
+    const savedEvidence = JSON.parse(readFileSync(resolve(process.argv[3],
+      'arcgis-record-evidence', matchId[1].replaceAll(':','-')+'.json'),'utf8'));
+    await page.route('**/api/parcel-arcgis-record-execute', async route => {
+      await route.fulfill({
+        status:200,
+        contentType:'application/json',
+        body:JSON.stringify({
+          schema_version:'constructionsight.arcgis-single-record-receipt/v1',
+          plan_id:matchId[1],
+          object_id:3,
+          source_key:savedEvidence.source_key,
+          response_sha256:savedEvidence.response_sha256,
+          source_attributes_observed:true,
+          original_response_retained:true,
+          parcel_persisted:false,
+          commercial_authority_granted:false,
+          network_executed:true
+        })
+      });
+    });
+    await page.click('#arcgis-record-access-review');
+    await page.waitForSelector('#arcgis-record-preflight');
+    for (const select of await page.locator('[data-ceqanet-acq-fact]').all()) {
+      await select.selectOption('false');
+    }
+    await page.fill('#ceqanet-acq-basis','review:'+'c'.repeat(64));
+    await page.click('#arcgis-record-preflight');
+    await page.waitForSelector('#arcgis-record-execute');
+    await page.fill('#arcgis-record-reason',
+      'Synthetic offline browser journey for one independently reviewed row.');
+    await page.check('#arcgis-record-confirm');
+    await page.click('#arcgis-record-execute');
+    await page.waitForSelector('#arcgis-parcel-persist-review');
+    await page.click('#arcgis-parcel-persist-review');
+    await page.waitForSelector('#arcgis-parcel-persist-apply');
+    const sourceParcel = await page.locator('#action-content').textContent();
+    if (!sourceParcel.includes('"native_state": "absent"') ||
+        !sourceParcel.includes('"may_request_persistence": true') ||
+        !sourceParcel.includes('"geometry_verified": false')) {
+      throw Error('Original verified source did not reach distinct parcel review');
+    }
+    await page.fill('#arcgis-parcel-reason',
+      'Separately accept original synthetic parcel bytes without project matching.');
+    await page.check('#arcgis-parcel-confirm');
+    await page.click('#arcgis-parcel-persist-apply');
+    await page.waitForFunction(() =>
+      document.querySelector('#action-content')?.textContent.includes(
+        '"observation_retained": true'));
+    const imported = await page.locator('#action-content').textContent();
+    if (!imported.includes('"parcel_persisted": true') ||
+        !imported.includes('"native_worker_enqueued": false') ||
+        !imported.includes('"commercial_authority_granted": false') ||
+        !imported.includes('"geometry_verified": false')) {
+      throw Error('Original verified parcel consent silently granted project identity');
+    }
+    await page.unroute('**/api/parcel-arcgis-record-execute');
     await page.click('#action-close');
     await page.locator('[data-native-proof-review]').click();
     await page.waitForSelector('#native-arcgis-preview-rows');
