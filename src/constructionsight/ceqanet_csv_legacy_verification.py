@@ -90,15 +90,19 @@ class _ArchivedExecution(BaseModel):
 
 def _verified_official_url(url: str, canonical: str) -> bool:
     """Preserve old ordered query identity, with stricter origin safeguards."""
-    given = urlsplit(url)
-    expected = urlsplit(canonical)
+    try:
+        given = urlsplit(url)
+        expected = urlsplit(canonical)
+        request_port = given.port
+    except ValueError:
+        return False
     return (
         given.scheme == "https"
         and given.hostname == expected.hostname
         and given.path == expected.path
         and given.username is None
         and given.password is None
-        and given.port in (None, 443)
+        and request_port in (None, 443)
         and not given.fragment
         and parse_qsl(given.query, keep_blank_values=True)
         == parse_qsl(expected.query, keep_blank_values=True)
