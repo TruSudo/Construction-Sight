@@ -38,8 +38,8 @@ from constructionsight.command_center_arcgis_probe import (
 )
 from constructionsight.command_center_arcgis_proofs import (
     native_arcgis_proof_inventory,
-    preview_arcgis_proof_bound_rows,
     persist_reviewed_arcgis_proof,
+    preview_arcgis_proof_bound_rows,
     retained_arcgis_proof_preview,
 )
 from constructionsight.command_center_canonical_leads import (
