@@ -122,6 +122,16 @@ const {resolve} = require('node:path');
         !imported.includes('"geometry_verified": false')) {
       throw Error('Original verified parcel consent silently granted project identity');
     }
+    await page.click('#arcgis-parcel-investigation-review');
+    await page.waitForSelector('#arcgis-investigation-queue');
+    const proposedHandoff = await page.locator('#action-content').textContent();
+    if (!proposedHandoff.includes('"replay_eligible": true') ||
+        !proposedHandoff.includes('"native_state": "not_in_native_store"') ||
+        !proposedHandoff.includes('"commercial_authority_granted": false')) {
+      throw Error('Original reviewed parcel did not reach independent worker review');
+    }
+    // Separate worker queue authorization is exercised in the isolated
+    // server integration tests; do not silently create another job here.
     await page.unroute('**/api/parcel-arcgis-record-execute');
     await page.click('#action-close');
     await page.locator('[data-native-proof-review]').click();
