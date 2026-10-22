@@ -7,11 +7,10 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
-
-import httpx
 from pathlib import Path
 from unittest.mock import patch
 
+import httpx
 import pytest
 
 from constructionsight.authorization_decision import AuthorizationDeniedError
