@@ -19,14 +19,14 @@ from constructionsight.operator_services.parcel_arcgis_service import (
     ParcelArcGISOperatorServiceError,
     persist_authorized_arcgis_bundle,
 )
+from constructionsight.parcel_row_preview import preview_rows
+from constructionsight.parcel_row_preview_models import ParcelRowPreviewInput
 from constructionsight.parcel_schema_models import (
-    ParcelObservedFieldType,
     ParcelFieldRoleMatch,
+    ParcelObservedFieldType,
     ParcelSchemaField,
     ParcelSchemaPreviewInput,
 )
-from constructionsight.parcel_row_preview import preview_rows
-from constructionsight.parcel_row_preview_models import ParcelRowPreviewInput
 from constructionsight.parcel_schema_preview import preview_schema
 from constructionsight.parcel_source_acquisition_bundle import (
     verify_arcgis_bounded_proof_bundle,
