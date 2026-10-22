@@ -1020,10 +1020,16 @@ engine.dispose()
     // Sources & Collection UI, with reviewed source-to-worker handoff only.
     await page.click('#action-close');
     await page.click('nav button[data-page="Sources & Collection"]');
-    await page.waitForSelector('#original-parcel-exact-review');
-    await page.fill('#original-parcel-exact-review input[name="parcel_record_id"]',
-      'phase8:browser:original-parcel');
-    await page.click('#original-parcel-exact-review button[type="submit"]');
+    await page.waitForSelector('[data-retained-original-parcels] '+
+      '[data-retained-parcel-select]', {timeout:20000});
+    const listedParcels = page.locator('[data-retained-original-parcels]');
+    const originalRow = listedParcels.locator('tr')
+      .filter({hasText:'phase8:browser:original-parcel'});
+    if (await originalRow.count() !== 1 ||
+        !(await listedParcels.textContent()).includes('historical source evidence')) {
+      throw Error('Original parcel IDs did not populate existing native Sources view');
+    }
+    await originalRow.locator('[data-retained-parcel-select]').click();
     await page.waitForSelector('#parcel-replay-queue',{timeout:20000});
     const parcelPreview = await page.locator('#action-content').textContent();
     if (!parcelPreview.includes('FEATURE-721') ||
