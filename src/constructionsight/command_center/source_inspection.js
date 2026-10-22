@@ -441,7 +441,65 @@ async function renderParcelSourceReadiness(box) {
                         'have verified and retained this exact response. No '+
                         'parcel-to-project association or commercial action '+
                         'has been authorized.</p>'+
-                        '<pre>'+esc(JSON.stringify(evidence,null,2))+'</pre>');
+                        '<pre>'+esc(JSON.stringify(evidence,null,2))+'</pre>'+
+                        '<button id="arcgis-parcel-persist-review">Review a distinct '+
+                        'original parcel-record persistence decision</button>');
+                      $('arcgis-parcel-persist-review').onclick = () => perform(async () => {
+                        const exactParcel = {
+                          source_key:review.source_key,
+                          expected_bundle_id:review.bundle_id,
+                          expected_bundle_sha256:review.bundle_sha256,
+                          expected_snapshot_id:review.observed_schema.snapshot_id,
+                          object_id:objectId,
+                          expected_plan_id:plan.plan_id,
+                          expected_response_sha256:evidence.response_sha256
+                        };
+                        const parcel = await api(
+                          '/api/parcel-arcgis-parcel-preview', exactParcel);
+                        const parcelTicket = modal(
+                          'Verified source parcel · separate durable-record review',
+                          '<p>Source-record evidence is not a surveyed boundary, '+
+                          'verified project identity or commercial qualification. '+
+                          'No geometry or site match is inferred.</p>'+
+                          '<pre>'+esc(JSON.stringify(parcel,null,2))+'</pre>'+
+                          (parcel.may_request_persistence ?
+                            '<label>Reason for retaining this exact original '+
+                            'parcel claim<textarea id="arcgis-parcel-reason" '+
+                            'maxlength="2000" rows="3"></textarea></label>'+
+                            '<label><input type="checkbox" '+
+                            'id="arcgis-parcel-confirm"> I separately authorize '+
+                            'storing this reviewed record without matching it '+
+                            'to a project.</label>'+
+                            '<button id="arcgis-parcel-persist-apply">Retain '+
+                            'reviewed original parcel observation</button>' :
+                            '<p>Persistence blocked by an existing source '+
+                            'identity conflict. Review without overwriting.</p>'));
+                        const apply = $('arcgis-parcel-persist-apply');
+                        if (!apply) return;
+                        apply.onclick = () => perform(async () => {
+                          if (parcelTicket !== modalTicket || !$('action-dialog').open)
+                            return;
+                          const reason = $('arcgis-parcel-reason').value.trim();
+                          if (reason.length < 10 || !$('arcgis-parcel-confirm').checked)
+                            throw Error('Confirm this distinct parcel-retention decision.');
+                          apply.disabled = true;
+                          try {
+                            const receipt = await api('/api/parcel-arcgis-parcel-apply', {
+                              ...exactParcel,
+                              expected_parcel_sha256:parcel.parcel_sha256,
+                              expected_native_state:parcel.native_state,
+                              review_reason:reason,
+                              caller_confirmation:true
+                            });
+                            modal('Original parcel observation · retained without matching',
+                              '<p>The verified source-backed parcel record is '+
+                              'retained in the shared private database. It is not '+
+                              'yet a construction project, verified map location, '+
+                              'qualified lead or authorized bid.</p>'+
+                              '<pre>'+esc(JSON.stringify(receipt,null,2))+'</pre>');
+                          } finally { if (apply.isConnected) apply.disabled = false; }
+                        });
+                      });
                     } finally {
                       if (execute.isConnected) execute.disabled = false;
                     }
