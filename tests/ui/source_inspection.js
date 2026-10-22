@@ -44,6 +44,26 @@ const {resolve} = require('node:path');
         !observedArcgis.includes('"commercial_authority_granted": false')) {
       throw Error('Retained ArcGIS snapshot was not shown via original schema review');
     }
+    // A real bounded proof contains OBJECTID-only responses, not parcel
+    // attributes. Plan a future one-ID official read without performing it.
+    await page.click('#native-arcgis-record-plan');
+    await page.waitForSelector('#arcgis-plan-object-id');
+    await page.selectOption('#arcgis-plan-object-id','3');
+    await page.click('#arcgis-plan-preview');
+    await page.waitForFunction(() =>
+      document.querySelector('#action-content')?.textContent.includes(
+        '"operator_access_review_required": true'));
+    const exactPlan = await page.locator('#action-content').textContent();
+    if (!exactPlan.includes('"object_id": 3') ||
+        !exactPlan.includes('"objectIds": "3"') ||
+        !exactPlan.includes('"network_executed": false') ||
+        !exactPlan.includes('"attributes_observed": false') ||
+        !exactPlan.includes('"commercial_authority_granted": false')) {
+      throw Error('Bounded source row plan wrongly acquired or authorized attributes');
+    }
+    await page.click('#action-close');
+    await page.locator('[data-native-proof-review]').click();
+    await page.waitForSelector('#native-arcgis-preview-rows');
     // Bind a manually entered row to exactly that independently verified
     // historical schema, without manufacturing provenance or importing data.
     await page.click('#native-arcgis-preview-rows');
