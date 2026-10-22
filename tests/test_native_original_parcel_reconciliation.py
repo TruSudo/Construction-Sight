@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import httpx
+import pytest
 from sqlalchemy.orm import Session
 
 from constructionsight.command_center_parcel_reconciliation import (
@@ -62,7 +63,7 @@ def test_retained_original_parcels_browse_is_bounded_verified_and_read_only(
     unconfigured = list_retained_original_parcels(directory, None)
     assert unconfigured["available"] is False
     assert unconfigured["rows"] == []
-    with __import__("pytest").raises(ValueError, match="cursor"):
+    with pytest.raises(ValueError, match="cursor"):
         list_retained_original_parcels(directory, database, cursor=" bad ")
     first = list_retained_original_parcels(directory, database)
     assert first["available"] is True
