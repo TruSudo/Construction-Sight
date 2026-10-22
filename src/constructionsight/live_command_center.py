@@ -36,6 +36,10 @@ from constructionsight.command_center_arcgis_probe import (
     execute_reviewed_original_arcgis_probe,
     preview_original_arcgis_probe,
 )
+from constructionsight.command_center_arcgis_parcel import (
+    apply_reviewed_arcgis_parcel,
+    preview_reviewed_arcgis_parcel,
+)
 from constructionsight.command_center_arcgis_proofs import (
     native_arcgis_proof_inventory,
     persist_reviewed_arcgis_proof,
@@ -1383,6 +1387,8 @@ def make_server(
                 "/api/parcel-arcgis-record-plan",
                 "/api/parcel-arcgis-record-access-preview",
                 "/api/parcel-arcgis-record-execute",
+                "/api/parcel-arcgis-parcel-preview",
+                "/api/parcel-arcgis-parcel-apply",
                 "/api/parcel-arcgis-probe-preview",
                 "/api/parcel-arcgis-probe",
                 "/api/parcel-arcgis-proof-persist",
@@ -1647,6 +1653,29 @@ def make_server(
                             )
                         else:
                             result = execute_reviewed_arcgis_record(
+                                directory, operator_arcgis_proof_bundle, payload,
+                            )
+                    elif path in (
+                        "/api/parcel-arcgis-parcel-preview",
+                        "/api/parcel-arcgis-parcel-apply",
+                    ):
+                        if (
+                            urlsplit(self.path).query
+                            or urlsplit(self.path).fragment
+                            or self.headers.get_all("Host", []) != [host]
+                            or self.headers.get_all("Origin", []) != [f"http://{host}"]
+                            or self.headers.get("Sec-Fetch-Site") == "cross-site"
+                            or directory is None
+                        ):
+                            raise ValueError(
+                                "exact same-origin reviewed parcel persistence required"
+                            )
+                        if path.endswith("-preview"):
+                            result = preview_reviewed_arcgis_parcel(
+                                directory, operator_arcgis_proof_bundle, payload,
+                            )
+                        else:
+                            result = apply_reviewed_arcgis_parcel(
                                 directory, operator_arcgis_proof_bundle, payload,
                             )
                     elif path == "/api/parcel-arcgis-row-preview":
