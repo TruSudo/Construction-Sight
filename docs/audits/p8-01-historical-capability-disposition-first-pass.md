@@ -108,8 +108,7 @@ nor its test performs source/network/commercial operations.
 ## Confirmed historical money-rounding semantic difference — P8-01 / P8-09
 
 Direct inspection of the branch-retained `src/constructionsight/money.py`
-(blob `f9958b6` is **not** relied upon; see the full blob SHA in the path
-ledger for the authoritative identity) and the current
+(historical blob `80aaacb249a77881e713e82b3db93923734a9703`) and the current
 `src/constructionsight/result_ledger_service.py` reveals a **different
 tie-breaking rule** in share computation:
 
