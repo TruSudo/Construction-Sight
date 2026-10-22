@@ -8,6 +8,9 @@ from pathlib import Path
 import httpx
 from sqlalchemy.orm import Session
 
+from constructionsight.command_center_parcel_reconciliation import (
+    list_retained_original_parcels,
+)
 from constructionsight.investigation_runtime import InvestigationRuntime
 from constructionsight.parcel_core_models import ParcelCoreRecord
 from constructionsight.site_resolution_service import normalize_address, normalize_apn
@@ -37,6 +40,70 @@ def _parcel_database(tmp_path: Path) -> tuple[Path, ParcelCoreRecord]:
         store_parcel_core_record(session, parcel)
     engine.dispose()
     return database, parcel
+
+
+def test_retained_original_parcels_browse_is_bounded_verified_and_read_only(
+    tmp_path: Path,
+) -> None:
+    database, parcel = _parcel_database(tmp_path)
+    engine = create_database_engine(f"sqlite:///{database}")
+    with Session(engine) as session, session.begin():
+        for number in range(25):
+            record = parcel.model_copy(update={
+                "parcel_record_id": f"original:parcel:extra:{number:02d}",
+                "source_record_id": f"FEATURE-{number + 1000}",
+                "apn": f"333-444-{number:03d}",
+                "normalized_apn": normalize_apn(f"333-444-{number:03d}"),
+            })
+            store_parcel_core_record(session, record)
+    engine.dispose()
+    original_bytes = database.read_bytes()
+    directory = tmp_path / "native"
+    unconfigured = list_retained_original_parcels(directory, None)
+    assert unconfigured["available"] is False
+    assert unconfigured["rows"] == []
+    with __import__("pytest").raises(ValueError, match="cursor"):
+        list_retained_original_parcels(directory, database, cursor=" bad ")
+    first = list_retained_original_parcels(directory, database)
+    assert first["available"] is True
+    assert len(first["rows"]) == 20
+    assert first["has_more"] is True
+    assert first["network_executed"] is False
+    assert first["identity_independently_verified"] is False
+    assert first["commercial_authority_granted"] is False
+    assert all(row["source_sha256"] for row in first["rows"])
+    second = list_retained_original_parcels(
+        directory, database, cursor=first["next_cursor"],
+    )
+    assert len(second["rows"]) == 6
+    assert second["has_more"] is False
+    assert second["next_cursor"] is None
+    ids = [row["parcel_record_id"] for row in first["rows"] + second["rows"]]
+    assert ids == sorted(ids)
+    assert len(ids) == len(set(ids)) == 26
+    assert database.read_bytes() == original_bytes
+
+    server, thread = _native(directory, operator_database=database)
+    try:
+        with httpx.Client(
+            base_url=f"http://127.0.0.1:{server.server_port}", trust_env=False,
+        ) as client:
+            response = client.get("/api/source-parcel-records")
+            assert response.status_code == 200, response.text
+            assert response.json()["rows"] == first["rows"]
+            page = client.get("/api/source-parcel-records", params={
+                "cursor": response.json()["next_cursor"],
+            })
+            assert page.status_code == 200
+            assert page.json()["rows"] == second["rows"]
+            for invalid in ("?cursor=", "?cursor=a&cursor=b", "?unknown=x"):
+                assert client.get("/api/source-parcel-records" + invalid).status_code == 409
+            assert database.read_bytes() == original_bytes
+            assert not (directory / "investigations.sqlite3").exists()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join()
 
 
 def test_exact_original_parcel_replay_keeps_original_and_native_identities_separate(
