@@ -38,11 +38,11 @@ from constructionsight.storage.runtime_artifacts import (
     write_runtime_text,
 )
 
-_PLAN_KEYS = {
+_PROOF_KEYS = {
     "source_key", "expected_bundle_id", "expected_bundle_sha256",
-    "expected_snapshot_id", "object_id", "expected_plan_id",
+    "expected_snapshot_id", "object_id",
 }
-_REVIEW_KEYS = _PLAN_KEYS | {"access_review"}
+_REVIEW_KEYS = _PROOF_KEYS | {"expected_plan_id", "access_review"}
 _EXECUTE_KEYS = _REVIEW_KEYS | {"review_reason", "caller_confirmation"}
 _MAX_RESPONSE_BYTES = 262_144
 _TIMEOUT_SECONDS = 15.0
@@ -56,7 +56,7 @@ def preview_reviewed_arcgis_record_access(
     if not isinstance(payload, dict) or set(payload) != _REVIEW_KEYS:
         raise ValueError("exact ArcGIS source record and access evidence required")
     plan = preview_arcgis_proof_record_request(
-        proof_path, {key: payload[key] for key in _PLAN_KEYS},
+        proof_path, {key: payload[key] for key in _PROOF_KEYS},
     )
     if (
         type(payload["expected_plan_id"]) is not str
@@ -173,7 +173,7 @@ def execute_reviewed_arcgis_record(
     if not approved["may_request_approval"]:
         raise AuthorizationDeniedError("current ArcGIS source access remains blocked")
     plan = preview_arcgis_proof_record_request(
-        proof_path, {key: payload[key] for key in _PLAN_KEYS},
+        proof_path, {key: payload[key] for key in _PROOF_KEYS},
     )
     request_url = _exact_request_url(plan["query_url"], plan["parameters"])
     policy = ParcelArcGISHTTPPolicy(
