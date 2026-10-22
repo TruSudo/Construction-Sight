@@ -496,7 +496,71 @@ async function renderParcelSourceReadiness(box) {
                               'retained in the shared private database. It is not '+
                               'yet a construction project, verified map location, '+
                               'qualified lead or authorized bid.</p>'+
-                              '<pre>'+esc(JSON.stringify(receipt,null,2))+'</pre>');
+                              '<pre>'+esc(JSON.stringify(receipt,null,2))+'</pre>'+
+                              '<button id="arcgis-parcel-investigation-review">Review '+
+                              'separate shared investigation worker handoff</button>');
+                            $('arcgis-parcel-investigation-review').onclick =
+                              () => perform(async () => {
+                                const scope = {
+                                  ...exactParcel,
+                                  expected_parcel_sha256:parcel.parcel_sha256
+                                };
+                                const investigation = await api(
+                                  '/api/parcel-arcgis-investigation-preview', scope);
+                                const eligible = investigation.replay_eligible === true ||
+                                  investigation.revision_replay_eligible === true;
+                                const ticket = modal(
+                                  'Source-backed parcel · reviewed worker reconciliation',
+                                  '<p>A source parcel is not a verified construction '+
+                                  'project. The existing worker maintains source '+
+                                  'uncertainty, the original dossier and graph '+
+                                  'identity; it does not create a lead, geocode '+
+                                  'a point or authorize commerce.</p>'+
+                                  '<pre>'+esc(JSON.stringify(investigation,null,2))+
+                                  '</pre>'+
+                                  (eligible ?
+                                    '<label>Independent source-to-worker review '+
+                                    '<textarea id="arcgis-investigation-reason" rows="3" '+
+                                    'maxlength="2000"></textarea></label>'+
+                                    '<label><input id="arcgis-investigation-confirm" '+
+                                    'type="checkbox"> I authorize only the exact '+
+                                    'reviewed evidence handoff, not a project match.</label>'+
+                                    '<button id="arcgis-investigation-queue">Queue '+
+                                    'reviewed source observation</button>' :
+                                    '<p>The original source is already retained or '+
+                                    'conflicts with existing native evidence. No '+
+                                    'automatic replay is permitted.</p>'));
+                                const queue = $('arcgis-investigation-queue');
+                                if (!queue) return;
+                                queue.onclick = () => perform(async () => {
+                                  if (ticket !== modalTicket || !$('action-dialog').open)
+                                    return;
+                                  const reason = $('arcgis-investigation-reason').value.trim();
+                                  if (reason.length < 10 ||
+                                      !$('arcgis-investigation-confirm').checked)
+                                    throw Error('Confirm exact investigation source handoff.');
+                                  queue.disabled = true;
+                                  try {
+                                    const job = await api(
+                                      '/api/parcel-arcgis-investigation-queue', {
+                                        ...scope,
+                                        expected_native_evidence_id:
+                                          investigation.native_evidence_id,
+                                        action: investigation.replay_eligible ?
+                                          'retain_missing':'retain_revision',
+                                        review_reason:reason,
+                                        caller_confirmation:true
+                                      });
+                                    modal('Original parcel → shared worker · queued',
+                                      '<p>The existing audited worker must process '+
+                                      'this source claim. The original parcel '+
+                                      'evidence remains unverified as a project; '+
+                                      'no coordinates, lead or commercial '+
+                                      'permission have been created.</p>'+
+                                      '<pre>'+esc(JSON.stringify(job,null,2))+'</pre>');
+                                  } finally { if (queue.isConnected) queue.disabled = false; }
+                                });
+                              });
                           } finally { if (apply.isConnected) apply.disabled = false; }
                         });
                       });
