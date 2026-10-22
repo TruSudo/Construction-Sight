@@ -215,7 +215,7 @@ async function renderParcelSourceReadiness(box) {
         if (button.isConnected) button.disabled = false;
       });
     };
-    await browseRetainedOriginalParcels(
+    void browseRetainedOriginalParcels(
       root.querySelector('[data-retained-original-parcels]'));
     root.querySelector('#review-native-arcgis-probe').onclick = () =>
       perform(async () => {
