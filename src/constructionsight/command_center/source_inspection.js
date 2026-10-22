@@ -314,6 +314,8 @@ async function renderParcelSourceReadiness(box) {
           '<pre>'+esc(JSON.stringify(review.observed_schema,null,2))+'</pre>'+
           '<button id="native-arcgis-preview-rows">Preview manual rows against '+
           'this exact historical schema</button>'+
+          '<button id="native-arcgis-record-plan">Plan official attribute read '+
+          'for a proof-observed object ID (no network)</button>'+
           '<label>Reason for retaining this exact proof '+
           '<textarea id="native-proof-reason" maxlength="2000" rows="3"></textarea></label>'+
           '<label><input type="checkbox" id="native-proof-confirm"> '+
@@ -349,6 +351,41 @@ async function renderParcelSourceReadiness(box) {
                 'No GIS source response or parcel/project identity is verified, '+
                 'imported or authorized by this preview.</p>'+
                 '<pre>'+esc(JSON.stringify(result,null,2))+'</pre>');
+            });
+        };
+        document.querySelector('#native-arcgis-record-plan').onclick = () => {
+          const ids = review.bounded_observed_object_ids || [];
+          if (!ids.length) throw Error('No verified object IDs in bounded proof');
+          const choices = ids.map(id =>
+            '<option value="'+esc(String(id))+'">'+esc(String(id))+'</option>'
+          ).join('');
+          const planTicket = modal('Official ArcGIS record · offline plan',
+            '<p>The selected ID was seen in a verified historical bounded '+
+            'ArcGIS response. The proposed request has not been made; '+
+            'parcel attributes, property boundaries and project identities '+
+            'remain unobserved.</p>'+
+            '<label>Bounded observed object ID<select id="arcgis-plan-object-id">'+
+            choices+'</select></label>'+
+            '<button id="arcgis-plan-preview">Preview exact official request</button>');
+          document.querySelector('#arcgis-plan-preview').onclick = () =>
+            perform(async () => {
+              if (planTicket !== modalTicket || !$('action-dialog').open) return;
+              const objectId = Number(
+                document.querySelector('#arcgis-plan-object-id').value
+              );
+              const plan = await api('/api/parcel-arcgis-record-plan', {
+                source_key:review.source_key,
+                expected_bundle_id:review.bundle_id,
+                expected_bundle_sha256:review.bundle_sha256,
+                expected_snapshot_id:review.observed_schema.snapshot_id,
+                object_id:objectId
+              });
+              modal('Official source row · plan only, no request performed',
+                '<p>One future source read is bound to an exact verified '+
+                'historical object ID and the registered official source. '+
+                'Independent access authorization remains mandatory. No '+
+                'attributes were retrieved and no parcel was imported.</p>'+
+                '<pre>'+esc(JSON.stringify(plan,null,2))+'</pre>');
             });
         };
         const commit = document.querySelector('#native-proof-commit');
