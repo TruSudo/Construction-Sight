@@ -134,6 +134,27 @@ def test_forged_old_artifact_is_rejected_even_with_recalculated_digest(
     assert report["current_source_authorized"] is False
 
 
+@pytest.mark.parametrize(
+    "bad_url",
+    [
+        "https://ceqanet.lci.ca.gov:abc/Search?OutputFormat=CSV&Sch=2026030377",
+        "https://[ceqanet.lci.ca.gov/Search?OutputFormat=CSV&Sch=2026030377",
+        "https://ceqanet.lci.ca.gov:444/Search?OutputFormat=CSV&Sch=2026030377",
+        "https://ceqanet.lci.ca.gov/Search?OutputFormat=CSV&Sch=2026030377#fragment",
+    ],
+)
+def test_legacy_url_authority_is_fail_closed_without_network(bad_url: str) -> None:
+    altered = _artifact()
+    altered["final_url"] = bad_url
+    altered["execution_digest"] = _digest(altered)
+
+    report = verify_archived_ceqanet_csv_execution(altered)
+
+    assert report["passed"] is False
+    assert "historical final URL fails official origin/query review" in report["findings"]
+    assert report["current_source_authorized"] is False
+
+
 def test_body_tampering_without_recomputed_digest_is_not_accepted() -> None:
     corrupted = _artifact()
     corrupted["body_base64"] = base64.b64encode(b"changed").decode("ascii")
