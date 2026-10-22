@@ -131,3 +131,47 @@ contract/doctrine decision and a history-preserving migration/compatibility
 analysis. Existing new-write scale guards and retained-read behavior remain
 intact; P8-09 must prove financially correct native result/royalty handling.
 P8-01 and P8-09 remain open and the accepted integration count is unchanged.
+
+## Historical CEQAnet CSV export branch comparison — P8-01
+
+Compared the actual old `ceqanet_csv_export_models.py`,
+`ceqanet_csv_export_service.py` and 13 original CSV regression names
+(older branch `agent/ceqanet-csv-export-contract-v2`) against current
+`ceqanet_csv_models.py`, `ceqanet_csv_service.py`,
+`ceqanet_csv_live_service.py`, the guarded native CSV operator path, and
+their current CSV contract/live/bridge regressions.
+
+**Same supported original operator scopes:** exact ten-digit SCH project CSV
+and SCH + positive document ID document CSV, official CEQAnet HTTPS
+`/Search` with deterministic `OutputFormat=CSV`; offline planning and
+verification of retained bytes also exist in current code. These observations
+support P8-03's reviewed CSV family, but do not alone certify every historic
+test assertion as an identical current user action.
+
+**Important intentional differences, not to restore silently:**
+
+- The historical standalone HTTP executor used `follow_redirects=True`.
+  Current CS-NET-003 bounded transport treats redirects as terminal and
+  independently checks exact original URL identity. Retaining the stricter
+  policy is necessary; the historical networking behavior is not a feature
+  to resurrect for superficial byte-for-byte equivalence.
+- The older parser accepted header-only/zero-row CSV and performed basic
+  header/row parsing, while current inspection requires a nonempty
+  source-identity-bearing data row and exact SCH correspondence. Current
+  inspection additionally understands Windows-1252 as a guarded fallback,
+  records unknown columns, and enforces row-retention and size ceilings.
+  Record this **semantic difference** for further historical-output
+  compatibility evaluation; do not silently loosen current verification.
+- The old default execution bound was 2 MB and offered an injectable HTTP
+  client. The newer canonical network policy has an explicit 10 MB maximum,
+  no redirect/retry authority and durable reviewed-access controls. This
+  differs in implementation and source admissibility, not request identity.
+
+**Disposition:** old parallel CSV exporter is a **candidate superseded
+implementation**, with current guarded service and P8-03 native operator
+execution verified in its own accepted scope. The remaining historical
+parser/output edge-case equivalence is **not fully proven** until each
+historical test assertion is mapped to a current observed regression or
+documented as intentionally superseded by a stricter safety rule. Do not
+copy old network transport, call the new implementation identical in all
+cases, or change accepted P8-03 authority.
