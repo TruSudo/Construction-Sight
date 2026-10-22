@@ -40,6 +40,49 @@ be accepted, including the five excluded owner/visual/final conditions. Because
 the bar is displayed in chat, it refreshes on each response, not continuously
 while a chat is idle.
 
+## Phase 8 workstream-specific completion scales (P8-03 model)
+
+Every P8 workstream gets an **immutable-scope, explicitly testable sub-checklist**
+when work on that ID begins. Count each verified sub-check equally; report
+`round(100 * verified / total)`, never a subjective percentage, engineering
+effort estimate, or forecast. An item is verified only with a native
+implementation/equivalence proof and applicable exact-head tests. If it regresses,
+reduce the numerator. Workstreams not yet baselined show **unscored**, rather than
+an invented percentage. This chat-only meter complements but **does not change**
+the independent overall **10/15 (67%) accepted integration gates**. The P8
+register remains the authority for V/O/P/B gate promotion.
+
+**P8-03: 20/20 = 100%**, accepted and locked as recorded below.
+
+**P8-04: 9/12 = 75% verified workstream checkpoints** at application HEAD
+`580e074e` (CI `39733381688` and browser `39733381623` both success).
+This is an evidence-backed count of completed *sub-obligations*, not 75% of
+remaining time or end-to-end P8-04 acceptance:
+
+| # | P8-04 mandatory sub-checkpoint | State |
+| --- | --- | --- |
+| 01 | Original county source registry, source-role mappings and bounded readiness | V |
+| 02 | Native original parcel schema preview and observed-source field comparison | V |
+| 03 | CS-NET-004 bounded official ArcGIS probe plus verified exact proof chain | V |
+| 04 | Human-reviewed original proof persistence without source promotion/import | V |
+| 05 | Exact proof-bound original row preview with strict source-specific attribute names | V |
+| 06 | Original retained parcel browsing and independently reviewed native worker replay | V |
+| 07 | Deterministic official attribute request plan for an actually observed object ID | V |
+| 08 | Distinct current-access review + explicit, one-request CS-NET-004 attribute retrieval | V |
+| 09 | Verified one-row object ID/field parse with immutable SHA-bound original response retention | V |
+| 10 | Separately reviewed, evidence-bound durable ParcelCoreRecord persistence and source revision behavior | O |
+| 11 | Acquired-record-native worker handoff and ambiguous-safe dossier/map/relationship-graph convergence | O |
+| 12 | Complete P8-04 governed end-to-end acceptance and final-head regressions without rights/visual drift | O |
+
+**Next workstream inheritance:** before implementing another remaining ID,
+freeze that ID's own acceptance criteria into a similar numbered, fixed-denominator
+checklist, map existing proven capabilities to V, leave missing or incomplete
+requirements O, and carry the verified count forward in subsequent chats. The
+percent advances only on demonstrated acceptance. Do not split items simply to
+inflate a score. Do not collapse owner data, pixel parity, deployment or live
+permissioned-source requirements into the 15-gate denominator; those are
+separately tracked by their original P8 IDs.
+
 ## P8-03/P8-11 original offline source verification reports — native path verified
 
 The exact original source registry, original `build_source_status_report` and
