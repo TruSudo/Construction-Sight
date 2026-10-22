@@ -104,3 +104,31 @@ inventory exercise as an accepted integration gate.
 P8-03 stays **V**, Phase 8 verified integration remains **10/15 = 67%**.
 No original branch is deleted, no UI is redesigned, and neither the new ledger
 nor its test performs source/network/commercial operations.
+
+## Confirmed historical money-rounding semantic difference — P8-01 / P8-09
+
+Direct inspection of the branch-retained `src/constructionsight/money.py`
+(blob `f9958b6` is **not** relied upon; see the full blob SHA in the path
+ledger for the authoritative identity) and the current
+`src/constructionsight/result_ledger_service.py` reveals a **different
+tie-breaking rule** in share computation:
+
+- Historical `calculate_share` explicitly applies `ROUND_HALF_UP` to
+  `gross * rate` at two decimal places.
+- Current `calculate_share_minor_units` explicitly applies **round half to
+  even**, implemented with quotient/remainder arithmetic on integer cents and
+  millionth-rate units. Current `command_center_commercial.py` also uses
+  `ROUND_HALF_EVEN` on some monetary quantizations.
+- Concrete differing case: gross `0.05` and rate `0.100000` produce
+  `0.01` through the historical helper and `0.00` through the current
+  integer-cent helper. This is not a floating-point approximation issue.
+
+**Disposition: precise semantic divergence confirmed; production significance
+and actual historical call-path usage not yet established.** Never call the
+historical utility equivalent merely because the present implementation uses
+exact money units. Do not reintroduce the historical helper, change the current
+rounding method or alter a royalty amount without an explicit governing financial
+contract/doctrine decision and a history-preserving migration/compatibility
+analysis. Existing new-write scale guards and retained-read behavior remain
+intact; P8-09 must prove financially correct native result/royalty handling.
+P8-01 and P8-09 remain open and the accepted integration count is unchanged.
