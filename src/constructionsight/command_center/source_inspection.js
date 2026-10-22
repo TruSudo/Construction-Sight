@@ -320,13 +320,16 @@ async function renderParcelSourceReadiness(box) {
           'I reviewed this SHA-256-bound proof and authorize local retention only.</label>'+
           '<button id="native-proof-commit">Retain verified proof</button>');
         document.querySelector('#native-arcgis-preview-rows').onclick = () => {
+          const apnMapping = review.observed_schema.original_schema_preview
+            .mapped_fields.find(field => field.field_role === 'apn');
           const previewTicket = modal('Manual ArcGIS rows · exact proof-bound parser',
             '<p>The proof establishes historical metadata only. Your pasted '+
             'values are unverified; no row, geometry, parcel identity, project, '+
             'map point or commercial action will be retained or approved.</p>'+
+            '<p>Observed APN field for this source: <code>'+
+            esc(apnMapping?.source_field || 'not mapped')+'</code>.</p>'+
             '<label>1–20 JSON row objects with only official observed mapped '+
             'attribute names<textarea id="native-arcgis-row-json" rows="7" '+
-            'placeholder=\'[{"ParcelNumber":"123-456-789","OBJECTID":"101"}]\''+
             '></textarea></label>'+
             '<button id="native-arcgis-row-check">Parse manual rows offline</button>');
           document.querySelector('#native-arcgis-row-check').onclick =
