@@ -124,6 +124,61 @@ def _original_parcel(
         engine.dispose()
 
 
+def list_retained_original_parcels(
+    directory: Path,
+    original_database: Path | None,
+    *,
+    cursor: str | None = None,
+) -> dict[str, Any]:
+    """List at most twenty verified retained parcel identities, without mutation.
+
+    An exact selected record must still enter the existing reviewed replay
+    preview and positive-consent queue. A source row is not a verified project.
+    """
+    _require_separate_original(directory, original_database)
+    if cursor is not None and (
+        not cursor or len(cursor) > 255
+        or cursor != cursor.strip()
+        or any(ord(char) < 32 or ord(char) == 127 for char in cursor)
+    ):
+        raise ValueError("invalid exact retained parcel page cursor")
+    if original_database is None:
+        return {
+            "schema_version": "constructionsight.original-parcel-browse/v1",
+            "available": False, "read_only": True, "rows": [],
+            "next_cursor": None, "has_more": False,
+            "network_executed": False, "identity_independently_verified": False,
+            "commercial_authority_granted": False,
+        }
+    if original_database.is_symlink() or not original_database.is_file():
+        raise ValueError("original operator database must be an existing regular file")
+    engine = create_operator_read_engine(original_database)
+    try:
+        with Session(engine, autoflush=False) as session:
+            ensure_database_transaction(session)
+            query = select(ParcelCoreRecordRow.parcel_record_id)
+            if cursor is not None:
+                query = query.where(ParcelCoreRecordRow.parcel_record_id > cursor)
+            ids = session.scalars(
+                query.order_by(ParcelCoreRecordRow.parcel_record_id).limit(21)
+            ).all()
+    finally:
+        engine.dispose()
+    visible = ids[:20]
+    # Reuse the exact original indexed-payload validation, not a new parser.
+    rows = [_original_parcel(original_database, item)[0] for item in visible]
+    return {
+        "schema_version": "constructionsight.original-parcel-browse/v1",
+        "available": True, "read_only": True, "rows": rows,
+        "next_cursor": visible[-1] if len(ids) > 20 else None,
+        "has_more": len(ids) > 20,
+        "page_size": 20,
+        "network_executed": False,
+        "identity_independently_verified": False,
+        "commercial_authority_granted": False,
+    }
+
+
 def preview_original_parcel_reconciliation(
     directory: Path, original_database: Path | None, parcel_record_id: str,
 ) -> dict[str, Any]:
