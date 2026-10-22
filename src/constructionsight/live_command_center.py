@@ -38,6 +38,7 @@ from constructionsight.command_center_arcgis_probe import (
 )
 from constructionsight.command_center_arcgis_proofs import (
     native_arcgis_proof_inventory,
+    preview_arcgis_proof_bound_rows,
     persist_reviewed_arcgis_proof,
     retained_arcgis_proof_preview,
 )
@@ -1373,6 +1374,7 @@ def make_server(
                 "/api/source-review-docket-stage",
                 "/api/source-registry-reviewed-apply",
                 "/api/parcel-source-row-preview",
+                "/api/parcel-arcgis-row-preview",
                 "/api/parcel-arcgis-probe-preview",
                 "/api/parcel-arcgis-probe",
                 "/api/parcel-arcgis-proof-persist",
@@ -1602,6 +1604,20 @@ def make_server(
                         result = persist_reviewed_arcgis_proof(
                             directory, operator_arcgis_proof_bundle, payload,
                             original_database=operator_database,
+                        )
+                    elif path == "/api/parcel-arcgis-row-preview":
+                        if (
+                            urlsplit(self.path).query
+                            or urlsplit(self.path).fragment
+                            or self.headers.get_all("Host", []) != [host]
+                            or self.headers.get_all("Origin", []) != [f"http://{host}"]
+                            or self.headers.get("Sec-Fetch-Site") == "cross-site"
+                        ):
+                            raise ValueError(
+                                "exact same-origin ArcGIS bound row review required"
+                            )
+                        result = preview_arcgis_proof_bound_rows(
+                            operator_arcgis_proof_bundle, payload,
                         )
                     elif path == "/api/parcel-source-row-preview":
                         if (
