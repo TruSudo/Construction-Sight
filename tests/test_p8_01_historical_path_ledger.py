@@ -12,6 +12,7 @@ from pathlib import Path
 _ROOT = Path(__file__).resolve().parents[1]
 _BASELINE = _ROOT / "docs/audits/unification-preservation-baseline-2026-10-16.json"
 _LEDGER = _ROOT / "docs/audits/p8-01-historical-path-ledger-2026-10-21.json"
+_ABSENT = _ROOT / "docs/audits/p8-01-absent-path-dispositions-2026-10-22.json"
 
 
 def test_p8_01_ledger_accounts_for_every_retained_historical_path() -> None:
@@ -74,3 +75,58 @@ def test_p8_01_ledger_accounts_for_every_retained_historical_path() -> None:
         "present_exact_historical_blob": 95,
         "present_different_blob_or_unproven": 164,
     }
+
+
+def test_p8_01_missing_history_dispositions_cover_all_43_without_false_parity() -> None:
+    """Every absent historical path must retain an exact provenance and an open risk."""
+    ledger = json.loads(_LEDGER.read_text(encoding="utf-8"))
+    audit = json.loads(_ABSENT.read_text(encoding="utf-8"))
+    absent = {
+        row["path"]: row for row in ledger["entries"]
+        if row["storage_observation"] == "absent"
+    }
+    assert len(absent) == audit["exact_absent_paths"] == 43
+    assert audit["source_ledger_tree"] == ledger["development_tree_commit"]
+    assert audit["p8_01_gate_accepted"] is False
+    assert audit["historical_branches_in_ledger"] == 83
+    rows = audit["dispositions"]
+    assert len(rows) == len({row["path"] for row in rows}) == 43
+    assert set(absent) == {row["path"] for row in rows}
+
+    counts: dict[str, int] = {}
+    for row in rows:
+        source = absent[row["path"]]
+        assert row["branch_refs"] == source["branch_refs"]
+        assert row["branch_blob_shas"] == source["historical_blob_shas"]
+        assert row["baseline_classes"] == source["baseline_comparison_classes"]
+        assert row["storage_observation"] == "absent"
+        assert row["behavioral_equivalence_verified"] is False
+        for field in ("classification", "evidence_basis", "current_counterpart", "open_proof"):
+            assert isinstance(row[field], str) and row[field].strip()
+        assert row["gate_dependencies"] and "P8-01" in row["gate_dependencies"]
+        category = row["classification"]
+        counts[category] = counts.get(category, 0) + 1
+    assert counts == audit["classification_counts"]
+    assert sum(counts.values()) == 43
+    assert sum(counts[name] for name in (
+        "historical_quality_artifact", "historical_recovery_document",
+    )) == 26
+    assert sum(counts[name] for name in (
+        "deleted_one_off_script", "one_time_migration",
+    )) == 5
+    assert counts["historical_regression_asset"] == 4
+    assert sum(counts[name] for name in (
+        "supersession_candidate", "mandatory_financial_contract_review",
+        "mandatory_result_authority_parity", "rejected_preliminary_prototype",
+    )) == 8
+
+    by_path = {row["path"]: row for row in rows}
+    assert by_path["src/constructionsight/money.py"]["classification"] == (
+        "mandatory_financial_contract_review"
+    )
+    assert "P8-09" in by_path[
+        "src/constructionsight/result_ledger_authority_service.py"
+    ]["gate_dependencies"]
+    assert by_path[
+        "src/constructionsight/source_intelligence_bridge.py"
+    ]["classification"] == "rejected_preliminary_prototype"
