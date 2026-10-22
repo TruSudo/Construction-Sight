@@ -260,6 +260,12 @@ async function renderParcelSourceReadiness(box) {
           'evidence chain to the existing private investigation store, not a '+
           'parcel/project identity. No network, outreach, bids or bulk acquisition.</p>'+
           '<pre>'+esc(JSON.stringify(review.verification,null,2))+'</pre>'+
+          '<h3>Original observed ArcGIS field-schema review</h3>'+
+          '<p>Fields are historical verified metadata, not a current probe, '+
+          'a parcel record, an independently confirmed land boundary or '+
+          'permission to construct an identity match. Original inferred '+
+          'field roles remain review proposals.</p>'+
+          '<pre>'+esc(JSON.stringify(review.observed_schema,null,2))+'</pre>'+
           '<label>Reason for retaining this exact proof '+
           '<textarea id="native-proof-reason" maxlength="2000" rows="3"></textarea></label>'+
           '<label><input type="checkbox" id="native-proof-confirm"> '+
