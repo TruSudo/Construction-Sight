@@ -385,7 +385,69 @@ async function renderParcelSourceReadiness(box) {
                 'historical object ID and the registered official source. '+
                 'Independent access authorization remains mandatory. No '+
                 'attributes were retrieved and no parcel was imported.</p>'+
-                '<pre>'+esc(JSON.stringify(plan,null,2))+'</pre>');
+                '<pre>'+esc(JSON.stringify(plan,null,2))+'</pre>'+
+                '<button id="arcgis-record-access-review">Review current lawful '+
+                'access facts for this exact single read</button>');
+              $('arcgis-record-access-review').onclick = () => perform(async () => {
+                const accessTicket = modal('One official ArcGIS row · access review',
+                  '<p>Review all source restrictions against retained evidence. '+
+                  'Unknown facts deny execution. The prior historical proof '+
+                  'does not grant automatic access or repeat permission.</p>'+
+                  accessMarkup()+
+                  '<button id="arcgis-record-preflight">Check exact approval</button>');
+                $('arcgis-record-preflight').onclick = () => perform(async () => {
+                  if (accessTicket !== modalTicket || !$('action-dialog').open) return;
+                  const request = {
+                    source_key:review.source_key,
+                    expected_bundle_id:review.bundle_id,
+                    expected_bundle_sha256:review.bundle_sha256,
+                    expected_snapshot_id:review.observed_schema.snapshot_id,
+                    object_id:objectId,
+                    expected_plan_id:plan.plan_id,
+                    access_review:accessValues()
+                  };
+                  const preflight = await api(
+                    '/api/parcel-arcgis-record-access-preview', request);
+                  const confirmTicket = modal('ArcGIS row · exact access decision',
+                    '<p>Current lawful-access policy: <strong>'+
+                    esc(preflight.access_decision)+'</strong>. '+
+                    esc(preflight.access_reason)+'</p>'+
+                    '<pre>'+esc(JSON.stringify(preflight,null,2))+'</pre>'+
+                    (preflight.may_request_approval ?
+                      '<label>Specific purpose for this single official GET '+
+                      '<textarea id="arcgis-record-reason" rows="3" '+
+                      'maxlength="2000"></textarea></label>'+
+                      '<label><input id="arcgis-record-confirm" type="checkbox">'+
+                      ' I independently verified the access evidence and approve '+
+                      'one no-geometry, no-retry attribute read.</label>'+
+                      '<button id="arcgis-record-execute">Execute one reviewed GET</button>' :
+                      '<p>Execution remains blocked; do not infer permission.</p>'));
+                  const execute = $('arcgis-record-execute');
+                  if (!execute) return;
+                  execute.onclick = () => perform(async () => {
+                    if (confirmTicket !== modalTicket || !$('action-dialog').open) return;
+                    const reason = $('arcgis-record-reason').value.trim();
+                    if (reason.length < 10 || !$('arcgis-record-confirm').checked)
+                      throw Error('Provide a reason and explicitly approve this one GET.');
+                    execute.disabled = true;
+                    try {
+                      const evidence = await api('/api/parcel-arcgis-record-execute', {
+                        ...request,
+                        review_reason:reason,
+                        caller_confirmation:true
+                      });
+                      modal('Official ArcGIS attribute response · retained',
+                        '<p>Original bounded HTTP and original parcel parser '+
+                        'have verified and retained this exact response. No '+
+                        'parcel-to-project association or commercial action '+
+                        'has been authorized.</p>'+
+                        '<pre>'+esc(JSON.stringify(evidence,null,2))+'</pre>');
+                    } finally {
+                      if (execute.isConnected) execute.disabled = false;
+                    }
+                  });
+                });
+              });
             });
         };
         const commit = document.querySelector('#native-proof-commit');
