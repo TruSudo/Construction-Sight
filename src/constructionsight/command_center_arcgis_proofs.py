@@ -34,6 +34,10 @@ from constructionsight.parcel_source_acquisition_bundle import (
 from constructionsight.parcel_source_acquisition_bundle_models import (
     ParcelArcGISBoundedProofBundle,
 )
+from constructionsight.parcel_source_acquisition_models import (
+    ParcelArcGISProbeKind,
+    digest_identity,
+)
 from constructionsight.parcel_source_models import ParcelGeometrySupport
 from constructionsight.parcel_source_registry import get_parcel_sources
 from constructionsight.storage.database import (
@@ -273,10 +277,6 @@ def preview_arcgis_proof_record_request(
     object_id = payload["object_id"]
     if type(object_id) is not int or not 0 < object_id <= 2**53 - 1:
         raise ValueError("one positive, exact ArcGIS integer object ID required")
-    from constructionsight.parcel_source_acquisition_models import (
-        ParcelArcGISProbeKind,
-    )
-
     observed_ids = sorted({
         value
         for observation in bundle.observations
@@ -322,10 +322,6 @@ def preview_arcgis_proof_record_request(
         "query_url": snapshot.layer_url.rstrip("/") + "/query",
         "parameters": parameters,
     }
-    from constructionsight.parcel_source_acquisition_models import (
-        digest_identity,
-    )
-
     return {
         "schema_version": "constructionsight.arcgis-proof-record-plan/v1",
         "plan_id": digest_identity("arcgis-proof-record-plan", digest_payload),
