@@ -21,9 +21,12 @@ from constructionsight.operator_services.parcel_arcgis_service import (
 )
 from constructionsight.parcel_schema_models import (
     ParcelObservedFieldType,
+    ParcelFieldRoleMatch,
     ParcelSchemaField,
     ParcelSchemaPreviewInput,
 )
+from constructionsight.parcel_row_preview import preview_rows
+from constructionsight.parcel_row_preview_models import ParcelRowPreviewInput
 from constructionsight.parcel_schema_preview import preview_schema
 from constructionsight.parcel_source_acquisition_bundle import (
     verify_arcgis_bounded_proof_bundle,
@@ -109,8 +112,11 @@ def _observed_arcgis_schema(
     )
     report = preview_schema(original_input)
     advertised_names = {field.name.casefold() for field in snapshot.fields}
+    # ArcGIS feature geometry is a documented result member, not a field in
+    # the layer attribute schema. Do not manufacture a missing-field warning.
     expected_names = {
         mapping.source_field.casefold() for mapping in source.field_mappings
+        if mapping.source_field.casefold() != "geometry"
     }
     return {
         "schema_version": "constructionsight.native-arcgis-observed-schema/v1",
@@ -133,6 +139,106 @@ def _observed_arcgis_schema(
         "parcel_imported": False,
         "project_identity_established": False,
         "commercial_authority_granted": False,
+    }
+
+
+def preview_arcgis_proof_bound_rows(
+    path: Path | None, payload: dict[str, Any],
+) -> dict[str, Any]:
+    """Run the original row preview against one exact historical ArcGIS schema.
+
+    Only the *schema* is independently verified. The operator's manually
+    supplied row values remain unverified and cannot be persisted here.
+    """
+    required = {
+        "source_key", "expected_bundle_id", "expected_bundle_sha256",
+        "expected_snapshot_id", "rows",
+    }
+    if not isinstance(payload, dict) or set(payload) != required:
+        raise ValueError("exact ArcGIS proof identity and sample rows required")
+    selected = _selected_proof(path)
+    if selected is None:
+        raise ValueError("a retained independently verified ArcGIS proof is required")
+    digest, bundle, _ = selected
+    if (
+        type(payload["source_key"]) is not str
+        or payload["source_key"] != bundle.source_key
+        or payload["expected_bundle_id"] != bundle.bundle_id
+        or payload["expected_bundle_sha256"] != digest
+        or payload["expected_snapshot_id"] != bundle.snapshot.snapshot_id
+    ):
+        raise ValueError("ArcGIS proof changed or source/snapshot identity disagrees")
+
+    # This also validates exact current registry scope and official source URL.
+    _observed_arcgis_schema(bundle)
+    source = next(
+        item for item in get_parcel_sources()
+        if item.source_key == bundle.source_key
+    )
+    names = {field.name for field in bundle.snapshot.fields}
+    mapped = [
+        item for item in source.field_mappings if item.source_field in names
+    ]
+    allowed = {item.source_field for item in mapped}
+    rows = payload["rows"]
+    if type(rows) is not list or not 1 <= len(rows) <= 20:
+        raise ValueError("ArcGIS sample must contain 1 to 20 bounded rows")
+    cumulative = 0
+    for row in rows:
+        if type(row) is not dict or not row or len(row) > len(allowed):
+            raise ValueError("ArcGIS sample rows require mapped observed fields")
+        if any(type(key) is not str or key not in allowed for key in row):
+            raise ValueError("sample contains unobserved or unregistered ArcGIS field")
+        if any(type(value) is not str for value in row.values()):
+            raise ValueError("ArcGIS sample values must be text; no implicit coercion")
+        cumulative += sum(
+            len(key.encode("utf-8")) + len(value.encode("utf-8"))
+            for key, value in row.items()
+        )
+        if cumulative > 32_000:
+            raise ValueError("ArcGIS preview exceeds 32 KB payload budget")
+    original_input = ParcelRowPreviewInput(
+        source_key=source.source_key,
+        source_name=source.source_name,
+        source_format=source.source_format,
+        field_role_matches=[
+            ParcelFieldRoleMatch(
+                source_field=item.source_field,
+                field_role=item.field_role,
+                match_reason="exact registered field in independently verified metadata",
+                confidence_score=95,
+                required_role=item.required,
+            )
+            for item in mapped
+        ],
+        constant_fields=list(source.constant_fields),
+        rows=rows,
+        geometry_support=ParcelGeometrySupport.UNKNOWN,
+        spatial_reference=bundle.snapshot.spatial_reference,
+        source_url=source.source_url,
+        limitations=[
+            "Manual sample rows have no independent source-response provenance.",
+            "Verified schema is historical and does not establish current fields.",
+            "Ready-for-record-model denotes parsing only; no import is authorized.",
+        ],
+    )
+    result = preview_rows(original_input)
+    return {
+        "schema_version": "constructionsight.native-arcgis-bound-row-preview/v1",
+        "original_row_preview_service_reused": True,
+        "bundle_id": bundle.bundle_id,
+        "bundle_sha256": digest,
+        "snapshot_id": bundle.snapshot.snapshot_id,
+        "schema_fingerprint": bundle.snapshot.schema_fingerprint,
+        "source_key": source.source_key,
+        "schema_verified": True,
+        "manual_rows_independently_verified": False,
+        "rows_persisted": False,
+        "network_executed": False,
+        "parcel_import_authorized": False,
+        "project_identity_verified": False,
+        "commercial_authority_granted": False,
+        "report": result.model_dump(mode="json", exclude={"created_at"}),
     }
 
 
