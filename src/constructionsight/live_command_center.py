@@ -32,6 +32,10 @@ from constructionsight import (
 from constructionsight import command_center_commercial as commercial
 from constructionsight import command_center_investigation_watch as investigation_watch
 from constructionsight import command_center_state as state
+from constructionsight.command_center_arcgis_investigation import (
+    enqueue_arcgis_parcel_investigation,
+    preview_arcgis_parcel_investigation,
+)
 from constructionsight.command_center_arcgis_parcel import (
     apply_reviewed_arcgis_parcel,
     preview_reviewed_arcgis_parcel,
@@ -1389,6 +1393,8 @@ def make_server(
                 "/api/parcel-arcgis-record-execute",
                 "/api/parcel-arcgis-parcel-preview",
                 "/api/parcel-arcgis-parcel-apply",
+                "/api/parcel-arcgis-investigation-preview",
+                "/api/parcel-arcgis-investigation-queue",
                 "/api/parcel-arcgis-probe-preview",
                 "/api/parcel-arcgis-probe",
                 "/api/parcel-arcgis-proof-persist",
@@ -1676,6 +1682,29 @@ def make_server(
                             )
                         else:
                             result = apply_reviewed_arcgis_parcel(
+                                directory, operator_arcgis_proof_bundle, payload,
+                            )
+                    elif path in (
+                        "/api/parcel-arcgis-investigation-preview",
+                        "/api/parcel-arcgis-investigation-queue",
+                    ):
+                        if (
+                            urlsplit(self.path).query
+                            or urlsplit(self.path).fragment
+                            or self.headers.get_all("Host", []) != [host]
+                            or self.headers.get_all("Origin", []) != [f"http://{host}"]
+                            or self.headers.get("Sec-Fetch-Site") == "cross-site"
+                            or directory is None
+                        ):
+                            raise ValueError(
+                                "one same-origin reviewed parcel worker handoff required"
+                            )
+                        if path.endswith("-preview"):
+                            result = preview_arcgis_parcel_investigation(
+                                directory, operator_arcgis_proof_bundle, payload,
+                            )
+                        else:
+                            result = enqueue_arcgis_parcel_investigation(
                                 directory, operator_arcgis_proof_bundle, payload,
                             )
                     elif path == "/api/parcel-arcgis-row-preview":
