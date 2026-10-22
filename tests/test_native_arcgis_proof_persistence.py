@@ -6,6 +6,7 @@ import hashlib
 import json
 import threading
 from pathlib import Path
+from unittest.mock import patch
 
 import httpx
 import pytest
@@ -82,6 +83,9 @@ def test_verified_offline_proof_persists_with_exact_origin_and_digest(
             assert review["bundle_id"] == bundle.bundle_id
             assert review["bundle_sha256"] == hashlib.sha256(original_bytes).hexdigest()
             assert review["verification"]["valid"] is True
+            assert review["observed_schema"]["snapshot_id"] == bundle.snapshot.snapshot_id
+            assert review["observed_schema"]["parcel_imported"] is False
+            assert review["observed_schema"]["project_identity_established"] is False
             assert review["network_executed"] is False
             assert review["parcel_imported"] is False
             payload = {
@@ -130,6 +134,50 @@ def test_verified_offline_proof_persists_with_exact_origin_and_digest(
         server.shutdown()
         server.server_close()
         worker.join()
+
+
+def test_verified_observed_arcgis_schema_reuses_original_preview_without_import(
+    tmp_path: Path,
+) -> None:
+    bundle = _bounded_bundle()
+    proof = tmp_path / "exact-arcgis-proof.json"
+    proof.write_text(json.dumps(bundle.to_dict()), encoding="utf-8")
+    original = proof.read_bytes()
+
+    review = retained_arcgis_proof_preview(proof)
+    schema = review["observed_schema"]
+    assert review["bundle_sha256"] == hashlib.sha256(original).hexdigest()
+    assert schema["bundle_id"] == bundle.bundle_id
+    assert schema["snapshot_id"] == bundle.snapshot.snapshot_id
+    assert schema["schema_fingerprint"] == bundle.snapshot.schema_fingerprint
+    assert schema["metadata_projection_digest"] == (
+        bundle.snapshot.metadata_projection_digest
+    )
+    assert schema["observed_at"] == bundle.snapshot.observed_at.isoformat()
+    assert [item["name"] for item in schema["observed_fields"]] == [
+        item.name for item in bundle.snapshot.fields
+    ]
+    assert schema["original_schema_preview_service_reused"] is True
+    assert schema["original_schema_preview"]["observed_field_count"] == len(
+        bundle.snapshot.fields
+    )
+    assert schema["original_schema_preview"]["source_key"] == bundle.source_key
+    assert schema["original_schema_preview"]["sample_record_count"] is None
+    assert schema["network_executed"] is False
+    assert schema["parcel_rows_observed"] is False
+    assert schema["parcel_imported"] is False
+    assert schema["project_identity_established"] is False
+    assert schema["commercial_authority_granted"] is False
+    assert proof.read_bytes() == original
+
+    # An old valid proof must not be relabeled against a changed or missing
+    # original source registry just because its JSON is structurally valid.
+    with patch(
+        "constructionsight.command_center_arcgis_proofs.get_parcel_sources",
+        return_value=[],
+    ), pytest.raises(ValueError, match="current registered parcel source"):
+        retained_arcgis_proof_preview(proof)
+    assert proof.read_bytes() == original
 
 
 def test_changed_or_corrupt_proof_cannot_be_persisted(tmp_path: Path) -> None:
