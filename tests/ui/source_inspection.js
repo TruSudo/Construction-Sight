@@ -44,6 +44,23 @@ const {resolve} = require('node:path');
         !observedArcgis.includes('"commercial_authority_granted": false')) {
       throw Error('Retained ArcGIS snapshot was not shown via original schema review');
     }
+    // Bind a manually entered row to exactly that independently verified
+    // historical schema, without manufacturing provenance or importing data.
+    await page.click('#native-arcgis-preview-rows');
+    await page.waitForSelector('#native-arcgis-row-check');
+    await page.fill('#native-arcgis-row-json',
+      JSON.stringify([{ParcelNumber:'123-456-789', OBJECTID:'101'}]));
+    await page.click('#native-arcgis-row-check');
+    await page.waitForFunction(() =>
+      document.querySelector('#action-content')?.textContent.includes(
+        '"original_row_preview_service_reused": true'));
+    const inspectedRows = await page.locator('#action-content').textContent();
+    if (!inspectedRows.includes('"manual_rows_independently_verified": false') ||
+        !inspectedRows.includes('"parcel_import_authorized": false') ||
+        !inspectedRows.includes('"normalized_apn": "123456789"') ||
+        !inspectedRows.includes('"rows_persisted": false')) {
+      throw Error('ArcGIS proof-bound offline parser promoted unverified rows');
+    }
     await page.click('#action-close');
     const area = page.locator('.retained-source-inspection');
     const initial = await area.textContent();
