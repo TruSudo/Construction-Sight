@@ -15,9 +15,9 @@ P8-17 through P8-20 (pixel parity, final regression, deployment and permissioned
 live-source acceptance) are tracked separately and must still pass before calling
 the product complete.
 
-**Checkpoint count at this register:** 10 of 15 integration gates have state **V**
-(verified); 5 remain open: P8-01, P8-04, P8-08, P8-09 and P8-11.
-Display **67% verified integration gates (10/15)** using a 20-cell filled/unfilled
+**Checkpoint count at this register:** 11 of 15 integration gates have state **V**
+(verified); 4 remain open: P8-01, P8-08, P8-09 and P8-11.
+Display **73% verified integration gates (11/15)** using a 20-cell filled/unfilled
 progress bar. Calculation: round(100 * verified integration gates / 15) to the
 nearest whole percent. This number describes *equal-count acceptance checkpoints*,
 not the percentage of engineering work finished, time elapsed, or functionality
@@ -49,20 +49,38 @@ effort estimate, or forecast. An item is verified only with a native
 implementation/equivalence proof and applicable exact-head tests. If it regresses,
 reduce the numerator. Workstreams not yet baselined show **unscored**, rather than
 an invented percentage. This chat-only meter complements but **does not change**
-the independent overall **10/15 (67%) accepted integration gates**. The P8
+the independent overall **11/15 (73%) accepted integration gates**. The P8
 register remains the authority for V/O/P/B gate promotion.
 
 **P8-03: 20/20 = 100%**, accepted and locked as recorded below.
 
-**P8-04: 11/12 = 92% verified workstream checkpoints** at application HEAD
-`92ad8a82` (dual-Python CI `39746706213`: 2,923 passed in both
-Python 3.11 and 3.12, 2 upstream warnings; native browser and USGS
-`39746706320`: success).
-This is an evidence-backed count of completed *sub-obligations*, not 92% of
-remaining time or end-to-end P8-04 acceptance. A retained source-backed parcel
-is still not a verified project, lead, or survey-quality point. The source-backed
-parcel-to-existing-worker dossier/map/graph cross-view fixture has now passed;
-the last governed end-to-end acceptance and audit remains open:
+**P8-04: 12/12 = 100% verified workstream checkpoints**, accepted at tested
+application HEAD `1299fa501758245444ef3b2ebbdfc42c2373c3d0`.
+[Dual-Python CI 39760900817](https://github.com/TruSudo/Construction-Sight/actions/runs/39760900817):
+**2,924 passed** on both Python 3.11 and Python 3.12, with 2 existing
+upstream deprecation warnings per interpreter; Ruff, strict Mypy (385 source
+files), JavaScript syntax and dependency vulnerability checks passed.
+[Command Center visual/browser 39760900769](https://github.com/TruSudo/Construction-Sight/actions/runs/39760900769):
+**success**, including existing structure/fonts, native workflows and USGS
+observational probe; exact owner-reference pixel parity remains **P8-17 open**.
+
+Final new regression `tests/test_native_arcgis_full_pipeline_acceptance.py`
+exercises one bounded, explicitly approved synthetic HTTP result through
+unaltered source response retention, separately reviewed ParcelCoreRecord
+persistence, independently approved existing worker, stable one-investigation
+dossier/unmapped inventory/relationship graph and replay idempotency. Associated
+focused regressions test forged responses, changed proof, stale digests, exact
+Origin/approval, incompatible source identity, corrupt original parcel core,
+non-promotable commercial claims and no fabricated coordinates. The new
+continuous test uses **synthetic network response and mocked owned-effect
+authorization**; original individual authorization and access controls are
+tested separately. It is NOT proof of live permission to access a county source,
+parcel-to-project verification, survey-level geometry, construction activity,
+commercial authority or production deployment. Those remain separately governed
+by P8-07, P8-17 through P8-20 and applicable commercial gates.
+
+This count means all defined P8-04 sub-obligations are tested and accepted; it
+is not an estimate of elapsed work or remaining calendar time:
 
 | # | P8-04 mandatory sub-checkpoint | State |
 | --- | --- | --- |
@@ -77,7 +95,7 @@ the last governed end-to-end acceptance and audit remains open:
 | 09 | Verified one-row object ID/field parse with immutable SHA-bound original response retention | V |
 | 10 | Separately reviewed, evidence-bound durable ParcelCoreRecord persistence and source revision behavior | V — exact original response SHA, independently approved private store and immutable observation; conflicting source identities/revisions held, browser and both Python gates green at `3da303b3` |
 | 11 | Acquired-record-native worker handoff and ambiguous-safe dossier/map/relationship-graph convergence | V — independently approved original native worker replay, immutable retained source/parcel verification, unmapped dossier/map and shared graph with no invented point or commerce; CI/browser `92ad8a82` green |
-| 12 | Complete P8-04 governed end-to-end acceptance and final-head regressions without rights/visual drift | O |
+| 12 | Complete P8-04 governed end-to-end acceptance and final-head regressions without rights/visual drift | V — synthetic end-to-end retained official-response/parcel/worker/investigation/dossier/map/graph and replay regression; full dual-Python CI and browser/visual at `1299fa5` green, source/identity protections preserved; exact pixel parity P8-17 independently open |
 
 **Next workstream inheritance:** before implementing another remaining ID,
 freeze that ID's own acceptance criteria into a similar numbered, fixed-denominator
@@ -253,7 +271,7 @@ bugs. This fixes the acceptance denominator, not the number of code changes.
 | P8-01 | Complete historical capability accounting | O — frozen 302-path ledger now tracks 83 divergent historical branches (95 exact retained blobs, 164 present nonmatching/unproven, 43 absent). This is a complete file inventory, NOT functional equivalence; half-up/half-even financial tie divergence and historical CSV parser/transport differences require explicit disposition; see `docs/audits/p8-01-historical-capability-disposition-first-pass.md` and `docs/audits/p8-01-historical-path-ledger-2026-10-21.json` | Give every mandatory historical behavior an implemented native path or a tested equivalent; explicitly classify recovery-only/development assets and superseded implementations. No unidentified mandatory remainder. |
 | P8-02 | Original source inspection and attribution | V — `test_native_original_registry_parity.py` compares 16 original/native HTTP read contracts; source/SMARTS tests cover additional views | Retain exact attribution, filters, pagination, evidence limits and original-byte preservation through final regression. |
 | P8-03 | Source acquisition, verification and registry controls | V — twenty original-source operational subcheckpoints accepted. Native CEQA source review/discovery/detail/listing/CSV/replay/maturity/policy/series/manual recurrence, SMARTS catalog/roster/manual source-journal collection with separate unchanged daily timer, approved registry authority and durable manual evidence retention. Exact code/test `a4a0cd5`: Python 3.11 + 3.12 each 2,905 passed, no known security vulnerabilities, full browser/USGS success; owner-source permission separate. | Reconcile each existing operational control with its native/worker equivalent and expose missing routine operator controls with the original approval/access safeguards. Setup-only CLI tools may remain documented deployment tools; a CLI alone does not replace a required native operator workflow. |
-| P8-04 | Parcel/GIS investigation operations | O — parcel candidates are exposed; original schema/row review, authorized ArcGIS acquisition, proof persistence and parcel/site resolution are not all demonstrated as one native workflow | Demonstrate authorized retained GIS/parcel evidence through review, governed persistence/resolution and the same dossier/map/graph; preserve ambiguity and exact source/proof identities. No invented coordinates or automatic same-project inference. |
+| P8-04 | Parcel/GIS investigation operations | V — complete native review of exact original parcel schema, bounded ArcGIS response, proof/source-backed record persistence, independently reviewed worker, one shared unmapped dossier/map/graph and safe replay; final synthetic pipeline and relevant negative cases passed with 2,924 Python tests on 3.11/3.12 plus browser/visual checks at `1299fa5` | Demonstrate authorized retained GIS/parcel evidence through review, governed persistence/resolution and the same dossier/map/graph; preserve ambiguity and exact source/proof identities. No invented coordinates or automatic same-project inference. |
 | P8-05 | Missing original-source replay | V — scoped replay tests, independent-worker browser journey and genuine retained CEQA acceptance at `825a717` | Preserve bounded page review, atomic approvals, overlap rejection, full-scope rescan and restart without duplicates. Owner-data execution is P8-07. |
 | P8-06 | Reviewed changed-source handoff | V — published `3035fb9` has exact tree `dc93cd89d831522067a420d1ce6481c74c80d8ba` of local `2bc29ba`; full CI/browser accepted | Preserve exact-source acceptance: 2,777 tests on each Python version, full quality gates and independent-worker browser revision/delayed-dialog journey; earlier evidence and reassessment remain intact. |
 | P8-07 | Intended owner's retained-data reconciliation | B — fixture/genuine offline capture acceptance exists; owner's complete selected data has not been reconciled | Identify actual original/native stores and retained artifacts; process all reviewed pages, resolve/hold conflicts, rescan and account for every selected record without modifying originals or duplicating work. Explicitly bounded scope, never countywide completeness. |
