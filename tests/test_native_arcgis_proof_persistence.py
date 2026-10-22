@@ -14,6 +14,7 @@ import pytest
 from constructionsight.command_center_arcgis_proofs import (
     native_arcgis_proof_inventory,
     preview_arcgis_proof_bound_rows,
+    preview_arcgis_proof_record_request,
     retained_arcgis_proof_preview,
 )
 from constructionsight.live_command_center import make_server
@@ -270,6 +271,88 @@ def test_exact_arcgis_proof_bound_manual_rows_reuse_original_parser_offline(
             assert client.post(
                 endpoint, json={**valid, "rows": [{"Unseen": "x"}]},
                 headers={"Origin": base},
+            ).status_code == 400
+            assert not (directory / "investigations.sqlite3").exists()
+            assert proof.read_bytes() == original
+    finally:
+        server.shutdown()
+        server.server_close()
+        worker.join()
+
+
+def test_exact_bounded_arcgis_object_id_plans_one_official_request_without_access(
+    tmp_path: Path,
+) -> None:
+    bundle = _bounded_bundle()
+    proof = tmp_path / "bound-object-id.json"
+    proof.write_text(json.dumps(bundle.to_dict()), encoding="utf-8")
+    original = proof.read_bytes()
+    review = retained_arcgis_proof_preview(proof)
+    assert review["bounded_observed_object_ids"] == [1, 3, 5, 7]
+    selected = {
+        "source_key": bundle.source_key,
+        "expected_bundle_id": bundle.bundle_id,
+        "expected_bundle_sha256": review["bundle_sha256"],
+        "expected_snapshot_id": bundle.snapshot.snapshot_id,
+        "object_id": 3,
+    }
+    plan = preview_arcgis_proof_record_request(proof, selected)
+    assert plan == preview_arcgis_proof_record_request(proof, selected)
+    assert plan["plan_id"].startswith("arcgis-proof-record-plan:")
+    assert plan["object_id"] == 3
+    assert plan["snapshot_id"] == bundle.snapshot.snapshot_id
+    assert plan["query_url"] == bundle.snapshot.layer_url.rstrip("/") + "/query"
+    assert plan["parameters"]["objectIds"] == "3"
+    assert plan["parameters"]["returnGeometry"] == "false"
+    assert plan["parameters"]["f"] == "json"
+    assert "APN" in plan["parameters"]["outFields"].split(",")
+    assert bundle.snapshot.object_id_field in plan["parameters"]["outFields"].split(",")
+    assert "geometry" not in plan["parameters"]["outFields"].split(",")
+    for field in (
+        "network_executed", "attributes_observed", "source_row_provenance_verified",
+        "parcel_persisted", "site_identity_verified", "commercial_authority_granted",
+    ):
+        assert plan[field] is False
+    assert plan["operator_access_review_required"] is True
+    for bad in (
+        {**selected, "object_id": 2},
+        {**selected, "object_id": 0},
+        {**selected, "object_id": -1},
+        {**selected, "object_id": True},
+        {**selected, "object_id": "3"},
+        {**selected, "object_id": 2**53},
+        {**selected, "expected_bundle_sha256": "0" * 64},
+        {**selected, "expected_snapshot_id": "another"},
+        {**selected, "expected_bundle_id": "another"},
+        {**selected, "source_key": "forged"},
+        {**selected, "query_url": "https://evil.invalid/"},
+        {**selected, "grant_commercial_authority": True},
+    ):
+        with pytest.raises(ValueError):
+            preview_arcgis_proof_record_request(proof, bad)
+    assert proof.read_bytes() == original
+
+    directory = tmp_path / "private"
+    server, worker = _serve(directory, proof)
+    base = f"http://127.0.0.1:{server.server_port}"
+    try:
+        with httpx.Client(base_url=base, trust_env=False) as client:
+            endpoint = "/api/parcel-arcgis-record-plan"
+            assert client.post(endpoint, json=selected).status_code == 403
+            result = client.post(endpoint, json=selected, headers={"Origin": base})
+            assert result.status_code == 200, result.text
+            assert result.json() == plan
+            assert client.post(
+                endpoint + "?override=1", json=selected,
+                headers={"Origin": base},
+            ).status_code == 400
+            assert client.post(
+                endpoint, json={**selected, "object_id": 999},
+                headers={"Origin": base},
+            ).status_code == 400
+            assert client.post(
+                endpoint, json=selected,
+                headers={"Origin": base, "Sec-Fetch-Site": "cross-site"},
             ).status_code == 400
             assert not (directory / "investigations.sqlite3").exists()
             assert proof.read_bytes() == original
