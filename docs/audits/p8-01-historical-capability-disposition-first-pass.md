@@ -50,3 +50,57 @@ certification or a passing execution test.
 
 **Progress accounting:** P8-01 remains **O**. Integration acceptance remains
 **10/15 = 67%**; P8-03 remains **20/20 = 100%**.
+
+## All-branch path inventory reconciliation — 2026-10-21
+
+The frozen historical baseline has now been reconciled at the **path and Git blob level**
+against the exact development tree `f8fea562c542e61c951c0be2b667206eb2245fca`.
+The full machine-readable 302-row account is
+[`p8-01-historical-path-ledger-2026-10-21.json`](p8-01-historical-path-ledger-2026-10-21.json).
+It preserves the historical branch references, all contributing blob SHA-1 IDs,
+original comparison classes, observed current-tree blob identity, and an explicit
+`functional_equivalence: not_assessed_by_this_ledger` for **every row**.
+
+| Exact file-level observation | Distinct paths |
+| --- | ---: |
+| Current file is identical to at least one contributing historical blob | 95 |
+| Current file exists but differs from all contributing historical blobs, or match not established | 164 |
+| Current file is absent | 43 |
+| **Total** | **302** |
+
+The 43 absent paths consist of **25 historical quality/certification outputs**,
+**1 historical assurance record**, **5 one-off scripts**, **4 old regression
+files**, and **8 old runtime files** (including one explicitly rejected preliminary
+source-intelligence bridge). **Neither absence nor SHA difference demonstrates
+lost mandatory behavior.** The inverse is also true: identical bytes do not
+establish that the native Command Center calls a retained implementation.
+
+**Prioritize semantic proof over blindly restoring files:**
+
+1. **Eight old runtime paths:** original `ceqanet_csv_export_*` (3),
+   `result_ledger_authority_*` (3), `money.py` (1), and the rejected preliminary
+   `source_intelligence_bridge.py` (1). Keep the newer guarded P8-03 source
+   integration intact; examine old edge-case tests, exact money and the result
+   authorization state machine under P8-09 before determining replacement parity.
+2. **Four old regression files:** compare the original CSV export, verified
+   maturity, ingestion inbox and result ledger authority failure-mode assertions
+   against current tested paths. Add missing assertions only, not duplicate engines.
+3. **Five scripts and 26 assurance records:** preserve as historical migration,
+   recovery and certification material. Evaluate unique mandatory safeguards, but
+   never automatically run an obsolete patch or treat an old certificate as current
+   source authorization.
+4. **259 present paths:** compare behavior and call paths of the 164 with changed
+   bytes first, then trace the 95 exact-file matches into actual native and worker
+   entrypoints. The ledger is a *complete inventory queue*, not a completed
+   runtime-parity matrix.
+
+`tests/test_p8_01_historical_path_ledger.py` independently reconstructs all
+302 path identities from the immutable baseline, tests branch/blob coverage and
+observation consistency, and requires explicit false for P8-01 acceptance.
+Its presence prevents a future status update from silently treating this
+inventory exercise as an accepted integration gate.
+
+**Outcome:** P8-01 stays **O**, P8-04/08/09/11 remain independently open,
+P8-03 stays **V**, Phase 8 verified integration remains **10/15 = 67%**.
+No original branch is deleted, no UI is redesigned, and neither the new ledger
+nor its test performs source/network/commercial operations.
