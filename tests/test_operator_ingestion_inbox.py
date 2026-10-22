@@ -231,7 +231,10 @@ def test_historical_review_queue_tampering_fails_closed_in_original_and_operator
     original_listing_digest = hashlib.sha256(listing_raw).hexdigest()
     before_database = hashlib.sha256(database.read_bytes()).hexdigest()
 
-    with Session(engine) as session, pytest.raises(ValueError, match="fresh derivation"):
+    with (
+        Session(engine) as session,
+        pytest.raises(ValueError, match="fresh derivation"),
+    ):
         build_ceqanet_ingestion_inbox(
             session,
             listing_payload=json.loads(listing_raw),
@@ -247,4 +250,5 @@ def test_historical_review_queue_tampering_fails_closed_in_original_and_operator
         assert status == 503
         assert "Stored data could not be read" in json.loads(raw)["error"]
     assert hashlib.sha256(database.read_bytes()).hexdigest() == before_database
-    assert hashlib.sha256(listing_path.read_bytes()).hexdigest() == original_listing_digest
+    retained_listing_digest = hashlib.sha256(listing_path.read_bytes()).hexdigest()
+    assert retained_listing_digest == original_listing_digest
