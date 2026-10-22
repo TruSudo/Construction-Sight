@@ -231,15 +231,14 @@ def test_historical_review_queue_tampering_fails_closed_in_original_and_operator
     original_listing_digest = hashlib.sha256(listing_raw).hexdigest()
     before_database = hashlib.sha256(database.read_bytes()).hexdigest()
 
-    with Session(engine) as session:
-        with pytest.raises(ValueError, match="fresh derivation"):
-            build_ceqanet_ingestion_inbox(
-                session,
-                listing_payload=json.loads(listing_raw),
-                listing_bytes=listing_raw,
-                queue_payload=queue,
-                queue_bytes=queue_path.read_bytes(),
-            )
+    with Session(engine) as session, pytest.raises(ValueError, match="fresh derivation"):
+        build_ceqanet_ingestion_inbox(
+            session,
+            listing_payload=json.loads(listing_raw),
+            listing_bytes=listing_raw,
+            queue_payload=queue,
+            queue_bytes=queue_path.read_bytes(),
+        )
     engine.dispose()
     assert hashlib.sha256(database.read_bytes()).hexdigest() == before_database
 
