@@ -97,13 +97,22 @@ is not an estimate of elapsed work or remaining calendar time:
 | 11 | Acquired-record-native worker handoff and ambiguous-safe dossier/map/relationship-graph convergence | V — independently approved original native worker replay, immutable retained source/parcel verification, unmapped dossier/map and shared graph with no invented point or commerce; CI/browser `92ad8a82` green |
 | 12 | Complete P8-04 governed end-to-end acceptance and final-head regressions without rights/visual drift | V — synthetic end-to-end retained official-response/parcel/worker/investigation/dossier/map/graph and replay regression; full dual-Python CI and browser/visual at `1299fa5` green, source/identity protections preserved; exact pixel parity P8-17 independently open |
 
-**P8-01: 1/8 = 13% verified historical-capability-accounting checkpoints**
-at documented baseline `docs/audits/p8-01-historical-path-ledger-2026-10-21.json`;
-the exact ledger integrity test
-`tests/test_p8_01_historical_path_ledger.py` was part of the passing
-2,924-test application suite at `1299fa5`. This is one **inventory-only**
-checkpoint, NOT 13% of the historical behaviors proven equivalent and not
-P8-01 acceptance. The ledger records 83 divergent branches/302 paths:
+**P8-01: 2/8 = 25% verified historical-capability-accounting checkpoints**.
+The fixed 83-branch/302-path ledger and complete **43/43 absent-path risk classifications**
+are checked by `tests/test_p8_01_historical_path_ledger.py`, with exact
+historical references, ongoing mandatory behavior obligations, and explicit
+`behavioral_equivalence_verified: false` for every absent file in
+`docs/audits/p8-01-absent-path-dispositions-2026-10-22.json`.
+The historical queue-tamper failure and half-cent financial-rounding difference
+are recorded by additional non-mutating regressions. Application/test HEAD
+`2a56454b0edd9f4333e9e557d95c11f05b74aa34` passed
+[Python 3.11/3.12 CI](https://github.com/TruSudo/Construction-Sight/actions/runs/39793385052):
+**2,930 passed per interpreter**; Ruff, strict Mypy (385 modules), JavaScript syntax
+and dependency vulnerability audit all passed, no known vulnerabilities found;
+[Command Center visual/browser](https://github.com/TruSudo/Construction-Sight/actions/runs/39793385007)
+**success**. The old historical compliance certificates remain historical only.
+This is file-risk accounting, NOT 25% of the actual behaviors proven equivalent,
+NOT live-source authority, and NOT P8-01 acceptance. The ledger records 83 divergent branches/302 paths:
 95 current exact blobs, 164 present changed/unproven and 43 absent. Every row
 still says `functional_equivalence: not_assessed_by_this_ledger`. The documented
 historical half-up/half-even monetary divergence and earlier CSV parser/transport
@@ -116,7 +125,7 @@ reclassify on regression):
 | # | P8-01 historical capability checkpoint | State |
 | --- | --- | --- |
 | 01 | Reconstruct complete historical branch/path/blob inventory and account for every path against frozen baseline | V — 83 branches and 302 unique paths, full blob/branch/test integrity at `1299fa5` |
-| 02 | Classify all 43 absent paths by mandatory runtime behavior, archival/recovery artifact, superseded implementation or still-open restoration with evidence | O — category triage exists, unique behavior not finally resolved |
+| 02 | Classify all 43 absent paths by mandatory runtime behavior, archival/recovery artifact, superseded implementation or still-open restoration with evidence | V — 43/43 exact path/ref/blob dispositions, original-source samples, open behavior risk, explicit no-false-parity test and CI/browser green at `2a56454` |
 | 03 | Reconcile all 164 present-but-different/unproven paths at behavioral and assurance contract level, not filename similarity | O |
 | 04 | Prove required runtime and native UI/worker reachability of each relevant one of the 95 byte-identical retained paths | O |
 | 05 | Disposition historical CEQAnet CSV/inbox/maturity parser, transport and failure/recovery assertions against original and guarded native tests | O — source controls accepted under P8-03 but historical exact edge parity remains |
@@ -124,8 +133,8 @@ reclassify on regression):
 | 07 | Reconcile historical evidence/report/export/verification/package/archive operator families with native proven equivalence under P8-11 | O |
 | 08 | Certify no unidentified mandatory historical remainder across native operations, tested authority, shared investigation views and preserved historical recovery assets; document each open dependent gate separately | O |
 
-P8-01 remains **O** in the 15-gate acceptance register. The 1/8 meter
-cannot be promoted by inventory observations alone. Work on P8-08, P8-09
+P8-01 remains **O** in the 15-gate acceptance register. The 2/8 meter
+cannot be promoted by mere file presence, count, or untested parity claims. Work on P8-08, P8-09
 and P8-11 supplies necessary dependent runtime proofs but does not
 automatically accept P8-01.
 
