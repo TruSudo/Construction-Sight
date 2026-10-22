@@ -25,6 +25,14 @@ from constructionsight.parcel_source_acquisition_bundle import (
 from constructionsight.parcel_source_acquisition_bundle_models import (
     ParcelArcGISBoundedProofBundle,
 )
+from constructionsight.parcel_schema_models import (
+    ParcelObservedFieldType,
+    ParcelSchemaField,
+    ParcelSchemaPreviewInput,
+)
+from constructionsight.parcel_schema_preview import preview_schema
+from constructionsight.parcel_source_models import ParcelGeometrySupport
+from constructionsight.parcel_source_registry import get_parcel_sources
 from constructionsight.storage.database import (
     database_url_from_path,
     prepare_private_database,
@@ -51,6 +59,78 @@ def _selected_proof(
     return hashlib.sha256(raw).hexdigest(), bundle, verification.to_dict()
 
 
+def _observed_arcgis_schema(
+    bundle: ParcelArcGISBoundedProofBundle,
+) -> dict[str, Any]:
+    """Review immutable ArcGIS metadata with the original schema-preview service.
+
+    Source-registry mappings are expectations; the snapshot is historical
+    observed metadata. No sampled parcel row or project identity is inferred.
+    """
+    source = next(
+        (item for item in get_parcel_sources() if item.source_key == bundle.source_key),
+        None,
+    )
+    if (
+        source is None
+        or source.source_url != bundle.snapshot.layer_url
+        or source.coverage.county != bundle.county
+    ):
+        raise ValueError("ArcGIS proof does not match the current registered parcel source")
+
+    snapshot = bundle.snapshot
+    original_input = ParcelSchemaPreviewInput(
+        source_key=source.source_key,
+        source_name=source.source_name,
+        source_format=source.source_format,
+        observed_fields=[
+            ParcelSchemaField(
+                source_field=field.name,
+                observed_type=ParcelObservedFieldType.UNKNOWN,
+                description=f"Observed ArcGIS field type: {field.field_type}",
+                nullable=field.nullable,
+            )
+            for field in snapshot.fields
+        ],
+        constant_fields=list(source.constant_fields),
+        # Never claim that the historical polygon label proves actual geometry
+        # was captured; only the ArcGIS geometry-type string is observed.
+        geometry_support=ParcelGeometrySupport.UNKNOWN,
+        spatial_reference=snapshot.spatial_reference,
+        source_url=source.source_url,
+        limitations=[
+            "This report describes retained ArcGIS metadata, not imported parcel rows.",
+            "Original inferred role matches are proposals, not verified source-to-site identities.",
+            "The observed source schema can change after its recorded observation time.",
+        ],
+    )
+    report = preview_schema(original_input)
+    advertised_names = {field.name.casefold() for field in snapshot.fields}
+    expected_names = {mapping.source_field.casefold() for mapping in source.field_mappings}
+    return {
+        "schema_version": "constructionsight.native-arcgis-observed-schema/v1",
+        "original_schema_preview_service_reused": True,
+        "original_source_key": source.source_key,
+        "bundle_id": bundle.bundle_id,
+        "snapshot_id": snapshot.snapshot_id,
+        "schema_fingerprint": snapshot.schema_fingerprint,
+        "metadata_projection_digest": snapshot.metadata_projection_digest,
+        "observed_at": snapshot.observed_at.isoformat(),
+        "observed_geometry_type": snapshot.geometry_type,
+        "observed_fields": [field.model_dump(mode="json") for field in snapshot.fields],
+        "unobserved_expected_fields": sorted(expected_names - advertised_names),
+        "additional_observed_fields": sorted(advertised_names - expected_names),
+        "original_schema_preview": report.model_dump(
+            mode="json", exclude={"created_at"},
+        ),
+        "network_executed": False,
+        "parcel_rows_observed": False,
+        "parcel_imported": False,
+        "project_identity_established": False,
+        "commercial_authority_granted": False,
+    }
+
+
 def retained_arcgis_proof_preview(path: Path | None) -> dict[str, Any]:
     """Inspect a configured local proof without starting collection or writing data."""
     selected = _selected_proof(path)
@@ -75,6 +155,7 @@ def retained_arcgis_proof_preview(path: Path | None) -> dict[str, Any]:
         "county": bundle.county,
         "assessment_status": bundle.assessment.status.value,
         "verification": verification,
+        "observed_schema": _observed_arcgis_schema(bundle),
         "network_executed": False,
         "source_database_mutated": False,
         "parcel_imported": False,
