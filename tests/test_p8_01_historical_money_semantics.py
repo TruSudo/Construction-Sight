@@ -34,6 +34,8 @@ def test_p8_01_historical_share_rounding_difference_is_explicit(
     """Half-cent ties are a financial-contract decision, not UI display drift."""
     gross = Decimal(gross_cents) / 100
     rate = Decimal(rate_ppm) / 1_000_000
-    historically_rounded = (gross * rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    historically_rounded = (gross * rate).quantize(
+        Decimal("0.01"), rounding=ROUND_HALF_UP,
+    )
     assert int(historically_rounded * 100) == old_half_up_cents
     assert calculate_share_minor_units(gross_cents, rate_ppm) == current_half_even_cents
