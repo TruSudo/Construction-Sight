@@ -54,10 +54,14 @@ register remains the authority for V/O/P/B gate promotion.
 
 **P8-03: 20/20 = 100%**, accepted and locked as recorded below.
 
-**P8-04: 9/12 = 75% verified workstream checkpoints** at application HEAD
-`580e074e` (CI `39733381688` and browser `39733381623` both success).
-This is an evidence-backed count of completed *sub-obligations*, not 75% of
-remaining time or end-to-end P8-04 acceptance:
+**P8-04: 10/12 = 83% verified workstream checkpoints** at application HEAD
+`3da303b3` (dual-Python CI `39740655950`: 2,921 passed in both
+Python 3.11 and 3.12, 2 upstream warnings; native browser and USGS
+`39740655942`: success).
+This is an evidence-backed count of completed *sub-obligations*, not 83% of
+remaining time or end-to-end P8-04 acceptance. A retained source-backed parcel
+is still not a verified project, lead, or survey-quality point; the independent
+worker and final cross-view acceptance remain open:
 
 | # | P8-04 mandatory sub-checkpoint | State |
 | --- | --- | --- |
@@ -70,7 +74,7 @@ remaining time or end-to-end P8-04 acceptance:
 | 07 | Deterministic official attribute request plan for an actually observed object ID | V |
 | 08 | Distinct current-access review + explicit, one-request CS-NET-004 attribute retrieval | V |
 | 09 | Verified one-row object ID/field parse with immutable SHA-bound original response retention | V |
-| 10 | Separately reviewed, evidence-bound durable ParcelCoreRecord persistence and source revision behavior | O |
+| 10 | Separately reviewed, evidence-bound durable ParcelCoreRecord persistence and source revision behavior | V — exact original response SHA, independently approved private store and immutable observation; conflicting source identities/revisions held, browser and both Python gates green at `3da303b3` |
 | 11 | Acquired-record-native worker handoff and ambiguous-safe dossier/map/relationship-graph convergence | O |
 | 12 | Complete P8-04 governed end-to-end acceptance and final-head regressions without rights/visual drift | O |
 
