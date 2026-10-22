@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import base64
 import argparse
+import base64
 import hashlib
 import json
 from datetime import UTC, date, datetime
@@ -11,12 +11,12 @@ from pathlib import Path
 
 from sqlalchemy.orm import Session
 
+from constructionsight.ceqa_models import CeqaRecord
 from constructionsight.command_center_arcgis_proofs import (
     preview_arcgis_proof_record_request,
     retained_arcgis_proof_preview,
 )
 from constructionsight.command_center_arcgis_record import _verify_exact_arcgis_feature
-from constructionsight.ceqa_models import CeqaRecord
 from constructionsight.entity_models import Entity
 from constructionsight.investigation_runtime import InvestigationRuntime
 from constructionsight.lead_operator_service import transition_persisted_lead_workflow
