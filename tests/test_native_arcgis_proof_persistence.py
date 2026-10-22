@@ -83,7 +83,10 @@ def test_verified_offline_proof_persists_with_exact_origin_and_digest(
             assert review["bundle_id"] == bundle.bundle_id
             assert review["bundle_sha256"] == hashlib.sha256(original_bytes).hexdigest()
             assert review["verification"]["valid"] is True
-            assert review["observed_schema"]["snapshot_id"] == bundle.snapshot.snapshot_id
+            assert (
+                review["observed_schema"]["snapshot_id"]
+                == bundle.snapshot.snapshot_id
+            )
             assert review["observed_schema"]["parcel_imported"] is False
             assert review["observed_schema"]["project_identity_established"] is False
             assert review["network_executed"] is False
