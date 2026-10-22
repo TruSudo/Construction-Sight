@@ -193,12 +193,16 @@ def test_exact_arcgis_proof_bound_manual_rows_reuse_original_parser_offline(
     original = proof.read_bytes()
     report = retained_arcgis_proof_preview(proof)
     assert "geometry" not in report["observed_schema"]["unobserved_expected_fields"]
+    observed_fields = {field.name for field in bundle.snapshot.fields}
+    apn_field = "APN" if "APN" in observed_fields else "ParcelNumber"
+    assert apn_field in observed_fields
+    assert "OBJECTID" in observed_fields
     valid = {
         "source_key": bundle.source_key,
         "expected_bundle_id": bundle.bundle_id,
         "expected_bundle_sha256": report["bundle_sha256"],
         "expected_snapshot_id": bundle.snapshot.snapshot_id,
-        "rows": [{"ParcelNumber": "123-456-789", "OBJECTID": "101"}],
+        "rows": [{apn_field: "123-456-789", "OBJECTID": "101"}],
     }
     direct = preview_arcgis_proof_bound_rows(proof, valid)
     assert direct["bundle_id"] == bundle.bundle_id
@@ -226,8 +230,8 @@ def test_exact_arcgis_proof_bound_manual_rows_reuse_original_parser_offline(
         {**valid, "rows": valid["rows"] * 21},
         {**valid, "rows": [{"FictionalAttr": "1"}]},
         {**valid, "rows": [{"geometry": "{\"x\":1}"}]},
-        {**valid, "rows": [{"ParcelNumber": 123456789}]},
-        {**valid, "rows": [{"ParcelNumber": "x" * 33000}]},
+        {**valid, "rows": [{apn_field: 123456789}]},
+        {**valid, "rows": [{apn_field: "x" * 33000}]},
     ):
         with pytest.raises(ValueError):
             preview_arcgis_proof_bound_rows(proof, bad)
