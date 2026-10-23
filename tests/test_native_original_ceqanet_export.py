@@ -6,11 +6,16 @@ import hashlib
 import json
 import threading
 import zipfile
+from shutil import copyfile
 from io import BytesIO
 from pathlib import Path
 
 import httpx
 
+from constructionsight.command_center_legacy_export import (
+    original_ceqanet_archive_verification,
+    original_ceqanet_export,
+)
 from constructionsight.live_command_center import make_server
 from constructionsight.storage.database import create_database_engine, initialize_database
 from tests.test_ceqanet_operator_export import _chain_report
@@ -203,3 +208,38 @@ def test_original_ceqanet_export_requires_configured_operator_db_and_report(
             snapshot(), 0, tmp_path / "native",
             operator_ceqanet_chain_report=tmp_path / "missing.json",
         )
+
+
+def test_original_archive_integrity_checks_chain_binding_not_just_valid_zip(
+    tmp_path: Path,
+) -> None:
+    """A valid archive for report B cannot masquerade as the archive for A."""
+    first = tmp_path / "report-a.json"
+    second = tmp_path / "report-b.json"
+    a = _chain_report()
+    b = _chain_report()
+    b["metadata"]["archive_review_identity"] = "synthetic alternate source"
+    first.write_text(json.dumps(a), encoding="utf-8")
+    second.write_text(json.dumps(b), encoding="utf-8")
+    digest_a = hashlib.sha256(first.read_bytes()).hexdigest()
+    digest_b = hashlib.sha256(second.read_bytes()).hexdigest()
+    assert digest_a != digest_b
+    native = tmp_path / "native"
+    for report, digest in ((first, digest_a), (second, digest_b)):
+        result = original_ceqanet_export(
+            native, report, expected_report_sha256=digest, caller_confirmation=True,
+        )
+        assert result["verification_passed"] is True
+    export_root = native / "original-ceqanet-exports"
+    # Structural integrity remains valid when substituting a separately
+    # verified ZIP; only binding to the selected report detects this swap.
+    copyfile(export_root / (digest_b + ".zip"), export_root / (digest_a + ".zip"))
+    bad = original_ceqanet_archive_verification(
+        native, first, expected_report_sha256=digest_a,
+    )
+    assert bad["original_verification"]["metadata"]["passed"] is True
+    assert bad["source_report_binding_verified"] is False
+    assert bad["passed"] is False
+    assert bad["network_executed"] is False
+    assert bad["archive_mutated"] is False
+    assert bad["commercial_authority_granted"] is False
