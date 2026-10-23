@@ -1896,7 +1896,7 @@ def make_server(
                             or self.headers.get("Sec-Fetch-Site") == "cross-site"
                         ):
                             raise ValueError("exact same-origin CEQAnet offline review required")
-                        result = preview_original_ceqanet_enrichment(payload)
+                        result = preview_original_ceqanet_enrichment(payload, operator_database)
                     elif path in (
                         "/api/source-ceqanet-detail-preview",
                         "/api/source-ceqanet-detail",
