@@ -265,8 +265,13 @@ def test_safe_legacy_cli_aliases_are_readonly_and_non_authorizing(
     assert verification.exit_code == 0, verification.output
     verification_payload = json.loads(verification.output)
     assert verification_payload["passed"] is True
-    assert verification_payload["current_source_authorized"] is False
-    assert verification_payload["network_executed_by_verification"] is False
+    assert verification_payload["schema_version"] == "ceqanet_csv_export_verification.v1"
+    assert verification_payload["parsed_row_count"] == 1
+    assert verification_payload["parsed_headers"] == [
+        "SCH Number", "Title", "Lead/Public Agency",
+    ]
+    assert verification_payload["request_url"] == _URL
+    assert verification_payload["execution_digest"] == _artifact()["execution_digest"]
     assert original_path.read_bytes() == before
 
     blocked_old_execution = _RUNNER.invoke(
@@ -364,3 +369,25 @@ def test_historical_parse_limits_and_existing_output_fail_closed(tmp_path: Path)
         app, ["parse", str(path), "--source-url", _URL],
     )
     assert too_large.exit_code != 0
+
+
+def test_old_verify_command_reports_integrity_failure_in_original_v1_shape(
+    tmp_path: Path,
+) -> None:
+    original_path = tmp_path / "legacy.json"
+    report_path = tmp_path / "review.json"
+    evidence = _artifact()
+    evidence["body_sha256"] = "f" * 64
+    original_path.write_text(json.dumps(evidence), encoding="utf-8")
+    original_bytes = original_path.read_bytes()
+
+    result = _RUNNER.invoke(
+        app, ["verify", str(original_path), "--output", str(report_path)],
+    )
+    assert result.exit_code != 0
+    report = json.loads(report_path.read_text("utf-8"))
+    assert report["schema_version"] == "ceqanet_csv_export_verification.v1"
+    assert report["passed"] is False
+    assert report["finding_count"] >= 1
+    assert "historical body SHA-256 mismatch" in report["findings"]
+    assert original_path.read_bytes() == original_bytes
