@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import threading
+from datetime import UTC, datetime
 from pathlib import Path
 
 import httpx
@@ -176,8 +177,19 @@ def test_enrichment_http_exact_source_links_only_existing_reviewed_evidence(
     engine = create_database_engine(f"sqlite:///{original}")
     initialize_database(engine)
     with Session(engine) as session, session.begin():
-        CeqaStore(session).upsert(_record("phase8:retained:exact",
-                                         state_clearinghouse_number="2026102233"))
+        source = _record(
+            "phase8:retained:exact", state_clearinghouse_number="2026102233",
+        )
+        # The original investigation worker requires a captured provenance time.
+        # Preserve that invariant instead of weakening the shared reconciliation.
+        captured = datetime(2026, 10, 22, tzinfo=UTC)
+        source = source.model_copy(update={
+            "provenance": [
+                item.model_copy(update={"captured_at": captured})
+                for item in source.provenance
+            ]
+        })
+        CeqaStore(session).upsert(source)
     engine.dispose()
     before = hashlib.sha256(original.read_bytes()).hexdigest()
     server = make_server(
