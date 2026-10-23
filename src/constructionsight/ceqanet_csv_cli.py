@@ -49,7 +49,7 @@ def ceqanet_csv_root() -> None:
 def plan_csv_export(
     sch_number: Annotated[
         str,
-        typer.Option("--sch-number", help="Exact 10-digit CEQAnet SCH number."),
+        typer.Option("--sch-number", "--sch", help="Exact 10-digit CEQAnet SCH number."),
     ],
     document_id: Annotated[
         int | None,
@@ -263,6 +263,7 @@ def verify_live_csv_execution(
 
 
 @app.command("verify-legacy-execution")
+@app.command("verify")
 def verify_archived_csv_execution(
     execution_path: Annotated[
         Path,
