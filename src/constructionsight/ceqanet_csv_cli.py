@@ -282,7 +282,7 @@ def parse_archived_csv_file(
         report = parse_archived_ceqanet_csv_bytes(content, source_url=source_url)
     except (OSError, ValueError) as exc:
         raise typer.BadParameter(str(exc)) from exc
-    _emit_json(report, output)
+    _emit_archived_json(report, output)
 
 
 @app.command("verify-legacy-execution")
@@ -305,7 +305,7 @@ def verify_archived_csv_execution(
         verification = verify_archived_ceqanet_csv_execution(payload)
     except (OSError, ValueError) as exc:
         raise typer.BadParameter(str(exc)) from exc
-    _emit_json(verification, output)
+    _emit_archived_json(verification, output)
     if not verification["passed"]:
         raise typer.Exit(code=1)
 
@@ -341,7 +341,7 @@ def verify_archived_csv_execution_v1_report(
         "request_url": payload["request_url"],
         "execution_digest": payload["execution_digest"],
     }
-    _emit_json(report, output)
+    _emit_archived_json(report, output)
     if not verified["passed"]:
         raise typer.Exit(code=1)
 
@@ -420,6 +420,15 @@ def _write_json_file(path: Path, payload: object, *, overwrite: bool) -> None:
         )
     rendered = json.dumps(payload, indent=2, sort_keys=True)
     write_runtime_text(path, f"{rendered}\n", overwrite=overwrite)
+
+
+def _emit_archived_json(payload: object, output: Path | None) -> None:
+    """Create archived reports exclusively; never replace evidence or prior outputs."""
+    if output is not None:
+        _write_json_file(output, payload, overwrite=False)
+        console.print(f"Wrote archived CEQAnet report to {output}")
+        return
+    console.print_json(json.dumps(payload, indent=2, sort_keys=True))
 
 
 def _emit_json(payload: object, output: Path | None) -> None:
