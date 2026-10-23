@@ -2555,10 +2555,29 @@ async function renderRetainedCeqanetExport(box) {
       'The original package, persistence/write previews, report, manifest and ' +
       'deterministic ZIP are checked before a download is offered. Exporting ' +
       'does not acquire records, contact prospects or authorize bids.</p>' +
+      '<button id="preview-original-operator-report">Preview original report (no files written)</button>' +
       '<label><input id="original-export-confirm" type="checkbox"> ' +
       'I authorize only a local verified export of this exact retained report.</label>' +
       '<button id="original-export-generate">Build verified operator ZIP</button>' +
       '<div id="original-export-result" aria-live="polite"></div>';
+    box.querySelector('#preview-original-operator-report').onclick =
+      () => perform(async () => {
+        const preview = await api('/api/source-ceqanet-report-preview?' +
+          new URLSearchParams({sha256: sha}));
+        const report = preview.original_report || {};
+        const md = report.metadata || {};
+        modal('Original CEQAnet report · offline preview',
+          '<p>This is the original operator report builder, before any archive is ' +
+          'created. Records and write-plan items remain historical source ' +
+          'claims, not verified projects or approval to persist or contact.</p>' +
+          '<p>CEQA records: ' + esc(md.ceqa_record_count ?? '—') +
+          ' · planned operations: ' + esc(md.operation_count ?? '—') +
+          ' · warnings: ' + esc(md.warning_count ?? '—') + '</p>' +
+          '<pre>' + esc(report.markdown || '') + '</pre>' +
+          '<button id="download-original-report-preview-json">Export report JSON</button>');
+        document.querySelector('#download-original-report-preview-json').onclick =
+          () => download('original-ceqanet-report-preview.json', preview);
+      });
     const generate = box.querySelector('#original-export-generate');
     generate.onclick = () => perform(async () => {
       if (!box.querySelector('#original-export-confirm').checked) {
