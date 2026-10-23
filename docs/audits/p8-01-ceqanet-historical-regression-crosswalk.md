@@ -61,8 +61,12 @@ bounded, read-only path to old execution evidence and exact archived parse-repor
 projection, with safe old `plan --sch` and `verify` aliases. Old live `execute`
 network behavior is deliberately superseded by the independently authorized
 current `execute-live`, rather than silently restored. The new historical
-compatibility tests must pass **exact-head dual-Python CI and native browser**
-before P8-01 checkpoint 05 can be accepted. Treat the original network and
+compatibility tests passed **exact-head dual-Python CI and native browser**
+at `45ca3da0350c38b2276c79e2f02295bfd04e47e7`: CI `39884980630`
+and native browser/USGS `39884980657` succeeded; **2,964 tests passed on each
+Python 3.11 and 3.12**, two upstream warnings each, with all quality/dependency
+checks green. **P8-01 checkpoint 05 is accepted**; the workstream remains
+open at 3/8. Treat the original network and
 historical registry-maturity certificates as historical only; P8-20 separately
 requires present lawful-source permission. Historical external clients may
 need documented migration even with safe aliases; this is not a claim that

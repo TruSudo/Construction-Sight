@@ -19,6 +19,53 @@ const {resolve} = require('node:path');
     await page.waitForSelector('.retained-source-inspection [data-source-preview]', {
       timeout: 20000
     });
+    // Original upstream list/detail must be usable in the native view, preserve
+    // original bytes and lead parcels only to the existing separate review.
+    const upstreamDatabase = resolve(process.argv[3],'..','operator-source.sqlite3');
+    const upstreamBefore = createHash('sha256').update(readFileSync(upstreamDatabase)).digest('hex');
+    await page.click('#retained-original-upstream');
+    await page.waitForSelector('#retained-upstream-filters');
+    if (await page.locator('#retained-upstream-filters select[name="kind"] option').count() !== 18)
+      throw Error('Original upstream record families were lost in native inspection');
+    await page.selectOption('#retained-upstream-filters select[name="kind"]','parcel');
+    await page.fill('#retained-upstream-filters input[name="source_key"]',
+      'san-bernardino:county-gis-parcels');
+    await page.fill('#retained-upstream-filters input[name="limit"]','1');
+    await page.click('#retained-upstream-filters button[type="submit"]');
+    await page.waitForSelector('[data-upstream-record]');
+    if (!(await page.locator('#retained-upstream-results').textContent())
+      .includes('the list may have more matches'))
+      throw Error('Bounded original list was represented as complete');
+    await page.click('[data-upstream-record="0"]');
+    await page.waitForSelector('#retained-upstream-parcel-review');
+    if (!(await page.locator('#retained-upstream-results').textContent())
+      .includes('phase8:browser:original-parcel'))
+      throw Error('Native upstream detail lost the exact original parcel identity');
+    const [upstreamDownload] = await Promise.all([
+      page.waitForEvent('download'), page.click('#retained-upstream-export')
+    ]);
+    const upstreamReceipt = JSON.parse(readFileSync(await upstreamDownload.path(),'utf8'));
+    if (!upstreamReceipt.read_only || upstreamReceipt.investigation_queued ||
+        upstreamReceipt.commercial_authority_granted || upstreamReceipt.network_executed ||
+        upstreamReceipt.record.record_id !== 'phase8:browser:original-parcel')
+      throw Error('Original upstream export changed authority or record identity');
+    await page.click('#retained-upstream-parcel-review');
+    await page.waitForSelector('#parcel-replay-confirm');
+    if (await page.locator('#parcel-replay-confirm').isChecked())
+      throw Error('Original upstream inspection silently approved worker replay');
+    await page.click('#action-close');
+    await page.click('#retained-original-upstream');
+    await page.selectOption('#retained-upstream-filters select[name="kind"]','contractor');
+    if (await page.locator('#retained-upstream-filters input[name="county"]').isEnabled())
+      throw Error('Original contractor list accepted an unsupported county filter');
+    await page.selectOption('#retained-upstream-filters select[name="kind"]','parcel');
+    await page.fill('#retained-upstream-filters input[name="record_id"]','absent:exact-id');
+    await page.click('#retained-upstream-exact');
+    await page.waitForFunction(() => document.querySelector('#retained-upstream-results')
+      ?.textContent.includes('No retained record with that exact family and ID'));
+    await page.click('#action-close');
+    if (createHash('sha256').update(readFileSync(upstreamDatabase)).digest('hex') !== upstreamBefore)
+      throw Error('Native original upstream inspection altered source database bytes');
     await page.locator('#review-native-arcgis-probe').click();
     await page.locator('#arcgis-probe-review').click();
     await page.waitForFunction(() =>

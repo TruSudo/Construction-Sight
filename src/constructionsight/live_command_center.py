@@ -177,6 +177,7 @@ from constructionsight.command_center_sources import (
     source_inspection,
     source_watch_action,
 )
+from constructionsight.command_center_upstream import inspect_original_upstream_records
 from constructionsight.contact_call_list import (
     annotate_contacts,
     bulk_import,
@@ -915,6 +916,11 @@ def make_server(
                     record_id=query["record_id"][0],
                     offset=int(query.get("offset", ["0"])[0]),
                     limit=int(query.get("limit", ["20"])[0]),
+                )
+                body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
+            elif path == "/api/source-upstream-records":
+                value = inspect_original_upstream_records(
+                    operator_database, query=urlsplit(self.path).query,
                 )
                 body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
             elif path == "/api/source-reconciliation-audit":

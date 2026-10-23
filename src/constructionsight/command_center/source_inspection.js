@@ -697,6 +697,102 @@ async function renderParcelSourceReadiness(box) {
 }
 
 // Existing source/parcel projections only; never converts an observation into a lead.
+async function openRetainedUpstreamInspector() {
+  const openingTicket = modalTicket;
+  const catalog = await api('/api/source-upstream-records');
+  if (openingTicket !== modalTicket || activePage !== 'Sources & Collection') return;
+  if (!catalog.available) throw Error('No existing original source database configured');
+  const families = catalog.record_families;
+  const filterNames = ['status','source_key','source_record_id','site_key','apn','county'];
+  const ticket = modal('Original upstream evidence · retained records',
+    '<p>Inspect the original retained permit snapshots, transitions, contractor ' +
+    'claims, decisions and parcel evidence. Status, confidence and stored ' +
+    'resolution are historical claims. Inspection starts no collection, ' +
+    'investigation or commercial action.</p>' +
+    '<form id="retained-upstream-filters" class="form-grid">' +
+    '<label>Original record family <select name="kind">' +
+    families.map(f => '<option value="'+esc(f.kind)+'">' +
+      esc(f.kind.replaceAll('_',' '))+'</option>').join('')+'</select></label>' +
+    '<label>Maximum newest records <input name="limit" type="number" ' +
+    'min="1" max="1000" value="25" required></label>' +
+    filterNames.map(key => '<label data-upstream-filter="'+key+'">' +
+      esc(key.replaceAll('_',' '))+' (exact) <input name="'+key+'" ' +
+      'maxlength="512"></label>').join('') +
+    '<button type="submit">Inspect retained records</button>' +
+    '<label>Exact original record ID <input name="record_id" maxlength="512"></label>' +
+    '<button type="button" id="retained-upstream-exact">Inspect exact record</button>' +
+    '</form><div id="retained-upstream-results" aria-live="polite"></div>');
+  const form = $('retained-upstream-filters');
+  const results = $('retained-upstream-results');
+  let requestSequence = 0;
+  const stillOpen = () => ticket === modalTicket && form.isConnected &&
+    $('action-dialog').open && activePage === 'Sources & Collection';
+  const updateFilters = () => {
+    const family = families.find(f => f.kind === form.elements.namedItem('kind').value);
+    for (const key of filterNames) {
+      const supported = family.supported_filters.includes(key);
+      form.querySelector('[data-upstream-filter="'+key+'"]').hidden = !supported;
+      form.elements.namedItem(key).disabled = !supported;
+      if (!supported) form.elements.namedItem(key).value = '';
+    }
+  };
+  const load = async exactId => {
+    if (!stillOpen()) return;
+    const sequence = ++requestSequence;
+    const kind = form.elements.namedItem('kind').value;
+    const query = new URLSearchParams({kind});
+    if (exactId !== undefined) {
+      if (!exactId) throw Error('Enter an exact original record ID');
+      query.set('record_id', exactId);
+    } else {
+      query.set('limit', form.elements.namedItem('limit').value);
+      for (const key of filterNames) {
+        const field = form.elements.namedItem(key);
+        if (!field.disabled && field.value.trim()) query.set(key,field.value.trim());
+      }
+    }
+    results.textContent = 'Reading original retained evidence…';
+    const data = await api('/api/source-upstream-records?'+query);
+    if (!stillOpen() || sequence !== requestSequence) return;
+    if (!data.available) throw Error('Original source database is unavailable');
+    results.innerHTML = '<p>'+esc(data.limitations.join(' '))+'</p>' +
+      '<button id="retained-upstream-export">Export original inspection JSON</button>';
+    if (data.mode === 'detail') {
+      results.innerHTML += data.found ?
+        '<pre>'+esc(JSON.stringify(data.record,null,2))+'</pre>' +
+        (kind === 'parcel' ? '<button id="retained-upstream-parcel-review">' +
+          'Compare with shared investigation evidence</button>' : '') :
+        '<p role="status">No retained record with that exact family and ID.</p>';
+    } else {
+      const rows = data.records;
+      results.innerHTML += '<p>Returned '+esc(data.returned_count)+' original records' +
+        (data.possibly_truncated ? '; the list may have more matches.' : '.')+'</p>' +
+        table(['Original ID','Source','Retained status','County / APN','Inspect'],
+          rows.map((r,i) => [esc(r.record_id),esc(r.source_key || '—'),
+            esc(r.status || '—'),esc([r.county,r.apn].filter(Boolean).join(' · ') || '—'),
+            '<button data-upstream-record="'+i+'">Original payload</button>']));
+      results.querySelectorAll('[data-upstream-record]').forEach(button => {
+        button.onclick = () => perform(() => load(
+          rows[Number(button.dataset.upstreamRecord)].record_id));
+      });
+    }
+    $('retained-upstream-export').onclick = () =>
+      download('original-upstream-inspection.json',data);
+    const parcelReview = $('retained-upstream-parcel-review');
+    if (parcelReview) parcelReview.onclick = () => perform(() =>
+      reviewRetainedParcelInEngine(data.record.record_id));
+  };
+  form.elements.namedItem('kind').onchange = () => {
+    requestSequence++;
+    updateFilters();
+    results.textContent = 'Select exact filters or a record ID, then inspect this family.';
+  };
+  form.onsubmit = event => {event.preventDefault(); perform(() => load());};
+  $('retained-upstream-exact').onclick = () => perform(() =>
+    load(form.elements.namedItem('record_id').value.trim()));
+  updateFilters();
+}
+
 async function renderRetainedSources(box) {
   if (!box.isConnected || activePage !== 'Sources & Collection') return;
   const root = document.createElement('section');
@@ -733,6 +829,7 @@ async function renderRetainedSources(box) {
     (registry.truncated || entries.length > 50 ? ' (bounded)' : '') +
     '. <button id="retained-registry-export">Export full returned registry JSON</button> ' +
     '<button id="retained-original-source-audit">Original offline source audit</button> ' +
+    '<button id="retained-original-upstream">Original upstream evidence</button> ' +
     '<button id="retained-original-external-intelligence">' +
     'Original Shovels/Regrid capability audit</button></p>' +
     table(['Registered source', 'County', 'Verification', 'Last checked', 'Adapter', 'Attributed records'],
@@ -823,6 +920,8 @@ async function renderRetainedSources(box) {
       document.querySelector('#export-original-external-intelligence').onclick =
         () => download('original-source-capability-gap-report.json',report);
     });
+  root.querySelector('#retained-original-upstream').onclick = () =>
+    perform(openRetainedUpstreamInspector);
   root.querySelector('#retained-original-source-audit').onclick = () => perform(async () => {
     const audit = await api('/api/source-offline-audit');
     if (!audit.available) throw Error('Original source registry has not been configured');

@@ -97,7 +97,7 @@ is not an estimate of elapsed work or remaining calendar time:
 | 11 | Acquired-record-native worker handoff and ambiguous-safe dossier/map/relationship-graph convergence | V — independently approved original native worker replay, immutable retained source/parcel verification, unmapped dossier/map and shared graph with no invented point or commerce; CI/browser `92ad8a82` green |
 | 12 | Complete P8-04 governed end-to-end acceptance and final-head regressions without rights/visual drift | V — synthetic end-to-end retained official-response/parcel/worker/investigation/dossier/map/graph and replay regression; full dual-Python CI and browser/visual at `1299fa5` green, source/identity protections preserved; exact pixel parity P8-17 independently open |
 
-**P8-01: 2/8 = 25% verified historical-capability-accounting checkpoints**.
+**P8-01: 3/8 = 38% verified historical-capability-accounting checkpoints**.
 The fixed 83-branch/302-path ledger and complete **43/43 absent-path risk classifications**
 are checked by `tests/test_p8_01_historical_path_ledger.py`, with exact
 historical references, ongoing mandatory behavior obligations, and explicit
@@ -111,7 +111,7 @@ are recorded by additional non-mutating regressions. Application/test HEAD
 and dependency vulnerability audit all passed, no known vulnerabilities found;
 [Command Center visual/browser](https://github.com/TruSudo/Construction-Sight/actions/runs/39793385007)
 **success**. The old historical compliance certificates remain historical only.
-This is file-risk accounting, NOT 25% of the actual behaviors proven equivalent,
+This is checkpoint accounting, NOT 38% of the actual behaviors proven equivalent,
 NOT live-source authority, and NOT P8-01 acceptance. The ledger records 83 divergent branches/302 paths:
 95 current exact blobs, 164 present changed/unproven and 43 absent. Every row
 still says `functional_equivalence: not_assessed_by_this_ledger`. The documented
@@ -127,16 +127,51 @@ reclassify on regression):
 | 01 | Reconstruct complete historical branch/path/blob inventory and account for every path against frozen baseline | V — 83 branches and 302 unique paths, full blob/branch/test integrity at `1299fa5` |
 | 02 | Classify all 43 absent paths by mandatory runtime behavior, archival/recovery artifact, superseded implementation or still-open restoration with evidence | V — 43/43 exact path/ref/blob dispositions, original-source samples, open behavior risk, explicit no-false-parity test and CI/browser green at `2a56454` |
 | 03 | Reconcile all 164 present-but-different/unproven paths at behavioral and assurance contract level, not filename similarity | O |
-| 04 | Prove required runtime and native UI/worker reachability of each relevant one of the 95 byte-identical retained paths | O |
-| 05 | Disposition historical CEQAnet CSV/inbox/maturity parser, transport and failure/recovery assertions against original and guarded native tests | O — source controls accepted under P8-03 but historical exact edge parity remains |
+| 04 | Prove required runtime and native UI/worker reachability of each relevant one of the 95 byte-identical retained paths | O — original upstream list/detail is now connected in a candidate native bridge; full runtime-family proof remains open |
+| 05 | Disposition historical CEQAnet CSV/inbox/maturity parser, transport and failure/recovery assertions against original and guarded native tests | V — all 17 archived assertions dispositioned in the historical regression crosswalk; offline old-format parse/verify and safe plan aliases, strict source/size/unknown-field/tamper checks and create-only reports verified at `45ca3da`; both Python and browser workflows green |
 | 06 | Prove original financial/result authority and numeric rounding semantics or explicitly preserve governed historical differences under P8-09 | O — known half-up/half-even divergence; never alter rates or payouts silently |
 | 07 | Reconcile historical evidence/report/export/verification/package/archive operator families with native proven equivalence under P8-11 | O |
 | 08 | Certify no unidentified mandatory historical remainder across native operations, tested authority, shared investigation views and preserved historical recovery assets; document each open dependent gate separately | O |
 
-P8-01 remains **O** in the 15-gate acceptance register. The 2/8 meter
+P8-01 remains **O** in the 15-gate acceptance register. The 3/8 meter
 cannot be promoted by mere file presence, count, or untested parity claims. Work on P8-08, P8-09
 and P8-11 supplies necessary dependent runtime proofs but does not
 automatically accept P8-01.
+
+### P8-01 checkpoint 05 accepted; original upstream native continuation
+
+**Previously pending application/test HEAD `45ca3da0350c38b2276c79e2f02295bfd04e47e7`
+is now fully verified:** [CI 39884980630](https://github.com/TruSudo/Construction-Sight/actions/runs/39884980630)
+success, **2,964 passed and 2 upstream deprecation warnings on each Python 3.11/3.12**;
+Ruff, strict Mypy (386 modules), JavaScript syntax and dependency integrity/audit
+passed with no known vulnerabilities. [Native browser/USGS 39884980657](https://github.com/TruSudo/Construction-Sight/actions/runs/39884980657)
+success. This closes the fixed CEQAnet historical regression disposition checkpoint
+05, including original CSV planning, untrimmed/header-only offline parse projection,
+old-execution integrity verification, tamper/failure semantics and reports that refuse
+existing targets. Old live execute and redirect behavior remain deliberately superseded
+by the existing governed current source controls. The crosswalk records the exact
+compatibility limits; no current source permission follows from an archived certificate.
+
+**Current upstream connection is an acceptance candidate, not checkpoint 04 closure.**
+The existing Sources & Collection modal now invokes the original
+`list_upstream_operator_records` / `get_upstream_operator_record` against the explicitly
+selected existing database through SQLite `mode=ro`. All 18 original record kinds,
+supported exact filters, a bounded newest list, exact-ID payload inspection and JSON
+export are available. Unknowns, historical status/confidence and original limitations
+are preserved. A selected parcel opens the existing separately approved common-worker
+comparison, without queueing it by inspection. There is no second source store or
+new matching service. Missing configuration is unavailable rather than a fake zero;
+malformed/ambiguous queries, unsupported family filters, incompatible databases,
+symlinks and oversized responses are held. Tests compare native HTTP output with
+the original services, exercise all 18 empty/nonempty families (seven populated),
+retain original database bytes and check the actual native browser export/review.
+Exact-head regression and browser verification are pending publication of this slice.
+
+**Next:** finish the 43 retained runtime modules' actual native/worker behavior
+mapping, including the original result-to-detail enrichment path. Static imports
+alone do not accept checkpoint 04. Changed-path semantics, financial authority and
+full report/archive generation remain independent checkpoints 03/06/07 and P8-08/09/11.
+P8-01 **3/8 = 38%**, overall **11/15 = 73%**; P8-03 and P8-04 stay accepted.
 
 **Next workstream inheritance:** before implementing another remaining ID,
 freeze that ID's own acceptance criteria into a similar numbered, fixed-denominator
