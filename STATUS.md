@@ -241,6 +241,33 @@ parity remains P8-17 open. This is positive proof of one old-to-current
 operator/worker reachability path, not all of P8-01 checkpoint 04, which
 remains **O**. P8-01 remains **3/8 (38%)** and integration **11/15 (73%)**.
 
+### P8-11 original Markdown/JSON report builder native preview — 2026-10-22
+
+Application/test head `9b0951996753ad916e17106986ca4baaf2c39b7a`
+exposes the original `build_ceqanet_operator_package` plus
+`build_ceqanet_operator_report` in native Sources & Collection as an
+**offline, before-export** Markdown/JSON preview. The operator selects only
+the explicitly configured original chain report by its exact retained
+SHA-256; the response is capped at 2 MB. No ZIP, export directory,
+database write, collection, lead, contact or bid is created. A changed
+configured source, missing selection or unsupported query fails closed.
+The integration regression compares the generated Markdown **byte-for-byte**
+to `operator-report.md` inside the subsequently approved and verified
+original archive; the browser checks report preview, per-field counts,
+separate archive authorization, and JSON download, without a second builder.
+
+[Dual-Python CI 39910154834](https://github.com/TruSudo/Construction-Sight/actions/runs/39910154834)
+passed 2,980 tests on each of Python 3.11/3.12, Ruff, strict Mypy,
+JavaScript syntax, dependency integrity and vulnerability audit with no known
+vulnerabilities. [Browser visual job 39910154829](https://github.com/TruSudo/Construction-Sight/actions/runs/39910154829)
+passed the native browser/visual and all 33 action contracts. Its separate
+observational live-USGS job was cancelled by CI while pending and separately
+restarted; latest probe result must be checked before declaring exact-head
+external imagery acceptance. This report preview remains a tested **P8-11
+partial slice**, not the final report/export-family inventory or P8-11 gate
+acceptance. **P8-11 O; P8-01 3/8; Phase 8 11/15 (73%).**
+No main merge, deployment, live source permission or commercial sending.
+
 ### P8-11 native original ZIP verification — verified continuation
 
 Application/test head `c3f72f134199e77f2ea19ea530a9f6f8071d1677`
