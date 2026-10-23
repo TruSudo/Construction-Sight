@@ -11,6 +11,7 @@ from rich.console import Console
 
 from constructionsight.authorization_decision import AuthorizationDeniedError
 from constructionsight.ceqanet_csv_legacy_verification import (
+    parse_archived_ceqanet_csv_bytes,
     verify_archived_ceqanet_csv_execution,
 )
 from constructionsight.ceqanet_csv_live_models import CeqanetCsvLiveExecution
@@ -260,6 +261,28 @@ def verify_live_csv_execution(
     _emit_json(verification.model_dump(mode="json"), output)
     if not verification.passed:
         raise typer.Exit(code=1)
+
+
+@app.command("parse")
+def parse_archived_csv_file(
+    csv_path: Annotated[
+        Path, typer.Argument(help="Original already-retained CEQAnet CSV file."),
+    ],
+    source_url: Annotated[
+        str, typer.Option("--source-url", help="Exact official CSV source URL."),
+    ],
+    output: Annotated[
+        Path | None, typer.Option("--output", help="Optional archival v1 parse report."),
+    ] = None,
+) -> None:
+    """Produce a read-only historical parse v1 report, not current source proof."""
+
+    try:
+        content = read_runtime_artifact(csv_path, max_bytes=2_000_000)
+        report = parse_archived_ceqanet_csv_bytes(content, source_url=source_url)
+    except (OSError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit_json(report, output)
 
 
 @app.command("verify-legacy-execution")
