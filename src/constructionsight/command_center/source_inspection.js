@@ -1680,16 +1680,59 @@ async function renderRetainedCaptureInbox(box) {
                 result_parse: resultParse, detail_parses: detailParses
               });
               const counts = report.original_enrichment.metadata;
+              const sourceMatches = report.retained_source_matches || [];
               modal('Original CEQAnet · offline source comparison',
                 '<p>' + esc(counts.record_count) + ' original record(s); ' +
                 esc(counts.enriched_count) + ' enriched, ' +
                 esc(counts.missing_detail_count) + ' missing detail, ' +
                 esc(counts.sch_mismatch_count) + ' SCH mismatches. These are ' +
                 'historical source claims only; no site, contact or bid is verified.</p>' +
+                '<h3>Compare with already-retained original source records</h3>' +
+                '<p>Only an exactly matching retained SCH with one source row provides ' +
+                'an inspection link. This compares historical claims; it does not ' +
+                'verify pasted evidence, construction activity, an entity relationship, ' +
+                'or approval to queue a worker job. Ambiguous matches are held.</p>' +
+                table(['SCH', 'Retained source status', 'Rows', 'Next review'],
+                  sourceMatches.map((item, index) => [
+                    esc(item.sch_number || '—'), esc(item.status),
+                    esc(item.retained_count === null ? '—' : item.retained_count),
+                    item.status === 'unique_retained_sch' ?
+                      '<button data-original-sch-inspect="' + index +
+                      '">Inspect exact retained source</button>' : '—'
+                  ])) +
                 '<pre>' + esc(JSON.stringify(report, null, 2)) + '</pre>' +
                 '<button id="download-ceqanet-offline-enrichment">Export exact comparison JSON</button>');
               document.querySelector('#download-ceqanet-offline-enrichment').onclick =
                 () => download('original-ceqanet-offline-enrichment.json', report);
+              document.querySelectorAll('[data-original-sch-inspect]').forEach(button => {
+                button.onclick = () => perform(async () => {
+                  const match = sourceMatches[Number(button.dataset.originalSchInspect)];
+                  if (match?.status !== 'unique_retained_sch' || !match.record_id)
+                    throw Error('No unique retained source identity available for review.');
+                  const selected = await api('/api/source-reconciliation?' +
+                    new URLSearchParams({kind: 'ceqa', record_id: match.record_id}));
+                  modal('Existing original source → shared investigation review',
+                    '<p>Read-only inspection of the exact retained database record. ' +
+                    'Parsed result/detail JSON was not persisted or substituted for ' +
+                    'this record. To consider an existing worker handoff, continue ' +
+                    'through the original source-review queue with its independent ' +
+                    'evidence digest and explicit human approval.</p>' +
+                    '<pre>' + esc(JSON.stringify(selected, null, 2)) + '</pre>' +
+                    '<button id="open-retained-sch-source-review">Open existing source review queue</button>');
+                  document.querySelector('#open-retained-sch-source-review').onclick =
+                    () => {
+                      const filters = document.querySelector('#retained-source-filters');
+                      if (!filters) throw Error('Original source review queue is unavailable.');
+                      filters.elements.kind.value = 'ceqa';
+                      filters.elements.county.value = '';
+                      filters.elements.q.value = match.sch_number;
+                      $('action-dialog').close();
+                      modalTicket++;
+                      filters.requestSubmit();
+                      filters.scrollIntoView({block: 'nearest'});
+                    };
+                });
+              });
             } finally { if (button.isConnected) button.disabled = false; }
           });
       };
