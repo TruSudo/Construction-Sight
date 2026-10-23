@@ -181,6 +181,35 @@ Local Chromium download returned truncated archives; browser proof is from the
 successful exact-head GitHub workflow, not a claimed local browser run.
 The subsequent recovery documentation update changes no application or test code.
 
+**Original result-to-detail offline enrichment now reaches the native operator**
+at exact application/test head `b4e293c47383aac385bd7a232b856a36bc317e0d`.
+The existing Sources & Collection interface accepts one saved original CEQAnet
+result-page parse and up to 50 original detail-page parses, delegates to
+`adapters.ceqanet_detail_enrichment.enrich_ceqanet_result_records`, displays
+field provenance, missing-detail status and exact SCH matching, and exports
+the unmodified comparison projection. Original parser schema checks and a
+duplicate-detail-SCH rejection prevent ambiguous joins; 50-record and local
+HTTP bounds apply. It does not re-fetch detail HTML, trust pasted material
+as independently verified, initiate an investigation or commercial workflow,
+or authorize live-source access. A pasted offline parse is not an authenticated
+source observation and is not silently imported.
+
+**Exact-code verification:** [CI 39901033152](https://github.com/TruSudo/Construction-Sight/actions/runs/39901033152)
+passed **2,976 tests each on Python 3.11 and 3.12**, with two existing
+upstream deprecation warnings per interpreter; Ruff, strict Mypy, JavaScript
+syntax, dependency integrity and vulnerability checks completed successfully.
+[Native browser/visual/USGS 39901033115](https://github.com/TruSudo/Construction-Sight/actions/runs/39901033115)
+passed, including the pasted original SCH-match and missing-detail browser
+journey, the existing native workflows and observational USGS probe. Exact
+owner-reference pixel parity remains separately open under P8-17.
+
+This is a concrete original parser/operator reachability improvement toward
+P8-01 checkpoint 04, **not** acceptance of the full 95-path obligation.
+P8-01 therefore stays **3/8 = 38%**, and integration stays **11/15 = 73%**.
+Follow-on work must connect retained parsed evidence through its actual native
+worker/result history and account for the remaining runtime families rather
+than granting equivalence from an import or manual upload alone.
+
 **Next:** finish the 43 retained runtime modules' actual native/worker behavior
 mapping, including the original result-to-detail enrichment path. Static imports
 alone do not accept checkpoint 04. Changed-path semantics, financial authority and
