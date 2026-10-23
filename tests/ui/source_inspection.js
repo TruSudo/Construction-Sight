@@ -556,7 +556,7 @@ const {resolve} = require('node:path');
     await page.locator('#ceqanet-result-parse-json').fill(JSON.stringify({
       metadata: {schema_version: 'ceqanet_result_page_parse.v1'},
       records: [{
-        title: '2026102233', title_source: 'sch_number', sch_number: '2026102233',
+        title: '2099012345', title_source: 'sch_number', sch_number: '2099012345',
         requires_detail_enrichment: true
       }, {
         title: 'Unmatched historical observation', sch_number: '2026102244'
@@ -565,7 +565,7 @@ const {resolve} = require('node:path');
     await page.locator('#ceqanet-detail-parses-json').fill(JSON.stringify([{
       metadata: {schema_version: 'ceqanet_detail_page_parse.v1',
         has_human_title: true},
-      detail: {sch_number: '2026102233',
+      detail: {sch_number: '2099012345',
         title: 'Original historical site label', title_source: 'human_label'}
     }]));
     await page.locator('#compare-ceqanet-offline').click();
@@ -577,6 +577,34 @@ const {resolve} = require('node:path');
         !offlineComparison.includes('"network_executed": false') ||
         !offlineComparison.includes('"commercial_authority_granted": false')) {
       throw Error('Original result/detail reconciliation not usable from native UI');
+    }
+    // The exact SCH crosswalk locates a previously persisted original CEQA
+    // record and opens the existing independently reviewed source queue.
+    await page.waitForSelector('[data-original-sch-inspect="0"]');
+    if (!offlineComparison.includes('phase8:browser:source') ||
+        !offlineComparison.includes('unique_retained_sch') ||
+        !offlineComparison.includes('not_in_retained_source')) {
+      throw Error('Exact retained original SCH crosswalk was not populated');
+    }
+    await page.locator('[data-original-sch-inspect="0"]').click();
+    await page.waitForSelector('#open-retained-sch-source-review');
+    const exactSource = await page.locator('#action-content').textContent();
+    if (!exactSource.includes('phase8:browser:source') ||
+        !exactSource.includes('not_in_native_store') ||
+        !exactSource.includes('no_commercial_authorization')) {
+      throw Error('Enriched observation did not reach existing exact source review');
+    }
+    await page.locator('#open-retained-sch-source-review').click();
+    await page.waitForFunction(() =>
+      document.querySelector('#retained-source-filters')?.elements.q.value ===
+      '2099012345');
+    await page.waitForSelector('#retained-source-queue [data-source-reconcile="0"]');
+    await page.locator('#retained-source-queue [data-source-reconcile="0"]').click();
+    await page.waitForSelector('#source-reconcile-queue');
+    const heldSource = await page.locator('#action-content').textContent();
+    if (!heldSource.includes('phase8:browser:source') ||
+        !heldSource.includes('explicitly confirm')) {
+      throw Error('Existing manual approval boundary was not reused');
     }
     await page.click('#action-close');
     await page.locator('#preview-ceqanet-discovery').click();
