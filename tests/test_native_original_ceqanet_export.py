@@ -85,6 +85,40 @@ def test_native_ceqanet_retained_chain_report_builds_verified_zip_only_on_confir
             assert payload["existing_verified_archive"] is False
             assert payload["commercial_actions_authorized"] is False
             assert payload["network_executed"] is False
+            # Native audit is the original archive CLI verifier, not another
+            # ZIP parser. It must retain per-artifact evidence, exact chain
+            # binding and all no-write/no-network boundaries.
+            verify_url = "/api/source-ceqanet-export-verification"
+            for params in (
+                {"sha256": "0" * 64},
+                {"sha256": original_hash, "other": "x"},
+                {"sha256": original_hash, "other": ""},
+            ):
+                assert client.get(verify_url, params=params).status_code == 409
+            assert client.get(verify_url).status_code == 409
+            checked = client.get(verify_url, params={"sha256": original_hash})
+            assert checked.status_code == 200, checked.text
+            audit = checked.json()
+            assert audit["schema_version"] == (
+                "constructionsight.original-ceqanet-archive-verification/v1"
+            )
+            assert audit["retained_report_sha256"] == original_hash
+            assert audit["source_report_binding_verified"] is True
+            assert audit["passed"] is True
+            assert audit["network_executed"] is False
+            assert audit["archive_mutated"] is False
+            assert audit["source_database_mutated"] is False
+            assert audit["commercial_authority_granted"] is False
+            metadata = audit["original_verification"]["metadata"]
+            assert metadata["schema_version"] == "ceqanet_operator_archive_verification.v1"
+            assert metadata["passed"] is True
+            assert metadata["manifest_status"] == "verified"
+            assert "archive_path" not in metadata
+            assert metadata["verified_count"] == metadata["artifact_count"] >= 5
+            assert all(
+                entry["status"] == "verified"
+                for entry in audit["original_verification"]["artifacts"]
+            )
             download = client.get(payload["archive_url"])
             assert download.status_code == 200, download.text[:500] if (
                 download.status_code != 200
@@ -141,6 +175,14 @@ def test_native_ceqanet_retained_chain_report_builds_verified_zip_only_on_confir
             )
             assert again.status_code == 200, again.text
             assert again.json()["existing_verified_archive"] is True
+            # A changed selected chain report must not authorize inspection
+            # of an archive that was built against the previous contents.
+            report.write_text(json.dumps({
+                **_chain_report(), "extra": "substituted",
+            }), encoding="utf-8")
+            assert client.get(verify_url, params={
+                "sha256": original_hash,
+            }).status_code == 409
             assert client.post(
                 "/api/source-ceqanet-export?extra=1", json=request,
                 headers={"Origin": base},
@@ -149,7 +191,7 @@ def test_native_ceqanet_retained_chain_report_builds_verified_zip_only_on_confir
         server.shutdown()
         server.server_close()
         thread.join()
-    assert hashlib.sha256(report.read_bytes()).hexdigest() == original_hash
+    assert hashlib.sha256(report.read_bytes()).hexdigest() != original_hash
 
 
 def test_original_ceqanet_export_requires_configured_operator_db_and_report(
