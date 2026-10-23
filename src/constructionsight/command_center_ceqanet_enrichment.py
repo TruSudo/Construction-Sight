@@ -13,12 +13,11 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from constructionsight.storage.domain_orm import CeqaDomainRecord
-from constructionsight.storage.operator_read_store import create_operator_read_engine
-
 from constructionsight.adapters.ceqanet_detail_enrichment import (
     enrich_ceqanet_result_records,
 )
+from constructionsight.storage.domain_orm import CeqaDomainRecord
+from constructionsight.storage.operator_read_store import create_operator_read_engine
 
 _MAX_RESULTS = 50
 _MAX_DETAILS = 50
