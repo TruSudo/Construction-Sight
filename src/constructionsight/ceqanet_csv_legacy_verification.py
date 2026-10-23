@@ -128,6 +128,62 @@ def _archived_csv_rows(body: bytes) -> tuple[int, list[str]]:
     return count, headers
 
 
+def parse_archived_ceqanet_csv_bytes(
+    body: bytes, *, source_url: str,
+) -> dict[str, Any]:
+    """Reproduce old offline parse-report fields for historical recovery only.
+
+    Unlike the current source validator, the old parse report may have no SCH
+    source row. Such a result is historical data, never importable source proof.
+    The original executor's 2-MB body bound and a row bound prevent an
+    unbounded archival projection. All URLs are checked against the current
+    exact official URL contract before returning a report.
+    """
+    from constructionsight.ceqanet_csv_service import parse_ceqanet_csv_export_url
+
+    request = parse_ceqanet_csv_export_url(source_url)
+    if request.source_url != source_url:
+        raise ValueError("historical CSV source URL is not canonical")
+    if not body or len(body) > 2_000_000:
+        raise ValueError("archived CSV must be nonempty and at most 2000000 bytes")
+    text = body.decode("utf-8-sig")
+    reader = csv.DictReader(io.StringIO(text, newline=""))
+    if reader.fieldnames is None:
+        raise ValueError("historical CSV lacks a header")
+    headers = [header.strip() for header in reader.fieldnames]
+    if any(not header for header in headers):
+        raise ValueError("historical CSV headers must be nonblank")
+    if len(headers) != len(set(headers)):
+        raise ValueError("historical CSV headers must be unique")
+    records: list[dict[str, Any]] = []
+    try:
+        for row_number, row in enumerate(reader, start=2):
+            if row_number > 10_001:
+                raise ValueError("historical CSV exceeds the 10000-row archival limit")
+            if None in row:
+                raise ValueError("historical CSV row has extra columns")
+            values = {
+                header: "" if row.get(original) is None else str(row[original])
+                for original, header in zip(reader.fieldnames, headers, strict=True)
+            }
+            records.append({"row_number": row_number, "values": values})
+    except csv.Error as exc:
+        raise ValueError(f"historical CSV parse failed: {exc}") from exc
+    return {
+        "schema_version": "ceqanet_csv_parse_report.v1",
+        "source_url": request.source_url,
+        "body_byte_length": len(body),
+        "body_sha256": hashlib.sha256(body).hexdigest(),
+        "headers": headers,
+        "row_count": len(records),
+        "records": records,
+        "limitations": [
+            "CSV values are preserved as source text without semantic field inference",
+            "this parse does not authorize persistence or attachment downloads",
+        ],
+    }
+
+
 def verify_archived_ceqanet_csv_execution(
     payload: dict[str, Any],
 ) -> dict[str, Any]:
