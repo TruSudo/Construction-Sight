@@ -311,7 +311,7 @@ def test_historical_parse_command_retains_v1_headers_and_untrimmed_values(
     }]
     assert report["body_sha256"] == hashlib.sha256(body).hexdigest()
     assert original.read_bytes() == body
-    assert not report["limitations"] == []
+    assert report["limitations"]
 
 
 def test_historical_header_only_csv_parse_is_not_current_verified_evidence(
