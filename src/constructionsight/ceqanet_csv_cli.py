@@ -286,7 +286,6 @@ def parse_archived_csv_file(
 
 
 @app.command("verify-legacy-execution")
-@app.command("verify")
 def verify_archived_csv_execution(
     execution_path: Annotated[
         Path,
@@ -308,6 +307,42 @@ def verify_archived_csv_execution(
         raise typer.BadParameter(str(exc)) from exc
     _emit_json(verification, output)
     if not verification["passed"]:
+        raise typer.Exit(code=1)
+
+
+@app.command("verify")
+def verify_archived_csv_execution_v1_report(
+    execution_path: Annotated[
+        Path,
+        typer.Argument(help="Retained original ceqanet_csv_export_execution.v1 JSON."),
+    ],
+    output: Annotated[
+        Path | None,
+        typer.Option("--output", help="Historical v1 offline verification report."),
+    ] = None,
+) -> None:
+    """Project guarded archive findings into the original read-only v1 report."""
+
+    try:
+        payload: Any = json.loads(read_runtime_text(execution_path))
+        if not isinstance(payload, dict):
+            raise ValueError("archived CEQAnet execution must be a JSON object")
+        verified = verify_archived_ceqanet_csv_execution(payload)
+    except (OSError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+    report = {
+        "schema_version": "ceqanet_csv_export_verification.v1",
+        "passed": verified["passed"],
+        "finding_count": verified["finding_count"],
+        "findings": verified["findings"],
+        "parsed_row_count": verified["historical_parsed_row_count"],
+        "parsed_headers": verified["historical_parsed_headers"],
+        "request_url": payload["request_url"],
+        "execution_digest": payload["execution_digest"],
+    }
+    _emit_json(report, output)
+    if not verified["passed"]:
         raise typer.Exit(code=1)
 
 
