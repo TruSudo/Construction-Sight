@@ -49,23 +49,24 @@ All original files remain available on their named historical Git branches.
 2. **Header-only export:** old `csv.DictReader` returned zero rows as a parse report; current verified source inspection requires an SCH-bearing data row. The new rejection is purposeful: an empty artifact is not affirmative source evidence.
 3. **Whitespace:** old `row[header]` held surrounding value whitespace; canonical inspection strips view-value padding and normalizes header keys. Current live receipt retains original full CSV bytes and SHA; an offline inspection independently retains the raw **digest**, not necessarily the bytes. Test this distinction, rather than claim raw string equality.
 4. **Failure body:** old non-200 response body was retained and verification reported failure; new 403/302 bodies are not retained, to enforce network/access policy. Both mark failure; byte-retention outputs differ intentionally.
-5. **CLI and archived execution artifact:** both versions register the executable `constructionsight-ceqanet-csv`, but the historical entry point `constructionsight.ceqanet_csv_export_cli:app` used `plan --sch`, `parse`, `execute --execute-live`, and `verify` with `ceqanet_csv_export_execution.v1`. Current `constructionsight.ceqanet_csv_cli:app` uses `plan --sch-number`, `inspect-file`, `execute-live`, and `verify-execution` against the newer live-execution schema. The newer verifier has **not been proven to read or verify valid old-format retained evidence**. Current operator planning, guarded execution, inspection and verification exist, but historical CLI argument and output-format compatibility is **unproven**, not automatically equivalent.
+5. **CLI and archived execution artifact:** both versions register the executable `constructionsight-ceqanet-csv`. Current guarded CLI preserves the historic nonexecuting `plan --sch` argument alias, supplies a distinct read-only `parse` command projecting `ceqanet_csv_parse_report.v1` (including original untrimmed source values and header-only archives), and supports offline `verify`/`verify-legacy-execution` for archived `ceqanet_csv_export_execution.v1` evidence. These compatibility paths have strict path/source and byte/row limits; internal archive integrity is expressly not current admissibility. The old live `execute --execute-live` command is **not restored**: authorized current collection requires `execute-live` and independent current lawful-access decisions. The new `verify-execution` remains for current-format evidence. Preexisting external old-command consumers and exact error-message compatibility are not certified; no silent network fallback occurs.
 6. **Bounds/authorization:** old executor allowed up to 2 MB with an injected HTTP client; new CS-NET-003 uses a bounded 10 MB ceiling, no redirect/retry, exact policy, approved request/access identity and separate human approvals. This does not authorize live use today.
 
 ## Workstream boundaries
 
 This crosswalk accounts for all **17 archived tests** in the three missing historical
 test files. It does not claim their old modules can run unchanged or that all
-historical CLI/script consumers have been inventoried. In particular, offline
-verification and readback of original `ceqanet_csv_export_execution.v1`
-artifacts is **not proven in the native toolchain**. Historical external
-automation that relies on old CLI argument names has not been inventoried.
-The native source-control workflow remains accepted under P8-03; P8-20 still
-requires cooperating, lawfully permissioned live-source acceptance.
-**P8-01 checkpoint 05 stays open** until the exact-head test is green and this
-legacy artifact/CLI discrepancy is safely dispositioned (native read-only
-compatibility or a proven existing guarded equivalent). Do not restore old
-redirect-following HTTP execution to solve a read-only historical issue.
+historical external automation is known. The native command now provides a
+bounded, read-only path to old execution evidence and exact archived parse-report
+projection, with safe old `plan --sch` and `verify` aliases. Old live `execute`
+network behavior is deliberately superseded by the independently authorized
+current `execute-live`, rather than silently restored. The new historical
+compatibility tests must pass **exact-head dual-Python CI and native browser**
+before P8-01 checkpoint 05 can be accepted. Treat the original network and
+historical registry-maturity certificates as historical only; P8-20 separately
+requires present lawful-source permission. Historical external clients may
+need documented migration even with safe aliases; this is not a claim that
+unknown external scripts execute unchanged.
 Other changed historical paths (checkpoint 03), result/royalty authority
 (checkpoint 06/P8-09), and complete reports/archives (checkpoint 07/P8-11)
 are independent and still open. No source activation, new financial rule,
