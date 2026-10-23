@@ -1643,6 +1643,56 @@ async function renderRetainedCaptureInbox(box) {
           });
         });
     });
+    const offlineEnrichment = document.createElement('section');
+    offlineEnrichment.className = 'original-ceqanet-offline-enrichment';
+    offlineEnrichment.innerHTML = '<h3>Original CEQAnet result-to-detail comparison</h3>' +
+      '<p>Reconcile previously saved CEQAnet result-page and detail-page parsed ' +
+      'JSON using the original offline enrichment logic. Matches require the ' +
+      'same SCH number. This does not visit websites, verify sites, retain new ' +
+      'records, join contacts or authorize commercial actions.</p>' +
+      '<button id="review-ceqanet-offline-enrichment">Compare saved parses</button>';
+    box.append(offlineEnrichment);
+    offlineEnrichment.querySelector('#review-ceqanet-offline-enrichment').onclick =
+      () => {
+        const ticket = modal('Original CEQAnet · offline result/detail comparison',
+          '<p>Paste one existing result-page parse JSON object and a JSON array ' +
+          'of zero to fifty original detail-page parse objects. This is a local, ' +
+          'read-only comparison; nothing is collected or imported. ' +
+          'Missing details remain missing; duplicate detail SCH numbers are rejected.</p>' +
+          '<label>Original result-page parse JSON' +
+          '<textarea id="ceqanet-result-parse-json" rows="7" maxlength="55000" ' +
+          'spellcheck="false" placeholder="{&quot;metadata&quot;: {...}, &quot;records&quot;: [...]}"></textarea></label>' +
+          '<label>Original detail-page parse JSON array (use [] if none)' +
+          '<textarea id="ceqanet-detail-parses-json" rows="7" maxlength="55000" ' +
+          'spellcheck="false">[]</textarea></label>' +
+          '<button id="compare-ceqanet-offline">Compare existing saved evidence</button>');
+        document.querySelector('#compare-ceqanet-offline').onclick = () =>
+          perform(async () => {
+            if (ticket !== modalTicket || !$('action-dialog').open) return;
+            const resultParse = JSON.parse(
+              document.querySelector('#ceqanet-result-parse-json').value);
+            const detailParses = JSON.parse(
+              document.querySelector('#ceqanet-detail-parses-json').value);
+            const button = document.querySelector('#compare-ceqanet-offline');
+            button.disabled = true;
+            try {
+              const report = await api('/api/source-ceqanet-offline-enrichment', {
+                result_parse: resultParse, detail_parses: detailParses
+              });
+              const counts = report.original_enrichment.metadata;
+              modal('Original CEQAnet · offline source comparison',
+                '<p>' + esc(counts.record_count) + ' original record(s); ' +
+                esc(counts.enriched_count) + ' enriched, ' +
+                esc(counts.missing_detail_count) + ' missing detail, ' +
+                esc(counts.sch_mismatch_count) + ' SCH mismatches. These are ' +
+                'historical source claims only; no site, contact or bid is verified.</p>' +
+                '<pre>' + esc(JSON.stringify(report, null, 2)) + '</pre>' +
+                '<button id="download-ceqanet-offline-enrichment">Export exact comparison JSON</button>');
+              document.querySelector('#download-ceqanet-offline-enrichment').onclick =
+                () => download('original-ceqanet-offline-enrichment.json', report);
+            } finally { if (button.isConnected) button.disabled = false; }
+          });
+      };
     const acquisition = document.createElement('section');
     acquisition.className = 'original-ceqanet-acquisition';
     acquisition.innerHTML = '<h3>Original CEQAnet listing and CSV acquisition</h3>' +
