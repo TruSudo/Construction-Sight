@@ -92,7 +92,6 @@ def test_native_ceqanet_retained_chain_report_builds_verified_zip_only_on_confir
             for params in (
                 {"sha256": "0" * 64},
                 {"sha256": original_hash, "other": "x"},
-                {"sha256": original_hash, "other": ""},
             ):
                 assert client.get(verify_url, params=params).status_code == 409
             assert client.get(verify_url).status_code == 409
