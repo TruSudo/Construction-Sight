@@ -130,6 +130,56 @@ def original_ceqanet_export(
     }
 
 
+
+def original_ceqanet_archive_verification(
+    directory: Path, chain_report: Path | None, *, expected_report_sha256: str,
+) -> dict[str, Any]:
+    """Reuse the original archive verifier against one configured chain report.
+
+    This is an offline operator audit, not authorization to rebuild, extract,
+    promote or send anything. A structurally valid ZIP can still fail its exact
+    retained chain-report identity; that failure must be visible, not hidden.
+    """
+    if not _SHA.fullmatch(expected_report_sha256):
+        raise ValueError("invalid original CEQAnet report digest")
+    selected = _report(chain_report)
+    if selected is None or selected[0] != expected_report_sha256:
+        raise ValueError("retained CEQAnet chain report differs; review selection again")
+    export_root = directory / "original-ceqanet-exports"
+    path = export_root / (expected_report_sha256 + ".zip")
+    if export_root.is_symlink() or path.is_symlink() or not path.is_file():
+        raise ValueError("selected retained CEQAnet ZIP is unavailable or unsafe")
+    verified = verify_ceqanet_operator_archive(archive_path=path)
+    original = verified.to_dict()
+    metadata = original["metadata"]
+    if not isinstance(metadata, dict):
+        raise ValueError("original archive verification metadata is unavailable")
+    # Never disclose local absolute filesystem paths to the operator browser.
+    metadata.pop("archive_path", None)
+    matched = False
+    if verified.passed:
+        raw = read_runtime_artifact(path, max_bytes=128 * 1024 * 1024)
+        with zipfile.ZipFile(BytesIO(raw)) as archive:
+            retained = json.loads(archive.read("operator-package.json"))
+        matched = retained == build_ceqanet_operator_package(selected[1]).to_dict()
+    return {
+        "schema_version": "constructionsight.original-ceqanet-archive-verification/v1",
+        "retained_report_sha256": expected_report_sha256,
+        "original_verification": original,
+        "source_report_binding_verified": matched,
+        "passed": verified.passed and matched,
+        "network_executed": False,
+        "source_database_mutated": False,
+        "archive_mutated": False,
+        "commercial_authority_granted": False,
+        "meaning": (
+            "Original offline ZIP/manifest/artifact verification plus exact retained "
+            "chain-report binding. No site, project, source access or commercial "
+            "authority is established."
+        ),
+    }
+
+
 def original_ceqanet_archive_path(
     directory: Path, *, expected_report_sha256: str,
 ) -> Path:
