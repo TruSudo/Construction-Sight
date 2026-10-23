@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+import hashlib
 import threading
 from pathlib import Path
 
 import httpx
 import pytest
+from sqlalchemy.orm import Session
 
+from constructionsight.storage.database import create_database_engine, initialize_database
+from constructionsight.storage.domain_store import CeqaStore
+from tests.test_operator_dashboard import _record
 from constructionsight.command_center_ceqanet_enrichment import (
     preview_original_ceqanet_enrichment,
 )
@@ -123,3 +128,95 @@ def test_native_http_enrichment_preserves_local_only_authority(tmp_path: Path) -
         server.shutdown()
         server.server_close()
         worker.join()
+
+
+def test_retained_sch_crosswalk_unique_missing_and_ambiguous_without_writes(
+    tmp_path: Path,
+) -> None:
+    original = tmp_path / "original.sqlite3"
+    engine = create_database_engine(f"sqlite:///{original}")
+    initialize_database(engine)
+    with Session(engine) as session, session.begin():
+        CeqaStore(session).upsert(_record("ceqa:unique", state_clearinghouse_number="2026102233"))
+        CeqaStore(session).upsert(_record("ceqa:duplicate:a", state_clearinghouse_number="2026102244"))
+        CeqaStore(session).upsert(_record("ceqa:duplicate:b", state_clearinghouse_number="2026102244"))
+    engine.dispose()
+    before = hashlib.sha256(original.read_bytes()).hexdigest()
+    payload = _payload()
+    records = payload["result_parse"]["records"]
+    records.extend([
+        {"title": "Not found", "sch_number": "2026102255"},
+        {"title": "No SCH supplied", "sch_number": None},
+    ])
+    report = preview_original_ceqanet_enrichment(payload, original)
+    matches = report["retained_source_matches"]
+    assert [item["status"] for item in matches] == [
+        "unique_retained_sch", "ambiguous_retained_sch",
+        "not_in_retained_source", "missing_sch",
+    ]
+    assert matches[0]["record_id"] == "ceqa:unique"
+    assert matches[0]["retained_count"] == 1
+    assert matches[1]["retained_count"] == 2
+    assert all(item["record_id"] is None for item in matches[1:])
+    assert all(item["status"] == "source_database_unavailable" for item in
+               preview_original_ceqanet_enrichment(payload)["retained_source_matches"])
+    assert report["network_executed"] is False
+    assert report["investigation_queued"] is False
+    assert hashlib.sha256(original.read_bytes()).hexdigest() == before
+
+
+def test_enrichment_http_exact_source_links_only_existing_reviewed_evidence(
+    tmp_path: Path,
+) -> None:
+    original = tmp_path / "retained.sqlite3"
+    engine = create_database_engine(f"sqlite:///{original}")
+    initialize_database(engine)
+    with Session(engine) as session, session.begin():
+        CeqaStore(session).upsert(_record("phase8:retained:exact",
+                                         state_clearinghouse_number="2026102233"))
+    engine.dispose()
+    before = hashlib.sha256(original.read_bytes()).hexdigest()
+    server = make_server(
+        snapshot(), 0, tmp_path / "native", operator_database=original,
+    )
+    worker = threading.Thread(target=server.serve_forever, daemon=True)
+    worker.start()
+    try:
+        base = f"http://127.0.0.1:{server.server_port}"
+        with httpx.Client(base_url=base, trust_env=False) as client:
+            response = client.post(
+                "/api/source-ceqanet-offline-enrichment",
+                json=_payload(), headers={"Origin": base},
+            )
+            assert response.status_code == 200, response.text
+            exact = response.json()["retained_source_matches"][0]
+            assert exact["record_id"] == "phase8:retained:exact"
+            assert exact["status"] == "unique_retained_sch"
+            current = client.get("/api/source-reconciliation", params={
+                "kind": "ceqa", "record_id": exact["record_id"],
+            })
+            assert current.status_code == 200, current.text
+            assert current.json()["original_source"]["record_id"] == exact["record_id"]
+            assert current.json()["replay_eligible"] is True
+            assert current.json()["no_commercial_authorization"] is True
+            assert client.get("/api/investigations").json()["available"] is False
+    finally:
+        server.shutdown()
+        server.server_close()
+        worker.join()
+    assert hashlib.sha256(original.read_bytes()).hexdigest() == before
+
+
+def test_enrichment_refuses_unsafe_original_database_and_overlong_sch(
+    tmp_path: Path,
+) -> None:
+    missing = tmp_path / "missing.sqlite3"
+    link = tmp_path / "linked.sqlite3"
+    link.symlink_to(missing)
+    for database in (missing, link):
+        with pytest.raises(ValueError):
+            preview_original_ceqanet_enrichment(_payload(), database)
+    bad = _payload()
+    bad["result_parse"]["records"][0]["sch_number"] = "1" * 129
+    with pytest.raises(ValueError):
+        preview_original_ceqanet_enrichment(bad)
