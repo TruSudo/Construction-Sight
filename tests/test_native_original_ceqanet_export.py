@@ -6,9 +6,9 @@ import hashlib
 import json
 import threading
 import zipfile
-from shutil import copyfile
 from io import BytesIO
 from pathlib import Path
+from shutil import copyfile
 
 import httpx
 
