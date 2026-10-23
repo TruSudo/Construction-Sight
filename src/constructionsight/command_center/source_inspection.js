@@ -2588,8 +2588,31 @@ async function renderRetainedCeqanetExport(box) {
             encodeURIComponent(sha) + '&artifact=' + encodeURIComponent(name) +
             '" download="' + name + '">' + esc(name) + '</a>'
           ).join(' · ') + '</p>' +
+          '<button id="review-original-export-integrity">Inspect original archive integrity</button>' +
           '<details><summary>Verification receipt</summary><pre>' +
           esc(JSON.stringify(receipt, null, 2)) + '</pre></details>';
+        output.querySelector('#review-original-export-integrity').onclick =
+          () => perform(async () => {
+            const verification = await api('/api/source-ceqanet-export-verification?' +
+              new URLSearchParams({sha256: sha}));
+            const original = verification.original_verification || {};
+            const metadata = original.metadata || {};
+            modal('Original CEQAnet ZIP · independent integrity review',
+              '<p>The preserved archive verifier checks the ZIP, manifest, ' +
+              'each listed artifact and its exact binding to the configured chain ' +
+              'report. This is historical document integrity, not project ' +
+              'verification, source access approval or commercial authority.</p>' +
+              '<p><strong>Overall integrity: ' +
+              (verification.passed ? 'PASS' : 'FAIL') + '</strong> · ' +
+              'artifact checks: ' + esc(metadata.verified_count ?? '—') + '/' +
+              esc(metadata.artifact_count ?? '—') + ' · chain binding: ' +
+              (verification.source_report_binding_verified ? 'verified' : 'not verified') +
+              '</p>' +
+              '<pre>' + esc(JSON.stringify(verification, null, 2)) + '</pre>' +
+              '<button id="export-original-archive-integrity-json">Export verification JSON</button>');
+            document.querySelector('#export-original-archive-integrity-json').onclick =
+              () => download('original-ceqanet-archive-verification.json', verification);
+          });
       } finally {
         if (generate.isConnected) generate.disabled = false;
       }
