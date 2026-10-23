@@ -549,6 +549,36 @@ const {resolve} = require('node:path');
       throw Error('Unknown CEQAnet access facts did not fail closed');
     }
     await page.click('#action-close');
+    // Result-to-detail matching is available to native operators without the
+    // original CLI and never performs a live source request or site promotion.
+    await page.locator('#review-ceqanet-offline-enrichment').click();
+    await page.waitForSelector('#compare-ceqanet-offline');
+    await page.locator('#ceqanet-result-parse-json').fill(JSON.stringify({
+      metadata: {schema_version: 'ceqanet_result_page_parse.v1'},
+      records: [{
+        title: '2026102233', title_source: 'sch_number', sch_number: '2026102233',
+        requires_detail_enrichment: true
+      }, {
+        title: 'Unmatched historical observation', sch_number: '2026102244'
+      }]
+    }));
+    await page.locator('#ceqanet-detail-parses-json').fill(JSON.stringify([{
+      metadata: {schema_version: 'ceqanet_detail_page_parse.v1',
+        has_human_title: true},
+      detail: {sch_number: '2026102233',
+        title: 'Original historical site label', title_source: 'human_label'}
+    }]));
+    await page.locator('#compare-ceqanet-offline').click();
+    await page.waitForSelector('#download-ceqanet-offline-enrichment');
+    const offlineComparison = await page.locator('#action-content').textContent();
+    if (!offlineComparison.includes('Original historical site label') ||
+        !offlineComparison.includes('missing_detail') ||
+        !offlineComparison.includes('detail_page') ||
+        !offlineComparison.includes('"network_executed": false') ||
+        !offlineComparison.includes('"commercial_authority_granted": false')) {
+      throw Error('Original result/detail reconciliation not usable from native UI');
+    }
+    await page.click('#action-close');
     await page.locator('#preview-ceqanet-discovery').click();
     await page.waitForSelector('#ceqanet-discovery-run');
     const discoveryPreview = await page.locator('#action-content').textContent();
