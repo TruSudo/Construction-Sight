@@ -6,7 +6,15 @@ identity inference, retained-data mutation or commercial authorization.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, cast
+
+from sqlalchemy import func, select
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
+
+from constructionsight.storage.domain_orm import CeqaDomainRecord
+from constructionsight.storage.operator_read_store import create_operator_read_engine
 
 from constructionsight.adapters.ceqanet_detail_enrichment import (
     enrich_ceqanet_result_records,
@@ -16,7 +24,9 @@ _MAX_RESULTS = 50
 _MAX_DETAILS = 50
 
 
-def preview_original_ceqanet_enrichment(payload: dict[str, Any]) -> dict[str, Any]:
+def preview_original_ceqanet_enrichment(
+    payload: dict[str, Any], database: Path | None = None,
+) -> dict[str, Any]:
     """Run the retained offline enrichment algorithm on supplied parsed evidence."""
     if set(payload) != {"result_parse", "detail_parses"}:
         raise ValueError("exact original result-parse and detail-parses fields required")
@@ -64,6 +74,9 @@ def preview_original_ceqanet_enrichment(payload: dict[str, Any]) -> dict[str, An
     return {
         "schema_version": "constructionsight.native-ceqanet-offline-enrichment/v1",
         "original_enrichment": report.to_dict(),
+        "retained_source_matches": _exact_retained_source_matches(
+            database, cast(list[dict[str, Any]], records)
+        ),
         "read_only": True,
         "network_executed": False,
         "source_database_mutated": False,
@@ -77,3 +90,72 @@ def preview_original_ceqanet_enrichment(payload: dict[str, Any]) -> dict[str, An
             "No collection, worker action, source promotion, outreach or bid is authorized.",
         ],
     }
+
+
+
+def _exact_retained_source_matches(
+    database: Path | None, records: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Compare untrusted parsed SCH labels with existing exact retained source keys.
+
+    This is a separately observed local source inventory, not evidence authentication,
+    an enrichment import, a project identity join or investigation authorization.
+    Ambiguous SCH groups never provide an actionable record ID.
+    """
+    numbers: list[str | None] = []
+    for record in records:
+        raw = record.get("sch_number")
+        if raw is None:
+            numbers.append(None)
+        elif not isinstance(raw, str) or len(raw) > 128:
+            raise ValueError("original result SCH must be a bounded string or absent")
+        else:
+            numbers.append(raw.strip() or None)
+
+    if database is None:
+        return [
+            {"sch_number": number, "status": "source_database_unavailable",
+             "record_id": None, "retained_count": None}
+            for number in numbers
+        ]
+    if database.is_symlink() or not database.is_file():
+        raise ValueError("original operator database must be an existing regular file")
+    engine = create_operator_read_engine(database)
+    try:
+        with Session(engine, autoflush=False) as session:
+            distinct = sorted({number for number in numbers if number is not None})
+            groups: dict[str, tuple[int, str]] = {}
+            if distinct:
+                rows = session.execute(
+                    select(
+                        CeqaDomainRecord.state_clearinghouse_number,
+                        func.count(),
+                        func.min(CeqaDomainRecord.ceqa_key),
+                    ).where(
+                        CeqaDomainRecord.state_clearinghouse_number.in_(distinct)
+                    ).group_by(CeqaDomainRecord.state_clearinghouse_number)
+                ).all()
+                groups = {
+                    number: (count, key)
+                    for number, count, key in rows
+                    if isinstance(number, str) and isinstance(key, str)
+                }
+    except SQLAlchemyError as exc:
+        raise ValueError("original retained CEQA source comparison is unavailable") from exc
+    finally:
+        engine.dispose()
+    matches: list[dict[str, Any]] = []
+    for number in numbers:
+        count, key = groups.get(number, (0, "")) if number else (0, "")
+        matches.append({
+            "sch_number": number,
+            "status": (
+                "missing_sch" if number is None else
+                "not_in_retained_source" if count == 0 else
+                "unique_retained_sch" if count == 1 else
+                "ambiguous_retained_sch"
+            ),
+            "record_id": key if count == 1 else None,
+            "retained_count": count,
+        })
+    return matches
