@@ -10,14 +10,14 @@ import httpx
 import pytest
 from sqlalchemy.orm import Session
 
-from constructionsight.storage.database import create_database_engine, initialize_database
-from constructionsight.storage.domain_store import CeqaStore
-from tests.test_operator_dashboard import _record
 from constructionsight.command_center_ceqanet_enrichment import (
     preview_original_ceqanet_enrichment,
 )
 from constructionsight.live_command_center import make_server
+from constructionsight.storage.database import create_database_engine, initialize_database
+from constructionsight.storage.domain_store import CeqaStore
 from tests.test_command_center_investigation_bridge import snapshot
+from tests.test_operator_dashboard import _record
 
 
 def _payload() -> dict[str, object]:
