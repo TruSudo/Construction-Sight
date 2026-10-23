@@ -127,7 +127,7 @@ reclassify on regression):
 | 01 | Reconstruct complete historical branch/path/blob inventory and account for every path against frozen baseline | V — 83 branches and 302 unique paths, full blob/branch/test integrity at `1299fa5` |
 | 02 | Classify all 43 absent paths by mandatory runtime behavior, archival/recovery artifact, superseded implementation or still-open restoration with evidence | V — 43/43 exact path/ref/blob dispositions, original-source samples, open behavior risk, explicit no-false-parity test and CI/browser green at `2a56454` |
 | 03 | Reconcile all 164 present-but-different/unproven paths at behavioral and assurance contract level, not filename similarity | O |
-| 04 | Prove required runtime and native UI/worker reachability of each relevant one of the 95 byte-identical retained paths | O — original upstream list/detail is now connected in a candidate native bridge; full runtime-family proof remains open |
+| 04 | Prove required runtime and native UI/worker reachability of each relevant one of the 95 byte-identical retained paths | O — original upstream list/detail and native export/parcel review verified at `edd8649`; full runtime-family proof remains open |
 | 05 | Disposition historical CEQAnet CSV/inbox/maturity parser, transport and failure/recovery assertions against original and guarded native tests | V — all 17 archived assertions dispositioned in the historical regression crosswalk; offline old-format parse/verify and safe plan aliases, strict source/size/unknown-field/tamper checks and create-only reports verified at `45ca3da`; both Python and browser workflows green |
 | 06 | Prove original financial/result authority and numeric rounding semantics or explicitly preserve governed historical differences under P8-09 | O — known half-up/half-even divergence; never alter rates or payouts silently |
 | 07 | Reconcile historical evidence/report/export/verification/package/archive operator families with native proven equivalence under P8-11 | O |
@@ -152,7 +152,8 @@ existing targets. Old live execute and redirect behavior remain deliberately sup
 by the existing governed current source controls. The crosswalk records the exact
 compatibility limits; no current source permission follows from an archived certificate.
 
-**Current upstream connection is an acceptance candidate, not checkpoint 04 closure.**
+**Original upstream inspection slice accepted at application/test HEAD
+`edd86492f09568d567aa576b9b580543df5eafe4`; checkpoint 04 remains open.**
 The existing Sources & Collection modal now invokes the original
 `list_upstream_operator_records` / `get_upstream_operator_record` against the explicitly
 selected existing database through SQLite `mode=ro`. All 18 original record kinds,
@@ -165,7 +166,20 @@ malformed/ambiguous queries, unsupported family filters, incompatible databases,
 symlinks and oversized responses are held. Tests compare native HTTP output with
 the original services, exercise all 18 empty/nonempty families (seven populated),
 retain original database bytes and check the actual native browser export/review.
-Exact-head regression and browser verification are pending publication of this slice.
+[Exact-head dual-Python CI 39886807709](https://github.com/TruSudo/Construction-Sight/actions/runs/39886807709)
+and [native browser/USGS 39886807649](https://github.com/TruSudo/Construction-Sight/actions/runs/39886807649)
+both succeeded. Python 3.11 and 3.12 each passed **2,967 tests** with two existing
+upstream Typer/Click deprecation warnings; Ruff, strict Mypy (387 modules), JavaScript
+syntax and dependency integrity/vulnerability checks passed with no known
+vulnerabilities. The actual browser exercised the 18-family selector, exact source
+filter, bounded list, original payload, JSON download, missing exact ID, unsupported
+filter controls and separately unchecked original parcel/worker review. Existing
+33-action/33-contract journeys and structure/fonts/visual ratchet also passed;
+exact approved-reference pixel parity remains independently open as P8-17.
+The three new focused upstream regressions, local strict Mypy and Ruff also passed.
+Local Chromium download returned truncated archives; browser proof is from the
+successful exact-head GitHub workflow, not a claimed local browser run.
+The subsequent recovery documentation update changes no application or test code.
 
 **Next:** finish the 43 retained runtime modules' actual native/worker behavior
 mapping, including the original result-to-detail enrichment path. Static imports
