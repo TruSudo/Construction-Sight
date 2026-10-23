@@ -159,8 +159,11 @@ def original_ceqanet_archive_verification(
     matched = False
     if verified.passed:
         raw = read_runtime_artifact(path, max_bytes=128 * 1024 * 1024)
-        with zipfile.ZipFile(BytesIO(raw)) as archive:
-            retained = json.loads(archive.read("operator-package.json"))
+        try:
+            with zipfile.ZipFile(BytesIO(raw)) as archive:
+                retained = json.loads(archive.read("operator-package.json"))
+        except (KeyError, UnicodeDecodeError, json.JSONDecodeError, zipfile.BadZipFile):
+            retained = None
         matched = retained == build_ceqanet_operator_package(selected[1]).to_dict()
     return {
         "schema_version": "constructionsight.original-ceqanet-archive-verification/v1",
