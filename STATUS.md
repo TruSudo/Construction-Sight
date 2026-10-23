@@ -127,7 +127,7 @@ reclassify on regression):
 | 01 | Reconstruct complete historical branch/path/blob inventory and account for every path against frozen baseline | V — 83 branches and 302 unique paths, full blob/branch/test integrity at `1299fa5` |
 | 02 | Classify all 43 absent paths by mandatory runtime behavior, archival/recovery artifact, superseded implementation or still-open restoration with evidence | V — 43/43 exact path/ref/blob dispositions, original-source samples, open behavior risk, explicit no-false-parity test and CI/browser green at `2a56454` |
 | 03 | Reconcile all 164 present-but-different/unproven paths at behavioral and assurance contract level, not filename similarity | O |
-| 04 | Prove required runtime and native UI/worker reachability of each relevant one of the 95 byte-identical retained paths | O — original upstream list/detail and native export/parcel review verified at `edd8649`; full runtime-family proof remains open |
+| 04 | Prove required runtime and native UI/worker reachability of each relevant one of the 95 byte-identical retained paths | O — original upstream list/detail and native export/parcel review verified at `edd8649`; offline CEQAnet enrichment and exact retained SCH-to-existing reviewed worker path verified at `c9bd5fc`; full runtime-family proof remains open |
 | 05 | Disposition historical CEQAnet CSV/inbox/maturity parser, transport and failure/recovery assertions against original and guarded native tests | V — all 17 archived assertions dispositioned in the historical regression crosswalk; offline old-format parse/verify and safe plan aliases, strict source/size/unknown-field/tamper checks and create-only reports verified at `45ca3da`; both Python and browser workflows green |
 | 06 | Prove original financial/result authority and numeric rounding semantics or explicitly preserve governed historical differences under P8-09 | O — known half-up/half-even divergence; never alter rates or payouts silently |
 | 07 | Reconcile historical evidence/report/export/verification/package/archive operator families with native proven equivalence under P8-11 | O |
@@ -209,6 +209,37 @@ P8-01 therefore stays **3/8 = 38%**, and integration stays **11/15 = 73%**.
 Follow-on work must connect retained parsed evidence through its actual native
 worker/result history and account for the remaining runtime families rather
 than granting equivalence from an import or manual upload alone.
+
+**P8-01 original CEQAnet enriched-result → exact retained-source review is verified**
+at application/test HEAD `c9bd5fc0210bc67d5dd364aed3f4eeea9d84aa89`.
+After offline enrichment, the native operator sees a separately queried, read-only
+exact-SCH comparison against the already configured original CEQA database. A
+single exact retained SCH exposes that persisted original record ID and opens
+the **existing** original-to-canonical reconciliation preview; the operator can
+continue into the **existing** source-review queue and must independently
+approve any guarded worker replay. Zero matches are reported missing; multiple
+original rows sharing an SCH are explicitly ambiguous and never expose one
+chosen record. An absent original source database is reported unavailable.
+Original SQLite bytes are unchanged; the user-supplied parsed JSON is neither
+authenticated nor persisted. Current site/project identity, contact authority,
+source access, outreach and bids remain unverified/unapproved. Existing captured
+provenance time is required; the regression fixture was corrected when its
+missing timestamp was accurately rejected, without weakening the guard.
+
+**Exact-code verification:**
+[Python 3.11/3.12 CI 39904241304](https://github.com/TruSudo/Construction-Sight/actions/runs/39904241304)
+**success**, 2,979 tests passed on **each** Python version with two existing
+upstream Typer/Click warnings per interpreter; Ruff, strict Mypy, JavaScript
+syntax and dependency integrity/vulnerability audits passed with no known
+vulnerabilities.
+[Native browser/visual/USGS 39904241091](https://github.com/TruSudo/Construction-Sight/actions/runs/39904241091)
+**success**, including exact retained source ID, comparison, existing
+reconciliation/review handoff and preservation of the wider interface,
+33-action contract, Relationship Graph and observational USGS checks.
+No main merge or owner-device deployment. Pixel-perfect owner-reference
+parity remains P8-17 open. This is positive proof of one old-to-current
+operator/worker reachability path, not all of P8-01 checkpoint 04, which
+remains **O**. P8-01 remains **3/8 (38%)** and integration **11/15 (73%)**.
 
 **Next:** finish the 43 retained runtime modules' actual native/worker behavior
 mapping, including the original result-to-detail enrichment path. Static imports
