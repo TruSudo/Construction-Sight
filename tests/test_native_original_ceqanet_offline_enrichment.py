@@ -138,8 +138,12 @@ def test_retained_sch_crosswalk_unique_missing_and_ambiguous_without_writes(
     initialize_database(engine)
     with Session(engine) as session, session.begin():
         CeqaStore(session).upsert(_record("ceqa:unique", state_clearinghouse_number="2026102233"))
-        CeqaStore(session).upsert(_record("ceqa:duplicate:a", state_clearinghouse_number="2026102244"))
-        CeqaStore(session).upsert(_record("ceqa:duplicate:b", state_clearinghouse_number="2026102244"))
+        CeqaStore(session).upsert(_record(
+            "ceqa:duplicate:a", state_clearinghouse_number="2026102244",
+        ))
+        CeqaStore(session).upsert(_record(
+            "ceqa:duplicate:b", state_clearinghouse_number="2026102244",
+        ))
     engine.dispose()
     before = hashlib.sha256(original.read_bytes()).hexdigest()
     payload = _payload()
