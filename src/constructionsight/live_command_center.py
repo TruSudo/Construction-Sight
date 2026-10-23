@@ -120,6 +120,7 @@ from constructionsight.command_center_investigations import (
 from constructionsight.command_center_legacy_attribution import original_workflow_source_attribution
 from constructionsight.command_center_legacy_export import (
     original_ceqanet_archive_path,
+    original_ceqanet_archive_verification,
     original_ceqanet_artifact_bytes,
     original_ceqanet_export,
     original_ceqanet_export_status,
@@ -680,6 +681,18 @@ def make_server(
                 if urlsplit(self.path).query or urlsplit(self.path).fragment:
                     raise ValueError("native ArcGIS proof inventory takes no query")
                 value = native_arcgis_proof_inventory(directory)
+                body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
+            elif path == "/api/source-ceqanet-export-verification":
+                if (
+                    directory is None or set(query) != {"sha256"}
+                    or len(query["sha256"]) != 1
+                    or urlsplit(self.path).fragment
+                ):
+                    raise ValueError("select one exact retained original CEQAnet archive")
+                value = original_ceqanet_archive_verification(
+                    directory, operator_ceqanet_chain_report,
+                    expected_report_sha256=query["sha256"][0],
+                )
                 body, mime = json.dumps(value, allow_nan=False).encode(), "application/json"
             elif path == "/api/source-ceqanet-export-status":
                 if urlsplit(self.path).query:
