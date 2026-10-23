@@ -240,3 +240,37 @@ def test_readonly_cli_rejects_symlink_source_and_non_object_json(tmp_path: Path)
         app, ["verify-legacy-execution", str(target), "--output", str(out)],
     ).exit_code != 0
     assert not out.exists()
+
+
+def test_safe_legacy_cli_aliases_are_readonly_and_non_authorizing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Old plan flag and verify command work; old execute never becomes a transport."""
+    def no_connection(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("historical CLI aliases must not make network requests")
+
+    monkeypatch.setattr(socket, "create_connection", no_connection)
+    original_path = tmp_path / "old-execution.json"
+    original_path.write_text(json.dumps(_artifact()), encoding="utf-8")
+    before = original_path.read_bytes()
+
+    modern = _RUNNER.invoke(app, ["plan", "--sch-number", "2026030377"])
+    legacy = _RUNNER.invoke(app, ["plan", "--sch", "2026030377"])
+    assert modern.exit_code == legacy.exit_code == 0
+    assert json.loads(modern.output) == json.loads(legacy.output)
+    assert json.loads(legacy.output)["network_authorized"] is False
+    assert json.loads(legacy.output)["persistence_authorized"] is False
+
+    verification = _RUNNER.invoke(app, ["verify", str(original_path)])
+    assert verification.exit_code == 0, verification.output
+    verification_payload = json.loads(verification.output)
+    assert verification_payload["passed"] is True
+    assert verification_payload["current_source_authorized"] is False
+    assert verification_payload["network_executed_by_verification"] is False
+    assert original_path.read_bytes() == before
+
+    blocked_old_execution = _RUNNER.invoke(
+        app, ["execute", "--sch", "2026030377", "--execute-live"],
+    )
+    assert blocked_old_execution.exit_code != 0
+    assert original_path.read_bytes() == before
