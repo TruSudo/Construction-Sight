@@ -19,6 +19,7 @@ from constructionsight.ceqanet_operator_archive import build_ceqanet_operator_ar
 from constructionsight.ceqanet_operator_archive_verify import verify_ceqanet_operator_archive
 from constructionsight.ceqanet_operator_export import build_ceqanet_operator_export
 from constructionsight.ceqanet_operator_package import build_ceqanet_operator_package
+from constructionsight.ceqanet_operator_report import build_ceqanet_operator_report
 from constructionsight.storage.runtime_artifacts import open_runtime_artifact, read_runtime_artifact
 
 _SHA = re.compile(r"[0-9a-f]{64}")
@@ -40,6 +41,35 @@ def _report(chain_report: Path | None) -> tuple[str, dict[str, Any]] | None:
     ):
         raise ValueError("retained CEQAnet chain report schema is incompatible")
     return digest, report
+
+
+def original_ceqanet_report_preview(
+    chain_report: Path | None, *, expected_report_sha256: str,
+) -> dict[str, Any]:
+    """Run the original package + Markdown report builders fully in memory."""
+    if not _SHA.fullmatch(expected_report_sha256):
+        raise ValueError("invalid original CEQAnet report digest")
+    selected = _report(chain_report)
+    if selected is None or selected[0] != expected_report_sha256:
+        raise ValueError("original CEQAnet chain report changed; select and review again")
+    package = build_ceqanet_operator_package(selected[1]).to_dict()
+    report = build_ceqanet_operator_report(package).to_dict()
+    if len(json.dumps(report, allow_nan=False).encode("utf-8")) > 2_000_000:
+        raise ValueError("original report preview exceeds 2 MB; use bounded archive workflow")
+    return {
+        "schema_version": "constructionsight.original-ceqanet-report-preview/v1",
+        "retained_report_sha256": selected[0],
+        "original_report": report,
+        "read_only": True,
+        "network_executed": False,
+        "source_database_mutated": False,
+        "archive_created": False,
+        "commercial_authority_granted": False,
+        "meaning": (
+            "Original offline operator Markdown/JSON report from the exact configured "
+            "chain report, not independently verified project or source authority."
+        ),
+    }
 
 
 def original_ceqanet_export_status(chain_report: Path | None) -> dict[str, Any]:
