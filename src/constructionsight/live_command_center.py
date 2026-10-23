@@ -73,6 +73,9 @@ from constructionsight.command_center_ceqanet_detail import (
     execute_reviewed_original_ceqanet_detail,
     preview_original_ceqanet_detail,
 )
+from constructionsight.command_center_ceqanet_enrichment import (
+    preview_original_ceqanet_enrichment,
+)
 from constructionsight.command_center_ceqanet_discovery import (
     execute_reviewed_original_ceqanet_discovery,
     preview_original_ceqanet_discovery,
@@ -1375,6 +1378,7 @@ def make_server(
                 "/api/source-ceqanet-discovery",
                 "/api/source-ceqanet-detail-preview",
                 "/api/source-ceqanet-detail",
+                "/api/source-ceqanet-offline-enrichment",
                 "/api/source-smarts-catalog-preview",
                 "/api/source-smarts-catalog",
                 "/api/source-smarts-roster-preview",
@@ -1883,6 +1887,16 @@ def make_server(
                             operator_ceqanet_csv_series_manifest = Path(
                                 result["series_manifest_path"]
                             )
+                    elif path == "/api/source-ceqanet-offline-enrichment":
+                        if (
+                            urlsplit(self.path).query
+                            or urlsplit(self.path).fragment
+                            or self.headers.get_all("Host", []) != [host]
+                            or self.headers.get_all("Origin", []) != [f"http://{host}"]
+                            or self.headers.get("Sec-Fetch-Site") == "cross-site"
+                        ):
+                            raise ValueError("exact same-origin CEQAnet offline review required")
+                        result = preview_original_ceqanet_enrichment(payload)
                     elif path in (
                         "/api/source-ceqanet-detail-preview",
                         "/api/source-ceqanet-detail",
