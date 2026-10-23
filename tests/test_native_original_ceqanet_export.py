@@ -46,6 +46,30 @@ def test_native_ceqanet_retained_chain_report_builds_verified_zip_only_on_confir
             assert status.status_code == 200, status.text
             assert status.json()["retained_report_sha256"] == original_hash
             assert status.json()["network_executed"] is False
+            report_url = "/api/source-ceqanet-report-preview"
+            assert client.get(report_url).status_code == 409
+            assert client.get(report_url, params={"sha256": "0" * 64}).status_code == 409
+            assert client.get(report_url, params={
+                "sha256": original_hash, "extra": "x",
+            }).status_code == 409
+            preview_response = client.get(report_url, params={"sha256": original_hash})
+            assert preview_response.status_code == 200, preview_response.text
+            original_preview = preview_response.json()
+            assert original_preview["schema_version"] == (
+                "constructionsight.original-ceqanet-report-preview/v1"
+            )
+            assert original_preview["retained_report_sha256"] == original_hash
+            assert original_preview["archive_created"] is False
+            assert original_preview["network_executed"] is False
+            assert original_preview["source_database_mutated"] is False
+            assert original_preview["commercial_authority_granted"] is False
+            assert original_preview["original_report"]["metadata"]["schema_version"] == (
+                "ceqanet_operator_report.v1"
+            )
+            assert original_preview["original_report"]["markdown"].startswith(
+                "# CEQAnet Operator Report"
+            )
+            assert not (native / "original-ceqanet-exports").exists()
             request = {
                 "expected_report_sha256": original_hash,
                 "caller_confirmation": True,
@@ -134,6 +158,9 @@ def test_native_ceqanet_retained_chain_report_builds_verified_zip_only_on_confir
                 assert "operator-report.md" in archive.namelist()
                 assert "operator-package.json" in archive.namelist()
                 expected_markdown = archive.read("operator-report.md")
+                assert expected_markdown.decode() == (
+                    original_preview["original_report"]["markdown"]
+                )
                 artifacts = {
                     name: archive.read(name)
                     for name in (
@@ -185,6 +212,9 @@ def test_native_ceqanet_retained_chain_report_builds_verified_zip_only_on_confir
                 **_chain_report(), "extra": "substituted",
             }), encoding="utf-8")
             assert client.get(verify_url, params={
+                "sha256": original_hash,
+            }).status_code == 409
+            assert client.get(report_url, params={
                 "sha256": original_hash,
             }).status_code == 409
             assert client.post(
