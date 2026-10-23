@@ -241,6 +241,35 @@ parity remains P8-17 open. This is positive proof of one old-to-current
 operator/worker reachability path, not all of P8-01 checkpoint 04, which
 remains **O**. P8-01 remains **3/8 (38%)** and integration **11/15 (73%)**.
 
+### P8-11 native original ZIP verification — verified continuation
+
+Application/test head `c3f72f134199e77f2ea19ea530a9f6f8071d1677`
+exposes an independent **read-only** original CEQAnet archive audit under
+Sources & Collection, using the existing `verify_ceqanet_operator_archive`
+service and its artifact, manifest, duplicate-filename, and bounded ZIP checks.
+A configured retained chain-report SHA-256 must agree exactly with the
+selected archive. A separately valid ZIP belonging to a different chain
+report is rejected as `source_report_binding_verified: false` and
+`passed: false`; no second ZIP verifier, report generator or store exists.
+The audit returns per-artifact integrity and downloadable JSON with local
+absolute archive paths redacted. Malformed/missing operator-package JSON
+fails closed, and bad digest, missing configured report, absent archive, and
+unsafe paths are denied. The existing separate human approval for initial
+operator ZIP generation remains unchanged. The audit makes no network
+requests, operator-source writes, investigation jobs or commercial actions.
+
+[CI 39908591195](https://github.com/TruSudo/Construction-Sight/actions/runs/39908591195)
+passed **2,980 tests on Python 3.11 and 2,980 on Python 3.12**,
+Ruff, strict Mypy, JavaScript syntax, dependency integrity and no-known-
+vulnerability audit, with two existing Typer/Click deprecation warnings per
+interpreter. [Native browser/visual/USGS 39908591175](https://github.com/TruSudo/Construction-Sight/actions/runs/39908591175)
+passed including ZIP creation, original verifier modal, per-artifact
+findings, JSON export, existing relationship graph and native controls.
+This accepts **only** the archive-verification subfamily of P8-11;
+generation of every historical report/evidence/audit family is not proven.
+P8-11 remains **O**, P8-01 remains **3/8**, and the Phase 8 gate count
+remains **11/15 (73%)**. No main merge or owner-device deployment.
+
 **Next:** finish the 43 retained runtime modules' actual native/worker behavior
 mapping, including the original result-to-detail enrichment path. Static imports
 alone do not accept checkpoint 04. Changed-path semantics, financial authority and
@@ -428,7 +457,7 @@ bugs. This fixes the acceptance denominator, not the number of code changes.
 | P8-08 | Investigation-to-qualified-lead handoff | O — investigations remain unassessed; native commercial writes resolve `current()["rows"]`; original `product_integration_service` provides review/dedupe/workflow behavior not proven equivalent for canonical investigations | An explicitly reviewed eligible investigation reaches the existing lead/commercial workflow with stable lineage, dedupe, evidence-backed readiness/reasons and contact/authority gates. Unqualified investigations remain visible and blocked from unauthorized commerce. |
 | P8-09 | Historical commercial workflow continuity | O — validated history, finance lineage and no-send previews exist; original transition/result-apply services are not exposed by the native handlers inspected | Continue an eligible retained workflow through authorized transitions and outcome/correction operations from the native UI, or prove an equivalent preserving its exact history, money and source/investigation attribution. Historical shares never automatically become native entitlements/payments. Physical database merging is not required. |
 | P8-10 | Source/investigation watches and material alerts | V — existing source and canonical watches both project into one native notification inbox; full cross-source worker, restart, read/archive/acknowledge, browser UI/dossier and duplicate tests passed on `a3886ba` (2,818 Python tests on 3.11 and 3.12; visual browser workflow successful). No background polling or external delivery inferred. | A watched canonical/original source change produces the correct persistent, deduplicated native notification with exact lineage, including worker restart and read/archive behavior. External delivery only if already implemented and separately authorized. |
-| P8-11 | Complete retained report/export equivalence | O — native retained-chain-report ZIP reuses original package/archive validators; broader report/control equivalence is still unaccounted | Enumerate original chain/report/evidence/bundle/package/archive/verify outputs and audit exports; prove each required native output is equivalent and usable without the old dashboard. Do not duplicate a proven exporter or treat packaging an existing report as proof of creating that report. |
+| P8-11 | Complete retained report/export equivalence | O — original configured chain-report ZIP, report and individual artifacts remain available; newly verified independent native original archive manifest/artifact/source-binding inspection at `c3f72f1` passes original verifier and browser tests; broader original report/export families remain unaccounted | Enumerate original chain/report/evidence/bundle/package/archive/verify outputs and audit exports; prove each required native output is equivalent and usable without the old dashboard. Do not duplicate a proven exporter or treat packaging an existing report as proof of creating that report. |
 | P8-12 | One investigation across views | V — Phase 5/8 inventory, map, dossier, evidence, lineage/recovery browser evidence | Preserve common IDs and committed revisions across overview, Lead Console, Project Intelligence, map, network, evidence and dossiers; filters, unmapped queue, restored histories and open-dossier refresh stay consistent. Commercial eligibility is separately P8-08. |
 | P8-13 | Embedded/expanded live and historical graph | V — Phase 6 acceptance and later paused/closed graph worker journeys | Preserve shared graph state, actual committed events, review propagation, replay, reconnect, saved views, filters, evidence and map/dossier navigation. Display pause must not stop engine or current-dossier updates. |
 | P8-14 | Integrated safeguards | V — Phase 7 acceptance table and repaired historical tests below | Preserve those guarantees on every newly connected path; no weakened source access, provenance, identity, transaction, recovery, financial or commercial approval boundary. New paths need applicable checks, not blanket recertification of unrelated code. |
