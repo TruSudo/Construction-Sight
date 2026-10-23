@@ -634,6 +634,21 @@ const {resolve} = require('node:path');
     }
     await page.click('#action-close');
     await page.waitForSelector('#original-export-generate');
+    await page.locator('#preview-original-operator-report').click();
+    await page.waitForSelector('#download-original-report-preview-json');
+    const originalReportPreview = await page.locator('#action-content').textContent();
+    if (!originalReportPreview.includes('# CEQAnet Operator Report') ||
+        !originalReportPreview.includes('planned operations:') ||
+        !originalReportPreview.includes('before any archive is created')) {
+      throw Error('Original Markdown report is not previewable before ZIP generation');
+    }
+    const reportPreviewDownload = page.waitForEvent('download');
+    await page.locator('#download-original-report-preview-json').click();
+    if ((await reportPreviewDownload).suggestedFilename() !==
+        'original-ceqanet-report-preview.json') {
+      throw Error('Native original report JSON preview missing');
+    }
+    await page.click('#action-close');
     await page.locator('#original-export-confirm').check();
     await page.locator('#original-export-generate').click();
     await page.waitForSelector('#original-export-download');
