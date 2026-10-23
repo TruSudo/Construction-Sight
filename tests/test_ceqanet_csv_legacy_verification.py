@@ -391,3 +391,22 @@ def test_old_verify_command_reports_integrity_failure_in_original_v1_shape(
     assert report["finding_count"] >= 1
     assert "historical body SHA-256 mismatch" in report["findings"]
     assert original_path.read_bytes() == original_bytes
+
+
+@pytest.mark.parametrize("command", ["verify", "verify-legacy-execution"])
+def test_valid_historical_verifier_never_overwrites_previous_output(
+    tmp_path: Path, command: str,
+) -> None:
+    original = tmp_path / "retained.json"
+    original.write_text(json.dumps(_artifact()), encoding="utf-8")
+    prior = tmp_path / "prior-verification.json"
+    prior.write_text("Preserve independent archival review", encoding="utf-8")
+    first_sha = hashlib.sha256(original.read_bytes()).hexdigest()
+
+    result = _RUNNER.invoke(
+        app, [command, str(original), "--output", str(prior)],
+    )
+
+    assert result.exit_code != 0
+    assert prior.read_text("utf-8") == "Preserve independent archival review"
+    assert hashlib.sha256(original.read_bytes()).hexdigest() == first_sha
