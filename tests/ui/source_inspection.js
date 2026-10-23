@@ -642,6 +642,23 @@ const {resolve} = require('node:path');
         !exportReport.includes('No commercial action was authorized')) {
       throw Error('Original verified CEQAnet package/archive export is unavailable');
     }
+    await page.locator('#review-original-export-integrity').click();
+    await page.waitForSelector('#export-original-archive-integrity-json');
+    const fullIntegrity = await page.locator('#action-content').textContent();
+    if (!fullIntegrity.includes('Overall integrity: PASS') ||
+        !fullIntegrity.includes('"source_report_binding_verified": true') ||
+        !fullIntegrity.includes('"manifest_status": "verified"') ||
+        !fullIntegrity.includes('"commercial_authority_granted": false') ||
+        fullIntegrity.includes('"archive_path"')) {
+      throw Error('Original archive verifier not available with chain-bound evidence');
+    }
+    const verificationDownload = page.waitForEvent('download');
+    await page.locator('#export-original-archive-integrity-json').click();
+    if ((await verificationDownload).suggestedFilename() !==
+        'original-ceqanet-archive-verification.json') {
+      throw Error('Original archive verification JSON export missing');
+    }
+    await page.click('#action-close');
     const downloadEvent = page.waitForEvent('download');
     await page.locator('#original-export-download').click();
     const operatorArchive = await downloadEvent;
