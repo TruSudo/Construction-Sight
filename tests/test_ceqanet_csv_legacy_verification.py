@@ -274,3 +274,93 @@ def test_safe_legacy_cli_aliases_are_readonly_and_non_authorizing(
     )
     assert blocked_old_execution.exit_code != 0
     assert original_path.read_bytes() == before
+
+
+def test_historical_parse_command_retains_v1_headers_and_untrimmed_values(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Old read-only parse CLI outputs are recoverable without promoting source."""
+    def no_connection(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("historical parse must not access a network")
+
+    monkeypatch.setattr(socket, "create_connection", no_connection)
+    original = tmp_path / "retained-source.csv"
+    report_path = tmp_path / "parse-report.json"
+    body = b'SCH Number,Title\r\n2026030377,"  Original source text  "\r\n'
+    original.write_bytes(body)
+    result = _RUNNER.invoke(
+        app,
+        ["parse", str(original), "--source-url", _URL, "--output", str(report_path)],
+    )
+    assert result.exit_code == 0, result.output
+    report = json.loads(report_path.read_text("utf-8"))
+    assert report["schema_version"] == "ceqanet_csv_parse_report.v1"
+    assert report["headers"] == ["SCH Number", "Title"]
+    assert report["row_count"] == 1
+    assert report["records"] == [{
+        "row_number": 2,
+        "values": {
+            "SCH Number": "2026030377",
+            "Title": "  Original source text  ",
+        },
+    }]
+    assert report["body_sha256"] == hashlib.sha256(body).hexdigest()
+    assert original.read_bytes() == body
+    assert not report["limitations"] == []
+
+
+def test_historical_header_only_csv_parse_is_not_current_verified_evidence(
+    tmp_path: Path,
+) -> None:
+    raw = b"SCH Number,Title\n"
+    path = tmp_path / "historical.csv"
+    path.write_bytes(raw)
+    result = _RUNNER.invoke(
+        app, ["parse", str(path), "--source-url", _URL],
+    )
+    assert result.exit_code == 0, result.output
+    report = json.loads(result.output)
+    assert report["row_count"] == 0
+    assert report["records"] == []
+    verified = verify_archived_ceqanet_csv_execution(_artifact(raw))
+    assert verified["passed"] is True
+    assert verified["current_parser_compatible"] is False
+    assert verified["current_source_authorized"] is False
+
+
+@pytest.mark.parametrize(
+    "unsafe_url",
+    [
+        "https://example.invalid/Search?OutputFormat=CSV&Sch=2026030377",
+        "https://ceqanet.lci.ca.gov/Other?OutputFormat=CSV&Sch=2026030377",
+        "http://ceqanet.lci.ca.gov/Search?OutputFormat=CSV&Sch=2026030377",
+    ],
+)
+def test_historical_parse_rejects_unapproved_origin_without_writing_report(
+    tmp_path: Path, unsafe_url: str,
+) -> None:
+    path = tmp_path / "original.csv"
+    path.write_bytes(_BODY)
+    output = tmp_path / "report.json"
+    result = _RUNNER.invoke(
+        app, ["parse", str(path), "--source-url", unsafe_url, "--output", str(output)],
+    )
+    assert result.exit_code != 0
+    assert not output.exists()
+
+
+def test_historical_parse_limits_and_existing_output_fail_closed(tmp_path: Path) -> None:
+    path = tmp_path / "original.csv"
+    path.write_bytes(_BODY)
+    report = tmp_path / "existing.json"
+    report.write_text("keep this file", encoding="utf-8")
+    blocked = _RUNNER.invoke(
+        app, ["parse", str(path), "--source-url", _URL, "--output", str(report)],
+    )
+    assert blocked.exit_code != 0
+    assert report.read_text("utf-8") == "keep this file"
+    path.write_bytes(b"x" * 2_000_001)
+    too_large = _RUNNER.invoke(
+        app, ["parse", str(path), "--source-url", _URL],
+    )
+    assert too_large.exit_code != 0
