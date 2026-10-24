@@ -97,8 +97,8 @@ is not an estimate of elapsed work or remaining calendar time:
 | 11 | Acquired-record-native worker handoff and ambiguous-safe dossier/map/relationship-graph convergence | V — independently approved original native worker replay, immutable retained source/parcel verification, unmapped dossier/map and shared graph with no invented point or commerce; CI/browser `92ad8a82` green |
 | 12 | Complete P8-04 governed end-to-end acceptance and final-head regressions without rights/visual drift | V — synthetic end-to-end retained official-response/parcel/worker/investigation/dossier/map/graph and replay regression; full dual-Python CI and browser/visual at `1299fa5` green, source/identity protections preserved; exact pixel parity P8-17 independently open |
 
-**P8-11: 8/12 = 67% verified retained report/export operator checkpoints.**
-This is a fixed-scope count of **test-backed operator families**, NOT 67% of
+**P8-11: 9/12 = 75% verified retained report/export operator checkpoints.**
+This is a fixed-scope count of **test-backed operator families**, NOT 75% of
 engineering work or full report/export parity; the 15-gate integration meter
 remains 11/15 (73%). The original historical baseline still governs every
 unaccounted source or report. Do not increase this number from file presence,
@@ -108,7 +108,7 @@ a screenshot, an unverified export, or newly invented sub-work.
 | --- | --- | --- |
 | 01 | Reconcile full original report/export path families against frozen 83-branch/302-path historical ledger and prove every disposition | O — historical file inventory exists, functional-family disposition incomplete |
 | 02 | Original source-status, verification evidence, manual checklist, registry update/promotion plan and blank observation templates equal native read-only report | V — `tests/test_native_original_offline_source_audit.py` direct original-builder equality and browser audit |
-| 03 | Original offline saved-listing + saved-detail execution-to-enriched CEQAnet **chain report** build usable in Command Center without old CLI | O — `ceqanet_chain_cli.py` still owns this composition; do not confuse displaying a preexisting chain report with building it |
+| 03 | Original offline saved-listing + saved-detail execution-to-enriched CEQAnet **chain report** build usable in Command Center without old CLI | V — `83365a2` shares the unchanged original result/detail parser and chain composer with native bounded saved-JSON review; direct CLI/native parity, negative authorization, no-write HTTP and browser/JSON export; 2,993 tests per interpreter, native/USGS green |
 | 04 | Original CEQAnet operator package and its persistence-preview/write-plan objects inspectable before export, byte-for-byte-equivalent to approved archived JSON | V — `tests/test_native_original_ceqanet_export.py` and browser at `b6d23b1`; this is never write permission |
 | 05 | Original Markdown/JSON operator report before archive, identical to approved `operator-report.md` | V — exact builder/ZIP report equivalence at `9b09519`, retained at `b6d23b1` |
 | 06 | Original deterministic five-artifact standalone bundle creation in confirmed operator ZIP workflow | V — preserved original exporter, positive/negative authorization and output regression |
@@ -118,6 +118,40 @@ a screenshot, an unverified export, or newly invented sub-work.
 | 10 | Download exact individual original package/plan/report/manifest JSON and Markdown from verified ZIP through native interface | V — HTTP byte equality and native browser download proof |
 | 11 | Complete historical CEQAnet CSV/inbox, SMARTS and parcel/source evidence/audit/report output family crosswalk with tested native equivalence | O — many bounded paths already present; exhaustive original-family account remains open |
 | 12 | Complete historical commercial result/royalty/report export semantics and independently certify no unidentified mandatory report remainder under P8-01/P8-09 | O — financial tie differences and commercial authority unresolved |
+
+**P8-11 checkpoint 03 original saved-execution chain composition — VERIFIED.**
+Application/test HEAD `83365a2ceb9f6558ed1ca23051a170ecaa6fe20a`.
+The original `ceqanet_chain_cli` result-page parser, detail-page parser,
+enrichment and chain composer are now **one shared implementation** callable
+from native Sources & Collection against explicitly pasted saved listing
+execution JSON and at most 25 already-saved detail executions. CLI file-based
+behavior was retained; `tests/test_native_original_ceqanet_offline_chain.py`
+asserts exact full-report equality with CLI given identical path labels,
+valid listing and detail records, missing-detail accounting, input digests,
+rejected malformed/ambiguous requests, same-origin only POST and zero writes
+or outbound requests. Native provenance labels explicitly say
+`native-offline-...`, avoiding a fabricated file path, source verification
+or ingestion claim. Output is an in-memory, bounded JSON preview; the
+operator can download the report JSON, but no configured retained chain
+report is replaced, no worker queued and no bid/contact authority is granted.
+Browser regression first exposed an unregistered POST route (HTTP 501);
+fixed the server's explicit local POST allowlist without relaxing host,
+Origin, fetch-site, payload-size or filesystem boundaries.
+
+[CI 40069103554](https://github.com/TruSudo/Construction-Sight/actions/runs/40069103554)
+**success**, **2,993 Python 3.11 tests and 2,993 Python 3.12 tests**,
+2 existing Typer/Click upstream warnings each, Ruff, strict Mypy,
+JavaScript syntax, dependency integrity and no-known-vulnerability audit
+passed. [Native browser/USGS 40069103553](https://github.com/TruSudo/Construction-Sight/actions/runs/40069103553)
+**both jobs success**, including the original saved-execution chain preview
+and JSON download, retained source workflows, 33 native control contracts,
+existing live relationship graph and observational USGS. This verifies
+P8-11 **03**, not historical source-data authentication, complete report
+export parity or commercial continuity. **P8-11 is now 9/12 (75%) but O;
+P8-01 still 3/8 (38%), overall integration still 11/15 (73%).**
+Next finish P8-11 checkpoints 01, 11 and 12 via frozen historical
+source-family/financial-commercial crosswalk, without duplicate exporters
+or unreviewed outbound operations. No main merge or owner deployment.
 
 **P8-11 exact-head acceptance (2026-10-23):** application/security/configuration
 HEAD `b6d23b15e06f737edef2273f13a9a0e76b786fba`.
@@ -529,7 +563,7 @@ bugs. This fixes the acceptance denominator, not the number of code changes.
 | P8-08 | Investigation-to-qualified-lead handoff | O — investigations remain unassessed; native commercial writes resolve `current()["rows"]`; original `product_integration_service` provides review/dedupe/workflow behavior not proven equivalent for canonical investigations | An explicitly reviewed eligible investigation reaches the existing lead/commercial workflow with stable lineage, dedupe, evidence-backed readiness/reasons and contact/authority gates. Unqualified investigations remain visible and blocked from unauthorized commerce. |
 | P8-09 | Historical commercial workflow continuity | O — validated history, finance lineage and no-send previews exist; original transition/result-apply services are not exposed by the native handlers inspected | Continue an eligible retained workflow through authorized transitions and outcome/correction operations from the native UI, or prove an equivalent preserving its exact history, money and source/investigation attribution. Historical shares never automatically become native entitlements/payments. Physical database merging is not required. |
 | P8-10 | Source/investigation watches and material alerts | V — existing source and canonical watches both project into one native notification inbox; full cross-source worker, restart, read/archive/acknowledge, browser UI/dossier and duplicate tests passed on `a3886ba` (2,818 Python tests on 3.11 and 3.12; visual browser workflow successful). No background polling or external delivery inferred. | A watched canonical/original source change produces the correct persistent, deduplicated native notification with exact lineage, including worker restart and read/archive behavior. External delivery only if already implemented and separately authorized. |
-| P8-11 | Complete retained report/export equivalence | O — native original source audit, original operator package/plan preview, Markdown/JSON reports, bundle creation/verification, ZIP archive/verification, SHA-bound exact artifacts now tested through `b6d23b1` (2,981 tests each Python and native browser green); original execution-snapshot-to-chain builder and remaining cross-family exports still open | Enumerate original chain/report/evidence/bundle/package/archive/verify outputs and audit exports; prove each required native output is equivalent and usable without the old dashboard. Do not duplicate a proven exporter or treat packaging an existing report as proof of creating that report. |
+| P8-11 | Complete retained report/export equivalence | O — original native source audit, offline saved-execution-to-chain composition, operator package/plan preview, Markdown/JSON reports, standalone bundle/ZIP creation, verification and exact artifacts tested through `83365a2` (2,993 tests each Python, browser and USGS green); historical cross-family evidence and commercial report/export parity still open | Enumerate original chain/report/evidence/bundle/package/archive/verify outputs and audit exports; prove each required native output is equivalent and usable without the old dashboard. Do not duplicate a proven exporter or treat packaging an existing report as proof of creating that report. |
 | P8-12 | One investigation across views | V — Phase 5/8 inventory, map, dossier, evidence, lineage/recovery browser evidence | Preserve common IDs and committed revisions across overview, Lead Console, Project Intelligence, map, network, evidence and dossiers; filters, unmapped queue, restored histories and open-dossier refresh stay consistent. Commercial eligibility is separately P8-08. |
 | P8-13 | Embedded/expanded live and historical graph | V — Phase 6 acceptance and later paused/closed graph worker journeys | Preserve shared graph state, actual committed events, review propagation, replay, reconnect, saved views, filters, evidence and map/dossier navigation. Display pause must not stop engine or current-dossier updates. |
 | P8-14 | Integrated safeguards | V — Phase 7 acceptance table and repaired historical tests below | Preserve those guarantees on every newly connected path; no weakened source access, provenance, identity, transaction, recovery, financial or commercial approval boundary. New paths need applicable checks, not blanket recertification of unrelated code. |
