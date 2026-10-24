@@ -2556,6 +2556,7 @@ async function renderRetainedCeqanetExport(box) {
       'deterministic ZIP are checked before a download is offered. Exporting ' +
       'does not acquire records, contact prospects or authorize bids.</p>' +
       '<button id="preview-original-operator-report">Preview original report (no files written)</button>' +
+      '<button id="preview-original-operator-package">Inspect original package and write plan</button>' +
       '<label><input id="original-export-confirm" type="checkbox"> ' +
       'I authorize only a local verified export of this exact retained report.</label>' +
       '<button id="original-export-generate">Build verified operator ZIP</button>' +
@@ -2577,6 +2578,27 @@ async function renderRetainedCeqanetExport(box) {
           '<button id="download-original-report-preview-json">Export report JSON</button>');
         document.querySelector('#download-original-report-preview-json').onclick =
           () => download('original-ceqanet-report-preview.json', preview);
+      });
+    box.querySelector('#preview-original-operator-package').onclick =
+      () => perform(async () => {
+        const result = await api('/api/source-ceqanet-package-preview?' +
+          new URLSearchParams({sha256: sha}));
+        const projection = result.original_package_projection || {};
+        const metadata = projection.metadata || {};
+        modal('Original CEQAnet package · offline persistence and write review',
+          '<p>This is the preserved original package builder. The proposed ' +
+          'persistence operations are NOT approved writes and do not verify ' +
+          'source claims, project identities, contacts or commercial readiness. ' +
+          'The full original chain report is omitted here to avoid duplicating ' +
+          'the retained source payload; it remains within the verified ZIP.</p>' +
+          '<p>CEQA records: ' + esc(metadata.ceqa_record_count ?? '—') +
+          ' · sites: ' + esc(metadata.site_count ?? '—') +
+          ' · entities: ' + esc(metadata.entity_count ?? '—') +
+          ' · proposed operations: ' + esc(metadata.operation_count ?? '—') +
+          '</p><pre>' + esc(JSON.stringify(projection, null, 2)) + '</pre>' +
+          '<button id="download-original-package-projection">Export read-only package review JSON</button>');
+        document.querySelector('#download-original-package-projection').onclick =
+          () => download('original-ceqanet-package-review.json', result);
       });
     const generate = box.querySelector('#original-export-generate');
     generate.onclick = () => perform(async () => {
