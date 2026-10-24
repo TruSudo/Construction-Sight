@@ -250,6 +250,7 @@ def execute_ceqanet_recurring_run(
                 manifest.access_assumptions.terms_disallow_collection
             ),
             paywalled=manifest.access_assumptions.paywalled,
+            access_fact_basis=f"evidence:{definition.checklist_evidence_digest}",
             access_facts_reviewed=True,
             review_basis=(
                 "verified checklist "

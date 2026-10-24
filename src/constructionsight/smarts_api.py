@@ -39,6 +39,10 @@ class SmartsApiError(ValueError):
     """A response is unavailable, incomplete, or cannot be trusted."""
 
 
+class SmartsAccessDenied(SmartsApiError):
+    """HTTP 403 is a terminal source-access denial, not a retryable collection error."""
+
+
 @dataclass(frozen=True)
 class SmartsPage:
     resource: str
@@ -79,6 +83,10 @@ def _fetch_sql_records(
             "GET", SQL_API_URL, params={"sql": sql}, follow_redirects=False
         ) as response:
             if response.status_code != 200:
+                if response.status_code == 403:
+                    raise SmartsAccessDenied(
+                        "Unexpected HTTP status: 403; no automatic retry or access bypass"
+                    )
                 raise SmartsApiError("Unexpected HTTP status: " + str(response.status_code))
             media_type = response.headers.get("content-type", "").split(";")[0].strip().lower()
             if media_type != "application/json":
@@ -231,6 +239,10 @@ def fetch_page(
     try:
         with client.stream("GET", API_URL, params=params, follow_redirects=False) as response:
             if response.status_code != 200:
+                if response.status_code == 403:
+                    raise SmartsAccessDenied(
+                        "Unexpected HTTP status: 403; no automatic retry or access bypass"
+                    )
                 raise SmartsApiError("Unexpected HTTP status: " + str(response.status_code))
             media_type = response.headers.get("content-type", "").split(";")[0].strip().lower()
             if media_type != "application/json":

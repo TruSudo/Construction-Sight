@@ -83,7 +83,7 @@ def _contract(*, lock_files: list[str] | None = None) -> dict[str, Any]:
         "expected_project_distribution": "constructionsight==0.1.0",
         "bootstrap_distributions": [
             "pip==26.2",
-            "setuptools==83.0.0",
+            "setuptools==84.1.0",
             "wheel==0.47.0",
         ],
         "install_policy": "exact hashed install",
@@ -102,7 +102,7 @@ def _lock(example_version: str = "2.0") -> str:
     return (
         _locked(f"example=={example_version}")
         + _locked("pip==26.2")
-        + _locked("setuptools==83.0.0")
+        + _locked("setuptools==84.1.0")
         + _locked("wheel==0.47.0")
     )
 

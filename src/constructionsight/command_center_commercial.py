@@ -56,6 +56,13 @@ def initialize(directory: Path) -> None:
             BEGIN SELECT RAISE(ABORT,'Ledger entries are immutable'); END;
           CREATE TRIGGER IF NOT EXISTS cc_ledger_no_delete BEFORE DELETE ON cc_ledger
             BEGIN SELECT RAISE(ABORT,'Ledger entries are immutable'); END;
+          CREATE TRIGGER IF NOT EXISTS cc_contracts_no_update BEFORE UPDATE ON cc_contracts
+            BEGIN SELECT RAISE(ABORT,'Royalty contracts are immutable'); END;
+          CREATE TRIGGER IF NOT EXISTS cc_contracts_no_delete BEFORE DELETE ON cc_contracts
+            BEGIN SELECT RAISE(ABORT,'Royalty contracts are immutable'); END;
+          CREATE TRIGGER IF NOT EXISTS cc_ledger_contract_exists BEFORE INSERT ON cc_ledger
+            WHEN NOT EXISTS (SELECT 1 FROM cc_contracts WHERE id=NEW.contract)
+            BEGIN SELECT RAISE(ABORT,'Unknown royalty contract'); END;
         """)
 
 
@@ -194,6 +201,8 @@ def save_bid(directory: Path, row: dict[str, Any], payload: dict[str, Any]) -> d
         prior = db.execute(
             "SELECT * FROM cc_bids WHERE id=? ORDER BY version DESC LIMIT 1", (bid_id,)
         ).fetchone()
+        if prior is not None:
+            _bid_record(prior)
         if (prior and prior["key"] != row["source_key"]) or expected != (
             prior["version"] if prior else 0
         ):
@@ -248,9 +257,7 @@ def bids(directory: Path, bid_id: str | None = None) -> list[dict[str, Any]]:
         records = db.execute("SELECT * FROM cc_bids ORDER BY at DESC").fetchall()
     result, seen = [], set()
     for row in records:
-        data = json.loads(row["data"])
-        if fingerprint(data) != row["digest"]:
-            raise ValueError("Bid content hash mismatch")
+        data = _bid_record(row)
         if bid_id is not None:
             if row["id"] == bid_id:
                 result.append(data)
@@ -258,6 +265,17 @@ def bids(directory: Path, bid_id: str | None = None) -> list[dict[str, Any]]:
             seen.add(row["id"])
             result.append(data)
     return result
+
+
+def _bid_record(row: sqlite3.Row) -> dict[str, Any]:
+    data = json.loads(row["data"])
+    if not isinstance(data, dict) or fingerprint(data) != row["digest"]:
+        raise ValueError("Bid content hash mismatch")
+    if any(data.get(field) != row[column] for field, column in (
+        ("id", "id"), ("version", "version"), ("source_key", "key"), ("at", "at"),
+    )):
+        raise ValueError("Bid indexed fields disagree with immutable payload")
+    return data
 
 
 def prices(directory: Path) -> list[dict[str, Any]]:
@@ -307,14 +325,14 @@ def contract(directory: Path, payload: dict[str, Any]) -> dict[str, Any]:
     with connect(directory) as db:
         db.execute("BEGIN IMMEDIATE")
         row = db.execute(
-            "SELECT data,digest FROM cc_bids WHERE id=? ORDER BY version DESC LIMIT 1",
+            "SELECT * FROM cc_bids WHERE id=? ORDER BY version DESC LIMIT 1",
             (required(payload["bid_id"]),),
         ).fetchone()
         if row is None:
             raise ValueError("Unknown bid")
-        bid = json.loads(row["data"])
-        if fingerprint(bid) != row["digest"] or bid["status"] != "won":
-            raise ValueError("Royalty terms require a verified won bid")
+        bid = _bid_record(row)
+        if bid["status"] != "won":
+            raise ValueError("Royalty terms require an intact user-entered won bid")
         data = {
             "id": str(uuid.uuid4()),
             "bid_id": bid["id"],
@@ -340,8 +358,52 @@ def contract(directory: Path, payload: dict[str, Any]) -> dict[str, Any]:
 def ledger(directory: Path) -> list[dict[str, Any]]:
     initialize(directory)
     with connect(directory) as db:
-        contracts = [json.loads(r["data"]) for r in db.execute("SELECT * FROM cc_contracts")]
-        entries = [dict(r) for r in db.execute("SELECT * FROM cc_ledger ORDER BY at")]
+        return _ledger_records(db)
+
+
+def _ledger_records(db: sqlite3.Connection) -> list[dict[str, Any]]:
+    contracts = []
+    for row in db.execute("SELECT * FROM cc_contracts"):
+        item = json.loads(row["data"])
+        if (not isinstance(item, dict) or item.get("id") != row["id"]
+                or item.get("bid_id") != row["bid"]):
+            raise ValueError("Royalty contract identity disagrees with retained payload")
+        original = db.execute("SELECT * FROM cc_bids WHERE id=? AND version=?",
+                              (row["bid"], item.get("bid_version"))).fetchone()
+        if original is None:
+            raise ValueError("Royalty contract has no retained bid version")
+        bid = _bid_record(original)
+        if type(bid.get("contract_minor")) is not int or bid["contract_minor"] <= 0:
+            raise ValueError("Retained won bid has invalid exact contract value")
+        if (bid["status"] != "won" or item.get("source_key") != bid["source_key"]
+                or item.get("contract_minor") != bid["contract_minor"]):
+            raise ValueError("Royalty contract disagrees with its retained won bid")
+        rate = item.get("rate_ppm")
+        if type(rate) is not int or not 0 <= rate <= 1_000_000:
+            raise ValueError("Royalty rate is outside exact governed bounds")
+        if item.get("calculated_minor") != calculate_share_minor_units(bid["contract_minor"], rate):
+            raise ValueError("Royalty calculation disagrees with retained terms")
+        contracts.append(item)
+    entries = [dict(r) for r in db.execute("SELECT * FROM cc_ledger ORDER BY at,id")]
+    contract_ids = {item["id"] for item in contracts}
+    by_entry = {entry["id"]: entry for entry in entries}
+    reversed_ids = set()
+    for entry in entries:
+        if entry["contract"] not in contract_ids or type(entry["amount"]) is not int:
+            raise ValueError("Royalty entry has invalid contract or exact amount")
+        if entry["kind"] in {"invoiced", "received"}:
+            if entry["amount"] <= 0 or entry["reverses"] is not None:
+                raise ValueError("Royalty entry is not a positive original transaction")
+        elif entry["kind"] == "reversal":
+            original = by_entry.get(entry["reverses"])
+            if (original is None or original["contract"] != entry["contract"]
+                    or original["kind"] not in {"invoiced", "received"}
+                    or entry["amount"] != -original["amount"]
+                    or entry["reverses"] in reversed_ids):
+                raise ValueError("Royalty reversal does not match one retained original")
+            reversed_ids.add(entry["reverses"])
+        else:
+            raise ValueError("Unknown retained royalty entry kind")
     for item in contracts:
         item["entries"] = [r for r in entries if r["contract"] == item["id"]]
         invoice = received = 0
@@ -361,6 +423,21 @@ def ledger(directory: Path) -> list[dict[str, Any]]:
     return contracts
 
 
+def validate_workflow_finances(path: Path) -> None:
+    """Check retained financial semantics during backup/restore without writing."""
+    with sqlite3.connect(path.absolute().as_uri() + "?mode=ro", uri=True) as db:
+        db.row_factory = sqlite3.Row
+        tables = {r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        financial = {"cc_bids", "cc_contracts", "cc_ledger"}
+        if not tables.intersection(financial):
+            return
+        if not financial.issubset(tables):
+            raise ValueError("Retained financial tables are incomplete")
+        for row in db.execute("SELECT * FROM cc_bids"):
+            _bid_record(row)
+        _ledger_records(db)
+
+
 def transaction(directory: Path, payload: dict[str, Any]) -> dict[str, Any]:
     if set(payload) - {"contract_id", "kind", "amount", "reference", "reverses"}:
         raise ValueError("Unknown royalty entry fields")
@@ -371,6 +448,7 @@ def transaction(directory: Path, payload: dict[str, Any]) -> dict[str, Any]:
     ref = required(payload.get("reference"))
     with connect(directory) as db:
         db.execute("BEGIN IMMEDIATE")
+        _ledger_records(db)
         if not db.execute("SELECT 1 FROM cc_contracts WHERE id=?", (key,)).fetchone():
             raise ValueError("Unknown contract")
         reverses = payload.get("reverses") if kind == "reversal" else None

@@ -10,10 +10,12 @@ from http.server import ThreadingHTTPServer
 from pathlib import Path
 from threading import Thread
 
+import pytest
 from sqlalchemy.orm import Session
 
 from constructionsight.ceqa_models import CeqaRecord
 from constructionsight.ceqanet_capture_queue import build_reviewed_ceqanet_capture_queue
+from constructionsight.ceqanet_ingestion_inbox import build_ceqanet_ingestion_inbox
 from constructionsight.operator_web import create_handler
 from constructionsight.provenance import Provenance
 from constructionsight.storage.database import create_database_engine, initialize_database
@@ -206,3 +208,47 @@ def test_operator_rejects_half_configured_ingestion_evidence(tmp_path: Path) -> 
         assert "configured together" in str(exc)
     else:
         raise AssertionError("half-configured ingestion evidence must fail closed")
+
+
+def test_historical_review_queue_tampering_fails_closed_in_original_and_operator_paths(
+    tmp_path: Path,
+) -> None:
+    """Retain the absent historical inbox's semantic queue-integrity regression.
+
+    The reviewed capture queue must be a fresh derivation from exact listing
+    evidence, not an editable source of independent authority. Both the original
+    service and current native operator must refuse a substituted title without
+    writing the selected database, opening a network request, or creating leads.
+    """
+    database = tmp_path / "operator.sqlite3"
+    engine = create_database_engine(f"sqlite:///{database}")
+    initialize_database(engine)
+    listing_path, queue_path = _write_artifacts(tmp_path)
+    listing_raw = listing_path.read_bytes()
+    queue = json.loads(queue_path.read_text(encoding="utf-8"))
+    queue["candidates"][0]["source_claimed_title"] = "Tampered project identity"
+    queue_path.write_text(json.dumps(queue, sort_keys=True) + "\n", encoding="utf-8")
+    original_listing_digest = hashlib.sha256(listing_raw).hexdigest()
+    before_database = hashlib.sha256(database.read_bytes()).hexdigest()
+
+    with (
+        Session(engine) as session,
+        pytest.raises(ValueError, match="fresh derivation"),
+    ):
+        build_ceqanet_ingestion_inbox(
+            session,
+            listing_payload=json.loads(listing_raw),
+            listing_bytes=listing_raw,
+            queue_payload=queue,
+            queue_bytes=queue_path.read_bytes(),
+        )
+    engine.dispose()
+    assert hashlib.sha256(database.read_bytes()).hexdigest() == before_database
+
+    with _server(database, listing=listing_path, queue=queue_path) as port:
+        status, raw = _get(port, "/api/ingestion-inbox")
+        assert status == 503
+        assert "Stored data could not be read" in json.loads(raw)["error"]
+    assert hashlib.sha256(database.read_bytes()).hexdigest() == before_database
+    retained_listing_digest = hashlib.sha256(listing_path.read_bytes()).hexdigest()
+    assert retained_listing_digest == original_listing_digest

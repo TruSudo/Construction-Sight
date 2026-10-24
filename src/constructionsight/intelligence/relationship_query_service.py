@@ -11,8 +11,32 @@ from constructionsight.intelligence.schemas import (
     OpportunitySignal,
     ProjectCluster,
     RelationshipAssertion,
+    RelationshipStatus,
 )
 from constructionsight.storage.intelligence_store import IntelligenceStore
+
+ACTIVE_INVESTIGATION_CONTEXT_STATUSES = {RelationshipStatus.PROBABLE, RelationshipStatus.CONFIRMED}
+
+
+def canonical_investigation_id(store: IntelligenceStore, investigation_id: str) -> str:
+    seen: set[str] = set()
+    for _ in range(16):
+        if investigation_id in seen:
+            raise ValueError("investigation alias cycle requires repair")
+        seen.add(investigation_id)
+        aliases = [
+            r
+            for r in store.list_relationships_for_target(investigation_id)
+            if r.subject_entity_id == investigation_id
+            and r.predicate == "reviewed_investigation_alias"
+            and r.relationship_status in ACTIVE_INVESTIGATION_CONTEXT_STATUSES
+        ]
+        if not aliases:
+            return investigation_id
+        if len(aliases) != 1:
+            raise ValueError("conflicting investigation aliases require review")
+        investigation_id = aliases[0].object_entity_id
+    raise ValueError("investigation alias depth exceeds the safe bound")
 
 
 class RelationshipQueryService:

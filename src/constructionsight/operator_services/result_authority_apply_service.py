@@ -21,6 +21,7 @@ from constructionsight.result_authority_service import (
     ResultAuthorityError,
     apply_authoritative_result,
     load_result_authority_snapshot,
+    require_workflow_result_compatibility,
 )
 from constructionsight.result_ledger_models import ResultLedgerStatus
 
@@ -66,6 +67,7 @@ def apply_authorized_authoritative_result(
             "result authority current ledger does not match the operator expectation: "
             f"expected {expected}, observed {observed}"
         )
+    require_workflow_result_compatibility(workflow.status, status)
     normalized_outcome_reasons = list(outcome_reasons or [])
     desired_outcome_identity = authorization_digest(
         "result-authority-desired-outcome",

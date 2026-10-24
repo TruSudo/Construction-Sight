@@ -4,6 +4,7 @@ import pytest
 from sqlalchemy import inspect, select
 from typer.testing import CliRunner
 
+from constructionsight.lead_operator_service import transition_persisted_lead_workflow
 from constructionsight.lead_workflow_models import (
     LeadWorkflowEvent,
     LeadWorkflowRecord,
@@ -65,6 +66,19 @@ def _seed_workflow(database_url: str) -> None:
         store_lead_workflow_record(session, _workflow())
 
 
+def _close_workflow(session, status):
+    prior = LeadWorkflowStatus.READY
+    targets = ([LeadWorkflowStatus.ACTIVE, status]
+               if status is LeadWorkflowStatus.CLOSED_SUCCESS else [status])
+    for target in targets:
+        transition_persisted_lead_workflow(
+            session, workflow_id=_workflow().workflow_id,
+            expected_current_status=prior, next_status=target,
+            reason="Operator confirmed outcome before final authority",
+        )
+        prior = target
+
+
 def test_result_authority_tables_are_created(tmp_path) -> None:
     engine, _factory_value = _factory(_database_url(tmp_path))
 
@@ -122,6 +136,7 @@ def test_result_correction_preserves_history_and_moves_head(tmp_path) -> None:
             status=ResultLedgerStatus.UNKNOWN,
             authority_reason="initial result",
         )
+        _close_workflow(session, LeadWorkflowStatus.CLOSED_SUCCESS)
         corrected = apply_authoritative_result(
             session,
             workflow_id=_workflow().workflow_id,
@@ -195,6 +210,7 @@ def test_noop_result_correction_is_rejected(tmp_path) -> None:
     _engine, factory = _factory(database_url)
 
     with managed_session(factory) as session:
+        _close_workflow(session, LeadWorkflowStatus.CLOSED_NO_FIT)
         initial = apply_authoritative_result(
             session,
             workflow_id=_workflow().workflow_id,
@@ -290,6 +306,9 @@ def test_result_cli_records_corrects_and_lists_history(tmp_path) -> None:
     assert initial_result.exit_code == 0
     initial_payload = json.loads(initial_result.stdout)
     initial_ledger_id = initial_payload["current"]["ledger_id"]
+
+    with managed_session(_factory(database_url)[1]) as session:
+        _close_workflow(session, LeadWorkflowStatus.CLOSED_SUCCESS)
 
     correction_result = runner.invoke(
         app,

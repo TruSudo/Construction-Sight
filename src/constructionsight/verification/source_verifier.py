@@ -47,6 +47,16 @@ class SourceVerifier:
         access_profile = access_profile or SourceAccessProfile(
             public_url=str(source.public_url)
         )
+        if access_profile.public_url != str(source.public_url):
+            return SourceVerificationResult(
+                source_name=source.source_name,
+                public_url=source.public_url,
+                url_reachable=False,
+                portal_type_detected=PlatformFamily.UNKNOWN,
+                confidence_score=0,
+                notes="Access facts must be reviewed for the exact source URL.",
+                raw_observations={"access_decision": AccessDecision.REVIEW_REQUIRED.value},
+            )
         access_result = evaluate_access(access_profile)
         if access_result.decision is not AccessDecision.ALLOWED:
             return SourceVerificationResult(

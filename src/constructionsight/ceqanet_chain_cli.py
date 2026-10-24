@@ -56,19 +56,27 @@ def _snapshot_from_execution_json(
     snapshot_index: int,
 ) -> dict[str, Any]:
     """Return one snapshot object from stored execution JSON."""
+    return _snapshot_from_execution_payload(
+        _load_json_object(input_path), input_label=str(input_path),
+        snapshot_index=snapshot_index,
+    )
 
-    payload = _load_json_object(input_path)
+
+def _snapshot_from_execution_payload(
+    payload: dict[str, Any], *, input_label: str, snapshot_index: int,
+) -> dict[str, Any]:
+    """Shared original saved-snapshot selection for CLI and native offline review."""
     snapshots = payload.get("snapshots")
     if not isinstance(snapshots, list) or not snapshots:
-        raise typer.BadParameter(f"{input_path} must contain a non-empty snapshots list.")
+        raise typer.BadParameter(f"{input_label} must contain a non-empty snapshots list.")
     if snapshot_index < 0 or snapshot_index >= len(snapshots):
         raise typer.BadParameter(
-            f"snapshot-index must be between 0 and {len(snapshots) - 1} for {input_path}."
+            f"snapshot-index must be between 0 and {len(snapshots) - 1} for {input_label}."
         )
     snapshot = snapshots[snapshot_index]
     if not isinstance(snapshot, dict):
         raise typer.BadParameter(
-            f"{input_path} snapshots[{snapshot_index}] must be a JSON object."
+            f"{input_label} snapshots[{snapshot_index}] must be a JSON object."
         )
     return cast(dict[str, Any], snapshot)
 
@@ -111,14 +119,23 @@ def _parse_listing_execution(
     snapshot_index: int,
 ) -> dict[str, object]:
     """Parse stored listing execution JSON into result-parse JSON."""
+    return _parse_listing_snapshot(
+        _snapshot_from_execution_json(input_path, snapshot_index=snapshot_index),
+        input_label=str(input_path), snapshot_index=snapshot_index,
+    )
 
-    snapshot = _snapshot_from_execution_json(input_path, snapshot_index=snapshot_index)
-    html, source_url = _html_and_source_from_snapshot(snapshot, input_path=input_path)
+
+def _parse_listing_snapshot(
+    snapshot: dict[str, Any], *, input_label: str, snapshot_index: int,
+) -> dict[str, object]:
+    html, source_url = _html_and_source_from_snapshot(
+        snapshot, input_path=Path(input_label),
+    )
     report = parse_ceqanet_result_page(html, source_url=source_url)
     payload = report.to_dict()
     metadata = cast(dict[str, object], payload["metadata"])
     metadata["input"] = {
-        "path": str(input_path),
+        "path": input_label,
         "snapshot_index": snapshot_index,
         "snapshot": _snapshot_summary(snapshot),
     }
@@ -127,14 +144,23 @@ def _parse_listing_execution(
 
 def _parse_detail_execution(input_path: Path) -> dict[str, object]:
     """Parse one stored detail execution JSON into detail-parse JSON."""
+    return _parse_detail_snapshot(
+        _snapshot_from_execution_json(input_path, snapshot_index=0),
+        input_label=str(input_path),
+    )
 
-    snapshot = _snapshot_from_execution_json(input_path, snapshot_index=0)
-    html, source_url = _html_and_source_from_snapshot(snapshot, input_path=input_path)
+
+def _parse_detail_snapshot(
+    snapshot: dict[str, Any], *, input_label: str,
+) -> dict[str, object]:
+    html, source_url = _html_and_source_from_snapshot(
+        snapshot, input_path=Path(input_label),
+    )
     report = parse_ceqanet_detail_page(html, source_url=source_url)
     payload = report.to_dict()
     metadata = cast(dict[str, object], payload["metadata"])
     metadata["input"] = {
-        "path": str(input_path),
+        "path": input_label,
         "snapshot_index": 0,
         "snapshot": _snapshot_summary(snapshot),
     }
@@ -191,6 +217,54 @@ def _build_chain_report(
         snapshot_index=listing_snapshot_index,
     )
     detail_parses = [_parse_detail_execution(path) for path in detail_execution_paths]
+    return _compose_chain_report(
+        result_parse=result_parse, detail_parses=detail_parses,
+        listing_label=str(listing_execution_path),
+        detail_labels=[str(path) for path in detail_execution_paths],
+        listing_snapshot_index=listing_snapshot_index,
+    )
+
+
+def build_chain_report_from_saved_executions(
+    listing_execution: dict[str, Any],
+    detail_executions: list[dict[str, Any]],
+    *,
+    listing_snapshot_index: int,
+    listing_label: str,
+    detail_labels: list[str],
+) -> dict[str, object]:
+    """Run original offline chain composition against saved in-memory execution JSON."""
+    if len(detail_executions) != len(detail_labels):
+        raise ValueError("one exact input label per original detail execution required")
+    result_parse = _parse_listing_snapshot(
+        _snapshot_from_execution_payload(
+            listing_execution, input_label=listing_label,
+            snapshot_index=listing_snapshot_index,
+        ),
+        input_label=listing_label,
+        snapshot_index=listing_snapshot_index,
+    )
+    detail_parses = [
+        _parse_detail_snapshot(
+            _snapshot_from_execution_payload(
+                execution, input_label=label, snapshot_index=0,
+            ),
+            input_label=label,
+        )
+        for execution, label in zip(detail_executions, detail_labels, strict=True)
+    ]
+    return _compose_chain_report(
+        result_parse=result_parse, detail_parses=detail_parses,
+        listing_label=listing_label, detail_labels=detail_labels,
+        listing_snapshot_index=listing_snapshot_index,
+    )
+
+
+def _compose_chain_report(
+    *, result_parse: dict[str, object], detail_parses: list[dict[str, object]],
+    listing_label: str, detail_labels: list[str], listing_snapshot_index: int,
+) -> dict[str, object]:
+    """One preserved original enrichment/report composition for both entry points."""
     result_records = _records_from_result_parse(result_parse)
     enrichment_report = enrich_ceqanet_result_records(
         result_records,
@@ -202,10 +276,10 @@ def _build_chain_report(
     return {
         "metadata": {
             "schema_version": "ceqanet_chain_report.v1",
-            "listing_execution_path": str(listing_execution_path),
+            "listing_execution_path": listing_label,
             "listing_snapshot_index": listing_snapshot_index,
-            "detail_execution_paths": [str(path) for path in detail_execution_paths],
-            "detail_execution_count": len(detail_execution_paths),
+            "detail_execution_paths": detail_labels,
+            "detail_execution_count": len(detail_labels),
             "result_record_count": result_metadata.get("record_count"),
             "detail_parse_count": len(detail_parses),
             "enriched_count": enrichment_metadata.get("enriched_count"),

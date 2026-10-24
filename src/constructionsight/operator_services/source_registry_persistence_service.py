@@ -63,6 +63,7 @@ def persist_authorized_source_registry_records(
     caller_confirmation: bool,
     authorization_reason: str,
     operator_id: str | None = None,
+    expected_current_source: PublicSource | None = None,
 ) -> AuthorizedSourceRegistryPersistenceResult:
     """Authorize and persist one exact set of source-registry record upserts."""
 
@@ -70,6 +71,27 @@ def persist_authorized_source_registry_records(
     store = SourceRegistryStore(session)
     store.acquire_authorized_mutation_lock()
     current = _canonical_sources(store.list_sources())
+    if expected_current_source is not None:
+        matching = [
+            source for source in current
+            if source.source_name == expected_current_source.source_name
+            and str(source.public_url) == str(expected_current_source.public_url)
+        ]
+        if len(matching) != 1 or matching[0] != expected_current_source:
+            raise ValueError(
+                "reviewed original source changed before locked registry persistence"
+            )
+        if (
+            len(desired) != 1
+            or desired[0].source_name != expected_current_source.source_name
+            or str(desired[0].public_url) != str(expected_current_source.public_url)
+            or desired[0] != expected_current_source.model_copy(
+                update={"verification_status": desired[0].verification_status}
+            )
+        ):
+            raise ValueError(
+                "reviewed source registry persistence permits only its exact status change"
+            )
     current_digest = source_registry_digest(current)
     desired_digest = source_registry_digest(desired)
     state_identity = authorization_digest(

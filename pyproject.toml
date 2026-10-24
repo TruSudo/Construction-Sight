@@ -13,7 +13,7 @@ authors = [
   { name = "Tyler Alston" }
 ]
 dependencies = [
-  "certifi==2025.6.15",
+  "certifi==2026.10.19",
   "httpcore==1.0.9",
   "httpx[socks]==0.28.1",
   "pydantic==2.11.7",
@@ -23,7 +23,7 @@ dependencies = [
   "python-dateutil==2.9.0.post0",
   "reportlab==4.4.9",
   "charset-normalizer==3.5.2",
-  "Pillow==12.3.0",
+  "Pillow==13.0.0",
   "pmtiles==3.8.1",
 ]
 
@@ -35,11 +35,12 @@ dev = [
   "ruff==0.12.4",
   "mypy==1.17.0",
   "types-reportlab==5.0.0.20261008",
-  "Pillow==12.3.0",
+  "Pillow==13.0.0",
 ]
 
 [project.scripts]
 constructionsight-command-center = "constructionsight.live_command_center:main"
+constructionsight-investigations = "constructionsight.investigation_cli:main"
 constructionsight = "constructionsight.cli:app"
 constructionsight-operator = "constructionsight.operator_web:main"
 constructionsight-desktop = "constructionsight.operator_web:desktop_main"

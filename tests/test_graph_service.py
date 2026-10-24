@@ -92,6 +92,12 @@ def test_graph_service_persists_core_graph_records_and_events(tmp_path) -> None:
         service.upsert_project_cluster(cluster)
         service.upsert_relationship(relationship)
         service.upsert_opportunity(opportunity)
+        event_count = len(service.store.list_runtime_events())
+        service.upsert_entity(entity)
+        service.upsert_project_cluster(cluster)
+        service.upsert_relationship(relationship)
+        service.upsert_opportunity(opportunity)
+        assert len(service.store.list_runtime_events()) == event_count
 
     with managed_session(factory) as session:
         store = IntelligenceStore(session)

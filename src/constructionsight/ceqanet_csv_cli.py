@@ -10,6 +10,10 @@ import typer
 from rich.console import Console
 
 from constructionsight.authorization_decision import AuthorizationDeniedError
+from constructionsight.ceqanet_csv_legacy_verification import (
+    parse_archived_ceqanet_csv_bytes,
+    verify_archived_ceqanet_csv_execution,
+)
 from constructionsight.ceqanet_csv_live_models import CeqanetCsvLiveExecution
 from constructionsight.ceqanet_csv_replay_models import CeqanetCsvEncodingReplay
 from constructionsight.ceqanet_csv_replay_service import (
@@ -46,7 +50,7 @@ def ceqanet_csv_root() -> None:
 def plan_csv_export(
     sch_number: Annotated[
         str,
-        typer.Option("--sch-number", help="Exact 10-digit CEQAnet SCH number."),
+        typer.Option("--sch-number", "--sch", help="Exact 10-digit CEQAnet SCH number."),
     ],
     document_id: Annotated[
         int | None,
@@ -259,6 +263,89 @@ def verify_live_csv_execution(
         raise typer.Exit(code=1)
 
 
+@app.command("parse")
+def parse_archived_csv_file(
+    csv_path: Annotated[
+        Path, typer.Argument(help="Original already-retained CEQAnet CSV file."),
+    ],
+    source_url: Annotated[
+        str, typer.Option("--source-url", help="Exact official CSV source URL."),
+    ],
+    output: Annotated[
+        Path | None, typer.Option("--output", help="Optional archival v1 parse report."),
+    ] = None,
+) -> None:
+    """Produce a read-only historical parse v1 report, not current source proof."""
+
+    try:
+        content = read_runtime_artifact(csv_path, max_bytes=2_000_000)
+        report = parse_archived_ceqanet_csv_bytes(content, source_url=source_url)
+    except (OSError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit_archived_json(report, output)
+
+
+@app.command("verify-legacy-execution")
+def verify_archived_csv_execution(
+    execution_path: Annotated[
+        Path,
+        typer.Argument(help="Existing archived ceqanet_csv_export_execution.v1 JSON."),
+    ],
+    output: Annotated[
+        Path | None,
+        typer.Option("--output", help="Optional read-only verification report."),
+    ] = None,
+) -> None:
+    """Verify old execution evidence offline; never authorize new source access."""
+
+    try:
+        payload: Any = json.loads(read_runtime_text(execution_path))
+        if not isinstance(payload, dict):
+            raise ValueError("archived CEQAnet execution must be a JSON object")
+        verification = verify_archived_ceqanet_csv_execution(payload)
+    except (OSError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _emit_archived_json(verification, output)
+    if not verification["passed"]:
+        raise typer.Exit(code=1)
+
+
+@app.command("verify")
+def verify_archived_csv_execution_v1_report(
+    execution_path: Annotated[
+        Path,
+        typer.Argument(help="Retained original ceqanet_csv_export_execution.v1 JSON."),
+    ],
+    output: Annotated[
+        Path | None,
+        typer.Option("--output", help="Historical v1 offline verification report."),
+    ] = None,
+) -> None:
+    """Project guarded archive findings into the original read-only v1 report."""
+
+    try:
+        payload: Any = json.loads(read_runtime_text(execution_path))
+        if not isinstance(payload, dict):
+            raise ValueError("archived CEQAnet execution must be a JSON object")
+        verified = verify_archived_ceqanet_csv_execution(payload)
+    except (OSError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+    report = {
+        "schema_version": "ceqanet_csv_export_verification.v1",
+        "passed": verified["passed"],
+        "finding_count": verified["finding_count"],
+        "findings": verified["findings"],
+        "parsed_row_count": verified["historical_parsed_row_count"],
+        "parsed_headers": verified["historical_parsed_headers"],
+        "request_url": payload["request_url"],
+        "execution_digest": payload["execution_digest"],
+    }
+    _emit_archived_json(report, output)
+    if not verified["passed"]:
+        raise typer.Exit(code=1)
+
+
 @app.command("replay-execution")
 def replay_csv_execution(
     execution_path: Annotated[
@@ -333,6 +420,15 @@ def _write_json_file(path: Path, payload: object, *, overwrite: bool) -> None:
         )
     rendered = json.dumps(payload, indent=2, sort_keys=True)
     write_runtime_text(path, f"{rendered}\n", overwrite=overwrite)
+
+
+def _emit_archived_json(payload: object, output: Path | None) -> None:
+    """Create archived reports exclusively; never replace evidence or prior outputs."""
+    if output is not None:
+        _write_json_file(output, payload, overwrite=False)
+        console.print(f"Wrote archived CEQAnet report to {output}")
+        return
+    console.print_json(json.dumps(payload, indent=2, sort_keys=True))
 
 
 def _emit_json(payload: object, output: Path | None) -> None:

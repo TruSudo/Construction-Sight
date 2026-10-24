@@ -40,12 +40,12 @@ def _workflow() -> LeadWorkflowRecord:
         package_id="lead-review:test",
         base_candidate_id="candidate:test",
         fingerprint_key="lead-fingerprint:test",
-        status=LeadWorkflowStatus.REVIEW,
+        status=LeadWorkflowStatus.CLOSED_SUCCESS,
         lead_score=82,
         events=[
             LeadWorkflowEvent(
                 event_id="lead-workflow-event:initial",
-                current_status=LeadWorkflowStatus.REVIEW,
+                current_status=LeadWorkflowStatus.CLOSED_SUCCESS,
                 reason="review completed",
             )
         ],

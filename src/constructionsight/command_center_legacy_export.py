@@ -1,0 +1,343 @@
+"""Guarded native reuse of the original CEQAnet operator export and ZIP verifier.
+
+Only an explicitly configured, retained local chain report may be packaged.
+The original export validators do all normalization and integrity verification.
+No acquisition, source database mutation, lead, message or bid is created.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import re
+import zipfile
+from io import BytesIO
+from pathlib import Path
+from typing import Any
+
+from constructionsight.ceqanet_operator_archive import build_ceqanet_operator_archive
+from constructionsight.ceqanet_operator_archive_verify import verify_ceqanet_operator_archive
+from constructionsight.ceqanet_operator_bundle_verify import verify_ceqanet_operator_bundle
+from constructionsight.ceqanet_operator_export import build_ceqanet_operator_export
+from constructionsight.ceqanet_operator_package import build_ceqanet_operator_package
+from constructionsight.ceqanet_operator_report import build_ceqanet_operator_report
+from constructionsight.storage.runtime_artifacts import open_runtime_artifact, read_runtime_artifact
+
+_SHA = re.compile(r"[0-9a-f]{64}")
+_MAX_INPUT = 16 * 1024 * 1024
+
+
+def _report(chain_report: Path | None) -> tuple[str, dict[str, Any]] | None:
+    if chain_report is None:
+        return None
+    raw = read_runtime_artifact(chain_report, max_bytes=_MAX_INPUT)
+    digest = hashlib.sha256(raw).hexdigest()
+    report = json.loads(raw)
+    if not isinstance(report, dict):
+        raise ValueError("retained CEQAnet chain report must be an object")
+    metadata = report.get("metadata")
+    if (
+        not isinstance(metadata, dict)
+        or metadata.get("schema_version") != "ceqanet_chain_report.v1"
+    ):
+        raise ValueError("retained CEQAnet chain report schema is incompatible")
+    return digest, report
+
+
+
+def original_ceqanet_package_preview(
+    chain_report: Path | None, *, expected_report_sha256: str,
+) -> dict[str, Any]:
+    """Preserve original package, persistence preview and write plan without writing.
+
+    A previewed write plan is a historical proposal, never permission to write.
+    """
+    if not _SHA.fullmatch(expected_report_sha256):
+        raise ValueError("invalid original CEQAnet report digest")
+    selected = _report(chain_report)
+    if selected is None or selected[0] != expected_report_sha256:
+        raise ValueError("original chain report changed; repeat source inspection")
+    package = build_ceqanet_operator_package(selected[1]).to_dict()
+    # Do not return the full duplicated chain-report payload to the browser:
+    # the original builder embeds it, but only the original review projections
+    # are needed for operator inspection. The three projections are still the
+    # exact objects later written by the original deterministic exporter.
+    preview = package.get("persistence_preview")
+    write_plan = package.get("write_plan")
+    metadata = package.get("metadata")
+    warnings = package.get("warnings")
+    projection = {
+        "metadata": metadata,
+        "persistence_preview": preview,
+        "write_plan": write_plan,
+        "warnings": warnings,
+    }
+    if len(json.dumps(projection, allow_nan=False).encode("utf-8")) > 4_000_000:
+        raise ValueError("original package review exceeds 4 MB; use verified ZIP export")
+    return {
+        "schema_version": "constructionsight.original-ceqanet-package-preview/v1",
+        "retained_report_sha256": selected[0],
+        "original_package_projection": projection,
+        "original_package_exact": False,
+        "projection_excludes": ["chain_report"],
+        "read_only": True,
+        "network_executed": False,
+        "source_database_mutated": False,
+        "archive_created": False,
+        "write_plan_executed": False,
+        "commercial_authority_granted": False,
+        "meaning": (
+            "Original CEQAnet operator review projections only. The source chain "
+            "report remains available exclusively in the verified operator archive; "
+            "no original write-plan instruction is approved or executed."
+        ),
+    }
+
+
+def original_ceqanet_report_preview(
+    chain_report: Path | None, *, expected_report_sha256: str,
+) -> dict[str, Any]:
+    """Run the original package + Markdown report builders fully in memory."""
+    if not _SHA.fullmatch(expected_report_sha256):
+        raise ValueError("invalid original CEQAnet report digest")
+    selected = _report(chain_report)
+    if selected is None or selected[0] != expected_report_sha256:
+        raise ValueError("original CEQAnet chain report changed; select and review again")
+    package = build_ceqanet_operator_package(selected[1]).to_dict()
+    report = build_ceqanet_operator_report(package).to_dict()
+    if len(json.dumps(report, allow_nan=False).encode("utf-8")) > 2_000_000:
+        raise ValueError("original report preview exceeds 2 MB; use bounded archive workflow")
+    return {
+        "schema_version": "constructionsight.original-ceqanet-report-preview/v1",
+        "retained_report_sha256": selected[0],
+        "original_report": report,
+        "read_only": True,
+        "network_executed": False,
+        "source_database_mutated": False,
+        "archive_created": False,
+        "commercial_authority_granted": False,
+        "meaning": (
+            "Original offline operator Markdown/JSON report from the exact configured "
+            "chain report, not independently verified project or source authority."
+        ),
+    }
+
+
+def original_ceqanet_export_status(chain_report: Path | None) -> dict[str, Any]:
+    selected = _report(chain_report)
+    return {
+        "schema_version": "constructionsight.original-ceqanet-export-status/v1",
+        "configured": selected is not None,
+        "available": selected is not None,
+        "retained_report_sha256": selected[0] if selected else None,
+        "network_executed": False,
+        "source_database_mutated": False,
+        "commercial_actions_authorized": False,
+    }
+
+
+def original_ceqanet_export(
+    directory: Path,
+    chain_report: Path | None,
+    *,
+    expected_report_sha256: str,
+    caller_confirmation: bool,
+) -> dict[str, Any]:
+    if not caller_confirmation:
+        raise ValueError("explicit original report export confirmation required")
+    if not _SHA.fullmatch(expected_report_sha256):
+        raise ValueError("invalid retained chain report digest")
+    selected = _report(chain_report)
+    if selected is None:
+        raise ValueError("original CEQAnet report is not configured")
+    digest, payload = selected
+    if digest != expected_report_sha256:
+        raise ValueError("chain report changed; repeat source inspection")
+    exports = directory / "original-ceqanet-exports"
+    if exports.is_symlink():
+        raise ValueError("local operator export root cannot be a symlink")
+    exports.mkdir(mode=0o700, parents=True, exist_ok=True)
+    output = exports / digest
+    archive = exports / (digest + ".zip")
+    if output.is_symlink() or archive.is_symlink():
+        raise ValueError("operator export target cannot be a symlink")
+    if archive.exists():
+        receipt = verify_ceqanet_operator_archive(archive_path=archive)
+        if not receipt.passed:
+            raise ValueError("existing archive failed integrity verification")
+        existing = read_runtime_artifact(archive, max_bytes=128 * 1024 * 1024)
+        with zipfile.ZipFile(BytesIO(existing)) as verified_zip:
+            original_package = json.loads(verified_zip.read("operator-package.json"))
+        if original_package != build_ceqanet_operator_package(payload).to_dict():
+            raise ValueError("existing verified archive belongs to a different source report")
+        return {
+            "schema_version": "constructionsight.original-ceqanet-export/v1",
+            "retained_report_sha256": digest,
+            "archive_sha256": hashlib.sha256(existing).hexdigest(),
+            "archive_available": True,
+            "verification_passed": True,
+            "existing_verified_archive": True,
+            "archive_url": "/api/source-ceqanet-export-download?sha256=" + digest,
+            "network_executed": False, "source_database_mutated": False,
+            "commercial_actions_authorized": False,
+        }
+    result = build_ceqanet_operator_export(payload, output_dir=output).to_dict()
+    metadata = result["metadata"]
+    if not isinstance(metadata, dict) or metadata.get("verification_passed") is not True:
+        raise ValueError("original CEQAnet export bundle verification failed")
+    archive_receipt = build_ceqanet_operator_archive(
+        source_dir=output, archive_path=archive, require_verified=True
+    ).to_dict()
+    verified = verify_ceqanet_operator_archive(archive_path=archive)
+    if not verified.passed:
+        raise ValueError("original CEQAnet ZIP failed post-write integrity verification")
+    archive_metadata = archive_receipt.get("metadata")
+    if (
+        not isinstance(archive_metadata, dict)
+        or not isinstance(archive_metadata.get("sha256"), str)
+    ):
+        raise ValueError("original CEQAnet ZIP checksum receipt is missing")
+    return {
+        "schema_version": "constructionsight.original-ceqanet-export/v1",
+        "retained_report_sha256": digest,
+        "archive_sha256": archive_metadata["sha256"],
+        "archive_available": True,
+        "verification_passed": True,
+        "existing_verified_archive": False,
+        "archive_url": "/api/source-ceqanet-export-download?sha256=" + digest,
+        "network_executed": False,
+        "source_database_mutated": False,
+        "commercial_actions_authorized": False,
+    }
+
+
+
+def original_ceqanet_archive_verification(
+    directory: Path, chain_report: Path | None, *, expected_report_sha256: str,
+) -> dict[str, Any]:
+    """Reuse the original archive verifier against one configured chain report.
+
+    This is an offline operator audit, not authorization to rebuild, extract,
+    promote or send anything. A structurally valid ZIP can still fail its exact
+    retained chain-report identity; that failure must be visible, not hidden.
+    """
+    if not _SHA.fullmatch(expected_report_sha256):
+        raise ValueError("invalid original CEQAnet report digest")
+    selected = _report(chain_report)
+    if selected is None or selected[0] != expected_report_sha256:
+        raise ValueError("retained CEQAnet chain report differs; review selection again")
+    export_root = directory / "original-ceqanet-exports"
+    path = export_root / (expected_report_sha256 + ".zip")
+    if export_root.is_symlink() or path.is_symlink() or not path.is_file():
+        raise ValueError("selected retained CEQAnet ZIP is unavailable or unsafe")
+    verified = verify_ceqanet_operator_archive(archive_path=path)
+    original = verified.to_dict()
+    metadata = original["metadata"]
+    if not isinstance(metadata, dict):
+        raise ValueError("original archive verification metadata is unavailable")
+    # Never disclose local absolute filesystem paths to the operator browser.
+    metadata.pop("archive_path", None)
+    export_root = directory / "original-ceqanet-exports"
+    if export_root.is_symlink():
+        raise ValueError("original export root cannot be a symlink")
+    bundle_root = export_root / expected_report_sha256
+    bundle: dict[str, Any] = {
+        "available": False, "passed": False,
+        "reason": "original standalone bundle unavailable or invalid",
+    }
+    if bundle_root.is_dir() and not bundle_root.is_symlink():
+        try:
+            verified_bundle = verify_ceqanet_operator_bundle(bundle_dir=bundle_root)
+        except (OSError, ValueError):
+            pass
+        else:
+            bundle_data = verified_bundle.to_dict()
+            bundle_metadata = bundle_data.get("metadata")
+            if isinstance(bundle_metadata, dict):
+                bundle_metadata.pop("bundle_dir", None)
+                bundle_metadata.pop("manifest_path", None)
+            bundle = {
+                "available": True,
+                "passed": verified_bundle.passed,
+                "original_verification": bundle_data,
+            }
+    matched = False
+    if verified.passed:
+        raw = read_runtime_artifact(path, max_bytes=128 * 1024 * 1024)
+        try:
+            with zipfile.ZipFile(BytesIO(raw)) as archive:
+                retained = json.loads(archive.read("operator-package.json"))
+        except (KeyError, UnicodeDecodeError, json.JSONDecodeError, zipfile.BadZipFile):
+            retained = None
+        matched = retained == build_ceqanet_operator_package(selected[1]).to_dict()
+    return {
+        "schema_version": "constructionsight.original-ceqanet-archive-verification/v1",
+        "retained_report_sha256": expected_report_sha256,
+        "original_verification": original,
+        "source_report_binding_verified": matched,
+        "original_bundle_verification": bundle,
+        "zip_integrity_passed": verified.passed,
+        "passed": verified.passed and matched and bundle["passed"],
+        "network_executed": False,
+        "source_database_mutated": False,
+        "archive_mutated": False,
+        "commercial_authority_granted": False,
+        "meaning": (
+            "Independent original ZIP and standalone bundle manifest/artifact "
+            "verification plus exact retained chain-report binding. No site, "
+            "project, source access or commercial authority is established."
+        ),
+    }
+
+
+def original_ceqanet_archive_path(
+    directory: Path, *, expected_report_sha256: str,
+) -> Path:
+    if not _SHA.fullmatch(expected_report_sha256):
+        raise ValueError("invalid original CEQAnet export identity")
+    path = directory / "original-ceqanet-exports" / (expected_report_sha256 + ".zip")
+    if path.is_symlink() or not path.is_file():
+        raise ValueError("verified original CEQAnet archive does not exist")
+    verification = verify_ceqanet_operator_archive(archive_path=path)
+    if not verification.passed:
+        raise ValueError("original CEQAnet archive integrity check failed")
+    return path
+
+
+
+_OPERATOR_ARTIFACTS = frozenset({
+    "operator-package.json", "persistence-preview.json", "write-plan.json",
+    "operator-report.json", "operator-report.md", "manifest.json",
+})
+
+
+def original_ceqanet_artifact_bytes(
+    directory: Path, *, expected_report_sha256: str, artifact: str,
+) -> bytes:
+    """Read an original verified artifact from a previously approved ZIP."""
+    if artifact not in _OPERATOR_ARTIFACTS:
+        raise ValueError("unsupported original operator artifact")
+    path = original_ceqanet_archive_path(
+        directory, expected_report_sha256=expected_report_sha256,
+    )
+    try:
+        with (
+            open_runtime_artifact(path) as archive_stream,
+            zipfile.ZipFile(archive_stream) as archive,
+        ):
+            member = archive.getinfo(artifact)
+            if not 0 < member.file_size <= 16 * 1024 * 1024:
+                raise ValueError("original artifact exceeds byte limit")
+            return archive.read(member)
+    except (KeyError, zipfile.BadZipFile, RuntimeError) as exc:
+        raise ValueError("verified original artifact is unavailable") from exc
+
+
+def original_ceqanet_report_bytes(
+    directory: Path, *, expected_report_sha256: str,
+) -> bytes:
+    """Return original Markdown from an already verified operator ZIP."""
+    return original_ceqanet_artifact_bytes(
+        directory, expected_report_sha256=expected_report_sha256,
+        artifact="operator-report.md",
+    )

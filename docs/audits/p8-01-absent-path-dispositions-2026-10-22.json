@@ -1,0 +1,938 @@
+{
+  "schema": "constructionsight.p8-01-absent-path-dispositions/v1",
+  "source_ledger": "docs/audits/p8-01-historical-path-ledger-2026-10-21.json",
+  "source_ledger_tree": "f8fea562c542e61c951c0be2b667206eb2245fca",
+  "historical_branches_in_ledger": 83,
+  "exact_absent_paths": 43,
+  "scope": "File-by-file historical retention/functional risk disposition, not behavioral equivalence or live-source/deployment authorization. Missing files are not necessarily missing product functions. Positive equivalence for outstanding behaviors requires separate tests.",
+  "classification_counts": {
+    "historical_recovery_document": 1,
+    "historical_quality_artifact": 25,
+    "deleted_one_off_script": 4,
+    "one_time_migration": 1,
+    "supersession_candidate": 3,
+    "mandatory_financial_contract_review": 1,
+    "mandatory_result_authority_parity": 3,
+    "rejected_preliminary_prototype": 1,
+    "historical_regression_asset": 4
+  },
+  "p8_01_gate_accepted": false,
+  "reviewed_original_samples": [
+    "governance/reviews/evidence/quality-gates.json@remediation/closure-certification-sync",
+    "governance/reviews/evidence/raw/quality-adapter-audit.json@remediation/closure-certification-sync",
+    "docs/assurance/freeze_6e568d2_defect_resolution_map.md@assurance/freeze-6e568d2-resolution-map",
+    "src/constructionsight/ceqanet_csv_export_service.py@agent/ceqanet-csv-export-contract-v2",
+    "src/constructionsight/money.py@remediation/cs-sr-053-fixed-decimal-v2",
+    "src/constructionsight/result_ledger_authority_service.py@agent/result-ledger-authority",
+    "src/constructionsight/source_intelligence_bridge.py@feature/unified-command-center-source-intelligence-2026-10-16",
+    "scripts/apply_source_verification_metadata_governance.py@agent/ceqanet-evidence-repair-partial-v2",
+    "tests/test_ceqanet_ingestion_inbox.py@agent/ceqanet-ingestion-dashboard"
+  ],
+  "dispositions": [
+    {
+      "path": "docs/assurance/freeze_6e568d2_defect_resolution_map.md",
+      "branch_refs": [
+        "origin/assurance/freeze-6e568d2-resolution-map"
+      ],
+      "branch_blob_shas": [
+        "abc7950b4572a38d8aeb459820563c74a6d91da6"
+      ],
+      "baseline_classes": [
+        "absent_on_main"
+      ],
+      "storage_observation": "absent",
+      "classification": "historical_recovery_document",
+      "evidence_basis": "Inspected 6e568d2 defect resolution map: previous frozen PR #157, 75 defects, expressly noncertifying/not authorizing merge.",
+      "current_counterpart": "Current governance/assurance programs and source test suites; original historical document remains addressable in Git.",
+      "open_proof": "Preserve as historic recovery reference, not active operational mandate; independently verify retained real safeguards.",
+      "gate_dependencies": [
+        "P8-01"
+      ],
+      "behavioral_equivalence_verified": false
+    },
+    {
+      "path": "governance/reviews/evidence/quality-gates.json",
+      "branch_refs": [
+        "origin/remediation/closure-certification-sync"
+      ],
+      "branch_blob_shas": [
+        "3deadef03b9774b9af2290d0a9df7eeae4a06927"
+      ],
+      "baseline_classes": [
+        "absent_on_main"
+      ],
+      "storage_observation": "absent",
+      "classification": "historical_quality_artifact",
+      "evidence_basis": "GitHub Actions/review evidence JSON in dated historical remediation branch, sampled raw adapter audit records a historical reviewed_commit/run/job; not executable application behavior.",
+      "current_counterpart": "Current exact-head .github/workflows/ CI and visual runs; retain original blob/branch for historical certification.",
+      "open_proof": "Do not interpret previous-quality evidence as current exact-head certification. Review unique safeguard behavior under P8-01.",
+      "gate_dependencies": [
+        "P8-01"
+      ],
+      "behavioral_equivalence_verified": false
+    },
+    {
+      "path": "governance/reviews/evidence/raw/quality-adapter-audit.json",
+      "branch_refs": [
+        "origin/remediation/closure-certification-sync"
+      ],
+      "branch_blob_shas": [
+        "ddf4c6bc5f6374afd7e4997493fdd92a6583c025"
+      ],
+      "baseline_classes": [
+        "absent_on_main"
+      ],
+      "storage_observation": "absent",
+      "classification": "historical_quality_artifact",
+      "evidence_basis": "GitHub Actions/review evidence JSON in dated historical remediation branch, sampled raw adapter audit records a historical reviewed_commit/run/job; not executable application behavior.",
+      "current_counterpart": "Current exact-head .github/workflows/ CI and visual runs; retain original blob/branch for historical certification.",
+      "open_proof": "Do not interpret previous-quality evidence as current exact-head certification. Review unique safeguard behavior under P8-01.",
+      "gate_dependencies": [
+        "P8-01"
+      ],
+      "behavioral_equivalence_verified": false
+    },
+    {
+      "path": "governance/reviews/evidence/raw/quality-architecture-certification.json",
+      "branch_refs": [
+        "origin/remediation/closure-certification-sync"
+      ],
+      "branch_blob_shas": [
+        "177fdd65961e523eb56534050d10884dccc9d5d0"
+      ],
+      "baseline_classes": [
+        "absent_on_main"
+      ],
+      "storage_observation": "absent",
+      "classification": "historical_quality_artifact",
+      "evidence_basis": "GitHub Actions/review evidence JSON in dated historical remediation branch, sampled raw adapter audit records a historical reviewed_commit/run/job; not executable application behavior.",
+      "current_counterpart": "Current exact-head .github/workflows/ CI and visual runs; retain original blob/branch for historical certification.",
+      "open_proof": "Do not interpret previous-quality evidence as current exact-head certification. Review unique safeguard behavior under P8-01.",
+      "gate_dependencies": [
+        "P8-01"
+      ],
+      "behavioral_equivalence_verified": false
+    },
+    {
+      "path": "governance/reviews/evidence/raw/quality-capability-certification.json",
+      "branch_refs": [
+        "origin/remediation/closure-certification-sync"
+      ],
+      "branch_blob_shas": [
+        "71e19d9401e150f0860bfa525293580551d870f2"
+      ],
+      "baseline_classes": [
+        "absent_on_main"
+      ],
+      "storage_observation": "absent",
+      "classification": "historical_quality_artifact",
+      "evidence_basis": "GitHub Actions/review evidence JSON in dated historical remediation branch, sampled raw adapter audit records a historical reviewed_commit/run/job; not executable application behavior.",
+      "current_counterpart": "Current exact-head .github/workflows/ CI and visual runs; retain original blob/branch for historical certification.",
+      "open_proof": "Do not interpret previous-quality evidence as current exact-head certification. Review unique safeguard behavior under P8-01.",
+      "gate_dependencies": [
+        "P8-01"
+      ],
+      "behavioral_equivalence_verified": false
+    },
+    {
+      "path": "governance/reviews/evidence/raw/quality-compileall-py311.json",
+      "branch_refs": [
+        "origin/remediation/closure-certification-sync"
+      ],
+      "branch_blob_shas": [
+        "df523d8fc7ca9b02ee3ce045c8e0b4c4ce899c8f"
+      ],
+      "baseline_classes": [
+        "absent_on_main"
+      ],
+      "storage_observation": "absent",
+      "classification": "historical_quality_artifact",
+      "evidence_basis": "GitHub Actions/review evidence JSON in dated historical remediation branch, sampled raw adapter audit records a historical reviewed_commit/run/job; not executable application behavior.",
+      "current_counterpart": "Current exact-head .github/workflows/ CI and visual runs; retain original blob/branch for historical certification.",
+      "open_proof": "Do not interpret previous-quality evidence as current exact-head certification. Review unique safeguard behavior under P8-01.",
+      "gate_dependencies": [
+        "P8-01"
+      ],
+      "behavioral_equivalence_verified": false
+    },
+    {
+      "path": "governance/reviews/evidence/raw/quality-compileall-py312.json",
+      "branch_refs": [
+        "origin/remediation/closure-certification-sync"
+      ],
+      "branch_blob_shas": [
+        "b4f223fcdb6cf4b7f2755895c6d66d4f40f627ce"
+      ],
+      "baseline_classes": [
+        "absent_on_main"
+      ],
+      "storage_observation": "absent",
+      "classification": "historical_quality_artifact",
+      "evidence_basis": "GitHub Actions/review evidence JSON in dated historical remediation branch, sampled raw adapter audit records a historical reviewed_commit/run/job; not executable application behavior.",
+      "current_counterpart": "Current exact-head .github/workflows/ CI and visual runs; retain original blob/branch for historical certification.",
+      "open_proof": "Do not interpret previous-quality evidence as current exact-head certification. Review unique safeguard behavior under P8-01.",
+      "gate_dependencies": [
+        "P8-01"
+      ],
+      "behavioral_equivalence_verified": false
+    },
+    {
+      "path": "governance/reviews/evidence/raw/quality-dependency-integrity-py311.json",
+      "branch_refs": [
+        "origin/remediation/closure-certification-sync"
+      ],
+      "branch_blob_shas": [
+        "2dbcd4fbf7843af799dfb781b356360d68a37b33"
+      ],
+      "baseline_classes": [
+        "absent_on_main"
+      ],
+      "storage_observation": "absent",
+      "classification": "historical_quality_artifact",
+      "evidence_basis": "GitHub Actions/review evidence JSON in dated historical remediation branch, sampled raw adapter audit records a historical reviewed_commit/run/job; not executable application behavior.",
+      "current_counterpart": "Current exact-head .github/workflows/ CI and visual runs; retain original blob/branch for historical certification.",
+      "open_proof": "Do not interpret previous-quality evidence as current exact-head certification. Review unique safeguard behavior under P8-01.",
+      "gate_dependencies": [
+        "P8-01"
+      ],
+      "behavioral_equivalence_verified": false
+    },
+    {
+      "path": "governance/reviews/evidence/raw/quality-dependency-integrity-py312.json",
+      "branch_refs": [
+        "origin/remediation/closure-certification-sync"
+      ],
+      "branch_blob_shas": [
+        "7711d2c084a57f06c4d0a2ae50fdb0509decfa36"
+      ],
+      "baseline_classes": [
+        "absent_on_main"
+      ],
+      "storage_observation": "absent",
+      "classification": "historical_quality_artifact",
+      "evidence_basis": "GitHub Actions/review evidence JSON in dated historical remediation branch, sampled raw adapter audit records a historical reviewed_commit/run/job; not executable application behavior.",
+      "current_counterpart": "Current exact-head .github/workflows/ CI and visual runs; retain original blob/branch for historical certification.",
+      "open_proof": "Do not interpret previous-quality evidence as current exact-head certification. Review unique safeguard behavior under P8-01.",
+      "gate_dependencies": [
+        "P8-01"
+      ],
+      "behavioral_equivalence_verified": false
+    },
+    {
+      "path": "governance/reviews/evidence/raw/quality-diff-hygiene.json",
+      "branch_refs": [
+        "origin/remediation/closure-certification-sync"
+      ],
+      "branch_blob_shas": [
+        "cc178b237b1fab8bef51d8b57146624c7c7cd859"
+      ],
+      "baseline_classes": [
+        "absent_on_main"
+      ],
+      "storage_observation": "absent",
+      "classification": "historical_quality_artifact",
+      "evidence_basis": "GitHub Actions/review evidence JSON in dated historical remediation branch, sampled raw adapter audit records a historical reviewed_commit/run/job; not executable application behavior.",
+      "current_counterpart": "Current exact-head .github/workflows/ CI and visual runs; retain original blob/branch for historical certification.",
+      "open_proof": "Do not interpret previous-quality evidence as current exact-head certification. Review unique safeguard behavior under P8-01.",
+      "gate_dependencies": [
+        "P8-01"
+      ],
+      "behavioral_equivalence_verified": false
+    },
+    {
+      "path": "governance/reviews/evidence/raw/quality-exact-checkout-py311.json",
+      "branch_refs": [
+        "origin/remediation/closure-certification-sync"
+      ],
+      "branch_blob_shas": [
+        "d4c6b1df8e25ef9af08fe61861733de30d51c91e"
+      ],
+      "baseline_classes": [
+        "absent_on_main"
+      ],
+      "storage_observation": "absent",
+      "classification": "historical_quality_artifact",
+      "evidence_basis": "GitHub Actions/review evidence JSON in dated historical remediation branch, sampled raw adapter audit records a historical reviewed_commit/run/job; not executable application behavior.",
+      "current_counterpart": "Current exact-head .github/workflows/ CI and visual runs; retain original blob/branch for historical certification.",
+      "open_proof": "Do not interpret previous-quality evidence as current exact-head certification. Review unique safeguard behavior under P8-01.",
+      "gate_dependencies": [
+        "P8-01"
+      ],
+      "behavioral_equivalence_verified": false
+    },
+    {
+      "path": "governance/reviews/evidence/raw/quality-exact-checkout-py312.json",
+      "branch_refs": [
+        "origin/remediation/closure-certification-sync"
+      ],
+      "branch_blob_shas": [
+        "5096c02727550a5e65fc463514ea4a1d38b8e910"
+      ],
+      "baseline_classes": [
+        "absent_on_main"
+      ],
+      "storage_observation": "absent",
+      "classification": "historical_quality_artifact",
+      "evidence_basis": "GitHub Actions/review evidence JSON in dated historical remediation branch, sampled raw adapter audit records a historical reviewed_commit/run/job; not executable application behavior.",
+      "current_counterpart": "Current exact-head .github/workflows/ CI and visual runs; retain original blob/branch for historical certification.",
+      "open_proof": "Do not interpret previous-quality evidence as current exact-head certification. Review unique safeguard behavior under P8-01.",
+      "gate_dependencies": [
+        "P8-01"
+      ],
+      "behavioral_equivalence_verified": false
+    },
+    {
+      "path": "governance/reviews/evidence/raw/quality-governance-contract-certification.json",
+      "branch_refs": [
+        "origin/remediation/closure-certification-sync"
+      ],
+      "branch_blob_shas": [
+        "43b6087bd76c74125a37fed1a1f1e6b28a09467c"
+      ],
+      "baseline_classes": [
+        "absent_on_main"
+      ],
+      "storage_observation": "absent",
+      "classification": "historical_quality_artifact",
+      "evidence_basis": "GitHub Actions/review evidence JSON in dated historical remediation branch, sampled raw adapter audit records a historical reviewed_commit/run/job; not executable application behavior.",
+      "current_counterpart": "Current exact-head .github/workflows/ CI and visual runs; retain original blob/branch for historical certification.",
+      "open_proof": "Do not interpret previous-quality evidence as current exact-head certification. Review unique safeguard behavior under P8-01.",
+      "gate_dependencies": [
+        "P8-01"
+      ],
+      "behavioral_equivalence_verified": false
+    },
+    {
+      "path": "governance/reviews/evidence/raw/quality-lock-verification-py311.json",
+      "branch_refs": [
+        "origin/remediation/closure-certification-sync"
+      ],
+      "branch_blob_shas": [
+        "a622a7cfdc798e25d3cdd89ac267278ec6aed685"
+      ],
+      "baseline_classes": [
+        "absent_on_main"
+      ],
+      "storage_observation": "absent",
+      "classification": "historical_quality_artifact",
+      "evidence_basis": "GitHub Actions/review evidence JSON in dated historical remediation branch, sampled raw adapter audit records a historical reviewed_commit/run/job; not executable application behavior.",
+      "current_counterpart": "Current exact-head .github/workflows/ CI and visual runs; retain original blob/branch for historical certification.",
+      "open_proof": "Do not interpret previous-quality evidence as current exact-head certification. Review unique safeguard behavior under P8-01.",
+      "gate_dependencies": [
+        "P8-01"
+      ],
+      "behavioral_equivalence_verified": false
+    },
+    {
+      "path": "governance/reviews/evidence/raw/quality-lock-verification-py312.json",
+      "branch_refs": [
+        "origin/remediation/closure-certification-sync"
+      ],
+      "branch_blob_shas": [
+        "bd5e4edbe475e585075d64a821947db514363589"
+      ],
+      "baseline_classes": [
+        "absent_on_main"
+      ],
+      "storage_observation": "absent",
+      "classification": "historical_quality_artifact",
+      "evidence_basis": "GitHub Actions/review evidence JSON in dated historical remediation branch, sampled raw adapter audit records a historical reviewed_commit/run/job; not executable application behavior.",
+      "current_counterpart": "Current exact-head .github/workflows/ CI and visual runs; retain original blob/branch for historical certification.",
+      "open_proof": "Do not interpret previous-quality evidence as current exact-head certification. Review unique safeguard behavior under P8-01.",
+      "gate_dependencies": [
+        "P8-01"
+      ],
+      "behavioral_equivalence_verified": false
+    },
+    {
+      "path": "governance/reviews/evidence/raw/quality-mypy-strict.json",
+      "branch_refs": [
+        "origin/remediation/closure-certification-sync"
+      ],
+      "branch_blob_shas": [
+        "7b7b9ef7042b6102cfdae6b9778fdd452b9dab2f"
+      ],
+      "baseline_classes": [
+        "absent_on_main"
+      ],
+      "storage_observation": "absent",
+      "classification": "historical_quality_artifact",
+      "evidence_basis": "GitHub Actions/review evidence JSON in dated historical remediation branch, sampled raw adapter audit records a historical reviewed_commit/run/job; not executable application behavior.",
+      "current_counterpart": "Current exact-head .github/workflows/ CI and visual runs; retain original blob/branch for historical certification.",
+      "open_proof": "Do not interpret previous-quality evidence as current exact-head certification. Review unique safeguard behavior under P8-01.",
+      "gate_dependencies": [
+        "P8-01"
+      ],
+      "behavioral_equivalence_verified": false
+    },
+    {
+      "path": "governance/reviews/evidence/raw/quality-pytest-py311.json",
+      "branch_refs": [
+        "origin/remediation/closure-certification-sync"
+      ],
+      "branch_blob_shas": [
+        "02ab2ef1a55c73507ab93c472418b4bff81d184a"
+      ],
+      "baseline_classes": [
+        "absent_on_main"
+      ],
+      "storage_observation": "absent",
+      "classification": "historical_quality_artifact",
+      "evidence_basis": "GitHub Actions/review evidence JSON in dated historical remediation branch, sampled raw adapter audit records a historical reviewed_commit/run/job; not executable application behavior.",
+      "current_counterpart": "Current exact-head .github/workflows/ CI and visual runs; retain original blob/branch for historical certification.",
+      "open_proof": "Do not interpret previous-quality evidence as current exact-head certification. Review unique safeguard behavior under P8-01.",
+      "gate_dependencies": [
+        "P8-01"
+      ],
+      "behavioral_equivalence_verified": false
+    },
+    {
+      "path": "governance/reviews/evidence/raw/quality-pytest-py312.json",
+      "branch_refs": [
+        "origin/remediation/closure-certification-sync"
+      ],
+      "branch_blob_shas": [
+        "a69907290d7ce414a1b61ab1fcc0e931eb560878"
+      ],
+      "baseline_classes": [
+        "absent_on_main"
+      ],
+      "storage_observation": "absent",
+      "classification": "historical_quality_artifact",
+      "evidence_basis": "GitHub Actions/review evidence JSON in dated historical remediation branch, sampled raw adapter audit records a historical reviewed_commit/run/job; not executable application behavior.",
+      "current_counterpart": "Current exact-head .github/workflows/ CI and visual runs; retain original blob/branch for historical certification.",
+      "open_proof": "Do not interpret previous-quality evidence as current exact-head certification. Review unique safeguard behavior under P8-01.",
+      "gate_dependencies": [
+        "P8-01"
+      ],
+      "behavioral_equivalence_verified": false
+    },
+    {
+      "path": "governance/reviews/evidence/raw/quality-ruff.json",
+      "branch_refs": [
+        "origin/remediation/closure-certification-sync"
+      ],
+      "branch_blob_shas": [
+        "c1ff1a70a26a0f47216811a5bd08492469fc3960"
+      ],
+      "baseline_classes": [
+        "absent_on_main"
+      ],
+      "storage_observation": "absent",
+      "classification": "historical_quality_artifact",
+      "evidence_basis": "GitHub Actions/review evidence JSON in dated historical remediation branch, sampled raw adapter audit records a historical reviewed_commit/run/job; not executable application behavior.",
+      "current_counterpart": "Current exact-head .github/workflows/ CI and visual runs; retain original blob/branch for historical certification.",
+      "open_proof": "Do not interpret previous-quality evidence as current exact-head certification. Review unique safeguard behavior under P8-01.",
+      "gate_dependencies": [
+        "P8-01"
+      ],
+      "behavioral_equivalence_verified": false
+    },
+    {
+      "path": "governance/reviews/evidence/raw/quality-sbom-py311.json",
+      "branch_refs": [
+        "origin/remediation/closure-certification-sync"
+      ],
+      "branch_blob_shas": [
+        "c330b0e1f695f59475a3a9bd2f4450c779f6c6d1"
+      ],
+      "baseline_classes": [
+        "absent_on_main"
+      ],
+      "storage_observation": "absent",
+      "classification": "historical_quality_artifact",
+      "evidence_basis": "GitHub Actions/review evidence JSON in dated historical remediation branch, sampled raw adapter audit records a historical reviewed_commit/run/job; not executable application behavior.",
+      "current_counterpart": "Current exact-head .github/workflows/ CI and visual runs; retain original blob/branch for historical certification.",
+      "open_proof": "Do not interpret previous-quality evidence as current exact-head certification. Review unique safeguard behavior under P8-01.",
+      "gate_dependencies": [
+        "P8-01"
+      ],
+      "behavioral_equivalence_verified": false
+    },
+    {
+      "path": "governance/reviews/evidence/raw/quality-sbom-py312.json",
+      "branch_refs": [
+        "origin/remediation/closure-certification-sync"
+      ],
+      "branch_blob_shas": [
+        "a2903cfbf8d8d9257d444cdc5b5efe2a16fad20a"
+      ],
+      "baseline_classes": [
+        "absent_on_main"
+      ],
+      "storage_observation": "absent",
+      "classification": "historical_quality_artifact",
+      "evidence_basis": "GitHub Actions/review evidence JSON in dated historical remediation branch, sampled raw adapter audit records a historical reviewed_commit/run/job; not executable application behavior.",
+      "current_counterpart": "Current exact-head .github/workflows/ CI and visual runs; retain original blob/branch for historical certification.",
+      "open_proof": "Do not interpret previous-quality evidence as current exact-head certification. Review unique safeguard behavior under P8-01.",
+      "gate_dependencies": [
+        "P8-01"
+      ],
+      "behavioral_equivalence_verified": false
+    },
+    {
+      "path": "governance/reviews/evidence/raw/quality-security-mutation.json",
+      "branch_refs": [
+        "origin/remediation/closure-certification-sync"
+      ],
+      "branch_blob_shas": [
+        "7f08b47d5304a8282f430608eccf9d00db3776d0"
+      ],
+      "baseline_classes": [
+        "absent_on_main"
+      ],
+      "storage_observation": "absent",
+      "classification": "historical_quality_artifact",
+      "evidence_basis": "GitHub Actions/review evidence JSON in dated historical remediation branch, sampled raw adapter audit records a historical reviewed_commit/run/job; not executable application behavior.",
+      "current_counterpart": "Current exact-head .github/workflows/ CI and visual runs; retain original blob/branch for historical certification.",
+      "open_proof": "Do not interpret previous-quality evidence as current exact-head certification. Review unique safeguard behavior under P8-01.",
+      "gate_dependencies": [
+        "P8-01"
+      ],
+      "behavioral_equivalence_verified": false
+    },
+    {
+      "path": "governance/reviews/evidence/raw/quality-semantic-authorization-certification.json",
+      "branch_refs": [
+        "origin/remediation/closure-certification-sync"
+      ],
+      "branch_blob_shas": [
+        "3bb528012aa0e61dd3a9882e43f7eae17e87b7b4"
+      ],
+      "baseline_classes": [
+        "absent_on_main"
+      ],
+      "storage_observation": "absent",
+      "classification": "historical_quality_artifact",
+      "evidence_basis": "GitHub Actions/review evidence JSON in dated historical remediation branch, sampled raw adapter audit records a historical reviewed_commit/run/job; not executable application behavior.",
+      "current_counterpart": "Current exact-head .github/workflows/ CI and visual runs; retain original blob/branch for historical certification.",
+      "open_proof": "Do not interpret previous-quality evidence as current exact-head certification. Review unique safeguard behavior under P8-01.",
+      "gate_dependencies": [
+        "P8-01"
+      ],
+      "behavioral_equivalence_verified": false
+    },
+    {
+      "path": "governance/reviews/evidence/raw/quality-source-coverage-audit.json",
+      "branch_refs": [
+        "origin/remediation/closure-certification-sync"
+      ],
+      "branch_blob_shas": [
+        "83d491877a2d2997443982b3024d2256ab751bce"
+      ],
+      "baseline_classes": [
+        "absent_on_main"
+      ],
+      "storage_observation": "absent",
+      "classification": "historical_quality_artifact",
+      "evidence_basis": "GitHub Actions/review evidence JSON in dated historical remediation branch, sampled raw adapter audit records a historical reviewed_commit/run/job; not executable application behavior.",
+      "current_counterpart": "Current exact-head .github/workflows/ CI and visual runs; retain original blob/branch for historical certification.",
+      "open_proof": "Do not interpret previous-quality evidence as current exact-head certification. Review unique safeguard behavior under P8-01.",
+      "gate_dependencies": [
+        "P8-01"
+      ],
+      "behavioral_equivalence_verified": false
+    },
+    {
+      "path": "governance/reviews/evidence/raw/quality-vulnerability-audit-py311.json",
+      "branch_refs": [
+        "origin/remediation/closure-certification-sync"
+      ],
+      "branch_blob_shas": [
+        "227e8065b9defaa5195b2b5e6e7249280e60ac7e"
+      ],
+      "baseline_classes": [
+        "absent_on_main"
+      ],
+      "storage_observation": "absent",
+      "classification": "historical_quality_artifact",
+      "evidence_basis": "GitHub Actions/review evidence JSON in dated historical remediation branch, sampled raw adapter audit records a historical reviewed_commit/run/job; not executable application behavior.",
+      "current_counterpart": "Current exact-head .github/workflows/ CI and visual runs; retain original blob/branch for historical certification.",
+      "open_proof": "Do not interpret previous-quality evidence as current exact-head certification. Review unique safeguard behavior under P8-01.",
+      "gate_dependencies": [
+        "P8-01"
+      ],
+      "behavioral_equivalence_verified": false
+    },
+    {
+      "path": "governance/reviews/evidence/raw/quality-vulnerability-audit-py312.json",
+      "branch_refs": [
+        "origin/remediation/closure-certification-sync"
+      ],
+      "branch_blob_shas": [
+        "ed30a46e6c8c8fcb6485d9b760fb2183cab9d794"
+      ],
+      "baseline_classes": [
+        "absent_on_main"
+      ],
+      "storage_observation": "absent",
+      "classification": "historical_quality_artifact",
+      "evidence_basis": "GitHub Actions/review evidence JSON in dated historical remediation branch, sampled raw adapter audit records a historical reviewed_commit/run/job; not executable application behavior.",
+      "current_counterpart": "Current exact-head .github/workflows/ CI and visual runs; retain original blob/branch for historical certification.",
+      "open_proof": "Do not interpret previous-quality evidence as current exact-head certification. Review unique safeguard behavior under P8-01.",
+      "gate_dependencies": [
+        "P8-01"
+      ],
+      "behavioral_equivalence_verified": false
+    },
+    {
+      "path": "scripts/apply_ceqanet_windows1252_replay.py",
+      "branch_refs": [
+        "origin/agent/fix-ceqanet-windows1252-ruff"
+      ],
+      "branch_blob_shas": [],
+      "baseline_classes": [
+        "deleted_on_branch"
+      ],
+      "storage_observation": "absent",
+      "classification": "deleted_one_off_script",
+      "evidence_basis": "Historical baseline marks deleted_on_branch with no contributing blob SHA: the branch does not retain an executable file for this path.",
+      "current_counterpart": "Current guarded CEQAnet source and evidence services; no patch script assumed present.",
+      "open_proof": "Any unique mandatory behavior must be found in retained code/tests; never recreate deleted patch blindly.",
+      "gate_dependencies": [
+        "P8-01"
+      ],
+      "behavioral_equivalence_verified": false
+    },
+    {
+      "path": "scripts/apply_pr92_hardening.py",
+      "branch_refs": [
+        "origin/agent/ceqanet-recurring-run-governance"
+      ],
+      "branch_blob_shas": [],
+      "baseline_classes": [
+        "deleted_on_branch"
+      ],
+      "storage_observation": "absent",
+      "classification": "deleted_one_off_script",
+      "evidence_basis": "Historical baseline marks deleted_on_branch with no contributing blob SHA: the branch does not retain an executable file for this path.",
+      "current_counterpart": "Current guarded CEQAnet source and evidence services; no patch script assumed present.",
+      "open_proof": "Any unique mandatory behavior must be found in retained code/tests; never recreate deleted patch blindly.",
+      "gate_dependencies": [
+        "P8-01"
+      ],
+      "behavioral_equivalence_verified": false
+    },
+    {
+      "path": "scripts/apply_source_verification_metadata_governance.py",
+      "branch_refs": [
+        "origin/agent/ceqanet-evidence-repair-partial-v2"
+      ],
+      "branch_blob_shas": [
+        "f9b850e96e8aae4eaaa27d4e2aca347a8bcff45f"
+      ],
+      "baseline_classes": [
+        "absent_on_main"
+      ],
+      "storage_observation": "absent",
+      "classification": "one_time_migration",
+      "evidence_basis": "Historical July 2026 source-verification patch with _replace_once/patch/reconcile operations; not a routine operator capability.",
+      "current_counterpart": "src/constructionsight/source_verification_*; P8-03 approved source review/apply; never replay the obsolete patch.",
+      "open_proof": "No operational script restoration; verify legacy evidence metadata edge semantics under P8-01.",
+      "gate_dependencies": [
+        "P8-01"
+      ],
+      "behavioral_equivalence_verified": false
+    },
+    {
+      "path": "scripts/collect_ceqanet_source_evidence.py",
+      "branch_refs": [
+        "origin/agent/ceqanet-evidence-repair-partial-v2"
+      ],
+      "branch_blob_shas": [],
+      "baseline_classes": [
+        "deleted_on_branch"
+      ],
+      "storage_observation": "absent",
+      "classification": "deleted_one_off_script",
+      "evidence_basis": "Historical baseline marks deleted_on_branch with no contributing blob SHA: the branch does not retain an executable file for this path.",
+      "current_counterpart": "Current guarded CEQAnet source and evidence services; no patch script assumed present.",
+      "open_proof": "Any unique mandatory behavior must be found in retained code/tests; never recreate deleted patch blindly.",
+      "gate_dependencies": [
+        "P8-01"
+      ],
+      "behavioral_equivalence_verified": false
+    },
+    {
+      "path": "scripts/patch_ceqanet_windows1252_runtime.py",
+      "branch_refs": [
+        "origin/agent/fix-ceqanet-windows1252-ruff"
+      ],
+      "branch_blob_shas": [],
+      "baseline_classes": [
+        "deleted_on_branch"
+      ],
+      "storage_observation": "absent",
+      "classification": "deleted_one_off_script",
+      "evidence_basis": "Historical baseline marks deleted_on_branch with no contributing blob SHA: the branch does not retain an executable file for this path.",
+      "current_counterpart": "Current guarded CEQAnet source and evidence services; no patch script assumed present.",
+      "open_proof": "Any unique mandatory behavior must be found in retained code/tests; never recreate deleted patch blindly.",
+      "gate_dependencies": [
+        "P8-01"
+      ],
+      "behavioral_equivalence_verified": false
+    },
+    {
+      "path": "src/constructionsight/ceqanet_csv_export_cli.py",
+      "branch_refs": [
+        "origin/agent/ceqanet-csv-export-contract-v2"
+      ],
+      "branch_blob_shas": [
+        "edde9646d917df0a55d7b8bdad5b715959d738d3"
+      ],
+      "baseline_classes": [
+        "absent_on_main"
+      ],
+      "storage_observation": "absent",
+      "classification": "supersession_candidate",
+      "evidence_basis": "Historical plan/execute/verify/parse CLI entrypoints; currently separate guarded CEQAnet CSV native and ceqanet_csv_cli services.",
+      "current_counterpart": "src/constructionsight/ceqanet_csv_cli.py; command_center native CEQA sources.",
+      "open_proof": "Map old CLI parse/verify outputs and error codes to current native/export or explicitly dispose historical-only CLI usage.",
+      "gate_dependencies": [
+        "P8-01",
+        "P8-11"
+      ],
+      "behavioral_equivalence_verified": false
+    },
+    {
+      "path": "src/constructionsight/ceqanet_csv_export_models.py",
+      "branch_refs": [
+        "origin/agent/ceqanet-csv-export-contract-v2"
+      ],
+      "branch_blob_shas": [
+        "19a897d2e55c45ebca62cecc194a939ce7fe80a3"
+      ],
+      "baseline_classes": [
+        "absent_on_main"
+      ],
+      "storage_observation": "absent",
+      "classification": "supersession_candidate",
+      "evidence_basis": "Old exact request, parse, execution and verification schemas absent; current canonical request/inspection differs.",
+      "current_counterpart": "src/constructionsight/ceqanet_csv_models.py; ceqanet_csv_service.py.",
+      "open_proof": "Prove historical edge-case output compatibility or document intentional stricter rejection, never weaken access controls.",
+      "gate_dependencies": [
+        "P8-01",
+        "P8-11"
+      ],
+      "behavioral_equivalence_verified": false
+    },
+    {
+      "path": "src/constructionsight/ceqanet_csv_export_service.py",
+      "branch_refs": [
+        "origin/agent/ceqanet-csv-export-contract-v2"
+      ],
+      "branch_blob_shas": [
+        "e69577c8f75f7fe2957e7b3c953859e67141a78a"
+      ],
+      "baseline_classes": [
+        "absent_on_main"
+      ],
+      "storage_observation": "absent",
+      "classification": "supersession_candidate",
+      "evidence_basis": "Original export followed redirects and accepted header-only CSV; new CS-NET-003 forbids redirects and requires a source-bound data row.",
+      "current_counterpart": "src/constructionsight/ceqanet_csv_service.py; ceqanet_csv_live_service.py; native reviewed CSV execution.",
+      "open_proof": "Map retained bytes/digests, non-200 response, parser edge cases; keep stricter redirect/source-validation protections.",
+      "gate_dependencies": [
+        "P8-01",
+        "P8-11"
+      ],
+      "behavioral_equivalence_verified": false
+    },
+    {
+      "path": "src/constructionsight/money.py",
+      "branch_refs": [
+        "origin/remediation/cs-sr-053-fixed-decimal-v2"
+      ],
+      "branch_blob_shas": [
+        "80aaacb249a77881e713e82b3db93923734a9703"
+      ],
+      "baseline_classes": [
+        "absent_on_main"
+      ],
+      "storage_observation": "absent",
+      "classification": "mandatory_financial_contract_review",
+      "evidence_basis": "Old Decimal calculate_share quantized ties ROUND_HALF_UP; current minor-unit calculation uses half-to-even. Example $0.05 at 10% yields $0.01 vs $0.00.",
+      "current_counterpart": "src/constructionsight/result_ledger_service.py; command_center_commercial.py.",
+      "open_proof": "Determine owner-approved royalty contract rounding and historical lineage before any replacement/migration or new computed entitlement.",
+      "gate_dependencies": [
+        "P8-01",
+        "P8-09"
+      ],
+      "behavioral_equivalence_verified": false
+    },
+    {
+      "path": "src/constructionsight/result_ledger_authority_service.py",
+      "branch_refs": [
+        "origin/agent/result-ledger-authority"
+      ],
+      "branch_blob_shas": [
+        "903b92c8cd88d926c6e26c0dd0970e07e5a94952"
+      ],
+      "baseline_classes": [
+        "absent_on_main"
+      ],
+      "storage_observation": "absent",
+      "classification": "mandatory_result_authority_parity",
+      "evidence_basis": "Old apply/load current-result pointer with immutable event history; current result_authority_service is a redesigned service.",
+      "current_counterpart": "src/constructionsight/result_authority_service.py; tests/test_result_authority_* and tests/test_native_lead_result_history.py.",
+      "open_proof": "Prove original CAS/correction/stale/no-op/workflow concordance and native operator apply/correction path with correct historic money.",
+      "gate_dependencies": [
+        "P8-01",
+        "P8-09"
+      ],
+      "behavioral_equivalence_verified": false
+    },
+    {
+      "path": "src/constructionsight/source_intelligence_bridge.py",
+      "branch_refs": [
+        "origin/feature/unified-command-center-source-intelligence-2026-10-16"
+      ],
+      "branch_blob_shas": [
+        "85094af0fd73604e614f520d13917fb991a7a9a8"
+      ],
+      "baseline_classes": [
+        "absent_on_main"
+      ],
+      "storage_observation": "absent",
+      "classification": "rejected_preliminary_prototype",
+      "evidence_basis": "Historical read-only source overview/site-picture bridge; first-pass audit records a whitespace comparison defect, not adopted as authoritative identity join.",
+      "current_counterpart": "Current native investigation runtime and source/evidence/graph services; approved P8-04 path.",
+      "open_proof": "Verify no unique mandatory read-only visibility lost; do not adopt defective bridge or create second source of truth.",
+      "gate_dependencies": [
+        "P8-01"
+      ],
+      "behavioral_equivalence_verified": false
+    },
+    {
+      "path": "src/constructionsight/storage/result_ledger_authority_orm.py",
+      "branch_refs": [
+        "origin/agent/result-ledger-authority"
+      ],
+      "branch_blob_shas": [
+        "43fd608a8b312db219e73b6504e5a8cd559cd8f0"
+      ],
+      "baseline_classes": [
+        "absent_on_main"
+      ],
+      "storage_observation": "absent",
+      "classification": "mandatory_result_authority_parity",
+      "evidence_basis": "Legacy current authority pointer/event ORM mapped result_ledger_authorities and result_ledger_authority_events.",
+      "current_counterpart": "src/constructionsight/storage/result_authority_orm.py and historical migration/retained models.",
+      "open_proof": "Determine whether any real original authority records need safe read/migration; do not silently merge physical tables or infer entitlements.",
+      "gate_dependencies": [
+        "P8-01",
+        "P8-09"
+      ],
+      "behavioral_equivalence_verified": false
+    },
+    {
+      "path": "src/constructionsight/storage/result_ledger_authority_store.py",
+      "branch_refs": [
+        "origin/agent/result-ledger-authority"
+      ],
+      "branch_blob_shas": [
+        "b3e13167e780448eadeb3d766392dae45bc439a3"
+      ],
+      "baseline_classes": [
+        "absent_on_main"
+      ],
+      "storage_observation": "absent",
+      "classification": "mandatory_result_authority_parity",
+      "evidence_basis": "Original create/CAS/current authority/events persistence; later current storage uses distinct models/contracts.",
+      "current_counterpart": "src/constructionsight/storage/result_authority_store.py; original historical branch preserved.",
+      "open_proof": "Prove immutable event history/CAS semantics, originals readable without source reattribution and no synthetic payments.",
+      "gate_dependencies": [
+        "P8-01",
+        "P8-09"
+      ],
+      "behavioral_equivalence_verified": false
+    },
+    {
+      "path": "tests/test_ceqanet_csv_export.py",
+      "branch_refs": [
+        "origin/agent/ceqanet-csv-export-contract-v2"
+      ],
+      "branch_blob_shas": [
+        "59978b3c954924a313b0d4e0f6fa4a3d85cb681f"
+      ],
+      "baseline_classes": [
+        "absent_on_main"
+      ],
+      "storage_observation": "absent",
+      "classification": "historical_regression_asset",
+      "evidence_basis": "13 old CSV tests cover URL planning, parser headers/quotes, tamper, HTTP errors, digest, offline CLI and unknown fields.",
+      "current_counterpart": "tests/test_ceqanet_csv_contract.py; test_ceqanet_csv_live.py; test_ceqanet_csv_operator_service.py.",
+      "open_proof": "Map each old assertion; intentional stricter redirect/header-only behavior requires explicit disposition.",
+      "gate_dependencies": [
+        "P8-01",
+        "P8-11"
+      ],
+      "behavioral_equivalence_verified": false
+    },
+    {
+      "path": "tests/test_ceqanet_ingestion_inbox.py",
+      "branch_refs": [
+        "origin/agent/ceqanet-ingestion-dashboard"
+      ],
+      "branch_blob_shas": [
+        "fd04d7866583d881c91754bd85aee91cd5f6a39c"
+      ],
+      "baseline_classes": [
+        "absent_on_main"
+      ],
+      "storage_observation": "absent",
+      "classification": "historical_regression_asset",
+      "evidence_basis": "Old pending-to-persisted, queue-title tamper denial, read-only GET/unconfigured HTTP regressions.",
+      "current_counterpart": "tests/test_operator_ingestion_inbox.py and original ceqanet_ingestion_inbox service; tamper regression restored at 01a6188.",
+      "open_proof": "Final-head CI must pass; old HTTP and source-identity outcome mapping can then be independently classified.",
+      "gate_dependencies": [
+        "P8-01"
+      ],
+      "behavioral_equivalence_verified": false
+    },
+    {
+      "path": "tests/test_ceqanet_verified_source_maturity.py",
+      "branch_refs": [
+        "origin/agent/ceqanet-evidence-repair-partial-v2"
+      ],
+      "branch_blob_shas": [
+        "a0bbe2866c84bec1a412aa3d08a1a75b8dd17825"
+      ],
+      "baseline_classes": [
+        "absent_on_main"
+      ],
+      "storage_observation": "absent",
+      "classification": "historical_regression_asset",
+      "evidence_basis": "July 12 source-verified artifact/checklist/terms/manifest fixture is dated historical certification, not present-day access permission.",
+      "current_counterpart": "tests/test_native_original_ceqanet_maturity.py; P8-03 native offline reports/controlled verification.",
+      "open_proof": "Map historical contract assertions; do not restore stale 'verified' authority as current source authorization.",
+      "gate_dependencies": [
+        "P8-01",
+        "P8-20"
+      ],
+      "behavioral_equivalence_verified": false
+    },
+    {
+      "path": "tests/test_result_ledger_authority.py",
+      "branch_refs": [
+        "origin/agent/result-ledger-authority"
+      ],
+      "branch_blob_shas": [
+        "618b7116a343ecd3b09748af2bf06df2af732c09"
+      ],
+      "baseline_classes": [
+        "absent_on_main"
+      ],
+      "storage_observation": "absent",
+      "classification": "historical_regression_asset",
+      "evidence_basis": "Old immutable result ledger, CAS, stale/no-op rejection, event history, workflow concordance and load drift tests.",
+      "current_counterpart": "tests/test_result_authority_apply_authorization.py; test_result_authority_event_integrity.py; test_result_ledger_supersession.py.",
+      "open_proof": "Compare all old negative cases and native correction history; P8-09 remains open.",
+      "gate_dependencies": [
+        "P8-01",
+        "P8-09"
+      ],
+      "behavioral_equivalence_verified": false
+    }
+  ]
+}
