@@ -43,6 +43,56 @@ def _report(chain_report: Path | None) -> tuple[str, dict[str, Any]] | None:
     return digest, report
 
 
+
+def original_ceqanet_package_preview(
+    chain_report: Path | None, *, expected_report_sha256: str,
+) -> dict[str, Any]:
+    """Preserve original package, persistence preview and write plan without writing.
+
+    A previewed write plan is a historical proposal, never permission to write.
+    """
+    if not _SHA.fullmatch(expected_report_sha256):
+        raise ValueError("invalid original CEQAnet report digest")
+    selected = _report(chain_report)
+    if selected is None or selected[0] != expected_report_sha256:
+        raise ValueError("original chain report changed; repeat source inspection")
+    package = build_ceqanet_operator_package(selected[1]).to_dict()
+    # Do not return the full duplicated chain-report payload to the browser:
+    # the original builder embeds it, but only the original review projections
+    # are needed for operator inspection. The three projections are still the
+    # exact objects later written by the original deterministic exporter.
+    preview = package.get("persistence_preview")
+    write_plan = package.get("write_plan")
+    metadata = package.get("metadata")
+    warnings = package.get("warnings")
+    projection = {
+        "metadata": metadata,
+        "persistence_preview": preview,
+        "write_plan": write_plan,
+        "warnings": warnings,
+    }
+    if len(json.dumps(projection, allow_nan=False).encode("utf-8")) > 4_000_000:
+        raise ValueError("original package review exceeds 4 MB; use verified ZIP export")
+    return {
+        "schema_version": "constructionsight.original-ceqanet-package-preview/v1",
+        "retained_report_sha256": selected[0],
+        "original_package_projection": projection,
+        "original_package_exact": False,
+        "projection_excludes": ["chain_report"],
+        "read_only": True,
+        "network_executed": False,
+        "source_database_mutated": False,
+        "archive_created": False,
+        "write_plan_executed": False,
+        "commercial_authority_granted": False,
+        "meaning": (
+            "Original CEQAnet operator review projections only. The source chain "
+            "report remains available exclusively in the verified operator archive; "
+            "no original write-plan instruction is approved or executed."
+        ),
+    }
+
+
 def original_ceqanet_report_preview(
     chain_report: Path | None, *, expected_report_sha256: str,
 ) -> dict[str, Any]:
