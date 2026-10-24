@@ -17,6 +17,7 @@ from typing import Any
 
 from constructionsight.ceqanet_operator_archive import build_ceqanet_operator_archive
 from constructionsight.ceqanet_operator_archive_verify import verify_ceqanet_operator_archive
+from constructionsight.ceqanet_operator_bundle_verify import verify_ceqanet_operator_bundle
 from constructionsight.ceqanet_operator_export import build_ceqanet_operator_export
 from constructionsight.ceqanet_operator_package import build_ceqanet_operator_package
 from constructionsight.ceqanet_operator_report import build_ceqanet_operator_report
@@ -236,6 +237,30 @@ def original_ceqanet_archive_verification(
         raise ValueError("original archive verification metadata is unavailable")
     # Never disclose local absolute filesystem paths to the operator browser.
     metadata.pop("archive_path", None)
+    export_root = directory / "original-ceqanet-exports"
+    if export_root.is_symlink():
+        raise ValueError("original export root cannot be a symlink")
+    bundle_root = export_root / expected_report_sha256
+    bundle: dict[str, Any] = {
+        "available": False, "passed": False,
+        "reason": "original standalone bundle unavailable or invalid",
+    }
+    if bundle_root.is_dir() and not bundle_root.is_symlink():
+        try:
+            verified_bundle = verify_ceqanet_operator_bundle(bundle_dir=bundle_root)
+        except (OSError, ValueError):
+            pass
+        else:
+            bundle_data = verified_bundle.to_dict()
+            bundle_metadata = bundle_data.get("metadata")
+            if isinstance(bundle_metadata, dict):
+                bundle_metadata.pop("bundle_dir", None)
+                bundle_metadata.pop("manifest_path", None)
+            bundle = {
+                "available": True,
+                "passed": verified_bundle.passed,
+                "original_verification": bundle_data,
+            }
     matched = False
     if verified.passed:
         raw = read_runtime_artifact(path, max_bytes=128 * 1024 * 1024)
@@ -250,15 +275,17 @@ def original_ceqanet_archive_verification(
         "retained_report_sha256": expected_report_sha256,
         "original_verification": original,
         "source_report_binding_verified": matched,
-        "passed": verified.passed and matched,
+        "original_bundle_verification": bundle,
+        "zip_integrity_passed": verified.passed,
+        "passed": verified.passed and matched and bundle["passed"],
         "network_executed": False,
         "source_database_mutated": False,
         "archive_mutated": False,
         "commercial_authority_granted": False,
         "meaning": (
-            "Original offline ZIP/manifest/artifact verification plus exact retained "
-            "chain-report binding. No site, project, source access or commercial "
-            "authority is established."
+            "Independent original ZIP and standalone bundle manifest/artifact "
+            "verification plus exact retained chain-report binding. No site, "
+            "project, source access or commercial authority is established."
         ),
     }
 
