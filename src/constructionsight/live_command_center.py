@@ -69,6 +69,9 @@ from constructionsight.command_center_ceqanet_acquisition import (
     preview_original_ceqanet_csv,
     preview_original_ceqanet_listing,
 )
+from constructionsight.command_center_ceqanet_chain import (
+    original_offline_chain_preview,
+)
 from constructionsight.command_center_ceqanet_detail import (
     execute_reviewed_original_ceqanet_detail,
     preview_original_ceqanet_detail,
@@ -76,9 +79,6 @@ from constructionsight.command_center_ceqanet_detail import (
 from constructionsight.command_center_ceqanet_discovery import (
     execute_reviewed_original_ceqanet_discovery,
     preview_original_ceqanet_discovery,
-)
-from constructionsight.command_center_ceqanet_chain import (
-    original_offline_chain_preview,
 )
 from constructionsight.command_center_ceqanet_enrichment import (
     preview_original_ceqanet_enrichment,
