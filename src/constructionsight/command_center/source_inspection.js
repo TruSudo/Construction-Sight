@@ -2645,9 +2645,12 @@ async function renderRetainedCeqanetExport(box) {
               'verification, source access approval or commercial authority.</p>' +
               '<p><strong>Overall integrity: ' +
               (verification.passed ? 'PASS' : 'FAIL') + '</strong> · ' +
-              'artifact checks: ' + esc(metadata.verified_count ?? '—') + '/' +
+              'ZIP artifact checks: ' + esc(metadata.verified_count ?? '—') + '/' +
               esc(metadata.artifact_count ?? '—') + ' · chain binding: ' +
               (verification.source_report_binding_verified ? 'verified' : 'not verified') +
+              ' · standalone bundle: ' +
+              (verification.original_bundle_verification?.passed ? 'verified' :
+                'missing, damaged or not verified') +
               '</p>' +
               '<pre>' + esc(JSON.stringify(verification, null, 2)) + '</pre>' +
               '<button id="export-original-archive-integrity-json">Export verification JSON</button>');
