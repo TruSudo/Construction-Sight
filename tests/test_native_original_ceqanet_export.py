@@ -163,6 +163,17 @@ def test_native_ceqanet_retained_chain_report_builds_verified_zip_only_on_confir
             )
             assert audit["retained_report_sha256"] == original_hash
             assert audit["source_report_binding_verified"] is True
+            assert audit["zip_integrity_passed"] is True
+            assert audit["original_bundle_verification"]["available"] is True
+            assert audit["original_bundle_verification"]["passed"] is True
+            bundle_meta = audit["original_bundle_verification"]["original_verification"][
+                "metadata"
+            ]
+            assert bundle_meta["schema_version"] == "ceqanet_operator_bundle_verification.v1"
+            assert bundle_meta["passed"] is True
+            assert bundle_meta["verified_count"] == bundle_meta["artifact_count"] == 5
+            assert "bundle_dir" not in bundle_meta
+            assert "manifest_path" not in bundle_meta
             assert audit["passed"] is True
             assert audit["network_executed"] is False
             assert audit["archive_mutated"] is False
@@ -315,8 +326,42 @@ def test_original_archive_integrity_checks_chain_binding_not_just_valid_zip(
         native, first, expected_report_sha256=digest_a,
     )
     assert bad["original_verification"]["metadata"]["passed"] is True
+    assert bad["original_bundle_verification"]["passed"] is True
     assert bad["source_report_binding_verified"] is False
     assert bad["passed"] is False
     assert bad["network_executed"] is False
     assert bad["archive_mutated"] is False
     assert bad["commercial_authority_granted"] is False
+
+
+def test_original_archive_verification_detects_separately_damaged_bundle(
+    tmp_path: Path,
+) -> None:
+    """Valid ZIP cannot disguise a mismatched original standalone bundle."""
+    report = tmp_path / "retained-chain-report.json"
+    report.write_text(json.dumps(_chain_report()), encoding="utf-8")
+    digest = hashlib.sha256(report.read_bytes()).hexdigest()
+    private = tmp_path / "native"
+    receipt = original_ceqanet_export(
+        private, report, expected_report_sha256=digest, caller_confirmation=True,
+    )
+    assert receipt["verification_passed"] is True
+    bundle = private / "original-ceqanet-exports" / digest
+    write_plan = bundle / "write-plan.json"
+    write_plan.write_bytes(b'{"tampered":true}')
+    before = hashlib.sha256(write_plan.read_bytes()).hexdigest()
+    audited = original_ceqanet_archive_verification(
+        private, report, expected_report_sha256=digest,
+    )
+    assert audited["zip_integrity_passed"] is True
+    assert audited["source_report_binding_verified"] is True
+    assert audited["original_bundle_verification"]["available"] is True
+    assert audited["original_bundle_verification"]["passed"] is False
+    assert audited["original_bundle_verification"]["original_verification"]["metadata"][
+        "mismatch_count"
+    ] > 0
+    assert audited["passed"] is False
+    assert hashlib.sha256(write_plan.read_bytes()).hexdigest() == before
+    assert audited["network_executed"] is False
+    assert audited["source_database_mutated"] is False
+    assert audited["archive_mutated"] is False
