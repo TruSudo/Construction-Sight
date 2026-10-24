@@ -549,6 +549,46 @@ const {resolve} = require('node:path');
       throw Error('Unknown CEQAnet access facts did not fail closed');
     }
     await page.click('#action-close');
+    // Original CLI saved-execution -> result parse -> detail parse -> chain is
+    // now callable from the native interface, without source collection.
+    await page.locator('#review-ceqanet-offline-chain').click();
+    await page.waitForSelector('#build-ceqanet-offline-chain');
+    const savedListingHTML = '<html><body><table>' +
+      '<tr class="result"><td><a href="/Project/2017101033">2017101033</a></td>' +
+      '<td>SCH Number</td><td>2017101033</td><td>County</td>' +
+      '<td>San Bernardino</td></tr></table></body></html>';
+    const savedDetailHTML = '<html><body><main><h1>Project Details</h1>' +
+      '<dl><dt>Project Title</dt><dd>Native original chain comparison</dd>' +
+      '<dt>SCH Number</dt><dd>2017101033</dd></dl></main></body></html>';
+    const savedExec = (html, url) => ({snapshots: [{
+      request_url: url, final_url: url, status_code: 200,
+      content_type: 'text/html; charset=utf-8', body_text: html,
+      body_length: html.length, body_truncated: false,
+      executed: true, reachable: true
+    }]});
+    await page.locator('#ceqanet-chain-listing').fill(JSON.stringify(
+      savedExec(savedListingHTML, 'https://ceqanet.lci.ca.gov/Search')));
+    await page.locator('#ceqanet-chain-details').fill(JSON.stringify([
+      savedExec(savedDetailHTML, 'https://ceqanet.lci.ca.gov/Project/2017101033')
+    ]));
+    await page.locator('#build-ceqanet-offline-chain').click();
+    await page.waitForSelector('#download-ceqanet-original-chain');
+    const chainReview = await page.locator('#action-content').textContent();
+    if (!chainReview.includes('Native original chain comparison') ||
+        !chainReview.includes('ceqanet_chain_report.v1') ||
+        !chainReview.includes('"enriched_count": 1') ||
+        !chainReview.includes('"network_executed": false') ||
+        !chainReview.includes('"chain_report_retained": false') ||
+        !chainReview.includes('"commercial_authority_granted": false')) {
+      throw Error('Original offline saved-execution chain is not connected to native review');
+    }
+    const chainDownload = page.waitForEvent('download');
+    await page.locator('#download-ceqanet-original-chain').click();
+    if ((await chainDownload).suggestedFilename() !==
+        'original-ceqanet-chain-preview.json') {
+      throw Error('Original offline chain JSON export did not reach the operator');
+    }
+    await page.click('#action-close');
     // Result-to-detail matching is available to native operators without the
     // original CLI and never performs a live source request or site promotion.
     await page.locator('#review-ceqanet-offline-enrichment').click();
