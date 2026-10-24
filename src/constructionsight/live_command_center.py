@@ -1418,6 +1418,7 @@ def make_server(
                 "/api/source-ceqanet-discovery",
                 "/api/source-ceqanet-detail-preview",
                 "/api/source-ceqanet-detail",
+                "/api/source-ceqanet-offline-chain-preview",
                 "/api/source-ceqanet-offline-enrichment",
                 "/api/source-smarts-catalog-preview",
                 "/api/source-smarts-catalog",
