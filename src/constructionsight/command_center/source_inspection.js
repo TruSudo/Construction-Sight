@@ -1643,6 +1643,64 @@ async function renderRetainedCaptureInbox(box) {
           });
         });
     });
+    const originalChain = document.createElement('section');
+    originalChain.className = 'original-ceqanet-offline-chain';
+    originalChain.innerHTML = '<h3>Original CEQAnet saved-execution chain report</h3>' +
+      '<p>Use the preserved offline chain builder to parse one previously ' +
+      'saved CEQAnet listing execution and up to twenty-five saved detail ' +
+      'executions. No HTTP requests, files, imports, source authentication, ' +
+      'identity decisions, contact authority or commercial actions.</p>' +
+      '<button id="review-ceqanet-offline-chain">Build offline chain preview</button>';
+    box.append(originalChain);
+    originalChain.querySelector('#review-ceqanet-offline-chain').onclick = () => {
+      const ticket = modal('Original CEQAnet · saved execution to chain report',
+        '<p>Paste existing execution JSON including snapshots and stored body_text. ' +
+        'This runs the exact original result parser, detail parser, enrichment and ' +
+        'chain composer in memory. The result is NOT an authenticated or ' +
+        'retained chain report. Use the separately configured retained report ' +
+        'and approved export workflow for retained artifacts.</p>' +
+        '<label>Saved listing execution JSON' +
+        '<textarea id="ceqanet-chain-listing" rows="7" maxlength="52000" ' +
+        'spellcheck="false" placeholder="{&quot;snapshots&quot;: [...] }"></textarea></label>' +
+        '<label>Saved detail execution JSON array (up to 25; [] allowed)' +
+        '<textarea id="ceqanet-chain-details" rows="7" maxlength="52000" ' +
+        'spellcheck="false">[]</textarea></label>' +
+        '<label>Listing snapshot index (0–24)' +
+        '<input id="ceqanet-chain-index" type="number" min="0" max="24" step="1" value="0" /></label>' +
+        '<button id="build-ceqanet-offline-chain">Preview original offline chain</button>');
+      document.querySelector('#build-ceqanet-offline-chain').onclick =
+        () => perform(async () => {
+          if (ticket !== modalTicket || !$('action-dialog').open) return;
+          const button = document.querySelector('#build-ceqanet-offline-chain');
+          button.disabled = true;
+          try {
+            const listing = JSON.parse(document.querySelector('#ceqanet-chain-listing').value);
+            const details = JSON.parse(document.querySelector('#ceqanet-chain-details').value);
+            const index = Number(document.querySelector('#ceqanet-chain-index').value);
+            const preview = await api('/api/source-ceqanet-offline-chain-preview', {
+              listing_execution: listing, detail_executions: details,
+              listing_snapshot_index: index
+            });
+            const counts = preview.original_chain_report.metadata;
+            modal('Original CEQAnet chain · read-only builder output',
+              '<p>Original saved execution parser and enrichment, no source ' +
+              'capture or retained chain created. Missing details and SCH ' +
+              'mismatches remain explicit. The source input SHA-256 values ' +
+              'identify the canonical pasted JSON, not an authenticated ' +
+              'file or evidence chain.</p>' +
+              '<p>Results: ' + esc(counts.result_record_count) +
+              ' · Enriched: ' + esc(counts.enriched_count) +
+              ' · Missing detail: ' + esc(counts.missing_detail_count) +
+              ' · SCH mismatch: ' + esc(counts.sch_mismatch_count) + '</p>' +
+              '<pre>' + esc(JSON.stringify(preview, null, 2)) + '</pre>' +
+              '<button id="download-ceqanet-original-chain">Export chain preview JSON</button>');
+            document.querySelector('#download-ceqanet-original-chain').onclick =
+              () => download('original-ceqanet-chain-preview.json', preview);
+          } finally {
+            if (button.isConnected) button.disabled = false;
+          }
+        });
+    };
     const offlineEnrichment = document.createElement('section');
     offlineEnrichment.className = 'original-ceqanet-offline-enrichment';
     offlineEnrichment.innerHTML = '<h3>Original CEQAnet result-to-detail comparison</h3>' +
