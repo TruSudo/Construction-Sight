@@ -679,7 +679,9 @@ const {resolve} = require('node:path');
     await page.waitForSelector('#export-original-archive-integrity-json');
     const fullIntegrity = await page.locator('#action-content').textContent();
     if (!fullIntegrity.includes('Overall integrity: PASS') ||
+        !fullIntegrity.includes('standalone bundle: verified') ||
         !fullIntegrity.includes('"source_report_binding_verified": true') ||
+        !fullIntegrity.includes('"ceqanet_operator_bundle_verification.v1"') ||
         !fullIntegrity.includes('"manifest_status": "verified"') ||
         !fullIntegrity.includes('"commercial_authority_granted": false') ||
         fullIntegrity.includes('"archive_path"')) {
