@@ -553,10 +553,18 @@ const {resolve} = require('node:path');
     // now callable from the native interface, without source collection.
     await page.locator('#review-ceqanet-offline-chain').click();
     await page.waitForSelector('#build-ceqanet-offline-chain');
+    // Match the original tested CLI execution fixture exactly, including
+    // its lead-agency columns and second unmatched result.
     const savedListingHTML = '<html><body><table>' +
       '<tr class="result"><td><a href="/Project/2017101033">2017101033</a></td>' +
-      '<td>SCH Number</td><td>2017101033</td><td>County</td>' +
-      '<td>San Bernardino</td></tr></table></body></html>';
+      '<td>SCH Number</td><td>2017101033</td>' +
+      '<td>Lead/Public Agency</td><td>San Bernardino County</td>' +
+      '<td>County</td><td>San Bernardino</td></tr>' +
+      '<tr class="result"><td><a href="/Project/2026061234">2026061234</a></td>' +
+      '<td>SCH Number</td><td>2026061234</td>' +
+      '<td>Lead/Public Agency</td><td>Fontana, City of</td>' +
+      '<td>County</td><td>San Bernardino</td></tr>' +
+      '</table></body></html>';
     const savedDetailHTML = '<html><body><main><h1>Project Details</h1>' +
       '<dl><dt>Project Title</dt><dd>Native original chain comparison</dd>' +
       '<dt>SCH Number</dt><dd>2017101033</dd></dl></main></body></html>';
@@ -572,7 +580,16 @@ const {resolve} = require('node:path');
       savedExec(savedDetailHTML, 'https://ceqanet.lci.ca.gov/Project/2017101033')
     ]));
     await page.locator('#build-ceqanet-offline-chain').click();
-    await page.waitForSelector('#download-ceqanet-original-chain');
+    try {
+      await page.waitForSelector('#download-ceqanet-original-chain', {
+        timeout: 10000
+      });
+    } catch {
+      const content = await page.locator('#action-content').textContent();
+      const alerts = await page.locator('[role="alert"]').allTextContents();
+      throw Error('Original saved-chain preview unavailable: ' +
+        String(content).slice(-1700) + ' / ' + JSON.stringify(alerts));
+    }
     const chainReview = await page.locator('#action-content').textContent();
     if (!chainReview.includes('Native original chain comparison') ||
         !chainReview.includes('ceqanet_chain_report.v1') ||
