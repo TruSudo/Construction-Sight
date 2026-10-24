@@ -649,6 +649,24 @@ const {resolve} = require('node:path');
       throw Error('Native original report JSON preview missing');
     }
     await page.click('#action-close');
+    await page.locator('#preview-original-operator-package').click();
+    await page.waitForSelector('#download-original-package-projection');
+    const packageReview = await page.locator('#action-content').textContent();
+    if (!packageReview.includes('ceqanet_operator_package.v1') ||
+        !packageReview.includes('ceqanet_persistence_preview.v1') ||
+        !packageReview.includes('ceqanet_write_plan.v1') ||
+        !packageReview.includes('upsert_preview') ||
+        !packageReview.includes('NOT approved writes') ||
+        packageReview.includes('"chain_report":')) {
+      throw Error('Original package/write plan not inspectable before ZIP generation');
+    }
+    const originalPackageDownload = page.waitForEvent('download');
+    await page.locator('#download-original-package-projection').click();
+    if ((await originalPackageDownload).suggestedFilename() !==
+        'original-ceqanet-package-review.json') {
+      throw Error('Original bounded package review download unavailable');
+    }
+    await page.click('#action-close');
     await page.locator('#original-export-confirm').check();
     await page.locator('#original-export-generate').click();
     await page.waitForSelector('#original-export-download');
