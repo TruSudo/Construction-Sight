@@ -70,6 +70,37 @@ def test_native_ceqanet_retained_chain_report_builds_verified_zip_only_on_confir
                 "# CEQAnet Operator Report"
             )
             assert not (native / "original-ceqanet-exports").exists()
+            package_url = "/api/source-ceqanet-package-preview"
+            assert client.get(package_url).status_code == 409
+            assert client.get(package_url, params={
+                "sha256": "0" * 64,
+            }).status_code == 409
+            assert client.get(package_url, params={
+                "sha256": original_hash, "unexpected": "1",
+            }).status_code == 409
+            package_response = client.get(package_url, params={"sha256": original_hash})
+            assert package_response.status_code == 200, package_response.text
+            package_review = package_response.json()
+            assert package_review["schema_version"] == (
+                "constructionsight.original-ceqanet-package-preview/v1"
+            )
+            assert package_review["retained_report_sha256"] == original_hash
+            assert package_review["original_package_exact"] is False
+            assert package_review["projection_excludes"] == ["chain_report"]
+            assert package_review["archive_created"] is False
+            assert package_review["write_plan_executed"] is False
+            assert package_review["source_database_mutated"] is False
+            assert package_review["commercial_authority_granted"] is False
+            projection = package_review["original_package_projection"]
+            assert projection["metadata"]["schema_version"] == "ceqanet_operator_package.v1"
+            assert projection["write_plan"]["metadata"]["schema_version"] == (
+                "ceqanet_write_plan.v1"
+            )
+            assert projection["persistence_preview"]["metadata"]["schema_version"] == (
+                "ceqanet_persistence_preview.v1"
+            )
+            assert "chain_report" not in projection
+            assert not (native / "original-ceqanet-exports").exists()
             request = {
                 "expected_report_sha256": original_hash,
                 "caller_confirmation": True,
@@ -161,6 +192,19 @@ def test_native_ceqanet_retained_chain_report_builds_verified_zip_only_on_confir
                 assert expected_markdown.decode() == (
                     original_preview["original_report"]["markdown"]
                 )
+                stored_package = json.loads(archive.read("operator-package.json"))
+                assert projection == {
+                    "metadata": stored_package["metadata"],
+                    "persistence_preview": stored_package["persistence_preview"],
+                    "write_plan": stored_package["write_plan"],
+                    "warnings": stored_package["warnings"],
+                }
+                assert json.loads(archive.read("persistence-preview.json")) == (
+                    projection["persistence_preview"]
+                )
+                assert json.loads(archive.read("write-plan.json")) == (
+                    projection["write_plan"]
+                )
                 artifacts = {
                     name: archive.read(name)
                     for name in (
@@ -215,6 +259,9 @@ def test_native_ceqanet_retained_chain_report_builds_verified_zip_only_on_confir
                 "sha256": original_hash,
             }).status_code == 409
             assert client.get(report_url, params={
+                "sha256": original_hash,
+            }).status_code == 409
+            assert client.get(package_url, params={
                 "sha256": original_hash,
             }).status_code == 409
             assert client.post(
